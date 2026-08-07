@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chummer.run/schemas/android-play-release-receipt.schema.json",
+  "title": "Chummer Android Play release receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "packageId",
+    "versionCode",
+    "versionName",
+    "aabSha256",
+    "uploadCertificateSha256",
+    "track",
+    "rolloutState",
+    "playOperationId",
+    "sourceCommit",
+    "createdAtUtc"
+  ],
+  "properties": {
+    "packageId": { "const": "com.myexternalbrain.chummer" },
+    "versionCode": { "type": "integer", "minimum": 1 },
+    "versionName": { "type": "string", "minLength": 1, "maxLength": 50 },
+    "aabSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "uploadCertificateSha256": { "type": "string", "pattern": "^[0-9A-F]{2}(:[0-9A-F]{2}){31}$" },
+    "track": { "enum": ["internal", "closed", "open", "production"] },
+    "rolloutState": { "enum": ["draft", "inProgress", "halted", "completed"] },
+    "playOperationId": { "type": "string", "minLength": 1 },
+    "sourceCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "createdAtUtc": { "type": "string", "format": "date-time" }
+  }
+}

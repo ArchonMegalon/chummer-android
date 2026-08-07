@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Application
+    x:Class="Chummer.Android.App"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <Color x:Key="ChummerInk">#102426</Color>
+            <Color x:Key="ChummerSignal">#54D6B3</Color>
+            <Color x:Key="ChummerPaper">#F3F7F4</Color>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

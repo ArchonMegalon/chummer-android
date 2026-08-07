@@ -1,0 +1,21 @@
+Chummer for Android brings the complete local-first Chummer workbench to phones, tablets, and foldables.
+
+BUILD AND ADVANCE RUNNERS
+Create, inspect, edit, and advance characters and critters with the same deterministic rules engine used by the desktop client. Work through attributes, skills, qualities, magic, gear, vehicles, contacts, lifestyles, notes, and explain views without giving up the depth of the full workbench.
+
+RUN CAMPAIGNS
+Open campaign command, GM runboards, preparation packets, rosters, organizer tools, rule-environment settings, primers, and mission briefings from an adaptive Android workflow.
+
+WORK LOCAL-FIRST
+Keep building while offline. Local work remains usable without an account. Connected account, support, assistant, and live-play actions open only when you choose them.
+
+USE ANDROID-NATIVE FILES AND OUTPUT
+Open and save only the files you choose through Android Documents. Export or save recovery copies, create PDF output, use Android printing, and share the app through the system share sheet. Chummer does not request broad storage access.
+
+JOIN LIVE PLAY
+Move from campaign preparation into the phone-first live session experience for reconnect, replay, observer, and turn-companion workflows.
+
+PRIVATE BY DEFAULT
+No advertising SDK, location, contacts, camera, microphone, or broad-storage permission. Connected account, support, sync, and optional assistant features clearly cross the local boundary and use encrypted connections to Chummer services.
+
+Chummer is a community character-management project. It is not an official tabletop game publisher app and does not include rulebook text or replace the books required for play.

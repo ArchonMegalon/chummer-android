@@ -1,0 +1,17 @@
+bin/
+obj/
+.vs/
+.idea/
+.vscode/
+.tmp/
+.state/
+artifacts/
+__pycache__/
+*.py[cod]
+*.user
+*.keystore
+*.jks
+*.aab
+*.apk
+google-services.json
+service-account*.json

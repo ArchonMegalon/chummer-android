@@ -1,0 +1,168 @@
+@inject IAndroidSystemService SystemService
+@inject IAndroidDocumentService DocumentService
+@inject AndroidDocumentInbox DocumentInbox
+@inject AndroidAppState State
+@inject AndroidJsBridge NativeBridge
+@inject IJSRuntime JsRuntime
+@using Chummer.Blazor.Components.Layout
+@implements IAsyncDisposable
+
+<div class="android-app-shell" data-platform="android" data-active-destination="@State.ActiveDestination">
+    <header class="android-topbar">
+        <div>
+            <span class="android-eyebrow">CHUMMER // ANDROID</span>
+            <strong>@Title</strong>
+        </div>
+        <button type="button" class="sync-pill" @onclick="OpenAccountAsync" aria-label="Open devices and account">
+            @State.SyncPosture
+        </button>
+    </header>
+
+    <main class="android-content">
+        @switch (State.ActiveDestination)
+        {
+            case AndroidDestination.Home:
+                <section class="android-home" aria-labelledby="android-home-title">
+                    <p class="android-kicker">Local-first runner command</p>
+                    <h1 id="android-home-title">Pick up where the run left off.</h1>
+                    <p>Your characters stay available offline. Connected account, support, assistant, and live-play actions cross the local boundary only when you choose them.</p>
+                    <div class="android-action-grid">
+                        <button type="button" class="primary-card" @onclick="OpenWorkbench">
+                            <span>Resume workbench</span>
+                            <small>Build, advance, inspect, explain, print, or export</small>
+                        </button>
+                        <button type="button" @onclick="OpenDocumentAsync">
+                            <span>Open character</span>
+                            <small>Choose a Chummer file through Android Documents</small>
+                        </button>
+                        <button type="button" @onclick="OpenCampaign">
+                            <span>Campaign command</span>
+                            <small>GM runboard, prep, roster, organizer, and briefing</small>
+                        </button>
+                        <button type="button" @onclick="OpenPlayAsync">
+                            <span>Join live play</span>
+                            <small>Fast table HUD, reconnect, replay, and observer mode</small>
+                        </button>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(State.LastMessage))
+                    {
+                        <p class="android-notice" role="status">@State.LastMessage</p>
+                    }
+                </section>
+                break;
+            case AndroidDestination.Workbench:
+            case AndroidDestination.Campaign:
+                <section class="android-workbench" aria-label="Full Chummer workbench">
+                    <DesktopShell />
+                </section>
+                break;
+            case AndroidDestination.More:
+                <section class="android-more" aria-labelledby="android-more-title">
+                    <p class="android-kicker">Native tools</p>
+                    <h1 id="android-more-title">Files, output, account, help.</h1>
+                    <div class="android-action-grid">
+                        <button type="button" @onclick="OpenDocumentAsync">Import from Documents</button>
+                        <button type="button" @onclick="PrintCurrentViewAsync">Print current view</button>
+                        <button type="button" @onclick="ShareAppAsync">Share Chummer</button>
+                        <button type="button" @onclick="OpenUpdateAsync">Check Google Play updates</button>
+                        <button type="button" @onclick="OpenSupportAsync">Support and report a bug</button>
+                        <button type="button" @onclick="OpenAccountAsync">Devices and account</button>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(State.LastMessage))
+                    {
+                        <p class="android-notice" role="status">@State.LastMessage</p>
+                    }
+                </section>
+                break;
+        }
+    </main>
+
+    <nav class="android-bottom-nav" aria-label="Primary">
+        <button class="@ActiveClass(AndroidDestination.Home)" @onclick="() => Navigate(AndroidDestination.Home)"><span aria-hidden="true">⌂</span>Home</button>
+        <button class="@ActiveClass(AndroidDestination.Workbench)" @onclick="OpenWorkbench"><span aria-hidden="true">✦</span>Build</button>
+        <button class="@ActiveClass(AndroidDestination.Campaign)" @onclick="OpenCampaign"><span aria-hidden="true">◎</span>Campaign</button>
+        <button @onclick="OpenPlayAsync"><span aria-hidden="true">▶</span>Play</button>
+        <button class="@ActiveClass(AndroidDestination.More)" @onclick="() => Navigate(AndroidDestination.More)"><span aria-hidden="true">•••</span>More</button>
+    </nav>
+</div>
+
+@code {
+    private DotNetObjectReference<AndroidJsBridge>? _nativeBridgeReference;
+
+    protected override void OnInitialized()
+        => State.Changed += OnAppStateChanged;
+
+    private string Title => State.ActiveDestination switch
+    {
+        AndroidDestination.Workbench => "Full workbench",
+        AndroidDestination.Campaign => "Campaign command",
+        AndroidDestination.More => "More",
+        _ => "Runner home"
+    };
+
+    private void Navigate(AndroidDestination destination)
+    {
+        State.ActiveDestination = destination;
+        State.LastMessage = null;
+    }
+
+    private void OpenWorkbench() => Navigate(AndroidDestination.Workbench);
+    private void OpenCampaign() => Navigate(AndroidDestination.Campaign);
+    private string ActiveClass(AndroidDestination destination) => State.ActiveDestination == destination ? "active" : string.Empty;
+
+    private async Task OpenDocumentAsync()
+    {
+        AndroidDocument? document = await DocumentService.OpenAsync(CancellationToken.None);
+        if (document is null)
+        {
+            State.LastMessage = "No document selected.";
+            return;
+        }
+
+        DocumentInbox.Add(document);
+        State.LastMessage = $"Opening {document.DisplayName}.";
+        Navigate(AndroidDestination.Workbench);
+    }
+
+    private Task OpenPlayAsync() => SystemService.OpenUriAsync(new Uri("https://chummer.run/play"));
+    private Task OpenAccountAsync() => SystemService.OpenUriAsync(new Uri("https://chummer.run/account/devices"));
+    private Task OpenSupportAsync() => SystemService.OpenUriAsync(new Uri("https://chummer.run/support"));
+    private Task OpenUpdateAsync() => SystemService.OpenStoreListingAsync();
+    private Task ShareAppAsync() => SystemService.ShareTextAsync("Chummer — build runners, run campaigns, and play anywhere. https://chummer.run");
+
+    private async Task PrintCurrentViewAsync()
+    {
+        bool started = await SystemService.PrintCurrentViewAsync("Chummer character");
+        State.LastMessage = started ? "Android print dialog opened." : "Open a workbench document before printing.";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        _nativeBridgeReference = DotNetObjectReference.Create(NativeBridge);
+        await JsRuntime.InvokeVoidAsync("chummerAndroid.initialize", _nativeBridgeReference);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        State.Changed -= OnAppStateChanged;
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("chummerAndroid.dispose");
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        finally
+        {
+            _nativeBridgeReference?.Dispose();
+        }
+    }
+
+    private void OnAppStateChanged(object? sender, EventArgs e)
+        => _ = InvokeAsync(StateHasChanged);
+}

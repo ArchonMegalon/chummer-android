@@ -1,0 +1,1 @@
+Initial internal-test candidate: full adaptive workbench, local SR4/SR5/SR6 engine, campaign command, Android Documents import/save, native print and share, app-link manifest, Play-owned updates, and live-play handoff.
