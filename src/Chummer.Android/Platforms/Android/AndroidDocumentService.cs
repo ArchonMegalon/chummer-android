@@ -3,6 +3,8 @@ using Android.Content;
 using Android.Database;
 using Android.Provider;
 using Microsoft.Maui.ApplicationModel;
+using System.Buffers;
+using System.Security.Cryptography;
 
 namespace Chummer.Android.Platform;
 
@@ -114,18 +116,30 @@ public sealed class AndroidDocumentService : IAndroidDocumentService
     private static async Task<byte[]> ReadBoundedAsync(Stream source, CancellationToken cancellationToken)
     {
         using MemoryStream destination = new();
-        byte[] buffer = new byte[32 * 1024];
-        int read;
-        while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(32 * 1024);
+        try
         {
-            if (destination.Length + read > MaxDocumentBytes)
+            int read;
+            while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
             {
-                throw new IOException("The selected document is larger than Chummer's 8 MB import limit.");
+                if (destination.Length + read > MaxDocumentBytes)
+                {
+                    throw new IOException("The selected document is larger than Chummer's 8 MB import limit.");
+                }
+
+                await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
             }
 
-            await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+            return destination.ToArray();
         }
-
-        return destination.ToArray();
+        finally
+        {
+            CryptographicOperations.ZeroMemory(buffer);
+            ArrayPool<byte>.Shared.Return(buffer, clearArray: false);
+            if (destination.TryGetBuffer(out ArraySegment<byte> importedBytes))
+            {
+                CryptographicOperations.ZeroMemory(importedBytes.AsSpan(0, checked((int)destination.Length)));
+            }
+        }
     }
 }

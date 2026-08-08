@@ -59,26 +59,27 @@ A locally signed AAB is not publication. Publication requires a Chummer-scoped
 Play Console session or service account. Memorial or PropertyQuarry browser
 sessions and app identities must never be reused for Chummer.
 
-## Local release evidence (2026-08-07)
+## Local release evidence (2026-08-08)
 
 - `android-arm64` Release publish completed with zero warnings and zero errors.
 - The unsigned, upload-key-ready AAB is written to
   `artifacts/chummer-android-0.1.0-preview.1-unsigned.aab` and is intentionally
   ignored by Git. SHA-256:
-  `a6b72be80d0003c69e79339627ef2752724eb852f9ad860f7efd8b9fb702b6a5`.
+  `2c1724e9feee4999778a90839bde21a32cbbc03187faa72f4fbae74ee9862086`.
 - bundletool 1.18.3 validation passed. Bundle inspection confirmed package
   `com.myexternalbrain.chummer`, version code 1, version
   `0.1.0-preview.1`, min API 24, target/compile API 36, arm64 native output,
   modern Back integration, verified `https://chummer.run/app` links, no
   cleartext traffic, and no broad storage permission.
-- All 15 Android parity, privacy, lifecycle, release-automation, listing, and
-  store-asset contract tests passed. Four phone and four 9:16 tablet captures
+- All 18 Android parity, privacy, lifecycle, release-automation, listing, and
+  store-asset contract tests passed. Five phone and four 9:16 tablet captures
   meet the upload dimension contract.
 - The SDK-generated debug-signed AAB is QA-only. Its Android Debug certificate
   must never be supplied to Play or configured as the production app-link
   fingerprint.
-- API 36 emulator journeys passed for standalone install, cold launch, Home →
-  Build, New runner → build method → metatype priority, Documents UI import of
+- API 36 emulator journeys passed for standalone install, cold launch, direct
+  Home → New runner command dispatch, Home → Build, campaign command, native
+  tools, New runner → build method → metatype priority, Documents UI import of
   `Glessner.chum5`, persisted workspace restart, native Back navigation, and
   phone/tablet rendering.
 - Publication is still closed until the Chummer Play app record, Play App

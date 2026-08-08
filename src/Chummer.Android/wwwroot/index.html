@@ -11,8 +11,15 @@
   <link rel="stylesheet" href="css/android.css" />
 </head>
 <body>
-  <div id="app"><div class="boot">Loading Chummer…</div></div>
-  <div id="blazor-error-ui" hidden>An unexpected error occurred. <a href=".">Reload</a></div>
+  <div id="app">
+    <div class="boot" role="status">
+      <div class="boot-mark"><span class="boot-spinner" aria-hidden="true"></span>Loading Chummer…</div>
+    </div>
+  </div>
+  <div id="blazor-error-ui">
+    Chummer hit an unexpected problem. <a href=".">Reload safely</a>
+    <span class="dismiss" aria-label="Dismiss">×</span>
+  </div>
   <script src="_content/Chummer.Blazor.Mobile/js/build-pwa-layout.js"></script>
   <script src="_content/Chummer.Blazor.Mobile/js/build-pwa-integrity.js"></script>
   <script src="js/android-interop.js"></script>

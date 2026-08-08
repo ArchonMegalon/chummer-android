@@ -10,6 +10,9 @@ WORKSPACE = REPO.parent
 PROJECT = REPO / "src" / "Chummer.Android"
 REGISTRY = WORKSPACE / "chummer-design" / "products" / "chummer" / "ANDROID_WINDOWS_FEATURE_PARITY.yaml"
 WINDOWS_COMMANDS = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Shell" / "DesktopMenuProjectionCatalog.cs"
+WINDOWS_STARTUP_SURFACES = (
+    WORKSPACE / "chummer-presentation" / "Chummer.Desktop.Runtime" / "DesktopStartupSurfaceCatalog.cs"
+)
 
 
 class AndroidContractTests(unittest.TestCase):
@@ -25,13 +28,12 @@ class AndroidContractTests(unittest.TestCase):
         self.assertEqual(command_ids, set(self.registry["commands"]))
 
     def test_startup_parity_contract_is_complete(self) -> None:
-        expected = {
-            "campaign_workspace", "gm_runboard", "gm_prep_packets", "roster_movement",
-            "organizer_operations", "organizer_roles", "rule_environment_studio", "update",
-            "support", "support_case", "devices_access", "campaign_primer", "mission_briefing",
-            "report_issue", "crash_recovery", "settings",
-        }
+        source = WINDOWS_STARTUP_SURFACES.read_text(encoding="utf-8")
+        expected = set(re.findall(r'public const string [A-Za-z]+ = "([a-z][a-z0-9_]*)";', source))
         self.assertEqual(expected, set(self.registry["startup_surfaces"]))
+        declared_source = WORKSPACE / self.registry["source"]["startup_surfaces"]
+        self.assertEqual(WINDOWS_STARTUP_SURFACES, declared_source)
+        self.assertTrue(declared_source.is_file())
 
     def test_manifest_is_privacy_minimal(self) -> None:
         manifest = (PROJECT / "Platforms" / "Android" / "AndroidManifest.xml").read_text(encoding="utf-8")
@@ -59,6 +61,19 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('DataHost = "chummer.run"', activity)
         self.assertIn("AutoVerify = true", activity)
 
+    def test_android_handoffs_use_canonical_public_routes(self) -> None:
+        routes = (PROJECT / "Platform" / "ChummerWebRoutes.cs").read_text(encoding="utf-8")
+        host = (PROJECT / "Components" / "AndroidAppHost.razor").read_text(encoding="utf-8")
+        public_controller = (
+            WORKSPACE / "chummer.run-services" / "Chummer.Run.Api" / "Controllers" / "PublicLandingController.cs"
+        ).read_text(encoding="utf-8")
+        self.assertIn('AccountAccess = "/account/access"', routes)
+        self.assertNotIn("/account/devices", routes + host)
+        for route in ("/gm", "/organizers", "/play", "/account/delete"):
+            self.assertIn(route, public_controller)
+        self.assertIn("ChummerWebRoutes.CampaignRoster", host)
+        self.assertIn("ChummerWebRoutes.RulesetStudio", host)
+
     def test_workbench_output_is_routed_to_native_android(self) -> None:
         interop = (PROJECT / "wwwroot" / "js" / "android-interop.js").read_text(encoding="utf-8")
         system_service = (PROJECT / "Platforms" / "Android" / "AndroidSystemService.cs").read_text(encoding="utf-8")
@@ -68,6 +83,7 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("prints.openBase64", interop)
         self.assertIn("PdfFilePrintDocumentAdapter", system_service)
         self.assertIn("PrintManager", system_service)
+        self.assertNotIn("PrintCurrentViewAsync", system_service)
 
     def test_shared_workbench_browser_runtimes_are_loaded(self) -> None:
         index = (PROJECT / "wwwroot" / "index.html").read_text(encoding="utf-8")
@@ -86,9 +102,33 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("DocumentInbox.Add(document)", host)
         self.assertIn("OpenInputStream", service)
         self.assertIn("MaxDocumentBytes", service)
+        self.assertIn("CryptographicOperations.ZeroMemory", service)
         self.assertIn("IWorkbenchExternalDocumentInbox", shell)
         self.assertIn("ImportExternalDocumentsAsync", shell)
         self.assertIn("document.Content.LongLength > MaxImportBytes", shell)
+
+    def test_android_shell_has_direct_new_runner_and_durable_feedback(self) -> None:
+        host = (PROJECT / "Components" / "AndroidAppHost.razor").read_text(encoding="utf-8")
+        state = (PROJECT / "Platform" / "AndroidAppState.cs").read_text(encoding="utf-8")
+        self.assertIn('NewCharacterCommandId = "new_character"', host)
+        self.assertIn("ExecuteCommandFromSurfaceAsync(commandId)", host)
+        self.assertIn("Navigate(AndroidDestination.Workbench, clearMessage: false)", host)
+        self.assertIn("Opening {document.DisplayName}", host)
+        self.assertIn("public void SetMessage", state)
+        self.assertIn("DestinationPreferenceKey", state)
+
+    def test_android_shell_accessibility_and_output_copy_are_polished(self) -> None:
+        host = (PROJECT / "Components" / "AndroidAppHost.razor").read_text(encoding="utf-8")
+        css = (PROJECT / "wwwroot" / "css" / "android.css").read_text(encoding="utf-8")
+        index = (PROJECT / "wwwroot" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("android-skip-link", host)
+        self.assertIn('aria-current="@AriaCurrent', host)
+        self.assertIn("aria-live=\"polite\"", host)
+        self.assertIn(":focus-visible", css)
+        self.assertIn("prefers-reduced-motion", css)
+        self.assertIn("role=\"status\"", index)
+        self.assertNotIn("Print current view", host)
+        self.assertIn("File › Print or File › Export", host)
 
     def test_blazor_workbench_is_consumed_as_a_component_library(self) -> None:
         android_project = (PROJECT / "Chummer.Android.csproj").read_text(encoding="utf-8")
@@ -100,7 +140,7 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("<AssemblyName>Chummer.Blazor.Mobile</AssemblyName>", mobile_project)
         self.assertIn('<Content Include="Components/**/*.razor" Exclude="Components/App.razor" />', mobile_project)
         self.assertNotIn("Chummer.Workspaces.Postgres", mobile_project)
-        self.assertIn("<DesktopShell />", host)
+        self.assertIn("<DesktopShell", host)
         self.assertNotIn("<DesktopAppHost />", host)
 
     def test_remote_coach_http_client_is_registered_after_local_runtime(self) -> None:
@@ -154,7 +194,7 @@ class AndroidContractTests(unittest.TestCase):
 
         phones = sorted((assets / "screenshots").glob("phone-*.png"))
         tablets = sorted((assets / "screenshots").glob("tablet-*.png"))
-        self.assertGreaterEqual(len(phones), 4)
+        self.assertGreaterEqual(len(phones), 5)
         self.assertGreaterEqual(len(tablets), 4)
         self.assertTrue(all(self._png_header(path)[:2] == (1080, 2400) for path in phones))
         self.assertTrue(all(self._png_header(path)[:2] == (1440, 2560) for path in tablets))
@@ -170,6 +210,7 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("TryNavigateBack", state)
         self.assertIn("OnFinish", print_service)
         self.assertIn("File.Delete(_path)", print_service)
+        self.assertIn("CryptographicOperations.ZeroMemory(buffer)", print_service)
         self.assertIn("Interlocked.CompareExchange", broker)
 
     @staticmethod

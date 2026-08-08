@@ -5,9 +5,10 @@
 - `feature-graphic-1024x500.png` is the upload-ready Play feature graphic.
 - `feature-graphic-source.png` is the uncropped generated source retained for
   traceability.
-- `screenshots/phone-01-home.png` through `phone-04-import.png` are real
-  1080×2400 API 36 emulator captures covering home, the shared workbench, the
-  new-runner workflow, and Android Documents import.
+- `screenshots/phone-01-home.png` through `phone-05-campaign.png` are real
+  1080×2400 API 36 emulator WebView-surface captures covering home, the shared
+  workbench, the direct new-runner workflow, Android Documents import, and
+  campaign command.
 - `screenshots/tablet-01-home.png` through `tablet-04-native-tools.png` are
   real 1440×2560 (9:16) API 36 emulator WebView-surface captures covering
   home, the shared workbench, new-runner flow, and native tools. Mockups and

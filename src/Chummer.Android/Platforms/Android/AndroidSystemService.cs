@@ -1,11 +1,12 @@
 using Android.App;
 using Android.Content;
 using Android.Print;
-using Android.Webkit;
 using Android.OS;
 using Java.IO;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.ApplicationModel.DataTransfer;
+using System.Buffers;
+using System.Security.Cryptography;
 
 namespace Chummer.Android.Platform;
 
@@ -13,35 +14,21 @@ public sealed class AndroidSystemService : IAndroidSystemService
 {
     private const string PackageId = "com.myexternalbrain.chummer";
 
-    public Task OpenUriAsync(Uri uri) => Launcher.Default.OpenAsync(uri);
+    public Task<bool> OpenUriAsync(Uri uri) => Launcher.Default.OpenAsync(uri);
 
-    public async Task OpenStoreListingAsync()
+    public async Task<bool> OpenStoreListingAsync()
     {
         Uri marketUri = new($"market://details?id={PackageId}");
-        if (!await Launcher.Default.TryOpenAsync(marketUri))
+        if (await Launcher.Default.TryOpenAsync(marketUri))
         {
-            await Launcher.Default.OpenAsync(new Uri($"https://play.google.com/store/apps/details?id={PackageId}"));
+            return true;
         }
+
+        return await Launcher.Default.OpenAsync(new Uri($"https://play.google.com/store/apps/details?id={PackageId}"));
     }
 
     public Task ShareTextAsync(string text)
         => Share.Default.RequestAsync(new ShareTextRequest(text, "Share Chummer"));
-
-    public Task<bool> PrintCurrentViewAsync(string jobName)
-    {
-        Activity? activity = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity;
-        MainPage? page = Microsoft.Maui.Controls.Application.Current?.Windows.FirstOrDefault()?.Page as MainPage;
-        global::Android.Webkit.WebView? nativeWebView = page?.WebView.Handler?.PlatformView as global::Android.Webkit.WebView;
-        PrintManager? printManager = activity?.GetSystemService(Context.PrintService) as PrintManager;
-        if (nativeWebView is null || printManager is null)
-        {
-            return Task.FromResult(false);
-        }
-
-        PrintDocumentAdapter adapter = nativeWebView.CreatePrintDocumentAdapter(jobName);
-        printManager.Print(jobName, adapter, null);
-        return Task.FromResult(true);
-    }
 
     public async Task<bool> PrintPdfAsync(
         string fileName,
@@ -126,19 +113,27 @@ public sealed class AndroidSystemService : IAndroidSystemService
             {
                 using FileInputStream input = new(_path);
                 using FileOutputStream output = new(destination.FileDescriptor);
-                byte[] buffer = new byte[32 * 1024];
-                int read;
-                while ((read = input.Read(buffer)) > 0)
+                byte[] buffer = ArrayPool<byte>.Shared.Rent(32 * 1024);
+                try
                 {
-                    if (cancellationSignal?.IsCanceled == true)
+                    int read;
+                    while ((read = input.Read(buffer)) > 0)
                     {
-                        callback?.OnWriteCancelled();
-                        return;
+                        if (cancellationSignal?.IsCanceled == true)
+                        {
+                            callback?.OnWriteCancelled();
+                            return;
+                        }
+                        output.Write(buffer, 0, read);
                     }
-                    output.Write(buffer, 0, read);
+                    output.Flush();
+                    callback?.OnWriteFinished([PageRange.AllPages!]);
                 }
-                output.Flush();
-                callback?.OnWriteFinished([PageRange.AllPages!]);
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(buffer);
+                    ArrayPool<byte>.Shared.Return(buffer, clearArray: false);
+                }
             }
             catch (Exception ex)
             {

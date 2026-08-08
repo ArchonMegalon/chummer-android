@@ -7,87 +7,228 @@
 @using Chummer.Blazor.Components.Layout
 @implements IAsyncDisposable
 
-<div class="android-app-shell" data-platform="android" data-active-destination="@State.ActiveDestination">
+<div class="android-app-shell"
+     data-platform="android"
+     data-active-destination="@State.ActiveDestination"
+     aria-busy="@State.IsBusy.ToString().ToLowerInvariant()">
+    <a class="android-skip-link" href="#android-main">Skip to content</a>
+
     <header class="android-topbar">
-        <div>
-            <span class="android-eyebrow">CHUMMER // ANDROID</span>
+        <div class="android-brand">
+            <span class="android-eyebrow">CHUMMER <span aria-hidden="true">//</span> ANDROID</span>
             <strong>@Title</strong>
         </div>
-        <button type="button" class="sync-pill" @onclick="OpenAccountAsync" aria-label="Open devices and account">
-            @State.SyncPosture
+        <button type="button"
+                class="sync-pill"
+                disabled="@State.IsBusy"
+                @onclick="OpenAccountAsync"
+                aria-label="Open devices and account access">
+            <AndroidIcon Name="account" CssClass="sync-pill-icon" />
+            <span><small>Storage</small><strong>@State.SyncPosture</strong></span>
         </button>
     </header>
 
-    <main class="android-content">
+    @if (State.IsBusy)
+    {
+        <div class="android-progress" role="progressbar" aria-label="Working"><span></span></div>
+    }
+
+    <main id="android-main" class="android-content" tabindex="-1">
+        @if (!string.IsNullOrWhiteSpace(State.LastMessage))
+        {
+            <div class="android-notice" data-kind="@NoticeKind" role="status" aria-live="polite">
+                <span>@State.LastMessage</span>
+                <button type="button" @onclick="State.ClearMessage" aria-label="Dismiss message">×</button>
+            </div>
+        }
+
         @switch (State.ActiveDestination)
         {
             case AndroidDestination.Home:
                 <section class="android-home" aria-labelledby="android-home-title">
-                    <p class="android-kicker">Local-first runner command</p>
-                    <h1 id="android-home-title">Pick up where the run left off.</h1>
-                    <p>Your characters stay available offline. Connected account, support, assistant, and live-play actions cross the local boundary only when you choose them.</p>
-                    <div class="android-action-grid">
-                        <button type="button" class="primary-card" @onclick="OpenWorkbench">
-                            <span>Resume workbench</span>
-                            <small>Build, advance, inspect, explain, print, or export</small>
-                        </button>
-                        <button type="button" @onclick="OpenDocumentAsync">
-                            <span>Open character</span>
-                            <small>Choose a Chummer file through Android Documents</small>
-                        </button>
-                        <button type="button" @onclick="OpenCampaign">
-                            <span>Campaign command</span>
-                            <small>GM runboard, prep, roster, organizer, and briefing</small>
-                        </button>
-                        <button type="button" @onclick="OpenPlayAsync">
-                            <span>Join live play</span>
-                            <small>Fast table HUD, reconnect, replay, and observer mode</small>
-                        </button>
+                    <div class="android-hero">
+                        <p class="android-kicker">Local-first runner command</p>
+                        <h1 id="android-home-title">Your next runner starts here.</h1>
+                        <p>Build offline with the complete Chummer rules engine. Files, connected services, and live play open only when you choose them.</p>
+                        <ul class="android-proof-row" aria-label="App capabilities">
+                            <li>Offline-ready</li>
+                            <li>SR4 · SR5 · SR6</li>
+                            <li>Android Documents</li>
+                        </ul>
                     </div>
-                    @if (!string.IsNullOrWhiteSpace(State.LastMessage))
-                    {
-                        <p class="android-notice" role="status">@State.LastMessage</p>
-                    }
+
+                    <div class="android-action-grid android-home-actions">
+                        <AndroidActionCard Icon="build"
+                                           Title="New runner"
+                                           Description="Jump straight into ruleset and build-method selection"
+                                           Primary="true"
+                                           Disabled="@State.IsBusy"
+                                           OnClick="StartNewRunner" />
+                        <AndroidActionCard Icon="workbench"
+                                           Title="Open workbench"
+                                           Description="Resume, advance, inspect, explain, print, or export"
+                                           Disabled="@State.IsBusy"
+                                           OnClick="OpenWorkbench" />
+                        <AndroidActionCard Icon="folder"
+                                           Title="Open character"
+                                           Description="Choose a Chummer file through Android Documents"
+                                           Disabled="@State.IsBusy"
+                                           OnClick="OpenDocumentAsync" />
+                        <AndroidActionCard Icon="campaign"
+                                           Title="Campaign command"
+                                           Description="Campaigns, GM runboard, organizer, and ruleset studio"
+                                           Disabled="@State.IsBusy"
+                                           OnClick="OpenCampaign" />
+                        <AndroidActionCard Icon="play"
+                                           Title="Join live play"
+                                           Description="Open the table HUD, reconnect, replay, or observe"
+                                           External="true"
+                                           Disabled="@State.IsBusy"
+                                           OnClick="OpenPlayAsync" />
+                    </div>
                 </section>
                 break;
             case AndroidDestination.Workbench:
-            case AndroidDestination.Campaign:
                 <section class="android-workbench" aria-label="Full Chummer workbench">
-                    <DesktopShell />
+                    <DesktopShell @ref="_desktopShell" />
+                </section>
+                break;
+            case AndroidDestination.Campaign:
+                <section class="android-campaign" aria-labelledby="android-campaign-title">
+                    <div class="android-hero">
+                        <p class="android-kicker">Connected campaign tools</p>
+                        <h1 id="android-campaign-title">Run the table from one command deck.</h1>
+                        <p>Runner editing stays local. Account-owned campaign, GM, organizer, and ruleset surfaces open their canonical secured Chummer routes.</p>
+                        <p class="android-boundary"><AndroidIcon Name="privacy" /> Connected tools may require sign-in.</p>
+                    </div>
+
+                    <div class="android-action-grid">
+                        <AndroidActionCard Icon="campaign"
+                                           Title="Campaign workspace"
+                                           Description="Open campaign roster, prep, memory, and briefing continuity"
+                                           External="true"
+                                           Disabled="@State.IsBusy"
+                                           OnClick="OpenCampaignWorkspaceAsync" />
+                        <AndroidActionCard Icon="play"
+                                           Title="GM command"
+                                           Description="Open the runboard and session-control surface"
+                                           External="true"
+                                           Disabled="@State.IsBusy"
+                                           OnClick="OpenGmCommandAsync" />
+                        <AndroidActionCard Icon="account"
+                                           Title="Organizer desk"
+                                           Description="Review organizer operations, roles, and publication posture"
+                                           External="true"
+                                           Disabled="@State.IsBusy"
+                                           OnClick="OpenOrganizerCommandAsync" />
+                        <AndroidActionCard Icon="workbench"
+                                           Title="Ruleset studio"
+                                           Description="Review the campaign-approved SR5 rules environment"
+                                           External="true"
+                                           Disabled="@State.IsBusy"
+                                           OnClick="OpenRulesetStudioAsync" />
+                    </div>
                 </section>
                 break;
             case AndroidDestination.More:
                 <section class="android-more" aria-labelledby="android-more-title">
-                    <p class="android-kicker">Native tools</p>
-                    <h1 id="android-more-title">Files, output, account, help.</h1>
-                    <div class="android-action-grid">
-                        <button type="button" @onclick="OpenDocumentAsync">Import from Documents</button>
-                        <button type="button" @onclick="PrintCurrentViewAsync">Print current view</button>
-                        <button type="button" @onclick="ShareAppAsync">Share Chummer</button>
-                        <button type="button" @onclick="OpenUpdateAsync">Check Google Play updates</button>
-                        <button type="button" @onclick="OpenSupportAsync">Support and report a bug</button>
-                        <button type="button" @onclick="OpenAccountAsync">Devices and account</button>
+                    <div class="android-hero android-hero-compact">
+                        <p class="android-kicker">Native tools</p>
+                        <h1 id="android-more-title">Files, output, account, help.</h1>
+                        <p>Android owns file selection, sharing, printing, and updates. Chummer services open through explicit handoffs.</p>
                     </div>
-                    @if (!string.IsNullOrWhiteSpace(State.LastMessage))
-                    {
-                        <p class="android-notice" role="status">@State.LastMessage</p>
-                    }
+
+                    <section class="android-tool-section" aria-labelledby="files-output-heading">
+                        <h2 id="files-output-heading">Files &amp; output</h2>
+                        <div class="android-action-grid">
+                            <AndroidActionCard Icon="folder"
+                                               Title="Import from Documents"
+                                               Description="Choose a Chummer file without broad storage access"
+                                               Disabled="@State.IsBusy"
+                                               OnClick="OpenDocumentAsync" />
+                            <AndroidActionCard Icon="workbench"
+                                               Title="Print &amp; export"
+                                               Description="Open the workbench, then use File for canonical output"
+                                               Disabled="@State.IsBusy"
+                                               OnClick="OpenWorkbenchForOutput" />
+                            <AndroidActionCard Icon="share"
+                                               Title="Share Chummer"
+                                               Description="Send the public app link through Android's share sheet"
+                                               Disabled="@State.IsBusy"
+                                               OnClick="ShareAppAsync" />
+                        </div>
+                    </section>
+
+                    <section class="android-tool-section" aria-labelledby="account-help-heading">
+                        <h2 id="account-help-heading">Account &amp; help</h2>
+                        <div class="android-action-grid">
+                            <AndroidActionCard Icon="account"
+                                               Title="Devices &amp; access"
+                                               Description="Link installs, review continuity, and manage access"
+                                               External="true"
+                                               Disabled="@State.IsBusy"
+                                               OnClick="OpenAccountAsync" />
+                            <AndroidActionCard Icon="support"
+                                               Title="Support &amp; bug reports"
+                                               Description="Open Chummer support and tracked case workflows"
+                                               External="true"
+                                               Disabled="@State.IsBusy"
+                                               OnClick="OpenSupportAsync" />
+                            <AndroidActionCard Icon="privacy"
+                                               Title="Privacy &amp; deletion"
+                                               Description="Review data boundaries or request account deletion"
+                                               External="true"
+                                               Disabled="@State.IsBusy"
+                                               OnClick="OpenPrivacyAsync" />
+                            <AndroidActionCard Icon="update"
+                                               Title="Google Play updates"
+                                               Description="Check the official store listing for a newer version"
+                                               External="true"
+                                               Disabled="@State.IsBusy"
+                                               OnClick="OpenUpdateAsync" />
+                        </div>
+                    </section>
                 </section>
                 break;
         }
     </main>
 
-    <nav class="android-bottom-nav" aria-label="Primary">
-        <button class="@ActiveClass(AndroidDestination.Home)" @onclick="() => Navigate(AndroidDestination.Home)"><span aria-hidden="true">⌂</span>Home</button>
-        <button class="@ActiveClass(AndroidDestination.Workbench)" @onclick="OpenWorkbench"><span aria-hidden="true">✦</span>Build</button>
-        <button class="@ActiveClass(AndroidDestination.Campaign)" @onclick="OpenCampaign"><span aria-hidden="true">◎</span>Campaign</button>
-        <button @onclick="OpenPlayAsync"><span aria-hidden="true">▶</span>Play</button>
-        <button class="@ActiveClass(AndroidDestination.More)" @onclick="() => Navigate(AndroidDestination.More)"><span aria-hidden="true">•••</span>More</button>
+    <nav class="android-bottom-nav" aria-label="Primary navigation">
+        <button class="@ActiveClass(AndroidDestination.Home)"
+                disabled="@State.IsBusy"
+                aria-current="@AriaCurrent(AndroidDestination.Home)"
+                @onclick="() => Navigate(AndroidDestination.Home)">
+            <AndroidIcon Name="home" /><span>Home</span>
+        </button>
+        <button class="@ActiveClass(AndroidDestination.Workbench)"
+                disabled="@State.IsBusy"
+                aria-current="@AriaCurrent(AndroidDestination.Workbench)"
+                @onclick="OpenWorkbench">
+            <AndroidIcon Name="build" /><span>Build</span>
+        </button>
+        <button class="@ActiveClass(AndroidDestination.Campaign)"
+                disabled="@State.IsBusy"
+                aria-current="@AriaCurrent(AndroidDestination.Campaign)"
+                @onclick="OpenCampaign">
+            <AndroidIcon Name="campaign" /><span>Campaign</span>
+        </button>
+        <button disabled="@State.IsBusy" @onclick="OpenPlayAsync">
+            <AndroidIcon Name="play" /><span>Play</span>
+        </button>
+        <button class="@ActiveClass(AndroidDestination.More)"
+                disabled="@State.IsBusy"
+                aria-current="@AriaCurrent(AndroidDestination.More)"
+                @onclick="() => Navigate(AndroidDestination.More)">
+            <AndroidIcon Name="more" /><span>More</span>
+        </button>
     </nav>
 </div>
 
 @code {
+    private const string NewCharacterCommandId = "new_character";
     private DotNetObjectReference<AndroidJsBridge>? _nativeBridgeReference;
+    private DesktopShell? _desktopShell;
+    private string? _pendingWorkbenchCommand;
 
     protected override void OnInitialized()
         => State.Changed += OnAppStateChanged;
@@ -100,51 +241,187 @@
         _ => "Runner home"
     };
 
-    private void Navigate(AndroidDestination destination)
+    private string NoticeKind => State.NoticeKind.ToString().ToLowerInvariant();
+
+    private void Navigate(AndroidDestination destination, bool clearMessage = true)
     {
+        if (clearMessage)
+        {
+            State.ClearMessage();
+        }
+
         State.ActiveDestination = destination;
-        State.LastMessage = null;
+    }
+
+    private void StartNewRunner()
+    {
+        if (State.IsBusy)
+        {
+            return;
+        }
+
+        State.IsBusy = true;
+        _pendingWorkbenchCommand = NewCharacterCommandId;
+        Navigate(AndroidDestination.Workbench);
     }
 
     private void OpenWorkbench() => Navigate(AndroidDestination.Workbench);
     private void OpenCampaign() => Navigate(AndroidDestination.Campaign);
-    private string ActiveClass(AndroidDestination destination) => State.ActiveDestination == destination ? "active" : string.Empty;
+
+    private void OpenWorkbenchForOutput()
+    {
+        Navigate(AndroidDestination.Workbench);
+        State.SetMessage("Use File › Print or File › Export for canonical character output.");
+    }
+
+    private string ActiveClass(AndroidDestination destination)
+        => State.ActiveDestination == destination ? "active" : string.Empty;
+
+    private string? AriaCurrent(AndroidDestination destination)
+        => State.ActiveDestination == destination ? "page" : null;
 
     private async Task OpenDocumentAsync()
     {
-        AndroidDocument? document = await DocumentService.OpenAsync(CancellationToken.None);
-        if (document is null)
+        if (State.IsBusy)
         {
-            State.LastMessage = "No document selected.";
             return;
         }
 
-        DocumentInbox.Add(document);
-        State.LastMessage = $"Opening {document.DisplayName}.";
-        Navigate(AndroidDestination.Workbench);
+        State.ClearMessage();
+        State.IsBusy = true;
+        try
+        {
+            AndroidDocument? document = await DocumentService.OpenAsync(CancellationToken.None);
+            if (document is null)
+            {
+                State.SetMessage("No file selected.");
+                return;
+            }
+
+            DocumentInbox.Add(document);
+            Navigate(AndroidDestination.Workbench, clearMessage: false);
+            State.SetMessage($"Opening {document.DisplayName}.", AndroidNoticeKind.Success);
+        }
+        catch (Exception)
+        {
+            State.SetMessage("Chummer could not open that document. Check the file and try again.", AndroidNoticeKind.Error);
+        }
+        finally
+        {
+            State.IsBusy = false;
+        }
     }
 
-    private Task OpenPlayAsync() => SystemService.OpenUriAsync(new Uri("https://chummer.run/play"));
-    private Task OpenAccountAsync() => SystemService.OpenUriAsync(new Uri("https://chummer.run/account/devices"));
-    private Task OpenSupportAsync() => SystemService.OpenUriAsync(new Uri("https://chummer.run/support"));
-    private Task OpenUpdateAsync() => SystemService.OpenStoreListingAsync();
-    private Task ShareAppAsync() => SystemService.ShareTextAsync("Chummer — build runners, run campaigns, and play anywhere. https://chummer.run");
+    private Task OpenPlayAsync() => OpenWebAsync(ChummerWebRoutes.Play, "live play");
+    private Task OpenAccountAsync() => OpenWebAsync(ChummerWebRoutes.AccountAccess, "devices and account access");
+    private Task OpenSupportAsync() => OpenWebAsync(ChummerWebRoutes.Support, "support");
+    private Task OpenPrivacyAsync() => OpenWebAsync(ChummerWebRoutes.AccountDeletion, "privacy and account deletion");
+    private Task OpenCampaignWorkspaceAsync() => OpenWebAsync(ChummerWebRoutes.CampaignRoster, "campaign workspace");
+    private Task OpenGmCommandAsync() => OpenWebAsync(ChummerWebRoutes.GmCommand, "GM command");
+    private Task OpenOrganizerCommandAsync() => OpenWebAsync(ChummerWebRoutes.OrganizerCommand, "organizer desk");
+    private Task OpenRulesetStudioAsync() => OpenWebAsync(ChummerWebRoutes.RulesetStudio, "ruleset studio");
 
-    private async Task PrintCurrentViewAsync()
+    private async Task OpenWebAsync(string path, string label)
     {
-        bool started = await SystemService.PrintCurrentViewAsync("Chummer character");
-        State.LastMessage = started ? "Android print dialog opened." : "Open a workbench document before printing.";
+        if (State.IsBusy)
+        {
+            return;
+        }
+
+        State.ClearMessage();
+        State.IsBusy = true;
+        try
+        {
+            bool opened = await SystemService.OpenUriAsync(ChummerWebRoutes.Resolve(path));
+            if (!opened)
+            {
+                State.SetMessage($"Android could not open {label}.", AndroidNoticeKind.Error);
+            }
+        }
+        catch (Exception)
+        {
+            State.SetMessage($"Android could not open {label}.", AndroidNoticeKind.Error);
+        }
+        finally
+        {
+            State.IsBusy = false;
+        }
+    }
+
+    private async Task OpenUpdateAsync()
+    {
+        if (State.IsBusy)
+        {
+            return;
+        }
+
+        State.IsBusy = true;
+        try
+        {
+            if (!await SystemService.OpenStoreListingAsync())
+            {
+                State.SetMessage("Android could not open the Google Play listing.", AndroidNoticeKind.Error);
+            }
+        }
+        catch (Exception)
+        {
+            State.SetMessage("Android could not open the Google Play listing.", AndroidNoticeKind.Error);
+        }
+        finally
+        {
+            State.IsBusy = false;
+        }
+    }
+
+    private async Task ShareAppAsync()
+    {
+        if (State.IsBusy)
+        {
+            return;
+        }
+
+        State.IsBusy = true;
+        try
+        {
+            await SystemService.ShareTextAsync("Chummer — build runners, run campaigns, and play anywhere. https://chummer.run");
+        }
+        catch (Exception)
+        {
+            State.SetMessage("Android could not open the share sheet.", AndroidNoticeKind.Error);
+        }
+        finally
+        {
+            State.IsBusy = false;
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
+        if (firstRender)
+        {
+            _nativeBridgeReference = DotNetObjectReference.Create(NativeBridge);
+            await JsRuntime.InvokeVoidAsync("chummerAndroid.initialize", _nativeBridgeReference);
+        }
+
+        if (_pendingWorkbenchCommand is null || _desktopShell is null)
         {
             return;
         }
 
-        _nativeBridgeReference = DotNetObjectReference.Create(NativeBridge);
-        await JsRuntime.InvokeVoidAsync("chummerAndroid.initialize", _nativeBridgeReference);
+        string commandId = _pendingWorkbenchCommand;
+        _pendingWorkbenchCommand = null;
+        try
+        {
+            await _desktopShell.ExecuteCommandFromSurfaceAsync(commandId);
+        }
+        catch (Exception)
+        {
+            State.SetMessage("The new runner workflow could not be opened.", AndroidNoticeKind.Error);
+        }
+        finally
+        {
+            State.IsBusy = false;
+        }
     }
 
     public async ValueTask DisposeAsync()

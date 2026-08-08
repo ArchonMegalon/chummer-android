@@ -6,12 +6,13 @@ workbench and the same deterministic local engine as the desktop client.
 
 ## Workflow
 
-- **Home** resumes local work and exposes sync posture.
+- **Home** starts a new runner in one tap, resumes local work, or imports a file.
 - **Build** opens the complete runner/critter workbench.
-- **Campaign** opens GM, organizer, campaign, and rules-environment surfaces.
+- **Campaign** is an explicit command deck for the canonical signed-in campaign,
+  GM, organizer, and rules-environment surfaces.
 - **Play** hands live sessions to the canonical Chummer play shell.
-- **More** provides files, PDF/print/share, account/device, support, settings,
-  update, and diagnostics workflows.
+- **More** groups native file/output tools separately from account, privacy,
+  support, and Google Play workflows.
 
 Desktop window operations become document/task tabs. Desktop file dialogs use
 Android's document picker. Printing uses Android Print Framework. Updates are
