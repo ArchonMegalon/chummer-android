@@ -10,6 +10,9 @@ repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 aab_path="$(realpath "$1")"
 bundletool_path="${CHUMMER_BUNDLETOOL_JAR:-}"
 java_command="${CHUMMER_JAVA:-java}"
+jarsigner_command="${CHUMMER_JARSIGNER:-jarsigner}"
+keytool_command="${CHUMMER_KEYTOOL:-keytool}"
+upload_certificate_path="${CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH:-}"
 
 if [[ ! -f "$aab_path" ]]; then
   echo "AAB not found: $aab_path" >&2
@@ -31,4 +34,29 @@ fi
 echo "bundletool validation passed."
 "$java_command" -jar "$bundletool_path" dump manifest --bundle="$aab_path" > "$temporary_dir/manifest.xml"
 python3 "$repo_dir/scripts/inspect_aab.py" "$aab_path" "$temporary_dir/manifest.xml"
+
+if [[ -n "$upload_certificate_path" ]]; then
+  if [[ ! -f "$upload_certificate_path" ]]; then
+    echo "Upload certificate not found: $upload_certificate_path" >&2
+    exit 66
+  fi
+
+  # A private upload certificate is expected to be self-signed. Avoid
+  # jarsigner's strict mode here because it reports that expected condition as
+  # an error; the explicit fingerprint comparison below is the trust check.
+  if ! "$jarsigner_command" -verify -certs "$aab_path" > "$temporary_dir/jarsigner-verify.log" 2>&1; then
+    sed -n '1,240p' "$temporary_dir/jarsigner-verify.log" >&2
+    exit 65
+  fi
+  "$keytool_command" -printcert -jarfile "$aab_path" -rfc > "$temporary_dir/aab-signer.pem"
+
+  expected_upload_fingerprint="$(openssl x509 -in "$upload_certificate_path" -noout -fingerprint -sha256 | cut -d= -f2)"
+  actual_upload_fingerprint="$(openssl x509 -in "$temporary_dir/aab-signer.pem" -noout -fingerprint -sha256 | cut -d= -f2)"
+  if [[ -z "$expected_upload_fingerprint" || "$actual_upload_fingerprint" != "$expected_upload_fingerprint" ]]; then
+    echo "AAB signer does not match the configured Chummer upload certificate." >&2
+    exit 65
+  fi
+  printf 'AAB JAR signature and upload certificate verified: %s\n' "$actual_upload_fingerprint"
+fi
+
 sha256sum "$aab_path"

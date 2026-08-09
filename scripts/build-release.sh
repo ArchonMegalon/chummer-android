@@ -21,6 +21,7 @@ python3 -m unittest discover -s "$repo_dir/tests" -v
 
 publish_dir="$repo_dir/src/Chummer.Android/bin/$configuration/$framework/$runtime_id/publish"
 if [[ -n "${AndroidSigningKeyStore:-}" ]]; then
+  : "${CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH:?Signed releases require CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH}"
   source_aab="$publish_dir/$package_id-Signed.aab"
   output_aab="$repo_dir/artifacts/chummer-android-$version_name-upload.aab"
 else
@@ -35,4 +36,11 @@ fi
 
 mkdir -p "$repo_dir/artifacts"
 install -m 0644 "$source_aab" "$output_aab"
+
+if [[ -n "${JavaSdkDirectory:-}" && -x "${JavaSdkDirectory}/bin/java" ]]; then
+  export CHUMMER_JAVA="${CHUMMER_JAVA:-${JavaSdkDirectory}/bin/java}"
+  export CHUMMER_JARSIGNER="${CHUMMER_JARSIGNER:-${JavaSdkDirectory}/bin/jarsigner}"
+  export CHUMMER_KEYTOOL="${CHUMMER_KEYTOOL:-${JavaSdkDirectory}/bin/keytool}"
+fi
+
 "$repo_dir/scripts/validate-aab.sh" "$output_aab"

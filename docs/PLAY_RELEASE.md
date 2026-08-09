@@ -29,6 +29,29 @@ Logs must not print these values. A release receipt records only the AAB digest,
 certificate digest, version code, package id, track, rollout state, and Play
 operation id.
 
+Provision a dedicated Chummer upload identity into an explicit directory outside
+this repository. The command creates a mode-`0600` PKCS#12 keystore, public PEM
+certificate, and `android-release.env`, and fails closed rather than replacing
+existing material:
+
+```sh
+CHUMMER_ANDROID_SIGNING_DIR=/absolute/private/path \
+  scripts/provision-upload-key.sh
+```
+
+Source the generated environment only in the release shell. The environment file
+uses the four MSBuild property names above, while passwords stay out of process
+arguments and logs. It also binds the public upload certificate so validation can
+prove that the AAB signer is the intended Chummer upload identity:
+
+```sh
+set -a
+. /absolute/private/path/android-release.env
+set +a
+CHUMMER_BUNDLETOOL_JAR=/secure/tools/bundletool-all-1.18.3.jar \
+  scripts/build-release.sh
+```
+
 Run `scripts/build-release.sh` with `CHUMMER_BUNDLETOOL_JAR` and, when signing,
 the four signing properties above supplied through the secure environment. The
 script does not interpolate passwords into process arguments.

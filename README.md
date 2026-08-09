@@ -40,3 +40,6 @@ The script runs contract tests, publishes the AAB, validates it with bundletool,
 inspects identity/SDK/permissions/privacy/app-links/ABI, and prints its SHA-256.
 Release signing is supplied only through secure environment properties documented
 in `docs/PLAY_RELEASE.md`; secrets are never command-line arguments or repo files.
+Provision a Chummer-specific upload key with `scripts/provision-upload-key.sh`;
+the script requires an absolute signing directory outside this repository and
+refuses to overwrite an existing identity.
