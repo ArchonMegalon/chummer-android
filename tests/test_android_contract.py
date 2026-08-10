@@ -98,7 +98,23 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("Run the table from one command deck", host)
         self.assertNotIn("Files, output, account, help", host)
         self.assertIn("android-screen-header", host)
-        self.assertIn("min-height: 78px", css)
+        self.assertIn("min-height: 72px", css)
+
+    def test_android_replaces_shared_layout_radios_with_a_compact_combobox(self) -> None:
+        component = (
+            WORKSPACE / "chummer-presentation" / "Chummer.Blazor" / "Components" / "Shell" / "BuildPwaWorkspace.razor"
+        ).read_text(encoding="utf-8")
+        script = (
+            WORKSPACE / "chummer-presentation" / "Chummer.Blazor" / "wwwroot" / "js" / "build-pwa-layout.js"
+        ).read_text(encoding="utf-8")
+        css = (PROJECT / "wwwroot" / "css" / "android.css").read_text(encoding="utf-8")
+
+        self.assertIn('class="build-pwa-layout-picker-select"', component)
+        self.assertIn("data-build-pwa-layout-select", component)
+        self.assertIn("choice instanceof HTMLSelectElement", script)
+        self.assertIn(".android-app-shell .build-pwa-layout-picker-options { display: none; }", css)
+        self.assertIn(".android-app-shell .build-pwa-layout-picker-select", css)
+        self.assertIn("min-height: 48px", css)
 
     def test_android_handoffs_use_canonical_public_routes(self) -> None:
         routes = (PROJECT / "Platform" / "ChummerWebRoutes.cs").read_text(encoding="utf-8")

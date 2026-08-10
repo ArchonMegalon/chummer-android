@@ -12,7 +12,9 @@
   --line: #e8fff618;
   --line-strong: #e8fff62e;
   --danger: #ffaaa5;
-  --shadow: 0 20px 60px #0000004d;
+  --shadow: 0 18px 50px #00000045;
+  --radius-card: 18px;
+  --radius-control: 13px;
 }
 
 * { box-sizing: border-box; }
@@ -108,7 +110,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
   min-height: 40px;
   padding: 7px 11px;
   border: 1px solid var(--line-strong);
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   background: #ffffff08;
   color: var(--muted);
   font-size: .76rem;
@@ -140,15 +142,15 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 
 .android-content {
   min-height: calc(100vh - 138px);
-  padding: clamp(24px, 6vw, 46px) 16px 94px;
+  padding: clamp(20px, 5vw, 40px) 16px 94px;
 }
 .android-screen { width: min(880px, 100%); margin: 0 auto; }
-.android-screen-header { display: grid; gap: 10px; max-width: 620px; }
+.android-screen-header { display: grid; gap: 8px; max-width: 620px; }
 .android-screen-header h1 {
-  max-width: 16ch;
+  max-width: 18ch;
   margin: 0;
-  font-size: clamp(2rem, 8vw, 3.8rem);
-  line-height: 1;
+  font-size: clamp(1.9rem, 7vw, 3.35rem);
+  line-height: 1.04;
   letter-spacing: -.04em;
   text-wrap: balance;
 }
@@ -171,29 +173,33 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 .android-action-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-  gap: 10px;
-  margin-top: 24px;
+  gap: 9px;
+  margin-top: 20px;
 }
 .android-action-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 13px;
-  min-height: 78px;
-  padding: 14px;
+  min-height: 72px;
+  padding: 13px 14px;
   text-align: left;
   border: 1px solid var(--line);
-  border-radius: 16px;
-  background: #ffffff08;
+  border-radius: var(--radius-card);
+  background: linear-gradient(145deg, #ffffff0b, #ffffff05);
   color: var(--paper);
   box-shadow: 0 8px 24px #0000001f;
   transition: transform .16s ease, border-color .16s ease, background .16s ease;
 }
-.android-action-card.compact-card { min-height: 68px; }
+.android-action-card.compact-card { min-height: 64px; }
 .android-action-card:not(:disabled):hover { border-color: #72e5c25c; background: #72e5c20b; }
 .android-action-card:not(:disabled):active { transform: scale(.985); }
 .android-action-card:disabled, .account-pill:disabled, .android-bottom-nav button:disabled { cursor: wait; opacity: .58; }
-.android-action-card.primary-card { border-color: #72e5c25c; background: #72e5c212; }
+.android-action-card.primary-card {
+  border-color: #72e5c26b;
+  background: linear-gradient(145deg, #72e5c21b, #72e5c20a);
+  box-shadow: 0 12px 34px #00000029, inset 0 1px #ffffff0d;
+}
 .android-action-icon {
   width: 22px;
   height: 22px;
@@ -249,7 +255,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 .android-primary-button, .android-danger-button, .android-text-button {
   min-height: 44px;
   padding: 10px 15px;
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   font-weight: 800;
 }
 .android-primary-button { border: 1px solid var(--signal); background: var(--signal); color: #07201a; }
@@ -313,8 +319,30 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
   font-size: .66rem;
 }
 .android-bottom-nav button svg { width: 19px; height: 19px; }
-.android-bottom-nav button.active { color: var(--signal); font-weight: 850; }
+.android-bottom-nav button.active { background: #72e5c20d; color: var(--signal); font-weight: 850; }
 .android-bottom-nav button.active svg { filter: drop-shadow(0 0 8px #72e5c255); }
+
+/* The shared workbench keeps radio affordances on desktop. The Android host
+   presents the same persisted layout preference as one compact combobox. */
+.android-app-shell .build-pwa-layout-picker-options { display: none; }
+.android-app-shell .build-pwa-layout-picker-select {
+  display: block;
+  min-height: 48px;
+  border: 1px solid #0f766e66;
+  border-radius: 12px;
+  background-color: #ffffff;
+  color: #102425;
+  box-shadow: 0 5px 16px #0f172a17;
+}
+.android-app-shell .build-pwa-layout-picker {
+  gap: .42rem;
+  padding: .5rem;
+  border-radius: 12px;
+}
+.android-app-shell #build-pwa-layout-status {
+  font-size: 12px;
+  line-height: 1.25;
+}
 
 @media (min-width: 700px) {
   .android-home-actions .primary-card { grid-column: span 2; }
@@ -348,6 +376,12 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
   .android-action-card { padding: 13px; }
   .android-action-icon { padding: 8px; }
   .android-screen-header h1 { font-size: 2rem; }
+  .account-pill > span:last-child {
+    max-width: 8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
