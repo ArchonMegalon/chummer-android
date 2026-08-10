@@ -8,10 +8,9 @@ workbench and the same deterministic local engine as the desktop client.
 
 - **Home** starts a new runner in one tap, resumes local work, or imports a file.
 - **Build** opens the complete runner/critter workbench.
-- **Campaign** is an explicit command deck for the canonical signed-in campaign,
-  GM, organizer, and rules-environment surfaces.
+- **Campaign** links to the signed-in campaign, GM, organizer, and rules tools.
 - **Account** links this Android installation through authenticated browser
-  approval and a signed device-key handoff; local runner files stay local.
+approval and a signed return to the app; local runner files stay local.
 - **More** groups native file/output, sharing, and Google Play update tools.
 
 Live play remains one tap from Home and Campaign and hands sessions to the
@@ -27,8 +26,9 @@ supports server-side revocation from **Unlink this device**. Account linking is
 optional and never moves or uploads local runner files by itself.
 
 Desktop window operations become document/task tabs. Desktop file dialogs use
-Android's document picker. Printing uses Android Print Framework. Updates are
-owned by Google Play.
+Android's document picker. Printing uses Android Print Framework. Play-installed
+copies check for flexible in-app updates on launch and resume; sideloaded copies
+open the verified Google Play listing.
 
 ## Local build
 

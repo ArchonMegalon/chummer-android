@@ -49,10 +49,10 @@
             case AndroidDestination.Home:
                 <section class="android-screen android-home" aria-labelledby="android-home-title">
                     <header class="android-screen-header">
-                        <p class="android-kicker">Runner desk</p>
-                        <h1 id="android-home-title">Ready when you are.</h1>
+                        <p class="android-kicker">Characters</p>
+                        <h1 id="android-home-title">What do you want to do?</h1>
                         <div class="android-status-row" aria-label="App status">
-                            <span>Local-first</span>
+                            <span>Saved on this device</span>
                             <span>SR4 · SR5 · SR6</span>
                         </div>
                     </header>
@@ -70,8 +70,8 @@
                                            Disabled="@State.IsBusy"
                                            OnClick="OpenDocumentAsync" />
                         <AndroidActionCard Icon="workbench"
-                                           Title="Workbench"
-                                           Description="Resume or inspect"
+                                           Title="Character editor"
+                                           Description="Continue editing"
                                            Disabled="@State.IsBusy"
                                            OnClick="OpenWorkbench" />
                         <AndroidActionCard Icon="play"
@@ -91,38 +91,38 @@
             case AndroidDestination.Campaign:
                 <section class="android-screen android-campaign" aria-labelledby="android-campaign-title">
                     <header class="android-screen-header">
-                        <p class="android-kicker">Connected tools</p>
-                        <h1 id="android-campaign-title">Campaign command.</h1>
+                        <p class="android-kicker">Campaigns</p>
+                        <h1 id="android-campaign-title">Open a campaign tool</h1>
                         <span class="android-inline-note"><AndroidIcon Name="privacy" /> Sign-in may be required</span>
                     </header>
 
                     <div class="android-action-grid">
                         <AndroidActionCard Icon="campaign"
-                                           Title="Campaign workspace"
-                                           Description="Roster and prep"
+                                           Title="Campaign"
+                                           Description="Characters and notes"
                                            External="true"
                                            Disabled="@State.IsBusy"
                                            OnClick="OpenCampaignWorkspaceAsync" />
                         <AndroidActionCard Icon="play"
-                                           Title="GM command"
-                                           Description="Runboard and session"
+                                           Title="GM tools"
+                                           Description="Run a session"
                                            External="true"
                                            Disabled="@State.IsBusy"
                                            OnClick="OpenGmCommandAsync" />
                         <AndroidActionCard Icon="account"
-                                           Title="Organizer desk"
-                                           Description="Roles and publishing"
+                                           Title="Organizer tools"
+                                           Description="Members and publishing"
                                            External="true"
                                            Disabled="@State.IsBusy"
                                            OnClick="OpenOrganizerCommandAsync" />
                         <AndroidActionCard Icon="workbench"
-                                           Title="Ruleset studio"
-                                           Description="Campaign rules"
+                                           Title="Rules"
+                                           Description="Campaign settings"
                                            External="true"
                                            Disabled="@State.IsBusy"
                                            OnClick="OpenRulesetStudioAsync" />
                         <AndroidActionCard Icon="play"
-                                           Title="Join live play"
+                                           Title="Join a game"
                                            External="true"
                                            Disabled="@State.IsBusy"
                                            OnClick="OpenPlayAsync" />
@@ -132,14 +132,14 @@
             case AndroidDestination.Account:
                 <section class="android-screen android-account" aria-labelledby="android-account-title">
                     <header class="android-screen-header">
-                        <p class="android-kicker">Chummer account</p>
+                        <p class="android-kicker">Account</p>
                         <h1 id="android-account-title">@AccountHeading</h1>
                     </header>
 
                     <section class="account-card" data-state="@AccountState" aria-label="Account link status">
                         <div class="account-card-status">
                             <span class="account-mark"><AndroidIcon Name="account" /></span>
-                            <span><small>Device access</small><strong>@AccountLink.Snapshot.Label</strong></span>
+                            <span><small>This device</small><strong>@AccountLink.Snapshot.Label</strong></span>
                         </div>
                         @if (!string.IsNullOrWhiteSpace(AccountLink.Snapshot.Detail))
                         {
@@ -180,15 +180,15 @@
             case AndroidDestination.More:
                 <section class="android-screen android-more" aria-labelledby="android-more-title">
                     <header class="android-screen-header">
-                        <p class="android-kicker">Tools</p>
-                        <h1 id="android-more-title">Files and output.</h1>
+                        <p class="android-kicker">More</p>
+                        <h1 id="android-more-title">Files and app settings</h1>
                     </header>
 
                     <section class="android-tool-section" aria-labelledby="files-output-heading">
                         <h2 id="files-output-heading">On this device</h2>
                         <div class="android-action-grid">
-                            <AndroidActionCard Icon="folder" Title="Import file" Description="Android Documents" Disabled="@State.IsBusy" OnClick="OpenDocumentAsync" />
-                            <AndroidActionCard Icon="workbench" Title="Print or export" Description="Open workbench" Disabled="@State.IsBusy" OnClick="OpenWorkbenchForOutput" />
+                            <AndroidActionCard Icon="folder" Title="Import file" Description="Choose a file" Disabled="@State.IsBusy" OnClick="OpenDocumentAsync" />
+                            <AndroidActionCard Icon="workbench" Title="Print or export" Description="Open the editor" Disabled="@State.IsBusy" OnClick="OpenWorkbenchForOutput" />
                         </div>
                     </section>
 
@@ -196,7 +196,7 @@
                         <h2 id="app-heading">Chummer</h2>
                         <div class="android-action-grid">
                             <AndroidActionCard Icon="share" Title="Share app" Disabled="@State.IsBusy" OnClick="ShareAppAsync" />
-                            <AndroidActionCard Icon="update" Title="Check for updates" External="true" Disabled="@State.IsBusy" OnClick="OpenUpdateAsync" />
+                            <AndroidActionCard Icon="update" Title="Updates" Description="Check Google Play" Disabled="@State.IsBusy" OnClick="OpenUpdateAsync" />
                         </div>
                     </section>
                 </section>
@@ -258,16 +258,16 @@
         AndroidDestination.Campaign => "Campaign",
         AndroidDestination.Account => "Account",
         AndroidDestination.More => "More",
-        _ => "Runner home"
+        _ => "Characters"
     };
 
     private string AccountHeading => AccountLink.Snapshot.Status switch
     {
-        AndroidAccountLinkStatus.Linked => "Your device is linked.",
-        AndroidAccountLinkStatus.Pending => "Finish the handoff.",
-        AndroidAccountLinkStatus.Error => "Link needs attention.",
-        AndroidAccountLinkStatus.Loading => "Checking your link.",
-        _ => "Link this device."
+        AndroidAccountLinkStatus.Linked => "Account linked",
+        AndroidAccountLinkStatus.Pending => "Finish linking",
+        AndroidAccountLinkStatus.Error => "Couldn't link this device",
+        AndroidAccountLinkStatus.Loading => "Checking…",
+        _ => "Link your account"
     };
 
     private string AccountState => AccountLink.Snapshot.Status.ToString().ToLowerInvariant();
@@ -346,10 +346,10 @@
     private Task OpenPlayAsync() => OpenWebAsync(ChummerWebRoutes.Play, "live play");
     private Task OpenSupportAsync() => OpenWebAsync(ChummerWebRoutes.Support, "support");
     private Task OpenPrivacyAsync() => OpenWebAsync(ChummerWebRoutes.AccountDeletion, "privacy");
-    private Task OpenCampaignWorkspaceAsync() => OpenWebAsync(ChummerWebRoutes.CampaignRoster, "campaign workspace");
-    private Task OpenGmCommandAsync() => OpenWebAsync(ChummerWebRoutes.GmCommand, "GM command");
-    private Task OpenOrganizerCommandAsync() => OpenWebAsync(ChummerWebRoutes.OrganizerCommand, "organizer desk");
-    private Task OpenRulesetStudioAsync() => OpenWebAsync(ChummerWebRoutes.RulesetStudio, "ruleset studio");
+    private Task OpenCampaignWorkspaceAsync() => OpenWebAsync(ChummerWebRoutes.CampaignRoster, "campaign");
+    private Task OpenGmCommandAsync() => OpenWebAsync(ChummerWebRoutes.GmCommand, "GM tools");
+    private Task OpenOrganizerCommandAsync() => OpenWebAsync(ChummerWebRoutes.OrganizerCommand, "organizer tools");
+    private Task OpenRulesetStudioAsync() => OpenWebAsync(ChummerWebRoutes.RulesetStudio, "rules");
 
     private async Task BeginAccountLinkAsync()
         => await RunAccountActionAsync(() => AccountLink.BeginLinkAsync());
@@ -432,14 +432,32 @@
         State.IsBusy = true;
         try
         {
-            if (!await SystemService.OpenStoreListingAsync())
+            AndroidUpdateCheckResult result = await SystemService.CheckForUpdatesAsync();
+            switch (result)
             {
-                State.SetMessage("Could not open Google Play.", AndroidNoticeKind.Error);
+                case AndroidUpdateCheckResult.Current:
+                    State.SetMessage("Chummer is up to date.", AndroidNoticeKind.Success);
+                    break;
+                case AndroidUpdateCheckResult.Started:
+                    State.SetMessage("Google Play is downloading the update.", AndroidNoticeKind.Success);
+                    break;
+                case AndroidUpdateCheckResult.ReadyToInstall:
+                    State.SetMessage("The update is ready to install.", AndroidNoticeKind.Success);
+                    break;
+                case AndroidUpdateCheckResult.Checking:
+                    State.SetMessage("Already checking for updates.");
+                    break;
+                case AndroidUpdateCheckResult.StoreOpened:
+                    State.SetMessage("Opened Google Play.");
+                    break;
+                default:
+                    State.SetMessage("Couldn't check for updates.", AndroidNoticeKind.Error);
+                    break;
             }
         }
         catch (Exception)
         {
-            State.SetMessage("Could not open Google Play.", AndroidNoticeKind.Error);
+            State.SetMessage("Couldn't check for updates.", AndroidNoticeKind.Error);
         }
         finally
         {
@@ -457,7 +475,7 @@
         State.IsBusy = true;
         try
         {
-            await SystemService.ShareTextAsync("Chummer — build runners and run campaigns anywhere. https://chummer.run");
+            await SystemService.ShareTextAsync("Chummer for Shadowrun characters: https://chummer.run");
         }
         catch (Exception)
         {
@@ -490,7 +508,7 @@
         }
         catch (Exception)
         {
-            State.SetMessage("The new runner workflow could not be opened.", AndroidNoticeKind.Error);
+            State.SetMessage("Couldn't start a new character.", AndroidNoticeKind.Error);
         }
         finally
         {

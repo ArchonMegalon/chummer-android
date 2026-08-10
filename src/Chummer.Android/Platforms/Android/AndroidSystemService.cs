@@ -27,6 +27,23 @@ public sealed class AndroidSystemService : IAndroidSystemService
         return await Launcher.Default.OpenAsync(new Uri($"https://play.google.com/store/apps/details?id={PackageId}"));
     }
 
+    public async Task<AndroidUpdateCheckResult> CheckForUpdatesAsync()
+    {
+        Activity? activity = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity;
+        if (activity is Chummer.Android.MainActivity mainActivity)
+        {
+            AndroidUpdateCheckResult result = await mainActivity.CheckForPlayUpdateAsync(userInitiated: true);
+            if (result != AndroidUpdateCheckResult.Unavailable)
+            {
+                return result;
+            }
+        }
+
+        return await OpenStoreListingAsync()
+            ? AndroidUpdateCheckResult.StoreOpened
+            : AndroidUpdateCheckResult.Unavailable;
+    }
+
     public Task ShareTextAsync(string text)
         => Share.Default.RequestAsync(new ShareTextRequest(text, "Share Chummer"));
 

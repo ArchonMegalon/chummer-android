@@ -56,8 +56,24 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("<EmbedAssembliesIntoApk Condition=\"'$(Configuration)' == 'Debug'\">true</EmbedAssembliesIntoApk>", project)
 
     def test_android_uses_play_updates_and_verified_links(self) -> None:
+        project = (PROJECT / "Chummer.Android.csproj").read_text(encoding="utf-8")
         system_service = (PROJECT / "Platforms" / "Android" / "AndroidSystemService.cs").read_text(encoding="utf-8")
         activity = (PROJECT / "Platforms" / "Android" / "MainActivity.cs").read_text(encoding="utf-8")
+        policy = (PROJECT / "Platforms" / "Android" / "AndroidInAppUpdatePolicy.cs").read_text(encoding="utf-8")
+        host = (PROJECT / "Components" / "AndroidAppHost.razor").read_text(encoding="utf-8")
+        self.assertIn('Xamarin.Google.Android.Play.App.Update" Version="2.1.0.19"', project)
+        self.assertIn("AppUpdateManagerFactory.Create(this)", activity)
+        self.assertIn("IsInstalledByGooglePlay", activity)
+        self.assertIn('"com.android.vending"', activity)
+        self.assertIn("StartUpdateFlowForResult", activity)
+        self.assertIn("AppUpdateType.Flexible", activity)
+        self.assertIn("RegisterListener", activity)
+        self.assertIn("CompleteUpdate", activity)
+        self.assertIn("CheckForPlayUpdateAsync(userInitiated: false)", activity)
+        self.assertIn("UpdateAvailability.UpdateAvailable", policy)
+        self.assertIn("InstallStatus.Downloaded", policy)
+        self.assertIn("CheckForUpdatesAsync", system_service)
+        self.assertIn("SystemService.CheckForUpdatesAsync()", host)
         self.assertIn("market://details", system_service)
         self.assertNotIn("DesktopUpdateRuntime", "".join(p.read_text(encoding="utf-8") for p in PROJECT.rglob("*.cs")))
         self.assertIn('DataHost = "chummer.run"', activity)
@@ -99,6 +115,25 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("Files, output, account, help", host)
         self.assertIn("android-screen-header", host)
         self.assertIn("min-height: 72px", css)
+
+    def test_android_copy_is_short_and_human(self) -> None:
+        host = (PROJECT / "Components" / "AndroidAppHost.razor").read_text(encoding="utf-8")
+        account = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
+        rendered_copy = host + account
+        for phrase in (
+            "Runner desk",
+            "Campaign command",
+            "GM command",
+            "Organizer desk",
+            "Finish the handoff",
+            "protected device identity",
+            "incomplete grant",
+            "new runner workflow",
+        ):
+            self.assertNotIn(phrase, rendered_copy)
+        self.assertIn("What do you want to do?", host)
+        self.assertIn("Files and app settings", host)
+        self.assertIn("Couldn't check for updates.", host)
 
     def test_android_replaces_shared_layout_radios_with_a_compact_combobox(self) -> None:
         component = (

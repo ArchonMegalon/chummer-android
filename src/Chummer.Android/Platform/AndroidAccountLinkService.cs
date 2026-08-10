@@ -145,7 +145,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         }
         catch (Exception)
         {
-            SetSnapshot(new(AndroidAccountLinkStatus.Error, "Link unavailable", "Android could not prepare a protected device key."));
+            SetSnapshot(new(AndroidAccountLinkStatus.Error, "Couldn't link", "Try again in a moment."));
         }
         finally
         {
@@ -253,7 +253,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                     SetSnapshot(new(
                         AndroidAccountLinkStatus.Error,
                         "Fresh link required",
-                        "Choose Link account to create a new protected device identity."));
+                        "Choose Link account and try again."));
                 }
                 else
                 {
@@ -267,7 +267,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             ExchangeResponse? exchange = await response.Content.ReadFromJsonAsync<ExchangeResponse>(JsonOptions, cancellationToken);
             if (exchange?.Grant is null || string.IsNullOrWhiteSpace(exchange.Grant.AccessToken))
             {
-                SetSnapshot(new(AndroidAccountLinkStatus.Error, "Could not link", "The server returned an incomplete grant."));
+                SetSnapshot(new(AndroidAccountLinkStatus.Error, "Couldn't link", "The reply was incomplete. Try again."));
                 return;
             }
 
@@ -285,7 +285,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         }
         catch (Exception)
         {
-            SetSnapshot(new(AndroidAccountLinkStatus.Error, "Could not link", "Start a fresh protected account link."));
+            SetSnapshot(new(AndroidAccountLinkStatus.Error, "Couldn't link", "Start linking again."));
         }
         finally
         {
