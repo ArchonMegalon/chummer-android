@@ -5,6 +5,7 @@ public enum AndroidDestination
     Home,
     Workbench,
     Campaign,
+    Account,
     More
 }
 

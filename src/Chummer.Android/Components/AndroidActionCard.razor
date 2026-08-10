@@ -1,11 +1,14 @@
 <button type="button"
-        class="android-action-card @(Primary ? "primary-card" : null)"
+        class="android-action-card @(Primary ? "primary-card" : null) @(string.IsNullOrWhiteSpace(Description) ? "compact-card" : null)"
         disabled="@Disabled"
         @onclick="OnClick">
     <AndroidIcon Name="@Icon" CssClass="android-action-icon" />
     <span class="android-action-copy">
         <strong>@Title</strong>
-        <small>@Description</small>
+        @if (!string.IsNullOrWhiteSpace(Description))
+        {
+            <small>@Description</small>
+        }
     </span>
     <AndroidIcon Name="@(External ? "external" : "chevron")" CssClass="android-action-affordance" />
 </button>
@@ -17,8 +20,8 @@
     [Parameter, EditorRequired]
     public string Title { get; set; } = string.Empty;
 
-    [Parameter, EditorRequired]
-    public string Description { get; set; } = string.Empty;
+    [Parameter]
+    public string? Description { get; set; }
 
     [Parameter]
     public bool Primary { get; set; }

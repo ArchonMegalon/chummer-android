@@ -25,6 +25,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<AndroidDocumentInbox>();
         builder.Services.AddSingleton<IWorkbenchExternalDocumentInbox>(services => services.GetRequiredService<AndroidDocumentInbox>());
         builder.Services.AddSingleton<IAndroidSystemService, AndroidSystemService>();
+        builder.Services.AddSingleton<IAndroidAccountLinkService, AndroidAccountLinkService>();
         builder.Services.AddSingleton<AndroidJsBridge>();
         builder.Services.AddSingleton<AndroidAppState>();
         builder.Services.AddChummerLocalRuntimeClient(

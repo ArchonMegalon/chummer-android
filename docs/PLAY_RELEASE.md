@@ -82,7 +82,7 @@ A locally signed AAB is not publication. Publication requires a Chummer-scoped
 Play Console session or service account. Memorial or PropertyQuarry browser
 sessions and app identities must never be reused for Chummer.
 
-## Local release evidence (2026-08-08)
+## Historical preview.1 release evidence (2026-08-08)
 
 - `android-arm64` Release publish completed with zero warnings and zero errors.
 - The unsigned, upload-key-ready AAB is written to
@@ -105,6 +105,26 @@ sessions and app identities must never be reused for Chummer.
   tools, New runner → build method → metatype priority, Documents UI import of
   `Glessner.chum5`, persisted workspace restart, native Back navigation, and
   phone/tablet rendering.
-- Publication is still closed until the Chummer Play app record, Play App
-  Signing/upload key, real Play certificate fingerprint, and production
-  privacy-retention decision are supplied.
+- At the time of this receipt, publication was still closed. The Chummer Play
+  app record and Play App Signing identity were created afterward.
+
+## Current preview.2 release evidence (2026-08-10)
+
+- Version code 1 (`0.1.0-preview.1`) remains active on the internal testing
+  track. The next candidate is version code 2 (`0.1.0-preview.2`).
+- The exact signed upload candidate is
+  `artifacts/chummer-android-0.1.0-preview.2-upload.aab`. SHA-256:
+  `2f1daa9329d7f88efd35ebe000b1b3d3e65fa2392157d3f0c600127e604b5762`.
+- bundletool validation and structural inspection passed for package identity,
+  version, API 24/36 bounds, permissions, privacy posture, predictive Back,
+  verified app links, and the arm64 payload.
+- The AAB signature matches the registered Chummer upload certificate:
+  `CB:C5:DF:FF:A0:10:88:A0:55:51:7E:5C:42:0B:EB:25:41:2A:4F:72:53:9B:20:18:D0:4F:F4:EC:DE:A4:03:2F`.
+- All 20 Android parity, privacy, navigation, account-linking, lifecycle,
+  release-automation, listing, and store-asset contract tests pass. Debug x64
+  and signed Release arm64 builds complete with zero warnings and zero errors.
+- This candidate adds compact app-owned navigation and protected account
+  linking through browser approval plus signed installation proof. Local runner
+  files remain local.
+- Upload is intentionally pending exact-artifact approval. Rebuilding or
+  changing app source invalidates the SHA-256 above and requires a new approval.

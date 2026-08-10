@@ -8,7 +8,7 @@ configuration="Release"
 framework="net10.0-android36.0"
 runtime_id="android-arm64"
 package_id="com.myexternalbrain.chummer"
-version_name="0.1.0-preview.1"
+version_name="0.1.0-preview.2"
 
 python3 -m unittest discover -s "$repo_dir/tests" -v
 
@@ -17,6 +17,7 @@ python3 -m unittest discover -s "$repo_dir/tests" -v
   --framework "$framework" \
   --runtime "$runtime_id" \
   --self-contained true \
+  -p:ChummerDesktopRuntimeIdentifiers="$runtime_id" \
   -p:AndroidPackageFormats=aab
 
 publish_dir="$repo_dir/src/Chummer.Android/bin/$configuration/$framework/$runtime_id/publish"

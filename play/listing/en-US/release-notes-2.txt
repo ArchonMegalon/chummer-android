@@ -1,0 +1,1 @@
+Cleaner navigation, a calmer premium interface, and shorter screens. Account linking now uses protected browser approval and a signed device handoff, with secure on-device grant storage and unlink support. Local runner files remain local unless you explicitly export or share them.

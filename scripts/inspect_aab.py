@@ -31,8 +31,8 @@ def inspect(aab_path: Path, manifest_path: Path) -> None:
     root = ET.parse(manifest_path).getroot()
     require(root.get("package") == PACKAGE_ID, "unexpected package id")
     require(attr(root, "compileSdkVersion") == "36", "compile SDK must be 36")
-    require(attr(root, "versionCode") == "1", "preview version code must be 1")
-    require(attr(root, "versionName") == "0.1.0-preview.1", "unexpected preview version name")
+    require(attr(root, "versionCode") == "2", "preview version code must be 2")
+    require(attr(root, "versionName") == "0.1.0-preview.2", "unexpected preview version name")
 
     uses_sdk = root.find("uses-sdk")
     require(uses_sdk is not None, "uses-sdk is missing")

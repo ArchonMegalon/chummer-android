@@ -38,12 +38,33 @@ public sealed class MainActivity : MauiAppCompatActivity
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
+        HandleAccountLinkIntent(Intent);
         if (OperatingSystem.IsAndroidVersionAtLeast(33))
         {
             _backInvokedCallback = new BackInvokedCallback(HandleBackNavigation);
             OnBackInvokedDispatcher.RegisterOnBackInvokedCallback(
                 IOnBackInvokedDispatcher.PriorityDefault,
                 _backInvokedCallback);
+        }
+    }
+
+    protected override void OnNewIntent(Intent? intent)
+    {
+        base.OnNewIntent(intent);
+        if (intent is not null)
+        {
+            HandleAccountLinkIntent(intent);
+        }
+    }
+
+    protected override void OnResume()
+    {
+        base.OnResume();
+        IAndroidAccountLinkService? accountLink = IPlatformApplication.Current?.Services
+            .GetService<IAndroidAccountLinkService>();
+        if (accountLink is not null)
+        {
+            _ = accountLink.ResumePendingLinkAsync();
         }
     }
 
@@ -86,6 +107,25 @@ public sealed class MainActivity : MauiAppCompatActivity
         }
 
         return false;
+    }
+
+    private static void HandleAccountLinkIntent(Intent? intent)
+    {
+        string? value = intent?.DataString;
+        if (!Uri.TryCreate(value, UriKind.Absolute, out Uri? uri)
+            || !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(uri.Host, "chummer.run", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(uri.AbsolutePath, "/app/install-link", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        IAndroidAccountLinkService? accountLink = IPlatformApplication.Current?.Services
+            .GetService<IAndroidAccountLinkService>();
+        if (accountLink is not null)
+        {
+            _ = accountLink.ResumePendingLinkAsync(uri);
+        }
     }
 
     protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)

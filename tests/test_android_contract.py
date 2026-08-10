@@ -50,6 +50,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("<ApplicationId>com.myexternalbrain.chummer</ApplicationId>", project)
         self.assertIn("<TargetSdkVersion>36</TargetSdkVersion>", project)
         self.assertIn("<AndroidMinSdkVersion>24</AndroidMinSdkVersion>", project)
+        self.assertIn("<ApplicationDisplayVersion>0.1.0-preview.2</ApplicationDisplayVersion>", project)
+        self.assertIn("<ApplicationVersion>2</ApplicationVersion>", project)
         self.assertIn("<AndroidPackageFormats Condition=\"'$(Configuration)' == 'Release'\">aab</AndroidPackageFormats>", project)
         self.assertIn("<EmbedAssembliesIntoApk Condition=\"'$(Configuration)' == 'Debug'\">true</EmbedAssembliesIntoApk>", project)
 
@@ -59,7 +61,44 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("market://details", system_service)
         self.assertNotIn("DesktopUpdateRuntime", "".join(p.read_text(encoding="utf-8") for p in PROJECT.rglob("*.cs")))
         self.assertIn('DataHost = "chummer.run"', activity)
+        self.assertIn('DataPathPrefix = "/app"', activity)
         self.assertIn("AutoVerify = true", activity)
+
+    def test_android_account_link_uses_device_proof_and_encrypted_storage(self) -> None:
+        service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
+        program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
+        activity = (PROJECT / "Platforms" / "Android" / "MainActivity.cs").read_text(encoding="utf-8")
+        host = (PROJECT / "Components" / "AndroidAppHost.razor").read_text(encoding="utf-8")
+        self.assertIn("SecureStorage.Default", service)
+        self.assertIn("ExportPkcs8PrivateKey", service)
+        self.assertIn("RSASignaturePadding.Pkcs1", service)
+        self.assertIn("chummer.install-link.remote-callback.v1", service)
+        self.assertIn("/api/v1/install-linking/callbacks/poll", service)
+        self.assertIn("/api/v1/install-linking/grants/status", service)
+        self.assertIn("/api/v1/install-linking/grants/revoke", service)
+        self.assertIn("response.StatusCode == HttpStatusCode.Conflict", service)
+        self.assertIn("ClearAllCredentials();", service)
+        self.assertNotIn("Preferences.Default", service)
+        self.assertIn("AddSingleton<IAndroidAccountLinkService, AndroidAccountLinkService>", program)
+        self.assertIn("OnNewIntent", activity)
+        self.assertIn('"/app/install-link"', activity)
+        self.assertIn("ResumePendingLinkAsync(uri)", activity)
+        self.assertIn("AndroidDestination.Account", host)
+        self.assertIn("Confirm unlink", host)
+
+    def test_android_navigation_is_compact_and_app_owned(self) -> None:
+        host = (PROJECT / "Components" / "AndroidAppHost.razor").read_text(encoding="utf-8")
+        css = (PROJECT / "wwwroot" / "css" / "android.css").read_text(encoding="utf-8")
+        nav = host[host.index('<nav class="android-bottom-nav"'):host.index("</nav>")]
+        self.assertEqual(5, len(re.findall(r"<button", nav)))
+        for label in ("Home", "Build", "Campaign", "Account", "More"):
+            self.assertIn(f"<span>{label}</span>", nav)
+        self.assertNotIn("OpenPlayAsync", nav)
+        self.assertNotIn("Your next runner starts here", host)
+        self.assertNotIn("Run the table from one command deck", host)
+        self.assertNotIn("Files, output, account, help", host)
+        self.assertIn("android-screen-header", host)
+        self.assertIn("min-height: 78px", css)
 
     def test_android_handoffs_use_canonical_public_routes(self) -> None:
         routes = (PROJECT / "Platform" / "ChummerWebRoutes.cs").read_text(encoding="utf-8")
@@ -187,7 +226,7 @@ class AndroidContractTests(unittest.TestCase):
         title = (listing / "title.txt").read_text(encoding="utf-8").strip()
         short_description = (listing / "short-description.txt").read_text(encoding="utf-8").strip()
         full_description = (listing / "full-description.txt").read_text(encoding="utf-8").strip()
-        release_notes = (listing / "release-notes-1.txt").read_text(encoding="utf-8").strip()
+        release_notes = (listing / "release-notes-2.txt").read_text(encoding="utf-8").strip()
         self.assertLessEqual(len(title), 30)
         self.assertLessEqual(len(short_description), 80)
         self.assertLessEqual(len(full_description), 4000)
