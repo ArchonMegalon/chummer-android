@@ -1,0 +1,1 @@
+Account & privacy is now easy to find even before you link this device. The deletion explanation stays inside Chummer, the public deletion address can be copied, and account deletion remains locked until the device is linked. Groups, invites, Play, runner tools, and Chronicle Studio remain native.

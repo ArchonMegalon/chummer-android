@@ -104,31 +104,36 @@ A locally signed AAB is not publication. Publication requires a Chummer-scoped
 Play Console session or service account. Memorial or PropertyQuarry browser
 sessions and app identities must never be reused for Chummer.
 
-## Current preview.4 source
+## Current preview.5 source
 
-The native source now contains **More → Account & privacy → Delete account**.
-It uses the linked-device grant, exact typed confirmation, and a second native
-confirmation before calling Chummer's whole-account deletion transaction. The
-device grant, linked data, play cache, and optionally device-local runners are
-cleared only after an authenticated server receipt. The matching public route
-is `https://chummer.run/account/delete`.
+**More → Account & privacy** is now available whether or not the device is
+linked. Unlinked users get a native explanation and a direct link-account
+action. Linked users can unlink or enter the guarded deletion journey. “How
+deletion works” stays inside the app, while its copyable public address remains
+`https://chummer.run/account/delete` for people who no longer have the app.
 
-This source is now version code 4 (`0.1.0-preview.4`) and is newer than the
-frozen version-code-3 AAB with SHA-256
-`4e73ebb8678b8d11b63e6a5f6a02b2981ab6003403daece60b127c511eaa659c`.
-That exact bundle may be retried only under its historical internal-test
-approval; it does not prove this new deletion UI.
+Deletion still requires the linked-device grant, exact typed confirmation, and
+a second native confirmation before calling Chummer's whole-account deletion
+transaction. Device grants, linked data, the Play cache, and optionally local
+runners are cleared only after an authenticated server receipt. An unlinked
+device fails closed before confirmation controls are shown.
 
-The signed preview.4 candidate built from source commit
-`288f020693964abb02205fc1985c1eb87d082787` is sealed at
+This source is version code 5 (`0.1.0-preview.5`). Its signed candidate must be
+built, inspected, device-tested, and sealed from the merged source before it
+can replace preview.4. Play upload remains closed until the Google-enforced
+`2026-08-14T03:29:49Z` cooldown ends.
+
+## Historical preview.4 release evidence (2026-08-12)
+
+The signed preview.4 candidate was built from source commit
+`288f020693964abb02205fc1985c1eb87d082787` and is sealed at
 `artifacts/chummer-android-0.1.0-preview.4-upload.aab`. Its SHA-256 is
 `1388b3d16103be8370360f85bf9833b3cdc5fea7af506413a389929ff02bf5c8`.
 All 31 Android contracts, bundletool validation, structural inspection, and
 signature verification pass. The signer matches the registered replacement
-upload certificate. Play upload remains closed until the Google-enforced
-`2026-08-14T03:29:49Z` cooldown ends and the account-deletion device journey is
-recorded against this source. Preview.4, rather than the older preview.3, is the
-next candidate once those factual gates pass.
+upload certificate. It is retained as immutable historical evidence and is
+superseded by preview.5; it does not contain preview.5's always-available native
+privacy navigation.
 
 ## Historical preview.1 release evidence (2026-08-08)
 

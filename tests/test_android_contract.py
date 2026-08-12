@@ -54,8 +54,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("<ApplicationId>com.myexternalbrain.chummer</ApplicationId>", project)
         self.assertIn("<TargetSdkVersion>36</TargetSdkVersion>", project)
         self.assertIn("<AndroidMinSdkVersion>24</AndroidMinSdkVersion>", project)
-        self.assertIn("<ApplicationDisplayVersion>0.1.0-preview.4</ApplicationDisplayVersion>", project)
-        self.assertIn("<ApplicationVersion>4</ApplicationVersion>", project)
+        self.assertIn("<ApplicationDisplayVersion>0.1.0-preview.5</ApplicationDisplayVersion>", project)
+        self.assertIn("<ApplicationVersion>5</ApplicationVersion>", project)
         self.assertIn("<AndroidPackageFormats Condition=\"'$(Configuration)' == 'Release'\">aab</AndroidPackageFormats>", project)
         self.assertIn('<ChummerDesktopRuntimeIdentifiers Condition="\'$(ChummerDesktopRuntimeIdentifiers)\' == \'\'">android-arm64;android-x64</ChummerDesktopRuntimeIdentifiers>', project)
         self.assertIn("<EmbedAssembliesIntoApk Condition=\"'$(Configuration)' == 'Debug'\">true</EmbedAssembliesIntoApk>", project)
@@ -125,6 +125,7 @@ class AndroidContractTests(unittest.TestCase):
         service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
         contract = (PROJECT / "Platform" / "IAndroidAccountLinkService.cs").read_text(encoding="utf-8")
         coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        more = (PROJECT / "Native" / "MorePage.cs").read_text(encoding="utf-8")
         privacy = (PROJECT / "Native" / "AccountPrivacyPage.cs").read_text(encoding="utf-8")
         hub_contract = (
             RUN_SERVICES / "Chummer.Run.Contracts" / "AccountErasureContracts.cs"
@@ -141,6 +142,11 @@ class AndroidContractTests(unittest.TestCase):
         self.assertLess(server_call, local_delete)
         self.assertLess(response_validation, credentials_clear)
         self.assertIn("AccountDeletionPage", privacy)
+        self.assertIn("AccountDeletionInfoPage", privacy)
+        self.assertIn("if (!Coordinator.Account.IsLinked)", privacy)
+        self.assertNotIn("Coordinator.OpenAccountDeletionInfoAsync", privacy)
+        for retention_window in ("within 24 hours", "within 30 days", "35 days", "365 days"):
+            self.assertIn(retention_window, privacy)
         self.assertIn("Remove runners saved on this device", privacy)
         self.assertIn("This cannot be undone.", privacy)
         self.assertIn("ChummerWebRoutes.AccountDeletion", coordinator)
@@ -149,7 +155,14 @@ class AndroidContractTests(unittest.TestCase):
         release = (REPO / "docs" / "PLAY_RELEASE.md").read_text(encoding="utf-8")
         self.assertIn("More → Account & privacy → Delete account", data_safety + release)
         self.assertIn("https://chummer.run/account/delete", data_safety + release)
-        self.assertIn("newer than the frozen version-code-3 AAB", release)
+        normalized_release = re.sub(r"\s+", " ", release)
+        self.assertIn("version code 5 (`0.1.0-preview.5`)", normalized_release)
+        self.assertIn("superseded by preview.5", normalized_release)
+
+        more_account = more[more.index("private void AddAccount()"):more.index("private void AddApp()")]
+        linked_branch = more_account.index("if (Coordinator.Account.IsLinked)")
+        privacy_row = more_account.index('"Account & privacy"')
+        self.assertGreater(privacy_row, linked_branch)
 
     def test_android_navigation_is_compact_and_app_owned(self) -> None:
         shell = (PROJECT / "MainShell.cs").read_text(encoding="utf-8")
@@ -419,7 +432,7 @@ class AndroidContractTests(unittest.TestCase):
         spec.loader.exec_module(module)
 
         self.assertEqual(
-            ("0.1.0-preview.4", "4"),
+            ("0.1.0-preview.5", "5"),
             module.read_project_version(PROJECT / "Chummer.Android.csproj"),
         )
 
@@ -428,7 +441,7 @@ class AndroidContractTests(unittest.TestCase):
         title = (listing / "title.txt").read_text(encoding="utf-8").strip()
         short_description = (listing / "short-description.txt").read_text(encoding="utf-8").strip()
         full_description = (listing / "full-description.txt").read_text(encoding="utf-8").strip()
-        release_notes = (listing / "release-notes-4.txt").read_text(encoding="utf-8").strip()
+        release_notes = (listing / "release-notes-5.txt").read_text(encoding="utf-8").strip()
         self.assertLessEqual(len(title), 30)
         self.assertLessEqual(len(short_description), 80)
         self.assertLessEqual(len(full_description), 4000)
