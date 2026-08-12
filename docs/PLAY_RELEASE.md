@@ -114,14 +114,42 @@ treated as invalid, expired server callbacks cannot be reused, and group invite
 links must exactly match the server-issued Chummer code without a query or
 fragment.
 
-This source supersedes preview.5. A signed preview.6 bundle must be built from
-the merged source, inspected, device-tested, hashed, and approved by exact
-SHA-256 before Play upload. Play upload remains closed until the
-Google-enforced `2026-08-14T03:29:49Z` upload-key cooldown ends. The existing
-internal tester list contains `teksura@gmail.com` and `tibor.girschele@gmail.com`;
-the tester invite remains
-`https://play.google.com/apps/internaltest/4700678198570024687`. Neither the
-tester roster nor the invite proves that preview.6 has been uploaded or installed.
+This source supersedes preview.5. The exact signed preview.6 candidate is
+`artifacts/chummer-android-0.1.0-preview.6-upload.aab`. Its SHA-256 is
+`847760c63a4b54a4bf11054de499924dc1a1d8cb10daf6f9adc1ecde83726f5d`
+and its size is 21,273,927 bytes. Its signer matches the registered replacement
+upload certificate:
+`D9:C4:B6:35:12:15:44:D5:52:2A:BF:1E:C2:DF:DA:3C:19:38:AA:B9:3D:67:26:BB:93:C9:87:1E:C9:ED:1D:15`.
+
+The clean input graph is recorded in
+`artifacts/chummer-android-0.1.0-preview.6-source-graph.json`, SHA-256
+`ca9182f426583a332b484e19fc7d951d5ddebc92f8ce4228d0bdce80a0e34c52`:
+
+- Android `872100ec26c30c7ab60bbf59131da3f5089e23ae`;
+- UI `8a383e3a8d81dbfd9cfaa3ab864bd5cc3da50664`;
+- Core `108b898d55af52fe5af18f6ce40efa58ed0d659a`;
+- UI Kit `d51ecd99cf72098d4adc8db0192bff7bf9fd8e61`;
+- Hub `10e1b759896b260c90000381594773b0cf84adfd`;
+- Registry `7b54afec574a9327616c4ad7566da3a7b6b906a5`;
+- Media Factory `415c8163d3d90b1211e4014fef332bdec6d75f73`;
+- Design `360c4b2716a9dca0f55e8e5c999a48e3dac64f3f`.
+
+All 31 Android contracts pass. The arm64 Release AAB passed bundletool,
+package/version/API/permission/privacy/app-link inspection, and upload-certificate
+verification. The x64 Debug app built from the same merged graph with zero
+warnings and zero errors, then passed a clean-install API 36 device journey
+covering native Home, New Runner, Build, Play, Campaign, and More with no Chummer
+fatal exception or ANR. That journey caught and closed an Android app-data
+ancestor validation crash in Core before this candidate was rebuilt.
+
+This evidence does not authorize upload. Play upload remains closed until the
+Google-enforced `2026-08-14T03:29:49Z` upload-key cooldown ends and exact-artifact
+approval is current. Approval must name the SHA above; approval for preview.3 or
+any earlier/rebuilt artifact is not transferable. The internal tester list
+contains `teksura@gmail.com` and `tibor.girschele@gmail.com`; the tester invite
+remains `https://play.google.com/apps/internaltest/4700678198570024687`.
+Neither the tester roster nor the invite proves that preview.6 has been uploaded,
+processed, installed, or promoted.
 
 ## Historical preview.5 release evidence (2026-08-12)
 
