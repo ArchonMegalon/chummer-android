@@ -56,7 +56,9 @@ fi
 mkdir -p "$android_sdk_dir" "$java_sdk_dir"
 
 "$dotnet_command" restore "$solution_path" \
-  -p:ChummerDesktopRuntimeIdentifiers="$runtime_identifier" \
+  -p:ChummerAndroidRuntimeIdentifier="$runtime_identifier" \
+  -p:ChummerDesktopRuntimeIdentifiers= \
+  -p:ChummerUseLocalCompatibilityTree=true \
   -p:AndroidSdkDirectory="$android_sdk_dir" \
   -p:JavaSdkDirectory="$java_sdk_dir"
 
@@ -64,6 +66,7 @@ mkdir -p "$android_sdk_dir" "$java_sdk_dir"
   -t:InstallAndroidDependencies \
   -f "$framework" \
   --no-restore \
+  -p:ChummerUseLocalCompatibilityTree=true \
   -p:AndroidSdkDirectory="$android_sdk_dir" \
   -p:JavaSdkDirectory="$java_sdk_dir" \
   -p:AcceptAndroidSDKLicenses=True
@@ -71,13 +74,14 @@ mkdir -p "$android_sdk_dir" "$java_sdk_dir"
 "$dotnet_command" build "$project_path" \
   -c Debug \
   -f "$framework" \
-  --runtime "$runtime_identifier" \
   --no-restore \
   -m:1 \
   --disable-build-servers \
   -p:UseSharedCompilation=false \
   -p:BuildInParallel=false \
-  -p:ChummerDesktopRuntimeIdentifiers="$runtime_identifier" \
+  -p:ChummerAndroidRuntimeIdentifier="$runtime_identifier" \
+  -p:ChummerDesktopRuntimeIdentifiers= \
+  -p:ChummerUseLocalCompatibilityTree=true \
   -p:AndroidSdkDirectory="$android_sdk_dir" \
   -p:JavaSdkDirectory="$java_sdk_dir"
 
@@ -87,7 +91,9 @@ mkdir -p "$android_sdk_dir" "$java_sdk_dir"
   -m:1 \
   --disable-build-servers \
   -p:UseSharedCompilation=false \
-  -p:BuildInParallel=false
+  -p:BuildInParallel=false \
+  -p:ChummerDesktopRuntimeIdentifiers= \
+  -p:ChummerUseLocalCompatibilityTree=true
 
 umask 077
 environment_temp="$environment_path.tmp.$$"

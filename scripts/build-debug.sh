@@ -18,18 +18,21 @@ case "$runtime_identifier" in
 esac
 
 "$dotnet_command" restore "$solution_path" \
-  -p:ChummerDesktopRuntimeIdentifiers="$runtime_identifier"
+  -p:ChummerAndroidRuntimeIdentifier="$runtime_identifier" \
+  -p:ChummerDesktopRuntimeIdentifiers= \
+  -p:ChummerUseLocalCompatibilityTree=true
 
 "$dotnet_command" build "$project_path" \
   --configuration Debug \
   --framework "$framework" \
-  --runtime "$runtime_identifier" \
   --no-restore \
   -m:1 \
   --disable-build-servers \
   -p:UseSharedCompilation=false \
   -p:BuildInParallel=false \
-  -p:ChummerDesktopRuntimeIdentifiers="$runtime_identifier"
+  -p:ChummerAndroidRuntimeIdentifier="$runtime_identifier" \
+  -p:ChummerDesktopRuntimeIdentifiers= \
+  -p:ChummerUseLocalCompatibilityTree=true
 
 "$dotnet_command" build "$compile_check_path" \
   --configuration Debug \
@@ -37,4 +40,6 @@ esac
   -m:1 \
   --disable-build-servers \
   -p:UseSharedCompilation=false \
-  -p:BuildInParallel=false
+  -p:BuildInParallel=false \
+  -p:ChummerDesktopRuntimeIdentifiers= \
+  -p:ChummerUseLocalCompatibilityTree=true
