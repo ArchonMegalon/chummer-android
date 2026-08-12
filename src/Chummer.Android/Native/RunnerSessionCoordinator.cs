@@ -309,8 +309,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _chronicles = [];
         _play = NativePlaySnapshot.Empty;
         _notice = localRunnersRemoved
-            ? "Account deleted."
-            : "Account deleted. Some runners could not be removed from this device.";
+            ? "Account deletion completed."
+            : "Account deletion completed. Some runners could not be removed from this device.";
         await SyncShellAsync(cancellationToken);
         NotifyChanged();
         return new NativeAccountErasureResult(receipt, localRunnersRemoved);

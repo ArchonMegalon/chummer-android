@@ -54,8 +54,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("<ApplicationId>com.myexternalbrain.chummer</ApplicationId>", project)
         self.assertIn("<TargetSdkVersion>36</TargetSdkVersion>", project)
         self.assertIn("<AndroidMinSdkVersion>24</AndroidMinSdkVersion>", project)
-        self.assertIn("<ApplicationDisplayVersion>0.1.0-preview.6</ApplicationDisplayVersion>", project)
-        self.assertIn("<ApplicationVersion>6</ApplicationVersion>", project)
+        self.assertIn("<ApplicationDisplayVersion>0.1.0-preview.7</ApplicationDisplayVersion>", project)
+        self.assertIn("<ApplicationVersion>7</ApplicationVersion>", project)
         self.assertIn("<AndroidPackageFormats Condition=\"'$(Configuration)' == 'Release'\">aab</AndroidPackageFormats>", project)
         self.assertIn('<ChummerAndroidRuntimeIdentifier Condition="\'$(ChummerAndroidRuntimeIdentifier)\' == \'\'">android-arm64</ChummerAndroidRuntimeIdentifier>', project)
         self.assertIn('<RuntimeIdentifier Condition="\'$(RuntimeIdentifier)\' == \'\'">$(ChummerAndroidRuntimeIdentifier)</RuntimeIdentifier>', project)
@@ -151,15 +151,22 @@ class AndroidContractTests(unittest.TestCase):
         server_call = coordinator.index("await _account.EraseAccountAsync")
         local_delete = coordinator.index("await _presenter.DeleteWorkspaceAsync")
         credentials_clear = service.index("ClearAllCredentials();", service.index("EraseAccountAsync"))
-        response_validation = service.index("if (!receipt.Erased", service.index("EraseAccountAsync"))
+        response_validation = service.index("if (!IsCompleteAccountErasureReceipt(receipt))", service.index("EraseAccountAsync"))
         self.assertLess(server_call, local_delete)
         self.assertLess(response_validation, credentials_clear)
         self.assertIn("AccountDeletionPage", privacy)
         self.assertIn("AccountDeletionInfoPage", privacy)
         self.assertIn("if (!Coordinator.Account.IsLinked)", privacy)
         self.assertNotIn("Coordinator.OpenAccountDeletionInfoAsync", privacy)
-        for retention_window in ("within 24 hours", "within 30 days", "35 days", "365 days"):
-            self.assertIn(retention_window, privacy)
+        self.assertIn("still under review", privacy)
+        self.assertNotIn("Active data is removed within 24 hours", privacy)
+        self.assertNotIn("Chummer-controlled backups age out within 30 days", privacy)
+        self.assertNotIn("Permanently remove your Chummer account", privacy)
+        self.assertIn("RequiredErasureComponents", service)
+        self.assertIn("IsCompleteAccountErasureReceipt", service)
+        self.assertIn("completed.SetEquals(RequiredErasureComponents)", service)
+        self.assertIn("Copy receipt", privacy)
+        self.assertIn("Clipboard.Default.SetTextAsync(result.Receipt.ReceiptSha256)", privacy)
         self.assertIn("Remove runners saved on this device", privacy)
         self.assertIn("This cannot be undone.", privacy)
         self.assertIn("ChummerWebRoutes.AccountDeletion", coordinator)
@@ -169,8 +176,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("More → Account & privacy → Delete account", data_safety + release)
         self.assertIn("https://chummer.run/account/delete", data_safety + release)
         normalized_release = re.sub(r"\s+", " ", release)
-        self.assertIn("version code 6 (`0.1.0-preview.6`)", normalized_release)
-        self.assertIn("supersedes preview.5", normalized_release)
+        self.assertIn("version code 7 (`0.1.0-preview.7`)", normalized_release)
+        self.assertIn("supersedes preview.6", normalized_release)
 
         more_account = more[more.index("private void AddAccount()"):more.index("private void AddApp()")]
         linked_branch = more_account.index("if (Coordinator.Account.IsLinked)")
@@ -470,7 +477,7 @@ class AndroidContractTests(unittest.TestCase):
         spec.loader.exec_module(module)
 
         self.assertEqual(
-            ("0.1.0-preview.6", "6"),
+            ("0.1.0-preview.7", "7"),
             module.read_project_version(PROJECT / "Chummer.Android.csproj"),
         )
 
@@ -479,7 +486,7 @@ class AndroidContractTests(unittest.TestCase):
         title = (listing / "title.txt").read_text(encoding="utf-8").strip()
         short_description = (listing / "short-description.txt").read_text(encoding="utf-8").strip()
         full_description = (listing / "full-description.txt").read_text(encoding="utf-8").strip()
-        release_notes = (listing / "release-notes-6.txt").read_text(encoding="utf-8").strip()
+        release_notes = (listing / "release-notes-7.txt").read_text(encoding="utf-8").strip()
         self.assertLessEqual(len(title), 30)
         self.assertLessEqual(len(short_description), 80)
         self.assertLessEqual(len(full_description), 4000)

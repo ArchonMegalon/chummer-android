@@ -104,9 +104,24 @@ A locally signed AAB is not publication. Publication requires a Chummer-scoped
 Play Console session or service account. Memorial or PropertyQuarry browser
 sessions and app identities must never be reused for Chummer.
 
-## Current preview.6 source (2026-08-12)
+## Current preview.7 source (2026-08-12)
 
-The current app is version code 6 (`0.1.0-preview.6`). It contains the native
+The current app is version code 7 (`0.1.0-preview.7`). It supersedes preview.6
+because the older native deletion explanation presented target retention windows
+as an unconditional promise while the live public privacy policy still marks
+Hosted Build retention and whole-account erasure proof as review-required.
+
+Preview.7 keeps the native, server-first deletion flow but validates that the
+authenticated receipt covers Hosted Build workspaces, support, first-party
+auxiliary stores, community data, and identity before it clears the device
+grant. It exposes the content-free receipt digest for copying and directs people
+to the public deletion page for the current retention posture. No signed
+preview.7 candidate has been produced yet, so preview.6 is immutable historical
+evidence and must not be uploaded as the next build.
+
+## Historical preview.6 release evidence (2026-08-12)
+
+Preview.6 is version code 6 (`0.1.0-preview.6`). It contains the native
 preview.5 feature set plus repeatable API 36 arm64/x64 build automation and
 fail-closed account-link recovery: expired or future-dated link attempts are
 discarded, failed browser launches clear pending state, missing grant expiry is
@@ -114,7 +129,7 @@ treated as invalid, expired server callbacks cannot be reused, and group invite
 links must exactly match the server-issued Chummer code without a query or
 fragment.
 
-This source supersedes preview.5. The exact signed preview.6 candidate is
+It superseded preview.5. The exact signed preview.6 candidate is
 `artifacts/chummer-android-0.1.0-preview.6-upload.aab`. Its SHA-256 is
 `847760c63a4b54a4bf11054de499924dc1a1d8cb10daf6f9adc1ecde83726f5d`
 and its size is 21,273,927 bytes. Its signer matches the registered replacement
@@ -142,14 +157,15 @@ covering native Home, New Runner, Build, Play, Campaign, and More with no Chumme
 fatal exception or ANR. That journey caught and closed an Android app-data
 ancestor validation crash in Core before this candidate was rebuilt.
 
-This evidence does not authorize upload. Play upload remains closed until the
+This evidence does not authorize upload, and preview.6 is now superseded by
+preview.7 source. Play upload remains closed until the
 Google-enforced `2026-08-14T03:29:49Z` upload-key cooldown ends and exact-artifact
-approval is current. Approval must name the SHA above; approval for preview.3 or
-any earlier/rebuilt artifact is not transferable. The internal tester list
-contains `teksura@gmail.com` and `tibor.girschele@gmail.com`; the tester invite
-remains `https://play.google.com/apps/internaltest/4700678198570024687`.
-Neither the tester roster nor the invite proves that preview.6 has been uploaded,
-processed, installed, or promoted.
+approval is current. Approval for preview.3, preview.6, or any other artifact is
+not transferable. The internal tester list contains two approved accounts; the
+tester invite remains
+`https://play.google.com/apps/internaltest/4700678198570024687`. Neither the
+tester roster nor the invite proves that preview.6 has been uploaded, processed,
+installed, or promoted.
 
 ## Historical preview.5 release evidence (2026-08-12)
 

@@ -53,8 +53,11 @@ players can open them in any browser.
 Account deletion is native. Open **More → Account & privacy → Delete account**,
 choose whether runners stored on the device should also be removed, enter the
 exact confirmation phrase, and confirm once more. Chummer deletes server data
-first; only a valid deletion receipt clears the device grant and local account
-cache. The public explanation remains available at
+first; only a receipt covering every required first-party data plane clears the
+device grant and local account cache. The app shows a copyable content-free
+receipt digest, while backup retention and whole-account policy claims remain
+review-gated until the public policy says they are production-proven. The
+public explanation remains available at
 `https://chummer.run/account/delete`.
 
 Chronicle Studio is native too. It creates versioned drafts, saves a reviewed

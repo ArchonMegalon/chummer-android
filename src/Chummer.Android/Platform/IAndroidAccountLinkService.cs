@@ -24,8 +24,17 @@ public static class AndroidAccountErasureConfirmation
     public const string RequiredPhrase = "ERASE MY CHUMMER ACCOUNT";
 }
 
+public sealed record AndroidAccountErasureComponentReceipt(
+    string Component,
+    bool Completed,
+    int RecordsRemoved,
+    string ReceiptSha256);
+
 public sealed record AndroidAccountErasureReceipt(
     bool Erased,
+    string SubjectKeySha256,
+    string? UserKeySha256,
+    IReadOnlyList<AndroidAccountErasureComponentReceipt> Components,
     DateTimeOffset ErasedAtUtc,
     string ReceiptSha256);
 

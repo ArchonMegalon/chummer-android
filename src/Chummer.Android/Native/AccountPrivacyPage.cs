@@ -61,7 +61,7 @@ public sealed class AccountPrivacyPage : NativePageBase
         _body.Add(NativeTheme.NavigationRow(
             "Delete account",
             Coordinator.Account.IsLinked
-                ? "Permanently remove your Chummer account"
+                ? "Start verified account deletion"
                 : "Link this device before deletion",
             async () => await Navigation.PushAsync(new AccountDeletionPage(Coordinator))));
     }
@@ -84,7 +84,7 @@ public sealed class AccountDeletionInfoPage : ContentPage
         process.Add(NativeTheme.Body(
             "Chummer finishes the online deletion first. This app clears its linked grant and local data only after the server returns a deletion receipt."));
         process.Add(NativeTheme.Body(
-            "Active data is removed within 24 hours. Chummer-controlled backups age out within 30 days. Content-free deletion markers last 35 days; a content-free receipt may remain for 365 days.",
+            "Hosted Build backup retention, deletion replay, and whole-account erasure limits are still under review. Check the public deletion page for the current policy before you continue.",
             NativeTheme.Muted));
 
         Uri publicDeletion = ChummerWebRoutes.Resolve(ChummerWebRoutes.AccountDeletion);
@@ -135,7 +135,7 @@ public sealed class AccountDeletionPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow("Permanent"));
         _body.Add(NativeTheme.Title("Delete account"));
         _body.Add(NativeTheme.Body(
-            "This removes your online runners, memberships, groups you own, campaign data, support messages, and linked devices."));
+            "This starts Chummer's verified deletion transaction for online runners, memberships, groups you own, campaign data, support messages, and linked devices."));
 
         if (!Coordinator.Account.IsLinked)
         {
@@ -185,7 +185,7 @@ public sealed class AccountDeletionPage : NativePageBase
         {
             bool final = await DisplayAlertAsync(
                 "Delete your account?",
-                "This cannot be undone.",
+                "Chummer clears this device only after every server-owned data plane returns a completed receipt. This cannot be undone.",
                 "Delete",
                 "Cancel");
             if (!final)
@@ -199,10 +199,19 @@ public sealed class AccountDeletionPage : NativePageBase
             try
             {
                 NativeAccountErasureResult result = await Coordinator.EraseAccountAsync(removeLocal.IsToggled);
+                string receiptLabel = result.Receipt.ReceiptSha256[..12].ToLowerInvariant();
                 string message = result.LocalRunnersRemoved
-                    ? "Your account and this device are cleared."
-                    : "Your account is deleted, but some runners remain on this device.";
-                await DisplayAlertAsync("Account deleted", message, "Done");
+                    ? $"Active account data and this device are cleared. Receipt {receiptLabel}…"
+                    : $"Active account data is deleted, but some runners remain on this device. Receipt {receiptLabel}…";
+                bool copyReceipt = await DisplayAlertAsync(
+                    "Deletion completed",
+                    message,
+                    "Copy receipt",
+                    "Done");
+                if (copyReceipt)
+                {
+                    await Clipboard.Default.SetTextAsync(result.Receipt.ReceiptSha256);
+                }
                 await Navigation.PopToRootAsync();
             }
             catch (Exception ex)
