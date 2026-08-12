@@ -267,6 +267,12 @@ Listing. Repository listing copy, graphics, screenshots, and the Data safety
 worksheet are inputs, not evidence that any Console declaration has been
 submitted or accepted.
 
+The public `https://chummer.run/privacy` and
+`https://chummer.run/account/delete` routes resolve, but both currently disclose
+that Hosted Build backup retention, lineage/tombstone retention, deletion replay,
+and whole-account erasure remain under review. They are not production-policy
+evidence until that owner policy is approved and the live routes are refreshed.
+
 Do not widen the existing exact-artifact approval to complete these declarations,
 change tester rosters, begin closed testing, or request production access. Each
 requires current production-route evidence and an explicit account-side action.
