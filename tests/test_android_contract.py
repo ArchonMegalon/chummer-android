@@ -262,8 +262,7 @@ class AndroidContractTests(unittest.TestCase):
         coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
         service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
         controller = (
-            WORKSPACE
-            / "chummer.run-services"
+            RUN_SERVICES
             / "Chummer.Run.Api"
             / "Controllers"
             / "AndroidLinkedCampaignController.cs"
@@ -278,16 +277,22 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('"Add finished export"', campaign)
         self.assertIn('"Approve publication"', campaign)
         self.assertIn('"Approve external sharing"', campaign)
+        self.assertIn('"Save operator handoff"', campaign)
         self.assertIn('"Finished books shared with this group."', campaign)
         self.assertIn("else if (!string.IsNullOrWhiteSpace(selected.ExportFormat))", campaign)
         self.assertIn("SpoilerReviewConfirmed", campaign + service + controller)
         self.assertIn("UploadApprovedAtUtc", service + controller)
         self.assertNotIn('"approve_handoff"', campaign + controller)
         self.assertIn("SaveChroniclePacketAsync", coordinator)
+        self.assertIn("SaveChronicleHandoffAsync", coordinator)
+        self.assertIn("DownloadChronicleHandoffAsync", service)
         self.assertIn("AdvanceChronicleAsync", coordinator)
         self.assertIn("/chronicles/create", service)
+        self.assertIn("/handoff", service)
         self.assertIn("/chronicles/{chronicleProjectId}/actions", controller)
         self.assertIn("CryptographicOperations.ZeroMemory(packet)", controller)
+        self.assertIn("GetChronicleOperatorHandoff", controller)
+        self.assertIn("CryptographicOperations.ZeroMemory(handoff)", controller)
         self.assertNotIn("WebView", campaign + coordinator + service)
 
     def test_runner_output_is_routed_to_native_android(self) -> None:

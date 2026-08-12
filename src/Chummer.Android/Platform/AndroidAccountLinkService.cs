@@ -552,6 +552,21 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         return new AndroidChroniclePacket(packet.FileName, packet.MediaType, packet.ContentBase64, packet.Sha256);
     }
 
+    public async Task<AndroidChroniclePacket> DownloadChronicleHandoffAsync(
+        string groupId,
+        string chronicleProjectId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(chronicleProjectId);
+        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        LinkedChroniclePacketResponse handoff = await SendLinkedAsync<LinkedChroniclePacketResponse>(
+            $"/api/v1/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles/{Uri.EscapeDataString(chronicleProjectId)}/handoff",
+            grant,
+            cancellationToken);
+        return new AndroidChroniclePacket(handoff.FileName, handoff.MediaType, handoff.ContentBase64, handoff.Sha256);
+    }
+
     private static AndroidLinkedGroup ToLinkedGroup(LinkedGroupDto group)
         => new(
             group.GroupId,

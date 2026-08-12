@@ -183,4 +183,9 @@ public interface IAndroidAccountLinkService
         string groupId,
         string chronicleProjectId,
         CancellationToken cancellationToken = default);
+
+    Task<AndroidChroniclePacket> DownloadChronicleHandoffAsync(
+        string groupId,
+        string chronicleProjectId,
+        CancellationToken cancellationToken = default);
 }
