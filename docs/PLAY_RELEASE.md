@@ -123,6 +123,12 @@ built, inspected, device-tested, and sealed from the merged source before it
 can replace preview.4. Play upload remains closed until the Google-enforced
 `2026-08-14T03:29:49Z` cooldown ends.
 
+Chronicle Studio also saves a machine-readable operator handoff next to the
+reviewed Markdown source packet. The handoff binds the source digest, provider,
+current approvals, and exact credit ceiling. It contains no source text or
+runner roster, never authorizes unattended automation, publication, or an
+external send, and remains Chummer-owned evidence rather than provider truth.
+
 ## Historical preview.4 release evidence (2026-08-12)
 
 The signed preview.4 candidate was built from source commit

@@ -472,6 +472,18 @@ public sealed class RunnerSessionCoordinator : IDisposable
         await SaveBase64Async(packet.FileName, packet.MediaType, packet.ContentBase64, cancellationToken);
     }
 
+    public async Task SaveChronicleHandoffAsync(
+        AndroidLinkedGroup group,
+        AndroidChronicleProject project,
+        CancellationToken cancellationToken = default)
+    {
+        AndroidChroniclePacket handoff = await _account.DownloadChronicleHandoffAsync(
+            group.GroupId,
+            project.ChronicleProjectId,
+            cancellationToken);
+        await SaveBase64Async(handoff.FileName, handoff.MediaType, handoff.ContentBase64, cancellationToken);
+    }
+
     public NativePlaySnapshot RollDice(int pool)
     {
         pool = Math.Clamp(pool, 1, 100);

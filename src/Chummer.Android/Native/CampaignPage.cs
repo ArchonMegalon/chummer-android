@@ -265,6 +265,9 @@ public sealed class CampaignPage : NativePageBase
             Button packet = NativeTheme.SecondaryButton("Save source packet");
             packet.Clicked += async (_, _) => await RunAsync(() => Coordinator.SaveChroniclePacketAsync(group, project));
             studio.Add(packet);
+            Button handoff = NativeTheme.SecondaryButton("Save operator handoff");
+            handoff.Clicked += async (_, _) => await RunAsync(() => Coordinator.SaveChronicleHandoffAsync(group, project));
+            studio.Add(handoff);
         }
 
         if (project.Status is "upload_approved" or "handoff_ready")
