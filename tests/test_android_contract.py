@@ -239,7 +239,7 @@ class AndroidContractTests(unittest.TestCase):
         routes = (PROJECT / "Platform" / "ChummerWebRoutes.cs").read_text(encoding="utf-8")
         campaign = (PROJECT / "Native" / "CampaignPage.cs").read_text(encoding="utf-8")
         public_controller = (
-            WORKSPACE / "chummer.run-services" / "Chummer.Run.Api" / "Controllers" / "PublicLandingController.cs"
+            RUN_SERVICES / "Chummer.Run.Api" / "Controllers" / "PublicLandingController.cs"
         ).read_text(encoding="utf-8")
         self.assertIn('AccountAccess = "/account/access"', routes)
         self.assertNotIn("/account/devices", routes + campaign)
