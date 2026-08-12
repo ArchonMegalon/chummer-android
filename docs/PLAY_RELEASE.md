@@ -104,7 +104,7 @@ A locally signed AAB is not publication. Publication requires a Chummer-scoped
 Play Console session or service account. Memorial or PropertyQuarry browser
 sessions and app identities must never be reused for Chummer.
 
-## Current preview.5 source
+## Sealed preview.5 internal candidate (2026-08-12)
 
 **More → Account & privacy** is now available whether or not the device is
 linked. Unlinked users get a native explanation and a direct link-account
@@ -118,10 +118,29 @@ transaction. Device grants, linked data, the Play cache, and optionally local
 runners are cleared only after an authenticated server receipt. An unlinked
 device fails closed before confirmation controls are shown.
 
-This source is version code 5 (`0.1.0-preview.5`). Its signed candidate must be
-built, inspected, device-tested, and sealed from the merged source before it
-can replace preview.4. Play upload remains closed until the Google-enforced
-`2026-08-14T03:29:49Z` cooldown ends.
+This source is version code 5 (`0.1.0-preview.5`). The exact signed internal-test
+candidate was built from merged source commit
+`26fee7af890a91dc67d158be64cc9ecc846c8170` and is sealed at
+`artifacts/chummer-android-0.1.0-preview.5-upload.aab`. Its SHA-256 is
+`a2cf53038b299ea8ad391201a9a3ded2be70650602d1abede5c1e24e2f83d63e`
+and its size is 21,616,129 bytes. The signer matches the registered replacement
+upload certificate:
+`D9:C4:B6:35:12:15:44:D5:52:2A:BF:1E:C2:DF:DA:3C:19:38:AA:B9:3D:67:26:BB:93:C9:87:1E:C9:ED:1D:15`.
+
+All 31 Android contracts, the platform-neutral Release compile gate, arm64
+Release publish, bundletool validation, structural inspection, and signature
+verification pass. A separately signed x64 Release APK from the same source was
+installed on an accelerated API 36 emulator. The clean journey covered Home →
+New runner, Android picker controls, native Play, native Campaign, More →
+Account & privacy, and the native deletion explanation. Chummer remained the
+top resumed activity, and no Chummer crash, ANR, or process exit was recorded.
+
+Preview.5 is the sole next internal candidate and supersedes preview.4 and the
+approved-but-rejected preview.3 bundle. It is authorized only for the existing
+internal-testing track and its two selected testers after the remaining factual
+gates are rechecked. Play upload remains closed until the Google-enforced
+`2026-08-14T03:29:49Z` cooldown ends. Production rollout and public announcement
+remain outside this candidate's authority.
 
 Chronicle Studio also saves a machine-readable operator handoff next to the
 reviewed Markdown source packet. The handoff binds the source digest, provider,
