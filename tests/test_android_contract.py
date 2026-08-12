@@ -54,8 +54,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("<ApplicationId>com.myexternalbrain.chummer</ApplicationId>", project)
         self.assertIn("<TargetSdkVersion>36</TargetSdkVersion>", project)
         self.assertIn("<AndroidMinSdkVersion>24</AndroidMinSdkVersion>", project)
-        self.assertIn("<ApplicationDisplayVersion>0.1.0-preview.5</ApplicationDisplayVersion>", project)
-        self.assertIn("<ApplicationVersion>5</ApplicationVersion>", project)
+        self.assertIn("<ApplicationDisplayVersion>0.1.0-preview.6</ApplicationDisplayVersion>", project)
+        self.assertIn("<ApplicationVersion>6</ApplicationVersion>", project)
         self.assertIn("<AndroidPackageFormats Condition=\"'$(Configuration)' == 'Release'\">aab</AndroidPackageFormats>", project)
         self.assertIn('<ChummerDesktopRuntimeIdentifiers Condition="\'$(ChummerDesktopRuntimeIdentifiers)\' == \'\'">android-arm64;android-x64</ChummerDesktopRuntimeIdentifiers>', project)
         self.assertIn("<EmbedAssembliesIntoApk Condition=\"'$(Configuration)' == 'Debug'\">true</EmbedAssembliesIntoApk>", project)
@@ -166,8 +166,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("More → Account & privacy → Delete account", data_safety + release)
         self.assertIn("https://chummer.run/account/delete", data_safety + release)
         normalized_release = re.sub(r"\s+", " ", release)
-        self.assertIn("version code 5 (`0.1.0-preview.5`)", normalized_release)
-        self.assertIn("superseded by preview.5", normalized_release)
+        self.assertIn("version code 6 (`0.1.0-preview.6`)", normalized_release)
+        self.assertIn("supersedes preview.5", normalized_release)
 
         more_account = more[more.index("private void AddAccount()"):more.index("private void AddApp()")]
         linked_branch = more_account.index("if (Coordinator.Account.IsLinked)")
@@ -455,7 +455,7 @@ class AndroidContractTests(unittest.TestCase):
         spec.loader.exec_module(module)
 
         self.assertEqual(
-            ("0.1.0-preview.5", "5"),
+            ("0.1.0-preview.6", "6"),
             module.read_project_version(PROJECT / "Chummer.Android.csproj"),
         )
 
@@ -464,7 +464,7 @@ class AndroidContractTests(unittest.TestCase):
         title = (listing / "title.txt").read_text(encoding="utf-8").strip()
         short_description = (listing / "short-description.txt").read_text(encoding="utf-8").strip()
         full_description = (listing / "full-description.txt").read_text(encoding="utf-8").strip()
-        release_notes = (listing / "release-notes-5.txt").read_text(encoding="utf-8").strip()
+        release_notes = (listing / "release-notes-6.txt").read_text(encoding="utf-8").strip()
         self.assertLessEqual(len(title), 30)
         self.assertLessEqual(len(short_description), 80)
         self.assertLessEqual(len(full_description), 4000)

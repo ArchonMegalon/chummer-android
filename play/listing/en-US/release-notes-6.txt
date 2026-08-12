@@ -1,0 +1,1 @@
+Account linking now recovers cleanly from expired or interrupted approvals, and group invite links are checked more strictly. Native Play, Campaign, Chronicle Studio, privacy, and runner tools stay inside Chummer.
