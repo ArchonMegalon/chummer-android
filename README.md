@@ -61,13 +61,15 @@ Chronicle Studio is native too. It creates versioned drafts, saves a reviewed
 source packet, records the external AIWriteBook project and finished export,
 and keeps source, upload, generation, outline, publication, and external-sharing
 approvals separate. Consent, spoiler review, redaction review, and source rights
-are independent checks. The app never spends provider credits, uploads source
+are independent checks. A machine-readable operator handoff carries only the
+source digest, approvals, and exact credit ceiling; source text and runner names
+remain outside it. The app never spends provider credits, uploads source
 material, publishes, or sends anything on a button's behalf.
 
 Desktop window operations become document/task tabs. Desktop file dialogs use
 Android's document picker. Printing uses Android Print Framework. Play-installed
 copies check for flexible in-app updates on launch and resume; sideloaded copies
-open the verified Google Play listing.
+stay inside Chummer and explain that updates arrive through Google Play.
 
 ## Local build
 

@@ -277,16 +277,16 @@ privacy navigation.
   reset upload certificate is not valid for bundle uploads until
   `2026-08-14T03:29:49Z`. The rejected bundle was removed and the empty draft
   discarded. Read-back showed version code 1 still active, version code 3 not
-  present in the bundle library, and the one-member `Chummer internal` tester
-  list unchanged. Retry the same frozen bytes after that timestamp; do not
-  rebuild merely to retry. The existing tester invite remains
-  `https://play.google.com/apps/internaltest/4700678198570024687`, but it still
-  serves preview.1 until Play accepts and activates preview.3.
+  present in the bundle library, and the then one-member `Chummer internal`
+  tester list unchanged. That preview.3 retry instruction is now superseded:
+  preview.3 must not be retried or uploaded. The existing tester invite remains
+  `https://play.google.com/apps/internaltest/4700678198570024687`; it serves
+  preview.1 until a newer exact candidate is accepted and activated.
 
 ## Play account readiness (read-only audit, 2026-08-12)
 
-The exact preview.3 retry is independent of the wider store setup, but a public
-release is not. The Play dashboard currently reports:
+The historical preview.3 retry was independent of the wider store setup, but a
+public release is not. The Play dashboard audit at that time reported:
 
 - app state `Draft app` and production `Inactive`;
 - temporary tester-facing name
