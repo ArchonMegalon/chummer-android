@@ -20,6 +20,10 @@ public sealed record NativePlaySnapshot(
     public static NativePlaySnapshot Empty { get; } = new(0, 0, 6, [], 0, false, string.Empty);
 }
 
+public sealed record NativeAccountErasureResult(
+    AndroidAccountErasureReceipt Receipt,
+    bool LocalRunnersRemoved);
+
 public sealed class RunnerSessionCoordinator : IDisposable
 {
     private const string SelectedGroupPreferenceKey = "chummer.android.selected-group.v1";
@@ -267,6 +271,50 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     public Task OpenAccountAsync(CancellationToken cancellationToken = default)
         => _account.OpenAccountAsync(cancellationToken);
+
+    public Task OpenAccountDeletionInfoAsync()
+        => _system.OpenUriAsync(ChummerWebRoutes.Resolve(ChummerWebRoutes.AccountDeletion));
+
+    public async Task<NativeAccountErasureResult> EraseAccountAsync(
+        bool removeLocalRunners,
+        CancellationToken cancellationToken = default)
+    {
+        OpenWorkspaceState[] openWorkspaces = State.OpenWorkspaces.ToArray();
+        AndroidLinkedGroup[] linkedGroups = _groups.ToArray();
+        AndroidAccountErasureReceipt receipt = await _account.EraseAccountAsync(
+            AndroidAccountErasureConfirmation.RequiredPhrase,
+            cancellationToken);
+
+        bool localRunnersRemoved = true;
+        if (removeLocalRunners)
+        {
+            foreach (OpenWorkspaceState workspace in openWorkspaces)
+            {
+                try
+                {
+                    await _presenter.DeleteWorkspaceAsync(workspace.Id, confirmed: true, ct: cancellationToken);
+                }
+                catch
+                {
+                    localRunnersRemoved = false;
+                }
+            }
+
+            ClearPlayPreferences(openWorkspaces, linkedGroups);
+        }
+
+        Preferences.Default.Remove(SelectedGroupPreferenceKey);
+        _onlineCharacters = [];
+        _groups = [];
+        _chronicles = [];
+        _play = NativePlaySnapshot.Empty;
+        _notice = localRunnersRemoved
+            ? "Account deleted."
+            : "Account deleted. Some runners could not be removed from this device.";
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+        return new NativeAccountErasureResult(receipt, localRunnersRemoved);
+    }
 
     public Task<AndroidUpdateCheckResult> CheckForUpdatesAsync()
         => _system.CheckForUpdatesAsync();
@@ -604,6 +652,32 @@ public sealed class RunnerSessionCoordinator : IDisposable
         Preferences.Default.Set(PlayPreferenceKey("stun"), _play.StunDamage);
         Preferences.Default.Set(PlayPreferenceKey("pool"), _play.LastPool);
         Preferences.Default.Set(PlayPreferenceKey("notes"), _play.Notes);
+    }
+
+    private static void ClearPlayPreferences(
+        IReadOnlyList<OpenWorkspaceState> workspaces,
+        IReadOnlyList<AndroidLinkedGroup> groups)
+    {
+        string[] workspaceIds = workspaces
+            .Select(static workspace => workspace.Id.Value)
+            .Append("none")
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        string[] groupIds = groups
+            .Select(static group => group.GroupId)
+            .Append("solo")
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        foreach (string workspaceId in workspaceIds)
+        {
+            foreach (string groupId in groupIds)
+            {
+                foreach (string suffix in new[] { "physical", "stun", "pool", "notes" })
+                {
+                    Preferences.Default.Remove($"chummer.android.play.{workspaceId}.{groupId}.{suffix}");
+                }
+            }
+        }
     }
 
     private void OnPresenterStateChanged(object? sender, EventArgs e)

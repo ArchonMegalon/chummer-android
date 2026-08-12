@@ -25,16 +25,18 @@ service routes before submission.
 | Assistant prompt/context and generated response | User invokes an optional assistant feature | Provide the requested assistant result | Chummer service/provider lane; encrypted in transit |
 | Support report and user-selected diagnostics | User explicitly submits a support case | Support and crash investigation | Chummer support service; encrypted in transit |
 
-Public help, community, account, support, and live-play links can open a browser
-or Chummer web surface. Their web disclosures must be included in the final
-Play answer when the app initiates those flows.
+Public help and policy links can open a browser. Account deletion itself stays
+inside the native app; `https://chummer.run/account/delete` is the matching
+public explanation and browser entry required by Play.
 
 ## Play Console answer posture
 
 - Data is encrypted in transit for network flows.
-- Local deletion is available through workspace/document controls and Android
-  app-data removal. Account deletion must link to the production Chummer
-  account-deletion route before production review.
+- **More → Account & privacy → Delete account** submits the linked-device grant
+  and exact confirmation to Chummer. Credentials and cached account data are
+  cleared only after the server returns an authenticated deletion receipt.
+- The user can also remove app-private runners stored on that device. Public
+  deletion information is available at `https://chummer.run/account/delete`.
 - Do not answer “no data collected” merely because there is no analytics SDK;
   optional account, sync, assistant, and support flows can transmit user data.
 - Complete the exact Play data-type, purpose, required/optional, sharing, and

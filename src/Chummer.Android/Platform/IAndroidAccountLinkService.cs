@@ -19,6 +19,16 @@ public sealed record AndroidAccountLinkSnapshot(
     public bool IsPending => Status == AndroidAccountLinkStatus.Pending;
 }
 
+public static class AndroidAccountErasureConfirmation
+{
+    public const string RequiredPhrase = "ERASE MY CHUMMER ACCOUNT";
+}
+
+public sealed record AndroidAccountErasureReceipt(
+    bool Erased,
+    DateTimeOffset ErasedAtUtc,
+    string ReceiptSha256);
+
 public sealed record AndroidOnlineCharacter(
     string WorkspaceId,
     string RulesetId,
@@ -122,6 +132,10 @@ public interface IAndroidAccountLinkService
     Task UnlinkAsync(CancellationToken cancellationToken = default);
 
     Task OpenAccountAsync(CancellationToken cancellationToken = default);
+
+    Task<AndroidAccountErasureReceipt> EraseAccountAsync(
+        string confirmation,
+        CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<AndroidOnlineCharacter>> ListOnlineCharactersAsync(CancellationToken cancellationToken = default);
 

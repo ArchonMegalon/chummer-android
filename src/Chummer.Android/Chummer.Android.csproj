@@ -24,6 +24,7 @@
     <AndroidEnableProfiledAot Condition="'$(Configuration)' == 'Release'">true</AndroidEnableProfiledAot>
     <ChummerDesktopRuntimeIdentifiers Condition="'$(ChummerDesktopRuntimeIdentifiers)' == ''">android-arm64;android-x64</ChummerDesktopRuntimeIdentifiers>
     <AndroidKeyStore Condition="'$(AndroidSigningKeyStore)' != ''">true</AndroidKeyStore>
+    <ChummerPresentationRoot Condition="'$(ChummerPresentationRoot)' == ''">../../../chummer-presentation</ChummerPresentationRoot>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(AndroidSigningKeyStore)' != ''">
@@ -55,9 +56,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../../chummer-presentation/Chummer.Desktop.Runtime/Chummer.Desktop.Runtime.csproj"
+    <ProjectReference Include="$(ChummerPresentationRoot)/Chummer.Desktop.Runtime/Chummer.Desktop.Runtime.csproj"
                       AdditionalProperties="RuntimeIdentifier=;RuntimeIdentifiers=" />
-    <ProjectReference Include="../../../chummer-presentation/Chummer.Presentation/Chummer.Presentation.csproj"
+    <ProjectReference Include="$(ChummerPresentationRoot)/Chummer.Presentation/Chummer.Presentation.csproj"
                       AdditionalProperties="RuntimeIdentifier=;RuntimeIdentifiers=" />
   </ItemGroup>
 
