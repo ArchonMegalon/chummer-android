@@ -1,0 +1,1 @@
+Account controls now stay inside Chummer. Linked users can review account privacy, unlink this device, or delete their Chummer account with clear confirmation. Play, groups, invites, and Chronicle Studio remain native.
