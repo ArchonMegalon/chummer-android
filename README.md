@@ -78,10 +78,15 @@ Java SDK selected by that workload. The repository never stores signing
 material.
 
 ```sh
-dotnet restore Chummer.Android.slnx
-dotnet build Chummer.Android.slnx -c Debug
+scripts/build-debug.sh
 python3 -m unittest discover -s tests -v
 ```
+
+The debug build defaults to an arm64 device package. For an x64 emulator, run
+`CHUMMER_ANDROID_RUNTIME_ID=android-x64 scripts/build-debug.sh`. The wrapper
+keeps the selected Android runtime aligned across the MAUI app and the shared
+`net10.0` engine graph; a bare multi-runtime solution build cannot preserve that
+restore boundary.
 
 When Android SDK 36 is not available, the platform-neutral native compile gate
 still checks all Shell/pages and shared-presenter calls without an Android SDK:

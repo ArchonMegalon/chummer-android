@@ -370,6 +370,7 @@ class AndroidContractTests(unittest.TestCase):
 
     def test_release_automation_is_fail_closed(self) -> None:
         build = (REPO / "scripts" / "build-release.sh").read_text(encoding="utf-8")
+        debug_build = (REPO / "scripts" / "build-debug.sh").read_text(encoding="utf-8")
         bootstrap = (REPO / "scripts" / "bootstrap-build-environment.sh").read_text(encoding="utf-8")
         provision = (REPO / "scripts" / "provision-upload-key.sh").read_text(encoding="utf-8")
         recovery = (REPO / "scripts" / "import-signing-recovery.py").read_text(encoding="utf-8")
@@ -377,6 +378,13 @@ class AndroidContractTests(unittest.TestCase):
         inspect = (REPO / "scripts" / "inspect_aab.py").read_text(encoding="utf-8")
         version_reader = (REPO / "scripts" / "read_android_version.py").read_text(encoding="utf-8")
         self.assertIn("set -euo pipefail", build)
+        self.assertIn("set -euo pipefail", debug_build)
+        self.assertIn('runtime_identifier="${CHUMMER_ANDROID_RUNTIME_ID:-android-arm64}"', debug_build)
+        self.assertIn('android-arm64|android-x64', debug_build)
+        self.assertIn('-p:ChummerDesktopRuntimeIdentifiers="$runtime_identifier"', debug_build)
+        self.assertIn('--runtime "$runtime_identifier"', debug_build)
+        self.assertIn('--no-restore', debug_build)
+        self.assertIn('compile_check_path=', debug_build)
         self.assertIn("AndroidSigningKeyStore", build)
         self.assertNotIn("ChummerAndroidSigningStorePass", build)
         self.assertIn("CHUMMER_ANDROID_SIGNING_DIR", provision)
