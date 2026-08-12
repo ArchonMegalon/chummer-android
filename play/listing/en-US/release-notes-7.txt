@@ -1,0 +1,1 @@
+Account deletion now checks the complete server receipt before clearing your device, offers a copyable receipt digest, and keeps retention wording aligned with the current public privacy policy. Native Play, Campaign, Chronicle Studio, account linking, and runner tools remain inside Chummer.

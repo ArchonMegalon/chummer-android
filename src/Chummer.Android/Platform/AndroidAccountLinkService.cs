@@ -27,6 +27,14 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
     private static readonly TimeSpan PendingLifetime = TimeSpan.FromMinutes(18);
     private static readonly TimeSpan RefreshWindow = TimeSpan.FromDays(7);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly HashSet<string> RequiredErasureComponents = new(StringComparer.Ordinal)
+    {
+        "hosted_build_workspaces",
+        "support",
+        "first_party_auxiliary_stores",
+        "community",
+        "identity"
+    };
 
     private readonly HttpClient _httpClient;
     private readonly IAndroidSystemService _systemService;
@@ -378,9 +386,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                     grant.AccessToken,
                     AndroidAccountErasureConfirmation.RequiredPhrase),
                 cancellationToken);
-            if (!receipt.Erased
-                || receipt.ReceiptSha256.Length != 64
-                || receipt.ReceiptSha256.Any(static value => !Uri.IsHexDigit(value)))
+            if (!IsCompleteAccountErasureReceipt(receipt))
             {
                 throw new InvalidDataException("Chummer returned an invalid deletion receipt.");
             }
@@ -604,6 +610,37 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             group.RunnerHandle,
             group.Members.Select(static member => new AndroidLinkedGroupMember(member.Role, member.RunnerHandle)).ToArray(),
             group.UpdatedAtUtc);
+
+    private static bool IsCompleteAccountErasureReceipt(AndroidAccountErasureReceipt receipt)
+    {
+        if (!receipt.Erased
+            || !IsSha256(receipt.SubjectKeySha256)
+            || (receipt.UserKeySha256 is not null && !IsSha256(receipt.UserKeySha256))
+            || !IsSha256(receipt.ReceiptSha256)
+            || receipt.Components.Count != RequiredErasureComponents.Count)
+        {
+            return false;
+        }
+
+        HashSet<string> completed = new(StringComparer.Ordinal);
+        foreach (AndroidAccountErasureComponentReceipt component in receipt.Components)
+        {
+            if (!component.Completed
+                || component.RecordsRemoved < 0
+                || !RequiredErasureComponents.Contains(component.Component)
+                || !completed.Add(component.Component)
+                || !IsSha256(component.ReceiptSha256))
+            {
+                return false;
+            }
+        }
+
+        return completed.SetEquals(RequiredErasureComponents);
+    }
+
+    private static bool IsSha256(string? value)
+        => value is { Length: 64 }
+            && value.All(static character => Uri.IsHexDigit(character));
 
     private static LinkedChronicleDraftRequest ToChronicleDraftRequest(
         GrantBearerRequest grant,
