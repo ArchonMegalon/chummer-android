@@ -25,8 +25,6 @@ public sealed class AndroidSystemService : IAndroidSystemService
 {
     public Task<bool> OpenUriAsync(Uri uri) => Task.FromResult(false);
 
-    public Task<bool> OpenStoreListingAsync() => Task.FromResult(false);
-
     public Task<AndroidUpdateCheckResult> CheckForUpdatesAsync()
         => Task.FromResult(AndroidUpdateCheckResult.Unavailable);
 

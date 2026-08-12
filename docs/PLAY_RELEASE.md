@@ -39,6 +39,20 @@ CHUMMER_ANDROID_SIGNING_DIR=/absolute/private/path \
   scripts/provision-upload-key.sh
 ```
 
+When owner-approved signing custody is restored from EA, import the recovered
+JSON into a new external directory instead of sourcing or unpacking it by hand.
+The importer requires the Play Console fingerprint, validates the custody
+hashes, proves that the PKCS#12 entry contains that certificate, rewrites only
+the local path fields, and never prints the passwords or private key:
+
+```sh
+scripts/import-signing-recovery.py \
+  --bundle /private/recovery/chummer_android_signing.local.json \
+  --target-dir /absolute/private/new-signing-directory \
+  --expected-certificate-sha256 AA:BB:... \
+  --keytool /absolute/java/bin/keytool
+```
+
 Source the generated environment only in the release shell. The environment file
 uses the four MSBuild property names above, while passwords stay out of process
 arguments and logs. It also binds the public upload certificate so validation can
@@ -191,23 +205,29 @@ sessions and app identities must never be reused for Chummer.
   superseded. It must not be uploaded or described as the current candidate.
 - A fresh arm64 Release AAB from the current native source is now staged at
   `artifacts/chummer-android-0.1.0-preview.3-upload.aab`. SHA-256:
-  `e36083b5c8861d66781585e98d97acd2379db6c53d9824a3cf8c5ffbce781e1a`.
+  `4e73ebb8678b8d11b63e6a5f6a02b2981ab6003403daece60b127c511eaa659c`.
   All 26 Android contracts, pinned bundletool validation, structural inspection,
   and JAR-signature verification pass. The package/version, API 24/36 bounds,
   privacy permissions, app link, modern Back support, and arm64 payload are
   valid. Its signer is the replacement certificate below. Play now recognizes
   that certificate as the active upload key, but this exact bundle remains
   blocked until its SHA-256 is explicitly approved for upload.
+  The candidate also removes the obsolete external Play-listing launcher: Play
+  installs update through the in-app update API, while sideloaded installs keep
+  the explanation inside Chummer. The replacement signer was restored from the
+  hash-verified EA recovery bundle through the fail-closed local importer; no
+  private key or password entered repository history or command output.
 - The Play screenshot set is current-source native UI, not a mockup or retained
   WebView surface. Five phone captures are 1080×2400 and cover Home, Build,
   New runner, Play, and Campaign. Four tablet captures are 1440×2560 and cover
   Home, Build, New runner, and More/native tools. Both sets were captured on
   accelerated API 36 x64 emulator profiles, visually inspected, and pass the
   store-asset dimension contract.
-- The registered preview.2 upload certificate remains
+- The historical preview.2 upload certificate was
   `CB:C5:DF:FF:A0:10:88:A0:55:51:7E:5C:42:0B:EB:25:41:2A:4F:72:53:9B:20:18:D0:4F:F4:EC:DE:A4:03:2F`,
-  but its private key is unavailable. A dedicated replacement upload key was
-  provisioned outside the repository with public SHA-256
+  and is no longer accepted for new uploads. It must not be used for release
+  builds. A dedicated replacement upload key was provisioned outside the
+  repository with public SHA-256
   `D9:C4:B6:35:12:15:44:D5:52:2A:BF:1E:C2:DF:DA:3C:19:38:AA:B9:3D:67:26:BB:93:C9:87:1E:C9:ED:1D:15`.
   Its owner-only recovery bundle is backed up in EA; the recovery table and full
   restore drill pass with 616 logical entries and 9 referenced files. The Play

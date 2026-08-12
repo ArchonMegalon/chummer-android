@@ -12,20 +12,7 @@ namespace Chummer.Android.Platform;
 
 public sealed class AndroidSystemService : IAndroidSystemService
 {
-    private const string PackageId = "com.myexternalbrain.chummer";
-
     public Task<bool> OpenUriAsync(Uri uri) => Launcher.Default.OpenAsync(uri);
-
-    public async Task<bool> OpenStoreListingAsync()
-    {
-        Uri marketUri = new($"market://details?id={PackageId}");
-        if (await Launcher.Default.TryOpenAsync(marketUri))
-        {
-            return true;
-        }
-
-        return await Launcher.Default.OpenAsync(new Uri($"https://play.google.com/store/apps/details?id={PackageId}"));
-    }
 
     public async Task<AndroidUpdateCheckResult> CheckForUpdatesAsync()
     {
