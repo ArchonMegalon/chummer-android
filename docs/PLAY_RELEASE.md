@@ -115,9 +115,46 @@ Preview.7 keeps the native, server-first deletion flow but validates that the
 authenticated receipt covers Hosted Build workspaces, support, first-party
 auxiliary stores, community data, and identity before it clears the device
 grant. It exposes the content-free receipt digest for copying and directs people
-to the public deletion page for the current retention posture. No signed
-preview.7 candidate has been produced yet, so preview.6 is immutable historical
-evidence and must not be uploaded as the next build.
+to the public deletion page for the current retention posture.
+
+The exact signed preview.7 candidate is
+`artifacts/chummer-android-0.1.0-preview.7-upload.aab`. Its SHA-256 is
+`34b6b206b422e439e19e675e9f6ec849ed6b3c64b7db66852fdf3463ee4b509f`
+and its size is 21,734,060 bytes. Its signer matches the registered replacement
+upload certificate:
+`D9:C4:B6:35:12:15:44:D5:52:2A:BF:1E:C2:DF:DA:3C:19:38:AA:B9:3D:67:26:BB:93:C9:87:1E:C9:ED:1D:15`.
+
+The clean input graph is recorded in
+`artifacts/chummer-android-0.1.0-preview.7-source-graph.json`, SHA-256
+`ab0c22f777523dc119b1b5debfcfbcf964dd0fdf28c97e81db81ca661c0317ad`:
+
+- Android `f1fca38aa837cc307be5b7977c330ba978ae749a`;
+- UI `8a383e3a8d81dbfd9cfaa3ab864bd5cc3da50664`;
+- Core `108b898d55af52fe5af18f6ce40efa58ed0d659a`;
+- UI Kit `d51ecd99cf72098d4adc8db0192bff7bf9fd8e61`;
+- Hub `10e1b759896b260c90000381594773b0cf84adfd`;
+- Registry `7b54afec574a9327616c4ad7566da3a7b6b906a5`;
+- Media Factory `415c8163d3d90b1211e4014fef332bdec6d75f73`;
+- Design `159529d8768fa58995db62f080b792bf720759fa`.
+
+All 31 Android contracts pass. The platform-neutral Release gate and API 36 x64
+Debug build completed with zero warnings and zero errors. The signed arm64 AAB
+passed bundletool, package/version/API/permission/privacy/app-link inspection,
+and upload-certificate verification. A clean API 36 emulator install from the
+same source graph passed cold launch and native Home, Build, Play, Campaign,
+More, Account & privacy, and How deletion works navigation. The deletion page
+showed the review-gated Hosted Build limits and public deletion route without
+showing unapproved retention windows. Chummer recorded no fatal exception,
+ANR, or process exit. The emulator produced one System UI ANR under host load;
+that system-process event is excluded from Chummer runtime evidence.
+
+This evidence does not authorize upload and does not claim Play processing,
+tester installation, or rollout. Play upload remains closed until the
+Google-enforced `2026-08-14T03:29:49Z` upload-key cooldown ends and approval for
+this exact SHA-256 is current. Approval for preview.3, preview.6, or any other
+artifact is not transferable. The internal tester list contains two approved
+accounts; the tester invite remains
+`https://play.google.com/apps/internaltest/4700678198570024687`.
 
 ## Historical preview.6 release evidence (2026-08-12)
 
