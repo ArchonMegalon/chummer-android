@@ -1,7 +1,7 @@
-Chummer for Android brings the complete local-first Chummer workbench to phones, tablets, and foldables.
+Chummer for Android brings runner building, campaign tools, and live play to phones, tablets, and foldables.
 
 BUILD AND ADVANCE RUNNERS
-Create, inspect, edit, and advance characters and critters with the same deterministic rules engine used by the desktop client. Work through attributes, skills, qualities, magic, gear, vehicles, contacts, lifestyles, notes, and explain views without giving up the depth of the full workbench.
+Create, inspect, edit, and advance characters and critters with the same rules used by the desktop client. Work through attributes, skills, qualities, magic, gear, vehicles, contacts, lifestyles, notes, and clear rule explanations.
 
 RUN CAMPAIGNS
 Open campaign command, GM runboards, preparation packets, rosters, organizer tools, rule-environment settings, primers, and mission briefings from an adaptive Android workflow.

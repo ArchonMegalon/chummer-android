@@ -1,1 +1,1 @@
-Initial internal-test candidate: one-tap New Runner, polished phone/tablet navigation, full local SR4/SR5/SR6 workbench, campaign command deck, Android Documents import/save, native print and share, accessible status/error states, Play-owned updates, and live-play handoff.
+Initial internal-test candidate: one-tap New Runner, polished phone and tablet navigation, full local SR4/SR5/SR6 runner tools, campaign controls, Android file import and save, native print and share, clear status and error states, Play-owned updates, and live play.

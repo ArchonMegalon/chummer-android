@@ -13,7 +13,7 @@ service routes before submission.
 - Android backup is disabled and cleartext traffic is disabled.
 - Character files selected through Storage Access Framework are read only after
   an explicit user choice. Save destinations are likewise user-selected.
-- Local workbench state is stored in app-private storage.
+- Local app state is stored in app-private storage.
 - No advertising or analytics SDK is included by the Android product head.
 
 ## Data that can cross the device boundary
@@ -21,7 +21,7 @@ service routes before submission.
 | Data | Trigger | Purpose | Handling posture |
 | --- | --- | --- | --- |
 | Account identifiers and device-link state | User opens account/device linking and signs in | Account management and continuity | Chummer service; encrypted in transit |
-| Character or campaign content | User enables sync or invokes a connected workbench operation | Sync, continuity, or requested processing | Chummer service; encrypted in transit |
+| Character or campaign content | User enables sync or uses a connected feature | Sync, continuity, or requested processing | Chummer service; encrypted in transit |
 | Assistant prompt/context and generated response | User invokes an optional assistant feature | Provide the requested assistant result | Chummer service/provider lane; encrypted in transit |
 | Support report and user-selected diagnostics | User explicitly submits a support case | Support and crash investigation | Chummer support service; encrypted in transit |
 

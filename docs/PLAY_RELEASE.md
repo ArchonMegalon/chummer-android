@@ -245,3 +245,28 @@ sessions and app identities must never be reused for Chummer.
   rebuild merely to retry. The existing tester invite remains
   `https://play.google.com/apps/internaltest/4700678198570024687`, but it still
   serves preview.1 until Play accepts and activates preview.3.
+
+## Play account readiness (read-only audit, 2026-08-12)
+
+The exact preview.3 retry is independent of the wider store setup, but a public
+release is not. The Play dashboard currently reports:
+
+- app state `Draft app` and production `Inactive`;
+- temporary tester-facing name
+  `com.myexternalbrain.chummer (unreviewed)`;
+- 0 of 11 app-information and Store Listing tasks complete;
+- closed testing locked until those setup tasks are complete;
+- 0 testers opted in to closed testing;
+- production access requires a published closed-testing release with at least
+  12 opted-in testers continuously participating for at least 14 days.
+
+The 11 setup tasks are privacy policy, sign-in details, ads, content rating,
+target audience, Data safety, government-app declaration, financial-features
+declaration, health declaration, app category/contact details, and Store
+Listing. Repository listing copy, graphics, screenshots, and the Data safety
+worksheet are inputs, not evidence that any Console declaration has been
+submitted or accepted.
+
+Do not widen the existing exact-artifact approval to complete these declarations,
+change tester rosters, begin closed testing, or request production access. Each
+requires current production-route evidence and an explicit account-side action.
