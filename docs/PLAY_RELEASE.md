@@ -104,7 +104,7 @@ A locally signed AAB is not publication. Publication requires a Chummer-scoped
 Play Console session or service account. Memorial or PropertyQuarry browser
 sessions and app identities must never be reused for Chummer.
 
-## Source after the frozen preview.3 bundle
+## Current preview.4 source
 
 The native source now contains **More → Account & privacy → Delete account**.
 It uses the linked-device grant, exact typed confirmation, and a second native
@@ -113,12 +113,12 @@ device grant, linked data, play cache, and optionally device-local runners are
 cleared only after an authenticated server receipt. The matching public route
 is `https://chummer.run/account/delete`.
 
-This change is newer than the frozen version-code-3 AAB with SHA-256
+This source is now version code 4 (`0.1.0-preview.4`) and is newer than the frozen version-code-3 AAB with SHA-256
 `4e73ebb8678b8d11b63e6a5f6a02b2981ab6003403daece60b127c511eaa659c`.
 That exact bundle may be retried only under its existing internal-test approval;
 it does not prove this new deletion UI. The next build containing this source
-must use a higher version code, receive a fresh exact-artifact receipt, and pass
-the account-deletion device journey before it replaces preview.3.
+must receive a fresh exact-artifact receipt and pass the account-deletion device
+journey before it replaces preview.3.
 
 ## Historical preview.1 release evidence (2026-08-08)
 
@@ -167,7 +167,7 @@ the account-deletion device journey before it replaces preview.3.
 - Upload is intentionally pending exact-artifact approval. Rebuilding or
   changing app source invalidates the SHA-256 above and requires a new approval.
 
-## Current preview.3 release evidence (2026-08-12)
+## Frozen preview.3 release evidence (2026-08-12)
 
 - The app source now declares version code 3 (`0.1.0-preview.3`).
 - Release artifact naming and structural validation read that version directly
