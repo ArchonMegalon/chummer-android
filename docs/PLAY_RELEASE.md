@@ -195,8 +195,9 @@ sessions and app identities must never be reused for Chummer.
   All 26 Android contracts, pinned bundletool validation, structural inspection,
   and JAR-signature verification pass. The package/version, API 24/36 bounds,
   privacy permissions, app link, modern Back support, and arm64 payload are
-  valid. Its signer is the replacement certificate below; Play will reject this
-  exact bundle until the upload-key reset is approved.
+  valid. Its signer is the replacement certificate below. Play now recognizes
+  that certificate as the active upload key, but this exact bundle remains
+  blocked until its SHA-256 is explicitly approved for upload.
 - The Play screenshot set is current-source native UI, not a mockup or retained
   WebView surface. Five phone captures are 1080×2400 and cover Home, Build,
   New runner, Play, and Campaign. Four tablet captures are 1440×2560 and cover
@@ -211,6 +212,7 @@ sessions and app identities must never be reused for Chummer.
   Its owner-only recovery bundle is backed up in EA; the recovery table and full
   restore drill pass with 616 logical entries and 9 referenced files. The Play
   Console upload-key reset request was submitted with this replacement
-  certificate after explicit approval and is pending Google's review. No AAB
-  has been uploaded. After Play accepts the reset, explicit approval of the
-  exact signed AAB digest above is still required before any Play upload.
+  certificate after explicit approval. A read-only Console check on 2026-08-12
+  confirmed the reset was accepted and the replacement certificate is active;
+  no pending-reset notice remains. No AAB has been uploaded. Explicit approval
+  of the exact signed AAB digest above is still required before any Play upload.
