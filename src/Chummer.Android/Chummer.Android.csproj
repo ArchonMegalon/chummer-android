@@ -20,9 +20,10 @@
     <EmbedAssembliesIntoApk Condition="'$(Configuration)' == 'Debug'">true</EmbedAssembliesIntoApk>
     <AndroidUseAapt2>true</AndroidUseAapt2>
     <AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>
+    <ChummerAndroidRuntimeIdentifier Condition="'$(ChummerAndroidRuntimeIdentifier)' == ''">android-arm64</ChummerAndroidRuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">$(ChummerAndroidRuntimeIdentifier)</RuntimeIdentifier>
     <AndroidLinkMode Condition="'$(Configuration)' == 'Release'">SdkOnly</AndroidLinkMode>
     <AndroidEnableProfiledAot Condition="'$(Configuration)' == 'Release'">true</AndroidEnableProfiledAot>
-    <ChummerDesktopRuntimeIdentifiers Condition="'$(ChummerDesktopRuntimeIdentifiers)' == ''">android-arm64;android-x64</ChummerDesktopRuntimeIdentifiers>
     <AndroidKeyStore Condition="'$(AndroidSigningKeyStore)' != ''">true</AndroidKeyStore>
     <ChummerPresentationRoot Condition="'$(ChummerPresentationRoot)' == ''">../../../chummer-presentation</ChummerPresentationRoot>
   </PropertyGroup>
@@ -57,9 +58,11 @@
 
   <ItemGroup>
     <ProjectReference Include="$(ChummerPresentationRoot)/Chummer.Desktop.Runtime/Chummer.Desktop.Runtime.csproj"
-                      AdditionalProperties="RuntimeIdentifier=;RuntimeIdentifiers=" />
+                      AdditionalProperties="RuntimeIdentifier=;RuntimeIdentifiers=;SelfContained=false"
+                      GlobalPropertiesToRemove="RuntimeIdentifier;RuntimeIdentifiers;SelfContained" />
     <ProjectReference Include="$(ChummerPresentationRoot)/Chummer.Presentation/Chummer.Presentation.csproj"
-                      AdditionalProperties="RuntimeIdentifier=;RuntimeIdentifiers=" />
+                      AdditionalProperties="RuntimeIdentifier=;RuntimeIdentifiers=;SelfContained=false"
+                      GlobalPropertiesToRemove="RuntimeIdentifier;RuntimeIdentifiers;SelfContained" />
   </ItemGroup>
 
   <ItemGroup>

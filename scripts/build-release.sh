@@ -13,14 +13,22 @@ IFS=$'\t' read -r version_name version_code < <(
 )
 [[ -n "$version_name" && -n "$version_code" ]]
 
+mkdir -p "$repo_dir/artifacts"
+source_graph_path="$repo_dir/artifacts/chummer-android-$version_name-source-graph.json"
+python3 "$repo_dir/scripts/verify_release_source_graph.py" \
+  --android-root "$repo_dir" \
+  --workspace-root "${CHUMMER_COMPLETE_ROOT:-$repo_dir/..}" \
+  --output "$source_graph_path"
+
 python3 -m unittest discover -s "$repo_dir/tests" -v
 
 "$dotnet_command" publish "$project_path" \
   --configuration "$configuration" \
   --framework "$framework" \
-  --runtime "$runtime_id" \
   --self-contained true \
-  -p:ChummerDesktopRuntimeIdentifiers="$runtime_id" \
+  -p:ChummerAndroidRuntimeIdentifier="$runtime_id" \
+  -p:ChummerDesktopRuntimeIdentifiers= \
+  -p:ChummerUseLocalCompatibilityTree=true \
   -p:AndroidPackageFormats=aab
 
 publish_dir="$repo_dir/src/Chummer.Android/bin/$configuration/$framework/$runtime_id/publish"
@@ -38,7 +46,6 @@ if [[ ! -f "$source_aab" ]]; then
   exit 70
 fi
 
-mkdir -p "$repo_dir/artifacts"
 install -m 0644 "$source_aab" "$output_aab"
 
 if [[ -n "${JavaSdkDirectory:-}" && -x "${JavaSdkDirectory}/bin/java" ]]; then
