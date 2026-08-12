@@ -104,7 +104,26 @@ A locally signed AAB is not publication. Publication requires a Chummer-scoped
 Play Console session or service account. Memorial or PropertyQuarry browser
 sessions and app identities must never be reused for Chummer.
 
-## Sealed preview.5 internal candidate (2026-08-12)
+## Current preview.6 source (2026-08-12)
+
+The current app is version code 6 (`0.1.0-preview.6`). It contains the native
+preview.5 feature set plus repeatable API 36 arm64/x64 build automation and
+fail-closed account-link recovery: expired or future-dated link attempts are
+discarded, failed browser launches clear pending state, missing grant expiry is
+treated as invalid, expired server callbacks cannot be reused, and group invite
+links must exactly match the server-issued Chummer code without a query or
+fragment.
+
+This source supersedes preview.5. A signed preview.6 bundle must be built from
+the merged source, inspected, device-tested, hashed, and approved by exact
+SHA-256 before Play upload. Play upload remains closed until the
+Google-enforced `2026-08-14T03:29:49Z` upload-key cooldown ends. The existing
+internal tester list contains `teksura@gmail.com` and `tibor.girschele@gmail.com`;
+the tester invite remains
+`https://play.google.com/apps/internaltest/4700678198570024687`. Neither the
+tester roster nor the invite proves that preview.6 has been uploaded or installed.
+
+## Historical preview.5 release evidence (2026-08-12)
 
 **More → Account & privacy** is now available whether or not the device is
 linked. Unlinked users get a native explanation and a direct link-account
@@ -118,7 +137,7 @@ transaction. Device grants, linked data, the Play cache, and optionally local
 runners are cleared only after an authenticated server receipt. An unlinked
 device fails closed before confirmation controls are shown.
 
-This source is version code 5 (`0.1.0-preview.5`). The exact signed internal-test
+That source is version code 5 (`0.1.0-preview.5`). The exact signed internal-test
 candidate was built from merged source commit
 `26fee7af890a91dc67d158be64cc9ecc846c8170` and is sealed at
 `artifacts/chummer-android-0.1.0-preview.5-upload.aab`. Its SHA-256 is
@@ -135,12 +154,10 @@ New runner, Android picker controls, native Play, native Campaign, More →
 Account & privacy, and the native deletion explanation. Chummer remained the
 top resumed activity, and no Chummer crash, ANR, or process exit was recorded.
 
-Preview.5 is the sole next internal candidate and supersedes preview.4 and the
-approved-but-rejected preview.3 bundle. It is authorized only for the existing
-internal-testing track and its two selected testers after the remaining factual
-gates are rechecked. Play upload remains closed until the Google-enforced
-`2026-08-14T03:29:49Z` cooldown ends. Production rollout and public announcement
-remain outside this candidate's authority.
+Preview.5 superseded preview.4 and the approved-but-rejected preview.3 bundle,
+but is now itself superseded by preview.6 source. It remains immutable evidence
+and must not be uploaded as the current app. Production rollout and public
+announcement remain outside this historical candidate's authority.
 
 Chronicle Studio also saves a machine-readable operator handoff next to the
 reviewed Markdown source packet. The handoff binds the source digest, provider,
