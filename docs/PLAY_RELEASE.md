@@ -209,9 +209,10 @@ sessions and app identities must never be reused for Chummer.
   All 26 Android contracts, pinned bundletool validation, structural inspection,
   and JAR-signature verification pass. The package/version, API 24/36 bounds,
   privacy permissions, app link, modern Back support, and arm64 payload are
-  valid. Its signer is the replacement certificate below. Play now recognizes
-  that certificate as the active upload key, but this exact bundle remains
-  blocked until its SHA-256 is explicitly approved for upload.
+  valid. Its signer is the replacement certificate below. The owner approved
+  this exact SHA-256 for upload to internal testing on 12 August 2026. The
+  approval does not authorize production rollout, a public announcement, a
+  tester-roster change, or a differently hashed artifact.
   The candidate also removes the obsolete external Play-listing launcher: Play
   installs update through the in-app update API, while sideloaded installs keep
   the explanation inside Chummer. The replacement signer was restored from the
@@ -234,5 +235,13 @@ sessions and app identities must never be reused for Chummer.
   Console upload-key reset request was submitted with this replacement
   certificate after explicit approval. A read-only Console check on 2026-08-12
   confirmed the reset was accepted and the replacement certificate is active;
-  no pending-reset notice remains. No AAB has been uploaded. Explicit approval
-  of the exact signed AAB digest above is still required before any Play upload.
+  no pending-reset notice remains. The exact approved AAB was then transferred
+  to the internal-release form, but Play rejected ingestion because a recently
+  reset upload certificate is not valid for bundle uploads until
+  `2026-08-14T03:29:49Z`. The rejected bundle was removed and the empty draft
+  discarded. Read-back showed version code 1 still active, version code 3 not
+  present in the bundle library, and the one-member `Chummer internal` tester
+  list unchanged. Retry the same frozen bytes after that timestamp; do not
+  rebuild merely to retry. The existing tester invite remains
+  `https://play.google.com/apps/internaltest/4700678198570024687`, but it still
+  serves preview.1 until Play accepts and activates preview.3.
