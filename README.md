@@ -23,7 +23,7 @@ document intents, Android Print Framework jobs, and Google Play update flows.
   its roster, copy or share a browser-safe invite link, and manage Chronicle
   Studio drafts and approvals without leaving the app.
 - **More** contains account linking, import/save/export/print, all actions, app
-  version, and Google Play updates.
+  version, Google Play updates, and a focused Account & privacy page.
 
 Complex desktop workflows stay complete without becoming walls of text. Build
 uses Android-style list/detail navigation instead of horizontal web-like tabs;
@@ -49,6 +49,13 @@ perform GM-authorized group mutations. Raw access tokens stay in Android secure
 storage, responses are `no-store`, and the group API does not return member user
 IDs. Invite links remain ordinary `https://chummer.run/groups/join/...` URLs so
 players can open them in any browser.
+
+Account deletion is native. Open **More → Account & privacy → Delete account**,
+choose whether runners stored on the device should also be removed, enter the
+exact confirmation phrase, and confirm once more. Chummer deletes server data
+first; only a valid deletion receipt clears the device grant and local account
+cache. The public explanation remains available at
+`https://chummer.run/account/delete`.
 
 Chronicle Studio is native too. It creates versioned drafts, saves a reviewed
 source packet, records the external AIWriteBook project and finished export,

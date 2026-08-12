@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import struct
 import unittest
@@ -6,7 +7,10 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[1]
-WORKSPACE = REPO.parent
+WORKSPACE = Path(os.environ.get("CHUMMER_COMPLETE_ROOT", REPO.parent)).resolve()
+RUN_SERVICES = Path(
+    os.environ.get("CHUMMER_RUN_SERVICES_ROOT", WORKSPACE / "chummer.run-services")
+).resolve()
 PROJECT = REPO / "src" / "Chummer.Android"
 REGISTRY = WORKSPACE / "chummer-design" / "products" / "chummer" / "ANDROID_WINDOWS_FEATURE_PARITY.yaml"
 WINDOWS_COMMANDS = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Shell" / "DesktopMenuProjectionCatalog.cs"
@@ -62,6 +66,7 @@ class AndroidContractTests(unittest.TestCase):
         activity = (PROJECT / "Platforms" / "Android" / "MainActivity.cs").read_text(encoding="utf-8")
         policy = (PROJECT / "Platforms" / "Android" / "AndroidInAppUpdatePolicy.cs").read_text(encoding="utf-8")
         more = (PROJECT / "Native" / "MorePage.cs").read_text(encoding="utf-8")
+        privacy = (PROJECT / "Native" / "AccountPrivacyPage.cs").read_text(encoding="utf-8")
         self.assertIn('Xamarin.Google.Android.Play.App.Update" Version="2.1.0.19"', project)
         self.assertIn("AppUpdateManagerFactory.Create(this)", activity)
         self.assertIn("IsInstalledByGooglePlay", activity)
@@ -96,6 +101,7 @@ class AndroidContractTests(unittest.TestCase):
         program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
         activity = (PROJECT / "Platforms" / "Android" / "MainActivity.cs").read_text(encoding="utf-8")
         more = (PROJECT / "Native" / "MorePage.cs").read_text(encoding="utf-8")
+        privacy = (PROJECT / "Native" / "AccountPrivacyPage.cs").read_text(encoding="utf-8")
         home = (PROJECT / "Native" / "HomePage.cs").read_text(encoding="utf-8")
         self.assertIn("SecureStorage.Default", service)
         self.assertIn("ExportPkcs8PrivateKey", service)
@@ -112,7 +118,38 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('"/app/install-link"', activity)
         self.assertIn("ResumePendingLinkAsync(uri)", activity)
         self.assertIn("Coordinator.BeginAccountLinkAsync()", home)
-        self.assertIn('"Unlink this device?"', more)
+        self.assertIn('"Unlink this device?"', privacy)
+        self.assertIn('"Account & privacy"', more + privacy)
+
+    def test_account_deletion_is_native_confirmed_and_server_first(self) -> None:
+        service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
+        contract = (PROJECT / "Platform" / "IAndroidAccountLinkService.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        privacy = (PROJECT / "Native" / "AccountPrivacyPage.cs").read_text(encoding="utf-8")
+        hub_contract = (
+            RUN_SERVICES / "Chummer.Run.Contracts" / "AccountErasureContracts.cs"
+        ).read_text(encoding="utf-8")
+        required_phrase = "ERASE MY CHUMMER ACCOUNT"
+
+        self.assertIn(required_phrase, contract)
+        self.assertIn(required_phrase, hub_contract)
+        self.assertIn('"/api/v1/android/linked/account/erase"', service)
+        server_call = coordinator.index("await _account.EraseAccountAsync")
+        local_delete = coordinator.index("await _presenter.DeleteWorkspaceAsync")
+        credentials_clear = service.index("ClearAllCredentials();", service.index("EraseAccountAsync"))
+        response_validation = service.index("if (!receipt.Erased", service.index("EraseAccountAsync"))
+        self.assertLess(server_call, local_delete)
+        self.assertLess(response_validation, credentials_clear)
+        self.assertIn("AccountDeletionPage", privacy)
+        self.assertIn("Remove runners saved on this device", privacy)
+        self.assertIn("This cannot be undone.", privacy)
+        self.assertIn("ChummerWebRoutes.AccountDeletion", coordinator)
+        self.assertIn("Preferences.Default.Remove(SelectedGroupPreferenceKey)", coordinator)
+        data_safety = (REPO / "play" / "data-safety.md").read_text(encoding="utf-8")
+        release = (REPO / "docs" / "PLAY_RELEASE.md").read_text(encoding="utf-8")
+        self.assertIn("More → Account & privacy → Delete account", data_safety + release)
+        self.assertIn("https://chummer.run/account/delete", data_safety + release)
+        self.assertIn("newer than the frozen version-code-3 AAB", release)
 
     def test_android_navigation_is_compact_and_app_owned(self) -> None:
         shell = (PROJECT / "MainShell.cs").read_text(encoding="utf-8")

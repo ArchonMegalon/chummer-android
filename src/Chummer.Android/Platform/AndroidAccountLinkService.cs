@@ -333,6 +333,48 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         await _systemService.OpenUriAsync(ChummerWebRoutes.Resolve(ChummerWebRoutes.AccountAccess));
     }
 
+    public async Task<AndroidAccountErasureReceipt> EraseAccountAsync(
+        string confirmation,
+        CancellationToken cancellationToken = default)
+    {
+        if (!string.Equals(
+                confirmation,
+                AndroidAccountErasureConfirmation.RequiredPhrase,
+                StringComparison.Ordinal))
+        {
+            throw new ArgumentException(
+                $"Enter {AndroidAccountErasureConfirmation.RequiredPhrase} exactly.",
+                nameof(confirmation));
+        }
+
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            GrantBearerRequest grant = await RequireStoredGrantAsync();
+            AndroidAccountErasureReceipt receipt = await SendLinkedAsync<AndroidAccountErasureReceipt>(
+                "/api/v1/android/linked/account/erase",
+                new AccountErasureRequest(
+                    grant.InstallationId,
+                    grant.AccessToken,
+                    AndroidAccountErasureConfirmation.RequiredPhrase),
+                cancellationToken);
+            if (!receipt.Erased
+                || receipt.ReceiptSha256.Length != 64
+                || receipt.ReceiptSha256.Any(static value => !Uri.IsHexDigit(value)))
+            {
+                throw new InvalidDataException("Chummer returned an invalid deletion receipt.");
+            }
+
+            ClearAllCredentials();
+            SetSnapshot(new(AndroidAccountLinkStatus.Unlinked, "Account deleted"));
+            return receipt;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task<IReadOnlyList<AndroidOnlineCharacter>> ListOnlineCharactersAsync(
         CancellationToken cancellationToken = default)
     {
@@ -877,6 +919,10 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
 
     private sealed record InstallationIdentity(string InstallationId, string PrivateKey, string PublicKey);
     private sealed record GrantBearerRequest(string InstallationId, string AccessToken);
+    private sealed record AccountErasureRequest(
+        string InstallationId,
+        string AccessToken,
+        string Confirmation);
     private sealed record PollRequest(
         string InstallationId,
         string HeadId,

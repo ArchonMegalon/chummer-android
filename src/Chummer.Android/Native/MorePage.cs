@@ -66,25 +66,11 @@ public sealed class MorePage : NativePageBase
         {
             Button refresh = NativeTheme.SecondaryButton("Refresh account data");
             refresh.Clicked += async (_, _) => await RunAsync(() => Coordinator.RefreshLinkedDataAsync());
-            Button manage = NativeTheme.SecondaryButton("Manage account");
-            manage.Clicked += async (_, _) => await RunAsync(() => Coordinator.OpenAccountAsync());
-            Button unlink = NativeTheme.SecondaryButton("Unlink this device");
-            unlink.TextColor = NativeTheme.Danger;
-            unlink.Clicked += async (_, _) =>
-            {
-                bool confirmed = await DisplayAlertAsync(
-                    "Unlink this device?",
-                    "Online runners and groups will no longer be available here.",
-                    "Unlink",
-                    "Cancel");
-                if (confirmed)
-                {
-                    await RunAsync(() => Coordinator.UnlinkAccountAsync());
-                }
-            };
             account.Add(refresh);
-            account.Add(manage);
-            account.Add(unlink);
+            account.Add(NativeTheme.NavigationRow(
+                "Account & privacy",
+                "Linked device and deletion",
+                async () => await Navigation.PushAsync(new AccountPrivacyPage(Coordinator))));
         }
         else
         {
