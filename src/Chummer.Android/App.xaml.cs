@@ -2,11 +2,14 @@ namespace Chummer.Android;
 
 public partial class App : Microsoft.Maui.Controls.Application
 {
-    public App()
+    private readonly MainShell _mainShell;
+
+    public App(MainShell mainShell)
     {
         InitializeComponent();
+        _mainShell = mainShell;
     }
 
     protected override Window CreateWindow(IActivationState? activationState)
-        => new(new MainPage());
+        => new(_mainShell);
 }

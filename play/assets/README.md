@@ -6,13 +6,12 @@
 - `feature-graphic-source.png` is the uncropped generated source retained for
   traceability.
 - `screenshots/phone-01-home.png` through `phone-05-campaign.png` are real
-  1080×2400 API 36 emulator WebView-surface captures covering home, the shared
-  workbench, the direct new-runner workflow, Android Documents import, and
-  campaign command.
+  1080×2400 API 36 emulator captures of the native UI covering home, build,
+  the direct new-runner workflow, table play, and campaign navigation.
 - `screenshots/tablet-01-home.png` through `tablet-04-native-tools.png` are
-  real 1440×2560 (9:16) API 36 emulator WebView-surface captures covering
-  home, the shared workbench, new-runner flow, and native tools. Mockups and
-  generated interface screenshots are forbidden.
+  real 1440×2560 (9:16) API 36 emulator captures of the native UI covering
+  home, build, the new-runner flow, and native tools. Mockups and generated
+  interface screenshots are forbidden.
 
 The feature graphic was generated with the built-in image-generation tool from
 an original, no-text Chummer product-art prompt. Final SHA-256:

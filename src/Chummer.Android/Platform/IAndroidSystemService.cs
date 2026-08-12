@@ -5,7 +5,7 @@ public enum AndroidUpdateCheckResult
     Current,
     Started,
     ReadyToInstall,
-    StoreOpened,
+    PlayManagedRequired,
     Checking,
     Unavailable
 }

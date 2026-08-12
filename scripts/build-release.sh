@@ -8,7 +8,10 @@ configuration="Release"
 framework="net10.0-android36.0"
 runtime_id="android-arm64"
 package_id="com.myexternalbrain.chummer"
-version_name="0.1.0-preview.2"
+IFS=$'\t' read -r version_name version_code < <(
+  python3 "$repo_dir/scripts/read_android_version.py" "$project_path"
+)
+[[ -n "$version_name" && -n "$version_code" ]]
 
 python3 -m unittest discover -s "$repo_dir/tests" -v
 
@@ -45,3 +48,5 @@ if [[ -n "${JavaSdkDirectory:-}" && -x "${JavaSdkDirectory}/bin/java" ]]; then
 fi
 
 "$repo_dir/scripts/validate-aab.sh" "$output_aab"
+output_sha256="$(sha256sum "$output_aab" | cut -d' ' -f1)"
+printf '%s  artifacts/%s\n' "$output_sha256" "$(basename "$output_aab")" > "$output_aab.sha256"

@@ -37,11 +37,13 @@ public sealed class AndroidSystemService : IAndroidSystemService
             {
                 return result;
             }
+
+            return mainActivity.IsGooglePlayManaged
+                ? AndroidUpdateCheckResult.Unavailable
+                : AndroidUpdateCheckResult.PlayManagedRequired;
         }
 
-        return await OpenStoreListingAsync()
-            ? AndroidUpdateCheckResult.StoreOpened
-            : AndroidUpdateCheckResult.Unavailable;
+        return AndroidUpdateCheckResult.Unavailable;
     }
 
     public Task ShareTextAsync(string text)

@@ -50,6 +50,8 @@ public sealed class MainActivity : MauiAppCompatActivity
     private bool _updateCompletionDeferred;
     private bool _updateCompletionPromptVisible;
 
+    public bool IsGooglePlayManaged => _googlePlayManaged;
+
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
@@ -135,9 +137,16 @@ public sealed class MainActivity : MauiAppCompatActivity
 
     private bool HandleBackNavigation()
     {
-        AndroidAppState? state = IPlatformApplication.Current?.Services.GetService<AndroidAppState>();
-        if (state?.TryNavigateBack() == true)
+        Microsoft.Maui.Controls.INavigation? navigation = Microsoft.Maui.Controls.Shell.Current?.Navigation;
+        if (navigation?.ModalStack.Count > 0)
         {
+            MainThread.BeginInvokeOnMainThread(async () => await navigation.PopModalAsync());
+            return true;
+        }
+
+        if (navigation?.NavigationStack.Count > 1)
+        {
+            MainThread.BeginInvokeOnMainThread(async () => await navigation.PopAsync());
             return true;
         }
 

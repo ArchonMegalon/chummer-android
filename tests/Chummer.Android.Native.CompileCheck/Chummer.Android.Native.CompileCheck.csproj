@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../chummer-presentation/Chummer.Presentation/Chummer.Presentation.csproj" />
+    <ProjectReference Include="../../../chummer-presentation/Chummer.Desktop.Runtime/Chummer.Desktop.Runtime.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Chummer.Android/Native/*.cs" Link="Native/%(Filename)%(Extension)" />
+    <Compile Include="../../src/Chummer.Android/MainShell.cs" Link="MainShell.cs" />
+    <Compile Include="../../src/Chummer.Android/MauiProgram.cs" Link="MauiProgram.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/IAndroidAccountLinkService.cs" Link="Platform/IAndroidAccountLinkService.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/IAndroidDocumentService.cs" Link="Platform/IAndroidDocumentService.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/IAndroidSystemService.cs" Link="Platform/IAndroidSystemService.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkService.cs" Link="Platform/AndroidAccountLinkService.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/ChummerWebRoutes.cs" Link="Platform/ChummerWebRoutes.cs" />
+    <Compile Include="CompileStubs.cs" />
+  </ItemGroup>
+</Project>

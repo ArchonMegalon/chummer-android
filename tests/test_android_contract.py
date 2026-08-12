@@ -50,9 +50,10 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("<ApplicationId>com.myexternalbrain.chummer</ApplicationId>", project)
         self.assertIn("<TargetSdkVersion>36</TargetSdkVersion>", project)
         self.assertIn("<AndroidMinSdkVersion>24</AndroidMinSdkVersion>", project)
-        self.assertIn("<ApplicationDisplayVersion>0.1.0-preview.2</ApplicationDisplayVersion>", project)
-        self.assertIn("<ApplicationVersion>2</ApplicationVersion>", project)
+        self.assertIn("<ApplicationDisplayVersion>0.1.0-preview.3</ApplicationDisplayVersion>", project)
+        self.assertIn("<ApplicationVersion>3</ApplicationVersion>", project)
         self.assertIn("<AndroidPackageFormats Condition=\"'$(Configuration)' == 'Release'\">aab</AndroidPackageFormats>", project)
+        self.assertIn('<ChummerDesktopRuntimeIdentifiers Condition="\'$(ChummerDesktopRuntimeIdentifiers)\' == \'\'">android-arm64;android-x64</ChummerDesktopRuntimeIdentifiers>', project)
         self.assertIn("<EmbedAssembliesIntoApk Condition=\"'$(Configuration)' == 'Debug'\">true</EmbedAssembliesIntoApk>", project)
 
     def test_android_uses_play_updates_and_verified_links(self) -> None:
@@ -60,7 +61,7 @@ class AndroidContractTests(unittest.TestCase):
         system_service = (PROJECT / "Platforms" / "Android" / "AndroidSystemService.cs").read_text(encoding="utf-8")
         activity = (PROJECT / "Platforms" / "Android" / "MainActivity.cs").read_text(encoding="utf-8")
         policy = (PROJECT / "Platforms" / "Android" / "AndroidInAppUpdatePolicy.cs").read_text(encoding="utf-8")
-        host = (PROJECT / "Components" / "AndroidAppHost.razor").read_text(encoding="utf-8")
+        more = (PROJECT / "Native" / "MorePage.cs").read_text(encoding="utf-8")
         self.assertIn('Xamarin.Google.Android.Play.App.Update" Version="2.1.0.19"', project)
         self.assertIn("AppUpdateManagerFactory.Create(this)", activity)
         self.assertIn("IsInstalledByGooglePlay", activity)
@@ -73,8 +74,16 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("UpdateAvailability.UpdateAvailable", policy)
         self.assertIn("InstallStatus.Downloaded", policy)
         self.assertIn("CheckForUpdatesAsync", system_service)
-        self.assertIn("SystemService.CheckForUpdatesAsync()", host)
+        self.assertIn("Coordinator.CheckForUpdatesAsync()", more)
         self.assertIn("market://details", system_service)
+        self.assertIn("IsGooglePlayManaged", activity)
+        self.assertIn("PlayManagedRequired", system_service)
+        check_method = system_service[system_service.index("public async Task<AndroidUpdateCheckResult> CheckForUpdatesAsync()"):
+                                      system_service.index("public Task ShareTextAsync")]
+        self.assertNotIn("OpenStoreListingAsync", check_method)
+        self.assertIn('"Updates come through Google Play"', more)
+        self.assertIn('button.Text = "Checking"', more)
+        self.assertNotIn("await RunAsync(async () =>", more[more.index("private async Task CheckUpdatesAsync"):])
         self.assertNotIn("DesktopUpdateRuntime", "".join(p.read_text(encoding="utf-8") for p in PROJECT.rglob("*.cs")))
         self.assertIn('DataHost = "chummer.run"', activity)
         self.assertIn('DataPathPrefix = "/app"', activity)
@@ -84,7 +93,8 @@ class AndroidContractTests(unittest.TestCase):
         service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
         program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
         activity = (PROJECT / "Platforms" / "Android" / "MainActivity.cs").read_text(encoding="utf-8")
-        host = (PROJECT / "Components" / "AndroidAppHost.razor").read_text(encoding="utf-8")
+        more = (PROJECT / "Native" / "MorePage.cs").read_text(encoding="utf-8")
+        home = (PROJECT / "Native" / "HomePage.cs").read_text(encoding="utf-8")
         self.assertIn("SecureStorage.Default", service)
         self.assertIn("ExportPkcs8PrivateKey", service)
         self.assertIn("RSASignaturePadding.Pkcs1", service)
@@ -99,27 +109,44 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("OnNewIntent", activity)
         self.assertIn('"/app/install-link"', activity)
         self.assertIn("ResumePendingLinkAsync(uri)", activity)
-        self.assertIn("AndroidDestination.Account", host)
-        self.assertIn("Confirm unlink", host)
+        self.assertIn("Coordinator.BeginAccountLinkAsync()", home)
+        self.assertIn('"Unlink this device?"', more)
 
     def test_android_navigation_is_compact_and_app_owned(self) -> None:
-        host = (PROJECT / "Components" / "AndroidAppHost.razor").read_text(encoding="utf-8")
-        css = (PROJECT / "wwwroot" / "css" / "android.css").read_text(encoding="utf-8")
-        nav = host[host.index('<nav class="android-bottom-nav"'):host.index("</nav>")]
-        self.assertEqual(5, len(re.findall(r"<button", nav)))
-        for label in ("Home", "Build", "Campaign", "Account", "More"):
-            self.assertIn(f"<span>{label}</span>", nav)
-        self.assertNotIn("OpenPlayAsync", nav)
-        self.assertNotIn("Your next runner starts here", host)
-        self.assertNotIn("Run the table from one command deck", host)
-        self.assertNotIn("Files, output, account, help", host)
-        self.assertIn("android-screen-header", host)
-        self.assertIn("min-height: 72px", css)
+        shell = (PROJECT / "MainShell.cs").read_text(encoding="utf-8")
+        project = (PROJECT / "Chummer.Android.csproj").read_text(encoding="utf-8")
+        page = (PROJECT / "Native" / "NativePageBase.cs").read_text(encoding="utf-8")
+        self.assertEqual(5, shell.count("tabs.Items.Add(CreateTab<"))
+        for label in ("Home", "Build", "Play", "Campaign", "More"):
+            self.assertIn(f'"{label}"', shell)
+        self.assertIn("TabBar", shell)
+        self.assertIn("Shell.SetTabBar", shell)
+        self.assertIn("ContentPage", page)
+        self.assertNotIn("Microsoft.NET.Sdk.Razor", project)
+        self.assertNotIn("Components.WebView.Maui", project)
+        self.assertNotIn("Chummer.Blazor", project)
+
+    def test_build_uses_native_drill_down_navigation_without_horizontal_pwa_tabs(self) -> None:
+        build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
+        flow = (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8")
+        commands = (PROJECT / "Native" / "NativeCommandPage.cs").read_text(encoding="utf-8")
+        theme = (PROJECT / "Native" / "NativeTheme.cs").read_text(encoding="utf-8")
+
+        self.assertIn("BuildSectionPage", build + flow)
+        self.assertIn("BuildValueGroupPage", flow)
+        self.assertIn("BuildNavigation.GroupKey", flow)
+        self.assertIn("NativeCommandGroupPage", commands)
+        self.assertIn("NativeTheme.NavigationRow", build + flow + commands)
+        self.assertIn("SemanticProperties.SetDescription", theme)
+        self.assertNotIn("ScrollOrientation.Horizontal", build)
+        self.assertNotIn("AddTabs", build)
+        self.assertNotIn("Show all", build)
 
     def test_android_copy_is_short_and_human(self) -> None:
-        host = (PROJECT / "Components" / "AndroidAppHost.razor").read_text(encoding="utf-8")
         account = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
-        rendered_copy = host + account
+        rendered_copy = account + "".join(
+            path.read_text(encoding="utf-8") for path in (PROJECT / "Native").glob("*.cs")
+        )
         for phrase in (
             "Runner desk",
             "Campaign command",
@@ -131,115 +158,151 @@ class AndroidContractTests(unittest.TestCase):
             "new runner workflow",
         ):
             self.assertNotIn(phrase, rendered_copy)
-        self.assertIn("What do you want to do?", host)
-        self.assertIn("Files and app settings", host)
-        self.assertIn("Couldn't check for updates.", host)
+        self.assertNotIn("workbench", rendered_copy.lower())
+        self.assertIn("Your runners", rendered_copy)
+        self.assertIn("Online runners", rendered_copy)
+        self.assertIn("All actions", rendered_copy)
 
     def test_android_replaces_shared_layout_radios_with_a_compact_combobox(self) -> None:
-        component = (
-            WORKSPACE / "chummer-presentation" / "Chummer.Blazor" / "Components" / "Shell" / "BuildPwaWorkspace.razor"
-        ).read_text(encoding="utf-8")
-        script = (
-            WORKSPACE / "chummer-presentation" / "Chummer.Blazor" / "wwwroot" / "js" / "build-pwa-layout.js"
-        ).read_text(encoding="utf-8")
-        css = (PROJECT / "wwwroot" / "css" / "android.css").read_text(encoding="utf-8")
-
-        self.assertIn('class="build-pwa-layout-picker-select"', component)
-        self.assertIn("data-build-pwa-layout-select", component)
-        self.assertIn("choice instanceof HTMLSelectElement", script)
-        self.assertIn(".android-app-shell .build-pwa-layout-picker-options { display: none; }", css)
-        self.assertIn(".android-app-shell .build-pwa-layout-picker-select", css)
-        self.assertIn("min-height: 48px", css)
+        dialog = (PROJECT / "Native" / "NativeDialogPage.cs").read_text(encoding="utf-8")
+        play = (PROJECT / "Native" / "PlayPage.cs").read_text(encoding="utf-8")
+        campaign = (PROJECT / "Native" / "CampaignPage.cs").read_text(encoding="utf-8")
+        self.assertIn("field.Options is { Count: > 0 }", dialog)
+        self.assertIn("Picker picker", dialog)
+        self.assertIn("Picker groups", play)
+        self.assertIn("Picker picker", campaign)
+        self.assertNotIn("RadioButton", dialog + play + campaign)
 
     def test_android_handoffs_use_canonical_public_routes(self) -> None:
         routes = (PROJECT / "Platform" / "ChummerWebRoutes.cs").read_text(encoding="utf-8")
-        host = (PROJECT / "Components" / "AndroidAppHost.razor").read_text(encoding="utf-8")
+        campaign = (PROJECT / "Native" / "CampaignPage.cs").read_text(encoding="utf-8")
         public_controller = (
             WORKSPACE / "chummer.run-services" / "Chummer.Run.Api" / "Controllers" / "PublicLandingController.cs"
         ).read_text(encoding="utf-8")
         self.assertIn('AccountAccess = "/account/access"', routes)
-        self.assertNotIn("/account/devices", routes + host)
+        self.assertNotIn("/account/devices", routes + campaign)
         for route in ("/gm", "/organizers", "/play", "/account/delete"):
             self.assertIn(route, public_controller)
-        self.assertIn("ChummerWebRoutes.CampaignRoster", host)
-        self.assertIn("ChummerWebRoutes.RulesetStudio", host)
+        self.assertIn("CreateGroupInviteAsync", campaign)
+        self.assertIn("Clipboard.Default.SetTextAsync", campaign)
 
-    def test_workbench_output_is_routed_to_native_android(self) -> None:
-        interop = (PROJECT / "wwwroot" / "js" / "android-interop.js").read_text(encoding="utf-8")
+    def test_play_and_groups_stay_inside_the_android_app(self) -> None:
+        play = (PROJECT / "Native" / "PlayPage.cs").read_text(encoding="utf-8")
+        campaign = (PROJECT / "Native" / "CampaignPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
+        project = (PROJECT / "Chummer.Android.csproj").read_text(encoding="utf-8")
+        activity = (PROJECT / "Platforms" / "Android" / "MainActivity.cs").read_text(encoding="utf-8")
+
+        self.assertIn("RollDice", play)
+        self.assertIn("SetDamage", play)
+        self.assertIn("SetPlayNotes", play)
+        self.assertIn("SelectedGroup", play + coordinator)
+        self.assertIn("CreateGroupAsync", campaign)
+        self.assertIn("UpdateGroupAsync", campaign)
+        self.assertIn("CreateGroupInviteAsync", campaign)
+        self.assertIn('"/api/v1/android/linked/groups"', service)
+        self.assertNotIn("WebView", play + campaign + coordinator + project)
+        self.assertNotIn("IAndroidPlayHostService", activity)
+
+    def test_chronicle_studio_is_native_and_preserves_approval_boundaries(self) -> None:
+        campaign = (PROJECT / "Native" / "CampaignPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        service = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
+        controller = (
+            WORKSPACE
+            / "chummer.run-services"
+            / "Chummer.Run.Api"
+            / "Controllers"
+            / "AndroidLinkedCampaignController.cs"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("ChronicleEditorPage", campaign)
+        self.assertIn("Picker(BookLabels", campaign)
+        self.assertIn('"Approve source"', campaign)
+        self.assertIn('"Approve source upload"', campaign)
+        self.assertIn('"Approve generation"', campaign)
+        self.assertIn('"Approve reviewed outline"', campaign)
+        self.assertIn('"Add finished export"', campaign)
+        self.assertIn('"Approve publication"', campaign)
+        self.assertIn('"Approve external sharing"', campaign)
+        self.assertIn('"Finished books shared with this group."', campaign)
+        self.assertIn("else if (!string.IsNullOrWhiteSpace(selected.ExportFormat))", campaign)
+        self.assertIn("SpoilerReviewConfirmed", campaign + service + controller)
+        self.assertIn("UploadApprovedAtUtc", service + controller)
+        self.assertNotIn('"approve_handoff"', campaign + controller)
+        self.assertIn("SaveChroniclePacketAsync", coordinator)
+        self.assertIn("AdvanceChronicleAsync", coordinator)
+        self.assertIn("/chronicles/create", service)
+        self.assertIn("/chronicles/{chronicleProjectId}/actions", controller)
+        self.assertIn("CryptographicOperations.ZeroMemory(packet)", controller)
+        self.assertNotIn("WebView", campaign + coordinator + service)
+
+    def test_runner_output_is_routed_to_native_android(self) -> None:
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
         system_service = (PROJECT / "Platforms" / "Android" / "AndroidSystemService.cs").read_text(encoding="utf-8")
-        self.assertIn("downloads.downloadBase64", interop)
-        self.assertIn("downloads.saveRecoveryStream", interop)
-        self.assertIn("exports.downloadBase64", interop)
-        self.assertIn("prints.openBase64", interop)
+        self.assertIn("PendingDownload", coordinator)
+        self.assertIn("PendingExport", coordinator)
+        self.assertIn("PendingPrint", coordinator)
+        self.assertIn("SaveAsAsync", coordinator)
+        self.assertIn("PrintPdfAsync", coordinator)
         self.assertIn("PdfFilePrintDocumentAdapter", system_service)
         self.assertIn("PrintManager", system_service)
         self.assertNotIn("PrintCurrentViewAsync", system_service)
 
-    def test_shared_workbench_browser_runtimes_are_loaded(self) -> None:
-        index = (PROJECT / "wwwroot" / "index.html").read_text(encoding="utf-8")
-        interop = (PROJECT / "wwwroot" / "js" / "android-interop.js").read_text(encoding="utf-8")
-        self.assertIn("build-pwa-layout.js", index)
-        self.assertIn("build-pwa-integrity.js", index)
-        self.assertIn("chummerDialogs", interop)
-        self.assertIn("restorePendingDialogScroll", interop)
+    def test_web_shell_is_not_built_into_the_android_app(self) -> None:
+        project = (PROJECT / "Chummer.Android.csproj").read_text(encoding="utf-8")
+        program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
+        self.assertIn('<Content Remove="wwwroot/**" />', project)
+        self.assertNotIn("BlazorWebView", project + program)
+        self.assertNotIn("AddMauiBlazorWebView", program)
+        self.assertNotIn("IWorkbenchCoachApiClient", program)
 
-    def test_android_document_picker_imports_into_shared_workbench(self) -> None:
-        host = (PROJECT / "Components" / "AndroidAppHost.razor").read_text(encoding="utf-8")
+    def test_android_document_picker_imports_into_shared_presenter(self) -> None:
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
         service = (PROJECT / "Platforms" / "Android" / "AndroidDocumentService.cs").read_text(encoding="utf-8")
-        shell = (
-            WORKSPACE / "chummer-presentation" / "Chummer.Blazor" / "Components" / "Layout" / "DesktopShell.razor.cs"
-        ).read_text(encoding="utf-8")
-        self.assertIn("DocumentInbox.Add(document)", host)
+        self.assertIn("_documents.OpenAsync", coordinator)
+        self.assertIn("_presenter.ImportAsync", coordinator)
+        self.assertIn("WorkspaceImportDocument.FromUtf8Bytes", coordinator)
         self.assertIn("OpenInputStream", service)
         self.assertIn("MaxDocumentBytes", service)
         self.assertIn("CryptographicOperations.ZeroMemory", service)
-        self.assertIn("IWorkbenchExternalDocumentInbox", shell)
-        self.assertIn("ImportExternalDocumentsAsync", shell)
-        self.assertIn("document.Content.LongLength > MaxImportBytes", shell)
 
     def test_android_shell_has_direct_new_runner_and_durable_feedback(self) -> None:
-        host = (PROJECT / "Components" / "AndroidAppHost.razor").read_text(encoding="utf-8")
-        state = (PROJECT / "Platform" / "AndroidAppState.cs").read_text(encoding="utf-8")
-        self.assertIn('NewCharacterCommandId = "new_character"', host)
-        self.assertIn("ExecuteCommandFromSurfaceAsync(commandId)", host)
-        self.assertIn("Navigate(AndroidDestination.Workbench, clearMessage: false)", host)
-        self.assertIn("Opening {document.DisplayName}", host)
-        self.assertIn("public void SetMessage", state)
-        self.assertIn("DestinationPreferenceKey", state)
+        home = (PROJECT / "Native" / "HomePage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        self.assertIn("Coordinator.CreateRunnerAsync()", home)
+        self.assertIn('ExecuteCommandAsync("new_character"', coordinator)
+        self.assertIn('Preferences.Default.Set(SelectedGroupPreferenceKey', coordinator)
+        self.assertIn('Opened {document.DisplayName}', coordinator)
 
     def test_android_shell_accessibility_and_output_copy_are_polished(self) -> None:
-        host = (PROJECT / "Components" / "AndroidAppHost.razor").read_text(encoding="utf-8")
-        css = (PROJECT / "wwwroot" / "css" / "android.css").read_text(encoding="utf-8")
-        index = (PROJECT / "wwwroot" / "index.html").read_text(encoding="utf-8")
-        self.assertIn("android-skip-link", host)
-        self.assertIn('aria-current="@AriaCurrent', host)
-        self.assertIn("aria-live=\"polite\"", host)
-        self.assertIn(":focus-visible", css)
-        self.assertIn("prefers-reduced-motion", css)
-        self.assertIn("role=\"status\"", index)
-        self.assertNotIn("Print current view", host)
-        self.assertIn("File › Print or File › Export", host)
+        theme = (PROJECT / "Native" / "NativeTheme.cs").read_text(encoding="utf-8")
+        more = (PROJECT / "Native" / "MorePage.cs").read_text(encoding="utf-8")
+        dialog = (PROJECT / "Native" / "NativeDialogPage.cs").read_text(encoding="utf-8")
+        self.assertIn("HeightRequest = 50", theme)
+        self.assertIn("LineBreakMode.WordWrap", theme)
+        self.assertIn('NativeTheme.SecondaryButton("Print")', more)
+        self.assertIn('Text = "Close"', dialog)
+        self.assertNotIn("Print current view", more + dialog)
 
-    def test_blazor_workbench_is_consumed_as_a_component_library(self) -> None:
+    def test_android_uses_native_maui_pages_over_shared_presenters(self) -> None:
         android_project = (PROJECT / "Chummer.Android.csproj").read_text(encoding="utf-8")
-        host = (PROJECT / "Components" / "AndroidAppHost.razor").read_text(encoding="utf-8")
-        mobile_project = (
-            WORKSPACE / "chummer-presentation" / "Chummer.Blazor" / "Chummer.Blazor.Mobile.csproj"
-        ).read_text(encoding="utf-8")
-        self.assertIn("Chummer.Blazor.Mobile.csproj", android_project)
-        self.assertIn("<AssemblyName>Chummer.Blazor.Mobile</AssemblyName>", mobile_project)
-        self.assertIn('<Content Include="Components/**/*.razor" Exclude="Components/App.razor" />', mobile_project)
-        self.assertNotIn("Chummer.Workspaces.Postgres", mobile_project)
-        self.assertIn("<DesktopShell", host)
-        self.assertNotIn("<DesktopAppHost />", host)
+        program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        self.assertIn('Project Sdk="Microsoft.NET.Sdk"', android_project)
+        self.assertNotIn("Chummer.Blazor.Mobile.csproj", android_project)
+        self.assertIn("AddSingleton<ICharacterOverviewPresenter", program)
+        self.assertIn("AddSingleton<RunnerSessionCoordinator>", program)
+        self.assertIn("ICharacterOverviewPresenter presenter", coordinator)
+        self.assertIn("IShellSurfaceResolver surfaceResolver", coordinator)
 
-    def test_remote_coach_http_client_is_registered_after_local_runtime(self) -> None:
+    def test_linked_http_client_is_registered_after_local_runtime(self) -> None:
         program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
         runtime_registration = program.index("AddChummerLocalRuntimeClient")
         http_registration = program.index("AddSingleton(new HttpClient")
-        coach_registration = program.index("AddSingleton<IWorkbenchCoachApiClient")
         self.assertLess(runtime_registration, http_registration)
-        self.assertLess(http_registration, coach_registration)
+        self.assertIn("AddSingleton<IAndroidAccountLinkService", program)
 
     def test_no_signing_secret_or_broad_provider_file_is_tracked(self) -> None:
         forbidden_suffixes = {".jks", ".keystore", ".p12"}
@@ -250,9 +313,11 @@ class AndroidContractTests(unittest.TestCase):
 
     def test_release_automation_is_fail_closed(self) -> None:
         build = (REPO / "scripts" / "build-release.sh").read_text(encoding="utf-8")
+        bootstrap = (REPO / "scripts" / "bootstrap-build-environment.sh").read_text(encoding="utf-8")
         provision = (REPO / "scripts" / "provision-upload-key.sh").read_text(encoding="utf-8")
         validate = (REPO / "scripts" / "validate-aab.sh").read_text(encoding="utf-8")
         inspect = (REPO / "scripts" / "inspect_aab.py").read_text(encoding="utf-8")
+        version_reader = (REPO / "scripts" / "read_android_version.py").read_text(encoding="utf-8")
         self.assertIn("set -euo pipefail", build)
         self.assertIn("AndroidSigningKeyStore", build)
         self.assertNotIn("ChummerAndroidSigningStorePass", build)
@@ -264,20 +329,60 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH=", provision)
         self.assertNotIn("echo ${chummer_store_password}", provision)
         self.assertIn("Signed releases require CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH", build)
+        self.assertIn("read_android_version.py", build)
+        self.assertNotIn('version_name="0.1.0-preview.', build)
+        self.assertIn('output_sha256="$(sha256sum "$output_aab"', build)
+        self.assertIn('artifacts/%s\\n', build)
         self.assertIn("CHUMMER_JARSIGNER", build)
         self.assertIn("CHUMMER_BUNDLETOOL_JAR", validate)
         self.assertIn("bundletool validation passed", validate)
         self.assertIn("-verify -certs", validate)
         self.assertIn("AAB signer does not match", validate)
         self.assertIn("ALLOWED_PERMISSIONS", inspect)
+        self.assertIn("read_project_version(PROJECT_PATH)", inspect)
+        self.assertNotIn('versionName") == "0.1.0-preview.', inspect)
         self.assertIn('native_abis == {"arm64-v8a"}', inspect)
+        self.assertIn("ApplicationDisplayVersion", version_reader)
+        self.assertIn("ApplicationVersion", version_reader)
+        self.assertIn("set -euo pipefail", bootstrap)
+        self.assertIn('approval_token="install-android-sdk36-jdk-and-accept-licenses"', bootstrap)
+        self.assertIn("CHUMMER_ANDROID_TOOLCHAIN_APPROVAL", bootstrap)
+        self.assertIn("CHUMMER_ANDROID_TOOLCHAIN_DIR must be an explicit absolute path", bootstrap)
+        self.assertIn("Resolved Android toolchain directory must remain outside", bootstrap)
+        self.assertIn("CHUMMER_ANDROID_TOOLCHAIN_REPLACE_ENV=replace", bootstrap)
+        self.assertIn("Refusing symlinked Android SDK or Java SDK directory", bootstrap)
+        self.assertIn("-t:InstallAndroidDependencies", bootstrap)
+        self.assertIn("-p:AcceptAndroidSDKLicenses=True", bootstrap)
+        self.assertIn('runtime_identifier="android-arm64"', bootstrap)
+        self.assertGreaterEqual(bootstrap.count('-p:ChummerDesktopRuntimeIdentifiers="$runtime_identifier"'), 2)
+        self.assertIn('--runtime "$runtime_identifier"', bootstrap)
+        self.assertIn('compile_check_path=', bootstrap)
+        self.assertIn("-p:AndroidSdkDirectory", bootstrap)
+        self.assertIn("-p:JavaSdkDirectory", bootstrap)
+        self.assertIn('chmod 0600 "$environment_temp"', bootstrap)
+        self.assertNotIn("AcceptAndroidSDKLicenses=True", build)
+
+    def test_release_version_reader_matches_project(self) -> None:
+        import importlib.util
+
+        reader_path = REPO / "scripts" / "read_android_version.py"
+        spec = importlib.util.spec_from_file_location("android_version_reader", reader_path)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        self.assertEqual(
+            ("0.1.0-preview.3", "3"),
+            module.read_project_version(PROJECT / "Chummer.Android.csproj"),
+        )
 
     def test_store_listing_limits_and_truthful_preview_copy(self) -> None:
         listing = REPO / "play" / "listing" / "en-US"
         title = (listing / "title.txt").read_text(encoding="utf-8").strip()
         short_description = (listing / "short-description.txt").read_text(encoding="utf-8").strip()
         full_description = (listing / "full-description.txt").read_text(encoding="utf-8").strip()
-        release_notes = (listing / "release-notes-2.txt").read_text(encoding="utf-8").strip()
+        release_notes = (listing / "release-notes-3.txt").read_text(encoding="utf-8").strip()
         self.assertLessEqual(len(title), 30)
         self.assertLessEqual(len(short_description), 80)
         self.assertLessEqual(len(full_description), 4000)
@@ -298,18 +403,38 @@ class AndroidContractTests(unittest.TestCase):
         tablets = sorted((assets / "screenshots").glob("tablet-*.png"))
         self.assertGreaterEqual(len(phones), 5)
         self.assertGreaterEqual(len(tablets), 4)
+        self.assertTrue(
+            {
+                "phone-01-home.png",
+                "phone-02-build.png",
+                "phone-03-new-runner.png",
+                "phone-04-play.png",
+                "phone-05-campaign.png",
+            }.issubset({path.name for path in phones})
+        )
+        self.assertNotIn("phone-04-import.png", {path.name for path in phones})
+        self.assertTrue(
+            {
+                "tablet-01-home.png",
+                "tablet-02-build.png",
+                "tablet-03-new-runner.png",
+                "tablet-04-native-tools.png",
+            }.issubset({path.name for path in tablets})
+        )
         self.assertTrue(all(self._png_header(path)[:2] == (1080, 2400) for path in phones))
         self.assertTrue(all(self._png_header(path)[:2] == (1440, 2560) for path in tablets))
 
     def test_android_lifecycle_and_sensitive_print_cleanup_are_explicit(self) -> None:
         activity = (PROJECT / "Platforms" / "Android" / "MainActivity.cs").read_text(encoding="utf-8")
-        state = (PROJECT / "Platform" / "AndroidAppState.cs").read_text(encoding="utf-8")
+        shell = (PROJECT / "MainShell.cs").read_text(encoding="utf-8")
         print_service = (PROJECT / "Platforms" / "Android" / "AndroidSystemService.cs").read_text(encoding="utf-8")
         broker = (PROJECT / "Platforms" / "Android" / "DocumentIntentBroker.cs").read_text(encoding="utf-8")
-        self.assertIn("TryNavigateBack", activity)
+        self.assertIn("HandleBackNavigation", activity)
         self.assertIn("RegisterOnBackInvokedCallback", activity)
         self.assertIn("EnableOnBackInvokedCallback = true", activity)
-        self.assertIn("TryNavigateBack", state)
+        self.assertIn("navigation?.ModalStack", activity)
+        self.assertIn("navigation?.NavigationStack", activity)
+        self.assertIn("FlyoutBehavior.Disabled", shell)
         self.assertIn("OnFinish", print_service)
         self.assertIn("File.Delete(_path)", print_service)
         self.assertIn("CryptographicOperations.ZeroMemory(buffer)", print_service)

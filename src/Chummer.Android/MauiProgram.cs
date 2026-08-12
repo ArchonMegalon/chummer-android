@@ -1,6 +1,5 @@
 using Chummer.Android.Platform;
-using Chummer.Blazor;
-using Chummer.Blazor.Services;
+using Chummer.Android.Native;
 using Chummer.Desktop.Runtime;
 using Chummer.Presentation.Overview;
 using Chummer.Presentation.Shell;
@@ -20,14 +19,9 @@ public static class MauiProgram
         builder
             .UseMauiApp<App>();
 
-        builder.Services.AddMauiBlazorWebView();
         builder.Services.AddSingleton<IAndroidDocumentService, AndroidDocumentService>();
-        builder.Services.AddSingleton<AndroidDocumentInbox>();
-        builder.Services.AddSingleton<IWorkbenchExternalDocumentInbox>(services => services.GetRequiredService<AndroidDocumentInbox>());
         builder.Services.AddSingleton<IAndroidSystemService, AndroidSystemService>();
         builder.Services.AddSingleton<IAndroidAccountLinkService, AndroidAccountLinkService>();
-        builder.Services.AddSingleton<AndroidJsBridge>();
-        builder.Services.AddSingleton<AndroidAppState>();
         builder.Services.AddChummerLocalRuntimeClient(
             AppContext.BaseDirectory,
             FileSystem.AppDataDirectory,
@@ -37,17 +31,20 @@ public static class MauiProgram
             BaseAddress = new Uri("https://chummer.run"),
             Timeout = TimeSpan.FromSeconds(20)
         });
-        builder.Services.AddSingleton<IWorkbenchCoachApiClient, WorkbenchCoachApiClient>();
-        builder.Services.AddSingleton<IWorkspacePrivacyLifecycleCapabilities>(
-            HostedBuildPrivacyLifecycleCapabilities.Instance);
         builder.Services.AddSingleton<IShellBootstrapDataProvider, ShellBootstrapDataProvider>();
         builder.Services.AddSingleton<ICharacterOverviewPresenter, CharacterOverviewPresenter>();
         builder.Services.AddSingleton<IShellPresenter, ShellPresenter>();
         builder.Services.AddSingleton<ICommandAvailabilityEvaluator, DefaultCommandAvailabilityEvaluator>();
         builder.Services.AddSingleton<IShellSurfaceResolver, ShellSurfaceResolver>();
+        builder.Services.AddSingleton<RunnerSessionCoordinator>();
+        builder.Services.AddTransient<HomePage>();
+        builder.Services.AddTransient<BuildPage>();
+        builder.Services.AddTransient<PlayPage>();
+        builder.Services.AddTransient<CampaignPage>();
+        builder.Services.AddTransient<MorePage>();
+        builder.Services.AddSingleton<MainShell>();
 
 #if DEBUG
-        builder.Services.AddBlazorWebViewDeveloperTools();
         builder.Logging.AddDebug();
 #endif
 

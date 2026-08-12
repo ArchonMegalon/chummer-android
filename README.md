@@ -1,29 +1,61 @@
 # Chummer for Android
 
-The Play-distributed, local-first Android host for the complete Chummer
-workbench. It uses .NET MAUI Blazor Hybrid to reuse the production Blazor
-workbench and the same deterministic local engine as the desktop client.
+The Play-distributed, local-first Chummer client. Its UI is built from native
+.NET MAUI controls and Android Shell navigation. It does not embed the Blazor
+PWA, a `BlazorWebView`, or a campaign/play `WebView`.
+
+The app still uses the same deterministic engine and presentation contracts as
+the desktop client. Shared presenters supply runner state, commands, tabs,
+workspace actions, dialogs, imports, exports, and print payloads. Android turns
+those contracts into native pages, pickers, entries, switches, editors, Android
+document intents, Android Print Framework jobs, and Google Play update flows.
 
 ## Workflow
 
-- **Home** starts a new runner in one tap, resumes local work, or imports a file.
-- **Build** opens the complete runner/critter workbench.
-- **Campaign** links to the signed-in campaign, GM, organizer, and rules tools.
-- **Account** links this Android installation through authenticated browser
-approval and a signed return to the app; local runner files stay local.
-- **More** groups native file/output, sharing, and Google Play update tools.
+- **Home** opens local files, starts a runner, resumes recent runners, and opens
+  linked online runners.
+- **Build** starts with the loaded runner and a short native list of build areas.
+  Each area opens a focused action page, then drills into small value groups.
+  The searchable, grouped action catalog still contains every desktop command.
+- **Play** is a native table view for the loaded runner and selected group, with
+  dice, condition tracking, and session notes.
+- **Campaign** is a native group view. A GM can create or edit a group, inspect
+  its roster, copy or share a browser-safe invite link, and manage Chronicle
+  Studio drafts and approvals without leaving the app.
+- **More** contains account linking, import/save/export/print, all actions, app
+  version, and Google Play updates.
 
-Live play remains one tap from Home and Campaign and hands sessions to the
-canonical Chummer play shell.
+Complex desktop workflows stay complete without becoming walls of text. Build
+uses Android-style list/detail navigation instead of horizontal web-like tabs;
+the command catalog first shows groups and only expands the chosen group. A
+command opens its shared workflow as a native modal. Choice and radio-style
+fields render as Android pickers; booleans use switches; long text uses editors.
+The same coordinator and page-level contracts compile against plain `net10.0`,
+which keeps the navigation/state layer reusable for a later iPhone shell while
+letting each platform keep its own visual conventions.
 
 ## Account linking
 
-Open **Account** and choose **Link account**. Sign in on `chummer.run`, approve
+Open **More** and choose **Link account**. Sign in on `chummer.run`, approve
 the device, then choose **Return to Chummer**. The app proves possession of its
 installation key over HTTPS and stores the resulting 30-day grant in Android
 secure storage. It validates the grant on launch, refreshes it near expiry, and
 supports server-side revocation from **Unlink this device**. Account linking is
 optional and never moves or uploads local runner files by itself.
+
+After linking, **Home** can load the account's online runners directly into the
+native Build and Play pages. **Campaign** uses the same grant to list groups and
+perform GM-authorized group mutations. Raw access tokens stay in Android secure
+storage, responses are `no-store`, and the group API does not return member user
+IDs. Invite links remain ordinary `https://chummer.run/groups/join/...` URLs so
+players can open them in any browser.
+
+Chronicle Studio is native too. It creates versioned drafts, saves a reviewed
+source packet, records the external AIWriteBook project and finished export,
+and keeps source, upload, generation, outline, publication, and external-sharing
+approvals separate. Consent, spoiler review, redaction review, and source rights
+are independent checks. The app never spends provider credits, uploads source
+material, publishes, or sends anything on a button's behalf.
 
 Desktop window operations become document/task tabs. Desktop file dialogs use
 Android's document picker. Printing uses Android Print Framework. Play-installed
@@ -32,14 +64,40 @@ open the verified Google Play listing.
 
 ## Local build
 
-Use a .NET 10 SDK with the `maui-android` workload, Android SDK API 36, and JDK
-17. The repository never stores signing material.
+Use a .NET 10 SDK with the `maui-android` workload, Android SDK API 36, and the
+Java SDK selected by that workload. The repository never stores signing
+material.
 
 ```sh
 dotnet restore Chummer.Android.slnx
 dotnet build Chummer.Android.slnx -c Debug
 python3 -m unittest discover -s tests -v
 ```
+
+When Android SDK 36 is not available, the platform-neutral native compile gate
+still checks all Shell/pages and shared-presenter calls without an Android SDK:
+
+```sh
+dotnet build tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj
+```
+
+On a clean Linux host, `scripts/bootstrap-build-environment.sh` can use the
+official .NET `InstallAndroidDependencies` target to install the exact Android
+SDK and Java dependencies required by the project into an explicit directory
+outside the repository, then compile the current arm64 Debug worktree and the
+platform-neutral native gate. It fails before
+any download or license acceptance unless both the exact approval token and an
+absolute destination are supplied:
+
+```sh
+CHUMMER_ANDROID_TOOLCHAIN_APPROVAL=install-android-sdk36-jdk-and-accept-licenses \
+CHUMMER_ANDROID_TOOLCHAIN_DIR=/absolute/operator-approved/chummer-android-toolchain \
+  scripts/bootstrap-build-environment.sh
+```
+
+Do not set that token by inference. It represents explicit acceptance of the
+Android development licenses. The resulting mode-`0600` environment file can be
+sourced for later builds; it contains paths only, not credentials.
 
 The repeatable arm64 release lane requires the pinned official bundletool JAR:
 

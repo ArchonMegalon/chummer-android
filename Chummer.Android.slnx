@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="src/Chummer.Android/Chummer.Android.csproj" />
+  <Project Path="tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj" />
 </Solution>

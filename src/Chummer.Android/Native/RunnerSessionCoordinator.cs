@@ -1,0 +1,650 @@
+using System.Security.Cryptography;
+using System.Text;
+using Chummer.Android.Platform;
+using Chummer.Contracts.Presentation;
+using Chummer.Contracts.Workspaces;
+using Chummer.Presentation.Overview;
+using Chummer.Presentation.Shell;
+
+namespace Chummer.Android.Native;
+
+public sealed record NativePlaySnapshot(
+    int PhysicalDamage,
+    int StunDamage,
+    int LastPool,
+    IReadOnlyList<int> LastRoll,
+    int Hits,
+    bool Glitch,
+    string Notes)
+{
+    public static NativePlaySnapshot Empty { get; } = new(0, 0, 6, [], 0, false, string.Empty);
+}
+
+public sealed class RunnerSessionCoordinator : IDisposable
+{
+    private const string SelectedGroupPreferenceKey = "chummer.android.selected-group.v1";
+    private readonly ICharacterOverviewPresenter _presenter;
+    private readonly IShellPresenter _shellPresenter;
+    private readonly IShellSurfaceResolver _surfaceResolver;
+    private readonly ICommandAvailabilityEvaluator _availability;
+    private readonly IAndroidDocumentService _documents;
+    private readonly IAndroidSystemService _system;
+    private readonly IAndroidAccountLinkService _account;
+    private readonly SemaphoreSlim _initializeGate = new(1, 1);
+    private readonly SemaphoreSlim _outputGate = new(1, 1);
+    private readonly SemaphoreSlim _shellSyncGate = new(1, 1);
+    private bool _initialized;
+    private bool _disposed;
+    private long _handledDownloadVersion;
+    private long _handledExportVersion;
+    private long _handledPrintVersion;
+    private string? _notice;
+    private IReadOnlyList<AndroidOnlineCharacter> _onlineCharacters = [];
+    private IReadOnlyList<AndroidLinkedGroup> _groups = [];
+    private IReadOnlyList<AndroidChronicleProject> _chronicles = [];
+    private NativePlaySnapshot _play = NativePlaySnapshot.Empty;
+    private ShellSurfaceState _surface = ShellSurfaceState.Empty;
+
+    public RunnerSessionCoordinator(
+        ICharacterOverviewPresenter presenter,
+        IShellPresenter shellPresenter,
+        IShellSurfaceResolver surfaceResolver,
+        ICommandAvailabilityEvaluator availability,
+        IAndroidDocumentService documents,
+        IAndroidSystemService system,
+        IAndroidAccountLinkService account)
+    {
+        _presenter = presenter;
+        _shellPresenter = shellPresenter;
+        _surfaceResolver = surfaceResolver;
+        _availability = availability;
+        _documents = documents;
+        _system = system;
+        _account = account;
+        _presenter.StateChanged += OnPresenterStateChanged;
+        _shellPresenter.StateChanged += OnShellStateChanged;
+        _account.Changed += OnAccountChanged;
+    }
+
+    public event EventHandler? Changed;
+
+    public CharacterOverviewState State => _presenter.State;
+
+    public ShellSurfaceState Surface => _surface;
+
+    public AndroidAccountLinkSnapshot Account => _account.Snapshot;
+
+    public IReadOnlyList<AndroidOnlineCharacter> OnlineCharacters => _onlineCharacters;
+
+    public IReadOnlyList<AndroidLinkedGroup> Groups => _groups;
+
+    public IReadOnlyList<AndroidChronicleProject> Chronicles => _chronicles;
+
+    public AndroidLinkedGroup? SelectedGroup
+    {
+        get
+        {
+            string selectedId = Preferences.Default.Get(SelectedGroupPreferenceKey, string.Empty);
+            return _groups.FirstOrDefault(group => string.Equals(group.GroupId, selectedId, StringComparison.Ordinal))
+                ?? _groups.FirstOrDefault();
+        }
+    }
+
+    public NativePlaySnapshot Play => _play;
+
+    public string? Notice => _notice ?? State.Notice ?? Surface.Notice;
+
+    public bool IsBusy => State.IsBusy || Surface.IsBusy;
+
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        if (_initialized)
+        {
+            return;
+        }
+
+        await _initializeGate.WaitAsync(cancellationToken);
+        try
+        {
+            if (_initialized)
+            {
+                return;
+            }
+
+            await _shellPresenter.InitializeAsync(cancellationToken);
+            await _presenter.InitializeAsync(cancellationToken);
+            await _account.InitializeAsync(cancellationToken);
+            await SyncShellAsync(cancellationToken);
+            _surface = _surfaceResolver.Resolve(State, _shellPresenter.State);
+            RestorePlayState();
+            _initialized = true;
+        }
+        finally
+        {
+            _initializeGate.Release();
+        }
+
+        NotifyChanged();
+    }
+
+    public async Task OpenLocalAsync(CancellationToken cancellationToken = default)
+    {
+        AndroidDocument? document = await _documents.OpenAsync(cancellationToken);
+        if (document is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _presenter.ImportAsync(
+                WorkspaceImportDocument.FromUtf8Bytes(document.Content, string.Empty, WorkspaceDocumentFormat.NativeXml),
+                cancellationToken);
+            _notice = $"Opened {document.DisplayName}.";
+            await SyncShellAsync(cancellationToken);
+            RestorePlayState();
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(document.Content);
+        }
+
+        NotifyChanged();
+    }
+
+    public async Task OpenOnlineAsync(AndroidOnlineCharacter character, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(character);
+        byte[] payload = Encoding.UTF8.GetBytes(character.Payload);
+        try
+        {
+            await _presenter.ImportAsync(
+                WorkspaceImportDocument.FromUtf8Bytes(payload, character.RulesetId, ParseFormat(character.Format)),
+                cancellationToken);
+            _notice = $"Opened {DisplayName(character.Name, character.Alias)}.";
+            await SyncShellAsync(cancellationToken);
+            RestorePlayState();
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(payload);
+        }
+
+        NotifyChanged();
+    }
+
+    public async Task CreateRunnerAsync(CancellationToken cancellationToken = default)
+        => await ExecuteCommandAsync("new_character", cancellationToken);
+
+    public async Task SwitchWorkspaceAsync(OpenWorkspaceState workspace, CancellationToken cancellationToken = default)
+    {
+        await _presenter.SwitchWorkspaceAsync(workspace.Id, cancellationToken);
+        await SyncShellAsync(cancellationToken);
+        RestorePlayState();
+    }
+
+    public async Task CloseWorkspaceAsync(OpenWorkspaceState workspace, CancellationToken cancellationToken = default)
+    {
+        await _presenter.CloseWorkspaceAsync(workspace.Id, cancellationToken);
+        await SyncShellAsync(cancellationToken);
+        RestorePlayState();
+    }
+
+    public async Task SelectTabAsync(string tabId, CancellationToken cancellationToken = default)
+    {
+        await _presenter.SelectTabAsync(tabId, cancellationToken);
+        await _shellPresenter.SelectTabAsync(tabId, cancellationToken);
+        RefreshSurface();
+    }
+
+    public async Task ExecuteCommandAsync(string commandId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(commandId);
+        _notice = null;
+        await _presenter.ExecuteCommandAsync(commandId, cancellationToken);
+        await SyncShellAsync(cancellationToken);
+        await ProcessPendingOutputsAsync(cancellationToken);
+    }
+
+    public async Task ExecuteWorkspaceActionAsync(
+        WorkspaceSurfaceActionDefinition action,
+        CancellationToken cancellationToken = default)
+    {
+        await _presenter.ExecuteWorkspaceActionAsync(action, cancellationToken);
+        await SyncShellAsync(cancellationToken);
+        await ProcessPendingOutputsAsync(cancellationToken);
+    }
+
+    public bool IsCommandEnabled(AppCommandDefinition command)
+        => _availability.IsCommandEnabled(command, State);
+
+    public bool IsTabEnabled(NavigationTabDefinition tab)
+        => _availability.IsNavigationTabEnabled(tab, State);
+
+    public Task UpdateDialogFieldAsync(string fieldId, string? value, CancellationToken cancellationToken = default)
+        => _presenter.UpdateDialogFieldAsync(fieldId, value, cancellationToken);
+
+    public async Task ExecuteDialogActionAsync(string actionId, CancellationToken cancellationToken = default)
+    {
+        await _presenter.ExecuteDialogActionAsync(actionId, cancellationToken);
+        await SyncShellAsync(cancellationToken);
+        await ProcessPendingOutputsAsync(cancellationToken);
+    }
+
+    public Task CloseDialogAsync(CancellationToken cancellationToken = default)
+        => _presenter.CloseDialogAsync(cancellationToken);
+
+    public async Task SaveAsync(CancellationToken cancellationToken = default)
+    {
+        await _presenter.SaveAsync(cancellationToken);
+        _notice = "Saved.";
+        NotifyChanged();
+    }
+
+    public async Task ExportAsync(CancellationToken cancellationToken = default)
+    {
+        await _presenter.ExportAsync(cancellationToken);
+        await ProcessPendingOutputsAsync(cancellationToken);
+    }
+
+    public async Task PrintAsync(CancellationToken cancellationToken = default)
+    {
+        await _presenter.PrintAsync(cancellationToken);
+        await ProcessPendingOutputsAsync(cancellationToken);
+    }
+
+    public async Task BeginAccountLinkAsync(CancellationToken cancellationToken = default)
+        => await _account.BeginLinkAsync(cancellationToken);
+
+    public async Task UnlinkAccountAsync(CancellationToken cancellationToken = default)
+    {
+        await _account.UnlinkAsync(cancellationToken);
+        _onlineCharacters = [];
+        _groups = [];
+        _chronicles = [];
+        NotifyChanged();
+    }
+
+    public Task OpenAccountAsync(CancellationToken cancellationToken = default)
+        => _account.OpenAccountAsync(cancellationToken);
+
+    public Task<AndroidUpdateCheckResult> CheckForUpdatesAsync()
+        => _system.CheckForUpdatesAsync();
+
+    public Task ShareTextAsync(string text)
+        => _system.ShareTextAsync(text);
+
+    public async Task RefreshLinkedDataAsync(CancellationToken cancellationToken = default)
+    {
+        await _account.InitializeAsync(cancellationToken);
+        if (!_account.Snapshot.IsLinked)
+        {
+            _onlineCharacters = [];
+            _groups = [];
+            _chronicles = [];
+            NotifyChanged();
+            return;
+        }
+
+        Task<IReadOnlyList<AndroidOnlineCharacter>> charactersTask =
+            _account.ListOnlineCharactersAsync(cancellationToken);
+        Task<IReadOnlyList<AndroidLinkedGroup>> groupsTask =
+            _account.ListGroupsAsync(cancellationToken);
+        await Task.WhenAll(charactersTask, groupsTask);
+        _onlineCharacters = await charactersTask;
+        _groups = await groupsTask;
+        EnsureSelectedGroup();
+        _chronicles = SelectedGroup is { } selectedGroup
+            ? await _account.ListChroniclesAsync(selectedGroup.GroupId, cancellationToken)
+            : [];
+        NotifyChanged();
+    }
+
+    public void SelectGroup(AndroidLinkedGroup? group)
+    {
+        string? previousGroupId = SelectedGroup?.GroupId;
+        if (group is null)
+        {
+            Preferences.Default.Remove(SelectedGroupPreferenceKey);
+        }
+        else
+        {
+            Preferences.Default.Set(SelectedGroupPreferenceKey, group.GroupId);
+        }
+
+        if (!string.Equals(previousGroupId, group?.GroupId, StringComparison.Ordinal))
+        {
+            _chronicles = [];
+        }
+
+        RestorePlayState();
+        NotifyChanged();
+    }
+
+    public async Task<AndroidLinkedGroup> CreateGroupAsync(
+        string name,
+        string visibility,
+        CancellationToken cancellationToken = default)
+    {
+        AndroidLinkedGroup group = await _account.CreateGroupAsync(name.Trim(), visibility, cancellationToken);
+        await RefreshLinkedDataAsync(cancellationToken);
+        SelectGroup(_groups.FirstOrDefault(item => string.Equals(item.GroupId, group.GroupId, StringComparison.Ordinal)) ?? group);
+        _notice = $"Created {group.Name}.";
+        return group;
+    }
+
+    public async Task<AndroidLinkedGroup> UpdateGroupAsync(
+        AndroidLinkedGroup group,
+        string name,
+        string visibility,
+        CancellationToken cancellationToken = default)
+    {
+        AndroidLinkedGroup updated = await _account.UpdateGroupAsync(
+            group.GroupId,
+            name.Trim(),
+            visibility,
+            cancellationToken);
+        await RefreshLinkedDataAsync(cancellationToken);
+        SelectGroup(_groups.FirstOrDefault(item => string.Equals(item.GroupId, updated.GroupId, StringComparison.Ordinal)) ?? updated);
+        _notice = $"Updated {updated.Name}.";
+        return updated;
+    }
+
+    public Task<Uri> CreateGroupInviteAsync(AndroidLinkedGroup group, CancellationToken cancellationToken = default)
+        => _account.CreateGroupInviteAsync(group.GroupId, cancellationToken);
+
+    public async Task RefreshChroniclesAsync(
+        AndroidLinkedGroup group,
+        CancellationToken cancellationToken = default)
+    {
+        _chronicles = await _account.ListChroniclesAsync(group.GroupId, cancellationToken);
+        NotifyChanged();
+    }
+
+    public async Task<AndroidChronicleProject> CreateChronicleAsync(
+        AndroidLinkedGroup group,
+        AndroidChronicleDraft draft,
+        CancellationToken cancellationToken = default)
+    {
+        AndroidChronicleProject project = await _account.CreateChronicleAsync(group.GroupId, draft, cancellationToken);
+        await RefreshChroniclesAsync(group, cancellationToken);
+        _notice = $"Created {project.Title}.";
+        return project;
+    }
+
+    public async Task<AndroidChronicleProject> ReviseChronicleAsync(
+        AndroidLinkedGroup group,
+        AndroidChronicleProject project,
+        AndroidChronicleDraft draft,
+        CancellationToken cancellationToken = default)
+    {
+        AndroidChronicleProject revised = await _account.ReviseChronicleAsync(
+            group.GroupId,
+            project.ChronicleProjectId,
+            draft,
+            cancellationToken);
+        await RefreshChroniclesAsync(group, cancellationToken);
+        _notice = $"Updated {revised.Title}.";
+        return revised;
+    }
+
+    public async Task<AndroidChronicleProject> AdvanceChronicleAsync(
+        AndroidLinkedGroup group,
+        AndroidChronicleProject project,
+        string action,
+        string? externalProjectRef = null,
+        string? artifactUrl = null,
+        string? artifactSha256 = null,
+        string? exportFormat = null,
+        CancellationToken cancellationToken = default)
+    {
+        AndroidChronicleProject updated = await _account.AdvanceChronicleAsync(
+            group.GroupId,
+            project.ChronicleProjectId,
+            action,
+            externalProjectRef,
+            artifactUrl,
+            artifactSha256,
+            exportFormat,
+            cancellationToken);
+        await RefreshChroniclesAsync(group, cancellationToken);
+        _notice = $"{updated.Title}: {HumanizeId(updated.Status)}.";
+        return updated;
+    }
+
+    public async Task SaveChroniclePacketAsync(
+        AndroidLinkedGroup group,
+        AndroidChronicleProject project,
+        CancellationToken cancellationToken = default)
+    {
+        AndroidChroniclePacket packet = await _account.DownloadChroniclePacketAsync(
+            group.GroupId,
+            project.ChronicleProjectId,
+            cancellationToken);
+        await SaveBase64Async(packet.FileName, packet.MediaType, packet.ContentBase64, cancellationToken);
+    }
+
+    public NativePlaySnapshot RollDice(int pool)
+    {
+        pool = Math.Clamp(pool, 1, 100);
+        int[] dice = Enumerable.Range(0, pool)
+            .Select(static _ => RandomNumberGenerator.GetInt32(1, 7))
+            .OrderByDescending(static value => value)
+            .ToArray();
+        int hits = dice.Count(static value => value >= 5);
+        int ones = dice.Count(static value => value == 1);
+        _play = _play with
+        {
+            LastPool = pool,
+            LastRoll = dice,
+            Hits = hits,
+            Glitch = ones >= (pool + 1) / 2
+        };
+        SavePlayState();
+        NotifyChanged();
+        return _play;
+    }
+
+    public void SetDamage(int physical, int stun)
+    {
+        _play = _play with
+        {
+            PhysicalDamage = Math.Clamp(physical, 0, 18),
+            StunDamage = Math.Clamp(stun, 0, 18)
+        };
+        SavePlayState();
+        NotifyChanged();
+    }
+
+    public void SetPlayNotes(string? notes)
+    {
+        _play = _play with { Notes = (notes ?? string.Empty).Trim().Length <= 4000
+            ? (notes ?? string.Empty).Trim()
+            : (notes ?? string.Empty).Trim()[..4000] };
+        SavePlayState();
+        NotifyChanged();
+    }
+
+    public static string HumanizeId(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return "Action";
+        }
+
+        string value = id.Replace("tab-", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Replace('_', ' ')
+            .Replace('-', ' ')
+            .Trim();
+        return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(value);
+    }
+
+    private async Task SyncShellAsync(CancellationToken cancellationToken)
+    {
+        await _shellSyncGate.WaitAsync(cancellationToken);
+        try
+        {
+            CharacterWorkspaceId? active = State.Session.ActiveWorkspaceId ?? State.WorkspaceId;
+            await _shellPresenter.SyncWorkspaceContextAsync(active, cancellationToken);
+            RefreshSurface();
+        }
+        finally
+        {
+            _shellSyncGate.Release();
+        }
+    }
+
+    private void RefreshSurface()
+        => _surface = _surfaceResolver.Resolve(State, _shellPresenter.State);
+
+    private async Task ProcessPendingOutputsAsync(CancellationToken cancellationToken = default)
+    {
+        if (!await _outputGate.WaitAsync(0, cancellationToken))
+        {
+            return;
+        }
+
+        try
+        {
+            CharacterOverviewState state = State;
+            if (state.PendingDownload is { } download && state.PendingDownloadVersion > _handledDownloadVersion)
+            {
+                _handledDownloadVersion = state.PendingDownloadVersion;
+                await SaveBase64Async(download.FileName, MimeType(download.Format), download.ContentBase64, cancellationToken);
+            }
+
+            state = State;
+            if (state.PendingExport is { } export && state.PendingExportVersion > _handledExportVersion)
+            {
+                _handledExportVersion = state.PendingExportVersion;
+                await SaveBase64Async(export.FileName, MimeType(export.Format), export.ContentBase64, cancellationToken);
+            }
+
+            state = State;
+            if (state.PendingPrint is { } print && state.PendingPrintVersion > _handledPrintVersion)
+            {
+                _handledPrintVersion = state.PendingPrintVersion;
+                bool opened = await _system.PrintPdfAsync(
+                    print.FileName,
+                    print.ContentBase64,
+                    print.Title,
+                    cancellationToken);
+                _notice = opened ? "Print dialog opened." : "Printing is not available on this device.";
+            }
+        }
+        finally
+        {
+            _outputGate.Release();
+            NotifyChanged();
+        }
+    }
+
+    private async Task SaveBase64Async(
+        string fileName,
+        string mediaType,
+        string contentBase64,
+        CancellationToken cancellationToken)
+    {
+        byte[] bytes = Convert.FromBase64String(contentBase64);
+        try
+        {
+            await using MemoryStream stream = new(bytes, writable: false);
+            bool saved = await _documents.SaveAsAsync(fileName, mediaType, stream, cancellationToken);
+            _notice = saved ? $"Saved {Path.GetFileName(fileName)}." : "Save cancelled.";
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(bytes);
+        }
+    }
+
+    private static string MimeType(WorkspaceDocumentFormat format)
+        => format == WorkspaceDocumentFormat.Json ? "application/json" : "application/xml";
+
+    private static WorkspaceDocumentFormat ParseFormat(string? value)
+        => Enum.TryParse(value, ignoreCase: true, out WorkspaceDocumentFormat format)
+            ? format
+            : WorkspaceDocumentFormat.NativeXml;
+
+    private void EnsureSelectedGroup()
+    {
+        string selectedId = Preferences.Default.Get(SelectedGroupPreferenceKey, string.Empty);
+        if (_groups.Count == 0)
+        {
+            Preferences.Default.Remove(SelectedGroupPreferenceKey);
+        }
+        else if (!_groups.Any(group => string.Equals(group.GroupId, selectedId, StringComparison.Ordinal)))
+        {
+            Preferences.Default.Set(SelectedGroupPreferenceKey, _groups[0].GroupId);
+        }
+    }
+
+    private string PlayPreferenceKey(string suffix)
+    {
+        string workspace = (State.Session.ActiveWorkspaceId ?? State.WorkspaceId)?.Value ?? "none";
+        string group = SelectedGroup?.GroupId ?? "solo";
+        return $"chummer.android.play.{workspace}.{group}.{suffix}";
+    }
+
+    private void RestorePlayState()
+    {
+        _play = new NativePlaySnapshot(
+            Preferences.Default.Get(PlayPreferenceKey("physical"), 0),
+            Preferences.Default.Get(PlayPreferenceKey("stun"), 0),
+            Preferences.Default.Get(PlayPreferenceKey("pool"), 6),
+            [],
+            0,
+            false,
+            Preferences.Default.Get(PlayPreferenceKey("notes"), string.Empty));
+    }
+
+    private void SavePlayState()
+    {
+        Preferences.Default.Set(PlayPreferenceKey("physical"), _play.PhysicalDamage);
+        Preferences.Default.Set(PlayPreferenceKey("stun"), _play.StunDamage);
+        Preferences.Default.Set(PlayPreferenceKey("pool"), _play.LastPool);
+        Preferences.Default.Set(PlayPreferenceKey("notes"), _play.Notes);
+    }
+
+    private void OnPresenterStateChanged(object? sender, EventArgs e)
+    {
+        RefreshSurface();
+        NotifyChanged();
+        _ = ProcessPendingOutputsAsync();
+    }
+
+    private void OnShellStateChanged(object? sender, EventArgs e)
+    {
+        RefreshSurface();
+        NotifyChanged();
+    }
+
+    private void OnAccountChanged(object? sender, EventArgs e) => NotifyChanged();
+
+    private void NotifyChanged()
+    {
+        if (!_disposed)
+        {
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private static string DisplayName(string name, string alias)
+        => !string.IsNullOrWhiteSpace(alias) ? alias : !string.IsNullOrWhiteSpace(name) ? name : "runner";
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _presenter.StateChanged -= OnPresenterStateChanged;
+        _shellPresenter.StateChanged -= OnShellStateChanged;
+        _account.Changed -= OnAccountChanged;
+        _initializeGate.Dispose();
+        _outputGate.Dispose();
+        _shellSyncGate.Dispose();
+    }
+}

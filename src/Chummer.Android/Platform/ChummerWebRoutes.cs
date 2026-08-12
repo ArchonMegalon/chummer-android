@@ -7,7 +7,9 @@ public static class ChummerWebRoutes
     public const string AccountAccess = "/account/access";
     public const string AccountDeletion = "/account/delete";
     public const string CampaignRoster = "/account/roster";
+    public const string ChronicleStudio = "/groups?focus=chronicles";
     public const string GmCommand = "/gm";
+    public const string Groups = "/groups";
     public const string OrganizerCommand = "/organizers";
     public const string Play = "/play";
     public const string RulesetStudio = "/account/edition-studio/sr5";

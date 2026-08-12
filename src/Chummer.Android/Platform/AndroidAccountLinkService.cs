@@ -333,6 +333,297 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         await _systemService.OpenUriAsync(ChummerWebRoutes.Resolve(ChummerWebRoutes.AccountAccess));
     }
 
+    public async Task<IReadOnlyList<AndroidOnlineCharacter>> ListOnlineCharactersAsync(
+        CancellationToken cancellationToken = default)
+    {
+        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        WorkspaceListResponse response = await SendLinkedAsync<WorkspaceListResponse>(
+            "/api/v1/install-linking/continuation/workspaces/list",
+            grant,
+            cancellationToken);
+        if (response.Snapshots.Count > 200
+            || response.Snapshots.Any(static item => item.Payload.Length > 512 * 1024))
+        {
+            throw new InvalidDataException("The online character list is too large to open safely.");
+        }
+
+        return response.Snapshots
+            .OrderByDescending(static item => item.UpdatedAtUtc)
+            .Select(static item => new AndroidOnlineCharacter(
+                item.WorkspaceId,
+                item.RulesetId,
+                item.Format,
+                item.Payload,
+                item.UpdatedAtUtc,
+                item.Summary?.Name ?? string.Empty,
+                item.Summary?.Alias ?? string.Empty,
+                item.Summary?.Metatype ?? string.Empty))
+            .ToArray();
+    }
+
+    public async Task<IReadOnlyList<AndroidLinkedGroup>> ListGroupsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        LinkedGroupListResponse response = await SendLinkedAsync<LinkedGroupListResponse>(
+            "/api/v1/android/linked/groups",
+            grant,
+            cancellationToken);
+        return response.Groups.Select(ToLinkedGroup).ToArray();
+    }
+
+    public async Task<AndroidLinkedGroup> CreateGroupAsync(
+        string name,
+        string visibility,
+        CancellationToken cancellationToken = default)
+    {
+        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        LinkedGroupDto group = await SendLinkedAsync<LinkedGroupDto>(
+            "/api/v1/android/linked/groups/create",
+            new LinkedGroupMutationRequest(grant.InstallationId, grant.AccessToken, name, visibility),
+            cancellationToken);
+        return ToLinkedGroup(group);
+    }
+
+    public async Task<AndroidLinkedGroup> UpdateGroupAsync(
+        string groupId,
+        string name,
+        string visibility,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
+        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        LinkedGroupDto group = await SendLinkedAsync<LinkedGroupDto>(
+            $"/api/v1/android/linked/groups/{Uri.EscapeDataString(groupId)}/update",
+            new LinkedGroupMutationRequest(grant.InstallationId, grant.AccessToken, name, visibility),
+            cancellationToken);
+        return ToLinkedGroup(group);
+    }
+
+    public async Task<Uri> CreateGroupInviteAsync(
+        string groupId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
+        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        LinkedInviteResponse invite = await SendLinkedAsync<LinkedInviteResponse>(
+            $"/api/v1/android/linked/groups/{Uri.EscapeDataString(groupId)}/invites",
+            grant,
+            cancellationToken);
+        if (!Uri.TryCreate(invite.InviteUrl, UriKind.Absolute, out Uri? uri)
+            || !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(uri.Host, "chummer.run", StringComparison.OrdinalIgnoreCase)
+            || !uri.IsDefaultPort
+            || !uri.AbsolutePath.StartsWith("/groups/join/", StringComparison.Ordinal))
+        {
+            throw new InvalidDataException("Chummer returned an invalid group invite link.");
+        }
+
+        return uri;
+    }
+
+    public async Task<IReadOnlyList<AndroidChronicleProject>> ListChroniclesAsync(
+        string groupId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
+        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        LinkedChronicleListResponse response = await SendLinkedAsync<LinkedChronicleListResponse>(
+            $"/api/v1/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles",
+            grant,
+            cancellationToken);
+        return response.Projects.Select(ToChronicleProject).ToArray();
+    }
+
+    public async Task<AndroidChronicleProject> CreateChronicleAsync(
+        string groupId,
+        AndroidChronicleDraft draft,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
+        ArgumentNullException.ThrowIfNull(draft);
+        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        LinkedChronicleDto project = await SendLinkedAsync<LinkedChronicleDto>(
+            $"/api/v1/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles/create",
+            ToChronicleDraftRequest(grant, draft),
+            cancellationToken);
+        return ToChronicleProject(project);
+    }
+
+    public async Task<AndroidChronicleProject> ReviseChronicleAsync(
+        string groupId,
+        string chronicleProjectId,
+        AndroidChronicleDraft draft,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(chronicleProjectId);
+        ArgumentNullException.ThrowIfNull(draft);
+        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        LinkedChronicleDto project = await SendLinkedAsync<LinkedChronicleDto>(
+            $"/api/v1/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles/{Uri.EscapeDataString(chronicleProjectId)}/draft",
+            ToChronicleDraftRequest(grant, draft),
+            cancellationToken);
+        return ToChronicleProject(project);
+    }
+
+    public async Task<AndroidChronicleProject> AdvanceChronicleAsync(
+        string groupId,
+        string chronicleProjectId,
+        string action,
+        string? externalProjectRef = null,
+        string? artifactUrl = null,
+        string? artifactSha256 = null,
+        string? exportFormat = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(chronicleProjectId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(action);
+        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        LinkedChronicleDto project = await SendLinkedAsync<LinkedChronicleDto>(
+            $"/api/v1/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles/{Uri.EscapeDataString(chronicleProjectId)}/actions",
+            new LinkedChronicleActionRequest(
+                grant.InstallationId,
+                grant.AccessToken,
+                action,
+                externalProjectRef,
+                artifactUrl,
+                artifactSha256,
+                exportFormat),
+            cancellationToken);
+        return ToChronicleProject(project);
+    }
+
+    public async Task<AndroidChroniclePacket> DownloadChroniclePacketAsync(
+        string groupId,
+        string chronicleProjectId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(chronicleProjectId);
+        GrantBearerRequest grant = await RequireStoredGrantAsync();
+        LinkedChroniclePacketResponse packet = await SendLinkedAsync<LinkedChroniclePacketResponse>(
+            $"/api/v1/android/linked/groups/{Uri.EscapeDataString(groupId)}/chronicles/{Uri.EscapeDataString(chronicleProjectId)}/packet",
+            grant,
+            cancellationToken);
+        return new AndroidChroniclePacket(packet.FileName, packet.MediaType, packet.ContentBase64, packet.Sha256);
+    }
+
+    private static AndroidLinkedGroup ToLinkedGroup(LinkedGroupDto group)
+        => new(
+            group.GroupId,
+            group.Name,
+            group.GroupType,
+            group.Visibility,
+            group.Role,
+            group.CanManage,
+            group.RunnerDossierId,
+            group.RunnerHandle,
+            group.Members.Select(static member => new AndroidLinkedGroupMember(member.Role, member.RunnerHandle)).ToArray(),
+            group.UpdatedAtUtc);
+
+    private static LinkedChronicleDraftRequest ToChronicleDraftRequest(
+        GrantBearerRequest grant,
+        AndroidChronicleDraft draft)
+        => new(
+            grant.InstallationId,
+            grant.AccessToken,
+            draft.Title,
+            draft.BookKind,
+            draft.Audience,
+            draft.SourceSummary,
+            draft.ModelKey,
+            draft.TargetChapterCount,
+            draft.TargetWordsPerChapter,
+            draft.IncludeRunnerRoster,
+            draft.IncludeCover,
+            draft.IncludeTranslation,
+            draft.IncludeAudiobook,
+            draft.ExternalProcessingConsent,
+            draft.ParticipantConsentConfirmed,
+            draft.RedactionReviewed,
+            draft.SourceRightsConfirmed,
+            draft.SpoilerReviewConfirmed);
+
+    private static AndroidChronicleProject ToChronicleProject(LinkedChronicleDto project)
+        => new(
+            project.ChronicleProjectId,
+            project.Title,
+            project.BookKind,
+            project.Audience,
+            project.Status,
+            project.SourceSummary,
+            project.ModelKey,
+            project.TargetChapterCount,
+            project.TargetWordsPerChapter,
+            project.IncludeRunnerRoster,
+            project.RunnerRoster,
+            project.IncludeCover,
+            project.IncludeTranslation,
+            project.IncludeAudiobook,
+            project.ExternalProcessingConsent,
+            project.ParticipantConsentConfirmed,
+            project.RedactionReviewed,
+            project.SourceRightsConfirmed,
+            project.SourcePacketVersion,
+            project.SourcePacketSha256,
+            project.EstimatedCredits,
+            project.Provider,
+            project.OperatorRequired,
+            project.UnattendedAutomationAllowed,
+            project.ExternalProjectRef,
+            project.ArtifactUrl,
+            project.ArtifactSha256,
+            project.ExportFormat,
+            project.SourceApprovedAtUtc,
+            project.HandoffApprovedAtUtc,
+            project.OutlineApprovedAtUtc,
+            project.ArtifactImportedAtUtc,
+            project.PublicationApprovedAtUtc,
+            project.UpdatedAtUtc,
+            project.SpoilerReviewConfirmed,
+            project.GenerationApprovedAtUtc,
+            project.ExternalSendApprovedAtUtc,
+            project.UploadApprovedAtUtc);
+
+    private static async Task<GrantBearerRequest> RequireStoredGrantAsync()
+    {
+        string? installationId = await SecureStorage.Default.GetAsync(InstallationIdKey);
+        string? accessToken = await SecureStorage.Default.GetAsync(AccessTokenKey);
+        if (string.IsNullOrWhiteSpace(installationId) || string.IsNullOrWhiteSpace(accessToken))
+        {
+            throw new InvalidOperationException("Link your account first.");
+        }
+
+        return new GrantBearerRequest(installationId, accessToken);
+    }
+
+    private async Task<T> SendLinkedAsync<T>(
+        string path,
+        object request,
+        CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response = await _httpClient.PostAsJsonAsync(path, request, JsonOptions, cancellationToken);
+        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Conflict)
+        {
+            ClearGrant();
+            SetSnapshot(new(AndroidAccountLinkStatus.Unlinked, "Link expired", "Link again to restore account access."));
+            throw new InvalidOperationException("Link your account again.");
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                "Chummer account data is unavailable.",
+                inner: null,
+                response.StatusCode);
+        }
+
+        T? payload = await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken);
+        return payload ?? throw new InvalidDataException("Chummer returned an empty account response.");
+    }
+
     private async Task<GrantValidationResult> ValidateGrantAsync(
         string installationId,
         string accessToken,
@@ -617,4 +908,104 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         DateTimeOffset ExpiresAtUtc);
     private sealed record ExchangeResponse(GrantContract Grant, bool AlreadyClaimed);
     private sealed record RefreshResponse(GrantContract Grant, bool Rotated);
+    private sealed record WorkspaceListResponse(IReadOnlyList<WorkspaceSnapshotDto> Snapshots);
+    private sealed record WorkspaceSnapshotDto(
+        string WorkspaceId,
+        string RulesetId,
+        string Format,
+        string Payload,
+        DateTimeOffset UpdatedAtUtc,
+        WorkspaceSummaryDto? Summary);
+    private sealed record WorkspaceSummaryDto(string? Name, string? Alias, string? Metatype);
+    private sealed record LinkedGroupListResponse(IReadOnlyList<LinkedGroupDto> Groups);
+    private sealed record LinkedGroupDto(
+        string GroupId,
+        string Name,
+        string GroupType,
+        string Visibility,
+        string Role,
+        bool CanManage,
+        string? RunnerDossierId,
+        string? RunnerHandle,
+        IReadOnlyList<LinkedGroupMemberDto> Members,
+        DateTimeOffset UpdatedAtUtc);
+    private sealed record LinkedGroupMemberDto(string Role, string? RunnerHandle);
+    private sealed record LinkedGroupMutationRequest(
+        string InstallationId,
+        string AccessToken,
+        string Name,
+        string Visibility);
+    private sealed record LinkedInviteResponse(string Code, string InviteUrl, DateTimeOffset? ExpiresAtUtc);
+    private sealed record LinkedChronicleListResponse(IReadOnlyList<LinkedChronicleDto> Projects);
+    private sealed record LinkedChronicleDraftRequest(
+        string InstallationId,
+        string AccessToken,
+        string Title,
+        string BookKind,
+        string Audience,
+        string SourceSummary,
+        string ModelKey,
+        int TargetChapterCount,
+        int TargetWordsPerChapter,
+        bool IncludeRunnerRoster,
+        bool IncludeCover,
+        bool IncludeTranslation,
+        bool IncludeAudiobook,
+        bool ExternalProcessingConsent,
+        bool ParticipantConsentConfirmed,
+        bool RedactionReviewed,
+        bool SourceRightsConfirmed,
+        bool SpoilerReviewConfirmed = false);
+    private sealed record LinkedChronicleActionRequest(
+        string InstallationId,
+        string AccessToken,
+        string Action,
+        string? ExternalProjectRef,
+        string? ArtifactUrl,
+        string? ArtifactSha256,
+        string? ExportFormat);
+    private sealed record LinkedChronicleDto(
+        string ChronicleProjectId,
+        string Title,
+        string BookKind,
+        string Audience,
+        string Status,
+        string SourceSummary,
+        string ModelKey,
+        int TargetChapterCount,
+        int TargetWordsPerChapter,
+        bool IncludeRunnerRoster,
+        IReadOnlyList<string> RunnerRoster,
+        bool IncludeCover,
+        bool IncludeTranslation,
+        bool IncludeAudiobook,
+        bool ExternalProcessingConsent,
+        bool ParticipantConsentConfirmed,
+        bool RedactionReviewed,
+        bool SourceRightsConfirmed,
+        int SourcePacketVersion,
+        string SourcePacketSha256,
+        int EstimatedCredits,
+        string Provider,
+        bool OperatorRequired,
+        bool UnattendedAutomationAllowed,
+        string? ExternalProjectRef,
+        string? ArtifactUrl,
+        string? ArtifactSha256,
+        string? ExportFormat,
+        DateTimeOffset? SourceApprovedAtUtc,
+        DateTimeOffset? HandoffApprovedAtUtc,
+        DateTimeOffset? OutlineApprovedAtUtc,
+        DateTimeOffset? ArtifactImportedAtUtc,
+        DateTimeOffset? PublicationApprovedAtUtc,
+        DateTimeOffset UpdatedAtUtc,
+        bool SpoilerReviewConfirmed = false,
+        DateTimeOffset? GenerationApprovedAtUtc = null,
+        DateTimeOffset? ExternalSendApprovedAtUtc = null,
+        DateTimeOffset? UploadApprovedAtUtc = null);
+    private sealed record LinkedChroniclePacketResponse(
+        string FileName,
+        string MediaType,
+        string ContentBase64,
+        string Sha256);
 }

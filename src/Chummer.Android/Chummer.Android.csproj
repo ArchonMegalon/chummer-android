@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0-android36.0</TargetFramework>
     <OutputType>Exe</OutputType>
@@ -10,8 +10,8 @@
     <MauiVersion>10.0.20</MauiVersion>
     <ApplicationTitle>Chummer</ApplicationTitle>
     <ApplicationId>com.myexternalbrain.chummer</ApplicationId>
-    <ApplicationDisplayVersion>0.1.0-preview.2</ApplicationDisplayVersion>
-    <ApplicationVersion>2</ApplicationVersion>
+    <ApplicationDisplayVersion>0.1.0-preview.3</ApplicationDisplayVersion>
+    <ApplicationVersion>3</ApplicationVersion>
     <SupportedOSPlatformVersion>24.0</SupportedOSPlatformVersion>
     <TargetSdkVersion>36</TargetSdkVersion>
     <AndroidMinSdkVersion>24</AndroidMinSdkVersion>
@@ -22,7 +22,7 @@
     <AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>
     <AndroidLinkMode Condition="'$(Configuration)' == 'Release'">SdkOnly</AndroidLinkMode>
     <AndroidEnableProfiledAot Condition="'$(Configuration)' == 'Release'">true</AndroidEnableProfiledAot>
-    <ChummerDesktopRuntimeIdentifiers>android-arm64;android-x64</ChummerDesktopRuntimeIdentifiers>
+    <ChummerDesktopRuntimeIdentifiers Condition="'$(ChummerDesktopRuntimeIdentifiers)' == ''">android-arm64;android-x64</ChummerDesktopRuntimeIdentifiers>
     <AndroidKeyStore Condition="'$(AndroidSigningKeyStore)' != ''">true</AndroidKeyStore>
   </PropertyGroup>
 
@@ -40,7 +40,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
     <PackageReference Include="Xamarin.Google.Android.Play.App.Update" Version="2.1.0.19" />
     <PackageReference Include="Xamarin.AndroidX.Activity.Ktx" Version="1.13.0.1" />
@@ -56,11 +55,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../../chummer-presentation/Chummer.Blazor/Chummer.Blazor.Mobile.csproj"
-                      AdditionalProperties="RuntimeIdentifier=;RuntimeIdentifiers=" />
     <ProjectReference Include="../../../chummer-presentation/Chummer.Desktop.Runtime/Chummer.Desktop.Runtime.csproj"
                       AdditionalProperties="RuntimeIdentifier=;RuntimeIdentifiers=" />
     <ProjectReference Include="../../../chummer-presentation/Chummer.Presentation/Chummer.Presentation.csproj"
                       AdditionalProperties="RuntimeIdentifier=;RuntimeIdentifiers=" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="wwwroot/**" />
+    <None Remove="wwwroot/**" />
   </ItemGroup>
 </Project>

@@ -56,6 +56,14 @@ Run `scripts/build-release.sh` with `CHUMMER_BUNDLETOOL_JAR` and, when signing,
 the four signing properties above supplied through the secure environment. The
 script does not interpolate passwords into process arguments.
 
+If SDK API 36 and Java are absent, the guarded
+`scripts/bootstrap-build-environment.sh` uses .NET's official
+`InstallAndroidDependencies` target. It cannot accept Android licenses unless
+the caller supplies the exact documented approval token, requires an absolute
+toolchain directory outside this repository, and proves the current Debug
+worktree compiles before writing its path-only environment file. Merely running
+`scripts/build-release.sh` never installs dependencies or accepts licenses.
+
 ## Required gates
 
 1. parity and privacy contract tests pass;
@@ -108,7 +116,7 @@ sessions and app identities must never be reused for Chummer.
 - At the time of this receipt, publication was still closed. The Chummer Play
   app record and Play App Signing identity were created afterward.
 
-## Current preview.2 release evidence (2026-08-10)
+## Last signed preview.2 release evidence (2026-08-10)
 
 - Version code 1 (`0.1.0-preview.1`) remains active on the internal testing
   track. The next candidate is version code 2 (`0.1.0-preview.2`).
@@ -128,3 +136,81 @@ sessions and app identities must never be reused for Chummer.
   files remain local.
 - Upload is intentionally pending exact-artifact approval. Rebuilding or
   changing app source invalidates the SHA-256 above and requires a new approval.
+
+## Current preview.3 release evidence (2026-08-12)
+
+- The app source now declares version code 3 (`0.1.0-preview.3`).
+- Release artifact naming and structural validation read that version directly
+  from `Chummer.Android.csproj`; they no longer carry a separate hard-coded
+  preview version that can drift.
+- A fresh signed preview.3 bundle must be built with the registered upload key,
+  validated, hashed, and approved by exact SHA-256 before Play upload. The
+  preview.2 approval does not authorize a rebuilt preview.3 artifact.
+- The UI is now a native MAUI Shell with native Home, Build, Play, Campaign,
+  and More pages. The Blazor/PWA project reference, `BlazorWebView`, and Play
+  `WebView` have been removed from the built app.
+- Shared presenter contracts still expose every desktop command and workflow;
+  Android renders their tabs, actions, dialogs, inputs, choices, exports, and
+  print payloads with platform controls. A platform-neutral compile gate builds
+  this entire native surface with zero warnings.
+- The guarded bootstrap installed Android SDK API 36 and its accepted licenses,
+  build-tools 36.0.0, platform-tools, and a private Microsoft JDK into the
+  explicitly authorized external toolchain directory. The current
+  `net10.0-android36.0` arm64 Debug app then built with zero warnings and zero
+  errors; the platform-neutral native compile gate also remained clean.
+- The last unsigned structural candidate is
+  `artifacts/chummer-android-0.1.0-preview.3-unsigned.aab`. SHA-256:
+  `ddb91078c07e342ff84d667897b2ca1f61e4bb1b2cee0305640c1e6c47370fce`.
+  Pinned bundletool 1.18.3 validation passed. Structural inspection confirmed
+  package `com.myexternalbrain.chummer`, version code 3, version
+  `0.1.0-preview.3`, API 24/36 bounds, the arm64 payload, modern Back support,
+  verified Chummer app links, no cleartext traffic, and no broad-storage
+  permission.
+- A separate x64 Debug build and a linked x64 Release test APK build with zero
+  warnings and zero errors. KVM access is now persistent for the host user, the
+  Android emulator acceleration check passes, and an accelerated API 36 AOSP
+  emulator completed the native Home, New runner, creation-method, metatype,
+  Build, Play, Campaign, and More journeys. Dice rolling worked; condition changes
+  survived tab navigation; Campaign remained app-native; and repeated clean runs
+  produced no crash-buffer errors. One harness-driven ANR occurred during rapid
+  stale-coordinate UI automation and did not reproduce through the proper native
+  journey, so it is retained as diagnostic evidence rather than classified as an
+  app failure.
+- Update checks use Play Core's flexible in-app update flow when the install is
+  Google Play managed. A sideloaded build now stays inside Chummer and reports
+  `Updates come through Google Play`; it does not open a browser, the Play Store,
+  or another app. The final x64 device check confirmed Chummer remained the top
+  resumed activity and emitted no external activity launch.
+- Secure linked-install endpoints now supply online runners plus native campaign
+  group list/create/edit/invite operations and the governed Chronicle Studio
+  lifecycle. Server build and targeted controller tests pass; group responses
+  are private and omit raw user IDs. Consent, spoiler, redaction, source upload,
+  generation, outline, artifact import, publication, and external sharing are
+  separate, explicit actions; none invokes the provider or sends content.
+- The unsigned AAB above predates the latest native UI and update changes and is
+  superseded. It must not be uploaded or described as the current candidate.
+- A fresh arm64 Release AAB from the current native source is now staged at
+  `artifacts/chummer-android-0.1.0-preview.3-upload.aab`. SHA-256:
+  `e36083b5c8861d66781585e98d97acd2379db6c53d9824a3cf8c5ffbce781e1a`.
+  All 26 Android contracts, pinned bundletool validation, structural inspection,
+  and JAR-signature verification pass. The package/version, API 24/36 bounds,
+  privacy permissions, app link, modern Back support, and arm64 payload are
+  valid. Its signer is the replacement certificate below; Play will reject this
+  exact bundle until the upload-key reset is approved.
+- The Play screenshot set is current-source native UI, not a mockup or retained
+  WebView surface. Five phone captures are 1080×2400 and cover Home, Build,
+  New runner, Play, and Campaign. Four tablet captures are 1440×2560 and cover
+  Home, Build, New runner, and More/native tools. Both sets were captured on
+  accelerated API 36 x64 emulator profiles, visually inspected, and pass the
+  store-asset dimension contract.
+- The registered preview.2 upload certificate remains
+  `CB:C5:DF:FF:A0:10:88:A0:55:51:7E:5C:42:0B:EB:25:41:2A:4F:72:53:9B:20:18:D0:4F:F4:EC:DE:A4:03:2F`,
+  but its private key is unavailable. A dedicated replacement upload key was
+  provisioned outside the repository with public SHA-256
+  `D9:C4:B6:35:12:15:44:D5:52:2A:BF:1E:C2:DF:DA:3C:19:38:AA:B9:3D:67:26:BB:93:C9:87:1E:C9:ED:1D:15`.
+  Its owner-only recovery bundle is backed up in EA; the recovery table and full
+  restore drill pass with 616 logical entries and 9 referenced files. The Play
+  Console upload-key reset request was submitted with this replacement
+  certificate after explicit approval and is pending Google's review. No AAB
+  has been uploaded. After Play accepts the reset, explicit approval of the
+  exact signed AAB digest above is still required before any Play upload.

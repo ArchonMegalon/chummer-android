@@ -8,9 +8,12 @@ import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
+from read_android_version import read_project_version
+
 
 ANDROID = "{http://schemas.android.com/apk/res/android}"
 PACKAGE_ID = "com.myexternalbrain.chummer"
+PROJECT_PATH = Path(__file__).resolve().parents[1] / "src" / "Chummer.Android" / "Chummer.Android.csproj"
 ALLOWED_PERMISSIONS = {
     "android.permission.ACCESS_NETWORK_STATE",
     "android.permission.INTERNET",
@@ -28,11 +31,12 @@ def attr(element: ET.Element, name: str) -> str | None:
 
 
 def inspect(aab_path: Path, manifest_path: Path) -> None:
+    expected_version_name, expected_version_code = read_project_version(PROJECT_PATH)
     root = ET.parse(manifest_path).getroot()
     require(root.get("package") == PACKAGE_ID, "unexpected package id")
     require(attr(root, "compileSdkVersion") == "36", "compile SDK must be 36")
-    require(attr(root, "versionCode") == "2", "preview version code must be 2")
-    require(attr(root, "versionName") == "0.1.0-preview.2", "unexpected preview version name")
+    require(attr(root, "versionCode") == expected_version_code, "unexpected preview version code")
+    require(attr(root, "versionName") == expected_version_name, "unexpected preview version name")
 
     uses_sdk = root.find("uses-sdk")
     require(uses_sdk is not None, "uses-sdk is missing")
