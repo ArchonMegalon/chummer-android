@@ -1,3 +1,6 @@
+using Chummer.Android.Platform;
+using Microsoft.Maui.ApplicationModel.DataTransfer;
+
 namespace Chummer.Android.Native;
 
 public sealed class AccountPrivacyPage : NativePageBase
@@ -22,31 +25,93 @@ public sealed class AccountPrivacyPage : NativePageBase
 
         VerticalStackLayout device = new() { Spacing = 10 };
         device.Add(NativeTheme.Metric("Status", Coordinator.Account.Label));
-        Button unlink = NativeTheme.SecondaryButton("Unlink this device");
-        unlink.Clicked += async (_, _) =>
+        if (Coordinator.Account.IsLinked)
         {
-            bool confirmed = await DisplayAlertAsync(
-                "Unlink this device?",
-                "Online runners and groups will no longer be available here.",
-                "Unlink",
-                "Cancel");
-            if (confirmed)
+            Button unlink = NativeTheme.SecondaryButton("Unlink this device");
+            unlink.Clicked += async (_, _) =>
             {
-                await RunAsync(() => Coordinator.UnlinkAccountAsync());
-                await Navigation.PopAsync();
-            }
-        };
-        device.Add(unlink);
+                bool confirmed = await DisplayAlertAsync(
+                    "Unlink this device?",
+                    "Online runners and groups will no longer be available here.",
+                    "Unlink",
+                    "Cancel");
+                if (confirmed)
+                {
+                    await RunAsync(() => Coordinator.UnlinkAccountAsync());
+                    Refresh();
+                }
+            };
+            device.Add(unlink);
+        }
+        else
+        {
+            device.Add(NativeTheme.Body(
+                "Link this device to open online runners, groups, and account controls.",
+                NativeTheme.Muted));
+            Button link = NativeTheme.PrimaryButton("Link account");
+            link.Clicked += async (_, _) => await RunAsync(() => Coordinator.BeginAccountLinkAsync());
+            device.Add(link);
+        }
         _body.Add(NativeTheme.Card(device));
 
         _body.Add(NativeTheme.NavigationRow(
             "How deletion works",
             "What is removed and how long receipts remain",
-            Coordinator.OpenAccountDeletionInfoAsync));
+            async () => await Navigation.PushAsync(new AccountDeletionInfoPage())));
         _body.Add(NativeTheme.NavigationRow(
             "Delete account",
-            "Permanently remove your Chummer account",
+            Coordinator.Account.IsLinked
+                ? "Permanently remove your Chummer account"
+                : "Link this device before deletion",
             async () => await Navigation.PushAsync(new AccountDeletionPage(Coordinator))));
+    }
+}
+
+public sealed class AccountDeletionInfoPage : ContentPage
+{
+    public AccountDeletionInfoPage()
+    {
+        Title = "How deletion works";
+        BackgroundColor = NativeTheme.Paper;
+
+        VerticalStackLayout removed = new() { Spacing = 10 };
+        removed.Add(NativeTheme.Eyebrow("Removed"));
+        removed.Add(NativeTheme.Body(
+            "Online runners, memberships, groups you own, campaign data, support messages, and linked devices."));
+
+        VerticalStackLayout process = new() { Spacing = 10 };
+        process.Add(NativeTheme.Eyebrow("Process"));
+        process.Add(NativeTheme.Body(
+            "Chummer finishes the online deletion first. This app clears its linked grant and local data only after the server returns a deletion receipt."));
+        process.Add(NativeTheme.Body(
+            "Active data is removed within 24 hours. Chummer-controlled backups age out within 30 days. Content-free deletion markers last 35 days; a content-free receipt may remain for 365 days.",
+            NativeTheme.Muted));
+
+        Uri publicDeletion = ChummerWebRoutes.Resolve(ChummerWebRoutes.AccountDeletion);
+        Button copyAddress = NativeTheme.SecondaryButton("Copy public deletion address");
+        copyAddress.Clicked += async (_, _) =>
+        {
+            await Clipboard.Default.SetTextAsync(publicDeletion.ToString());
+            copyAddress.Text = "Address copied";
+        };
+
+        Content = new ScrollView
+        {
+            Content = new VerticalStackLayout
+            {
+                Padding = new Thickness(20, 18, 20, 40),
+                Spacing = 16,
+                Children =
+                {
+                    NativeTheme.Eyebrow("Privacy"),
+                    NativeTheme.Title("How deletion works"),
+                    NativeTheme.Card(removed),
+                    NativeTheme.Card(process),
+                    NativeTheme.Body(publicDeletion.ToString(), NativeTheme.Muted),
+                    copyAddress
+                }
+            }
+        };
     }
 }
 
@@ -71,6 +136,21 @@ public sealed class AccountDeletionPage : NativePageBase
         _body.Add(NativeTheme.Title("Delete account"));
         _body.Add(NativeTheme.Body(
             "This removes your online runners, memberships, groups you own, campaign data, support messages, and linked devices."));
+
+        if (!Coordinator.Account.IsLinked)
+        {
+            _body.Add(NativeTheme.Card(new VerticalStackLayout
+            {
+                Spacing = 10,
+                Children =
+                {
+                    NativeTheme.Body(
+                        "This device is not linked to a Chummer account. Link it first so Chummer can authenticate the deletion."),
+                    CreateLinkButton()
+                }
+            }));
+            return;
+        }
 
         Switch removeLocal = new() { IsToggled = true };
         Grid localRow = new()
@@ -139,5 +219,12 @@ public sealed class AccountDeletionPage : NativePageBase
         confirm.Add(phrase);
         confirm.Add(erase);
         _body.Add(NativeTheme.Card(confirm));
+    }
+
+    private Button CreateLinkButton()
+    {
+        Button link = NativeTheme.PrimaryButton("Link account");
+        link.Clicked += async (_, _) => await RunAsync(() => Coordinator.BeginAccountLinkAsync());
+        return link;
     }
 }

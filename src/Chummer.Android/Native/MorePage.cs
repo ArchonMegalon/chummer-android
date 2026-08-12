@@ -67,10 +67,6 @@ public sealed class MorePage : NativePageBase
             Button refresh = NativeTheme.SecondaryButton("Refresh account data");
             refresh.Clicked += async (_, _) => await RunAsync(() => Coordinator.RefreshLinkedDataAsync());
             account.Add(refresh);
-            account.Add(NativeTheme.NavigationRow(
-                "Account & privacy",
-                "Linked device and deletion",
-                async () => await Navigation.PushAsync(new AccountPrivacyPage(Coordinator))));
         }
         else
         {
@@ -78,6 +74,10 @@ public sealed class MorePage : NativePageBase
             link.Clicked += async (_, _) => await RunAsync(() => Coordinator.BeginAccountLinkAsync());
             account.Add(link);
         }
+        account.Add(NativeTheme.NavigationRow(
+            "Account & privacy",
+            Coordinator.Account.IsLinked ? "Linked device and deletion" : "Linking and deletion",
+            async () => await Navigation.PushAsync(new AccountPrivacyPage(Coordinator))));
         _body.Add(NativeTheme.Card(account));
     }
 
