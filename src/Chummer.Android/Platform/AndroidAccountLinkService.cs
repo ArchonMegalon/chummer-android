@@ -53,14 +53,24 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             if (string.IsNullOrWhiteSpace(installationId) || string.IsNullOrWhiteSpace(accessToken))
             {
                 string? pendingState = await SecureStorage.Default.GetAsync(PendingStateKey);
-                SetSnapshot(string.IsNullOrWhiteSpace(pendingState)
-                    ? new(AndroidAccountLinkStatus.Unlinked, "Not linked")
-                    : new(AndroidAccountLinkStatus.Pending, "Finish linking", "Approve in your browser, then return."));
+                DateTimeOffset? pendingStarted = await ReadTimestampAsync(PendingStartedKey);
+                if (string.IsNullOrWhiteSpace(pendingState) || !IsPendingLinkCurrent(pendingStarted))
+                {
+                    ClearPending();
+                    SetSnapshot(new(AndroidAccountLinkStatus.Unlinked, "Not linked"));
+                }
+                else
+                {
+                    SetSnapshot(new(
+                        AndroidAccountLinkStatus.Pending,
+                        "Finish linking",
+                        "Approve in your browser, then return."));
+                }
                 return;
             }
 
             DateTimeOffset? expiresAtUtc = await ReadGrantExpiryAsync();
-            if (expiresAtUtc <= DateTimeOffset.UtcNow)
+            if (expiresAtUtc is null || expiresAtUtc <= DateTimeOffset.UtcNow)
             {
                 ClearGrant();
                 SetSnapshot(new(AndroidAccountLinkStatus.Unlinked, "Link expired", "Link again to restore account access."));
@@ -136,6 +146,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             SetSnapshot(new(AndroidAccountLinkStatus.Pending, "Finish linking", "Approve in your browser, then return."));
             if (!await _systemService.OpenUriAsync(ChummerWebRoutes.Resolve(href)))
             {
+                ClearPending();
                 SetSnapshot(new(AndroidAccountLinkStatus.Error, "Browser unavailable", "Open account linking again."));
             }
         }
@@ -171,7 +182,7 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             }
 
             DateTimeOffset? pendingStarted = await ReadTimestampAsync(PendingStartedKey);
-            if (pendingStarted is null || pendingStarted < DateTimeOffset.UtcNow.Subtract(PendingLifetime))
+            if (!IsPendingLinkCurrent(pendingStarted))
             {
                 ClearPending();
                 SetSnapshot(new(AndroidAccountLinkStatus.Error, "Approval expired", "Start a fresh account link."));
@@ -255,11 +266,20 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
                         "Fresh link required",
                         "Choose Link account and try again."));
                 }
+                else if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone)
+                {
+                    ClearPending();
+                    SetSnapshot(new(
+                        AndroidAccountLinkStatus.Error,
+                        "Approval expired",
+                        "Start a fresh account link."));
+                }
                 else
                 {
-                    SetSnapshot(response.StatusCode == HttpStatusCode.NotFound
-                        ? new(AndroidAccountLinkStatus.Error, "Approval expired", "Start a fresh account link.")
-                        : new(AndroidAccountLinkStatus.Error, "Could not link", "Check your connection and try again."));
+                    SetSnapshot(new(
+                        AndroidAccountLinkStatus.Error,
+                        "Could not link",
+                        "Check your connection and try again."));
                 }
                 return;
             }
@@ -452,11 +472,16 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             $"/api/v1/android/linked/groups/{Uri.EscapeDataString(groupId)}/invites",
             grant,
             cancellationToken);
-        if (!Uri.TryCreate(invite.InviteUrl, UriKind.Absolute, out Uri? uri)
+        string code = invite.Code?.Trim() ?? string.Empty;
+        string expectedPath = $"/groups/join/{Uri.EscapeDataString(code)}";
+        if (code.Length is 0 or > 256
+            || !Uri.TryCreate(invite.InviteUrl, UriKind.Absolute, out Uri? uri)
             || !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
             || !string.Equals(uri.Host, "chummer.run", StringComparison.OrdinalIgnoreCase)
             || !uri.IsDefaultPort
-            || !uri.AbsolutePath.StartsWith("/groups/join/", StringComparison.Ordinal))
+            || !string.Equals(uri.AbsolutePath, expectedPath, StringComparison.Ordinal)
+            || !string.IsNullOrEmpty(uri.Query)
+            || !string.IsNullOrEmpty(uri.Fragment))
         {
             throw new InvalidDataException("Chummer returned an invalid group invite link.");
         }
@@ -841,6 +866,14 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         return DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTimeOffset parsed)
             ? parsed
             : null;
+    }
+
+    private static bool IsPendingLinkCurrent(DateTimeOffset? startedAtUtc)
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        return startedAtUtc is not null
+            && startedAtUtc >= now.Subtract(PendingLifetime)
+            && startedAtUtc <= now.AddMinutes(2);
     }
 
     private static async Task<long> NextProofTimestampAsync()
