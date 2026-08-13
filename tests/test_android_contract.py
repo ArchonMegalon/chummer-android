@@ -12,6 +12,14 @@ RUN_SERVICES = Path(
     os.environ.get("CHUMMER_RUN_SERVICES_ROOT", WORKSPACE / "chummer.run-services")
 ).resolve()
 PROJECT = REPO / "src" / "Chummer.Android"
+_REVIEWED_HUB_MARKER = RUN_SERVICES / "Chummer.Run.Contracts" / "AccountErasureContracts.cs"
+if not _REVIEWED_HUB_MARKER.is_file():
+    raise RuntimeError(
+        "Android contract tests require a reviewed Hub checkout that contains "
+        f"{_REVIEWED_HUB_MARKER}. The sibling chummer.run-services tree is not "
+        "an authority when that file is missing. Set CHUMMER_RUN_SERVICES_ROOT "
+        "to the origin/main Hub worktree."
+    )
 REGISTRY = WORKSPACE / "chummer-design" / "products" / "chummer" / "ANDROID_WINDOWS_FEATURE_PARITY.yaml"
 WINDOWS_COMMANDS = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Shell" / "DesktopMenuProjectionCatalog.cs"
 WINDOWS_STARTUP_SURFACES = (
