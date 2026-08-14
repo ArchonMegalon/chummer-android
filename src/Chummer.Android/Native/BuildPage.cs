@@ -48,6 +48,7 @@ public sealed class BuildPage : NativePageBase
 
         AddWorkspacePicker();
         AddSummary();
+        AddDossier();
         AddBuildAreas();
         AddTools();
 
@@ -59,6 +60,16 @@ public sealed class BuildPage : NativePageBase
         {
             _body.Add(NativeTheme.Body(Coordinator.Notice!, NativeTheme.Muted));
         }
+    }
+
+    private void AddDossier()
+    {
+        _body.Add(NativeTheme.Eyebrow("Runner"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Origin dossier",
+            "Identity, appearance and story",
+            () => Navigation.PushAsync(new OriginDossierPage(Coordinator)),
+            automationId: "build-origin-dossier"));
     }
 
     private void AddWorkspacePicker()
@@ -123,7 +134,8 @@ public sealed class BuildPage : NativePageBase
                     await Coordinator.SelectTabAsync(tab.Id);
                     await Navigation.PushAsync(new BuildSectionPage(Coordinator, tab.Id, title));
                 }),
-                enabled));
+                enabled,
+                $"build-section-{tab.Id}"));
         }
     }
 

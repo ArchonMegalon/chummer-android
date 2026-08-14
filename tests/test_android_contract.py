@@ -12,6 +12,9 @@ RUN_SERVICES = Path(
     os.environ.get("CHUMMER_RUN_SERVICES_ROOT", WORKSPACE / "chummer.run-services")
 ).resolve()
 PROJECT = REPO / "src" / "Chummer.Android"
+DESIGN = Path(
+    os.environ.get("CHUMMER_DESIGN_ROOT", WORKSPACE / "chummer-design")
+).resolve()
 _REVIEWED_HUB_MARKER = RUN_SERVICES / "Chummer.Run.Contracts" / "AccountErasureContracts.cs"
 if not _REVIEWED_HUB_MARKER.is_file():
     raise RuntimeError(
@@ -20,7 +23,8 @@ if not _REVIEWED_HUB_MARKER.is_file():
         "an authority when that file is missing. Set CHUMMER_RUN_SERVICES_ROOT "
         "to the origin/main Hub worktree."
     )
-REGISTRY = WORKSPACE / "chummer-design" / "products" / "chummer" / "ANDROID_WINDOWS_FEATURE_PARITY.yaml"
+REGISTRY = DESIGN / "products" / "chummer" / "ANDROID_WINDOWS_FEATURE_PARITY.yaml"
+EDITABILITY_INVENTORY = REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
 WINDOWS_COMMANDS = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Shell" / "DesktopMenuProjectionCatalog.cs"
 WINDOWS_STARTUP_SURFACES = (
     WORKSPACE / "chummer-presentation" / "Chummer.Desktop.Runtime" / "DesktopStartupSurfaceCatalog.cs"
@@ -125,6 +129,9 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("ClearAllCredentials();", service)
         self.assertIn("expiresAtUtc is null || expiresAtUtc <= DateTimeOffset.UtcNow", service)
         self.assertIn("IsPendingLinkCurrent(pendingStarted)", service)
+        self.assertIn("bool resumeCurrentAttempt", service)
+        self.assertIn("string state = resumeCurrentAttempt ? savedState! : NewBase64UrlToken(24);", service)
+        self.assertIn("HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized", service)
         self.assertIn("startedAtUtc <= now.AddMinutes(2)", service)
         self.assertIn("HttpStatusCode.NotFound or HttpStatusCode.Gone", service)
         browser_failure = service[service.index('if (!await _systemService.OpenUriAsync'):]
@@ -230,11 +237,512 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("AddTabs", build)
         self.assertNotIn("Show all", build)
 
+    def test_attributes_and_origin_dossier_have_native_mutation_paths(self) -> None:
+        build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
+        flow = (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8")
+        attributes = (PROJECT / "Native" / "AttributeEditPage.cs").read_text(encoding="utf-8")
+        dossier = (PROJECT / "Native" / "OriginDossierPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+
+        self.assertIn('"Origin dossier"', build + dossier)
+        self.assertIn('automationId: "build-origin-dossier"', build)
+        self.assertIn("AttributeWorkbenchProjector.BuildRows", flow + attributes)
+        self.assertIn("AttributeEditRequest", attributes + coordinator)
+        self.assertIn("OriginDossierEditRequest", dossier + coordinator)
+        self.assertIn("_presenter.ApplyAttributeEditAsync", coordinator)
+        self.assertIn("_presenter.ApplyOriginDossierEditAsync", coordinator)
+        for automation_id in (
+            "attribute-save-",
+            "origin-dossier-identity",
+            "origin-dossier-story",
+        ):
+            self.assertIn(automation_id, attributes + dossier)
+        self.assertIn('save.AutomationId = $"origin-dossier-', dossier)
+        self.assertNotIn("WebView", attributes + dossier)
+
+    def test_collection_items_have_typed_stable_id_phone_editing_paths(self) -> None:
+        flow = (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8")
+        editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+
+        self.assertIn("ActiveCollectionEditor", flow + editor)
+        self.assertIn("WorkspaceCollectionItemTarget", editor)
+        self.assertIn("WorkspacePatchCollectionItemRequest", editor)
+        self.assertIn("WorkspaceMoveCollectionItemRequest", editor)
+        self.assertIn("WorkspaceDeleteCollectionItemRequest", editor)
+        self.assertIn("WorkspaceAddNestedCollectionItemRequest", editor)
+        self.assertIn("SectionQuickActionCatalog.ForSection", flow)
+        self.assertIn("_presenter.ApplyCollectionMutationAsync", coordinator)
+        self.assertIn("new CollectionItemEditorPage", flow)
+        self.assertIn("new NestedCollectionAddPage", editor)
+        for automation_id in (
+            "collection-item-",
+            "collection-field-",
+            "collection-save-",
+            "collection-move-up-",
+            "collection-move-down-",
+            "collection-delete-",
+            "collection-add-",
+            "nested-save",
+            "section-quick-",
+        ):
+            self.assertIn(automation_id, flow + editor)
+        self.assertNotIn("XDocument", editor)
+        self.assertNotIn("XPath", editor)
+        self.assertNotIn("<character", editor)
+
+    def test_condition_monitors_have_closed_career_phone_and_tablet_editors(self) -> None:
+        flow = (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8")
+        phone = (PROJECT / "Native" / "ConditionMonitorEditPage.cs").read_text(encoding="utf-8")
+        tablet = (PROJECT / "Native" / "TabletBuildPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        presentation = (
+            WORKSPACE
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+            / "WorkspaceXmlMutationCatalog.cs"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("ActiveConditionMonitor", flow + phone + tablet)
+        self.assertIn("ConditionMonitorEditRequest", phone + tablet + coordinator)
+        self.assertIn("_presenter.ApplyConditionMonitorEditAsync", coordinator)
+        self.assertIn("Condition monitors can only be changed for a created/career runner", presentation)
+        for automation_id in (
+            "condition-monitor-editor-",
+            "condition-monitor-filled-",
+            "condition-monitor-save-",
+            "condition-monitor-clear-",
+            "tablet-condition-track-",
+            "tablet-condition-filled-",
+            "tablet-condition-save-",
+            "tablet-condition-clear-",
+        ):
+            self.assertIn(automation_id, flow + phone + tablet)
+        self.assertNotIn("XDocument", phone + tablet)
+        self.assertNotIn("XPath", phone + tablet)
+        self.assertNotIn("<character", phone + tablet)
+
+    def test_device_damage_tracks_use_exact_shared_phone_and_tablet_patch(self) -> None:
+        phone = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
+        tablet = (PROJECT / "Native" / "TabletBuildPage.cs").read_text(encoding="utf-8")
+        state = (
+            WORKSPACE
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+            / "WorkspaceCollectionEditorState.cs"
+        ).read_text(encoding="utf-8")
+        request = (
+            WORKSPACE
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+            / "WorkspaceCollectionMutationRequest.cs"
+        ).read_text(encoding="utf-8")
+        mutation = (
+            WORKSPACE
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+            / "WorkspaceXmlMutationCatalog.cs"
+        ).read_text(encoding="utf-8")
+        projector = (
+            WORKSPACE
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+            / "WorkspaceCollectionEditorProjector.cs"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("WorkspaceItemConditionMonitorState", state)
+        self.assertIn("PhysicalConditionMonitor", state + phone + tablet)
+        self.assertIn("MatrixConditionMonitor", state + phone + tablet)
+        self.assertIn("VehiclePhysicalDamage", request + phone + tablet)
+        self.assertIn("VehicleMatrixDamage", request + phone + tablet)
+        self.assertIn("GearMatrixDamage", request + phone + tablet)
+        self.assertIn("ArmorMatrixDamage", request + phone + tablet)
+        self.assertIn("WeaponMatrixDamage", request + phone + tablet)
+        self.assertIn("CyberwareMatrixDamage", request + phone + tablet)
+        self.assertIn("CharacterVehicleConditionMonitorCalculator.TryCalculatePhysicalMaximum", mutation)
+        self.assertIn("CharacterMatrixConditionMonitorCalculator.TryCalculateMaximum", mutation)
+        self.assertIn("WorkspaceNestedCollectionKind.Gear", projector)
+        self.assertIn("exact condition-monitor maximum is unavailable", mutation)
+        self.assertIn("collection-vehicle-physical-damage-", phone)
+        self.assertIn("collection-vehicle-matrix-damage-", phone)
+        self.assertIn("collection-gear-matrix-damage-", phone)
+        self.assertIn("collection-armor-matrix-damage-", phone)
+        self.assertIn("collection-weapon-matrix-damage-", phone)
+        self.assertIn("collection-cyberware-matrix-damage-", phone)
+        self.assertIn('AutomationId = "tablet-vehicle-physical-damage"', tablet)
+        self.assertIn('"tablet-vehicle-matrix-damage"', tablet)
+        self.assertIn('"tablet-gear-matrix-damage"', tablet)
+        self.assertIn('"tablet-armor-matrix-damage"', tablet)
+        self.assertIn('"tablet-weapon-matrix-damage"', tablet)
+        self.assertIn('"tablet-cyberware-matrix-damage"', tablet)
+        self.assertIn("WorkspacePatchCollectionItemRequest", phone + tablet)
+        self.assertNotIn("XDocument", phone + tablet)
+        self.assertNotIn("XPath", phone + tablet)
+        self.assertNotIn("<character", phone + tablet)
+
+    def test_contacts_use_shared_chummer5_semantics_on_phone_and_tablet(self) -> None:
+        phone = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
+        tablet = (PROJECT / "Native" / "TabletBuildPage.cs").read_text(encoding="utf-8")
+        e2e = (REPO / "tests" / "run_api36_editing_e2e.py").read_text(encoding="utf-8")
+        core = (
+            WORKSPACE
+            / "chummer-core-engine"
+            / "Chummer.Contracts"
+            / "Characters"
+            / "CharacterContactEditSemantics.cs"
+        ).read_text(encoding="utf-8")
+        state = (
+            WORKSPACE
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+            / "WorkspaceCollectionEditorState.cs"
+        ).read_text(encoding="utf-8")
+        request = (
+            WORKSPACE
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+            / "WorkspaceCollectionMutationRequest.cs"
+        ).read_text(encoding="utf-8")
+        mutation = (
+            WORKSPACE
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+            / "WorkspaceXmlMutationCatalog.cs"
+        ).read_text(encoding="utf-8")
+
+        for marker in (
+            "FriendsInHighPlaces",
+            "ContactForceGroup",
+            "ContactMakeFree",
+            "ContactForcedLoyalty",
+            "IdentityEditable",
+            "ConnectionMaximum",
+            "CanDelete",
+        ):
+            self.assertIn(marker, core)
+        self.assertIn("WorkspaceContactEditorState", state + phone + tablet)
+        self.assertIn("ContactConnection", request + mutation + phone + tablet)
+        self.assertIn("ContactLoyalty", request + mutation + phone + tablet)
+        self.assertIn("original.IsEnabled", phone + tablet)
+        self.assertIn("IsEnabled = value.IsEnabled", phone + tablet)
+        self.assertIn("collection-contact-connection-", phone)
+        self.assertIn("collection-contact-loyalty-", phone)
+        self.assertIn('"tablet-contact-connection"', tablet)
+        self.assertIn('"tablet-contact-loyalty"', tablet)
+        self.assertIn("item.CanDelete", phone + tablet)
+        self.assertIn("WorkspacePatchCollectionItemRequest", phone + tablet)
+        for marker in (
+            "build-section-tab-relationships",
+            "build-action-tab-relationships-contacts",
+            "tablet-build-tab-tab-relationships",
+            "tablet-build-action-tab-relationships-contacts",
+            "collection-contact-connection-",
+            "tablet-contact-connection",
+            '"contactInvalidBoundsRejected": "pass"',
+            '"contactEditPersisted": "pass"',
+            '"contactDeletePersisted": "pass"',
+            '"processRestartContactPersistence": "pass"',
+        ):
+            self.assertIn(marker, e2e)
+        self.assertNotIn("XDocument", phone + tablet)
+        self.assertNotIn("XPath", phone + tablet)
+        self.assertNotIn("<character", phone + tablet)
+
+    def test_pets_use_type_safe_shared_phone_and_tablet_editing(self) -> None:
+        phone = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
+        tablet = (PROJECT / "Native" / "TabletBuildPage.cs").read_text(encoding="utf-8")
+        e2e = (REPO / "tests" / "run_api36_editing_e2e.py").read_text(encoding="utf-8")
+        core = (
+            WORKSPACE
+            / "chummer-core-engine"
+            / "Chummer.Contracts"
+            / "Characters"
+            / "CharacterPetEditSemantics.cs"
+        ).read_text(encoding="utf-8")
+        request = (
+            WORKSPACE
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+            / "WorkspaceCollectionMutationRequest.cs"
+        ).read_text(encoding="utf-8")
+        projector = (
+            WORKSPACE
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+            / "WorkspaceCollectionEditorProjector.cs"
+        ).read_text(encoding="utf-8")
+        mutation = (
+            WORKSPACE
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+            / "WorkspaceXmlMutationCatalog.cs"
+        ).read_text(encoding="utf-8")
+        dialog = (
+            WORKSPACE
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+            / "DialogCoordinator.cs"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("CharacterPetEditSemanticsResolver", core)
+        self.assertIn("IdentityEditable", core)
+        self.assertIn("WorkspaceCollectionKind.Pet", projector + mutation)
+        self.assertIn('"pets" => new(key, "contacts", WorkspaceCollectionKind.Pet)', projector)
+        self.assertIn("IsExpectedContactRecordType", mutation)
+        self.assertIn("ResolvePetSemantics", mutation)
+        self.assertIn("AddPet", mutation)
+        self.assertIn("WorkspaceQuickAddKinds.Pet", dialog)
+        self.assertIn("    Pet,", request)
+        for marker in (
+            "collection-field-",
+            "collection-delete-",
+            "original.IsEnabled",
+            "WorkspacePatchCollectionItemRequest",
+        ):
+            self.assertIn(marker, phone)
+        for marker in (
+            "tablet-field-",
+            "tablet-inspector-delete",
+            "original.IsEnabled",
+            "WorkspacePatchCollectionItemRequest",
+        ):
+            self.assertIn(marker, tablet)
+        for marker in (
+            "build-action-tab-relationships-pets",
+            "tablet-build-action-tab-relationships-pets",
+            'f"{prefix}-field-metatype"',
+            'f"{prefix}-field-notes"',
+            '"petInvalidNameRejected": "pass"',
+            '"petEditPersisted": "pass"',
+            '"petDeletePersisted": "pass"',
+            '"processRestartPetPersistence": "pass"',
+        ):
+            self.assertIn(marker, e2e)
+        self.assertNotIn("XDocument", phone + tablet)
+        self.assertNotIn("XPath", phone + tablet)
+        self.assertNotIn("<character", phone + tablet)
+
+    def test_linked_chummer5_runners_use_governed_phone_and_tablet_mutations(self) -> None:
+        phone = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
+        tablet = (PROJECT / "Native" / "TabletBuildPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        staging = (PROJECT / "Platform" / "IAndroidLinkedCharacterFileService.cs").read_text(encoding="utf-8")
+        program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
+        e2e = (REPO / "tests" / "run_api36_editing_e2e.py").read_text(encoding="utf-8")
+        state = (
+            WORKSPACE
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+            / "WorkspaceCollectionEditorState.cs"
+        ).read_text(encoding="utf-8")
+        request = (
+            WORKSPACE
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+            / "WorkspaceCollectionMutationRequest.cs"
+        ).read_text(encoding="utf-8")
+        mutation = (
+            WORKSPACE
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+            / "WorkspaceXmlMutationCatalog.cs"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("WorkspaceLinkedCharacterState", state)
+        self.assertIn("WorkspaceSetLinkedCharacterRequest", request + mutation + coordinator)
+        self.assertIn("WorkspaceRemoveLinkedCharacterRequest", request + mutation + coordinator)
+        self.assertIn("ICharacterLinkedDocumentCodec", staging)
+        self.assertIn('DirectoryName = "linked-characters"', staging)
+        self.assertIn("SHA256.HashData(selected.Content)", staging)
+        self.assertIn("File.Move(temporaryPath, finalPath, overwrite: true)", staging)
+        self.assertIn("CryptographicOperations.ZeroMemory(selected.Content)", staging)
+        self.assertIn("BuildTargetPrefix(target)", staging)
+        self.assertIn("AddSingleton<IAndroidLinkedCharacterFileService, AndroidLinkedCharacterFileService>", program)
+        self.assertIn("_linkedCharacters.StageAsync", coordinator)
+        self.assertIn("_linkedCharacters.DeleteOwnedAsync", coordinator)
+        for marker in (
+            "collection-linked-status-",
+            "collection-linked-attach-",
+            "collection-linked-remove-",
+        ):
+            self.assertIn(marker, phone)
+        for marker in (
+            "tablet-linked-status",
+            "tablet-linked-attach",
+            "tablet-linked-remove",
+        ):
+            self.assertIn(marker, tablet)
+        for marker in (
+            '"/sdcard/Download/linked-runner-e2e.chum5"',
+            '"/sdcard/Download/invalid-linked-runner-e2e.chum5"',
+            "assert_linked_identity",
+            "assert_link_persisted_then_remove",
+            '"linkedRunnerInvalidDocumentRejected": "pass"',
+            '"contactLinkedRunnerAttachPersisted": "pass"',
+            '"contactLinkedRunnerRemoveRestoredIdentity": "pass"',
+            '"petLinkedRunnerAttachPersisted": "pass"',
+            '"petLinkedRunnerRemoveRestoredIdentity": "pass"',
+        ):
+            self.assertIn(marker, e2e)
+        self.assertNotIn("XDocument", phone + tablet + coordinator + staging)
+        self.assertNotIn("XPath", phone + tablet + coordinator + staging)
+
+    def test_tablet_uses_explicit_large_screen_shell_and_persistent_editing_panes(self) -> None:
+        shell = (PROJECT / "MainShell.cs").read_text(encoding="utf-8")
+        policy = (PROJECT / "Native" / "TabletLayoutPolicy.cs").read_text(encoding="utf-8")
+        tablet = (PROJECT / "Native" / "TabletBuildPage.cs").read_text(encoding="utf-8")
+        program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
+        e2e = (REPO / "tests" / "run_api36_editing_e2e.py").read_text(encoding="utf-8")
+
+        self.assertIn("ExpandedWidthDip = 840d", policy)
+        self.assertIn("idiom == DeviceIdiom.Tablet || widthDip >= ExpandedWidthDip", policy)
+        self.assertIn("TabletLayoutPolicy.UseTabletComposition", shell)
+        self.assertIn("BuildTabletShell", shell)
+        self.assertIn("FlyoutBehavior.Flyout", shell)
+        self.assertIn("CreateTabletDestination<TabletBuildPage>", shell)
+        self.assertIn("AddTransient<TabletBuildPage>", program)
+        for automation_id in (
+            "tablet-build-layout",
+            "tablet-build-navigation-pane",
+            "tablet-build-collection-pane",
+            "tablet-build-inspector-pane",
+            "tablet-inspector-save",
+            "tablet-inspector-delete",
+            "tablet-origin-dossier",
+            "tablet-attribute-",
+            "tablet-attribute-base-",
+            "tablet-attribute-karma-",
+            "tablet-attribute-save-",
+            "tablet-attribute-improve-",
+            "tablet-attribute-burn-edge",
+            "tablet-condition-track-",
+            "tablet-condition-filled-",
+            "tablet-condition-save-",
+            "tablet-condition-clear-",
+            "tablet-vehicle-physical-damage",
+            "tablet-vehicle-matrix-damage",
+            "tablet-gear-matrix-damage",
+            "tablet-armor-matrix-damage",
+            "tablet-weapon-matrix-damage",
+            "tablet-cyberware-matrix-damage",
+            "tablet-contact-connection",
+            "tablet-contact-loyalty",
+        ):
+            self.assertIn(automation_id, tablet)
+        self.assertIn("SizeChanged", tablet)
+        self.assertIn("_selectedTarget", tablet)
+        self.assertIn("_selectedAttributeName", tablet)
+        self.assertIn("AttributeWorkbenchProjector.BuildRows", tablet)
+        self.assertIn("AttributeEditRequest", tablet)
+        self.assertIn("WorkspacePatchCollectionItemRequest", tablet)
+        self.assertIn("WorkspaceMoveCollectionItemRequest", tablet)
+        self.assertIn("WorkspaceDeleteCollectionItemRequest", tablet)
+        self.assertIn("SectionQuickActionCatalog.ForSection", tablet)
+        self.assertNotIn("WebView", tablet)
+        self.assertNotIn("XDocument", tablet)
+        for automation_id in (
+            "tablet-build-tab-tab-attributes",
+            "tablet-build-action-tab-attributes-attributedetails",
+            "tablet-attribute-body",
+            "tablet-attribute-base-body",
+            "tablet-attribute-save-body",
+        ):
+            self.assertIn(automation_id, e2e)
+        self.assertIn('"attributeBaseEditPersisted": "pass"', e2e)
+        self.assertNotIn("not_covered", e2e)
+
+    def test_editing_parity_matrix_is_explicit_and_fail_closed(self) -> None:
+        parity = self.registry["editing_parity"]
+        surfaces = parity["surfaces"]
+        control_inventory = parity["control_inventory"]
+        profiles = self.registry["ui_profiles"]
+        self.assertIn("Every value that Chummer5 allows", parity["goal"])
+        self.assertIn("API 36 emulator persistence journey", parity["completion_rule"])
+        self.assertEqual("deep_native_navigation", profiles["phone"]["composition"])
+        self.assertEqual("adaptive_master_detail_multi_pane", profiles["tablet"]["composition"])
+        self.assertEqual("implemented_pending_emulator", surfaces["attributes"]["status"])
+        self.assertEqual("implemented_pending_emulator", surfaces["origin_dossier"]["status"])
+        self.assertGreaterEqual(len(surfaces), 20)
+        allowed = set(parity["status_legend"])
+        self.assertTrue(all(surface["status"] in allowed for surface in surfaces.values()))
+        self.assertTrue(all(surface["phone_status"] in allowed for surface in surfaces.values()))
+        self.assertTrue(all(surface["tablet_status"] in allowed for surface in surfaces.values()))
+        self.assertTrue(any(surface["status"] == "missing" for surface in surfaces.values()))
+        self.assertTrue(any(surface["status"] == "partial_create_only" for surface in surfaces.values()))
+        self.assertTrue(any(surface["tablet_status"] == "missing" for surface in surfaces.values()))
+        self.assertEqual(
+            "chummer.android.chummer5-editability-inventory/v1",
+            control_inventory["schema"],
+        )
+        self.assertEqual(
+            "chummer-android/docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json",
+            control_inventory["artifact"],
+        )
+        self.assertEqual(
+            "materialized_incomplete_fail_closed",
+            control_inventory["status"],
+        )
+
+        inventory = json.loads(EDITABILITY_INVENTORY.read_text(encoding="utf-8"))
+        rows = inventory["rows"]
+        self.assertEqual(control_inventory["schema"], inventory["schema"])
+        self.assertEqual("incomplete_fail_closed", inventory["status"])
+        self.assertFalse(inventory["completionProven"])
+        self.assertEqual(len(rows), inventory["summary"]["rowCount"])
+        self.assertGreater(len(rows), 1000)
+        self.assertEqual(len(rows), len({row["id"] for row in rows}))
+        self.assertEqual(0, inventory["summary"]["reviewRequiredCount"])
+        self.assertEqual(len(rows), inventory["summary"]["legacyReviewCompleteCount"])
+        self.assertGreater(inventory["summary"]["reviewedNonMutatingCount"], 0)
+        self.assertEqual(0, inventory["summary"]["unclassifiedCount"])
+        self.assertEqual(
+            inventory["summary"]["reviewedNonMutatingCount"],
+            inventory["summary"]["completionProvenCount"],
+        )
+        required_fields = set(inventory["requiredRowFields"])
+        for row in rows:
+            self.assertTrue(required_fields.issubset(row))
+            self.assertTrue(row["legacyReviewComplete"])
+            self.assertTrue(row["legacy"]["dispositionEvidence"])
+            if row["editParityRequired"]:
+                self.assertFalse(row["completionProven"])
+            else:
+                self.assertTrue(row["completionProven"])
+                self.assertEqual("not_applicable_non_mutating", row["overallStatus"])
+            self.assertIn(row["mutationFamily"], surfaces)
+            self.assertFalse(Path(row["legacy"]["sourcePath"]).is_absolute())
+
+        product_spec = (DESIGN / "products" / "chummer" / "ANDROID_APP_PRODUCT_SPEC.md").read_text(
+            encoding="utf-8"
+        )
+        normalized_spec = " ".join(product_spec.split())
+        self.assertIn("### Phone composition", product_spec)
+        self.assertIn("### Tablet composition", product_spec)
+        self.assertIn("### Shared capability contract", product_spec)
+        self.assertIn("A larger screen capture of the phone stack does not count", normalized_spec)
+        self.assertIn("purpose-designed tablet surface", normalized_spec)
+
     def test_android_copy_is_short_and_human(self) -> None:
         account = (PROJECT / "Platform" / "AndroidAccountLinkService.cs").read_text(encoding="utf-8")
-        rendered_copy = account + "".join(
+        ui_source = account + "".join(
             path.read_text(encoding="utf-8") for path in (PROJECT / "Native").glob("*.cs")
         )
+        rendered_copy = "\n".join(re.findall(r'"([^"\\]*(?:\\.[^"\\]*)*)"', ui_source))
         for phrase in (
             "Runner desk",
             "Campaign command",

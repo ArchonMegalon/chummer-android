@@ -57,8 +57,10 @@ public sealed class HomePage : NativePageBase
             RowSpacing = 10
         };
         Button open = NativeTheme.PrimaryButton("Open file");
+        open.AutomationId = "home-open-file";
         open.Clicked += async (_, _) => await RunAsync(() => Coordinator.OpenLocalAsync());
         Button create = NativeTheme.SecondaryButton("New runner");
+        create.AutomationId = "home-new-runner";
         create.Clicked += async (_, _) => await RunAsync(() => Coordinator.CreateRunnerAsync());
         quick.Add(open);
         quick.Add(create, 1);

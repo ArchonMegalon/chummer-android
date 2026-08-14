@@ -20,6 +20,7 @@ public static class MauiProgram
             .UseMauiApp<App>();
 
         builder.Services.AddSingleton<IAndroidDocumentService, AndroidDocumentService>();
+        builder.Services.AddSingleton<IAndroidLinkedCharacterFileService, AndroidLinkedCharacterFileService>();
         builder.Services.AddSingleton<IAndroidSystemService, AndroidSystemService>();
         builder.Services.AddSingleton<IAndroidAccountLinkService, AndroidAccountLinkService>();
         builder.Services.AddChummerLocalRuntimeClient(
@@ -39,6 +40,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<RunnerSessionCoordinator>();
         builder.Services.AddTransient<HomePage>();
         builder.Services.AddTransient<BuildPage>();
+        builder.Services.AddTransient<TabletBuildPage>();
         builder.Services.AddTransient<PlayPage>();
         builder.Services.AddTransient<CampaignPage>();
         builder.Services.AddTransient<MorePage>();

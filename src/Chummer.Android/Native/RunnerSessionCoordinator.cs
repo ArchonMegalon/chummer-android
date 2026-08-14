@@ -32,6 +32,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly IShellSurfaceResolver _surfaceResolver;
     private readonly ICommandAvailabilityEvaluator _availability;
     private readonly IAndroidDocumentService _documents;
+    private readonly IAndroidLinkedCharacterFileService _linkedCharacters;
     private readonly IAndroidSystemService _system;
     private readonly IAndroidAccountLinkService _account;
     private readonly SemaphoreSlim _initializeGate = new(1, 1);
@@ -55,6 +56,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         IShellSurfaceResolver surfaceResolver,
         ICommandAvailabilityEvaluator availability,
         IAndroidDocumentService documents,
+        IAndroidLinkedCharacterFileService linkedCharacters,
         IAndroidSystemService system,
         IAndroidAccountLinkService account)
     {
@@ -63,6 +65,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _surfaceResolver = surfaceResolver;
         _availability = availability;
         _documents = documents;
+        _linkedCharacters = linkedCharacters;
         _system = system;
         _account = account;
         _presenter.StateChanged += OnPresenterStateChanged;
@@ -227,6 +230,147 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     public Task UpdateDialogFieldAsync(string fieldId, string? value, CancellationToken cancellationToken = default)
         => _presenter.UpdateDialogFieldAsync(fieldId, value, cancellationToken);
+
+    public async Task ApplyAttributeEditAsync(
+        AttributeEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        await _presenter.ApplyAttributeEditAsync(request, cancellationToken);
+        _notice = State.Error is null ? "Attribute updated." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
+    public async Task ApplyOriginDossierEditAsync(
+        OriginDossierEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        await _presenter.ApplyOriginDossierEditAsync(request, cancellationToken);
+        _notice = State.Error is null ? "Dossier updated." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
+    public async Task ApplyCollectionMutationAsync(
+        WorkspaceCollectionMutationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        await _presenter.ApplyCollectionMutationAsync(request, cancellationToken);
+        _notice = State.Error is null ? "Runner item updated." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
+    public async Task AttachLinkedCharacterAsync(
+        WorkspaceCollectionItemTarget target,
+        CancellationToken cancellationToken = default)
+    {
+        WorkspaceCollectionItemEditorState item = ResolveCollectionItem(target);
+        WorkspaceLinkedCharacterState linked = item.LinkedCharacter
+            ?? throw new InvalidOperationException("This runner item does not support linked characters.");
+        if (!linked.CanAttach)
+        {
+            throw new InvalidOperationException("This runner's exact Chummer5 link rules are unavailable.");
+        }
+
+        AndroidStagedLinkedCharacter? staged = await _linkedCharacters.StageAsync(target, cancellationToken);
+        if (staged is null)
+        {
+            return;
+        }
+
+        bool sameAsPrior = PathsEqual(staged.FileName, linked.FileName);
+        try
+        {
+            await ApplyCollectionMutationAsync(
+                new WorkspaceSetLinkedCharacterRequest(
+                    target,
+                    staged.FileName,
+                    staged.RelativeFileName,
+                    staged.DisplayName,
+                    staged.Identity),
+                cancellationToken);
+            if (State.Error is not null)
+            {
+                if (!sameAsPrior)
+                {
+                    await _linkedCharacters.DeleteOwnedAsync(target, staged.FileName, CancellationToken.None);
+                }
+                return;
+            }
+
+            if (!sameAsPrior)
+            {
+                await _linkedCharacters.DeleteOwnedAsync(target, linked.FileName, CancellationToken.None);
+            }
+            _notice = $"Linked {staged.Identity.CharacterName}.";
+            NotifyChanged();
+        }
+        catch
+        {
+            if (!sameAsPrior)
+            {
+                await _linkedCharacters.DeleteOwnedAsync(target, staged.FileName, CancellationToken.None);
+            }
+            throw;
+        }
+    }
+
+    public async Task RemoveLinkedCharacterAsync(
+        WorkspaceCollectionItemTarget target,
+        CancellationToken cancellationToken = default)
+    {
+        WorkspaceCollectionItemEditorState item = ResolveCollectionItem(target);
+        WorkspaceLinkedCharacterState linked = item.LinkedCharacter
+            ?? throw new InvalidOperationException("This runner item does not support linked characters.");
+        if (!linked.CanRemove)
+        {
+            throw new InvalidOperationException("This runner item is not linked to another character.");
+        }
+
+        await ApplyCollectionMutationAsync(new WorkspaceRemoveLinkedCharacterRequest(target), cancellationToken);
+        if (State.Error is not null)
+        {
+            return;
+        }
+
+        await _linkedCharacters.DeleteOwnedAsync(target, linked.FileName, CancellationToken.None);
+        _notice = "Linked runner removed.";
+        NotifyChanged();
+    }
+
+    private WorkspaceCollectionItemEditorState ResolveCollectionItem(WorkspaceCollectionItemTarget target)
+        => State.ActiveCollectionEditor?.Items.FirstOrDefault(item =>
+                CollectionItemEditorPage.TargetsMatch(item.Target, target))
+            ?? throw new InvalidOperationException(
+                "This runner item no longer has a unique stable identity. Reload the section before editing.");
+
+    private static bool PathsEqual(string left, string right)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+        {
+            return false;
+        }
+
+        try
+        {
+            return string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), StringComparison.Ordinal);
+        }
+        catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
+        }
+    }
+
+    public async Task ApplyConditionMonitorEditAsync(
+        ConditionMonitorEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        await _presenter.ApplyConditionMonitorEditAsync(request, cancellationToken);
+        _notice = State.Error is null ? "Damage track updated." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
 
     public async Task ExecuteDialogActionAsync(string actionId, CancellationToken cancellationToken = default)
     {
@@ -536,6 +680,10 @@ public sealed class RunnerSessionCoordinator : IDisposable
             .Replace('_', ' ')
             .Replace('-', ' ')
             .Trim();
+        value = string.Concat(value.Select(static (character, index) =>
+            index > 0 && char.IsUpper(character)
+                ? $" {character}"
+                : character.ToString()));
         return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(value);
     }
 

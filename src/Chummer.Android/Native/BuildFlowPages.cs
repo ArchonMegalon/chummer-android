@@ -1,5 +1,6 @@
 using Chummer.Contracts.Presentation;
 using Chummer.Presentation.Overview;
+using Chummer.Presentation.Rulesets;
 
 namespace Chummer.Android.Native;
 
@@ -43,6 +44,7 @@ public sealed class BuildSectionPage : NativePageBase
         _body.Add(NativeTheme.Title(_title));
 
         AddSectionActions();
+        AddQuickActions();
         AddValueGroups();
 
         if (!string.IsNullOrWhiteSpace(Coordinator.State.Error ?? Coordinator.Surface.Error))
@@ -64,12 +66,31 @@ public sealed class BuildSectionPage : NativePageBase
             _body.Add(NativeTheme.NavigationRow(
                 action.Label,
                 null,
-                () => RunAsync(() => Coordinator.ExecuteWorkspaceActionAsync(action))));
+                () => RunAsync(() => Coordinator.ExecuteWorkspaceActionAsync(action)),
+                automationId: $"build-action-{NormalizeAutomationToken(action.Id)}"));
         }
     }
 
     private void AddValueGroups()
     {
+        if (Coordinator.State.ActiveConditionMonitor is { } conditionMonitor)
+        {
+            AddConditionMonitorRows(conditionMonitor);
+            return;
+        }
+
+        if (AttributeWorkbenchProjector.IsAttributeSection(Coordinator.State.ActiveSectionId))
+        {
+            AddAttributeRows();
+            return;
+        }
+
+        if (Coordinator.State.ActiveCollectionEditor is { } collectionEditor)
+        {
+            AddCollectionRows(collectionEditor);
+            return;
+        }
+
         IReadOnlyList<SectionRowState> rows = Coordinator.State.ActiveSectionRows;
         _body.Add(NativeTheme.Eyebrow("Details"));
         if (rows.Count == 0)
@@ -90,6 +111,97 @@ public sealed class BuildSectionPage : NativePageBase
                 () => Navigation.PushAsync(new BuildValueGroupPage(Coordinator, _tabId, _title, groupKey))));
         }
     }
+
+    private void AddConditionMonitorRows(ConditionMonitorEditorState editor)
+    {
+        _body.Add(NativeTheme.Eyebrow("Damage tracks"));
+        foreach (ConditionMonitorTrackState track in editor.Tracks)
+        {
+            _body.Add(NativeTheme.NavigationRow(
+                track.Label,
+                $"{track.Filled} of {track.EditableMaximum} filled",
+                () => Navigation.PushAsync(new ConditionMonitorEditPage(Coordinator, track.Track)),
+                automationId: $"condition-monitor-{ConditionMonitorEditPage.Token(track.Track)}"));
+        }
+
+        if (!editor.CareerEditable)
+        {
+            _body.Add(NativeTheme.Body(
+                "Damage is read-only until this runner enters career mode.",
+                NativeTheme.Muted));
+        }
+    }
+
+    private void AddQuickActions()
+    {
+        IReadOnlyList<SectionQuickActionDefinition> actions = SectionQuickActionCatalog.ForSection(
+            Coordinator.Surface.ActiveRulesetId,
+            Coordinator.State.ActiveSectionId);
+        if (actions.Count == 0)
+        {
+            return;
+        }
+
+        _body.Add(NativeTheme.Eyebrow("Edit"));
+        foreach (SectionQuickActionDefinition action in actions)
+        {
+            _body.Add(NativeTheme.NavigationRow(
+                action.Label,
+                action.IsPrimary ? "Primary action" : null,
+                () => RunAsync(() => Coordinator.ExecuteCommandAsync(action.ControlId)),
+                automationId: $"section-quick-{NormalizeAutomationToken(action.ControlId)}"));
+        }
+    }
+
+    private void AddCollectionRows(WorkspaceCollectionEditorState editor)
+    {
+        _body.Add(NativeTheme.Eyebrow("Entries"));
+        if (editor.Items.Count == 0)
+        {
+            _body.Add(NativeTheme.Body("No entries yet. Use an action above to add one.", NativeTheme.Muted));
+            return;
+        }
+
+        foreach (WorkspaceCollectionItemEditorState item in editor.Items)
+        {
+            string detail = item.Rating is { } rating
+                ? $"Rating {rating.Value}"
+                : item.Quantity is { } quantity
+                    ? $"Quantity {quantity.Value}"
+                    : $"Entry {item.Index + 1}";
+            _body.Add(NativeTheme.NavigationRow(
+                item.Label,
+                detail,
+                () => Navigation.PushAsync(new CollectionItemEditorPage(Coordinator, item.Target)),
+                automationId: $"collection-item-{NormalizeAutomationToken(editor.Kind.ToString())}-{NormalizeAutomationToken(item.Target.NestedItemId ?? item.Target.ItemId)}"));
+        }
+    }
+
+    private void AddAttributeRows()
+    {
+        IReadOnlyList<AttributeWorkbenchRow> rows = AttributeWorkbenchProjector.BuildRows(
+            Coordinator.State.ActiveSectionId,
+            Coordinator.State.ActiveSectionJson ?? string.Empty);
+        _body.Add(NativeTheme.Eyebrow("Attributes"));
+        if (rows.Count == 0)
+        {
+            _body.Add(NativeTheme.Body("No attributes are available for this runner.", NativeTheme.Muted));
+            return;
+        }
+
+        foreach (AttributeWorkbenchRow row in rows)
+        {
+            string detail = $"{row.TotalValue} · {row.MetatypeMin}-{row.MetatypeMax} · Aug {row.MetatypeAugMax}";
+            _body.Add(NativeTheme.NavigationRow(
+                row.DisplayName,
+                detail,
+                () => Navigation.PushAsync(new AttributeEditPage(Coordinator, row)),
+                automationId: $"attribute-{NormalizeAutomationToken(row.AttributeName)}"));
+        }
+    }
+
+    private static string NormalizeAutomationToken(string value)
+        => new(value.Trim().ToLowerInvariant().Select(character => char.IsLetterOrDigit(character) ? character : '-').ToArray());
 }
 
 public sealed class BuildValueGroupPage : NativePageBase

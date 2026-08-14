@@ -68,6 +68,7 @@ public sealed class NativeDialogPage : ContentPage
             Button button = action.IsPrimary
                 ? NativeTheme.PrimaryButton(action.Label)
                 : NativeTheme.SecondaryButton(action.Label);
+            button.AutomationId = $"dialog-action-{Token(action.Id)}";
             button.Clicked += async (_, _) => await ExecuteAsync(action.Id);
             actions.Add(button, index % 2, index / 2);
             index++;
@@ -94,6 +95,7 @@ public sealed class NativeDialogPage : ContentPage
                 string.Equals(option.Value, field.Value, StringComparison.Ordinal));
             Picker picker = new()
             {
+                AutomationId = $"dialog-field-{Token(field.Id)}",
                 Title = string.IsNullOrWhiteSpace(field.Placeholder) ? $"Choose {field.Label}" : field.Placeholder,
                 ItemsSource = options.Select(static option => option.Label).ToArray(),
                 SelectedIndex = selectedIndex,
@@ -117,6 +119,7 @@ public sealed class NativeDialogPage : ContentPage
         {
             Switch toggle = new()
             {
+                AutomationId = $"dialog-field-{Token(field.Id)}",
                 IsToggled = bool.TryParse(field.Value, out bool enabled) && enabled,
                 IsEnabled = !field.IsReadOnly,
                 OnColor = NativeTheme.Signal
@@ -130,6 +133,7 @@ public sealed class NativeDialogPage : ContentPage
         {
             Editor editor = new()
             {
+                AutomationId = $"dialog-field-{Token(field.Id)}",
                 Text = field.Value,
                 Placeholder = field.Placeholder,
                 IsReadOnly = field.IsReadOnly,
@@ -145,6 +149,7 @@ public sealed class NativeDialogPage : ContentPage
         {
             Entry entry = new()
             {
+                AutomationId = $"dialog-field-{Token(field.Id)}",
                 Text = field.Value,
                 Placeholder = field.Placeholder,
                 IsReadOnly = field.IsReadOnly,
@@ -160,6 +165,9 @@ public sealed class NativeDialogPage : ContentPage
 
         return NativeTheme.Card(fieldLayout, new Thickness(14));
     }
+
+    private static string Token(string value)
+        => new(value.Trim().ToLowerInvariant().Select(character => char.IsLetterOrDigit(character) ? character : '-').ToArray());
 
     private async Task UpdateFieldAsync(string fieldId, string? value)
     {

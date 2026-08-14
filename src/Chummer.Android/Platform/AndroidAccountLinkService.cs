@@ -131,11 +131,18 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
         try
         {
             InstallationIdentity identity = await GetOrCreateInstallationIdentityAsync();
-            string state = NewBase64UrlToken(24);
-            await SecureStorage.Default.SetAsync(PendingStateKey, state);
-            await SecureStorage.Default.SetAsync(
-                PendingStartedKey,
-                DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+            string? savedState = await SecureStorage.Default.GetAsync(PendingStateKey);
+            DateTimeOffset? pendingStarted = await ReadTimestampAsync(PendingStartedKey);
+            bool resumeCurrentAttempt = !string.IsNullOrWhiteSpace(savedState)
+                && IsPendingLinkCurrent(pendingStarted);
+            string state = resumeCurrentAttempt ? savedState! : NewBase64UrlToken(24);
+            if (!resumeCurrentAttempt)
+            {
+                await SecureStorage.Default.SetAsync(PendingStateKey, state);
+                await SecureStorage.Default.SetAsync(
+                    PendingStartedKey,
+                    DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+            }
 
             string callback = $"https://chummer.run{CallbackPath}?state={Uri.EscapeDataString(state)}";
             Dictionary<string, string> query = new(StringComparer.Ordinal)
@@ -267,6 +274,14 @@ public sealed class AndroidAccountLinkService : IAndroidAccountLinkService
             if (!response.IsSuccessStatusCode)
             {
                 if (response.StatusCode == HttpStatusCode.Conflict)
+                {
+                    ClearAllCredentials();
+                    SetSnapshot(new(
+                        AndroidAccountLinkStatus.Error,
+                        "Fresh link required",
+                        "Choose Link account and try again."));
+                }
+                else if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized)
                 {
                     ClearAllCredentials();
                     SetSnapshot(new(

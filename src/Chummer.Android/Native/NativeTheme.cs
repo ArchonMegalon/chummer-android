@@ -79,7 +79,8 @@ internal static class NativeTheme
         string title,
         string? detail,
         Func<Task> selected,
-        bool enabled = true)
+        bool enabled = true,
+        string? automationId = null)
     {
         Grid row = new()
         {
@@ -109,6 +110,7 @@ internal static class NativeTheme
         row.Add(chevron, 1);
 
         Border card = Card(row, new Thickness(16, 12));
+        card.AutomationId = automationId;
         card.Opacity = enabled ? 1 : 0.55;
         SemanticProperties.SetDescription(card, string.IsNullOrWhiteSpace(detail) ? title : $"{title}. {detail}");
         if (enabled)
@@ -120,6 +122,37 @@ internal static class NativeTheme
 
         return card;
     }
+
+    public static Label FieldLabel(string text)
+    {
+        Label label = Body(text, Muted);
+        label.FontSize = 13;
+        label.FontAttributes = FontAttributes.Bold;
+        return label;
+    }
+
+    public static Entry TextField(string automationId, string? value, string placeholder = "") => new()
+    {
+        AutomationId = automationId,
+        Text = value ?? string.Empty,
+        Placeholder = placeholder,
+        BackgroundColor = Surface,
+        TextColor = Text,
+        PlaceholderColor = Muted,
+        ClearButtonVisibility = ClearButtonVisibility.WhileEditing
+    };
+
+    public static Editor TextArea(string automationId, string? value, string placeholder = "") => new()
+    {
+        AutomationId = automationId,
+        Text = value ?? string.Empty,
+        Placeholder = placeholder,
+        BackgroundColor = Surface,
+        TextColor = Text,
+        PlaceholderColor = Muted,
+        AutoSize = EditorAutoSizeOption.TextChanges,
+        MinimumHeightRequest = 112
+    };
 
     public static Grid Metric(string label, string value)
     {
