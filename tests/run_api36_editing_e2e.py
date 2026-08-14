@@ -19,6 +19,7 @@ from pathlib import Path
 PACKAGE = "com.myexternalbrain.chummer"
 ACTIVITY = f"{PACKAGE}/crc64f43698d305df5028.MainActivity"
 BOUNDS = re.compile(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]")
+DISPLAY_SIZE = re.compile(r"(?:Physical|Override) size:\s*(\d+)x(\d+)")
 
 
 @dataclass(frozen=True)
@@ -39,6 +40,7 @@ class Device:
         self.adb = adb
         self.serial = serial
         self.evidence = evidence
+        self._display_size: tuple[int, int] | None = None
         self.evidence.mkdir(parents=True, exist_ok=True)
 
     def run(self, *arguments: str, timeout: int = 120, text: bool = True) -> subprocess.CompletedProcess:
@@ -132,7 +134,7 @@ class Device:
             if node is not None:
                 return node
             if scroll and scrolls < 6:
-                self.shell("input", "swipe", "540", "1900", "540", "650", "300")
+                self.swipe_up()
                 scrolls += 1
             time.sleep(0.75)
         self.capture("failure")
@@ -148,7 +150,7 @@ class Device:
         while node is None and attempts < (8 if scroll else 1):
             node = self.find(selector, field_after_label=label)
             if node is None and scroll:
-                self.shell("input", "swipe", "540", "1900", "540", "650", "300")
+                self.swipe_up()
             attempts += 1
         if node is None:
             self.capture("missing-field")
@@ -166,7 +168,38 @@ class Device:
             raise RuntimeError(f"Expected persisted text {expected!r} was not rendered")
 
     def back(self) -> None:
+        node = self.find("Navigate up")
+        if node is not None:
+            x, y = node.center
+            self.shell("input", "tap", str(x), str(y))
+            return
         self.shell("input", "keyevent", "4")
+
+    def display_size(self) -> tuple[int, int]:
+        if self._display_size is None:
+            output = self.shell("wm", "size")
+            sizes = DISPLAY_SIZE.findall(output)
+            self._display_size = (
+                (int(sizes[-1][0]), int(sizes[-1][1]))
+                if sizes
+                else (1080, 2400)
+            )
+        return self._display_size
+
+    def swipe_up(self) -> None:
+        width, height = self.display_size()
+        x = width // 2
+        start_y = int(height * 0.82)
+        end_y = int(height * 0.30)
+        self.shell(
+            "input",
+            "swipe",
+            str(x),
+            str(start_y),
+            str(x),
+            str(end_y),
+            "300",
+        )
 
     def open_navigation_drawer(self) -> None:
         for selector in ("Open navigation drawer", "Navigate up", "Show navigation menu"):
@@ -311,7 +344,7 @@ def selected_text(device: Device, selector: str, label: str, *, scroll: bool = F
     while node is None and attempts < (8 if scroll else 1):
         node = device.find(selector, field_after_label=label)
         if node is None and scroll:
-            device.shell("input", "swipe", "540", "1900", "540", "650", "300")
+            device.swipe_up()
         attempts += 1
     if node is None:
         device.capture("missing-contact-value")

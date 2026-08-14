@@ -38,6 +38,23 @@ class FakeDevice(DRIVER.Device):
         )
 
 
+class RecordingDevice(DRIVER.Device):
+    def __init__(self, evidence: Path, display_size: str) -> None:
+        super().__init__(Path("/unused/adb"), "emulator-5554", evidence)
+        self.display_size_output = display_size
+        self.commands: list[tuple[str, ...]] = []
+        self.nodes: list[DRIVER.UiNode] = []
+
+    def shell(self, *arguments: str, timeout: int = 120) -> str:
+        self.commands.append(arguments)
+        if arguments == ("wm", "size"):
+            return self.display_size_output
+        return ""
+
+    def hierarchy(self) -> list[DRIVER.UiNode]:
+        return self.nodes
+
+
 class Api36EditingE2EDriverTests(unittest.TestCase):
     def test_hierarchy_ignores_uiautomator_preamble(self) -> None:
         output = (
@@ -59,6 +76,32 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             diagnostic = evidence / "last-invalid-hierarchy.txt"
             self.assertTrue(diagnostic.is_file())
             self.assertIn("could not get idle state", diagnostic.read_text(encoding="utf-8"))
+
+    def test_swipe_up_stays_inside_tablet_display(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = RecordingDevice(Path(temporary), "Physical size: 2560x1800")
+            device.swipe_up()
+
+        self.assertEqual(
+            ("input", "swipe", "1280", "1476", "1280", "540", "300"),
+            device.commands[-1],
+        )
+
+    def test_back_uses_explicit_app_navigation_when_available(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
+            device.nodes = [
+                DRIVER.UiNode(
+                    {
+                        "content-desc": "Navigate up",
+                        "clickable": "true",
+                        "bounds": "[0,128][147,275]",
+                    }
+                )
+            ]
+            device.back()
+
+        self.assertEqual(("input", "tap", "73", "201"), device.commands[-1])
 
 
 if __name__ == "__main__":
