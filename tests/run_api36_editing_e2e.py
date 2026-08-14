@@ -189,14 +189,20 @@ class Device:
         timeout: int = 45,
         max_scrolls: int = 6,
         scroll_distance_ratio: float = 0.52,
+        text_leading_offset: int = 0,
     ) -> None:
-        x, y = self.wait(
+        node = self.wait(
             selector,
             timeout=timeout,
             scroll=scroll,
             max_scrolls=max_scrolls,
             scroll_distance_ratio=scroll_distance_ratio,
-        ).center
+        )
+        x, y = node.center
+        if text_leading_offset > 0 and node.attributes.get("text"):
+            match = BOUNDS.fullmatch(node.attributes.get("bounds", ""))
+            if match is not None:
+                x = max(1, int(match.group(1)) - text_leading_offset)
         self.shell("input", "tap", str(x), str(y))
 
     def set_text(
@@ -352,6 +358,18 @@ def reset_scroll_to_top(
         device.swipe_down(x_ratio=x_ratio)
 
 
+def tap_collection_item(device: Device, selector: str) -> None:
+    """Select a collection card without skipping it or tapping its child label."""
+    device.tap(
+        selector,
+        scroll=True,
+        timeout=60,
+        max_scrolls=24,
+        scroll_distance_ratio=0.22,
+        text_leading_offset=18,
+    )
+
+
 def open_attribute_section(device: Device, profile: str) -> None:
     if profile == "tablet":
         reset_scroll_to_top(device, x_ratio=0.15)
@@ -492,7 +510,7 @@ def attach_linked_runner(
     *,
     validate_invalid: bool = False,
 ) -> None:
-    device.tap(original_name, scroll=True)
+    tap_collection_item(device, original_name)
     attach_selector = "tablet-linked-attach" if profile == "tablet" else "collection-linked-attach-"
     status_selector = "tablet-linked-status" if profile == "tablet" else "collection-linked-status-"
     if validate_invalid:
@@ -520,7 +538,7 @@ def assert_link_persisted_then_remove(
     opener = open_contact_section if kind == "contact" else open_pet_section
     opener(device, profile)
     device.wait("NeonFoxE2E", timeout=60, scroll=True)
-    device.tap("NeonFoxE2E", scroll=True)
+    tap_collection_item(device, "NeonFoxE2E")
     assert_linked_identity(device, profile, kind)
     remove_selector = "tablet-linked-remove" if profile == "tablet" else "collection-linked-remove-"
     status_selector = "tablet-linked-status" if profile == "tablet" else "collection-linked-status-"
@@ -564,8 +582,7 @@ def add_and_edit_gear(device: Device, profile: str) -> None:
         x_ratio=0.375 if profile == "tablet" else 0.5,
         swipes=6,
     )
-    device.wait("Ares Predator V", timeout=60, scroll=True)
-    device.tap("Ares Predator V", scroll=True)
+    tap_collection_item(device, "Ares Predator V")
 
     if profile == "tablet":
         device.wait("tablet-inspector-save", timeout=60, scroll=True)
@@ -594,7 +611,7 @@ def add_and_edit_contact(device: Device, profile: str) -> None:
     open_contact_section(device, profile)
     add_contact_from_dialog(device, profile, "ContactDeleteE2E", "DeleteRoleE2E")
     add_contact_from_dialog(device, profile, "ContactE2E", "InitialRoleE2E")
-    device.tap("ContactE2E", scroll=True)
+    tap_collection_item(device, "ContactE2E")
 
     prefix = "tablet" if profile == "tablet" else "collection"
     fields = (
@@ -639,7 +656,7 @@ def add_and_edit_contact(device: Device, profile: str) -> None:
         device.back()
         device.assert_text("ContactPersistedE2E")
 
-    device.tap("ContactDeleteE2E", scroll=True)
+    tap_collection_item(device, "ContactDeleteE2E")
     device.tap("tablet-inspector-delete" if profile == "tablet" else "collection-delete-", scroll=True)
     device.wait("Delete item?", timeout=30)
     device.tap("Delete")
@@ -655,7 +672,7 @@ def assert_contact_persisted(device: Device, profile: str) -> None:
     if device.find("ContactDeleteE2E") is not None:
         device.capture(f"{profile}-contact-delete-not-persisted")
         raise RuntimeError("Deleted contact returned after process restart")
-    device.tap("ContactPersistedE2E", scroll=True)
+    tap_collection_item(device, "ContactPersistedE2E")
     prefix = "tablet" if profile == "tablet" else "collection"
     expected_fields = (
         (f"{prefix}-field-name", "Name", "ContactPersistedE2E"),
@@ -699,7 +716,7 @@ def add_and_edit_pet(device: Device, profile: str) -> None:
     open_pet_section(device, profile)
     add_contact_from_dialog(device, profile, "PetDeleteE2E", "Companion")
     add_contact_from_dialog(device, profile, "PetE2E", "Companion")
-    device.tap("PetE2E", scroll=True)
+    tap_collection_item(device, "PetE2E")
 
     prefix = "tablet" if profile == "tablet" else "collection"
     name_selector = f"{prefix}-field-name"
@@ -718,7 +735,7 @@ def add_and_edit_pet(device: Device, profile: str) -> None:
         device.back()
         device.assert_text("PetPersistedE2E")
 
-    device.tap("PetDeleteE2E", scroll=True)
+    tap_collection_item(device, "PetDeleteE2E")
     device.tap("tablet-inspector-delete" if profile == "tablet" else "collection-delete-", scroll=True)
     device.wait("Delete item?", timeout=30)
     device.tap("Delete")
@@ -734,7 +751,7 @@ def assert_pet_persisted(device: Device, profile: str) -> None:
     if device.find("PetDeleteE2E") is not None:
         device.capture(f"{profile}-pet-delete-not-persisted")
         raise RuntimeError("Deleted pet returned after process restart")
-    device.tap("PetPersistedE2E", scroll=True)
+    tap_collection_item(device, "PetPersistedE2E")
     prefix = "tablet" if profile == "tablet" else "collection"
     expected_fields = (
         (f"{prefix}-field-name", "Name", "PetPersistedE2E"),
@@ -861,7 +878,7 @@ def main() -> int:
     if args.profile == "tablet":
         device.assert_text("GearProofE2E")
     else:
-        device.tap("GearProofE2E", scroll=True)
+        tap_collection_item(device, "GearProofE2E")
         device.assert_text("GearProofE2E")
         device.back()
         device.back()

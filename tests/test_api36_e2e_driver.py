@@ -98,6 +98,22 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             device.commands[-1],
         )
 
+    def test_collection_tap_uses_card_gutter_and_overlapping_scrolls(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
+            device.nodes = [
+                DRIVER.UiNode(
+                    {
+                        "text": "Ares Predator V",
+                        "clickable": "false",
+                        "bounds": "[100,500][700,560]",
+                    }
+                )
+            ]
+            DRIVER.tap_collection_item(device, "Ares Predator V")
+
+        self.assertEqual(("input", "tap", "82", "530"), device.commands[-1])
+
     def test_swipe_down_stays_inside_phone_display(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
@@ -217,10 +233,28 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertLess(name_edit, add_tap)
         self.assertLess(
             add_tap,
-            device.method_calls.index(call.tap("Ares Predator V", scroll=True)),
+            device.method_calls.index(
+                call.tap(
+                    "Ares Predator V",
+                    scroll=True,
+                    timeout=60,
+                    max_scrolls=24,
+                    scroll_distance_ratio=0.22,
+                    text_leading_offset=18,
+                )
+            ),
         )
         add_index = add_tap
-        gear_index = device.method_calls.index(call.tap("Ares Predator V", scroll=True))
+        gear_index = device.method_calls.index(
+            call.tap(
+                "Ares Predator V",
+                scroll=True,
+                timeout=60,
+                max_scrolls=24,
+                scroll_distance_ratio=0.22,
+                text_leading_offset=18,
+            )
+        )
         self.assertEqual(
             6,
             device.method_calls[add_index:gear_index].count(call.swipe_down(x_ratio=0.5)),

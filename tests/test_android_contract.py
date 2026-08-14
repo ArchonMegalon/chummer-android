@@ -233,9 +233,15 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("NativeCommandGroupPage", commands)
         self.assertIn("NativeTheme.NavigationRow", build + flow + commands)
         self.assertIn("SemanticProperties.SetDescription", theme)
+        self.assertIn("CollectionItemTitle(item.Label)", flow)
         self.assertNotIn("ScrollOrientation.Horizontal", build)
         self.assertNotIn("AddTabs", build)
         self.assertNotIn("Show all", build)
+
+    def test_tablet_collection_keeps_item_name_visible_ahead_of_metadata(self) -> None:
+        tablet = (PROJECT / "Native" / "TabletBuildPage.cs").read_text(encoding="utf-8")
+        self.assertIn("CollectionItemCopy(item.Label)", tablet)
+        self.assertIn('label.IndexOf(" · ", StringComparison.Ordinal)', tablet)
 
     def test_attributes_and_origin_dossier_have_native_mutation_paths(self) -> None:
         build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")

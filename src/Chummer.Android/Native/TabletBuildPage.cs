@@ -262,9 +262,13 @@ public sealed class TabletBuildPage : NativePageBase
         {
             bool selected = _selectedTarget is not null
                 && CollectionItemEditorPage.TargetsMatch(item.Target, _selectedTarget);
+            (string title, string? metadata) = CollectionItemCopy(item.Label);
+            string detail = metadata is null
+                ? selected ? "Selected" : $"Entry {item.Index + 1}"
+                : selected ? $"Selected · {metadata}" : metadata;
             Border row = NativeTheme.NavigationRow(
-                item.Label,
-                selected ? "Selected" : $"Entry {item.Index + 1}",
+                title,
+                detail,
                 () =>
                 {
                     _selectedTarget = item.Target;
@@ -1025,4 +1029,12 @@ public sealed class TabletBuildPage : NativePageBase
                 : fallback;
 
     private static string Token(string value) => CollectionItemEditorPage.Token(value);
+
+    private static (string Title, string? Metadata) CollectionItemCopy(string label)
+    {
+        int separator = label.IndexOf(" · ", StringComparison.Ordinal);
+        return separator > 0
+            ? (label[..separator], label[(separator + 3)..])
+            : (label, null);
+    }
 }

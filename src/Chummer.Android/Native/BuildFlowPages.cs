@@ -164,13 +164,14 @@ public sealed class BuildSectionPage : NativePageBase
 
         foreach (WorkspaceCollectionItemEditorState item in editor.Items)
         {
+            string title = CollectionItemTitle(item.Label);
             string detail = item.Rating is { } rating
                 ? $"Rating {rating.Value}"
                 : item.Quantity is { } quantity
                     ? $"Quantity {quantity.Value}"
                     : $"Entry {item.Index + 1}";
             _body.Add(NativeTheme.NavigationRow(
-                item.Label,
+                title,
                 detail,
                 () => Navigation.PushAsync(new CollectionItemEditorPage(Coordinator, item.Target)),
                 automationId: $"collection-item-{NormalizeAutomationToken(editor.Kind.ToString())}-{NormalizeAutomationToken(item.Target.NestedItemId ?? item.Target.ItemId)}"));
@@ -202,6 +203,12 @@ public sealed class BuildSectionPage : NativePageBase
 
     private static string NormalizeAutomationToken(string value)
         => new(value.Trim().ToLowerInvariant().Select(character => char.IsLetterOrDigit(character) ? character : '-').ToArray());
+
+    private static string CollectionItemTitle(string label)
+    {
+        int separator = label.IndexOf(" · ", StringComparison.Ordinal);
+        return separator > 0 ? label[..separator] : label;
+    }
 }
 
 public sealed class BuildValueGroupPage : NativePageBase
