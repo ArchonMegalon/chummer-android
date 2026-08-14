@@ -226,6 +226,7 @@ class Device:
         x, y = node.center
         self.shell("input", "tap", str(x), str(y))
         self.shell("input", "keycombination", "113", "29")
+        time.sleep(0.25)
         self.shell("input", "text", value.replace(" ", "%s"))
         self.shell("input", "keyevent", "4")
 
@@ -537,7 +538,7 @@ def add_and_edit_gear(device: Device, profile: str) -> None:
     device.set_text(
         "dialog-field-uigearname",
         "Gear Name",
-        "GearE2E",
+        "Armor Jacket",
         scroll=True,
         max_scrolls=32,
         scroll_distance_ratio=0.28,
@@ -549,6 +550,8 @@ def add_and_edit_gear(device: Device, profile: str) -> None:
         max_scrolls=48,
         scroll_distance_ratio=0.28,
     )
+    device.wait("Armor Jacket", timeout=60, scroll=True)
+    device.tap("Armor Jacket", scroll=True)
 
     if profile == "tablet":
         device.wait("tablet-inspector-save", timeout=60, scroll=True)
@@ -557,8 +560,6 @@ def add_and_edit_gear(device: Device, profile: str) -> None:
         device.assert_text("GearProofE2E")
         return
 
-    device.wait("GearE2E", timeout=60, scroll=True)
-    device.tap("GearE2E", scroll=True)
     device.set_text("collection-field-customname", "Custom Name", "GearProofE2E")
     device.tap("Save changes", scroll=True)
     device.assert_text("GearProofE2E")

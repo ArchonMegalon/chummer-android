@@ -197,7 +197,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             call.set_text(
                 "dialog-field-uigearname",
                 "Gear Name",
-                "GearE2E",
+                "Armor Jacket",
                 scroll=True,
                 max_scrolls=32,
                 scroll_distance_ratio=0.28,
@@ -213,6 +213,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             )
         )
         self.assertLess(name_edit, add_tap)
+        self.assertLess(
+            add_tap,
+            device.method_calls.index(call.tap("Armor Jacket", scroll=True)),
+        )
 
     def test_back_uses_explicit_app_navigation_when_available(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
