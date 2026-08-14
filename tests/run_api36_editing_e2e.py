@@ -103,6 +103,31 @@ class Device:
         }
         return selector in values or any(value.startswith(selector) for value in values if value)
 
+    @staticmethod
+    def _scroll_x_ratio(selector: str) -> float:
+        if selector.startswith(("tablet-build-tab-", "tablet-origin-dossier")):
+            return 0.15
+        if selector.startswith(
+            (
+                "tablet-inspector-",
+                "tablet-field-",
+                "tablet-contact-",
+                "tablet-toggle-",
+                "tablet-linked-",
+                "tablet-attribute-base-",
+                "tablet-attribute-karma-",
+                "tablet-attribute-save-",
+                "tablet-attribute-improve-",
+                "tablet-attribute-burn-",
+            )
+        ):
+            return 0.82
+        if selector.startswith(
+            ("tablet-build-action-", "tablet-quick-", "tablet-attribute-")
+        ):
+            return 0.375
+        return 0.5
+
     def find(self, selector: str, *, field_after_label: str | None = None) -> UiNode | None:
         nodes = self.hierarchy()
         matches = [node for node in nodes if self._matches(node, selector)]
@@ -134,7 +159,7 @@ class Device:
             if node is not None:
                 return node
             if scroll and scrolls < 6:
-                self.swipe_up()
+                self.swipe_up(x_ratio=self._scroll_x_ratio(selector))
                 scrolls += 1
             time.sleep(0.75)
         self.capture("failure")
@@ -150,7 +175,7 @@ class Device:
         while node is None and attempts < (8 if scroll else 1):
             node = self.find(selector, field_after_label=label)
             if node is None and scroll:
-                self.swipe_up()
+                self.swipe_up(x_ratio=self._scroll_x_ratio(selector))
             attempts += 1
         if node is None:
             self.capture("missing-field")
@@ -186,9 +211,9 @@ class Device:
             )
         return self._display_size
 
-    def swipe_up(self) -> None:
+    def swipe_up(self, *, x_ratio: float = 0.5) -> None:
         width, height = self.display_size()
-        x = width // 2
+        x = int(round(width * x_ratio))
         start_y = int(height * 0.82)
         end_y = int(height * 0.30)
         self.shell(
@@ -360,7 +385,7 @@ def selected_text(device: Device, selector: str, label: str, *, scroll: bool = F
     while node is None and attempts < (8 if scroll else 1):
         node = device.find(selector, field_after_label=label)
         if node is None and scroll:
-            device.swipe_up()
+            device.swipe_up(x_ratio=device._scroll_x_ratio(selector))
         attempts += 1
     if node is None:
         device.capture("missing-contact-value")

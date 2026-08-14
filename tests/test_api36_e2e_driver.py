@@ -97,6 +97,24 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             device.commands[-1],
         )
 
+    def test_tablet_selectors_scroll_their_own_panes(self) -> None:
+        self.assertEqual(
+            0.15,
+            DRIVER.Device._scroll_x_ratio("tablet-build-tab-tab-relationships"),
+        )
+        self.assertEqual(
+            0.375,
+            DRIVER.Device._scroll_x_ratio("tablet-build-action-tab-gear-gear"),
+        )
+        self.assertEqual(
+            0.82,
+            DRIVER.Device._scroll_x_ratio("tablet-inspector-save"),
+        )
+        self.assertEqual(
+            0.82,
+            DRIVER.Device._scroll_x_ratio("tablet-attribute-base-body"),
+        )
+
     def test_tablet_attribute_route_uses_visible_inspector(self) -> None:
         class AttributeRouteDevice:
             def __init__(self) -> None:
