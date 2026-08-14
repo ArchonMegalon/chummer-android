@@ -160,7 +160,7 @@ public sealed class TabletBuildPage : NativePageBase
                 _navigation.Add(NativeTheme.NavigationRow(
                     action.Label,
                     action.IsPrimary ? "Primary action" : null,
-                    () => RunAsync(() => Coordinator.ExecuteCommandAsync(action.ControlId)),
+                    () => RunAsync(() => Coordinator.HandleUiControlAsync(action.ControlId)),
                     automationId: $"tablet-quick-{Token(action.ControlId)}"));
             }
         }

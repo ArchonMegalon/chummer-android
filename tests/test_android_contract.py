@@ -273,6 +273,9 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("WorkspaceAddNestedCollectionItemRequest", editor)
         self.assertIn("SectionQuickActionCatalog.ForSection", flow)
         self.assertIn("_presenter.ApplyCollectionMutationAsync", coordinator)
+        self.assertIn("_presenter.HandleUiControlAsync", coordinator)
+        self.assertIn("Coordinator.HandleUiControlAsync(action.ControlId)", flow)
+        self.assertNotIn("Coordinator.ExecuteCommandAsync(action.ControlId)", flow)
         self.assertIn("new CollectionItemEditorPage", flow)
         self.assertIn("new NestedCollectionAddPage", editor)
         for automation_id in (
@@ -653,6 +656,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("WorkspaceMoveCollectionItemRequest", tablet)
         self.assertIn("WorkspaceDeleteCollectionItemRequest", tablet)
         self.assertIn("SectionQuickActionCatalog.ForSection", tablet)
+        self.assertIn("Coordinator.HandleUiControlAsync(action.ControlId)", tablet)
+        self.assertNotIn("Coordinator.ExecuteCommandAsync(action.ControlId)", tablet)
         self.assertNotIn("WebView", tablet)
         self.assertNotIn("XDocument", tablet)
         for automation_id in (

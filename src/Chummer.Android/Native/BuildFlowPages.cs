@@ -148,7 +148,7 @@ public sealed class BuildSectionPage : NativePageBase
             _body.Add(NativeTheme.NavigationRow(
                 action.Label,
                 action.IsPrimary ? "Primary action" : null,
-                () => RunAsync(() => Coordinator.ExecuteCommandAsync(action.ControlId)),
+                () => RunAsync(() => Coordinator.HandleUiControlAsync(action.ControlId)),
                 automationId: $"section-quick-{NormalizeAutomationToken(action.ControlId)}"));
         }
     }

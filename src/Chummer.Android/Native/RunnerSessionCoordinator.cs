@@ -213,6 +213,15 @@ public sealed class RunnerSessionCoordinator : IDisposable
         await ProcessPendingOutputsAsync(cancellationToken);
     }
 
+    public async Task HandleUiControlAsync(string controlId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(controlId);
+        _notice = null;
+        await _presenter.HandleUiControlAsync(controlId, cancellationToken);
+        await SyncShellAsync(cancellationToken);
+        await ProcessPendingOutputsAsync(cancellationToken);
+    }
+
     public async Task ExecuteWorkspaceActionAsync(
         WorkspaceSurfaceActionDefinition action,
         CancellationToken cancellationToken = default)
