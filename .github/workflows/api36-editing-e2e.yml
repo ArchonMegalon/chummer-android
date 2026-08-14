@@ -48,6 +48,42 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
+      - name: Check out the pinned engine dependency
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-core
+          ref: 8a736655c5d81487c3be8d87c63cef5cfcce87d4
+          path: chummer-core-engine
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the pinned Hub contract dependencies
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-hub
+          ref: 972311c4408a51ede76224a66ae103e75cb2e53c
+          path: chummer.run-services
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the pinned registry contract dependency
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-hub-registry
+          ref: 7b54afec574a9327616c4ad7566da3a7b6b906a5
+          path: chummer-hub-registry
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the pinned UI kit dependency
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-ui-kit
+          ref: d51ecd99cf72098d4adc8db0192bff7bf9fd8e61
+          path: chummer-ui-kit
+          persist-credentials: false
+          fetch-depth: 1
+
       - name: Install the governed .NET SDK
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:

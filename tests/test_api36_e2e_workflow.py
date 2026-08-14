@@ -26,6 +26,24 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("chummer-android-x64-debug.apk.sha256", self.text)
         self.assertIn("needs: build", self.text)
 
+    def test_full_local_compatibility_tree_is_commit_pinned(self) -> None:
+        expected_repositories = {
+            "ArchonMegalon/chummer6-ui":
+                "4333e546cb22daecb6b8d042f080c6a58cfef5f5",
+            "ArchonMegalon/chummer6-core":
+                "8a736655c5d81487c3be8d87c63cef5cfcce87d4",
+            "ArchonMegalon/chummer6-hub":
+                "972311c4408a51ede76224a66ae103e75cb2e53c",
+            "ArchonMegalon/chummer6-hub-registry":
+                "7b54afec574a9327616c4ad7566da3a7b6b906a5",
+            "ArchonMegalon/chummer6-ui-kit":
+                "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",
+        }
+        for repository, commit in expected_repositories.items():
+            with self.subTest(repository=repository):
+                self.assertIn(f"repository: {repository}", self.text)
+                self.assertIn(f"ref: {commit}", self.text)
+
     def test_executes_the_existing_persistence_driver(self) -> None:
         self.assertIn("tests/run_api36_editing_e2e.py", self.text)
         self.assertIn('--serial emulator-5554', self.text)
