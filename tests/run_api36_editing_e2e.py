@@ -105,7 +105,14 @@ class Device:
 
     @staticmethod
     def _scroll_x_ratio(selector: str) -> float:
-        if selector.startswith(("tablet-build-tab-", "tablet-origin-dossier")):
+        if selector.startswith(
+            (
+                "tablet-build-tab-",
+                "tablet-build-action-",
+                "tablet-quick-",
+                "tablet-origin-dossier",
+            )
+        ):
             return 0.15
         if selector.startswith(
             (
@@ -122,9 +129,7 @@ class Device:
             )
         ):
             return 0.82
-        if selector.startswith(
-            ("tablet-build-action-", "tablet-quick-", "tablet-attribute-")
-        ):
+        if selector.startswith("tablet-attribute-"):
             return 0.375
         return 0.5
 
@@ -293,18 +298,21 @@ def open_build(device: Device, profile: str) -> None:
     device.tap("Build")
 
 
+def reset_scroll_to_top(device: Device, *, x_ratio: float = 0.5) -> None:
+    device.swipe_down(x_ratio=x_ratio)
+    device.swipe_down(x_ratio=x_ratio)
+
+
 def open_attribute_section(device: Device, profile: str) -> None:
     if profile == "tablet":
         device.tap("tablet-build-tab-tab-attributes", scroll=True)
-        device.swipe_down(x_ratio=0.375)
-        device.swipe_down(x_ratio=0.375)
+        reset_scroll_to_top(device, x_ratio=0.375)
         device.wait("tablet-attribute-body", timeout=45)
         device.tap("tablet-attribute-body")
         device.wait("tablet-attribute-base-body", timeout=45)
         return
     device.tap("build-section-tab-attributes", scroll=True)
-    device.swipe_down()
-    device.swipe_down()
+    reset_scroll_to_top(device)
     device.wait("attribute-body", timeout=45, scroll=True)
 
 
@@ -341,10 +349,12 @@ def assert_body_base(device: Device, profile: str, expected: int) -> None:
 def open_gear_section(device: Device, profile: str) -> None:
     if profile == "tablet":
         device.tap("tablet-build-tab-tab-gear", scroll=True)
+        reset_scroll_to_top(device, x_ratio=0.375)
         device.tap("tablet-build-action-tab-gear-gear", scroll=True)
         device.wait("tablet-quick-gear-add", timeout=45, scroll=True)
         return
     device.tap("build-section-tab-gear", scroll=True)
+    reset_scroll_to_top(device)
     device.tap("build-action-tab-gear-gear", scroll=True)
     device.wait("section-quick-gear-add", timeout=45, scroll=True)
 
@@ -352,10 +362,12 @@ def open_gear_section(device: Device, profile: str) -> None:
 def open_contact_section(device: Device, profile: str) -> None:
     if profile == "tablet":
         device.tap("tablet-build-tab-tab-relationships", scroll=True)
+        reset_scroll_to_top(device, x_ratio=0.375)
         device.tap("tablet-build-action-tab-relationships-contacts", scroll=True)
         device.wait("tablet-quick-contact-add", timeout=45, scroll=True)
         return
     device.tap("build-section-tab-relationships", scroll=True)
+    reset_scroll_to_top(device)
     device.tap("build-action-tab-relationships-contacts", scroll=True)
     device.wait("section-quick-contact-add", timeout=45, scroll=True)
 
@@ -363,10 +375,12 @@ def open_contact_section(device: Device, profile: str) -> None:
 def open_pet_section(device: Device, profile: str) -> None:
     if profile == "tablet":
         device.tap("tablet-build-tab-tab-relationships", scroll=True)
+        reset_scroll_to_top(device, x_ratio=0.375)
         device.tap("tablet-build-action-tab-relationships-pets", scroll=True)
         device.wait("tablet-quick-contact-add", timeout=45, scroll=True)
         return
     device.tap("build-section-tab-relationships", scroll=True)
+    reset_scroll_to_top(device)
     device.tap("build-action-tab-relationships-pets", scroll=True)
     device.wait("section-quick-contact-add", timeout=45, scroll=True)
 

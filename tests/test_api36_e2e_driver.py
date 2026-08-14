@@ -103,8 +103,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             DRIVER.Device._scroll_x_ratio("tablet-build-tab-tab-relationships"),
         )
         self.assertEqual(
-            0.375,
+            0.15,
             DRIVER.Device._scroll_x_ratio("tablet-build-action-tab-gear-gear"),
+        )
+        self.assertEqual(
+            0.15,
+            DRIVER.Device._scroll_x_ratio("tablet-quick-contact-add"),
         )
         self.assertEqual(
             0.82,
@@ -140,6 +144,34 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 ("wait", "tablet-attribute-body"),
                 ("tap", "tablet-attribute-body"),
                 ("wait", "tablet-attribute-base-body"),
+            ],
+            device.calls,
+        )
+
+    def test_phone_gear_route_resets_preserved_action_scroll(self) -> None:
+        class GearRouteDevice:
+            def __init__(self) -> None:
+                self.calls: list[tuple[str, str]] = []
+
+            def tap(self, selector: str, **_: object) -> None:
+                self.calls.append(("tap", selector))
+
+            def wait(self, selector: str, **_: object) -> None:
+                self.calls.append(("wait", selector))
+
+            def swipe_down(self, **_: object) -> None:
+                self.calls.append(("swipe", "down"))
+
+        device = GearRouteDevice()
+        DRIVER.open_gear_section(device, "phone")
+
+        self.assertEqual(
+            [
+                ("tap", "build-section-tab-gear"),
+                ("swipe", "down"),
+                ("swipe", "down"),
+                ("tap", "build-action-tab-gear-gear"),
+                ("wait", "section-quick-gear-add"),
             ],
             device.calls,
         )
