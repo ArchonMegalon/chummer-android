@@ -342,9 +342,14 @@ def open_build(device: Device, profile: str) -> None:
     device.tap("Build")
 
 
-def reset_scroll_to_top(device: Device, *, x_ratio: float = 0.5) -> None:
-    device.swipe_down(x_ratio=x_ratio)
-    device.swipe_down(x_ratio=x_ratio)
+def reset_scroll_to_top(
+    device: Device,
+    *,
+    x_ratio: float = 0.5,
+    swipes: int = 2,
+) -> None:
+    for _ in range(swipes):
+        device.swipe_down(x_ratio=x_ratio)
 
 
 def open_attribute_section(device: Device, profile: str) -> None:
@@ -542,7 +547,7 @@ def add_and_edit_gear(device: Device, profile: str) -> None:
     device.set_text(
         "dialog-field-uigearname",
         "Gear Name",
-        "Armor Jacket",
+        "Ares Predator V",
         scroll=True,
         max_scrolls=32,
         scroll_distance_ratio=0.28,
@@ -554,9 +559,13 @@ def add_and_edit_gear(device: Device, profile: str) -> None:
         max_scrolls=48,
         scroll_distance_ratio=0.28,
     )
-    reset_scroll_to_top(device, x_ratio=0.375 if profile == "tablet" else 0.5)
-    device.wait("Armor Jacket", timeout=60, scroll=True)
-    device.tap("Armor Jacket", scroll=True)
+    reset_scroll_to_top(
+        device,
+        x_ratio=0.375 if profile == "tablet" else 0.5,
+        swipes=6,
+    )
+    device.wait("Ares Predator V", timeout=60, scroll=True)
+    device.tap("Ares Predator V", scroll=True)
 
     if profile == "tablet":
         device.wait("tablet-inspector-save", timeout=60, scroll=True)
@@ -844,6 +853,11 @@ def main() -> int:
     if args.profile == "phone":
         device.back()
     open_gear_section(device, args.profile)
+    reset_scroll_to_top(
+        device,
+        x_ratio=0.375 if args.profile == "tablet" else 0.5,
+        swipes=6,
+    )
     if args.profile == "tablet":
         device.assert_text("GearProofE2E")
     else:

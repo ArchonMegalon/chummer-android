@@ -199,7 +199,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             call.set_text(
                 "dialog-field-uigearname",
                 "Gear Name",
-                "Armor Jacket",
+                "Ares Predator V",
                 scroll=True,
                 max_scrolls=32,
                 scroll_distance_ratio=0.28,
@@ -217,11 +217,14 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertLess(name_edit, add_tap)
         self.assertLess(
             add_tap,
-            device.method_calls.index(call.tap("Armor Jacket", scroll=True)),
+            device.method_calls.index(call.tap("Ares Predator V", scroll=True)),
         )
         add_index = add_tap
-        armor_index = device.method_calls.index(call.tap("Armor Jacket", scroll=True))
-        self.assertIn(call.swipe_down(x_ratio=0.5), device.method_calls[add_index:armor_index])
+        gear_index = device.method_calls.index(call.tap("Ares Predator V", scroll=True))
+        self.assertEqual(
+            6,
+            device.method_calls[add_index:gear_index].count(call.swipe_down(x_ratio=0.5)),
+        )
 
     def test_back_uses_explicit_app_navigation_when_available(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
