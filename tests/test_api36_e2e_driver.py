@@ -88,6 +88,16 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             device.commands[-1],
         )
 
+    def test_small_swipe_keeps_overlap_for_long_dialogs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
+            device.swipe_up(distance_ratio=0.28)
+
+        self.assertEqual(
+            ("input", "swipe", "540", "1968", "540", "1296", "300"),
+            device.commands[-1],
+        )
+
     def test_swipe_down_stays_inside_phone_display(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
@@ -183,25 +193,25 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         DRIVER.add_and_edit_gear(device, "phone")
 
-        name_wait = device.method_calls.index(
-            call.wait("dialog-field-uigearname", timeout=45)
-        )
         name_edit = device.method_calls.index(
             call.set_text(
                 "dialog-field-uigearname",
                 "Gear Name",
                 "GearE2E",
+                scroll=True,
+                max_scrolls=32,
+                scroll_distance_ratio=0.28,
             )
         )
         add_tap = device.method_calls.index(
             call.tap(
                 "dialog-action-add",
                 scroll=True,
-                timeout=120,
-                max_scrolls=24,
+                timeout=180,
+                max_scrolls=48,
+                scroll_distance_ratio=0.28,
             )
         )
-        self.assertLess(name_wait, name_edit)
         self.assertLess(name_edit, add_tap)
 
     def test_back_uses_explicit_app_navigation_when_available(self) -> None:

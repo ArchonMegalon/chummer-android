@@ -163,6 +163,7 @@ class Device:
         timeout: int = 45,
         scroll: bool = False,
         max_scrolls: int = 6,
+        scroll_distance_ratio: float = 0.52,
     ) -> UiNode:
         deadline = time.monotonic() + timeout
         scrolls = 0
@@ -171,7 +172,10 @@ class Device:
             if node is not None:
                 return node
             if scroll and scrolls < max_scrolls:
-                self.swipe_up(x_ratio=self._scroll_x_ratio(selector))
+                self.swipe_up(
+                    x_ratio=self._scroll_x_ratio(selector),
+                    distance_ratio=scroll_distance_ratio,
+                )
                 scrolls += 1
             time.sleep(0.75)
         self.capture("failure")
@@ -184,22 +188,37 @@ class Device:
         scroll: bool = False,
         timeout: int = 45,
         max_scrolls: int = 6,
+        scroll_distance_ratio: float = 0.52,
     ) -> None:
         x, y = self.wait(
             selector,
             timeout=timeout,
             scroll=scroll,
             max_scrolls=max_scrolls,
+            scroll_distance_ratio=scroll_distance_ratio,
         ).center
         self.shell("input", "tap", str(x), str(y))
 
-    def set_text(self, selector: str, label: str, value: str, *, scroll: bool = False) -> None:
+    def set_text(
+        self,
+        selector: str,
+        label: str,
+        value: str,
+        *,
+        scroll: bool = False,
+        max_scrolls: int = 7,
+        scroll_distance_ratio: float = 0.52,
+    ) -> None:
         node = None
         attempts = 0
-        while node is None and attempts < (8 if scroll else 1):
+        max_attempts = max_scrolls + 1 if scroll else 1
+        while node is None and attempts < max_attempts:
             node = self.find(selector, field_after_label=label)
-            if node is None and scroll:
-                self.swipe_up(x_ratio=self._scroll_x_ratio(selector))
+            if node is None and scroll and attempts < max_scrolls:
+                self.swipe_up(
+                    x_ratio=self._scroll_x_ratio(selector),
+                    distance_ratio=scroll_distance_ratio,
+                )
             attempts += 1
         if node is None:
             self.capture("missing-field")
@@ -235,11 +254,16 @@ class Device:
             )
         return self._display_size
 
-    def swipe_up(self, *, x_ratio: float = 0.5) -> None:
+    def swipe_up(
+        self,
+        *,
+        x_ratio: float = 0.5,
+        distance_ratio: float = 0.52,
+    ) -> None:
         width, height = self.display_size()
         x = int(round(width * x_ratio))
-        start_y = int(height * 0.82)
-        end_y = int(height * 0.30)
+        start_y = int(round(height * 0.82))
+        end_y = int(round(height * max(0.10, 0.82 - distance_ratio)))
         self.shell(
             "input",
             "swipe",
@@ -510,9 +534,21 @@ def assert_link_persisted_then_remove(
 def add_and_edit_gear(device: Device, profile: str) -> None:
     open_gear_section(device, profile)
     device.tap("tablet-quick-gear-add" if profile == "tablet" else "section-quick-gear-add", scroll=True)
-    device.wait("dialog-field-uigearname", timeout=45)
-    device.set_text("dialog-field-uigearname", "Gear Name", "GearE2E")
-    device.tap("dialog-action-add", scroll=True, timeout=120, max_scrolls=24)
+    device.set_text(
+        "dialog-field-uigearname",
+        "Gear Name",
+        "GearE2E",
+        scroll=True,
+        max_scrolls=32,
+        scroll_distance_ratio=0.28,
+    )
+    device.tap(
+        "dialog-action-add",
+        scroll=True,
+        timeout=180,
+        max_scrolls=48,
+        scroll_distance_ratio=0.28,
+    )
 
     if profile == "tablet":
         device.wait("tablet-inspector-save", timeout=60, scroll=True)
