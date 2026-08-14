@@ -58,9 +58,36 @@ class Device:
         self.run("push", str(local_path.resolve()), remote_path, timeout=120)
 
     def hierarchy(self) -> list[UiNode]:
-        self.shell("uiautomator", "dump", "/sdcard/chummer-editing-window.xml")
-        xml = self.run("exec-out", "cat", "/sdcard/chummer-editing-window.xml").stdout
-        root = ET.fromstring(xml)
+        try:
+            self.shell("uiautomator", "dump", "/sdcard/chummer-editing-window.xml")
+            xml = self.run(
+                "exec-out", "cat", "/sdcard/chummer-editing-window.xml"
+            ).stdout
+        except subprocess.CalledProcessError as error:
+            detail = "\n".join(
+                part for part in (str(error), error.stdout, error.stderr) if part
+            )
+            (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                detail,
+                encoding="utf-8",
+            )
+            return []
+
+        hierarchy_start = xml.find("<hierarchy")
+        if hierarchy_start < 0:
+            (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                xml or "uiautomator returned an empty hierarchy",
+                encoding="utf-8",
+            )
+            return []
+        try:
+            root = ET.fromstring(xml[hierarchy_start:])
+        except ET.ParseError as error:
+            (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                f"{error}\n{xml}",
+                encoding="utf-8",
+            )
+            return []
         return [UiNode(dict(node.attrib)) for node in root.iter("node")]
 
     @staticmethod
@@ -151,11 +178,27 @@ class Device:
         self.shell("input", "tap", "48", "96")
 
     def capture(self, name: str) -> None:
-        screenshot = self.run("exec-out", "screencap", "-p", text=False).stdout
-        (self.evidence / f"{name}.png").write_bytes(screenshot)
         try:
-            hierarchy = self.run("exec-out", "cat", "/sdcard/chummer-editing-window.xml").stdout
+            screenshot = self.run("exec-out", "screencap", "-p", text=False).stdout
+            (self.evidence / f"{name}.png").write_bytes(screenshot)
+        except subprocess.CalledProcessError as error:
+            (self.evidence / f"{name}-screenshot-error.txt").write_text(
+                str(error),
+                encoding="utf-8",
+            )
+        try:
+            hierarchy = self.run(
+                "exec-out", "cat", "/sdcard/chummer-editing-window.xml"
+            ).stdout
             (self.evidence / f"{name}.xml").write_text(hierarchy, encoding="utf-8")
+        except subprocess.CalledProcessError:
+            pass
+        try:
+            logcat = self.run("logcat", "-d", "-t", "500").stdout
+            (self.evidence / f"{name}-logcat.txt").write_text(
+                logcat,
+                encoding="utf-8",
+            )
         except subprocess.CalledProcessError:
             pass
 

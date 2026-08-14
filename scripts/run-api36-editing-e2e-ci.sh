@@ -18,6 +18,10 @@ evidence_root="$RUNNER_TEMP/chummer-api36-evidence/$profile"
 test -x "$adb_path"
 test -f "$apk_path"
 install -d -m 0755 "$evidence_root"
+printf 'profile=%s\napk_sha256=%s\n' \
+  "$profile" \
+  "$(sha256sum "$apk_path" | cut -d ' ' -f 1)" \
+  >"$evidence_root/execution-started.txt"
 
 python3 chummer-android/tests/run_api36_editing_e2e.py \
   --adb "$adb_path" \
