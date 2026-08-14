@@ -87,6 +87,45 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             device.commands[-1],
         )
 
+    def test_swipe_down_stays_inside_phone_display(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
+            device.swipe_down()
+
+        self.assertEqual(
+            ("input", "swipe", "540", "720", "540", "1968", "300"),
+            device.commands[-1],
+        )
+
+    def test_tablet_attribute_route_uses_visible_inspector(self) -> None:
+        class AttributeRouteDevice:
+            def __init__(self) -> None:
+                self.calls: list[tuple[str, str]] = []
+
+            def tap(self, selector: str, **_: object) -> None:
+                self.calls.append(("tap", selector))
+
+            def wait(self, selector: str, **_: object) -> None:
+                self.calls.append(("wait", selector))
+
+            def swipe_down(self, **_: object) -> None:
+                self.calls.append(("swipe", "down"))
+
+        device = AttributeRouteDevice()
+        DRIVER.open_attribute_section(device, "tablet")
+
+        self.assertEqual(
+            [
+                ("tap", "tablet-build-tab-tab-attributes"),
+                ("swipe", "down"),
+                ("swipe", "down"),
+                ("wait", "tablet-attribute-body"),
+                ("tap", "tablet-attribute-body"),
+                ("wait", "tablet-attribute-base-body"),
+            ],
+            device.calls,
+        )
+
     def test_back_uses_explicit_app_navigation_when_available(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")

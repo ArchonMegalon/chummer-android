@@ -657,7 +657,6 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("XDocument", tablet)
         for automation_id in (
             "tablet-build-tab-tab-attributes",
-            "tablet-build-action-tab-attributes-attributedetails",
             "tablet-attribute-body",
             "tablet-attribute-base-body",
             "tablet-attribute-save-body",

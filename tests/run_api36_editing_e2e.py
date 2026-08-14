@@ -201,6 +201,21 @@ class Device:
             "300",
         )
 
+    def swipe_down(self, *, x_ratio: float = 0.5) -> None:
+        width, height = self.display_size()
+        x = int(round(width * x_ratio))
+        start_y = int(round(height * 0.30))
+        end_y = int(round(height * 0.82))
+        self.shell(
+            "input",
+            "swipe",
+            str(x),
+            str(start_y),
+            str(x),
+            str(end_y),
+            "300",
+        )
+
     def open_navigation_drawer(self) -> None:
         for selector in ("Open navigation drawer", "Navigate up", "Show navigation menu"):
             node = self.find(selector)
@@ -256,18 +271,21 @@ def open_build(device: Device, profile: str) -> None:
 def open_attribute_section(device: Device, profile: str) -> None:
     if profile == "tablet":
         device.tap("tablet-build-tab-tab-attributes", scroll=True)
-        device.wait("tablet-build-action-tab-attributes-attributedetails", timeout=45, scroll=True)
-        device.tap("tablet-build-action-tab-attributes-attributedetails", scroll=True)
-        device.wait("tablet-attribute-body", timeout=45, scroll=True)
+        device.swipe_down(x_ratio=0.375)
+        device.swipe_down(x_ratio=0.375)
+        device.wait("tablet-attribute-body", timeout=45)
+        device.tap("tablet-attribute-body")
+        device.wait("tablet-attribute-base-body", timeout=45)
         return
     device.tap("build-section-tab-attributes", scroll=True)
+    device.swipe_down()
+    device.swipe_down()
     device.wait("attribute-body", timeout=45, scroll=True)
 
 
 def edit_body_base(device: Device, profile: str, value: int) -> None:
     open_attribute_section(device, profile)
     if profile == "tablet":
-        device.tap("tablet-attribute-body", scroll=True)
         device.tap("tablet-attribute-base-body", scroll=True)
         device.tap(str(value), scroll=True)
         device.tap("tablet-attribute-save-body", scroll=True)
@@ -282,9 +300,7 @@ def edit_body_base(device: Device, profile: str, value: int) -> None:
 def assert_body_base(device: Device, profile: str, expected: int) -> None:
     open_attribute_section(device, profile)
     selector = "tablet-attribute-base-body" if profile == "tablet" else "attribute-base-body"
-    if profile == "tablet":
-        device.tap("tablet-attribute-body", scroll=True)
-    else:
+    if profile == "phone":
         device.tap("attribute-body", scroll=True)
     base = device.find(selector, field_after_label="Base")
     if base is None or base.attributes.get("text") != str(expected):
