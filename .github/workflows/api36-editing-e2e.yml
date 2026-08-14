@@ -176,16 +176,17 @@ jobs:
             -camera-back none -camera-front none -no-snapshot-save
           disable-animations: true
           script: |
-            set -euo pipefail
-            evidence_root="$RUNNER_TEMP/chummer-api36-evidence/$CHUMMER_E2E_PROFILE"
-            install -d -m 0755 "$evidence_root"
-            python3 chummer-android/tests/run_api36_editing_e2e.py \
-              --adb "$ANDROID_HOME/platform-tools/adb" \
-              --apk "$RUNNER_TEMP/chummer-android-apk/chummer-android-x64-debug.apk" \
-              --serial emulator-5554 \
-              --profile "$CHUMMER_E2E_PROFILE" \
-              --evidence "$evidence_root/screenshots" \
-              --receipt "$evidence_root/receipt.json"
+            bash -euo pipefail -c '
+              evidence_root="$RUNNER_TEMP/chummer-api36-evidence/$CHUMMER_E2E_PROFILE"
+              install -d -m 0755 "$evidence_root"
+              python3 chummer-android/tests/run_api36_editing_e2e.py \
+                --adb "$ANDROID_HOME/platform-tools/adb" \
+                --apk "$RUNNER_TEMP/chummer-android-apk/chummer-android-x64-debug.apk" \
+                --serial emulator-5554 \
+                --profile "$CHUMMER_E2E_PROFILE" \
+                --evidence "$evidence_root/screenshots" \
+                --receipt "$evidence_root/receipt.json"
+            '
 
       - name: Upload phone or tablet receipts and screenshots
         if: ${{ always() }}

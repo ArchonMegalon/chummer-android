@@ -46,6 +46,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
 
     def test_executes_the_existing_persistence_driver(self) -> None:
         self.assertIn("tests/run_api36_editing_e2e.py", self.text)
+        self.assertIn("bash -euo pipefail -c", self.text)
         self.assertIn('--serial emulator-5554', self.text)
         self.assertIn('--profile "$CHUMMER_E2E_PROFILE"', self.text)
         self.assertIn('--receipt "$evidence_root/receipt.json"', self.text)
