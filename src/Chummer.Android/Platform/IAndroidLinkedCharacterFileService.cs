@@ -111,9 +111,9 @@ public sealed class AndroidLinkedCharacterFileService : IAndroidLinkedCharacterF
     private static bool TryResolveOwnedPath(
         WorkspaceCollectionItemTarget target,
         string? fileName,
-        out string? ownedPath)
+        out string ownedPath)
     {
-        ownedPath = null;
+        ownedPath = string.Empty;
         if (string.IsNullOrWhiteSpace(fileName) || !Path.IsPathFullyQualified(fileName))
         {
             return false;

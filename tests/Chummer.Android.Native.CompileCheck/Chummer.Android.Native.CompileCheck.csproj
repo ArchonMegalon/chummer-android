@@ -20,6 +20,7 @@
     <Compile Include="../../src/Chummer.Android/MauiProgram.cs" Link="MauiProgram.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/IAndroidAccountLinkService.cs" Link="Platform/IAndroidAccountLinkService.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/IAndroidDocumentService.cs" Link="Platform/IAndroidDocumentService.cs" />
+    <Compile Include="../../src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs" Link="Platform/IAndroidLinkedCharacterFileService.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/IAndroidSystemService.cs" Link="Platform/IAndroidSystemService.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkService.cs" Link="Platform/AndroidAccountLinkService.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/ChummerWebRoutes.cs" Link="Platform/ChummerWebRoutes.cs" />

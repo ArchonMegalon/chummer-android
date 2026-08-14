@@ -1068,6 +1068,19 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("CryptographicOperations.ZeroMemory(buffer)", print_service)
         self.assertIn("Interlocked.CompareExchange", broker)
 
+    def test_native_compile_gate_includes_linked_character_service(self) -> None:
+        compile_project = (
+            REPO
+            / "tests"
+            / "Chummer.Android.Native.CompileCheck"
+            / "Chummer.Android.Native.CompileCheck.csproj"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "../../src/Chummer.Android/Platform/"
+            "IAndroidLinkedCharacterFileService.cs",
+            compile_project,
+        )
+
     @staticmethod
     def _png_header(path: Path) -> tuple[int, int, int]:
         data = path.read_bytes()[:33]
