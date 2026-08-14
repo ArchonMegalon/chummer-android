@@ -156,22 +156,41 @@ class Device:
                         return node
         return None
 
-    def wait(self, selector: str, *, timeout: int = 45, scroll: bool = False) -> UiNode:
+    def wait(
+        self,
+        selector: str,
+        *,
+        timeout: int = 45,
+        scroll: bool = False,
+        max_scrolls: int = 6,
+    ) -> UiNode:
         deadline = time.monotonic() + timeout
         scrolls = 0
         while time.monotonic() < deadline:
             node = self.find(selector)
             if node is not None:
                 return node
-            if scroll and scrolls < 6:
+            if scroll and scrolls < max_scrolls:
                 self.swipe_up(x_ratio=self._scroll_x_ratio(selector))
                 scrolls += 1
             time.sleep(0.75)
         self.capture("failure")
         raise RuntimeError(f"Timed out waiting for UI node {selector!r}")
 
-    def tap(self, selector: str, *, scroll: bool = False) -> None:
-        x, y = self.wait(selector, scroll=scroll).center
+    def tap(
+        self,
+        selector: str,
+        *,
+        scroll: bool = False,
+        timeout: int = 45,
+        max_scrolls: int = 6,
+    ) -> None:
+        x, y = self.wait(
+            selector,
+            timeout=timeout,
+            scroll=scroll,
+            max_scrolls=max_scrolls,
+        ).center
         self.shell("input", "tap", str(x), str(y))
 
     def set_text(self, selector: str, label: str, value: str, *, scroll: bool = False) -> None:
@@ -491,9 +510,9 @@ def assert_link_persisted_then_remove(
 def add_and_edit_gear(device: Device, profile: str) -> None:
     open_gear_section(device, profile)
     device.tap("tablet-quick-gear-add" if profile == "tablet" else "section-quick-gear-add", scroll=True)
-    device.wait("dialog-action-add", timeout=45, scroll=True)
+    device.wait("dialog-field-uigearname", timeout=45)
     device.set_text("dialog-field-uigearname", "Gear Name", "GearE2E")
-    device.tap("dialog-action-add", scroll=True)
+    device.tap("dialog-action-add", scroll=True, timeout=120, max_scrolls=24)
 
     if profile == "tablet":
         device.wait("tablet-inspector-save", timeout=60, scroll=True)

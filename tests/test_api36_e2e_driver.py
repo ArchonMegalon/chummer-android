@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, call
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -175,6 +176,33 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ],
             device.calls,
         )
+
+    def test_gear_journey_edits_name_before_descending_to_add_action(self) -> None:
+        device = Mock()
+        device.assert_text = Mock()
+
+        DRIVER.add_and_edit_gear(device, "phone")
+
+        name_wait = device.method_calls.index(
+            call.wait("dialog-field-uigearname", timeout=45)
+        )
+        name_edit = device.method_calls.index(
+            call.set_text(
+                "dialog-field-uigearname",
+                "Gear Name",
+                "GearE2E",
+            )
+        )
+        add_tap = device.method_calls.index(
+            call.tap(
+                "dialog-action-add",
+                scroll=True,
+                timeout=120,
+                max_scrolls=24,
+            )
+        )
+        self.assertLess(name_wait, name_edit)
+        self.assertLess(name_edit, add_tap)
 
     def test_back_uses_explicit_app_navigation_when_available(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
