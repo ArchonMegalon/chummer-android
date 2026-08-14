@@ -149,6 +149,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         self.assertEqual(
             [
+                ("swipe", "down"),
+                ("swipe", "down"),
                 ("tap", "tablet-build-tab-tab-attributes"),
                 ("swipe", "down"),
                 ("swipe", "down"),
@@ -217,6 +219,9 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             add_tap,
             device.method_calls.index(call.tap("Armor Jacket", scroll=True)),
         )
+        add_index = add_tap
+        armor_index = device.method_calls.index(call.tap("Armor Jacket", scroll=True))
+        self.assertIn(call.swipe_down(x_ratio=0.5), device.method_calls[add_index:armor_index])
 
     def test_back_uses_explicit_app_navigation_when_available(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

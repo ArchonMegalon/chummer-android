@@ -349,6 +349,7 @@ def reset_scroll_to_top(device: Device, *, x_ratio: float = 0.5) -> None:
 
 def open_attribute_section(device: Device, profile: str) -> None:
     if profile == "tablet":
+        reset_scroll_to_top(device, x_ratio=0.15)
         device.tap("tablet-build-tab-tab-attributes", scroll=True)
         reset_scroll_to_top(device, x_ratio=0.375)
         device.wait("tablet-attribute-body", timeout=45)
@@ -392,6 +393,7 @@ def assert_body_base(device: Device, profile: str, expected: int) -> None:
 
 def open_gear_section(device: Device, profile: str) -> None:
     if profile == "tablet":
+        reset_scroll_to_top(device, x_ratio=0.15)
         device.tap("tablet-build-tab-tab-gear", scroll=True)
         reset_scroll_to_top(device, x_ratio=0.375)
         device.tap("tablet-build-action-tab-gear-gear", scroll=True)
@@ -405,6 +407,7 @@ def open_gear_section(device: Device, profile: str) -> None:
 
 def open_contact_section(device: Device, profile: str) -> None:
     if profile == "tablet":
+        reset_scroll_to_top(device, x_ratio=0.15)
         device.tap("tablet-build-tab-tab-relationships", scroll=True)
         reset_scroll_to_top(device, x_ratio=0.375)
         device.tap("tablet-build-action-tab-relationships-contacts", scroll=True)
@@ -418,6 +421,7 @@ def open_contact_section(device: Device, profile: str) -> None:
 
 def open_pet_section(device: Device, profile: str) -> None:
     if profile == "tablet":
+        reset_scroll_to_top(device, x_ratio=0.15)
         device.tap("tablet-build-tab-tab-relationships", scroll=True)
         reset_scroll_to_top(device, x_ratio=0.375)
         device.tap("tablet-build-action-tab-relationships-pets", scroll=True)
@@ -550,6 +554,7 @@ def add_and_edit_gear(device: Device, profile: str) -> None:
         max_scrolls=48,
         scroll_distance_ratio=0.28,
     )
+    reset_scroll_to_top(device, x_ratio=0.375 if profile == "tablet" else 0.5)
     device.wait("Armor Jacket", timeout=60, scroll=True)
     device.tap("Armor Jacket", scroll=True)
 
@@ -842,7 +847,7 @@ def main() -> int:
     if args.profile == "tablet":
         device.assert_text("GearProofE2E")
     else:
-        device.tap("GearE2E", scroll=True)
+        device.tap("GearProofE2E", scroll=True)
         device.assert_text("GearProofE2E")
         device.back()
         device.back()
