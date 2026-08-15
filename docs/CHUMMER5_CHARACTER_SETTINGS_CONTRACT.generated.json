@@ -1,0 +1,3342 @@
+{
+  "schema": "chummer.android.character-settings-contract/v1",
+  "status": "complete",
+  "implementationEvidence": false,
+  "summary": {
+    "controlCount": 162,
+    "resolvedControlCount": 162,
+    "unresolvedControlCount": 0,
+    "setValueCount": 149,
+    "profileOrCollectionActionCount": 13
+  },
+  "unresolvedControls": [],
+  "sourceInputs": [
+    {
+      "path": "/docker/chummer5a/Chummer/Forms/EditCharacterSettings.cs",
+      "sha256": "f9a969ae64ef12693d428377ab96f41caa1e1e68e6e3fb38f2ce7e408fffbfa9"
+    },
+    {
+      "path": "/docker/chummer5a/Chummer/Backend/Character Settings/CharacterSettings.cs",
+      "sha256": "5fae3d58aa0b0c30920bc4180430ab56250521e5b8db21097b0b9460f74ef943"
+    },
+    {
+      "path": "/docker/chummer5a/Chummer/data/settings.xml",
+      "sha256": "fcc5551d18e571b6519b79b909ac953710dde4dafd79697911f239e1819b573c"
+    },
+    {
+      "path": "/docker/chummercomplete/chummer-android/docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json",
+      "sha256": "ffa60a6f7685a3b042ea156b2a8448a29e386bf0e1c2a94278afe353857f3f42"
+    }
+  ],
+  "controls": [
+    {
+      "legacyControl": "chkGrade",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 1941,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.cs::Chummer.EditCharacterSettings::runtime::chkGrade@1941",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "BannedWareGrades"
+      ],
+      "persistencePaths": [
+        "settings/bannedwaregrades/grade"
+      ],
+      "builtInStandardValues": {
+        "settings/bannedwaregrades/grade": [
+          "Betaware",
+          "Deltaware",
+          "Gammaware"
+        ]
+      },
+      "events": [
+        {
+          "event": "CheckedChanged",
+          "handler": "chkGrade_CheckedChanged"
+        }
+      ]
+    },
+    {
+      "legacyControl": "cboSetting",
+      "legacyType": "ElasticComboBox",
+      "legacyLine": 6381,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::cboSetting",
+      "operation": "set_value",
+      "semanticOperation": "select_profile",
+      "characterSettingsProperties": [],
+      "persistencePaths": [
+        "settings"
+      ],
+      "builtInStandardValues": {
+        "settings": []
+      },
+      "events": [
+        {
+          "event": "SelectedIndexChanged",
+          "handler": "cboSetting_SelectedIndexChanged"
+        }
+      ]
+    },
+    {
+      "legacyControl": "treSourcebook",
+      "legacyType": "System.Windows.Forms.TreeView",
+      "legacyLine": 6385,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::treSourcebook",
+      "operation": "manage_collection",
+      "semanticOperation": "edit_sourcebooks",
+      "characterSettingsProperties": [
+        "Books"
+      ],
+      "persistencePaths": [
+        "settings/books/book"
+      ],
+      "builtInStandardValues": {
+        "settings/books/book": [
+          "SR5"
+        ]
+      },
+      "events": [
+        {
+          "event": "AfterCheck",
+          "handler": "treSourcebook_AfterCheck"
+        }
+      ]
+    },
+    {
+      "legacyControl": "chkDontUseCyberlimbCalculation",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6386,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkDontUseCyberlimbCalculation",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "DontUseCyberlimbCalculation"
+      ],
+      "persistencePaths": [
+        "settings/dontusecyberlimbcalculation"
+      ],
+      "builtInStandardValues": {
+        "settings/dontusecyberlimbcalculation": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkEnforceCapacity",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6387,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkEnforceCapacity",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "EnforceCapacity"
+      ],
+      "persistencePaths": [
+        "settings/enforcecapacity"
+      ],
+      "builtInStandardValues": {
+        "settings/enforcecapacity": [
+          "True"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkLicenseEachRestrictedItem",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6388,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkLicenseEachRestrictedItem",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "LicenseRestricted"
+      ],
+      "persistencePaths": [
+        "settings/licenserestricted"
+      ],
+      "builtInStandardValues": {
+        "settings/licenserestricted": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkDontRoundEssenceInternally",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6392,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkDontRoundEssenceInternally",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "DontRoundEssenceInternally"
+      ],
+      "persistencePaths": [
+        "settings/donotroundessenceinternally"
+      ],
+      "builtInStandardValues": {
+        "settings/donotroundessenceinternally": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkDronemods",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6393,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkDronemods",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "DroneMods"
+      ],
+      "persistencePaths": [
+        "settings/dronemods"
+      ],
+      "builtInStandardValues": {
+        "settings/dronemods": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkRestrictRecoil",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6394,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkRestrictRecoil",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "RestrictRecoil"
+      ],
+      "persistencePaths": [
+        "settings/restrictrecoil"
+      ],
+      "builtInStandardValues": {
+        "settings/restrictrecoil": [
+          "True"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudNuyenDecimalsMinimum",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6395,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudNuyenDecimalsMinimum",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MinNuyenDecimals"
+      ],
+      "persistencePaths": [
+        "settings/nuyenformat"
+      ],
+      "builtInStandardValues": {
+        "settings/nuyenformat": [
+          "#,0.##"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudNuyenDecimalsMaximum",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6396,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudNuyenDecimalsMaximum",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MaxNuyenDecimals"
+      ],
+      "persistencePaths": [
+        "settings/nuyenformat"
+      ],
+      "builtInStandardValues": {
+        "settings/nuyenformat": [
+          "#,0.##"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudEssenceDecimals",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6397,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudEssenceDecimals",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "EssenceDecimals"
+      ],
+      "persistencePaths": [
+        "settings/essenceformat"
+      ],
+      "builtInStandardValues": {
+        "settings/essenceformat": [
+          "#,0.00"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkDronemodsMaximumPilot",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6398,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkDronemodsMaximumPilot",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "DroneModsMaximumPilot"
+      ],
+      "persistencePaths": [
+        "settings/dronemodsmaximumpilot"
+      ],
+      "builtInStandardValues": {
+        "settings/dronemodsmaximumpilot": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "cboLimbCount",
+      "legacyType": "ElasticComboBox",
+      "legacyLine": 6400,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::cboLimbCount",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "ExcludeLimbSlot",
+        "LimbCount"
+      ],
+      "persistencePaths": [
+        "settings/excludelimbslot",
+        "settings/limbcount"
+      ],
+      "builtInStandardValues": {
+        "settings/excludelimbslot": [
+          ""
+        ],
+        "settings/limbcount": [
+          "6"
+        ]
+      },
+      "events": [
+        {
+          "event": "SelectedIndexChanged",
+          "handler": "cboLimbCount_SelectedIndexChanged"
+        }
+      ]
+    },
+    {
+      "legacyControl": "cmdEnableSourcebooks",
+      "legacyType": "System.Windows.Forms.Button",
+      "legacyLine": 6401,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::cmdEnableSourcebooks",
+      "operation": "commit",
+      "semanticOperation": "enable_sourcebooks",
+      "characterSettingsProperties": [],
+      "persistencePaths": [
+        "settings/books/book"
+      ],
+      "builtInStandardValues": {
+        "settings/books/book": [
+          "SR5"
+        ]
+      },
+      "events": [
+        {
+          "event": "Click",
+          "handler": "cmdEnableSourcebooks_Click"
+        }
+      ]
+    },
+    {
+      "legacyControl": "nudKarmaMysticAdeptPowerPoint",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6404,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaMysticAdeptPowerPoint",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaMysticAdeptPowerPoint"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmamysadpp"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmamysadpp": [
+          "5"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaSpecialization",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6407,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaSpecialization",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaSpecialization"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaspecialization"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaspecialization": [
+          "7"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaNewAIAdvancedProgram",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6408,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaNewAIAdvancedProgram",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaNewAIAdvancedProgram"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmanewaiadvancedprogram"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmanewaiadvancedprogram": [
+          "8"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaInitiationFlat",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6410,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaInitiationFlat",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaInitiationFlat"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmainitiationflat"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmainitiationflat": [
+          "10"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaWeaponFocus",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6411,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaWeaponFocus",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaWeaponFocus"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaweaponfocus"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaweaponfocus": [
+          "3"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaNewAIProgram",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6414,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaNewAIProgram",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaNewAIProgram"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmanewaiprogram"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmanewaiprogram": [
+          "5"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaKnowledgeSpecialization",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6418,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaKnowledgeSpecialization",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaKnowledgeSpecialization"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaknospecialization"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaknospecialization": [
+          "7"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaRitualSpellcastingFocus",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6419,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaRitualSpellcastingFocus",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaRitualSpellcastingFocus"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaritualspellcastingfocus"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaritualspellcastingfocus": [
+          "2"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaNewKnowledgeSkill",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6422,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaNewKnowledgeSkill",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaNewKnowledgeSkill"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmanewknowledgeskill"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmanewknowledgeskill": [
+          "1"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaInitiation",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6427,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaInitiation",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaInitiation"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmainitiation"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmainitiation": [
+          "3"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaFlexibleSignatureFocus",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6429,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaFlexibleSignatureFocus",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaFlexibleSignatureFocus"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaflexiblesignaturefocus"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaflexiblesignaturefocus": [
+          "3"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaSpellShapingFocus",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6430,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaSpellShapingFocus",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaSpellShapingFocus"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaspellshapingfocus"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaspellshapingfocus": [
+          "3"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaMetamagic",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6432,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaMetamagic",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaMetamagic"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmametamagic"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmametamagic": [
+          "15"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaContact",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6437,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaContact",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaContact"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmacontact"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmacontact": [
+          "1"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaSustainingFocus",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6440,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaSustainingFocus",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaSustainingFocus"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmasustainingfocus"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmasustainingfocus": [
+          "2"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaJoinGroup",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6441,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaJoinGroup",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaJoinGroup"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmajoingroup"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmajoingroup": [
+          "5"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaLeaveGroup",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6445,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaLeaveGroup",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaLeaveGroup"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaleavegroup"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaleavegroup": [
+          "1"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaSummoningFocus",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6446,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaSummoningFocus",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaSummoningFocus"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmasummoningfocus"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmasummoningfocus": [
+          "2"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaTechnique",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6448,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaTechnique",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaTechnique"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmatechnique"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmatechnique": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaNewActiveSkill",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6451,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaNewActiveSkill",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaNewActiveSkill"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmanewactiveskill"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmanewactiveskill": [
+          "2"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaSpellcastingFocus",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6455,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaSpellcastingFocus",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaSpellcastingFocus"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaspellcastingfocus"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaspellcastingfocus": [
+          "2"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaNuyenPerWftM",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6456,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaNuyenPerWftM",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "NuyenPerBPWftM"
+      ],
+      "persistencePaths": [
+        "settings/nuyenperbpwftm"
+      ],
+      "builtInStandardValues": {
+        "settings/nuyenperbpwftm": [
+          "2000"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaSpirit",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6459,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaSpirit",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaSpirit"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaspirit"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaspirit": [
+          "1"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaAlchemicalFocus",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6460,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaAlchemicalFocus",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaAlchemicalFocus"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaalchemicalfocus"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaalchemicalfocus": [
+          "3"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaNewSkillGroup",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6465,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaNewSkillGroup",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaNewSkillGroup"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmanewskillgroup"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmanewskillgroup": [
+          "5"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaBanishingFocus",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6467,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaBanishingFocus",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaBanishingFocus"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmabanishingfocus"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmabanishingfocus": [
+          "2"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaImproveKnowledgeSkill",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6471,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaImproveKnowledgeSkill",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaImproveKnowledgeSkill"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaimproveknowledgeskill"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaimproveknowledgeskill": [
+          "1"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaQiFocus",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6472,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaQiFocus",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaQiFocus"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaqifocus"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaqifocus": [
+          "2"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaBindingFocus",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6477,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaBindingFocus",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaBindingFocus"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmabindingfocus"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmabindingfocus": [
+          "2"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaPowerFocus",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6478,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaPowerFocus",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaPowerFocus"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmapowerfocus"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmapowerfocus": [
+          "6"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaImproveActiveSkill",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6483,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaImproveActiveSkill",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaImproveActiveSkill"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaimproveactiveskill"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaimproveactiveskill": [
+          "2"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaMaskingFocus",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6484,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaMaskingFocus",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaMaskingFocus"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmamaskingfocus"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmamaskingfocus": [
+          "3"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaCenteringFocus",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6488,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaCenteringFocus",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaCenteringFocus"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmacenteringfocus"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmacenteringfocus": [
+          "3"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaCounterspellingFocus",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6491,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaCounterspellingFocus",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaCounterspellingFocus"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmacounterspellingfocus"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmacounterspellingfocus": [
+          "2"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaImproveSkillGroup",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6495,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaImproveSkillGroup",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaImproveSkillGroup"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaimproveskillgroup"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaimproveskillgroup": [
+          "5"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaDisenchantingFocus",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6496,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaDisenchantingFocus",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaDisenchantingFocus"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmadisenchantingfocus"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmadisenchantingfocus": [
+          "3"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaAttribute",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6500,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaAttribute",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaAttribute"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaattribute"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaattribute": [
+          "5"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaQuality",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6503,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaQuality",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaQuality"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaquality"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaquality": [
+          "1"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaSpell",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6506,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaSpell",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaSpell"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaspell"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaspell": [
+          "5"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaNewComplexForm",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6508,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaNewComplexForm",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaNewComplexForm"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmanewcomplexform"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmanewcomplexform": [
+          "4"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudMetatypeCostsKarmaMultiplier",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6509,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMetatypeCostsKarmaMultiplier",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MetatypeCostsKarmaMultiplier"
+      ],
+      "persistencePaths": [
+        "settings/metatypecostskarmamultiplier"
+      ],
+      "builtInStandardValues": {
+        "settings/metatypecostskarmamultiplier": [
+          "1"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "cmdDecreaseCustomDirectoryLoadOrder",
+      "legacyType": "System.Windows.Forms.Button",
+      "legacyLine": 6513,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::cmdDecreaseCustomDirectoryLoadOrder",
+      "operation": "adjust",
+      "semanticOperation": "move_custom_data_directory_down",
+      "characterSettingsProperties": [],
+      "persistencePaths": [
+        "settings/customdatadirectorynames/customdatadirectoryname"
+      ],
+      "builtInStandardValues": {
+        "settings/customdatadirectorynames/customdatadirectoryname": []
+      },
+      "events": [
+        {
+          "event": "Click",
+          "handler": "cmdDecreaseCustomDirectoryLoadOrder_Click"
+        }
+      ]
+    },
+    {
+      "legacyControl": "cmdIncreaseCustomDirectoryLoadOrder",
+      "legacyType": "System.Windows.Forms.Button",
+      "legacyLine": 6514,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::cmdIncreaseCustomDirectoryLoadOrder",
+      "operation": "adjust",
+      "semanticOperation": "move_custom_data_directory_up",
+      "characterSettingsProperties": [],
+      "persistencePaths": [
+        "settings/customdatadirectorynames/customdatadirectoryname"
+      ],
+      "builtInStandardValues": {
+        "settings/customdatadirectorynames/customdatadirectoryname": []
+      },
+      "events": [
+        {
+          "event": "Click",
+          "handler": "cmdIncreaseCustomDirectoryLoadOrder_Click"
+        }
+      ]
+    },
+    {
+      "legacyControl": "treCustomDataDirectories",
+      "legacyType": "System.Windows.Forms.TreeView",
+      "legacyLine": 6516,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::treCustomDataDirectories",
+      "operation": "manage_collection",
+      "semanticOperation": "edit_custom_data_directories",
+      "characterSettingsProperties": [
+        "CustomDataDirectoryKeys",
+        "ValueAt"
+      ],
+      "persistencePaths": [
+        "settings/customdatadirectorynames/customdatadirectoryname"
+      ],
+      "builtInStandardValues": {
+        "settings/customdatadirectorynames/customdatadirectoryname": []
+      },
+      "events": [
+        {
+          "event": "AfterCheck",
+          "handler": "treCustomDataDirectories_AfterCheck"
+        },
+        {
+          "event": "AfterSelect",
+          "handler": "treCustomDataDirectories_AfterSelect"
+        }
+      ]
+    },
+    {
+      "legacyControl": "chkIgnoreArt",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6518,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkIgnoreArt",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "IgnoreArt"
+      ],
+      "persistencePaths": [
+        "settings/ignoreart"
+      ],
+      "builtInStandardValues": {
+        "settings/ignoreart": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkExceedNegativeQualitiesNoBonus",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6519,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkExceedNegativeQualitiesNoBonus",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "ExceedNegativeQualitiesNoBonus"
+      ],
+      "persistencePaths": [
+        "settings/exceednegativequalitiesnobonus"
+      ],
+      "builtInStandardValues": {
+        "settings/exceednegativequalitiesnobonus": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkExceedNegativeQualities",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6520,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkExceedNegativeQualities",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "ExceedNegativeQualities"
+      ],
+      "persistencePaths": [
+        "settings/exceednegativequalities"
+      ],
+      "builtInStandardValues": {
+        "settings/exceednegativequalities": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkExceedPositiveQualitiesCostDoubled",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6521,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkExceedPositiveQualitiesCostDoubled",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "ExceedPositiveQualitiesCostDoubled"
+      ],
+      "persistencePaths": [
+        "settings/exceedpositivequalitiescostdoubled"
+      ],
+      "builtInStandardValues": {
+        "settings/exceedpositivequalitiescostdoubled": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkExceedPositiveQualities",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6522,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkExceedPositiveQualities",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "ExceedPositiveQualities"
+      ],
+      "persistencePaths": [
+        "settings/exceedpositivequalities"
+      ],
+      "builtInStandardValues": {
+        "settings/exceedpositivequalities": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkUnarmedSkillImprovements",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6523,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkUnarmedSkillImprovements",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "UnarmedImprovementsApplyToWeapons"
+      ],
+      "persistencePaths": [
+        "settings/unarmedimprovementsapplytoweapons"
+      ],
+      "builtInStandardValues": {
+        "settings/unarmedimprovementsapplytoweapons": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkCompensateSkillGroupKarmaDifference",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6524,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkCompensateSkillGroupKarmaDifference",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "CompensateSkillGroupKarmaDifference"
+      ],
+      "persistencePaths": [
+        "settings/compensateskillgroupkarmadifference"
+      ],
+      "builtInStandardValues": {
+        "settings/compensateskillgroupkarmadifference": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkMysAdeptSecondMAGAttribute",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6525,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkMysAdeptSecondMAGAttribute",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MysAdeptSecondMAGAttribute"
+      ],
+      "persistencePaths": [
+        "settings/mysadeptsecondmagattribute"
+      ],
+      "builtInStandardValues": {
+        "settings/mysadeptsecondmagattribute": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkDontDoubleQualityPurchases",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6526,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkDontDoubleQualityPurchases",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "DontDoubleQualityPurchases"
+      ],
+      "persistencePaths": [
+        "settings/dontdoublequalities"
+      ],
+      "builtInStandardValues": {
+        "settings/dontdoublequalities": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkDontDoubleQualityRefunds",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6527,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkDontDoubleQualityRefunds",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "DontDoubleQualityRefunds"
+      ],
+      "persistencePaths": [
+        "settings/dontdoublequalityrefunds"
+      ],
+      "builtInStandardValues": {
+        "settings/dontdoublequalityrefunds": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkReverseAttributePriorityOrder",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6528,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkReverseAttributePriorityOrder",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "ReverseAttributePriorityOrder"
+      ],
+      "persistencePaths": [
+        "settings/reverseattributepriorityorder"
+      ],
+      "builtInStandardValues": {
+        "settings/reverseattributepriorityorder": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkPrioritySpellsAsAdeptPowers",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6529,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkPrioritySpellsAsAdeptPowers",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "PrioritySpellsAsAdeptPowers"
+      ],
+      "persistencePaths": [
+        "settings/priorityspellsasadeptpowers"
+      ],
+      "builtInStandardValues": {
+        "settings/priorityspellsasadeptpowers": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkAllowInitiation",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6530,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkAllowInitiation",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "AllowInitiationInCreateMode"
+      ],
+      "persistencePaths": [
+        "settings/allowinitiationincreatemode"
+      ],
+      "builtInStandardValues": {
+        "settings/allowinitiationincreatemode": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkFreeMartialArtSpecialization",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6531,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkFreeMartialArtSpecialization",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "FreeMartialArtSpecialization"
+      ],
+      "persistencePaths": [
+        "settings/freemartialartspecialization"
+      ],
+      "builtInStandardValues": {
+        "settings/freemartialartspecialization": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkAllowCyberwareESSDiscounts",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6532,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkAllowCyberwareESSDiscounts",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "AllowCyberwareESSDiscounts"
+      ],
+      "persistencePaths": [
+        "settings/allowcyberwareessdiscounts"
+      ],
+      "builtInStandardValues": {
+        "settings/allowcyberwareessdiscounts": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkMysAdPp",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6533,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkMysAdPp",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MysAdeptAllowPpCareer"
+      ],
+      "persistencePaths": [
+        "settings/mysaddppcareer"
+      ],
+      "builtInStandardValues": {
+        "settings/mysaddppcareer": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkESSLossReducesMaximumOnly",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6534,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkESSLossReducesMaximumOnly",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "ESSLossReducesMaximumOnly"
+      ],
+      "persistencePaths": [
+        "settings/esslossreducesmaximumonly"
+      ],
+      "builtInStandardValues": {
+        "settings/esslossreducesmaximumonly": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkAlternateMetatypeAttributeKarma",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6535,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkAlternateMetatypeAttributeKarma",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "AlternateMetatypeAttributeKarma"
+      ],
+      "persistencePaths": [
+        "settings/alternatemetatypeattributekarma"
+      ],
+      "builtInStandardValues": {
+        "settings/alternatemetatypeattributekarma": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkUseCalculatedPublicAwareness",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6536,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkUseCalculatedPublicAwareness",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "UseCalculatedPublicAwareness"
+      ],
+      "persistencePaths": [
+        "settings/usecalculatedpublicawareness"
+      ],
+      "builtInStandardValues": {
+        "settings/usecalculatedpublicawareness": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudDroneArmorMultiplier",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6537,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudDroneArmorMultiplier",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "DroneArmorMultiplier"
+      ],
+      "persistencePaths": [
+        "settings/dronearmorflatnumber"
+      ],
+      "builtInStandardValues": {
+        "settings/dronearmorflatnumber": [
+          "2"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkDroneArmorMultiplier",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6539,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkDroneArmorMultiplier",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "DroneArmorMultiplierEnabled"
+      ],
+      "persistencePaths": [
+        "settings/dronearmormultiplierenabled"
+      ],
+      "builtInStandardValues": {
+        "settings/dronearmormultiplierenabled": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkIgnoreComplexFormLimit",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6540,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkIgnoreComplexFormLimit",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "IgnoreComplexFormLimit"
+      ],
+      "persistencePaths": [
+        "settings/ignorecomplexformlimit"
+      ],
+      "builtInStandardValues": {
+        "settings/ignorecomplexformlimit": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkSpecialKarmaCost",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6541,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkSpecialKarmaCost",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "SpecialKarmaCostBasedOnShownValue"
+      ],
+      "persistencePaths": [
+        "settings/specialkarmacostbasedonshownvalue"
+      ],
+      "builtInStandardValues": {
+        "settings/specialkarmacostbasedonshownvalue": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkMoreLethalGameplay",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6542,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkMoreLethalGameplay",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MoreLethalGameplay"
+      ],
+      "persistencePaths": [
+        "settings/morelethalgameplay"
+      ],
+      "builtInStandardValues": {
+        "settings/morelethalgameplay": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkExtendAnyDetectionSpell",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6543,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkExtendAnyDetectionSpell",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "ExtendAnyDetectionSpell"
+      ],
+      "persistencePaths": [
+        "settings/extendanydetectionspell"
+      ],
+      "builtInStandardValues": {
+        "settings/extendanydetectionspell": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkAllowLimitedSpellsForBareHandedAdept",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6544,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkAllowLimitedSpellsForBareHandedAdept",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "AllowLimitedSpellsForBareHandedAdept"
+      ],
+      "persistencePaths": [
+        "settings/allowlimitedspellsforbarehandedadept"
+      ],
+      "builtInStandardValues": {
+        "settings/allowlimitedspellsforbarehandedadept": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkAllowSkillRegrouping",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6545,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkAllowSkillRegrouping",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "AllowSkillRegrouping"
+      ],
+      "persistencePaths": [
+        "settings/allowskillregrouping"
+      ],
+      "builtInStandardValues": {
+        "settings/allowskillregrouping": [
+          "True"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkNoArmorEncumbrance",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6546,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkNoArmorEncumbrance",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "NoArmorEncumbrance"
+      ],
+      "persistencePaths": [
+        "settings/noarmorencumbrance"
+      ],
+      "builtInStandardValues": {
+        "settings/noarmorencumbrance": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkIncreasedImprovedAbilityModifier",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6547,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkIncreasedImprovedAbilityModifier",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "IncreasedImprovedAbilityMultiplier"
+      ],
+      "persistencePaths": [
+        "settings/increasedimprovedabilitymodifier"
+      ],
+      "builtInStandardValues": {
+        "settings/increasedimprovedabilitymodifier": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkAllowTechnomancerSchooling",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6548,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkAllowTechnomancerSchooling",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "AllowTechnomancerSchooling"
+      ],
+      "persistencePaths": [
+        "settings/allowtechnomancerschooling"
+      ],
+      "builtInStandardValues": {
+        "settings/allowtechnomancerschooling": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkUsePointsOnBrokenGroups",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6549,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkUsePointsOnBrokenGroups",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "UsePointsOnBrokenGroups"
+      ],
+      "persistencePaths": [
+        "settings/usepointsonbrokengroups"
+      ],
+      "builtInStandardValues": {
+        "settings/usepointsonbrokengroups": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkUnclampAttributeMinimum",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6550,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkUnclampAttributeMinimum",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "UnclampAttributeMinimum"
+      ],
+      "persistencePaths": [
+        "settings/unclampattributeminimum"
+      ],
+      "builtInStandardValues": {
+        "settings/unclampattributeminimum": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "cmdSave",
+      "legacyType": "System.Windows.Forms.Button",
+      "legacyLine": 6551,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::cmdSave",
+      "operation": "commit",
+      "semanticOperation": "save_profile",
+      "characterSettingsProperties": [],
+      "persistencePaths": [
+        "settings"
+      ],
+      "builtInStandardValues": {
+        "settings": []
+      },
+      "events": [
+        {
+          "event": "Click",
+          "handler": "cmdSave_Click"
+        }
+      ]
+    },
+    {
+      "legacyControl": "cmdOK",
+      "legacyType": "System.Windows.Forms.Button",
+      "legacyLine": 6552,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::cmdOK",
+      "operation": "commit",
+      "semanticOperation": "save_profile_and_close",
+      "characterSettingsProperties": [],
+      "persistencePaths": [
+        "settings"
+      ],
+      "builtInStandardValues": {
+        "settings": []
+      },
+      "events": [
+        {
+          "event": "Click",
+          "handler": "cmdOK_Click"
+        }
+      ]
+    },
+    {
+      "legacyControl": "chkCyberlegMovement",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6560,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkCyberlegMovement",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "CyberlegMovement"
+      ],
+      "persistencePaths": [
+        "settings/cyberlegmovement"
+      ],
+      "builtInStandardValues": {
+        "settings/cyberlegmovement": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkStrictSkillGroups",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6563,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkStrictSkillGroups",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "StrictSkillGroupsInCreateMode"
+      ],
+      "persistencePaths": [
+        "settings/breakskillgroupsincreatemode"
+      ],
+      "builtInStandardValues": {
+        "settings/breakskillgroupsincreatemode": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkAllowFreeGrids",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6564,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkAllowFreeGrids",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "AllowFreeGrids"
+      ],
+      "persistencePaths": [
+        "settings/allowfreegrids"
+      ],
+      "builtInStandardValues": {
+        "settings/allowfreegrids": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkAllowPointBuySpecializationsOnKarmaSkills",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6565,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkAllowPointBuySpecializationsOnKarmaSkills",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "AllowPointBuySpecializationsOnKarmaSkills"
+      ],
+      "persistencePaths": [
+        "settings/allowpointbuyspecializationsonkarmaskills"
+      ],
+      "builtInStandardValues": {
+        "settings/allowpointbuyspecializationsonkarmaskills": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudCyberlimbAttributeBonusCap",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6567,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudCyberlimbAttributeBonusCap",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "CyberlimbAttributeBonusCap"
+      ],
+      "persistencePaths": [
+        "settings/cyberlimbattributebonuscap"
+      ],
+      "builtInStandardValues": {
+        "settings/cyberlimbattributebonuscap": [
+          "4"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkCyberlimbAttributeBonusCap",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6569,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkCyberlimbAttributeBonusCap",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "CyberlimbAttributeBonusCapOverride"
+      ],
+      "persistencePaths": [
+        "settings/cyberlimbattributebonuscapoverride"
+      ],
+      "builtInStandardValues": {
+        "settings/cyberlimbattributebonuscapoverride": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "txtContactPoints",
+      "legacyType": "System.Windows.Forms.TextBox",
+      "legacyLine": 6573,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::txtContactPoints",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "ContactPointsExpression"
+      ],
+      "persistencePaths": [
+        "settings/contactpointsexpression"
+      ],
+      "builtInStandardValues": {
+        "settings/contactpointsexpression": [
+          "{CHAUnaug} * 3"
+        ]
+      },
+      "events": [
+        {
+          "event": "TextChanged",
+          "handler": "txtContactPoints_TextChanged"
+        }
+      ]
+    },
+    {
+      "legacyControl": "txtKnowledgePoints",
+      "legacyType": "System.Windows.Forms.TextBox",
+      "legacyLine": 6574,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::txtKnowledgePoints",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KnowledgePointsExpression"
+      ],
+      "persistencePaths": [
+        "settings/knowledgepointsexpression"
+      ],
+      "builtInStandardValues": {
+        "settings/knowledgepointsexpression": [
+          "({INTUnaug} + {LOGUnaug}) * 2"
+        ]
+      },
+      "events": [
+        {
+          "event": "TextChanged",
+          "handler": "txtKnowledgePoints_TextChanged"
+        }
+      ]
+    },
+    {
+      "legacyControl": "txtGameplayOptionName",
+      "legacyType": "System.Windows.Forms.TextBox",
+      "legacyLine": 6576,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::txtGameplayOptionName",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "GameplayOptionName"
+      ],
+      "persistencePaths": [
+        "settings/gameplayoptionname"
+      ],
+      "builtInStandardValues": {
+        "settings/gameplayoptionname": [
+          "Standard"
+        ]
+      },
+      "events": [
+        {
+          "event": "TextChanged",
+          "handler": "txtGameplayOptionName_TextChanged"
+        }
+      ]
+    },
+    {
+      "legacyControl": "cboBuildMethod",
+      "legacyType": "ElasticComboBox",
+      "legacyLine": 6581,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::cboBuildMethod",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "BuildMethod"
+      ],
+      "persistencePaths": [
+        "settings/buildmethod"
+      ],
+      "builtInStandardValues": {
+        "settings/buildmethod": [
+          "Priority"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "txtPriorities",
+      "legacyType": "System.Windows.Forms.TextBox",
+      "legacyLine": 6583,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::txtPriorities",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "PriorityArray"
+      ],
+      "persistencePaths": [
+        "settings/priorityarray"
+      ],
+      "builtInStandardValues": {
+        "settings/priorityarray": [
+          "ABCDE"
+        ]
+      },
+      "events": [
+        {
+          "event": "KeyPress",
+          "handler": "txtPriorities_KeyPress"
+        },
+        {
+          "event": "TextChanged",
+          "handler": "txtPriorities_TextChanged"
+        }
+      ]
+    },
+    {
+      "legacyControl": "nudSumToTen",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6585,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudSumToTen",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "SumtoTen"
+      ],
+      "persistencePaths": [
+        "settings/sumtoten"
+      ],
+      "builtInStandardValues": {
+        "settings/sumtoten": [
+          "10"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "cboPriorityTable",
+      "legacyType": "ElasticComboBox",
+      "legacyLine": 6588,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::cboPriorityTable",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "PriorityTable"
+      ],
+      "persistencePaths": [
+        "settings/prioritytable"
+      ],
+      "builtInStandardValues": {
+        "settings/prioritytable": [
+          "Standard"
+        ]
+      },
+      "events": [
+        {
+          "event": "SelectedIndexChanged",
+          "handler": "cboPriorityTable_SelectedIndexChanged"
+        }
+      ]
+    },
+    {
+      "legacyControl": "chkRedlinerLimbsSkull",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6593,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkRedlinerLimbsSkull",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "RedlinerExcludesSkull"
+      ],
+      "persistencePaths": [
+        "settings/redlinerexclusion/limb"
+      ],
+      "builtInStandardValues": {
+        "settings/redlinerexclusion/limb": [
+          "skull",
+          "torso"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkRedlinerLimbsTorso",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6594,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkRedlinerLimbsTorso",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "RedlinerExcludesTorso"
+      ],
+      "persistencePaths": [
+        "settings/redlinerexclusion/limb"
+      ],
+      "builtInStandardValues": {
+        "settings/redlinerexclusion/limb": [
+          "skull",
+          "torso"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkRedlinerLimbsArms",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6595,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkRedlinerLimbsArms",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "RedlinerExcludesArms"
+      ],
+      "persistencePaths": [
+        "settings/redlinerexclusion/limb"
+      ],
+      "builtInStandardValues": {
+        "settings/redlinerexclusion/limb": [
+          "skull",
+          "torso"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkRedlinerLimbsLegs",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6596,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkRedlinerLimbsLegs",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "RedlinerExcludesLegs"
+      ],
+      "persistencePaths": [
+        "settings/redlinerexclusion/limb"
+      ],
+      "builtInStandardValues": {
+        "settings/redlinerexclusion/limb": [
+          "skull",
+          "torso"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudStartingKarma",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6597,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudStartingKarma",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "BuildKarma"
+      ],
+      "persistencePaths": [
+        "settings/buildpoints"
+      ],
+      "builtInStandardValues": {
+        "settings/buildpoints": [
+          "25"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudMaxAvail",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6598,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMaxAvail",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MaximumAvailability"
+      ],
+      "persistencePaths": [
+        "settings/availability"
+      ],
+      "builtInStandardValues": {
+        "settings/availability": [
+          "12"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudMaxNuyenKarma",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6599,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMaxNuyenKarma",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "NuyenMaximumBP"
+      ],
+      "persistencePaths": [
+        "settings/nuyenmaxbp"
+      ],
+      "builtInStandardValues": {
+        "settings/nuyenmaxbp": [
+          "10"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "cmdSaveAs",
+      "legacyType": "System.Windows.Forms.Button",
+      "legacyLine": 6600,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::cmdSaveAs",
+      "operation": "commit",
+      "semanticOperation": "save_profile_as",
+      "characterSettingsProperties": [
+        "Name"
+      ],
+      "persistencePaths": [
+        "settings"
+      ],
+      "builtInStandardValues": {
+        "settings": []
+      },
+      "events": [
+        {
+          "event": "Click",
+          "handler": "cmdSaveAs_Click"
+        }
+      ]
+    },
+    {
+      "legacyControl": "cmdRestoreDefaults",
+      "legacyType": "System.Windows.Forms.Button",
+      "legacyLine": 6601,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::cmdRestoreDefaults",
+      "operation": "mutating_action",
+      "semanticOperation": "restore_profile_defaults",
+      "characterSettingsProperties": [],
+      "persistencePaths": [
+        "settings"
+      ],
+      "builtInStandardValues": {
+        "settings": []
+      },
+      "events": [
+        {
+          "event": "Click",
+          "handler": "cmdRestoreDefaults_Click"
+        }
+      ]
+    },
+    {
+      "legacyControl": "nudQualityKarmaLimit",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6606,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudQualityKarmaLimit",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "QualityKarmaLimit"
+      ],
+      "persistencePaths": [
+        "settings/qualitykarmalimit"
+      ],
+      "builtInStandardValues": {
+        "settings/qualitykarmalimit": [
+          "25"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "cmdDelete",
+      "legacyType": "System.Windows.Forms.Button",
+      "legacyLine": 6607,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::cmdDelete",
+      "operation": "delete",
+      "semanticOperation": "delete_profile",
+      "characterSettingsProperties": [
+        "SettingsKey"
+      ],
+      "persistencePaths": [
+        "settings"
+      ],
+      "builtInStandardValues": {
+        "settings": []
+      },
+      "events": [
+        {
+          "event": "Click",
+          "handler": "cmdDelete_Click"
+        }
+      ]
+    },
+    {
+      "legacyControl": "cmdRename",
+      "legacyType": "System.Windows.Forms.Button",
+      "legacyLine": 6620,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::cmdRename",
+      "operation": "edit",
+      "semanticOperation": "rename_profile",
+      "characterSettingsProperties": [
+        "Name"
+      ],
+      "persistencePaths": [
+        "settings/name"
+      ],
+      "builtInStandardValues": {
+        "settings/name": [
+          "Standard"
+        ]
+      },
+      "events": [
+        {
+          "event": "Click",
+          "handler": "cmdRename_Click"
+        }
+      ]
+    },
+    {
+      "legacyControl": "nudKarmaSpiritFettering",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6622,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaSpiritFettering",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaSpiritFettering"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaspiritfettering"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaspiritfettering": [
+          "3"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "txtNuyenExpression",
+      "legacyType": "System.Windows.Forms.TextBox",
+      "legacyLine": 6642,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::txtNuyenExpression",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "ChargenKarmaToNuyenExpression"
+      ],
+      "persistencePaths": [
+        "settings/chargenkarmatonuyenexpression"
+      ],
+      "builtInStandardValues": {
+        "settings/chargenkarmatonuyenexpression": [
+          "{Karma} * 2000 + {PriorityNuyen}"
+        ]
+      },
+      "events": [
+        {
+          "event": "TextChanged",
+          "handler": "txtNuyenExpression_TextChanged"
+        }
+      ]
+    },
+    {
+      "legacyControl": "nudKarmaNuyenPerWftP",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6645,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaNuyenPerWftP",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "NuyenPerBPWftP"
+      ],
+      "persistencePaths": [
+        "settings/nuyenperbpwftp"
+      ],
+      "builtInStandardValues": {
+        "settings/nuyenperbpwftp": [
+          "2000"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "cmdToBottomCustomDirectoryLoadOrder",
+      "legacyType": "System.Windows.Forms.Button",
+      "legacyLine": 6646,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::cmdToBottomCustomDirectoryLoadOrder",
+      "operation": "mutating_action",
+      "semanticOperation": "move_custom_data_directory_to_bottom",
+      "characterSettingsProperties": [],
+      "persistencePaths": [
+        "settings/customdatadirectorynames/customdatadirectoryname"
+      ],
+      "builtInStandardValues": {
+        "settings/customdatadirectorynames/customdatadirectoryname": []
+      },
+      "events": [
+        {
+          "event": "Click",
+          "handler": "cmdToBottomCustomDirectoryLoadOrder_Click"
+        }
+      ]
+    },
+    {
+      "legacyControl": "cmdToTopCustomDirectoryLoadOrder",
+      "legacyType": "System.Windows.Forms.Button",
+      "legacyLine": 6647,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::cmdToTopCustomDirectoryLoadOrder",
+      "operation": "mutating_action",
+      "semanticOperation": "move_custom_data_directory_to_top",
+      "characterSettingsProperties": [],
+      "persistencePaths": [
+        "settings/customdatadirectorynames/customdatadirectoryname"
+      ],
+      "builtInStandardValues": {
+        "settings/customdatadirectorynames/customdatadirectoryname": []
+      },
+      "events": [
+        {
+          "event": "Click",
+          "handler": "cmdToTopCustomDirectoryLoadOrder_Click"
+        }
+      ]
+    },
+    {
+      "legacyControl": "txtBoundSpiritLimit",
+      "legacyType": "System.Windows.Forms.TextBox",
+      "legacyLine": 6650,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::txtBoundSpiritLimit",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "BoundSpiritExpression"
+      ],
+      "persistencePaths": [
+        "settings/boundspiritexpression"
+      ],
+      "builtInStandardValues": {
+        "settings/boundspiritexpression": [
+          "{CHA}"
+        ]
+      },
+      "events": [
+        {
+          "event": "TextChanged",
+          "handler": "txtBoundSpiritLimit_TextChanged"
+        }
+      ]
+    },
+    {
+      "legacyControl": "txtRegisteredSpriteLimit",
+      "legacyType": "System.Windows.Forms.TextBox",
+      "legacyLine": 6651,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::txtRegisteredSpriteLimit",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "RegisteredSpriteExpression"
+      ],
+      "persistencePaths": [
+        "settings/registeredspriteexpression"
+      ],
+      "builtInStandardValues": {
+        "settings/registeredspriteexpression": [
+          "{CHA}"
+        ]
+      },
+      "events": [
+        {
+          "event": "TextChanged",
+          "handler": "txtRegisteredSpriteLimit_TextChanged"
+        }
+      ]
+    },
+    {
+      "legacyControl": "chkEnemyKarmaQualityLimit",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6654,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkEnemyKarmaQualityLimit",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "EnemyKarmaQualityLimit"
+      ],
+      "persistencePaths": [
+        "settings/enemykarmaqualitylimit"
+      ],
+      "builtInStandardValues": {
+        "settings/enemykarmaqualitylimit": [
+          "True"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkEnable4eStyleEnemyTracking",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6655,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkEnable4eStyleEnemyTracking",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "EnableEnemyTracking"
+      ],
+      "persistencePaths": [
+        "settings/enableenemytracking"
+      ],
+      "builtInStandardValues": {
+        "settings/enableenemytracking": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaGainedFromEnemies",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6658,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaGainedFromEnemies",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaEnemy"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmaenemy"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmaenemy": [
+          "1"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudMinInitiativeDice",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6667,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMinInitiativeDice",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MinInitiativeDice"
+      ],
+      "persistencePaths": [
+        "settings/mininitiativedice"
+      ],
+      "builtInStandardValues": {
+        "settings/mininitiativedice": [
+          "1"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudMaxInitiativeDice",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6668,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMaxInitiativeDice",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MaxInitiativeDice"
+      ],
+      "persistencePaths": [
+        "settings/maxinitiativedice"
+      ],
+      "builtInStandardValues": {
+        "settings/maxinitiativedice": [
+          "5"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudMaxAstralInitiativeDice",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6670,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMaxAstralInitiativeDice",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MaxAstralInitiativeDice"
+      ],
+      "persistencePaths": [
+        "settings/maxastralinitiativedice"
+      ],
+      "builtInStandardValues": {
+        "settings/maxastralinitiativedice": [
+          "5"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudMaxColdSimInitiativeDice",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6671,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMaxColdSimInitiativeDice",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MaxColdSimInitiativeDice"
+      ],
+      "persistencePaths": [
+        "settings/maxcoldsiminitiativedice"
+      ],
+      "builtInStandardValues": {
+        "settings/maxcoldsiminitiativedice": [
+          "5"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudMaxHotSimInitiativeDice",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6672,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMaxHotSimInitiativeDice",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MaxHotSimInitiativeDice"
+      ],
+      "persistencePaths": [
+        "settings/maxhotsiminitiativedice"
+      ],
+      "builtInStandardValues": {
+        "settings/maxhotsiminitiativedice": [
+          "5"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudMinAstralInitiativeDice",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6673,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMinAstralInitiativeDice",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MinAstralInitiativeDice"
+      ],
+      "persistencePaths": [
+        "settings/minastralinitiativedice"
+      ],
+      "builtInStandardValues": {
+        "settings/minastralinitiativedice": [
+          "3"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudMinColdSimInitiativeDice",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6674,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMinColdSimInitiativeDice",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MinColdSimInitiativeDice"
+      ],
+      "persistencePaths": [
+        "settings/mincoldsiminitiativedice"
+      ],
+      "builtInStandardValues": {
+        "settings/mincoldsiminitiativedice": [
+          "3"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudMinHotSimInitiativeDice",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6675,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMinHotSimInitiativeDice",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MinHotSimInitiativeDice"
+      ],
+      "persistencePaths": [
+        "settings/minhotsiminitiativedice"
+      ],
+      "builtInStandardValues": {
+        "settings/minhotsiminitiativedice": [
+          "4"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "txtLiftLimit",
+      "legacyType": "System.Windows.Forms.TextBox",
+      "legacyLine": 6681,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::txtLiftLimit",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "LiftLimitExpression"
+      ],
+      "persistencePaths": [
+        "settings/liftlimitexpression"
+      ],
+      "builtInStandardValues": {
+        "settings/liftlimitexpression": []
+      },
+      "events": [
+        {
+          "event": "TextChanged",
+          "handler": "txtLiftLimit_TextChanged"
+        }
+      ]
+    },
+    {
+      "legacyControl": "txtCarryLimit",
+      "legacyType": "System.Windows.Forms.TextBox",
+      "legacyLine": 6682,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::txtCarryLimit",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "CarryLimitExpression"
+      ],
+      "persistencePaths": [
+        "settings/carrylimitexpression"
+      ],
+      "builtInStandardValues": {
+        "settings/carrylimitexpression": []
+      },
+      "events": [
+        {
+          "event": "TextChanged",
+          "handler": "txtCarryLimit_TextChanged"
+        }
+      ]
+    },
+    {
+      "legacyControl": "txtEncumbranceInterval",
+      "legacyType": "System.Windows.Forms.TextBox",
+      "legacyLine": 6685,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::txtEncumbranceInterval",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "EncumbranceIntervalExpression"
+      ],
+      "persistencePaths": [
+        "settings/encumbranceintervalexpression"
+      ],
+      "builtInStandardValues": {
+        "settings/encumbranceintervalexpression": []
+      },
+      "events": [
+        {
+          "event": "TextChanged",
+          "handler": "txtEncumbranceInterval_TextChanged"
+        }
+      ]
+    },
+    {
+      "legacyControl": "chkEncumbrancePenaltyPhysicalLimit",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6688,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkEncumbrancePenaltyPhysicalLimit",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "DoEncumbrancePenaltyPhysicalLimit"
+      ],
+      "persistencePaths": [
+        "settings/doencumbrancepenaltyphysicallimit"
+      ],
+      "builtInStandardValues": {
+        "settings/doencumbrancepenaltyphysicallimit": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkEncumbrancePenaltyMovementSpeed",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6689,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkEncumbrancePenaltyMovementSpeed",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "DoEncumbrancePenaltyMovementSpeed"
+      ],
+      "persistencePaths": [
+        "settings/doencumbrancepenaltymovementspeed"
+      ],
+      "builtInStandardValues": {
+        "settings/doencumbrancepenaltymovementspeed": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkEncumbrancePenaltyAgility",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6690,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkEncumbrancePenaltyAgility",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "DoEncumbrancePenaltyAgility"
+      ],
+      "persistencePaths": [
+        "settings/doencumbrancepenaltyagility"
+      ],
+      "builtInStandardValues": {
+        "settings/doencumbrancepenaltyagility": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkEncumbrancePenaltyReaction",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6691,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkEncumbrancePenaltyReaction",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "DoEncumbrancePenaltyReaction",
+        "DoEncumbrancePenaltyWoundModifier"
+      ],
+      "persistencePaths": [
+        "settings/doencumbrancepenaltyreaction",
+        "settings/doencumbrancepenaltywoundmodifier"
+      ],
+      "builtInStandardValues": {
+        "settings/doencumbrancepenaltyreaction": [],
+        "settings/doencumbrancepenaltywoundmodifier": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkEncumbrancePenaltyWoundModifier",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6692,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkEncumbrancePenaltyWoundModifier",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "DoEncumbrancePenaltyWoundModifier"
+      ],
+      "persistencePaths": [
+        "settings/doencumbrancepenaltywoundmodifier"
+      ],
+      "builtInStandardValues": {
+        "settings/doencumbrancepenaltywoundmodifier": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudEncumbrancePenaltyPhysicalLimit",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6693,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudEncumbrancePenaltyPhysicalLimit",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "EncumbrancePenaltyPhysicalLimit"
+      ],
+      "persistencePaths": [
+        "settings/encumbrancepenaltyphysicallimit"
+      ],
+      "builtInStandardValues": {
+        "settings/encumbrancepenaltyphysicallimit": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudEncumbrancePenaltyAgility",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6694,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudEncumbrancePenaltyAgility",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "EncumbrancePenaltyAgility"
+      ],
+      "persistencePaths": [
+        "settings/encumbrancepenaltyagility"
+      ],
+      "builtInStandardValues": {
+        "settings/encumbrancepenaltyagility": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudEncumbrancePenaltyReaction",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6695,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudEncumbrancePenaltyReaction",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "EncumbrancePenaltyReaction"
+      ],
+      "persistencePaths": [
+        "settings/encumbrancepenaltyreaction"
+      ],
+      "builtInStandardValues": {
+        "settings/encumbrancepenaltyreaction": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudEncumbrancePenaltyWoundModifier",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6696,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudEncumbrancePenaltyWoundModifier",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "EncumbrancePenaltyWoundModifier"
+      ],
+      "persistencePaths": [
+        "settings/encumbrancepenaltywoundmodifier"
+      ],
+      "builtInStandardValues": {
+        "settings/encumbrancepenaltywoundmodifier": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudEncumbrancePenaltyMovementSpeed",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6697,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudEncumbrancePenaltyMovementSpeed",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "EncumbrancePenaltyMovementSpeed"
+      ],
+      "persistencePaths": [
+        "settings/encumbrancepenaltymovementspeed"
+      ],
+      "builtInStandardValues": {
+        "settings/encumbrancepenaltymovementspeed": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudWeightDecimals",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6700,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudWeightDecimals",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "WeightDecimals"
+      ],
+      "persistencePaths": [
+        "settings/weightformat"
+      ],
+      "builtInStandardValues": {
+        "settings/weightformat": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudMaxSkillRatingCreate",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6702,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMaxSkillRatingCreate",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MaxSkillRatingCreate"
+      ],
+      "persistencePaths": [
+        "settings/maxskillratingcreate"
+      ],
+      "builtInStandardValues": {
+        "settings/maxskillratingcreate": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudMaxNumberMaxAttributes",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6704,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMaxNumberMaxAttributes",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MaxNumberMaxAttributesCreate"
+      ],
+      "persistencePaths": [
+        "settings/maxnumbermaxattributescreate"
+      ],
+      "builtInStandardValues": {
+        "settings/maxnumbermaxattributescreate": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudMaxKnowledgeSkillRatingCreate",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6706,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMaxKnowledgeSkillRatingCreate",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MaxKnowledgeSkillRatingCreate"
+      ],
+      "persistencePaths": [
+        "settings/maxknowledgeskillratingcreate"
+      ],
+      "builtInStandardValues": {
+        "settings/maxknowledgeskillratingcreate": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudMaxSkillRating",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6709,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMaxSkillRating",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MaxSkillRating"
+      ],
+      "persistencePaths": [
+        "settings/maxskillrating"
+      ],
+      "builtInStandardValues": {
+        "settings/maxskillrating": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudMaxKnowledgeSkillRating",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6711,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMaxKnowledgeSkillRating",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MaxKnowledgeSkillRating"
+      ],
+      "persistencePaths": [
+        "settings/maxknowledgeskillrating"
+      ],
+      "builtInStandardValues": {
+        "settings/maxknowledgeskillrating": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkSpecializationsBreakSkillGroups",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6712,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkSpecializationsBreakSkillGroups",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "SpecializationsBreakSkillGroups"
+      ],
+      "persistencePaths": [
+        "settings/specializationsbreakskillgroups"
+      ],
+      "builtInStandardValues": {
+        "settings/specializationsbreakskillgroups": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "chkUncappedArmorAccessoryBonuses",
+      "legacyType": "ColorableCheckBox",
+      "legacyLine": 6713,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::chkUncappedArmorAccessoryBonuses",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "UncappedArmorAccessoryBonuses"
+      ],
+      "persistencePaths": [
+        "settings/uncappedarmoraccessorybonuses"
+      ],
+      "builtInStandardValues": {
+        "settings/uncappedarmoraccessorybonuses": [
+          "False"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "txtEssenceModifierPostExpression",
+      "legacyType": "System.Windows.Forms.TextBox",
+      "legacyLine": 6715,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::txtEssenceModifierPostExpression",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "EssenceModifierPostExpression"
+      ],
+      "persistencePaths": [
+        "settings/essencemodifierpostexpression"
+      ],
+      "builtInStandardValues": {
+        "settings/essencemodifierpostexpression": []
+      },
+      "events": [
+        {
+          "event": "TextChanged",
+          "handler": "txtEssenceModifierPostExpression_TextChanged"
+        }
+      ]
+    },
+    {
+      "legacyControl": "nudMaxMartialArts",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6720,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMaxMartialArts",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MaximumMartialArts"
+      ],
+      "persistencePaths": [
+        "settings/maxmartialarts"
+      ],
+      "builtInStandardValues": {
+        "settings/maxmartialarts": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudMaxMartialTechniques",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6721,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudMaxMartialTechniques",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "MaximumMartialTechniques"
+      ],
+      "persistencePaths": [
+        "settings/maxmartialtechniques"
+      ],
+      "builtInStandardValues": {
+        "settings/maxmartialtechniques": []
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudKarmaCarryover",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6722,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudKarmaCarryover",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "KarmaCarryover"
+      ],
+      "persistencePaths": [
+        "settings/karmacost/karmacarryover"
+      ],
+      "builtInStandardValues": {
+        "settings/karmacost/karmacarryover": [
+          "7"
+        ]
+      },
+      "events": []
+    },
+    {
+      "legacyControl": "nudNuyenCarryover",
+      "legacyType": "NumericUpDownEx",
+      "legacyLine": 6725,
+      "inventoryRowId": "Chummer/Forms/EditCharacterSettings.Designer.cs::Chummer.EditCharacterSettings::nudNuyenCarryover",
+      "operation": "set_value",
+      "semanticOperation": "set_value",
+      "characterSettingsProperties": [
+        "NuyenCarryover"
+      ],
+      "persistencePaths": [
+        "settings/nuyencarryover"
+      ],
+      "builtInStandardValues": {
+        "settings/nuyencarryover": []
+      },
+      "events": []
+    }
+  ]
+}
