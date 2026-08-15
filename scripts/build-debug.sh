@@ -18,6 +18,7 @@ case "$runtime_identifier" in
 esac
 
 "$dotnet_command" restore "$solution_path" \
+  --disable-parallel \
   -p:ChummerAndroidRuntimeIdentifier="$runtime_identifier" \
   -p:ChummerDesktopRuntimeIdentifiers= \
   -p:ChummerUseLocalCompatibilityTree=true

@@ -56,6 +56,7 @@ fi
 mkdir -p "$android_sdk_dir" "$java_sdk_dir"
 
 "$dotnet_command" restore "$solution_path" \
+  --disable-parallel \
   -p:ChummerAndroidRuntimeIdentifier="$runtime_identifier" \
   -p:ChummerDesktopRuntimeIdentifiers= \
   -p:ChummerUseLocalCompatibilityTree=true \

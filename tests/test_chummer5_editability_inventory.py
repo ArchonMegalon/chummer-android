@@ -213,6 +213,19 @@ namespace Chummer.Sample
         ]
         self.assertEqual(4, len(linked_character_rows))
         self.assertTrue(all(row["presenterMutation"] for row in origin_rows + attribute_rows))
+        attribute_by_name = {row["legacy"]["controlName"]: row for row in attribute_rows}
+        for control_name in ("nudBase", "nudKarma"):
+            row = attribute_by_name[control_name]
+            self.assertEqual("implemented_verified_api36", row["phone"]["status"])
+            self.assertEqual("executed_api36", row["e2e"]["phone"]["status"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("missing", row["e2e"]["tablet"]["status"])
+            self.assertFalse(row["completionProven"])
+        for control_name in ("cmdBurnEdge", "cmdImproveATT"):
+            row = attribute_by_name[control_name]
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("missing", row["e2e"]["phone"]["status"])
+            self.assertFalse(row["completionProven"])
         self.assertTrue(all(row["presenterMutation"] for row in matrix_rows))
         condition_rows = character_condition_rows + dashboard_condition_rows + vehicle_physical_rows
         self.assertTrue(all(row["presenterMutation"] for row in condition_rows))
@@ -328,8 +341,8 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 34,
-                "implemented_verified_api36": 74,
+                "implemented_pending_emulator": 32,
+                "implemented_verified_api36": 76,
                 "missing": 1413,
                 "not_applicable_non_mutating": 454,
                 "partial_create_only": 110,
@@ -395,6 +408,33 @@ namespace Chummer.Sample
 
             with patch.dict(inventory.CONTACT_PET_E2E_RECEIPTS, receipt_paths, clear=True):
                 self.assertEqual({}, inventory._validated_contact_pet_e2e_receipts())
+
+    def test_attribute_receipt_is_phone_only_and_driver_hash_bound(self) -> None:
+        driver = REPO / "tests" / "run_api36_attribute_e2e.py"
+        shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
+        receipt = {
+            "schema": "chummer.android.editing-e2e/v1",
+            "status": "pass",
+            "profile": "phone",
+            "journey": "attributes",
+            "apiLevel": 36,
+            "apkSha256": "a" * 64,
+            "driverSha256": inventory._sha256_file(driver),
+            "sharedDriverSha256": inventory._sha256_file(shared_driver),
+            "journeys": {journey: "pass" for journey in inventory.ATTRIBUTE_E2E_JOURNEYS},
+        }
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            receipt_path = Path(temporary) / "receipt.json"
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+            with patch.object(inventory, "ATTRIBUTE_PHONE_E2E_RECEIPT", receipt_path):
+                validated = inventory._validated_attribute_phone_e2e_receipt()
+                self.assertIsNotNone(validated)
+                assert validated is not None
+                self.assertEqual("executed_api36", validated["status"])
+
+                receipt["profile"] = "tablet"
+                receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+                self.assertIsNone(inventory._validated_attribute_phone_e2e_receipt())
 
 
 if __name__ == "__main__":

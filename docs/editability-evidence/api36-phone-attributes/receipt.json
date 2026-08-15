@@ -1,0 +1,19 @@
+{
+  "schema": "chummer.android.editing-e2e/v1",
+  "status": "pass",
+  "generatedAtUtc": "2026-08-15T14:24:42.741517+00:00",
+  "serial": "emulator-5554",
+  "profile": "phone",
+  "journey": "attributes",
+  "apiLevel": 36,
+  "apk": "/docker/chummercomplete/chummer-android/src/Chummer.Android/bin/Debug/net10.0-android36.0/android-x64/com.myexternalbrain.chummer-Signed.apk",
+  "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c",
+  "driverSha256": "7dedbbf4921d5db8f08c753199bc2500c7ea7aaf6affe1118beec0203ccdff57",
+  "sharedDriverSha256": "38ad82e00c5f8ea66d667123222ea916006e690620b6fb4f9314f46716eec2f5",
+  "journeys": {
+    "newRunner": "pass",
+    "attributeBaseEditPersisted": "pass",
+    "attributeKarmaEditPersisted": "pass",
+    "processRestartAttributePersistence": "pass"
+  }
+}

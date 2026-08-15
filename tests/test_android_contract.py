@@ -996,6 +996,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('runtime_identifier="${CHUMMER_ANDROID_RUNTIME_ID:-android-arm64}"', debug_build)
         self.assertIn('android-arm64|android-x64', debug_build)
         self.assertIn('-p:ChummerAndroidRuntimeIdentifier="$runtime_identifier"', debug_build)
+        self.assertIn('restore "$solution_path" \\\n  --disable-parallel', debug_build)
+        self.assertIn('restore "$solution_path" \\\n  --disable-parallel', bootstrap)
         self.assertIn('-p:ChummerDesktopRuntimeIdentifiers=', debug_build)
         self.assertNotIn('--runtime "$runtime_identifier"', debug_build)
         self.assertIn('--no-restore', debug_build)

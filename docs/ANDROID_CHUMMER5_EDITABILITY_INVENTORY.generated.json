@@ -14,8 +14,8 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 528,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 34,
-      "implemented_verified_api36": 74,
+      "implemented_pending_emulator": 32,
+      "implemented_verified_api36": 76,
       "missing": 1413,
       "not_applicable_non_mutating": 454,
       "partial_create_only": 110,
@@ -110,6 +110,11 @@
         "sha256": "38ad82e00c5f8ea66d667123222ea916006e690620b6fb4f9314f46716eec2f5"
       },
       {
+        "path": "tests/run_api36_attribute_e2e.py",
+        "exists": true,
+        "sha256": "7dedbbf4921d5db8f08c753199bc2500c7ea7aaf6affe1118beec0203ccdff57"
+      },
+      {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
         "exists": true,
         "sha256": "aebca5d1b09a338a798afb45805fe0679c174c2f4f1687e53624990ce095ae25"
@@ -138,6 +143,11 @@
         "path": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
         "exists": true,
         "sha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-attributes/receipt.json",
+        "exists": true,
+        "sha256": "548f46940ca91b386f83db47bf2b0f421067371e1e21851cb77f0284bebe1555"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
@@ -197,7 +207,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "c58162d4571392ea83beade57168324376956197ad829f1198101d22b8e1cb63"
+      "sha256": "3533f6db6009a1dc18060e5ef6e8bda625d09e8926b881174a57c19b694f40f6"
     }
   },
   "coverageByFamily": {
@@ -620,14 +630,15 @@
       "mutationFamily": "attributes",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Attributes > selected attribute",
         "surface": "AttributeEditPage",
         "automationId": "attribute-karma-{attribute}",
         "sourceRefs": [
           "src/Chummer.Android/Native/AttributeEditPage.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
         ]
       },
       "tablet": {
@@ -640,8 +651,10 @@
       "persistenceAssertion": "selected attribute karma mutation is durable after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-attributes/receipt.json",
+          "receiptSha256": "548f46940ca91b386f83db47bf2b0f421067371e1e21851cb77f0284bebe1555",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "missing",
@@ -685,14 +698,15 @@
       "mutationFamily": "attributes",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Attributes > selected attribute",
         "surface": "AttributeEditPage",
         "automationId": "attribute-base-{attribute}",
         "sourceRefs": [
           "src/Chummer.Android/Native/AttributeEditPage.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
         ]
       },
       "tablet": {
@@ -705,8 +719,10 @@
       "persistenceAssertion": "selected attribute base mutation is durable after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-attributes/receipt.json",
+          "receiptSha256": "548f46940ca91b386f83db47bf2b0f421067371e1e21851cb77f0284bebe1555",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "missing",
@@ -753,7 +769,8 @@
         "sourceRefs": [
           "src/Chummer.Android/Native/AttributeEditPage.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
         ]
       },
       "tablet": {
@@ -814,7 +831,8 @@
         "sourceRefs": [
           "src/Chummer.Android/Native/AttributeEditPage.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
         ]
       },
       "tablet": {
