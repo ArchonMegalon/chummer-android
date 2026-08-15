@@ -104,7 +104,7 @@ A locally signed AAB is not publication. Publication requires a Chummer-scoped
 Play Console session or service account. Memorial or PropertyQuarry browser
 sessions and app identities must never be reused for Chummer.
 
-## Current preview.7 source (2026-08-12)
+## Current preview.7 release evidence (source 2026-08-12, Play 2026-08-14)
 
 The current app is version code 7 (`0.1.0-preview.7`). It supersedes preview.6
 because the older native deletion explanation presented target retention windows
@@ -148,13 +148,18 @@ showing unapproved retention windows. Chummer recorded no fatal exception,
 ANR, or process exit. The emulator produced one System UI ANR under host load;
 that system-process event is excluded from Chummer runtime evidence.
 
-This evidence does not authorize upload and does not claim Play processing,
-tester installation, or rollout. Play upload remains closed until the
-Google-enforced `2026-08-14T03:29:49Z` upload-key cooldown ends and approval for
-this exact SHA-256 is current. Approval for preview.3, preview.6, or any other
-artifact is not transferable. The internal tester list contains two approved
-accounts; the tester invite remains
-`https://play.google.com/apps/internaltest/4700678198570024687`.
+Google Play accepted and processed this exact-hash-approved preview.7 bundle on
+2026-08-14. The Internal testing track reports version code 7 as available to
+the two approved tester accounts. Saved Play setup, store listing, and app-content
+changes remain in Google review; this is not public-store or production approval.
+The internal tester invite remains
+`https://play.google.com/apps/internaltest/4700678198570024687` and still requires
+an authenticated Google account. No physical-device install from that Play flow
+has been recorded, so the repository does not claim installed-from-Play proof.
+The current console review state also requires re-authentication before it can be
+reconfirmed. Preview.3, preview.6, emulator, and sideload receipts are preserved
+as historical or local evidence and are not substitutes for the missing
+preview.7 real-device receipt.
 
 ## Historical preview.6 release evidence (2026-08-12)
 
