@@ -113,7 +113,7 @@ namespace Chummer.Sample
         self.assertGreater(payload["summary"]["reviewedNonMutatingCount"], 0)
         self.assertEqual(0, payload["summary"]["unclassifiedCount"])
         self.assertEqual(
-            payload["summary"]["reviewedNonMutatingCount"] + 52,
+            payload["summary"]["reviewedNonMutatingCount"] + 74,
             payload["summary"]["completionProvenCount"],
         )
         self.assertEqual(len(rows), len({row["id"] for row in rows}))
@@ -272,30 +272,32 @@ namespace Chummer.Sample
         self.assertTrue(all(row["presenterMutation"] for row in contact_rows))
         self.assertTrue(all(row["persistenceAssertion"] for row in contact_rows))
         self.assertTrue(
-            all(row["phone"]["status"] == "implemented_pending_emulator" for row in contact_rows)
+            all(row["phone"]["status"] == "implemented_verified_api36" for row in contact_rows)
         )
         self.assertTrue(
-            all(row["tablet"]["status"] == "implemented_pending_emulator" for row in contact_rows)
+            all(row["tablet"]["status"] == "implemented_verified_api36" for row in contact_rows)
         )
         self.assertTrue(
             all(
-                row["e2e"]["phone"]["status"] == "scripted_not_executed"
-                and row["e2e"]["tablet"]["status"] == "scripted_not_executed"
+                row["e2e"]["phone"]["status"] == "executed_api36"
+                and row["e2e"]["tablet"]["status"] == "executed_api36"
+                and row["completionProven"]
                 for row in contact_rows
             )
         )
         self.assertTrue(all(row["presenterMutation"] for row in pet_rows))
         self.assertTrue(all(row["persistenceAssertion"] for row in pet_rows))
         self.assertTrue(
-            all(row["phone"]["status"] == "implemented_pending_emulator" for row in pet_rows)
+            all(row["phone"]["status"] == "implemented_verified_api36" for row in pet_rows)
         )
         self.assertTrue(
-            all(row["tablet"]["status"] == "implemented_pending_emulator" for row in pet_rows)
+            all(row["tablet"]["status"] == "implemented_verified_api36" for row in pet_rows)
         )
         self.assertTrue(
             all(
-                row["e2e"]["phone"]["status"] == "scripted_not_executed"
-                and row["e2e"]["tablet"]["status"] == "scripted_not_executed"
+                row["e2e"]["phone"]["status"] == "executed_api36"
+                and row["e2e"]["tablet"]["status"] == "executed_api36"
+                and row["completionProven"]
                 for row in pet_rows
             )
         )
@@ -326,8 +328,8 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 56,
-                "implemented_verified_api36": 52,
+                "implemented_pending_emulator": 34,
+                "implemented_verified_api36": 74,
                 "missing": 1413,
                 "not_applicable_non_mutating": 454,
                 "partial_create_only": 110,
@@ -337,8 +339,8 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 26,
-                "implemented_verified_api36": 52,
+                "implemented_pending_emulator": 4,
+                "implemented_verified_api36": 74,
                 "missing": 1553,
                 "not_applicable_non_mutating": 454,
                 "partial_exact_saved_data": 144,
@@ -374,6 +376,25 @@ namespace Chummer.Sample
 
             with patch.dict(inventory.CONDITION_E2E_RECEIPTS, receipt_paths, clear=True):
                 self.assertEqual({}, inventory._validated_condition_e2e_receipts())
+
+    def test_contact_pet_receipts_fail_closed_when_a_driver_hash_is_stale(self) -> None:
+        self.assertEqual(
+            {"phone", "tablet"},
+            set(inventory._validated_contact_pet_e2e_receipts()),
+        )
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            temporary_root = Path(temporary)
+            receipt_paths = {}
+            for profile, source in inventory.CONTACT_PET_E2E_RECEIPTS.items():
+                receipt = json.loads(source.read_text(encoding="utf-8"))
+                if profile == "tablet":
+                    receipt["driverSha256"] = "0" * 64
+                target = temporary_root / f"{profile}.json"
+                target.write_text(json.dumps(receipt), encoding="utf-8")
+                receipt_paths[profile] = target
+
+            with patch.dict(inventory.CONTACT_PET_E2E_RECEIPTS, receipt_paths, clear=True):
+                self.assertEqual({}, inventory._validated_contact_pet_e2e_receipts())
 
 
 if __name__ == "__main__":

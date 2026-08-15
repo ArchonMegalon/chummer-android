@@ -50,6 +50,29 @@ CONDITION_E2E_JOURNEYS = (
     "stunConditionDamageEditPersisted",
     "processRestartConditionDamagePersistence",
 )
+CONTACT_PET_E2E_RECEIPTS = {
+    "phone": REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-contact-pet"
+    / "receipt.json",
+    "tablet": REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-tablet-contact-pet"
+    / "receipt.json",
+}
+CONTACT_PET_E2E_JOURNEYS = (
+    "creationRunnerImport",
+    "contactInvalidBoundsRejected",
+    "contactEditPersisted",
+    "contactDeletePersisted",
+    "processRestartContactPersistence",
+    "petInvalidNameRejected",
+    "petEditPersisted",
+    "petDeletePersisted",
+    "processRestartPetPersistence",
+)
 
 SCHEMA = "chummer.android.chummer5-editability-inventory/v1"
 REQUIRED_SOURCE_ROOTS = (Path("Chummer/Forms"), Path("Chummer/Controls"))
@@ -452,6 +475,49 @@ def _validated_condition_e2e_receipts() -> dict[str, dict[str, Any]]:
         }
 
     if set(validated) != set(CONDITION_E2E_RECEIPTS):
+        return {}
+    if validated["phone"]["apkSha256"] != validated["tablet"]["apkSha256"]:
+        return {}
+    return validated
+
+
+def _validated_contact_pet_e2e_receipts() -> dict[str, dict[str, Any]]:
+    driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    fixture = REPO_ROOT / "tests" / "fixtures" / "creation-contact-pet-e2e.chum5"
+    if not driver.is_file() or not fixture.is_file():
+        return {}
+
+    expected_driver_sha = _sha256_file(driver)
+    expected_fixture_sha = _sha256_file(fixture)
+    validated: dict[str, dict[str, Any]] = {}
+    for profile, receipt_path in CONTACT_PET_E2E_RECEIPTS.items():
+        try:
+            receipt = json.loads(_read_text(receipt_path))
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            continue
+        journeys = receipt.get("journeys")
+        apk_sha = str(receipt.get("apkSha256") or "")
+        if not (
+            receipt.get("schema") == "chummer.android.editing-e2e/v1"
+            and receipt.get("status") == "pass"
+            and receipt.get("profile") == profile
+            and receipt.get("journey") == "contact-pet"
+            and receipt.get("apiLevel") == 36
+            and receipt.get("driverSha256") == expected_driver_sha
+            and receipt.get("inputFixtureSha256") == expected_fixture_sha
+            and isinstance(journeys, dict)
+            and all(journeys.get(journey) == "pass" for journey in CONTACT_PET_E2E_JOURNEYS)
+            and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+        ):
+            continue
+        validated[profile] = {
+            "status": "executed_api36",
+            "ref": receipt_path.relative_to(REPO_ROOT).as_posix(),
+            "receiptSha256": _sha256_file(receipt_path),
+            "apkSha256": apk_sha,
+        }
+
+    if set(validated) != set(CONTACT_PET_E2E_RECEIPTS):
         return {}
     if validated["phone"]["apkSha256"] != validated["tablet"]["apkSha256"]:
         return {}
@@ -1075,6 +1141,7 @@ def _known_phone_mapping(
     row: dict[str, Any],
     presentation_root: Path,
     condition_e2e_receipts: dict[str, dict[str, Any]],
+    contact_pet_e2e_receipts: dict[str, dict[str, Any]],
 ) -> dict[str, Any] | None:
     legacy = row["legacy"]
     class_name = legacy["formOrControl"]
@@ -1287,8 +1354,17 @@ def _known_phone_mapping(
             phone_automation_id = "collection-delete-{stable-target}"
             tablet_automation_id = "tablet-inspector-delete"
 
+        phone_e2e = contact_pet_e2e_receipts.get("phone") if e2e_scripted else None
+        tablet_e2e = contact_pet_e2e_receipts.get("tablet") if e2e_scripted else None
+        contact_pet_e2e_complete = bool(
+            phone_implemented and tablet_implemented and phone_e2e and tablet_e2e
+        )
         return {
-            "status": "implemented_pending_emulator" if phone_implemented else "missing",
+            "status": (
+                "implemented_verified_api36"
+                if contact_pet_e2e_complete
+                else "implemented_pending_emulator" if phone_implemented else "missing"
+            ),
             "route": "Build > Relationships > Pets > selected pet",
             "surface": "CollectionItemEditorPage",
             "automationId": phone_automation_id,
@@ -1297,20 +1373,25 @@ def _known_phone_mapping(
             "persistenceAssertion": (
                 f"selected stable Pet guid retains {xml_element} after reopen and process restart"
             ),
-            "e2e": {
+            "e2e": phone_e2e or {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_editing_e2e.py" if e2e_scripted else None,
             },
             "tablet": {
-                "status": "implemented_pending_emulator" if tablet_implemented else "missing",
+                "status": (
+                    "implemented_verified_api36"
+                    if contact_pet_e2e_complete
+                    else "implemented_pending_emulator" if tablet_implemented else "missing"
+                ),
                 "surface": "TabletBuildPage persistent pet inspector",
                 "automationId": tablet_automation_id,
                 "sourceRefs": source_refs,
             },
-            "tabletE2e": {
+            "tabletE2e": tablet_e2e or {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_editing_e2e.py" if e2e_scripted else None,
             },
+            "completionProven": contact_pet_e2e_complete,
         }
     if class_name == "ContactControl" and (
         control in CONTACT_TEXT_FIELDS
@@ -1463,8 +1544,17 @@ def _known_phone_mapping(
             tablet_automation_id = "tablet-inspector-delete"
 
         scripted_for_control = e2e_scripted
+        phone_e2e = contact_pet_e2e_receipts.get("phone") if scripted_for_control else None
+        tablet_e2e = contact_pet_e2e_receipts.get("tablet") if scripted_for_control else None
+        contact_pet_e2e_complete = bool(
+            phone_implemented and tablet_implemented and phone_e2e and tablet_e2e
+        )
         return {
-            "status": "implemented_pending_emulator" if phone_implemented else "missing",
+            "status": (
+                "implemented_verified_api36"
+                if contact_pet_e2e_complete
+                else "implemented_pending_emulator" if phone_implemented else "missing"
+            ),
             "route": "Build > Relationships > Contacts > selected contact",
             "surface": "CollectionItemEditorPage",
             "automationId": phone_automation_id,
@@ -1473,20 +1563,25 @@ def _known_phone_mapping(
             "persistenceAssertion": (
                 f"selected stable Contact guid retains {xml_element} after reopen and process restart"
             ),
-            "e2e": {
+            "e2e": phone_e2e or {
                 "status": "scripted_not_executed" if scripted_for_control else "missing",
                 "ref": "tests/run_api36_editing_e2e.py" if scripted_for_control else None,
             },
             "tablet": {
-                "status": "implemented_pending_emulator" if tablet_implemented else "missing",
+                "status": (
+                    "implemented_verified_api36"
+                    if contact_pet_e2e_complete
+                    else "implemented_pending_emulator" if tablet_implemented else "missing"
+                ),
                 "surface": "TabletBuildPage persistent contact inspector",
                 "automationId": tablet_automation_id,
                 "sourceRefs": source_refs,
             },
-            "tabletE2e": {
+            "tabletE2e": tablet_e2e or {
                 "status": "scripted_not_executed" if scripted_for_control else "missing",
                 "ref": "tests/run_api36_editing_e2e.py" if scripted_for_control else None,
             },
+            "completionProven": contact_pet_e2e_complete,
         }
     if class_name in {"CharacterCreate", "CharacterCareer"} and control in ORIGIN_FIELDS:
         xml_element, automation_id = ORIGIN_FIELDS[control]
@@ -1817,6 +1912,7 @@ def enrich_rows(
 ) -> list[dict[str, Any]]:
     surfaces = registry.get("editing_parity", {}).get("surfaces", {})
     condition_e2e_receipts = _validated_condition_e2e_receipts()
+    contact_pet_e2e_receipts = _validated_contact_pet_e2e_receipts()
     for row in rows:
         family = row["mutationFamily"]
         family_contract = surfaces.get(family, {})
@@ -1846,7 +1942,12 @@ def enrich_rows(
             row["overallStatus"] = "not_applicable_non_mutating"
             row["completionProven"] = True
             continue
-        known = _known_phone_mapping(row, presentation_root, condition_e2e_receipts)
+        known = _known_phone_mapping(
+            row,
+            presentation_root,
+            condition_e2e_receipts,
+            contact_pet_e2e_receipts,
+        )
         if known is not None:
             phone = {
                 key: known[key]
@@ -1938,7 +2039,9 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs",
         REPO_ROOT / "tests" / "run_api36_editing_e2e.py",
         REPO_ROOT / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-contact-pet-e2e.chum5",
         *CONDITION_E2E_RECEIPTS.values(),
+        *CONTACT_PET_E2E_RECEIPTS.values(),
         WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterContactEditSemantics.cs",
         WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterPetEditSemantics.cs",
         WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",

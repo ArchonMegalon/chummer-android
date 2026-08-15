@@ -43,9 +43,18 @@ public sealed class BuildSectionPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(runner));
         _body.Add(NativeTheme.Title(_title));
 
-        AddSectionActions();
-        AddQuickActions();
-        AddValueGroups();
+        if (Coordinator.State.ActiveCollectionEditor is not null)
+        {
+            AddValueGroups();
+            AddQuickActions();
+            AddSectionActions();
+        }
+        else
+        {
+            AddSectionActions();
+            AddQuickActions();
+            AddValueGroups();
+        }
 
         if (!string.IsNullOrWhiteSpace(Coordinator.State.Error ?? Coordinator.Surface.Error))
         {

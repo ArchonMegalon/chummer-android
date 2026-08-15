@@ -217,6 +217,9 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("TabBar", shell)
         self.assertIn("Shell.SetTabBar", shell)
         self.assertIn("ContentPage", page)
+        self.assertEqual(2, page.count("Interlocked.Increment(ref _runningActionDepth)"))
+        self.assertEqual(2, page.count("Interlocked.Decrement(ref _runningActionDepth)"))
+        self.assertIn("Volatile.Read(ref _runningActionDepth) > 0", page)
         self.assertNotIn("Microsoft.NET.Sdk.Razor", project)
         self.assertNotIn("Components.WebView.Maui", project)
         self.assertNotIn("Chummer.Blazor", project)
@@ -262,6 +265,10 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("TapGestureRecognizer", navigation_row)
         self.assertIn("SemanticProperties.SetDescription", theme)
         self.assertIn("CollectionItemTitle(item.Label)", flow)
+        collection_first = flow[flow.index("if (Coordinator.State.ActiveCollectionEditor is not null)") :]
+        collection_first = collection_first[: collection_first.index("else")]
+        self.assertLess(collection_first.index("AddValueGroups();"), collection_first.index("AddQuickActions();"))
+        self.assertLess(collection_first.index("AddQuickActions();"), collection_first.index("AddSectionActions();"))
         self.assertNotIn("ScrollOrientation.Horizontal", build)
         self.assertNotIn("AddTabs", build)
         self.assertNotIn("Show all", build)
@@ -651,7 +658,8 @@ class AndroidContractTests(unittest.TestCase):
 
         for marker in (
             '"/sdcard/Download/career-condition-monitor-e2e.chum5"',
-            'select_android_document(device, "career-condition-monitor-e2e.chum5")',
+            'if args.journey in {"condition-monitor", "contact-pet"}:',
+            'select_android_document(device, fixture_name)',
             '"careerRunnerImport": "pass"',
             '"inputFixtureSha256": sha256(args.condition_runner.resolve())',
         ):
@@ -769,7 +777,7 @@ class AndroidContractTests(unittest.TestCase):
         self.assertGreater(inventory["summary"]["reviewedNonMutatingCount"], 0)
         self.assertEqual(0, inventory["summary"]["unclassifiedCount"])
         self.assertEqual(
-            inventory["summary"]["reviewedNonMutatingCount"] + 52,
+            inventory["summary"]["reviewedNonMutatingCount"] + 74,
             inventory["summary"]["completionProvenCount"],
         )
         required_fields = set(inventory["requiredRowFields"])

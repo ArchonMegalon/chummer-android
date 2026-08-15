@@ -12,18 +12,18 @@
     "reviewedNonMutatingCount": 454,
     "editParityRequiredCount": 1775,
     "unclassifiedCount": 0,
-    "completionProvenCount": 506,
+    "completionProvenCount": 528,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 56,
-      "implemented_verified_api36": 52,
+      "implemented_pending_emulator": 34,
+      "implemented_verified_api36": 74,
       "missing": 1413,
       "not_applicable_non_mutating": 454,
       "partial_create_only": 110,
       "partial_exact_saved_data": 144
     },
     "tabletStatusCounts": {
-      "implemented_pending_emulator": 26,
-      "implemented_verified_api36": 52,
+      "implemented_pending_emulator": 4,
+      "implemented_verified_api36": 74,
       "missing": 1553,
       "not_applicable_non_mutating": 454,
       "partial_exact_saved_data": 144
@@ -72,7 +72,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildFlowPages.cs",
         "exists": true,
-        "sha256": "8e1b5689087ef9fc765f8ee349c5d71df1c5b2a395eaccb024161621711b2877"
+        "sha256": "c849741c55cb86fe5807d716408548fcdedef7a79f7a4973746744c1f5415a66"
       },
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
@@ -107,7 +107,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "1a2fc945c37f88a9c388be6468c126be911c61f9a6e7501387f4b705ceab568e"
+        "sha256": "38ad82e00c5f8ea66d667123222ea916006e690620b6fb4f9314f46716eec2f5"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
@@ -115,14 +115,29 @@
         "sha256": "aebca5d1b09a338a798afb45805fe0679c174c2f4f1687e53624990ce095ae25"
       },
       {
+        "path": "tests/fixtures/creation-contact-pet-e2e.chum5",
+        "exists": true,
+        "sha256": "38fe0fc0da57dd6462998dab99412db7e5a3f1c4e5f5dbbe78333f425eb9cf66"
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
         "exists": true,
-        "sha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430"
+        "sha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c"
       },
       {
         "path": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
         "exists": true,
-        "sha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42"
+        "sha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+        "exists": true,
+        "sha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2"
+      },
+      {
+        "path": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+        "exists": true,
+        "sha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
@@ -182,7 +197,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "3446197a08f6a5867b657e786ee979db7144b1fd5bab713be4c1ea746f9ee1f7"
+      "sha256": "c58162d4571392ea83beade57168324376956197ad829f1198101d22b8e1cb63"
     }
   },
   "coverageByFamily": {
@@ -275,7 +290,7 @@
       "reviewRequiredCount": 0,
       "phoneMissingCount": 15,
       "tabletMissingCount": 21,
-      "completionProvenCount": 17
+      "completionProvenCount": 39
     },
     "crash_report_and_diagnostics": {
       "rowCount": 10,
@@ -905,7 +920,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-role-{stable-target}",
@@ -920,7 +935,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-role",
         "sourceRefs": [
@@ -937,18 +952,22 @@
       "persistenceAssertion": "selected stable Contact guid retains role after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/ContactControl.Designer.cs::Chummer.ContactControl::txtContactName",
@@ -973,7 +992,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-name-{stable-target}",
@@ -988,7 +1007,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-name",
         "sourceRefs": [
@@ -1005,18 +1024,22 @@
       "persistenceAssertion": "selected stable Contact guid retains name after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/ContactControl.Designer.cs::Chummer.ContactControl::txtContactLocation",
@@ -1041,7 +1064,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-location-{stable-target}",
@@ -1056,7 +1079,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-location",
         "sourceRefs": [
@@ -1073,18 +1096,22 @@
       "persistenceAssertion": "selected stable Contact guid retains location after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/ContactControl.Designer.cs::Chummer.ContactControl::cmdExpand",
@@ -1171,7 +1198,7 @@
       "mutationFamily": "contacts",
       "operation": "delete",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-delete-{stable-target}",
@@ -1186,7 +1213,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-inspector-delete",
         "sourceRefs": [
@@ -1203,18 +1230,22 @@
       "persistenceAssertion": "selected stable Contact guid retains contact after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/ContactControl.Designer.cs::Chummer.ContactControl::tsContactOpen",
@@ -1455,7 +1486,7 @@
       "mutationFamily": "contacts",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-notes-{stable-target}",
@@ -1470,7 +1501,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-notes",
         "sourceRefs": [
@@ -1487,18 +1518,22 @@
       "persistenceAssertion": "selected stable Contact guid retains notes after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/ContactControl.cs::Chummer.ContactControl::nudConnection",
@@ -1523,7 +1558,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-contact-connection-{stable-target}",
@@ -1538,7 +1573,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-contact-connection",
         "sourceRefs": [
@@ -1555,18 +1590,22 @@
       "persistenceAssertion": "selected stable Contact guid retains connection after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/ContactControl.cs::Chummer.ContactControl::nudLoyalty",
@@ -1591,7 +1630,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-contact-loyalty-{stable-target}",
@@ -1606,7 +1645,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-contact-loyalty",
         "sourceRefs": [
@@ -1623,18 +1662,22 @@
       "persistenceAssertion": "selected stable Contact guid retains loyalty after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/ContactControl.cs::Chummer.ContactControl::chkGroup",
@@ -1659,7 +1702,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-toggle-group-{stable-target}",
@@ -1674,7 +1717,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-toggle-group",
         "sourceRefs": [
@@ -1691,18 +1734,22 @@
       "persistenceAssertion": "selected stable Contact guid retains group after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/ContactControl.cs::Chummer.ContactControl::chkFree",
@@ -1727,7 +1774,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-toggle-free-{stable-target}",
@@ -1742,7 +1789,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-toggle-free",
         "sourceRefs": [
@@ -1759,18 +1806,22 @@
       "persistenceAssertion": "selected stable Contact guid retains free after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/ContactControl.cs::Chummer.ContactControl::chkBlackmail",
@@ -1795,7 +1846,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-toggle-blackmail-{stable-target}",
@@ -1810,7 +1861,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-toggle-blackmail",
         "sourceRefs": [
@@ -1827,18 +1878,22 @@
       "persistenceAssertion": "selected stable Contact guid retains blackmail after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/ContactControl.cs::Chummer.ContactControl::chkFamily",
@@ -1863,7 +1918,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-toggle-family-{stable-target}",
@@ -1878,7 +1933,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-toggle-family",
         "sourceRefs": [
@@ -1895,18 +1950,22 @@
       "persistenceAssertion": "selected stable Contact guid retains family after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/ContactControl.cs::Chummer.ContactControl::cmdLink",
@@ -1983,7 +2042,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-metatype-{stable-target}",
@@ -1998,7 +2057,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-metatype",
         "sourceRefs": [
@@ -2015,18 +2074,22 @@
       "persistenceAssertion": "selected stable Contact guid retains metatype after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/ContactControl.cs::Chummer.ContactControl::cboGender",
@@ -2051,7 +2114,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-gender-{stable-target}",
@@ -2066,7 +2129,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-gender",
         "sourceRefs": [
@@ -2083,18 +2146,22 @@
       "persistenceAssertion": "selected stable Contact guid retains gender after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/ContactControl.cs::Chummer.ContactControl::cboType",
@@ -2119,7 +2186,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-contacttype-{stable-target}",
@@ -2134,7 +2201,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-contacttype",
         "sourceRefs": [
@@ -2151,18 +2218,22 @@
       "persistenceAssertion": "selected stable Contact guid retains contacttype after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/ContactControl.cs::Chummer.ContactControl::cboAge",
@@ -2187,7 +2258,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-age-{stable-target}",
@@ -2202,7 +2273,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-age",
         "sourceRefs": [
@@ -2219,18 +2290,22 @@
       "persistenceAssertion": "selected stable Contact guid retains age after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/ContactControl.cs::Chummer.ContactControl::cboPersonalLife",
@@ -2255,7 +2330,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-personallife-{stable-target}",
@@ -2270,7 +2345,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-personallife",
         "sourceRefs": [
@@ -2287,18 +2362,22 @@
       "persistenceAssertion": "selected stable Contact guid retains personallife after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/ContactControl.cs::Chummer.ContactControl::cboPreferredPayment",
@@ -2323,7 +2402,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-preferredpayment-{stable-target}",
@@ -2338,7 +2417,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-preferredpayment",
         "sourceRefs": [
@@ -2355,18 +2434,22 @@
       "persistenceAssertion": "selected stable Contact guid retains preferredpayment after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/ContactControl.cs::Chummer.ContactControl::cboHobbiesVice",
@@ -2391,7 +2474,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-hobbiesvice-{stable-target}",
@@ -2406,7 +2489,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent contact inspector",
         "automationId": "tablet-field-hobbiesvice",
         "sourceRefs": [
@@ -2423,18 +2506,22 @@
       "persistenceAssertion": "selected stable Contact guid retains hobbiesvice after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/PetControl.Designer.cs::Chummer.PetControl::txtContactName",
@@ -2459,7 +2546,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Pets > selected pet",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-name-{stable-target}",
@@ -2475,7 +2562,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent pet inspector",
         "automationId": "tablet-field-name",
         "sourceRefs": [
@@ -2493,18 +2580,22 @@
       "persistenceAssertion": "selected stable Pet guid retains name after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/PetControl.Designer.cs::Chummer.PetControl::cboMetatype",
@@ -2534,7 +2625,7 @@
       "mutationFamily": "contacts",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Pets > selected pet",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-metatype-{stable-target}",
@@ -2550,7 +2641,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent pet inspector",
         "automationId": "tablet-field-metatype",
         "sourceRefs": [
@@ -2568,18 +2659,22 @@
       "persistenceAssertion": "selected stable Pet guid retains metatype after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/PetControl.Designer.cs::Chummer.PetControl::tsContactOpen",
@@ -2877,7 +2972,7 @@
       "mutationFamily": "contacts",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Pets > selected pet",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-notes-{stable-target}",
@@ -2893,7 +2988,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent pet inspector",
         "automationId": "tablet-field-notes",
         "sourceRefs": [
@@ -2911,18 +3006,22 @@
       "persistenceAssertion": "selected stable Pet guid retains notes after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/PetControl.Designer.cs::Chummer.PetControl::cmdDelete",
@@ -2952,7 +3051,7 @@
       "mutationFamily": "contacts",
       "operation": "delete",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Pets > selected pet",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-delete-{stable-target}",
@@ -2968,7 +3067,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent pet inspector",
         "automationId": "tablet-inspector-delete",
         "sourceRefs": [
@@ -2986,18 +3085,22 @@
       "persistenceAssertion": "selected stable Pet guid retains contact[type=Pet] after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-contact-pet/receipt.json",
+          "receiptSha256": "7e07da40a8c1f68a62a76905bcabffa50d9dbafad8dff67381d8a7f3199936d2",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-contact-pet/receipt.json",
+          "receiptSha256": "250abbe6679427e92e8c18493fa1275fe54e11c1b44c93b9361bff9612e7fcde",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Characters/SpiritControl.Designer.cs::Chummer.SpiritControl::nudServices",
@@ -3769,14 +3872,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -3843,14 +3946,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -3912,14 +4015,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -3981,14 +4084,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -29540,14 +29643,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -29614,14 +29717,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -29688,14 +29791,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -29762,14 +29865,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -29836,14 +29939,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -29910,14 +30013,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -29984,14 +30087,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -30058,14 +30161,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -30132,14 +30235,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -30206,14 +30309,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -30280,14 +30383,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -30354,14 +30457,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -30428,14 +30531,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -30502,14 +30605,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -30576,14 +30679,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -30650,14 +30753,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -30724,14 +30827,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -30798,14 +30901,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -30872,14 +30975,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -30946,14 +31049,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -31020,14 +31123,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -31094,14 +31197,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -31168,14 +31271,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -31242,14 +31345,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -31316,14 +31419,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -31390,14 +31493,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -31464,14 +31567,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -31538,14 +31641,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -31612,14 +31715,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -31686,14 +31789,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -31760,14 +31863,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -31834,14 +31937,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -31908,14 +32011,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -31982,14 +32085,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -32056,14 +32159,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -32130,14 +32233,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -32204,14 +32307,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -32278,14 +32381,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -32352,14 +32455,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -32426,14 +32529,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -32500,14 +32603,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -32574,14 +32677,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -32648,14 +32751,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -32722,14 +32825,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -32796,14 +32899,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -32870,14 +32973,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -32944,14 +33047,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
@@ -33018,14 +33121,14 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
-          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
-          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
-          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,

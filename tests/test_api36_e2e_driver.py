@@ -96,13 +96,14 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             "com.myexternalbrain.chummer/crc-current.MainActivity",
             subprocess.CalledProcessError(137, ["adb", "shell", "monkey"]),
             "",
+            "",
             "7225",
         ]
 
         with patch.object(DRIVER.time, "sleep") as sleep:
             DRIVER.launch_app(device)
 
-        self.assertEqual(4, device.shell.call_count)
+        self.assertEqual(5, device.shell.call_count)
         self.assertEqual(
             call(
                 "am",
@@ -119,6 +120,20 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             device.shell.call_args_list[-1],
         )
         sleep.assert_called_once_with(3)
+
+    def test_launch_app_accepts_am_wait_timeout_only_with_a_live_process(self) -> None:
+        device = Mock()
+        device.shell.side_effect = [
+            "com.myexternalbrain.chummer/crc-current.MainActivity",
+            subprocess.CalledProcessError(1, ["adb", "shell", "am", "start", "-W"]),
+            "7225",
+        ]
+
+        with patch.object(DRIVER.time, "sleep") as sleep:
+            DRIVER.launch_app(device)
+
+        self.assertEqual(3, device.shell.call_count)
+        sleep.assert_not_called()
 
     def test_launcher_component_uses_current_package_manager_result(self) -> None:
         device = Mock()
@@ -143,6 +158,28 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             nodes = device.hierarchy()
 
         self.assertEqual("Your runners", nodes[0].attributes["text"])
+
+    def test_hierarchy_uses_compressed_android_dump(self) -> None:
+        xml = "<hierarchy><node text='Your runners' /></hierarchy>"
+        device = Mock(spec=DRIVER.Device)
+        device.shell.return_value = "UI hierarchy dumped"
+        device.run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=xml,
+            stderr="",
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device.evidence = Path(temporary)
+            nodes = DRIVER.Device.hierarchy(device)
+
+        self.assertEqual("Your runners", nodes[0].attributes["text"])
+        device.shell.assert_called_once_with(
+            "uiautomator",
+            "dump",
+            "--compressed",
+            "/sdcard/chummer-editing-window.xml",
+        )
 
     def test_invalid_hierarchy_is_retryable_and_preserved(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -237,6 +274,29 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         self.assertEqual(("input", "tap", "500", "1300"), device.commands[-1])
 
+    def test_wait_scrolls_after_anr_recovery_before_dumping_again(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        expected = DRIVER.UiNode({"text": "ContactE2E"})
+        device.find.side_effect = [None, expected]
+        device.dismiss_system_ui_anr.return_value = True
+        device._scroll_x_ratio.return_value = 0.5
+
+        with patch.object(DRIVER.time, "sleep") as sleep:
+            actual = DRIVER.Device.wait(
+                device,
+                "ContactE2E",
+                scroll=True,
+                max_scrolls=8,
+                scroll_distance_ratio=0.22,
+            )
+
+        self.assertIs(expected, actual)
+        device.swipe_up.assert_called_once_with(
+            x_ratio=0.5,
+            distance_ratio=0.22,
+        )
+        self.assertEqual([call(5), call(1)], sleep.call_args_list)
+
     def test_new_runner_launch_retries_until_the_build_method_dialog_is_visible(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
         self.assertIn(
@@ -260,6 +320,34 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             self.assertIn(f'"{quick_add}"', block)
             self.assertIn("max_scrolls=48", block)
             self.assertIn("scroll_distance_ratio=0.22", block)
+
+    def test_relationship_openers_wait_for_fixture_items_instead_of_quick_add(self) -> None:
+        source = Path(DRIVER.__file__).read_text(encoding="utf-8")
+        for function_name, phone_action, tablet_action in (
+            (
+                "open_contact_section",
+                "build-action-tab-relationships-contacts",
+                "tablet-build-action-tab-relationships-contacts",
+            ),
+            (
+                "open_pet_section",
+                "build-action-tab-relationships-pets",
+                "tablet-build-action-tab-relationships-pets",
+            ),
+        ):
+            block = source[source.index(f"def {function_name}") :]
+            block = block[: block.index("\ndef ", 5)]
+            self.assertIn("expected_item: str | None = None", block)
+            self.assertIn("device.tap(", block)
+            self.assertIn("device.wait(", block)
+            self.assertIn(f'"{phone_action}"', block)
+            self.assertIn(f'"{tablet_action}"', block)
+            self.assertIn("expected_item,", block)
+            self.assertNotIn("device.swipe_up(", block)
+            self.assertIn("max_scrolls=8", block)
+            self.assertIn("time.sleep(2)", block)
+            self.assertIn("time.sleep(5)", block)
+            self.assertIn("timeout=180", block)
 
     def test_tablet_section_openers_fully_reset_the_long_build_rail(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
@@ -287,6 +375,36 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             phone_save.index('device.assert_text("GearProofE2E")'),
         )
 
+    def test_contact_and_pet_editors_reset_before_field_mutations(self) -> None:
+        source = Path(DRIVER.__file__).read_text(encoding="utf-8")
+        for function_name in (
+            "add_and_edit_contact",
+            "assert_contact_persisted",
+            "add_and_edit_pet",
+            "assert_pet_persisted",
+        ):
+            block = source[source.index(f"def {function_name}") :]
+            block = block[: block.index("\ndef ", 5)]
+            self.assertLess(
+                block.index("tap_collection_item(device,"),
+                block.index("reset_collection_editor_to_top(device, profile)"),
+            )
+
+    def test_contact_journey_uses_fixture_bounds_and_saves_ratings_before_toggles(self) -> None:
+        source = Path(DRIVER.__file__).read_text(encoding="utf-8")
+        block = source[source.index("def add_and_edit_contact") :]
+        block = block[: block.index("\ndef ", 5)]
+        self.assertIn('"Connection · 1–6",\n        "7",', block)
+        self.assertIn('"Connection · 1–6",\n        "6",', block)
+        ratings_save = block.index("device.tap(save, scroll=True)")
+        toggle_batch = block.index(
+            'for toggle in ("group", "free", "family", "blackmail")'
+        )
+        self.assertLess(
+            ratings_save,
+            toggle_batch,
+        )
+
     def test_restart_gear_proof_reads_the_persisted_custom_name_field(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
         restart = source[source.index('device.shell("am", "force-stop", PACKAGE)') :]
@@ -311,11 +429,14 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         contact_add = source[source.index("def add_contact_from_dialog") :]
         contact_add = contact_add[: contact_add.index("def add_and_edit_contact")]
 
-        action_wait = contact_add.index('device.wait("dialog-action-add"')
+        action_wait = contact_add.index('"dialog-action-add",')
         reset = contact_add.index("reset_scroll_to_top(device")
         name_edit = contact_add.index('device.set_text("dialog-field-uicontactname"')
         self.assertLess(action_wait, reset)
         self.assertLess(reset, name_edit)
+        self.assertIn("max_scrolls=48", contact_add)
+        self.assertIn("scroll_distance_ratio=0.28", contact_add)
+        self.assertIn("swipes=24", contact_add)
 
     def test_tablet_gear_editor_resets_inspector_before_custom_name(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
@@ -461,11 +582,40 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
         contact_edit = source[source.index("def add_and_edit_contact") :]
         contact_edit = contact_edit[: contact_edit.index("def assert_contact_persisted")]
-        group_toggle = contact_edit[: contact_edit.index('f"{toggle_prefix}-group"')]
-        first_save = group_toggle.rindex("device.tap(save, scroll=True)")
-        reset = group_toggle.rindex("reset_scroll_to_top(")
+        first_save = contact_edit.index("device.tap(save, scroll=True)")
+        reset = contact_edit.index("reset_scroll_to_top(", first_save)
+        toggle_batch = contact_edit.index(
+            'for toggle in ("group", "free", "family", "blackmail")',
+            reset,
+        )
 
         self.assertLess(first_save, reset)
+        self.assertLess(reset, toggle_batch)
+
+    def test_phone_contact_and_pet_wait_for_collection_after_save(self) -> None:
+        source = Path(DRIVER.__file__).read_text(encoding="utf-8")
+        for function_name, persisted_name in (
+            ("add_and_edit_contact", "ContactPersistedE2E"),
+            ("add_and_edit_pet", "PetPersistedE2E"),
+        ):
+            block = source[source.index(f"def {function_name}") :]
+            block = block[: block.index("\ndef ", 5)]
+            phone_return = block[block.index('if profile == "phone":') :]
+            self.assertIn("device.back()", phone_return)
+            self.assertIn("reset_scroll_to_top(device, swipes=12)", phone_return)
+            self.assertIn(f'device.wait("{persisted_name}", timeout=60, scroll=True)', phone_return)
+
+    def test_restart_contact_toggle_checks_reset_and_scroll_in_document_order(self) -> None:
+        source = Path(DRIVER.__file__).read_text(encoding="utf-8")
+        block = source[source.index("def assert_contact_persisted") :]
+        block = block[: block.index("\ndef ", 5)]
+        toggle_loop = block.index('for toggle in ("group", "free", "family", "blackmail")')
+        self.assertLess(
+            block.index("reset_collection_editor_to_top(device, profile)"),
+            toggle_loop,
+        )
+        self.assertIn("max_scrolls=24", block[toggle_loop:])
+        self.assertIn("scroll_distance_ratio=0.22", block[toggle_loop:])
 
     def test_document_picker_opens_downloads_when_fixture_is_not_recent(self) -> None:
         device = Mock()
@@ -688,14 +838,17 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
     def test_condition_journey_imports_a_career_fixture_through_the_document_picker(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
-        condition_branch = source[source.index('if args.journey == "condition-monitor":') :]
+        condition_branch = source[
+            source.index('if args.journey in {"condition-monitor", "contact-pet"}:') :
+        ]
         condition_branch = condition_branch[: condition_branch.index("else:")]
 
         self.assertIn('device.tap("home-open-file")', condition_branch)
         self.assertIn(
-            'select_android_document(device, "career-condition-monitor-e2e.chum5")',
+            '"career-condition-monitor-e2e.chum5"',
             condition_branch,
         )
+        self.assertIn("select_android_document(device, fixture_name)", condition_branch)
         self.assertNotIn("home-new-runner", condition_branch)
 
         fixture = REPO_ROOT / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5"
@@ -707,6 +860,37 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             "<physicalcm>10</physicalcm>",
             "<physicalcmoverflow>3</physicalcmoverflow>",
             "<stuncm>10</stuncm>",
+        ):
+            self.assertIn(marker, fixture_xml)
+
+    def test_contact_pet_journey_is_focused_and_process_restart_bound(self) -> None:
+        source = Path(DRIVER.__file__).read_text(encoding="utf-8")
+        branch = source[source.index('if args.journey == "contact-pet":') :]
+        branch = branch[: branch.index('if args.journey == "condition-monitor":')]
+
+        for marker in (
+            "add_and_edit_contact(device, args.profile, create_items=False)",
+            "add_and_edit_pet(device, args.profile, create_items=False)",
+            'device.shell("am", "force-stop", PACKAGE)',
+            "assert_contact_persisted(device, args.profile)",
+            "assert_pet_persisted(device, args.profile)",
+            '"inputFixtureSha256": sha256(args.contact_pet_runner.resolve())',
+            '"processRestartContactPersistence": "pass"',
+            '"processRestartPetPersistence": "pass"',
+        ):
+            self.assertIn(marker, branch)
+        self.assertNotIn("attach_linked_runner(", branch)
+
+        fixture = REPO_ROOT / "tests" / "fixtures" / "creation-contact-pet-e2e.chum5"
+        fixture_xml = fixture.read_text(encoding="utf-8")
+        for marker in (
+            "<created>False</created>",
+            "<name>ContactE2E</name>",
+            "<name>ContactDeleteE2E</name>",
+            "<name>PetE2E</name>",
+            "<name>PetDeleteE2E</name>",
+            "<type>Contact</type>",
+            "<type>Pet</type>",
         ):
             self.assertIn(marker, fixture_xml)
 
@@ -821,9 +1005,29 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     }
                 )
             ]
-            device.back()
+            with patch.object(DRIVER.time, "sleep") as sleep:
+                device.back()
 
         self.assertEqual(("input", "tap", "73", "201"), device.commands[-1])
+        sleep.assert_called_once_with(1)
+
+    def test_assert_text_retries_a_transient_empty_hierarchy(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
+            rendered = DRIVER.UiNode({"text": "NativeE2E"})
+            with patch.object(
+                device,
+                "hierarchy",
+                side_effect=[[], [rendered]],
+            ) as hierarchy, patch.object(
+                DRIVER.time,
+                "monotonic",
+                side_effect=[0, 0, 1],
+            ), patch.object(DRIVER.time, "sleep") as sleep:
+                device.assert_text("NativeE2E")
+
+        self.assertEqual(2, hierarchy.call_count)
+        sleep.assert_called_once_with(0.5)
 
 
 if __name__ == "__main__":

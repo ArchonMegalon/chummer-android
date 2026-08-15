@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Contact Pet E2E</name>
+  <alias>ContactPetE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <karma>35</karma>
+  <nuyen>8500</nuyen>
+  <contacts>
+    <contact>
+      <guid>50d92979-524d-4cb5-898e-196771e3c786</guid>
+      <name>ContactE2E</name>
+      <role>InitialRoleE2E</role>
+      <location>Seattle</location>
+      <connection>3</connection>
+      <loyalty>2</loyalty>
+      <metatype>Human</metatype>
+      <sex />
+      <age />
+      <contacttype />
+      <preferredpayment />
+      <hobbiesvice />
+      <personallife />
+      <notes />
+      <groupname />
+      <group>False</group>
+      <family>False</family>
+      <blackmail>False</blackmail>
+      <free>False</free>
+      <type>Contact</type>
+    </contact>
+    <contact>
+      <guid>7356408a-f17a-4422-a05f-d757a341d43f</guid>
+      <name>ContactDeleteE2E</name>
+      <role>DeleteRoleE2E</role>
+      <location>Seattle</location>
+      <connection>1</connection>
+      <loyalty>1</loyalty>
+      <type>Contact</type>
+    </contact>
+    <contact>
+      <guid>143c8c84-c117-4c57-9b43-e00fd1701dcf</guid>
+      <name>PetE2E</name>
+      <metatype>Dog</metatype>
+      <notes />
+      <type>Pet</type>
+    </contact>
+    <contact>
+      <guid>c54bca20-8230-4dca-8865-6555736988c6</guid>
+      <name>PetDeleteE2E</name>
+      <metatype>Cat</metatype>
+      <notes />
+      <type>Pet</type>
+    </contact>
+  </contacts>
+</character>

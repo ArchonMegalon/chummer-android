@@ -63,6 +63,7 @@ class Device:
             dump_output = self.shell(
                 "uiautomator",
                 "dump",
+                "--compressed",
                 "/sdcard/chummer-editing-window.xml",
             )
             normalized_dump_output = dump_output.lower()
@@ -185,7 +186,14 @@ class Device:
             if node is not None:
                 return node
             if self.dismiss_system_ui_anr():
-                time.sleep(2)
+                time.sleep(5)
+                if scroll and scrolls < max_scrolls:
+                    self.swipe_up(
+                        x_ratio=self._scroll_x_ratio(selector),
+                        distance_ratio=scroll_distance_ratio,
+                    )
+                    scrolls += 1
+                    time.sleep(1)
                 continue
             if scroll and scrolls < max_scrolls:
                 self.swipe_up(
@@ -388,19 +396,25 @@ class Device:
             raise RuntimeError("Android IME dismiss control did not hide the keyboard")
         time.sleep(0.75)
 
-    def assert_text(self, expected: str) -> None:
-        nodes = self.hierarchy()
-        if not any(node.attributes.get("text") == expected for node in nodes):
-            self.capture("missing-text")
-            raise RuntimeError(f"Expected persisted text {expected!r} was not rendered")
+    def assert_text(self, expected: str, *, timeout: int = 10) -> None:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            nodes = self.hierarchy()
+            if any(node.attributes.get("text") == expected for node in nodes):
+                return
+            time.sleep(0.5)
+        self.capture("missing-text")
+        raise RuntimeError(f"Expected persisted text {expected!r} was not rendered")
 
     def back(self) -> None:
         node = self.find("Navigate up")
         if node is not None:
             x, y = node.center
             self.shell("input", "tap", str(x), str(y))
+            time.sleep(1)
             return
         self.shell("input", "keyevent", "4")
+        time.sleep(1)
 
     def display_size(self) -> tuple[int, int]:
         if self._display_size is None:
@@ -535,6 +549,14 @@ def tap_collection_item(device: Device, selector: str) -> None:
         max_scrolls=24,
         scroll_distance_ratio=0.22,
         text_leading_offset=18,
+    )
+
+
+def reset_collection_editor_to_top(device: Device, profile: str) -> None:
+    reset_scroll_to_top(
+        device,
+        x_ratio=0.82 if profile == "tablet" else 0.5,
+        swipes=12,
     )
 
 
@@ -724,11 +746,34 @@ def open_gear_section(device: Device, profile: str) -> None:
     )
 
 
-def open_contact_section(device: Device, profile: str) -> None:
+def open_contact_section(
+    device: Device,
+    profile: str,
+    *,
+    expected_item: str | None = None,
+) -> None:
     if profile == "tablet":
         reset_scroll_to_top(device, x_ratio=0.15, swipes=24)
         device.tap("tablet-build-tab-tab-relationships", scroll=True)
+        time.sleep(5)
         reset_scroll_to_top(device, x_ratio=0.375, swipes=12)
+        if expected_item is not None:
+            device.tap(
+                "tablet-build-action-tab-relationships-contacts",
+                scroll=True,
+                timeout=180,
+                max_scrolls=48,
+                scroll_distance_ratio=0.22,
+            )
+            time.sleep(2)
+            device.wait(
+                expected_item,
+                timeout=60,
+                scroll=True,
+                max_scrolls=8,
+                scroll_distance_ratio=0.22,
+            )
+            return
         device.tap("tablet-build-action-tab-relationships-contacts", scroll=True)
         device.wait(
             "tablet-quick-contact-add",
@@ -740,7 +785,25 @@ def open_contact_section(device: Device, profile: str) -> None:
         return
     reset_scroll_to_top(device, swipes=12)
     device.tap("build-section-tab-relationships", scroll=True)
+    time.sleep(5)
     reset_scroll_to_top(device, swipes=12)
+    if expected_item is not None:
+        device.tap(
+            "build-action-tab-relationships-contacts",
+            scroll=True,
+            timeout=180,
+            max_scrolls=48,
+            scroll_distance_ratio=0.22,
+        )
+        time.sleep(2)
+        device.wait(
+            expected_item,
+            timeout=60,
+            scroll=True,
+            max_scrolls=8,
+            scroll_distance_ratio=0.22,
+        )
+        return
     device.tap("build-action-tab-relationships-contacts", scroll=True)
     device.wait(
         "section-quick-contact-add",
@@ -751,11 +814,34 @@ def open_contact_section(device: Device, profile: str) -> None:
     )
 
 
-def open_pet_section(device: Device, profile: str) -> None:
+def open_pet_section(
+    device: Device,
+    profile: str,
+    *,
+    expected_item: str | None = None,
+) -> None:
     if profile == "tablet":
         reset_scroll_to_top(device, x_ratio=0.15, swipes=24)
         device.tap("tablet-build-tab-tab-relationships", scroll=True)
+        time.sleep(5)
         reset_scroll_to_top(device, x_ratio=0.375, swipes=12)
+        if expected_item is not None:
+            device.tap(
+                "tablet-build-action-tab-relationships-pets",
+                scroll=True,
+                timeout=180,
+                max_scrolls=48,
+                scroll_distance_ratio=0.22,
+            )
+            time.sleep(2)
+            device.wait(
+                expected_item,
+                timeout=60,
+                scroll=True,
+                max_scrolls=8,
+                scroll_distance_ratio=0.22,
+            )
+            return
         device.tap("tablet-build-action-tab-relationships-pets", scroll=True)
         device.wait(
             "tablet-quick-contact-add",
@@ -767,7 +853,25 @@ def open_pet_section(device: Device, profile: str) -> None:
         return
     reset_scroll_to_top(device, swipes=12)
     device.tap("build-section-tab-relationships", scroll=True)
+    time.sleep(5)
     reset_scroll_to_top(device, swipes=12)
+    if expected_item is not None:
+        device.tap(
+            "build-action-tab-relationships-pets",
+            scroll=True,
+            timeout=180,
+            max_scrolls=48,
+            scroll_distance_ratio=0.22,
+        )
+        time.sleep(2)
+        device.wait(
+            expected_item,
+            timeout=60,
+            scroll=True,
+            max_scrolls=8,
+            scroll_distance_ratio=0.22,
+        )
+        return
     device.tap("build-action-tab-relationships-pets", scroll=True)
     device.wait(
         "section-quick-contact-add",
@@ -916,6 +1020,11 @@ def launch_app(device: Device, attempts: int = 3) -> None:
                 return
             raise RuntimeError("Android returned from launcher start without an app process")
         except (RuntimeError, subprocess.CalledProcessError):
+            try:
+                if device.shell("pidof", PACKAGE):
+                    return
+            except (RuntimeError, subprocess.CalledProcessError):
+                pass
             if attempt + 1 == attempts:
                 raise
             time.sleep(3)
@@ -953,7 +1062,7 @@ def assert_link_persisted_then_remove(
     original_name: str,
 ) -> None:
     opener = open_contact_section if kind == "contact" else open_pet_section
-    opener(device, profile)
+    opener(device, profile, expected_item="NeonFoxE2E")
     device.wait("NeonFoxE2E", timeout=60, scroll=True)
     tap_collection_item(device, "NeonFoxE2E")
     assert_linked_identity(device, profile, kind)
@@ -1045,19 +1154,31 @@ def add_and_edit_gear(device: Device, profile: str) -> None:
 def add_contact_from_dialog(device: Device, profile: str, name: str, role: str) -> None:
     quick_add = "tablet-quick-contact-add" if profile == "tablet" else "section-quick-contact-add"
     device.tap(quick_add, scroll=True)
-    device.wait("dialog-action-add", timeout=45, scroll=True)
-    reset_scroll_to_top(device, x_ratio=0.375 if profile == "tablet" else 0.5, swipes=6)
+    device.wait(
+        "dialog-action-add",
+        timeout=180,
+        scroll=True,
+        max_scrolls=48,
+        scroll_distance_ratio=0.28,
+    )
+    reset_scroll_to_top(device, x_ratio=0.375 if profile == "tablet" else 0.5, swipes=24)
     device.set_text("dialog-field-uicontactname", "Contact Name", name, scroll=True)
     device.set_text("dialog-field-uicontactrole", "Role", role, scroll=True)
     device.tap("dialog-action-add", scroll=True)
     device.wait(name, timeout=60, scroll=True)
 
 
-def add_and_edit_contact(device: Device, profile: str) -> None:
-    open_contact_section(device, profile)
-    add_contact_from_dialog(device, profile, "ContactDeleteE2E", "DeleteRoleE2E")
-    add_contact_from_dialog(device, profile, "ContactE2E", "InitialRoleE2E")
+def add_and_edit_contact(device: Device, profile: str, *, create_items: bool = True) -> None:
+    open_contact_section(
+        device,
+        profile,
+        expected_item=None if create_items else "ContactE2E",
+    )
+    if create_items:
+        add_contact_from_dialog(device, profile, "ContactDeleteE2E", "DeleteRoleE2E")
+        add_contact_from_dialog(device, profile, "ContactE2E", "InitialRoleE2E")
     tap_collection_item(device, "ContactE2E")
+    reset_collection_editor_to_top(device, profile)
 
     prefix = "tablet" if profile == "tablet" else "collection"
     fields = (
@@ -1126,9 +1247,6 @@ def add_and_edit_contact(device: Device, profile: str) -> None:
         scroll_distance_ratio=0.22,
     )
 
-    toggle_prefix = "tablet-toggle" if profile == "tablet" else "collection-toggle"
-    for toggle in ("free", "family", "blackmail"):
-        ensure_checked(device, f"{toggle_prefix}-{toggle}")
     save = "tablet-inspector-save" if profile == "tablet" else "Save changes"
     device.tap(save, scroll=True)
     time.sleep(1)
@@ -1137,13 +1255,16 @@ def add_and_edit_contact(device: Device, profile: str) -> None:
         x_ratio=0.82 if profile == "tablet" else 0.5,
         swipes=12,
     )
-    ensure_checked(device, f"{toggle_prefix}-group")
+    toggle_prefix = "tablet-toggle" if profile == "tablet" else "collection-toggle"
+    for toggle in ("group", "free", "family", "blackmail"):
+        ensure_checked(device, f"{toggle_prefix}-{toggle}")
     device.tap(save, scroll=True)
-    time.sleep(1)
+    time.sleep(5)
 
     if profile == "phone":
         device.back()
-        device.assert_text("ContactPersistedE2E")
+        reset_scroll_to_top(device, swipes=12)
+        device.wait("ContactPersistedE2E", timeout=60, scroll=True)
 
     tap_collection_item(device, "ContactDeleteE2E")
     device.tap("tablet-inspector-delete" if profile == "tablet" else "collection-delete-", scroll=True)
@@ -1156,12 +1277,13 @@ def add_and_edit_contact(device: Device, profile: str) -> None:
 
 
 def assert_contact_persisted(device: Device, profile: str) -> None:
-    open_contact_section(device, profile)
+    open_contact_section(device, profile, expected_item="ContactPersistedE2E")
     device.wait("ContactPersistedE2E", timeout=60, scroll=True)
     if device.find("ContactDeleteE2E") is not None:
         device.capture(f"{profile}-contact-delete-not-persisted")
         raise RuntimeError("Deleted contact returned after process restart")
     tap_collection_item(device, "ContactPersistedE2E")
+    reset_collection_editor_to_top(device, profile)
     prefix = "tablet" if profile == "tablet" else "collection"
     expected_fields = (
         (f"{prefix}-field-name", "Name", "ContactPersistedE2E"),
@@ -1192,8 +1314,14 @@ def assert_contact_persisted(device: Device, profile: str) -> None:
         device.capture(f"{profile}-contact-connection-not-persisted")
         raise RuntimeError("Contact Connection did not persist as 6")
     toggle_prefix = "tablet-toggle" if profile == "tablet" else "collection-toggle"
+    reset_collection_editor_to_top(device, profile)
     for toggle in ("group", "free", "family", "blackmail"):
-        node = device.wait(f"{toggle_prefix}-{toggle}", scroll=True)
+        node = device.wait(
+            f"{toggle_prefix}-{toggle}",
+            scroll=True,
+            max_scrolls=24,
+            scroll_distance_ratio=0.22,
+        )
         if node.attributes.get("checked") != "true":
             device.capture(f"{profile}-contact-{toggle}-not-persisted")
             raise RuntimeError(f"Contact {toggle} toggle did not persist")
@@ -1201,11 +1329,17 @@ def assert_contact_persisted(device: Device, profile: str) -> None:
         device.back()
 
 
-def add_and_edit_pet(device: Device, profile: str) -> None:
-    open_pet_section(device, profile)
-    add_contact_from_dialog(device, profile, "PetDeleteE2E", "Companion")
-    add_contact_from_dialog(device, profile, "PetE2E", "Companion")
+def add_and_edit_pet(device: Device, profile: str, *, create_items: bool = True) -> None:
+    open_pet_section(
+        device,
+        profile,
+        expected_item=None if create_items else "PetE2E",
+    )
+    if create_items:
+        add_contact_from_dialog(device, profile, "PetDeleteE2E", "Companion")
+        add_contact_from_dialog(device, profile, "PetE2E", "Companion")
     tap_collection_item(device, "PetE2E")
+    reset_collection_editor_to_top(device, profile)
 
     prefix = "tablet" if profile == "tablet" else "collection"
     name_selector = f"{prefix}-field-name"
@@ -1218,11 +1352,12 @@ def add_and_edit_pet(device: Device, profile: str) -> None:
     device.set_text(f"{prefix}-field-metatype", "Metatype", "HellHoundE2E", scroll=True)
     device.set_text(f"{prefix}-field-notes", "Notes", "PetNotesE2E", scroll=True)
     device.tap(save, scroll=True)
-    time.sleep(1)
+    time.sleep(5)
 
     if profile == "phone":
         device.back()
-        device.assert_text("PetPersistedE2E")
+        reset_scroll_to_top(device, swipes=12)
+        device.wait("PetPersistedE2E", timeout=60, scroll=True)
 
     tap_collection_item(device, "PetDeleteE2E")
     device.tap("tablet-inspector-delete" if profile == "tablet" else "collection-delete-", scroll=True)
@@ -1235,12 +1370,13 @@ def add_and_edit_pet(device: Device, profile: str) -> None:
 
 
 def assert_pet_persisted(device: Device, profile: str) -> None:
-    open_pet_section(device, profile)
+    open_pet_section(device, profile, expected_item="PetPersistedE2E")
     device.wait("PetPersistedE2E", timeout=60, scroll=True)
     if device.find("PetDeleteE2E") is not None:
         device.capture(f"{profile}-pet-delete-not-persisted")
         raise RuntimeError("Deleted pet returned after process restart")
     tap_collection_item(device, "PetPersistedE2E")
+    reset_collection_editor_to_top(device, profile)
     prefix = "tablet" if profile == "tablet" else "collection"
     expected_fields = (
         (f"{prefix}-field-name", "Name", "PetPersistedE2E"),
@@ -1267,7 +1403,7 @@ def main() -> int:
     parser.add_argument("--profile", choices=("phone", "tablet"), required=True)
     parser.add_argument(
         "--journey",
-        choices=("full", "condition-monitor"),
+        choices=("full", "condition-monitor", "contact-pet"),
         default="full",
     )
     parser.add_argument("--evidence", type=Path, required=True)
@@ -1287,6 +1423,11 @@ def main() -> int:
         type=Path,
         default=Path(__file__).resolve().parent / "fixtures" / "career-condition-monitor-e2e.chum5",
     )
+    parser.add_argument(
+        "--contact-pet-runner",
+        type=Path,
+        default=Path(__file__).resolve().parent / "fixtures" / "creation-contact-pet-e2e.chum5",
+    )
     args = parser.parse_args()
 
     device = Device(args.adb.resolve(), args.serial, args.evidence.resolve())
@@ -1303,12 +1444,18 @@ def main() -> int:
     device.push(args.linked_runner, "/sdcard/Download/linked-runner-e2e.chum5")
     device.push(args.invalid_linked_runner, "/sdcard/Download/invalid-linked-runner-e2e.chum5")
     device.push(args.condition_runner, "/sdcard/Download/career-condition-monitor-e2e.chum5")
+    device.push(args.contact_pet_runner, "/sdcard/Download/creation-contact-pet-e2e.chum5")
     launch_app(device)
     device.wait("Your runners", timeout=90)
 
-    if args.journey == "condition-monitor":
+    if args.journey in {"condition-monitor", "contact-pet"}:
         device.tap("home-open-file")
-        select_android_document(device, "career-condition-monitor-e2e.chum5")
+        fixture_name = (
+            "creation-contact-pet-e2e.chum5"
+            if args.journey == "contact-pet"
+            else "career-condition-monitor-e2e.chum5"
+        )
+        select_android_document(device, fixture_name)
         device.wait("Continue building", timeout=90)
     else:
         device.tap_until_visible("home-new-runner", "Select Build Method")
@@ -1318,6 +1465,53 @@ def main() -> int:
         device.wait("Continue building", timeout=90)
 
     open_build(device, args.profile)
+    if args.journey == "contact-pet":
+        add_and_edit_contact(device, args.profile, create_items=False)
+        if args.profile == "phone":
+            device.back()
+        add_and_edit_pet(device, args.profile, create_items=False)
+        device.capture("contact-pet-persisted")
+
+        device.shell("am", "force-stop", PACKAGE)
+        launch_app(device)
+        device.wait("Continue building", timeout=90)
+        open_build(device, args.profile)
+        assert_contact_persisted(device, args.profile)
+        if args.profile == "phone":
+            device.back()
+        assert_pet_persisted(device, args.profile)
+        device.capture("contact-pet-after-restart")
+
+        receipt = {
+            "schema": "chummer.android.editing-e2e/v1",
+            "status": "pass",
+            "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
+            "serial": args.serial,
+            "profile": args.profile,
+            "journey": args.journey,
+            "apiLevel": int(api),
+            "apk": str(args.apk.resolve()),
+            "apkSha256": sha256(args.apk.resolve()),
+            "driverSha256": sha256(Path(__file__).resolve()),
+            "inputFixture": str(args.contact_pet_runner.resolve()),
+            "inputFixtureSha256": sha256(args.contact_pet_runner.resolve()),
+            "journeys": {
+                "creationRunnerImport": "pass",
+                "contactInvalidBoundsRejected": "pass",
+                "contactEditPersisted": "pass",
+                "contactDeletePersisted": "pass",
+                "processRestartContactPersistence": "pass",
+                "petInvalidNameRejected": "pass",
+                "petEditPersisted": "pass",
+                "petDeletePersisted": "pass",
+                "processRestartPetPersistence": "pass",
+            },
+        }
+        args.receipt.parent.mkdir(parents=True, exist_ok=True)
+        args.receipt.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps(receipt, indent=2))
+        return 0
+
     if args.journey == "condition-monitor":
         edit_condition_damage(device, args.profile, "physical", 2)
         edit_condition_damage(device, args.profile, "stun", 1)
