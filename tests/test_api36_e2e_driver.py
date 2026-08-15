@@ -93,15 +93,44 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
     def test_launch_app_retries_transient_android_launcher_failure(self) -> None:
         device = Mock()
         device.shell.side_effect = [
+            "com.myexternalbrain.chummer/crc-current.MainActivity",
             subprocess.CalledProcessError(137, ["adb", "shell", "monkey"]),
             "",
+            "7225",
         ]
 
         with patch.object(DRIVER.time, "sleep") as sleep:
             DRIVER.launch_app(device)
 
-        self.assertEqual(2, device.shell.call_count)
+        self.assertEqual(4, device.shell.call_count)
+        self.assertEqual(
+            call(
+                "am",
+                "start",
+                "-W",
+                "-n",
+                "com.myexternalbrain.chummer/crc-current.MainActivity",
+                timeout=60,
+            ),
+            device.shell.call_args_list[1],
+        )
+        self.assertEqual(
+            call("pidof", "com.myexternalbrain.chummer"),
+            device.shell.call_args_list[-1],
+        )
         sleep.assert_called_once_with(3)
+
+    def test_launcher_component_uses_current_package_manager_result(self) -> None:
+        device = Mock()
+        device.shell.return_value = (
+            "priority=0\n"
+            "com.myexternalbrain.chummer/crc-current.MainActivity\n"
+        )
+
+        self.assertEqual(
+            "com.myexternalbrain.chummer/crc-current.MainActivity",
+            DRIVER.launcher_component(device),
+        )
 
     def test_hierarchy_ignores_uiautomator_preamble(self) -> None:
         output = (
@@ -604,6 +633,125 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 ("wait", "section-quick-gear-add"),
             ],
             device.calls[25:],
+        )
+
+    def test_phone_condition_route_uses_overlapping_scrolls(self) -> None:
+        class ConditionRouteDevice:
+            def __init__(self) -> None:
+                self.calls: list[tuple[str, str]] = []
+
+            def tap(self, selector: str, **_: object) -> None:
+                self.calls.append(("tap", selector))
+
+            def wait(self, selector: str, **_: object) -> None:
+                self.calls.append(("wait", selector))
+
+        device = ConditionRouteDevice()
+        DRIVER.open_condition_monitor_section(device, "phone")
+
+        self.assertEqual(
+            [
+                ("tap", "build-section-tab-combat"),
+                ("tap", "build-action-tab-combat-conditionmonitor"),
+                ("wait", "condition-monitor-physical"),
+            ],
+            device.calls,
+        )
+
+    def test_tablet_condition_route_resets_the_persistent_navigation_rail(self) -> None:
+        class ConditionRouteDevice:
+            def __init__(self) -> None:
+                self.calls: list[tuple[str, str]] = []
+
+            def swipe_down(self, **_: object) -> None:
+                self.calls.append(("swipe", "down"))
+
+            def tap(self, selector: str, **_: object) -> None:
+                self.calls.append(("tap", selector))
+
+            def wait(self, selector: str, **_: object) -> None:
+                self.calls.append(("wait", selector))
+
+        device = ConditionRouteDevice()
+        with patch.object(DRIVER.time, "sleep"):
+            DRIVER.open_condition_monitor_section(device, "tablet")
+
+        self.assertEqual([("swipe", "down")] * 24, device.calls[:24])
+        self.assertEqual(
+            [
+                ("tap", "tablet-build-tab-tab-combat"),
+                ("tap", "tablet-build-action-tab-combat-conditionmonitor"),
+                ("wait", "tablet-condition-track-physical"),
+            ],
+            device.calls[24:],
+        )
+
+    def test_condition_journey_imports_a_career_fixture_through_the_document_picker(self) -> None:
+        source = Path(DRIVER.__file__).read_text(encoding="utf-8")
+        condition_branch = source[source.index('if args.journey == "condition-monitor":') :]
+        condition_branch = condition_branch[: condition_branch.index("else:")]
+
+        self.assertIn('device.tap("home-open-file")', condition_branch)
+        self.assertIn(
+            'select_android_document(device, "career-condition-monitor-e2e.chum5")',
+            condition_branch,
+        )
+        self.assertNotIn("home-new-runner", condition_branch)
+
+        fixture = REPO_ROOT / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5"
+        fixture_xml = fixture.read_text(encoding="utf-8")
+        for marker in (
+            "<created>True</created>",
+            "<karma>35</karma>",
+            "<nuyen>8500</nuyen>",
+            "<physicalcm>10</physicalcm>",
+            "<physicalcmoverflow>3</physicalcmoverflow>",
+            "<stuncm>10</stuncm>",
+        ):
+            self.assertIn(marker, fixture_xml)
+
+    def test_phone_origin_dossier_resets_before_overlapping_search(self) -> None:
+        device = Mock()
+
+        with patch.object(DRIVER.time, "sleep"):
+            DRIVER.open_origin_dossier(device, "phone")
+
+        self.assertEqual(12, device.swipe_down.call_count)
+        device.tap.assert_called_once_with(
+            "build-origin-dossier",
+            scroll=True,
+            timeout=60,
+            max_scrolls=16,
+            scroll_distance_ratio=0.22,
+        )
+
+    def test_condition_damage_uses_distinct_phone_and_tablet_editors(self) -> None:
+        with patch.object(DRIVER, "open_condition_monitor_section"), patch.object(
+            DRIVER, "selected_text", return_value="2"
+        ), patch.object(DRIVER.time, "sleep"):
+            phone = Mock()
+            DRIVER.edit_condition_damage(phone, "phone", "physical", 2)
+            tablet = Mock()
+            DRIVER.edit_condition_damage(tablet, "tablet", "physical", 2)
+
+        phone.assert_has_calls(
+            [
+                call.tap("condition-monitor-physical", scroll=True),
+                call.wait("condition-monitor-editor-physical", timeout=45),
+                call.tap("condition-monitor-filled-physical", scroll=True),
+                call.tap("2", scroll=True),
+                call.tap("condition-monitor-save-physical", scroll=True),
+                call.back(),
+                call.back(),
+            ]
+        )
+        tablet.assert_has_calls(
+            [
+                call.tap("tablet-condition-track-physical", scroll=True),
+                call.tap("tablet-condition-filled-physical", scroll=True),
+                call.tap("2", scroll=True),
+                call.tap("tablet-condition-save-physical", scroll=True),
+            ]
         )
 
     def test_gear_journey_edits_name_before_descending_to_add_action(self) -> None:

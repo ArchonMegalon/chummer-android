@@ -12,17 +12,19 @@
     "reviewedNonMutatingCount": 454,
     "editParityRequiredCount": 1775,
     "unclassifiedCount": 0,
-    "completionProvenCount": 454,
+    "completionProvenCount": 506,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 104,
-      "missing": 1417,
+      "implemented_pending_emulator": 56,
+      "implemented_verified_api36": 52,
+      "missing": 1413,
       "not_applicable_non_mutating": 454,
       "partial_create_only": 110,
       "partial_exact_saved_data": 144
     },
     "tabletStatusCounts": {
-      "implemented_pending_emulator": 74,
-      "missing": 1557,
+      "implemented_pending_emulator": 26,
+      "implemented_verified_api36": 52,
+      "missing": 1553,
       "not_applicable_non_mutating": 454,
       "partial_exact_saved_data": 144
     }
@@ -70,12 +72,12 @@
       {
         "path": "src/Chummer.Android/Native/BuildFlowPages.cs",
         "exists": true,
-        "sha256": "16d95e97acf9fa807b35fb60edd158a328932e911f81e9a3f435dfb4fb65b9bb"
+        "sha256": "8e1b5689087ef9fc765f8ee349c5d71df1c5b2a395eaccb024161621711b2877"
       },
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "486a40816421f6ebee5afed6783ac94fde8f60a8523052785b180ea05172a6d8"
+        "sha256": "ba43cf1a72dbe93081bf9e3e6b2618e493b07bcac15cc7d02ab2f03f6deaf060"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -90,22 +92,37 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "9dfcf997662587fa0c6363d27c7eed12e3492b19fbc45982829ba6fd79c3e88b"
+        "sha256": "52765f507cf1f726ad1aaa7e7c64937d774b5de371836a2dd088ba62f9a4480e"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
         "exists": true,
-        "sha256": "c9232d4691a42cfd85ae8fe1a7c7f24ff1adaeacb4cad4f7230919d68ef03e72"
+        "sha256": "69c0cd816933ce6388a8f8ba5e9e2e86de897cc5e8acb6a597720fda223310a4"
       },
       {
         "path": "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
         "exists": true,
-        "sha256": "06a9c3d388c2b42bc9556f7ff10c9441ee17e70f11522c4afb8586ac5a117c01"
+        "sha256": "16bdd17a9bd8aa84fb3e3f0cfaf757978bb22aeab78af79a3ac6103655f60d4a"
       },
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "b7d0a0022f1bad596e1d5923bf4602428f90a9aaae249453c96077d10d577733"
+        "sha256": "1a2fc945c37f88a9c388be6468c126be911c61f9a6e7501387f4b705ceab568e"
+      },
+      {
+        "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
+        "exists": true,
+        "sha256": "aebca5d1b09a338a798afb45805fe0679c174c2f4f1687e53624990ce095ae25"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+        "exists": true,
+        "sha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430"
+      },
+      {
+        "path": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+        "exists": true,
+        "sha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
@@ -140,7 +157,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
         "exists": true,
-        "sha256": "ac2701448e70fa562b647927f240fee9b8e141e6d63d2e34a0fb8553c3d64480"
+        "sha256": "9d79b1c084bc21c88bceae9019cc5964f448e23e2cb3727791cba202dbea9715"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
@@ -160,12 +177,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "86ba1d8730f497a268ca567f14190abf2f9e36289d34fa631fc33e5af71f6a35"
+        "sha256": "b006adea00967c294c22bc911818c8d9044d60ad03e5d48ef61b4445cb995fc7"
       }
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "ca4d89c30c379990fd0d24728f108e39ee7f2e789372e31f5fda29fa7b1987e2"
+      "sha256": "3446197a08f6a5867b657e786ee979db7144b1fd5bab713be4c1ea746f9ee1f7"
     }
   },
   "coverageByFamily": {
@@ -249,9 +266,9 @@
     "condition_monitors_and_damage": {
       "rowCount": 77,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 5,
-      "tabletMissingCount": 5,
-      "completionProvenCount": 0
+      "phoneMissingCount": 1,
+      "tabletMissingCount": 1,
+      "completionProvenCount": 52
     },
     "contacts": {
       "rowCount": 64,
@@ -3721,34 +3738,51 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Build > Combat > Damage tracks > Physical",
+        "surface": "ConditionMonitorEditPage",
+        "automationId": "condition-monitor-filled-physical",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
-        "status": "missing",
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "surface": "TabletBuildPage persistent damage inspector",
+        "automationId": "tablet-condition-filled-physical",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/TabletBuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Dashboards/ConditionMonitorUserControl.Designer.cs::Chummer.ConditionMonitorUserControl::_btnApplyStun",
@@ -3778,34 +3812,51 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "commit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Build > Combat > Damage tracks > Stun",
+        "surface": "ConditionMonitorEditPage",
+        "automationId": "condition-monitor-filled-stun",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
-        "status": "missing",
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "surface": "TabletBuildPage persistent damage inspector",
+        "automationId": "tablet-condition-filled-stun",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/TabletBuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Dashboards/ConditionMonitorUserControl.Designer.cs::Chummer.ConditionMonitorUserControl::_nudPhysical",
@@ -3830,34 +3881,51 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Build > Combat > Damage tracks > Physical",
+        "surface": "ConditionMonitorEditPage",
+        "automationId": "condition-monitor-filled-physical",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
-        "status": "missing",
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "surface": "TabletBuildPage persistent damage inspector",
+        "automationId": "tablet-condition-filled-physical",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/TabletBuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Dashboards/ConditionMonitorUserControl.Designer.cs::Chummer.ConditionMonitorUserControl::nudStun",
@@ -3882,34 +3950,51 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Build > Combat > Damage tracks > Stun",
+        "surface": "ConditionMonitorEditPage",
+        "automationId": "condition-monitor-filled-stun",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
-        "status": "missing",
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "surface": "TabletBuildPage persistent damage inspector",
+        "automationId": "tablet-condition-filled-stun",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/TabletBuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Dashboards/InitiativeUserControl.Designer.cs::Chummer.InitiativeUserControl::btnNext",
@@ -29424,7 +29509,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -29438,7 +29523,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -29453,18 +29538,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM2",
@@ -29494,7 +29583,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -29508,7 +29597,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -29523,18 +29612,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM3",
@@ -29564,7 +29657,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -29578,7 +29671,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -29593,18 +29686,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM4",
@@ -29634,7 +29731,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -29648,7 +29745,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -29663,18 +29760,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM5",
@@ -29704,7 +29805,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -29718,7 +29819,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -29733,18 +29834,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM6",
@@ -29774,7 +29879,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -29788,7 +29893,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -29803,18 +29908,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM7",
@@ -29844,7 +29953,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -29858,7 +29967,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -29873,18 +29982,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM8",
@@ -29914,7 +30027,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -29928,7 +30041,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -29943,18 +30056,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM9",
@@ -29984,7 +30101,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -29998,7 +30115,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -30013,18 +30130,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM10",
@@ -30054,7 +30175,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -30068,7 +30189,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -30083,18 +30204,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM11",
@@ -30124,7 +30249,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -30138,7 +30263,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -30153,18 +30278,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM12",
@@ -30194,7 +30323,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -30208,7 +30337,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -30223,18 +30352,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM13",
@@ -30264,7 +30397,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -30278,7 +30411,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -30293,18 +30426,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM14",
@@ -30334,7 +30471,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -30348,7 +30485,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -30363,18 +30500,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM15",
@@ -30404,7 +30545,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -30418,7 +30559,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -30433,18 +30574,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM16",
@@ -30474,7 +30619,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -30488,7 +30633,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -30503,18 +30648,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM17",
@@ -30544,7 +30693,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -30558,7 +30707,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -30573,18 +30722,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM18",
@@ -30614,7 +30767,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -30628,7 +30781,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -30643,18 +30796,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM19",
@@ -30684,7 +30841,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -30698,7 +30855,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -30713,18 +30870,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM20",
@@ -30754,7 +30915,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -30768,7 +30929,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -30783,18 +30944,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM21",
@@ -30824,7 +30989,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -30838,7 +31003,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -30853,18 +31018,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM22",
@@ -30894,7 +31063,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -30908,7 +31077,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -30923,18 +31092,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM23",
@@ -30964,7 +31137,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -30978,7 +31151,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -30993,18 +31166,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkStunCM24",
@@ -31034,7 +31211,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Stun",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-stun",
@@ -31048,7 +31225,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-stun",
         "sourceRefs": [
@@ -31063,18 +31240,22 @@
       "persistenceAssertion": "character/stuncmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM1",
@@ -31104,7 +31285,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -31118,7 +31299,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -31133,18 +31314,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM2",
@@ -31174,7 +31359,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -31188,7 +31373,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -31203,18 +31388,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM3",
@@ -31244,7 +31433,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -31258,7 +31447,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -31273,18 +31462,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM4",
@@ -31314,7 +31507,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -31328,7 +31521,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -31343,18 +31536,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM5",
@@ -31384,7 +31581,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -31398,7 +31595,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -31413,18 +31610,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM6",
@@ -31454,7 +31655,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -31468,7 +31669,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -31483,18 +31684,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM7",
@@ -31524,7 +31729,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -31538,7 +31743,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -31553,18 +31758,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM8",
@@ -31594,7 +31803,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -31608,7 +31817,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -31623,18 +31832,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM9",
@@ -31664,7 +31877,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -31678,7 +31891,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -31693,18 +31906,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM10",
@@ -31734,7 +31951,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -31748,7 +31965,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -31763,18 +31980,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM11",
@@ -31804,7 +32025,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -31818,7 +32039,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -31833,18 +32054,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM12",
@@ -31874,7 +32099,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -31888,7 +32113,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -31903,18 +32128,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM13",
@@ -31944,7 +32173,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -31958,7 +32187,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -31973,18 +32202,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM14",
@@ -32014,7 +32247,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -32028,7 +32261,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -32043,18 +32276,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM15",
@@ -32084,7 +32321,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -32098,7 +32335,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -32113,18 +32350,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM16",
@@ -32154,7 +32395,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -32168,7 +32409,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -32183,18 +32424,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM17",
@@ -32224,7 +32469,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -32238,7 +32483,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -32253,18 +32498,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM18",
@@ -32294,7 +32543,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -32308,7 +32557,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -32323,18 +32572,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM19",
@@ -32364,7 +32617,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -32378,7 +32631,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -32393,18 +32646,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM20",
@@ -32434,7 +32691,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -32448,7 +32705,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -32463,18 +32720,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM21",
@@ -32504,7 +32765,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -32518,7 +32779,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -32533,18 +32794,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM22",
@@ -32574,7 +32839,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -32588,7 +32853,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -32603,18 +32868,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM23",
@@ -32644,7 +32913,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -32658,7 +32927,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -32673,18 +32942,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkPhysicalCM24",
@@ -32714,7 +32987,7 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Combat > Damage tracks > Physical",
         "surface": "ConditionMonitorEditPage",
         "automationId": "condition-monitor-filled-physical",
@@ -32728,7 +33001,7 @@
         ]
       },
       "tablet": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "surface": "TabletBuildPage persistent damage inspector",
         "automationId": "tablet-condition-filled-physical",
         "sourceRefs": [
@@ -32743,18 +33016,22 @@
       "persistenceAssertion": "character/physicalcmfilled equals the chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "b2a19996ec2340a9231ef284f06d069199e4f7c15f0036dd489c279ffda46430",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "4d4b2932716f5c22371737dd29d4abf55665b6bda10e890a5027dec73d2f3c42",
+          "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::lmtControl",

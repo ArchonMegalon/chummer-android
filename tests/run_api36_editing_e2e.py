@@ -17,7 +17,6 @@ from pathlib import Path
 
 
 PACKAGE = "com.myexternalbrain.chummer"
-ACTIVITY = f"{PACKAGE}/crc64f43698d305df5028.MainActivity"
 BOUNDS = re.compile(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]")
 DISPLAY_SIZE = re.compile(r"(?:Physical|Override) size:\s*(\d+)x(\d+)")
 
@@ -509,8 +508,22 @@ def reset_scroll_to_top(
 ) -> None:
     for _ in range(swipes):
         device.swipe_down(x_ratio=x_ratio)
+        time.sleep(0.2)
     if swipes > 0:
         time.sleep(0.75)
+
+
+def open_origin_dossier(device: Device, profile: str) -> None:
+    selector = "tablet-origin-dossier" if profile == "tablet" else "build-origin-dossier"
+    if profile == "phone":
+        reset_scroll_to_top(device, swipes=12)
+    device.tap(
+        selector,
+        scroll=True,
+        timeout=60,
+        max_scrolls=16,
+        scroll_distance_ratio=0.22,
+    )
 
 
 def tap_collection_item(device: Device, selector: str) -> None:
@@ -567,6 +580,120 @@ def assert_body_base(device: Device, profile: str, expected: int) -> None:
             f"expected {expected}"
         )
     if profile == "phone":
+        device.back()
+
+
+def open_condition_monitor_section(device: Device, profile: str) -> None:
+    if profile == "tablet":
+        reset_scroll_to_top(device, x_ratio=0.15, swipes=24)
+        device.tap(
+            "tablet-build-tab-tab-combat",
+            scroll=True,
+            timeout=120,
+            max_scrolls=24,
+            scroll_distance_ratio=0.22,
+        )
+        device.tap(
+            "tablet-build-action-tab-combat-conditionmonitor",
+            timeout=120,
+            scroll=True,
+            max_scrolls=24,
+            scroll_distance_ratio=0.22,
+        )
+        device.wait(
+            "tablet-condition-track-physical",
+            timeout=120,
+            scroll=True,
+            max_scrolls=24,
+            scroll_distance_ratio=0.22,
+        )
+        return
+    device.tap(
+        "build-section-tab-combat",
+        scroll=True,
+        timeout=120,
+        max_scrolls=24,
+        scroll_distance_ratio=0.22,
+    )
+    device.tap(
+        "build-action-tab-combat-conditionmonitor",
+        timeout=120,
+        scroll=True,
+        max_scrolls=24,
+        scroll_distance_ratio=0.22,
+    )
+    device.wait(
+        "condition-monitor-physical",
+        timeout=120,
+        scroll=True,
+        max_scrolls=24,
+        scroll_distance_ratio=0.22,
+    )
+
+
+def condition_picker_selector(profile: str, track: str) -> str:
+    prefix = "tablet-condition" if profile == "tablet" else "condition-monitor"
+    return f"{prefix}-filled-{track}"
+
+
+def edit_condition_damage(
+    device: Device,
+    profile: str,
+    track: str,
+    value: int,
+) -> None:
+    open_condition_monitor_section(device, profile)
+    if profile == "tablet":
+        device.tap(f"tablet-condition-track-{track}", scroll=True)
+    else:
+        device.tap(f"condition-monitor-{track}", scroll=True)
+        device.wait(f"condition-monitor-editor-{track}", timeout=45)
+
+    picker = condition_picker_selector(profile, track)
+    device.tap(picker, scroll=True)
+    device.tap(str(value), scroll=True)
+    save = (
+        f"tablet-condition-save-{track}"
+        if profile == "tablet"
+        else f"condition-monitor-save-{track}"
+    )
+    device.tap(save, scroll=True)
+    time.sleep(1)
+    actual = selected_text(device, picker, "Filled boxes", scroll=True)
+    if actual != str(value):
+        device.capture(f"{profile}-{track}-damage-not-applied")
+        raise RuntimeError(
+            f"{track.title()} damage did not apply in the {profile} editor; "
+            f"expected {value}, got {actual!r}"
+        )
+    if profile == "phone":
+        device.back()
+        device.back()
+
+
+def assert_condition_damage(
+    device: Device,
+    profile: str,
+    track: str,
+    expected: int,
+) -> None:
+    open_condition_monitor_section(device, profile)
+    if profile == "tablet":
+        device.tap(f"tablet-condition-track-{track}", scroll=True)
+    else:
+        device.tap(f"condition-monitor-{track}", scroll=True)
+        device.wait(f"condition-monitor-editor-{track}", timeout=45)
+
+    picker = condition_picker_selector(profile, track)
+    actual = selected_text(device, picker, "Filled boxes", scroll=True)
+    if actual != str(expected):
+        device.capture(f"{profile}-{track}-damage-not-persisted")
+        raise RuntimeError(
+            f"{track.title()} damage did not persist in the {profile} editor; "
+            f"expected {expected}, got {actual!r}"
+        )
+    if profile == "phone":
+        device.back()
         device.back()
 
 
@@ -753,19 +880,42 @@ def select_android_document(device: Device, filename: str) -> None:
     device.tap(filename, scroll=True)
 
 
+def launcher_component(device: Device) -> str:
+    output = device.shell(
+        "cmd",
+        "package",
+        "resolve-activity",
+        "--brief",
+        "-c",
+        "android.intent.category.LAUNCHER",
+        PACKAGE,
+    )
+    components = [
+        line.strip()
+        for line in output.splitlines()
+        if line.strip().startswith(f"{PACKAGE}/")
+    ]
+    if not components:
+        raise RuntimeError(f"Could not resolve the installed launcher activity: {output!r}")
+    return components[-1]
+
+
 def launch_app(device: Device, attempts: int = 3) -> None:
+    component = launcher_component(device)
     for attempt in range(attempts):
         try:
             device.shell(
-                "monkey",
-                "-p",
-                PACKAGE,
-                "-c",
-                "android.intent.category.LAUNCHER",
-                "1",
+                "am",
+                "start",
+                "-W",
+                "-n",
+                component,
+                timeout=60,
             )
-            return
-        except subprocess.CalledProcessError:
+            if device.shell("pidof", PACKAGE):
+                return
+            raise RuntimeError("Android returned from launcher start without an app process")
+        except (RuntimeError, subprocess.CalledProcessError):
             if attempt + 1 == attempts:
                 raise
             time.sleep(3)
@@ -1115,6 +1265,11 @@ def main() -> int:
     parser.add_argument("--apk", type=Path, required=True)
     parser.add_argument("--serial", default="emulator-5554")
     parser.add_argument("--profile", choices=("phone", "tablet"), required=True)
+    parser.add_argument(
+        "--journey",
+        choices=("full", "condition-monitor"),
+        default="full",
+    )
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
     parser.add_argument(
@@ -1126,6 +1281,11 @@ def main() -> int:
         "--invalid-linked-runner",
         type=Path,
         default=Path(__file__).resolve().parent / "fixtures" / "invalid-linked-runner-e2e.chum5",
+    )
+    parser.add_argument(
+        "--condition-runner",
+        type=Path,
+        default=Path(__file__).resolve().parent / "fixtures" / "career-condition-monitor-e2e.chum5",
     )
     args = parser.parse_args()
 
@@ -1142,18 +1302,63 @@ def main() -> int:
     device.shell("pm", "clear", PACKAGE)
     device.push(args.linked_runner, "/sdcard/Download/linked-runner-e2e.chum5")
     device.push(args.invalid_linked_runner, "/sdcard/Download/invalid-linked-runner-e2e.chum5")
+    device.push(args.condition_runner, "/sdcard/Download/career-condition-monitor-e2e.chum5")
     launch_app(device)
     device.wait("Your runners", timeout=90)
 
-    device.tap_until_visible("home-new-runner", "Select Build Method")
-    device.tap("dialog-action-create-character", scroll=True)
-    device.wait("dialog-action-complete-new-character-workflow", timeout=45, scroll=True)
-    device.tap("dialog-action-complete-new-character-workflow", scroll=True)
-    device.wait("Continue building", timeout=90)
+    if args.journey == "condition-monitor":
+        device.tap("home-open-file")
+        select_android_document(device, "career-condition-monitor-e2e.chum5")
+        device.wait("Continue building", timeout=90)
+    else:
+        device.tap_until_visible("home-new-runner", "Select Build Method")
+        device.tap("dialog-action-create-character", scroll=True)
+        device.wait("dialog-action-complete-new-character-workflow", timeout=45, scroll=True)
+        device.tap("dialog-action-complete-new-character-workflow", scroll=True)
+        device.wait("Continue building", timeout=90)
 
     open_build(device, args.profile)
-    device.wait("Origin dossier", scroll=True)
-    device.tap("tablet-origin-dossier" if args.profile == "tablet" else "build-origin-dossier", scroll=True)
+    if args.journey == "condition-monitor":
+        edit_condition_damage(device, args.profile, "physical", 2)
+        edit_condition_damage(device, args.profile, "stun", 1)
+        assert_condition_damage(device, args.profile, "physical", 2)
+        assert_condition_damage(device, args.profile, "stun", 1)
+        device.capture("condition-monitor-persisted")
+
+        device.shell("am", "force-stop", PACKAGE)
+        launch_app(device)
+        device.wait("Continue building", timeout=90)
+        open_build(device, args.profile)
+        assert_condition_damage(device, args.profile, "physical", 2)
+        assert_condition_damage(device, args.profile, "stun", 1)
+        device.capture("condition-monitor-after-restart")
+
+        receipt = {
+            "schema": "chummer.android.editing-e2e/v1",
+            "status": "pass",
+            "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
+            "serial": args.serial,
+            "profile": args.profile,
+            "journey": args.journey,
+            "apiLevel": int(api),
+            "apk": str(args.apk.resolve()),
+            "apkSha256": sha256(args.apk.resolve()),
+            "driverSha256": sha256(Path(__file__).resolve()),
+            "inputFixture": str(args.condition_runner.resolve()),
+            "inputFixtureSha256": sha256(args.condition_runner.resolve()),
+            "journeys": {
+                "careerRunnerImport": "pass",
+                "physicalConditionDamageEditPersisted": "pass",
+                "stunConditionDamageEditPersisted": "pass",
+                "processRestartConditionDamagePersistence": "pass",
+            },
+        }
+        args.receipt.parent.mkdir(parents=True, exist_ok=True)
+        args.receipt.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps(receipt, indent=2))
+        return 0
+
+    open_origin_dossier(device, args.profile)
     device.tap("origin-dossier-identity")
     device.set_text("origin-alias", "Alias", "LatchkeyE2E")
     device.tap("origin-dossier-identity-save", scroll=True)
@@ -1196,7 +1401,7 @@ def main() -> int:
     launch_app(device)
     device.wait("Continue building", timeout=90)
     open_build(device, args.profile)
-    device.tap("tablet-origin-dossier" if args.profile == "tablet" else "build-origin-dossier", scroll=True)
+    open_origin_dossier(device, args.profile)
     device.tap("origin-dossier-identity")
     device.assert_text("LatchkeyE2E")
     device.back()
@@ -1253,9 +1458,11 @@ def main() -> int:
         "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
         "serial": args.serial,
         "profile": args.profile,
+        "journey": args.journey,
         "apiLevel": int(api),
         "apk": str(args.apk.resolve()),
         "apkSha256": sha256(args.apk.resolve()),
+        "driverSha256": sha256(Path(__file__).resolve()),
         "journeys": {
             "newRunner": "pass",
             "originIdentityEditPersisted": "pass",

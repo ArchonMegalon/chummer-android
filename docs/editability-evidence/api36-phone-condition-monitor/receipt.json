@@ -1,0 +1,20 @@
+{
+  "schema": "chummer.android.editing-e2e/v1",
+  "status": "pass",
+  "generatedAtUtc": "2026-08-15T08:55:59.024461+00:00",
+  "serial": "emulator-5554",
+  "profile": "phone",
+  "journey": "condition-monitor",
+  "apiLevel": 36,
+  "apk": "/docker/chummercomplete/chummer-android/src/Chummer.Android/bin/Debug/net10.0-android36.0/android-x64/com.myexternalbrain.chummer-Signed.apk",
+  "apkSha256": "9197e9dd1a9e0ef61a3fe108455195cd4b1bd860d58eef2851acbb5ffd26b0ba",
+  "driverSha256": "1a2fc945c37f88a9c388be6468c126be911c61f9a6e7501387f4b705ceab568e",
+  "inputFixture": "/docker/chummercomplete/chummer-android/tests/fixtures/career-condition-monitor-e2e.chum5",
+  "inputFixtureSha256": "aebca5d1b09a338a798afb45805fe0679c174c2f4f1687e53624990ce095ae25",
+  "journeys": {
+    "careerRunnerImport": "pass",
+    "physicalConditionDamageEditPersisted": "pass",
+    "stunConditionDamageEditPersisted": "pass",
+    "processRestartConditionDamagePersistence": "pass"
+  }
+}

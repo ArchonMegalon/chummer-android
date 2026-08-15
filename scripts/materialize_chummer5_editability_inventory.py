@@ -32,6 +32,24 @@ DEFAULT_REGISTRY = Path(
     )
 ).resolve()
 DEFAULT_OUTPUT = REPO_ROOT / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
+CONDITION_E2E_RECEIPTS = {
+    "phone": REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-condition-monitor"
+    / "receipt.json",
+    "tablet": REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-tablet-condition-monitor"
+    / "receipt.json",
+}
+CONDITION_E2E_JOURNEYS = (
+    "careerRunnerImport",
+    "physicalConditionDamageEditPersisted",
+    "stunConditionDamageEditPersisted",
+    "processRestartConditionDamagePersistence",
+)
 
 SCHEMA = "chummer.android.chummer5-editability-inventory/v1"
 REQUIRED_SOURCE_ROOTS = (Path("Chummer/Forms"), Path("Chummer/Controls"))
@@ -237,6 +255,12 @@ CHARACTER_CONDITION_HANDLERS = {
     "Physical": "chkPhysicalCM_CheckedChanged",
     "Stun": "chkStunCM_CheckedChanged",
 }
+DASHBOARD_CONDITION_CONTROLS = {
+    "_btnPhysical": ("Physical", "_btnPhysical_Click"),
+    "_nudPhysical": ("Physical", "_btnPhysical_Click"),
+    "_btnApplyStun": ("Stun", "_btnApplyStun_Click"),
+    "nudStun": ("Stun", "_btnApplyStun_Click"),
+}
 VEHICLE_PHYSICAL_CONDITION_CONTROL_RE = re.compile(
     r"^chkVehiclePhysicalCM(?P<box>[1-9]|1[0-9]|2[0-4])$"
 )
@@ -389,6 +413,49 @@ def _sha256_bytes(data: bytes) -> str:
 
 def _sha256_file(path: Path) -> str:
     return _sha256_bytes(path.read_bytes())
+
+
+def _validated_condition_e2e_receipts() -> dict[str, dict[str, Any]]:
+    driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    fixture = REPO_ROOT / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5"
+    if not driver.is_file() or not fixture.is_file():
+        return {}
+
+    expected_driver_sha = _sha256_file(driver)
+    expected_fixture_sha = _sha256_file(fixture)
+    validated: dict[str, dict[str, Any]] = {}
+    for profile, receipt_path in CONDITION_E2E_RECEIPTS.items():
+        try:
+            receipt = json.loads(_read_text(receipt_path))
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            continue
+        journeys = receipt.get("journeys")
+        apk_sha = str(receipt.get("apkSha256") or "")
+        if not (
+            receipt.get("schema") == "chummer.android.editing-e2e/v1"
+            and receipt.get("status") == "pass"
+            and receipt.get("profile") == profile
+            and receipt.get("journey") == "condition-monitor"
+            and receipt.get("apiLevel") == 36
+            and receipt.get("driverSha256") == expected_driver_sha
+            and receipt.get("inputFixtureSha256") == expected_fixture_sha
+            and isinstance(journeys, dict)
+            and all(journeys.get(journey) == "pass" for journey in CONDITION_E2E_JOURNEYS)
+            and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+        ):
+            continue
+        validated[profile] = {
+            "status": "executed_api36",
+            "ref": receipt_path.relative_to(REPO_ROOT).as_posix(),
+            "receiptSha256": _sha256_file(receipt_path),
+            "apkSha256": apk_sha,
+        }
+
+    if set(validated) != set(CONDITION_E2E_RECEIPTS):
+        return {}
+    if validated["phone"]["apkSha256"] != validated["tablet"]["apkSha256"]:
+        return {}
+    return validated
 
 
 def _git_value(root: Path, *arguments: str) -> str:
@@ -1007,6 +1074,7 @@ def _contains(path: Path, *markers: str) -> bool:
 def _known_phone_mapping(
     row: dict[str, Any],
     presentation_root: Path,
+    condition_e2e_receipts: dict[str, dict[str, Any]],
 ) -> dict[str, Any] | None:
     legacy = row["legacy"]
     class_name = legacy["formOrControl"]
@@ -1476,11 +1544,36 @@ def _known_phone_mapping(
             },
         }
     character_condition_match = CHARACTER_CONDITION_CONTROL_RE.fullmatch(control)
-    if class_name == "CharacterCareer" and character_condition_match is not None:
-        track = character_condition_match.group("track")
-        expected_handler = CHARACTER_CONDITION_HANDLERS[track]
-        if not any(event.get("handler") == expected_handler for event in legacy.get("events", [])):
-            return None
+    dashboard_condition = (
+        DASHBOARD_CONDITION_CONTROLS.get(control)
+        if class_name == "ConditionMonitorUserControl"
+        else None
+    )
+    if (
+        class_name == "CharacterCareer" and character_condition_match is not None
+    ) or dashboard_condition is not None:
+        if dashboard_condition is not None:
+            track, expected_handler = dashboard_condition
+            legacy_dashboard = (
+                presentation_root
+                / "Chummer"
+                / "Controls"
+                / "Dashboards"
+                / "ConditionMonitorUserControl.cs"
+            )
+            button_control = control in {"_btnPhysical", "_btnApplyStun"}
+            if button_control and not any(
+                event.get("handler") == expected_handler for event in legacy.get("events", [])
+            ):
+                return None
+            expected_counter = "_nudPhysical" if track == "Physical" else "nudStun"
+            if not _contains(legacy_dashboard, expected_handler, expected_counter):
+                return None
+        else:
+            track = character_condition_match.group("track")
+            expected_handler = CHARACTER_CONDITION_HANDLERS[track]
+            if not any(event.get("handler") == expected_handler for event in legacy.get("events", [])):
+                return None
 
         token = track.lower()
         xml_element = f"{token}cmfilled"
@@ -1492,6 +1585,7 @@ def _known_phone_mapping(
         state = presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditorState.cs"
         mutation = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs"
         presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
         shared = (
             _contains(request, "ConditionMonitorEditRequest", track)
             and _contains(state, "ConditionMonitorEditorProjector", track)
@@ -1509,8 +1603,24 @@ def _known_phone_mapping(
             "tablet-condition-filled-",
             "ApplyConditionMonitorEditAsync",
         )
+        e2e_scripted = _contains(
+            e2e_driver,
+            "edit_condition_damage",
+            "assert_condition_damage",
+            f'"{token}ConditionDamageEditPersisted": "pass"',
+            '"processRestartConditionDamagePersistence": "pass"',
+        )
+        phone_e2e = condition_e2e_receipts.get("phone") if e2e_scripted else None
+        tablet_e2e = condition_e2e_receipts.get("tablet") if e2e_scripted else None
+        condition_e2e_complete = bool(
+            phone_implemented and tablet_implemented and phone_e2e and tablet_e2e
+        )
         return {
-            "status": "implemented_pending_emulator" if phone_implemented else "missing",
+            "status": (
+                "implemented_verified_api36"
+                if phone_implemented and condition_e2e_complete
+                else "implemented_pending_emulator" if phone_implemented else "missing"
+            ),
             "route": f"Build > Combat > Damage tracks > {track}",
             "surface": "ConditionMonitorEditPage",
             "automationId": f"condition-monitor-filled-{token}",
@@ -1526,9 +1636,16 @@ def _known_phone_mapping(
             "persistenceAssertion": (
                 f"character/{xml_element} equals the chosen box count after reopen and process restart"
             ),
-            "e2e": {"status": "missing", "ref": None},
+            "e2e": dict(phone_e2e) if phone_e2e is not None else {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_editing_e2e.py" if e2e_scripted else None,
+            },
             "tablet": {
-                "status": "implemented_pending_emulator" if tablet_implemented else "missing",
+                "status": (
+                    "implemented_verified_api36"
+                    if tablet_implemented and condition_e2e_complete
+                    else "implemented_pending_emulator" if tablet_implemented else "missing"
+                ),
                 "surface": "TabletBuildPage persistent damage inspector",
                 "automationId": f"tablet-condition-filled-{token}",
                 "sourceRefs": [
@@ -1539,7 +1656,11 @@ def _known_phone_mapping(
                     "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
                 ],
             },
-            "tabletE2e": {"status": "missing", "ref": None},
+            "tabletE2e": dict(tablet_e2e) if tablet_e2e is not None else {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_editing_e2e.py" if e2e_scripted else None,
+            },
+            "completionProven": condition_e2e_complete,
         }
     vehicle_physical_match = VEHICLE_PHYSICAL_CONDITION_CONTROL_RE.fullmatch(control)
     if class_name == "CharacterCareer" and vehicle_physical_match is not None:
@@ -1695,6 +1816,7 @@ def enrich_rows(
     presentation_root: Path,
 ) -> list[dict[str, Any]]:
     surfaces = registry.get("editing_parity", {}).get("surfaces", {})
+    condition_e2e_receipts = _validated_condition_e2e_receipts()
     for row in rows:
         family = row["mutationFamily"]
         family_contract = surfaces.get(family, {})
@@ -1724,7 +1846,7 @@ def enrich_rows(
             row["overallStatus"] = "not_applicable_non_mutating"
             row["completionProven"] = True
             continue
-        known = _known_phone_mapping(row, presentation_root)
+        known = _known_phone_mapping(row, presentation_root, condition_e2e_receipts)
         if known is not None:
             phone = {
                 key: known[key]
@@ -1771,8 +1893,11 @@ def enrich_rows(
         row["e2e"] = {"phone": phone_e2e, "tablet": tablet_e2e}
         row["editParityRequired"] = True
         row["legacyReviewComplete"] = not legacy_review
-        row["overallStatus"] = "review_required" if legacy_review else "missing"
-        row["completionProven"] = False
+        completion_proven = bool(known and known.get("completionProven")) and not legacy_review
+        row["overallStatus"] = (
+            "complete" if completion_proven else "review_required" if legacy_review else "missing"
+        )
+        row["completionProven"] = completion_proven
     return rows
 
 
@@ -1812,6 +1937,8 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TabletBuildPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs",
         REPO_ROOT / "tests" / "run_api36_editing_e2e.py",
+        REPO_ROOT / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5",
+        *CONDITION_E2E_RECEIPTS.values(),
         WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterContactEditSemantics.cs",
         WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterPetEditSemantics.cs",
         WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",

@@ -3,6 +3,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 REPO = Path(__file__).resolve().parents[1]
@@ -112,7 +113,7 @@ namespace Chummer.Sample
         self.assertGreater(payload["summary"]["reviewedNonMutatingCount"], 0)
         self.assertEqual(0, payload["summary"]["unclassifiedCount"])
         self.assertEqual(
-            payload["summary"]["reviewedNonMutatingCount"],
+            payload["summary"]["reviewedNonMutatingCount"] + 52,
             payload["summary"]["completionProvenCount"],
         )
         self.assertEqual(len(rows), len({row["id"] for row in rows}))
@@ -120,14 +121,18 @@ namespace Chummer.Sample
             self.assertTrue(set(payload["requiredRowFields"]).issubset(row))
             self.assertTrue(row["legacyReviewComplete"])
             self.assertTrue(row["legacy"]["dispositionEvidence"])
-            if row["editParityRequired"]:
-                self.assertFalse(row["completionProven"])
-            else:
+            if row["completionProven"]:
+                self.assertIn(
+                    row["overallStatus"],
+                    {"complete", "not_applicable_non_mutating"},
+                )
+            if not row["editParityRequired"]:
                 self.assertTrue(row["completionProven"])
                 self.assertEqual("not_applicable_non_mutating", row["overallStatus"])
             self.assertFalse(Path(row["legacy"]["sourcePath"]).is_absolute())
             self.assertIn(row["phone"]["status"], {
                 "implemented_pending_emulator",
+                "implemented_verified_api36",
                 "partial_exact_saved_data",
                 "partial_create_only",
                 "read_only",
@@ -136,6 +141,7 @@ namespace Chummer.Sample
             })
             self.assertIn(row["tablet"]["status"], {
                 "implemented_pending_emulator",
+                "implemented_verified_api36",
                 "partial_exact_saved_data",
                 "partial_create_only",
                 "read_only",
@@ -162,6 +168,11 @@ namespace Chummer.Sample
             row for row in rows
             if row["legacy"]["formOrControl"] == "CharacterCareer"
             and inventory.CHARACTER_CONDITION_CONTROL_RE.fullmatch(row["legacy"]["controlName"])
+        ]
+        dashboard_condition_rows = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "ConditionMonitorUserControl"
+            and row["legacy"]["controlName"] in inventory.DASHBOARD_CONDITION_CONTROLS
         ]
         vehicle_physical_rows = [
             row for row in rows
@@ -191,6 +202,7 @@ namespace Chummer.Sample
         self.assertEqual(4, len(attribute_rows))
         self.assertEqual(120, len(matrix_rows))
         self.assertEqual(48, len(character_condition_rows))
+        self.assertEqual(4, len(dashboard_condition_rows))
         self.assertEqual(24, len(vehicle_physical_rows))
         self.assertEqual(18, len(contact_rows))
         self.assertEqual(4, len(pet_rows))
@@ -202,7 +214,7 @@ namespace Chummer.Sample
         self.assertEqual(4, len(linked_character_rows))
         self.assertTrue(all(row["presenterMutation"] for row in origin_rows + attribute_rows))
         self.assertTrue(all(row["presenterMutation"] for row in matrix_rows))
-        condition_rows = character_condition_rows + vehicle_physical_rows
+        condition_rows = character_condition_rows + dashboard_condition_rows + vehicle_physical_rows
         self.assertTrue(all(row["presenterMutation"] for row in condition_rows))
         self.assertTrue(
             all(row["phone"]["status"] == "partial_exact_saved_data" for row in matrix_rows)
@@ -212,14 +224,14 @@ namespace Chummer.Sample
         )
         self.assertTrue(
             all(
-                row["phone"]["status"] == "implemented_pending_emulator"
-                for row in character_condition_rows
+                row["phone"]["status"] == "implemented_verified_api36"
+                for row in character_condition_rows + dashboard_condition_rows
             )
         )
         self.assertTrue(
             all(
-                row["tablet"]["status"] == "implemented_pending_emulator"
-                for row in character_condition_rows
+                row["tablet"]["status"] == "implemented_verified_api36"
+                for row in character_condition_rows + dashboard_condition_rows
             )
         )
         self.assertTrue(
@@ -238,16 +250,25 @@ namespace Chummer.Sample
         self.assertTrue(all(row["phone"]["coverageLimit"] for row in partial_rows))
         self.assertTrue(all(row["tablet"]["coverageLimit"] for row in partial_rows))
         self.assertTrue(
-            all("coverageLimit" not in row["phone"] for row in character_condition_rows)
+            all("coverageLimit" not in row["phone"] for row in character_condition_rows + dashboard_condition_rows)
         )
         self.assertTrue(
-            all("coverageLimit" not in row["tablet"] for row in character_condition_rows)
+            all("coverageLimit" not in row["tablet"] for row in character_condition_rows + dashboard_condition_rows)
         )
         self.assertTrue(all(row["persistenceAssertion"] for row in matrix_rows))
         self.assertTrue(all(row["e2e"]["phone"]["status"] == "missing" for row in matrix_rows))
         self.assertTrue(all(row["e2e"]["tablet"]["status"] == "missing" for row in matrix_rows))
-        self.assertTrue(all(row["e2e"]["phone"]["status"] == "missing" for row in condition_rows))
-        self.assertTrue(all(row["e2e"]["tablet"]["status"] == "missing" for row in condition_rows))
+        scripted_condition_rows = character_condition_rows + dashboard_condition_rows
+        self.assertTrue(
+            all(row["e2e"]["phone"]["status"] == "executed_api36" for row in scripted_condition_rows)
+        )
+        self.assertTrue(
+            all(row["e2e"]["tablet"]["status"] == "executed_api36" for row in scripted_condition_rows)
+        )
+        self.assertTrue(all(row["completionProven"] for row in scripted_condition_rows))
+        self.assertTrue(all(row["overallStatus"] == "complete" for row in scripted_condition_rows))
+        self.assertTrue(all(row["e2e"]["phone"]["status"] == "missing" for row in vehicle_physical_rows))
+        self.assertTrue(all(row["e2e"]["tablet"]["status"] == "missing" for row in vehicle_physical_rows))
         self.assertTrue(all(row["presenterMutation"] for row in contact_rows))
         self.assertTrue(all(row["persistenceAssertion"] for row in contact_rows))
         self.assertTrue(
@@ -305,8 +326,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 104,
-                "missing": 1417,
+                "implemented_pending_emulator": 56,
+                "implemented_verified_api36": 52,
+                "missing": 1413,
                 "not_applicable_non_mutating": 454,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 144,
@@ -315,8 +337,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 74,
-                "missing": 1557,
+                "implemented_pending_emulator": 26,
+                "implemented_verified_api36": 52,
+                "missing": 1553,
                 "not_applicable_non_mutating": 454,
                 "partial_exact_saved_data": 144,
             },
@@ -332,6 +355,25 @@ namespace Chummer.Sample
                 if row["editParityRequired"] and row["id"] not in mapped_ids
             )
         )
+
+    def test_condition_receipts_fail_closed_when_a_driver_hash_is_stale(self) -> None:
+        self.assertEqual(
+            {"phone", "tablet"},
+            set(inventory._validated_condition_e2e_receipts()),
+        )
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            temporary_root = Path(temporary)
+            receipt_paths = {}
+            for profile, source in inventory.CONDITION_E2E_RECEIPTS.items():
+                receipt = json.loads(source.read_text(encoding="utf-8"))
+                if profile == "phone":
+                    receipt["driverSha256"] = "0" * 64
+                target = temporary_root / f"{profile}.json"
+                target.write_text(json.dumps(receipt), encoding="utf-8")
+                receipt_paths[profile] = target
+
+            with patch.dict(inventory.CONDITION_E2E_RECEIPTS, receipt_paths, clear=True):
+                self.assertEqual({}, inventory._validated_condition_e2e_receipts())
 
 
 if __name__ == "__main__":

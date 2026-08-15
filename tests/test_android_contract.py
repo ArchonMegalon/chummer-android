@@ -648,6 +648,14 @@ class AndroidContractTests(unittest.TestCase):
             '"petLinkedRunnerRemoveRestoredIdentity": "pass"',
         ):
             self.assertIn(marker, e2e)
+
+        for marker in (
+            '"/sdcard/Download/career-condition-monitor-e2e.chum5"',
+            'select_android_document(device, "career-condition-monitor-e2e.chum5")',
+            '"careerRunnerImport": "pass"',
+            '"inputFixtureSha256": sha256(args.condition_runner.resolve())',
+        ):
+            self.assertIn(marker, e2e)
         self.assertNotIn("XDocument", phone + tablet + coordinator + staging)
         self.assertNotIn("XPath", phone + tablet + coordinator + staging)
 
@@ -761,7 +769,7 @@ class AndroidContractTests(unittest.TestCase):
         self.assertGreater(inventory["summary"]["reviewedNonMutatingCount"], 0)
         self.assertEqual(0, inventory["summary"]["unclassifiedCount"])
         self.assertEqual(
-            inventory["summary"]["reviewedNonMutatingCount"],
+            inventory["summary"]["reviewedNonMutatingCount"] + 52,
             inventory["summary"]["completionProvenCount"],
         )
         required_fields = set(inventory["requiredRowFields"])
@@ -769,9 +777,12 @@ class AndroidContractTests(unittest.TestCase):
             self.assertTrue(required_fields.issubset(row))
             self.assertTrue(row["legacyReviewComplete"])
             self.assertTrue(row["legacy"]["dispositionEvidence"])
-            if row["editParityRequired"]:
-                self.assertFalse(row["completionProven"])
-            else:
+            if row["completionProven"]:
+                self.assertIn(
+                    row["overallStatus"],
+                    {"complete", "not_applicable_non_mutating"},
+                )
+            if not row["editParityRequired"]:
                 self.assertTrue(row["completionProven"])
                 self.assertEqual("not_applicable_non_mutating", row["overallStatus"])
             self.assertIn(row["mutationFamily"], surfaces)
