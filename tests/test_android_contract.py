@@ -221,6 +221,28 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("Components.WebView.Maui", project)
         self.assertNotIn("Chummer.Blazor", project)
 
+    def test_android_restores_the_last_local_workspace_after_process_restart(self) -> None:
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        initialize = coordinator[coordinator.index("public async Task InitializeAsync") :]
+        initialize = initialize[: initialize.index("public async Task OpenLocalAsync")]
+        restore = coordinator[coordinator.index("private async Task RestoreSelectedWorkspaceAsync") :]
+        restore = restore[: restore.index("private void RefreshSurface")]
+
+        self.assertIn("SelectedWorkspacePreferenceKey", coordinator)
+        self.assertLess(
+            initialize.index("await _presenter.InitializeAsync"),
+            initialize.index("await RestoreSelectedWorkspaceAsync"),
+        )
+        self.assertIn("State.OpenWorkspaces.Count == 1", restore)
+        self.assertIn("State.Session.ActiveWorkspaceId", restore)
+        self.assertIn("State.Profile is not null", restore)
+        self.assertIn("new CharacterWorkspaceId(selectedId)", restore)
+        self.assertIn("await _presenter.LoadAsync(workspaceId.Value", restore)
+        self.assertIn("await _presenter.LoadAsync", restore)
+        self.assertNotIn("await _presenter.SwitchWorkspaceAsync", restore)
+        self.assertIn("else if (_initialized && State.OpenWorkspaces.Count == 0)", coordinator)
+        self.assertIn("Preferences.Default.Set(SelectedWorkspacePreferenceKey", coordinator)
+
     def test_build_uses_native_drill_down_navigation_without_horizontal_pwa_tabs(self) -> None:
         build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
         flow = (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8")
@@ -232,6 +254,12 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("BuildNavigation.GroupKey", flow)
         self.assertIn("NativeCommandGroupPage", commands)
         self.assertIn("NativeTheme.NavigationRow", build + flow + commands)
+        navigation_row = theme[theme.index("public static Border NavigationRow") :]
+        navigation_row = navigation_row[: navigation_row.index("public static Label FieldLabel")]
+        self.assertIn("Button interaction = new()", navigation_row)
+        self.assertIn("interaction.Clicked +=", navigation_row)
+        self.assertIn("Grid.SetColumnSpan(interaction, 2)", navigation_row)
+        self.assertNotIn("TapGestureRecognizer", navigation_row)
         self.assertIn("SemanticProperties.SetDescription", theme)
         self.assertIn("CollectionItemTitle(item.Label)", flow)
         self.assertNotIn("ScrollOrientation.Horizontal", build)
@@ -242,6 +270,12 @@ class AndroidContractTests(unittest.TestCase):
         tablet = (PROJECT / "Native" / "TabletBuildPage.cs").read_text(encoding="utf-8")
         self.assertIn("CollectionItemCopy(item.Label)", tablet)
         self.assertIn('label.IndexOf(" · ", StringComparison.Ordinal)', tablet)
+
+    def test_dialog_commit_recovers_the_active_section_projection(self) -> None:
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        self.assertIn("State.ContentRevision > contentRevision", coordinator)
+        self.assertIn("State.ActiveDialog is null", coordinator)
+        self.assertIn("_presenter.ExecuteWorkspaceActionAsync(activeSectionAction", coordinator)
 
     def test_attributes_and_origin_dossier_have_native_mutation_paths(self) -> None:
         build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
@@ -269,6 +303,8 @@ class AndroidContractTests(unittest.TestCase):
     def test_collection_items_have_typed_stable_id_phone_editing_paths(self) -> None:
         flow = (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8")
         editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
+        tablet = (PROJECT / "Native" / "TabletBuildPage.cs").read_text(encoding="utf-8")
+        page = (PROJECT / "Native" / "NativePageBase.cs").read_text(encoding="utf-8")
         coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
 
         self.assertIn("ActiveCollectionEditor", flow + editor)
@@ -284,6 +320,10 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("Coordinator.ExecuteCommandAsync(action.ControlId)", flow)
         self.assertIn("new CollectionItemEditorPage", flow)
         self.assertIn("new NestedCollectionAddPage", editor)
+        self.assertIn("RunWithConditionalRefreshAsync", page + editor + tablet)
+        self.assertIn("private async Task<bool> SaveAsync", editor)
+        self.assertIn("private async Task<bool> SaveInspectorAsync", tablet)
+        self.assertIn("return false;", editor + tablet)
         for automation_id in (
             "collection-item-",
             "collection-field-",

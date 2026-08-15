@@ -61,7 +61,21 @@ class Device:
 
     def hierarchy(self) -> list[UiNode]:
         try:
-            self.shell("uiautomator", "dump", "/sdcard/chummer-editing-window.xml")
+            dump_output = self.shell(
+                "uiautomator",
+                "dump",
+                "/sdcard/chummer-editing-window.xml",
+            )
+            normalized_dump_output = dump_output.lower()
+            if not any(
+                marker in normalized_dump_output
+                for marker in ("hierarchy dumped", "hierchary dumped")
+            ):
+                (self.evidence / "last-invalid-hierarchy.txt").write_text(
+                    dump_output or "uiautomator returned no dump status",
+                    encoding="utf-8",
+                )
+                return []
             xml = self.run(
                 "exec-out", "cat", "/sdcard/chummer-editing-window.xml"
             ).stdout
@@ -171,6 +185,9 @@ class Device:
             node = self.find(selector)
             if node is not None:
                 return node
+            if self.dismiss_system_ui_anr():
+                time.sleep(2)
+                continue
             if scroll and scrolls < max_scrolls:
                 self.swipe_up(
                     x_ratio=self._scroll_x_ratio(selector),
@@ -180,6 +197,14 @@ class Device:
             time.sleep(0.75)
         self.capture("failure")
         raise RuntimeError(f"Timed out waiting for UI node {selector!r}")
+
+    def dismiss_system_ui_anr(self) -> bool:
+        wait_button = self.find("aerr_wait")
+        if wait_button is None:
+            return False
+        x, y = wait_button.center
+        self.shell("input", "tap", str(x), str(y))
+        return True
 
     def tap(
         self,
@@ -191,19 +216,83 @@ class Device:
         scroll_distance_ratio: float = 0.52,
         text_leading_offset: int = 0,
     ) -> None:
-        node = self.wait(
-            selector,
-            timeout=timeout,
-            scroll=scroll,
-            max_scrolls=max_scrolls,
-            scroll_distance_ratio=scroll_distance_ratio,
-        )
+        deadline = time.monotonic() + timeout
+        scrolls = 0
+        node = None
+        while time.monotonic() < deadline:
+            candidate = self.find(selector)
+            if candidate is not None and self.node_has_tappable_bounds(candidate):
+                node = candidate
+                break
+            if self.dismiss_system_ui_anr():
+                time.sleep(2)
+                continue
+            if scroll and scrolls < max_scrolls:
+                self.swipe_up(
+                    x_ratio=self._scroll_x_ratio(selector),
+                    distance_ratio=scroll_distance_ratio,
+                )
+                scrolls += 1
+            time.sleep(0.75)
+        if node is None:
+            self.capture("failure")
+            raise RuntimeError(f"Timed out waiting for tappable UI node {selector!r}")
         x, y = node.center
         if text_leading_offset > 0 and node.attributes.get("text"):
             match = BOUNDS.fullmatch(node.attributes.get("bounds", ""))
             if match is not None:
                 x = max(1, int(match.group(1)) - text_leading_offset)
         self.shell("input", "tap", str(x), str(y))
+
+    def node_has_tappable_bounds(self, node: UiNode) -> bool:
+        match = BOUNDS.fullmatch(node.attributes.get("bounds", ""))
+        if match is None:
+            return False
+        left, top, right, bottom = (int(value) for value in match.groups())
+        width, height = self.display_size()
+        center_y = (top + bottom) // 2
+        return (
+            right - left > 8
+            and bottom - top > 8
+            and 0 <= left < right <= width
+            and 0 <= top < bottom <= height
+            and center_y < height * 0.96
+        )
+
+    def tap_until_visible(
+        self,
+        selector: str,
+        target: str,
+        *,
+        timeout: int = 45,
+        scroll: bool = False,
+        max_scrolls: int = 12,
+        scroll_distance_ratio: float = 0.22,
+    ) -> UiNode:
+        deadline = time.monotonic() + timeout
+        scrolls = 0
+        while time.monotonic() < deadline:
+            target_node = self.find(target)
+            if target_node is not None:
+                return target_node
+            if self.dismiss_system_ui_anr():
+                time.sleep(2)
+                continue
+            source_node = self.find(selector)
+            if source_node is not None:
+                x, y = source_node.center
+                self.shell("input", "tap", str(x), str(y))
+            elif scroll and scrolls < max_scrolls:
+                self.swipe_up(
+                    x_ratio=self._scroll_x_ratio(selector),
+                    distance_ratio=scroll_distance_ratio,
+                )
+                scrolls += 1
+            time.sleep(1.25)
+        self.capture("failure")
+        raise RuntimeError(
+            f"Timed out waiting for UI node {target!r} after tapping {selector!r}"
+        )
 
     def set_text(
         self,
@@ -219,22 +308,86 @@ class Device:
         attempts = 0
         max_attempts = max_scrolls + 1 if scroll else 1
         while node is None and attempts < max_attempts:
-            node = self.find(selector, field_after_label=label)
+            candidate = self.find(selector, field_after_label=label)
+            node = candidate if candidate is not None and self.input_node_is_tappable(candidate) else None
             if node is None and scroll and attempts < max_scrolls:
                 self.swipe_up(
                     x_ratio=self._scroll_x_ratio(selector),
                     distance_ratio=scroll_distance_ratio,
                 )
+                time.sleep(0.75)
             attempts += 1
         if node is None:
             self.capture("missing-field")
             raise RuntimeError(f"Could not find field {selector!r} after {label!r}")
-        x, y = node.center
-        self.shell("input", "tap", str(x), str(y))
+        focused = None
+        for _ in range(3):
+            x, y = node.center
+            self.shell("input", "tap", str(x), str(y))
+            time.sleep(0.5)
+            focused = self.find(selector)
+            if focused is not None and focused.attributes.get("focused") == "true":
+                break
+            if self.keyboard_visible():
+                self.dismiss_keyboard()
+            candidate = self.find(selector, field_after_label=label)
+            if candidate is not None and self.input_node_is_tappable(candidate):
+                node = candidate
+        if focused is None or focused.attributes.get("focused") != "true":
+            self.capture("field-focus-failed")
+            raise RuntimeError(f"Field {selector!r} did not receive focus")
         self.shell("input", "keycombination", "113", "29")
         time.sleep(0.25)
-        self.shell("input", "text", value.replace(" ", "%s"))
-        self.shell("input", "keyevent", "4")
+        if value:
+            self.shell("input", "text", value.replace(" ", "%s"))
+        else:
+            self.shell("input", "keyevent", "67")
+        time.sleep(0.25)
+        updated = self.find(selector)
+        if updated is None or updated.attributes.get("text") != value:
+            self.capture("field-value-failed")
+            actual = None if updated is None else updated.attributes.get("text")
+            raise RuntimeError(
+                f"Field {selector!r} did not receive {value!r}; rendered {actual!r}"
+            )
+        self.dismiss_keyboard()
+
+    def input_node_is_tappable(self, node: UiNode) -> bool:
+        match = BOUNDS.fullmatch(node.attributes.get("bounds", ""))
+        if match is None:
+            return False
+        left, top, right, bottom = (int(value) for value in match.groups())
+        _, height = self.display_size()
+        center_y = (top + bottom) // 2
+        return right - left > 8 and bottom - top > 8 and 0 <= top < bottom and center_y < height * 0.88
+
+    def keyboard_visible(self) -> bool:
+        state = self.shell("dumpsys", "input_method")
+        return "mInputShown=true" in state or re.search(
+            r"mImeWindowVis=(?:0x)?[1-9a-fA-F]",
+            state,
+        ) is not None
+
+    def dismiss_keyboard(self) -> None:
+        if not self.keyboard_visible():
+            return
+        self.shell("input", "keyevent", "111")
+        time.sleep(0.5)
+        if not self.keyboard_visible():
+            time.sleep(0.75)
+            return
+        width, height = self.display_size()
+        self.shell(
+            "input",
+            "tap",
+            str(int(round(width * 0.15))),
+            str(height - max(24, int(round(height * 0.021)))),
+        )
+        time.sleep(0.5)
+        if self.keyboard_visible():
+            self.capture("keyboard-dismiss-failed")
+            raise RuntimeError("Android IME dismiss control did not hide the keyboard")
+        time.sleep(0.75)
 
     def assert_text(self, expected: str) -> None:
         nodes = self.hierarchy()
@@ -356,6 +509,8 @@ def reset_scroll_to_top(
 ) -> None:
     for _ in range(swipes):
         device.swipe_down(x_ratio=x_ratio)
+    if swipes > 0:
+        time.sleep(0.75)
 
 
 def tap_collection_item(device: Device, selector: str) -> None:
@@ -372,13 +527,14 @@ def tap_collection_item(device: Device, selector: str) -> None:
 
 def open_attribute_section(device: Device, profile: str) -> None:
     if profile == "tablet":
-        reset_scroll_to_top(device, x_ratio=0.15)
+        reset_scroll_to_top(device, x_ratio=0.15, swipes=24)
         device.tap("tablet-build-tab-tab-attributes", scroll=True)
         reset_scroll_to_top(device, x_ratio=0.375)
         device.wait("tablet-attribute-body", timeout=45)
         device.tap("tablet-attribute-body")
         device.wait("tablet-attribute-base-body", timeout=45)
         return
+    reset_scroll_to_top(device, swipes=12)
     device.tap("build-section-tab-attributes", scroll=True)
     reset_scroll_to_top(device)
     device.wait("attribute-body", timeout=45, scroll=True)
@@ -416,61 +572,123 @@ def assert_body_base(device: Device, profile: str, expected: int) -> None:
 
 def open_gear_section(device: Device, profile: str) -> None:
     if profile == "tablet":
-        reset_scroll_to_top(device, x_ratio=0.15)
+        reset_scroll_to_top(device, x_ratio=0.15, swipes=24)
         device.tap("tablet-build-tab-tab-gear", scroll=True)
-        reset_scroll_to_top(device, x_ratio=0.375)
+        reset_scroll_to_top(device, x_ratio=0.375, swipes=12)
         device.tap("tablet-build-action-tab-gear-gear", scroll=True)
-        device.wait("tablet-quick-gear-add", timeout=45, scroll=True)
+        device.wait(
+            "tablet-quick-gear-add",
+            timeout=180,
+            scroll=True,
+            max_scrolls=48,
+            scroll_distance_ratio=0.22,
+        )
         return
+    reset_scroll_to_top(device, swipes=12)
     device.tap("build-section-tab-gear", scroll=True)
-    reset_scroll_to_top(device)
+    reset_scroll_to_top(device, swipes=12)
     device.tap("build-action-tab-gear-gear", scroll=True)
-    device.wait("section-quick-gear-add", timeout=45, scroll=True)
+    device.wait(
+        "section-quick-gear-add",
+        timeout=180,
+        scroll=True,
+        max_scrolls=48,
+        scroll_distance_ratio=0.22,
+    )
 
 
 def open_contact_section(device: Device, profile: str) -> None:
     if profile == "tablet":
-        reset_scroll_to_top(device, x_ratio=0.15)
+        reset_scroll_to_top(device, x_ratio=0.15, swipes=24)
         device.tap("tablet-build-tab-tab-relationships", scroll=True)
-        reset_scroll_to_top(device, x_ratio=0.375)
+        reset_scroll_to_top(device, x_ratio=0.375, swipes=12)
         device.tap("tablet-build-action-tab-relationships-contacts", scroll=True)
-        device.wait("tablet-quick-contact-add", timeout=45, scroll=True)
+        device.wait(
+            "tablet-quick-contact-add",
+            timeout=180,
+            scroll=True,
+            max_scrolls=48,
+            scroll_distance_ratio=0.22,
+        )
         return
+    reset_scroll_to_top(device, swipes=12)
     device.tap("build-section-tab-relationships", scroll=True)
-    reset_scroll_to_top(device)
+    reset_scroll_to_top(device, swipes=12)
     device.tap("build-action-tab-relationships-contacts", scroll=True)
-    device.wait("section-quick-contact-add", timeout=45, scroll=True)
+    device.wait(
+        "section-quick-contact-add",
+        timeout=180,
+        scroll=True,
+        max_scrolls=48,
+        scroll_distance_ratio=0.22,
+    )
 
 
 def open_pet_section(device: Device, profile: str) -> None:
     if profile == "tablet":
-        reset_scroll_to_top(device, x_ratio=0.15)
+        reset_scroll_to_top(device, x_ratio=0.15, swipes=24)
         device.tap("tablet-build-tab-tab-relationships", scroll=True)
-        reset_scroll_to_top(device, x_ratio=0.375)
+        reset_scroll_to_top(device, x_ratio=0.375, swipes=12)
         device.tap("tablet-build-action-tab-relationships-pets", scroll=True)
-        device.wait("tablet-quick-contact-add", timeout=45, scroll=True)
+        device.wait(
+            "tablet-quick-contact-add",
+            timeout=180,
+            scroll=True,
+            max_scrolls=48,
+            scroll_distance_ratio=0.22,
+        )
         return
+    reset_scroll_to_top(device, swipes=12)
     device.tap("build-section-tab-relationships", scroll=True)
-    reset_scroll_to_top(device)
+    reset_scroll_to_top(device, swipes=12)
     device.tap("build-action-tab-relationships-pets", scroll=True)
-    device.wait("section-quick-contact-add", timeout=45, scroll=True)
+    device.wait(
+        "section-quick-contact-add",
+        timeout=180,
+        scroll=True,
+        max_scrolls=48,
+        scroll_distance_ratio=0.22,
+    )
 
 
 def ensure_checked(device: Device, selector: str, expected: bool = True) -> None:
-    node = device.wait(selector, scroll=True)
+    node = device.wait(
+        selector,
+        scroll=True,
+        max_scrolls=20,
+        scroll_distance_ratio=0.22,
+    )
     checked = node.attributes.get("checked") == "true"
     if checked != expected:
-        x, y = node.center
-        device.shell("input", "tap", str(x), str(y))
+        device.tap(
+            selector,
+            scroll=True,
+            max_scrolls=20,
+            scroll_distance_ratio=0.22,
+        )
+        time.sleep(0.5)
+        updated = device.wait(
+            selector,
+            scroll=True,
+            max_scrolls=20,
+            scroll_distance_ratio=0.22,
+        )
+        if (updated.attributes.get("checked") == "true") != expected:
+            device.capture("toggle-state-failed")
+            raise RuntimeError(f"Toggle {selector!r} did not change to {expected}")
 
 
 def selected_text(device: Device, selector: str, label: str, *, scroll: bool = False) -> str:
     node = None
     attempts = 0
-    while node is None and attempts < (8 if scroll else 1):
-        node = device.find(selector, field_after_label=label)
+    while node is None and attempts < (20 if scroll else 1):
+        node = device.find(selector)
         if node is None and scroll:
-            device.swipe_up(x_ratio=device._scroll_x_ratio(selector))
+            device.swipe_up(
+                x_ratio=device._scroll_x_ratio(selector),
+                distance_ratio=0.22,
+            )
+            time.sleep(0.75)
         attempts += 1
     if node is None:
         device.capture("missing-contact-value")
@@ -479,6 +697,11 @@ def selected_text(device: Device, selector: str, label: str, *, scroll: bool = F
 
 
 def assert_linked_identity(device: Device, profile: str, kind: str) -> None:
+    reset_scroll_to_top(
+        device,
+        x_ratio=0.82 if profile == "tablet" else 0.5,
+        swipes=12,
+    )
     prefix = "tablet" if profile == "tablet" else "collection"
     expected = [
         (f"{prefix}-field-name", "Name", "NeonFoxE2E"),
@@ -492,14 +715,60 @@ def assert_linked_identity(device: Device, profile: str, kind: str) -> None:
             ]
         )
     for selector, label, value in expected:
-        node = device.wait(selector, scroll=True)
         actual = selected_text(device, selector, label, scroll=True)
-        if actual != value or node.attributes.get("enabled") != "false":
+        node = device.find(selector)
+        enabled = None if node is None else node.attributes.get("enabled")
+        if actual != value or enabled != "false":
             device.capture(f"{profile}-{kind}-linked-identity-failed")
             raise RuntimeError(
                 f"Linked {kind} identity {label!r} was not projected read-only: "
-                f"expected {value!r}, got {actual!r}, enabled={node.attributes.get('enabled')!r}"
+                f"expected {value!r}, got {actual!r}, enabled={enabled!r}"
             )
+
+
+def select_android_document(device: Device, filename: str) -> None:
+    roots_drawer_open = (
+        device.find("Recent") is not None
+        and device.find("Documents") is not None
+    )
+    if roots_drawer_open:
+        width, height = device.display_size()
+        device.shell(
+            "input",
+            "tap",
+            str(int(round(width * 0.75))),
+            str(int(round(height * 0.5))),
+        )
+        time.sleep(0.75)
+
+    if device.find(filename) is None:
+        device.wait("Show roots", timeout=45)
+        device.tap("Show roots")
+        time.sleep(0.75)
+        device.wait("Downloads", timeout=45)
+        device.tap("Downloads")
+        time.sleep(0.75)
+        device.wait("Files in Downloads", timeout=45)
+        device.wait(filename, timeout=45, scroll=True)
+    device.tap(filename, scroll=True)
+
+
+def launch_app(device: Device, attempts: int = 3) -> None:
+    for attempt in range(attempts):
+        try:
+            device.shell(
+                "monkey",
+                "-p",
+                PACKAGE,
+                "-c",
+                "android.intent.category.LAUNCHER",
+                "1",
+            )
+            return
+        except subprocess.CalledProcessError:
+            if attempt + 1 == attempts:
+                raise
+            time.sleep(3)
 
 
 def attach_linked_runner(
@@ -515,14 +784,12 @@ def attach_linked_runner(
     status_selector = "tablet-linked-status" if profile == "tablet" else "collection-linked-status-"
     if validate_invalid:
         device.tap(attach_selector, scroll=True)
-        device.wait("invalid-linked-runner-e2e.chum5", timeout=45, scroll=True)
-        device.tap("invalid-linked-runner-e2e.chum5", scroll=True)
+        select_android_document(device, "invalid-linked-runner-e2e.chum5")
         device.wait("Select a valid Chummer5 .chum5 or .chum5lz runner document.", timeout=45)
         device.tap("OK")
 
     device.tap(attach_selector, scroll=True)
-    device.wait("linked-runner-e2e.chum5", timeout=45, scroll=True)
-    device.tap("linked-runner-e2e.chum5", scroll=True)
+    select_android_document(device, "linked-runner-e2e.chum5")
     device.wait(status_selector, timeout=60, scroll=True)
     assert_linked_identity(device, profile, kind)
     if profile == "phone":
@@ -545,16 +812,30 @@ def assert_link_persisted_then_remove(
     device.tap(remove_selector, scroll=True)
     device.wait("Remove linked runner?", timeout=30)
     device.tap("Remove link")
-    device.wait(status_selector, timeout=60, scroll=True)
     name_selector = "tablet-field-name" if profile == "tablet" else "collection-field-name"
+    time.sleep(0.75)
+    reset_scroll_to_top(
+        device,
+        x_ratio=0.82 if profile == "tablet" else 0.5,
+        swipes=12,
+    )
+    if device.find(name_selector) is None:
+        device.wait(original_name, timeout=60, scroll=True)
+        tap_collection_item(device, original_name)
+    reset_scroll_to_top(
+        device,
+        x_ratio=0.82 if profile == "tablet" else 0.5,
+        swipes=12,
+    )
     name_node = device.wait(name_selector, scroll=True)
-    restored = selected_text(device, name_selector, "Name", scroll=True)
+    restored = name_node.attributes.get("text", "")
     if restored != original_name or name_node.attributes.get("enabled") != "true":
         device.capture(f"{profile}-{kind}-unlink-restore-failed")
         raise RuntimeError(
             f"Unlink did not restore editable {kind} identity: "
             f"expected {original_name!r}, got {restored!r}, enabled={name_node.attributes.get('enabled')!r}"
         )
+    device.wait(status_selector, timeout=60, scroll=True)
     if profile == "phone":
         device.back()
 
@@ -586,13 +867,27 @@ def add_and_edit_gear(device: Device, profile: str) -> None:
 
     if profile == "tablet":
         device.wait("tablet-inspector-save", timeout=60, scroll=True)
+        reset_scroll_to_top(device, x_ratio=0.82, swipes=12)
         device.set_text("tablet-field-customname", "Custom Name", "GearProofE2E")
         device.tap("tablet-inspector-save", scroll=True)
-        device.assert_text("GearProofE2E")
+        reset_scroll_to_top(device, x_ratio=0.82, swipes=12)
+        saved_custom_name = selected_text(
+            device,
+            "tablet-field-customname",
+            "Custom Name",
+            scroll=True,
+        )
+        if saved_custom_name != "GearProofE2E":
+            device.capture("tablet-gear-custom-name-not-saved")
+            raise RuntimeError(
+                "Gear Custom Name was not saved in the tablet inspector: "
+                f"expected 'GearProofE2E', got {saved_custom_name!r}"
+            )
         return
 
     device.set_text("collection-field-customname", "Custom Name", "GearProofE2E")
     device.tap("Save changes", scroll=True)
+    reset_scroll_to_top(device, swipes=6)
     device.assert_text("GearProofE2E")
     device.back()
 
@@ -601,6 +896,7 @@ def add_contact_from_dialog(device: Device, profile: str, name: str, role: str) 
     quick_add = "tablet-quick-contact-add" if profile == "tablet" else "section-quick-contact-add"
     device.tap(quick_add, scroll=True)
     device.wait("dialog-action-add", timeout=45, scroll=True)
+    reset_scroll_to_top(device, x_ratio=0.375 if profile == "tablet" else 0.5, swipes=6)
     device.set_text("dialog-field-uicontactname", "Contact Name", name, scroll=True)
     device.set_text("dialog-field-uicontactrole", "Role", role, scroll=True)
     device.tap("dialog-action-add", scroll=True)
@@ -629,18 +925,56 @@ def add_and_edit_contact(device: Device, profile: str) -> None:
         (f"{prefix}-field-groupname", "Group Name", "NightMarketE2E"),
     )
     for selector, label, value in fields:
-        device.set_text(selector, label, value, scroll=True)
+        device.set_text(
+            selector,
+            label,
+            value,
+            scroll=True,
+            max_scrolls=20,
+            scroll_distance_ratio=0.22,
+        )
 
     connection_selector = (
         "tablet-contact-connection" if profile == "tablet" else "collection-contact-connection-"
     )
     loyalty_selector = "tablet-contact-loyalty" if profile == "tablet" else "collection-contact-loyalty-"
-    device.set_text(connection_selector, "Connection · 1–6", "7", scroll=True)
+    reset_scroll_to_top(
+        device,
+        x_ratio=0.82 if profile == "tablet" else 0.5,
+        swipes=12,
+    )
+    device.set_text(
+        connection_selector,
+        "Connection · 1–6",
+        "7",
+        scroll=True,
+        max_scrolls=20,
+        scroll_distance_ratio=0.22,
+    )
     device.tap("tablet-inspector-save" if profile == "tablet" else "Save changes", scroll=True)
     device.wait("Invalid Connection", timeout=30)
     device.tap("OK")
-    device.set_text(connection_selector, "Connection · 1–6", "6", scroll=True)
-    device.set_text(loyalty_selector, "Loyalty · 1–6", "5", scroll=True)
+    reset_scroll_to_top(
+        device,
+        x_ratio=0.82 if profile == "tablet" else 0.5,
+        swipes=12,
+    )
+    device.set_text(
+        connection_selector,
+        "Connection · 1–6",
+        "6",
+        scroll=True,
+        max_scrolls=20,
+        scroll_distance_ratio=0.22,
+    )
+    device.set_text(
+        loyalty_selector,
+        "Loyalty · 1–6",
+        "5",
+        scroll=True,
+        max_scrolls=20,
+        scroll_distance_ratio=0.22,
+    )
 
     toggle_prefix = "tablet-toggle" if profile == "tablet" else "collection-toggle"
     for toggle in ("free", "family", "blackmail"):
@@ -648,6 +982,11 @@ def add_and_edit_contact(device: Device, profile: str) -> None:
     save = "tablet-inspector-save" if profile == "tablet" else "Save changes"
     device.tap(save, scroll=True)
     time.sleep(1)
+    reset_scroll_to_top(
+        device,
+        x_ratio=0.82 if profile == "tablet" else 0.5,
+        swipes=12,
+    )
     ensure_checked(device, f"{toggle_prefix}-group")
     device.tap(save, scroll=True)
     time.sleep(1)
@@ -803,11 +1142,10 @@ def main() -> int:
     device.shell("pm", "clear", PACKAGE)
     device.push(args.linked_runner, "/sdcard/Download/linked-runner-e2e.chum5")
     device.push(args.invalid_linked_runner, "/sdcard/Download/invalid-linked-runner-e2e.chum5")
-    device.shell("monkey", "-p", PACKAGE, "-c", "android.intent.category.LAUNCHER", "1")
+    launch_app(device)
     device.wait("Your runners", timeout=90)
 
-    device.tap("home-new-runner")
-    device.wait("Select Build Method")
+    device.tap_until_visible("home-new-runner", "Select Build Method")
     device.tap("dialog-action-create-character", scroll=True)
     device.wait("dialog-action-complete-new-character-workflow", timeout=45, scroll=True)
     device.tap("dialog-action-complete-new-character-workflow", scroll=True)
@@ -855,7 +1193,7 @@ def main() -> int:
     device.capture("editing-persisted")
 
     device.shell("am", "force-stop", PACKAGE)
-    device.shell("monkey", "-p", PACKAGE, "-c", "android.intent.category.LAUNCHER", "1")
+    launch_app(device)
     device.wait("Continue building", timeout=90)
     open_build(device, args.profile)
     device.tap("tablet-origin-dossier" if args.profile == "tablet" else "build-origin-dossier", scroll=True)
@@ -875,11 +1213,16 @@ def main() -> int:
         x_ratio=0.375 if args.profile == "tablet" else 0.5,
         swipes=6,
     )
-    if args.profile == "tablet":
-        device.assert_text("GearProofE2E")
-    else:
-        tap_collection_item(device, "GearProofE2E")
-        device.assert_text("GearProofE2E")
+    tap_collection_item(device, "Ares Predator V")
+    gear_field = "tablet-field-customname" if args.profile == "tablet" else "collection-field-customname"
+    persisted_custom_name = selected_text(device, gear_field, "Custom Name", scroll=True)
+    if persisted_custom_name != "GearProofE2E":
+        device.capture(f"{args.profile}-gear-custom-name-not-persisted")
+        raise RuntimeError(
+            "Gear Custom Name did not persist after process restart: "
+            f"expected 'GearProofE2E', got {persisted_custom_name!r}"
+        )
+    if args.profile == "phone":
         device.back()
         device.back()
     assert_link_persisted_then_remove(
