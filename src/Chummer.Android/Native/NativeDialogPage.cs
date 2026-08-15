@@ -174,12 +174,33 @@ public sealed class NativeDialogPage : ContentPage
         try
         {
             await _coordinator.UpdateDialogFieldAsync(fieldId, value);
+            DesktopDialogState? next = _coordinator.State.ActiveDialog;
+            if (next is not null && RequiresStructuralRerender(next, fieldId))
+            {
+                Title = next.Title;
+                Render(next);
+            }
         }
         catch (Exception ex)
         {
             await DisplayAlertAsync("Chummer", ex.Message, "OK");
         }
     }
+
+    private static bool RequiresStructuralRerender(DesktopDialogState dialog, string fieldId)
+        => string.Equals(dialog.Id, "dialog.new_character.priority_workflow", StringComparison.Ordinal)
+            && (string.Equals(fieldId, "newCharacterMetatypeCategory", StringComparison.Ordinal)
+                || string.Equals(fieldId, "newCharacterMetatype", StringComparison.Ordinal)
+                || string.Equals(fieldId, "newCharacterMetavariant", StringComparison.Ordinal)
+                || string.Equals(fieldId, "newCharacterPriorityHeritage", StringComparison.Ordinal)
+                || string.Equals(fieldId, "newCharacterPriorityAttributes", StringComparison.Ordinal)
+                || string.Equals(fieldId, "newCharacterPriorityTalent", StringComparison.Ordinal)
+                || string.Equals(fieldId, "newCharacterPrioritySkills", StringComparison.Ordinal)
+                || string.Equals(fieldId, "newCharacterPriorityResources", StringComparison.Ordinal)
+                || string.Equals(fieldId, "newCharacterPriorityTalentChoice", StringComparison.Ordinal)
+                || string.Equals(fieldId, "newCharacterPrioritySkillChoice1", StringComparison.Ordinal)
+                || string.Equals(fieldId, "newCharacterPrioritySkillChoice2", StringComparison.Ordinal)
+                || string.Equals(fieldId, "newCharacterPrioritySkillChoice3", StringComparison.Ordinal));
 
     private async Task ExecuteAsync(string actionId)
     {

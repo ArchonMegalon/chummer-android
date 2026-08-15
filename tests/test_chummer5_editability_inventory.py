@@ -344,8 +344,8 @@ namespace Chummer.Sample
         self.assertEqual(
             {
                 "implemented_pending_emulator": 30,
-                "implemented_verified_api36": 90,
-                "missing": 1398,
+                "implemented_verified_api36": 94,
+                "missing": 1394,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 144,
@@ -416,12 +416,16 @@ namespace Chummer.Sample
         proven = {
             "cboCategory",
             "lstMetatypes",
+            "cboMetavariant",
             "cboHeritage",
             "cboAttributes",
             "cboTalent",
             "cboSkills",
             "cboResources",
             "cboTalents",
+            "cboSkill1",
+            "cboSkill2",
+            "cboSkill3",
             "cmdOK",
         }
 
@@ -434,10 +438,6 @@ namespace Chummer.Sample
             self.assertIn("Select Metatype Priority", row["phone"]["route"])
 
         remaining = {
-            "cboMetavariant",
-            "cboSkill1",
-            "cboSkill2",
-            "cboSkill3",
             "chkPossessionBased",
             "cboPossessionMethod",
             "nudForce",

@@ -22,12 +22,16 @@ class Api36NewCharacterPriorityE2EDriverTests(unittest.TestCase):
         for marker in (
             "dialog-field-newcharactermetatypecategory",
             "dialog-field-newcharactermetatype",
+            "dialog-field-newcharactermetavariant",
             "dialog-field-newcharacterpriorityheritage",
             "dialog-field-newcharacterpriorityattributes",
             "dialog-field-newcharacterprioritytalent",
             "dialog-field-newcharacterpriorityskills",
             "dialog-field-newcharacterpriorityresources",
             "dialog-field-newcharacterprioritytalentchoice",
+            "dialog-field-newcharacterpriorityskillchoice1",
+            "dialog-field-newcharacterpriorityskillchoice2",
+            "dialog-field-newcharacterpriorityskillchoice3",
             "dialog-action-complete-new-character-workflow",
         ):
             self.assertIn(marker, source)
@@ -40,7 +44,8 @@ class Api36NewCharacterPriorityE2EDriverTests(unittest.TestCase):
             '"priorityspecial": "B,3"',
             '"priorityskills": "D,1"',
             '"priorityresources": "E,0"',
-            '"prioritytalent": "Adept"',
+            '"prioritytalent": "Mystic Adept"',
+            'EXPECTED_PRIORITY_SKILLS = ("Summoning", "Binding", "Gymnastics")',
             'device.shell("am", "force-stop"',
             '"workspacePriorityPersisted": "pass"',
             '"processRestartPriorityPersistence": "pass"',

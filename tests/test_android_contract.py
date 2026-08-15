@@ -838,6 +838,18 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("Picker picker", campaign)
         self.assertNotIn("RadioButton", dialog + play + campaign)
 
+    def test_android_dynamic_dialog_fields_rerender_and_build_reads_metavariant(self) -> None:
+        dialog = (PROJECT / "Native" / "NativeDialogPage.cs").read_text(encoding="utf-8")
+        build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
+        update = dialog[dialog.index("private async Task UpdateFieldAsync") :]
+        self.assertIn("await _coordinator.UpdateDialogFieldAsync(fieldId, value)", update)
+        self.assertIn("DesktopDialogState? next = _coordinator.State.ActiveDialog", update)
+        self.assertIn("RequiresStructuralRerender(next, fieldId)", update)
+        self.assertIn('"newCharacterPriorityTalentChoice"', update)
+        self.assertIn("Render(next)", update)
+        self.assertIn('NativeTheme.Metric("Metavariant"', build)
+        self.assertIn("Coordinator.State.Profile?.Metavariant", build)
+
     def test_android_handoffs_use_canonical_public_routes(self) -> None:
         routes = (PROJECT / "Platform" / "ChummerWebRoutes.cs").read_text(encoding="utf-8")
         campaign = (PROJECT / "Native" / "CampaignPage.cs").read_text(encoding="utf-8")

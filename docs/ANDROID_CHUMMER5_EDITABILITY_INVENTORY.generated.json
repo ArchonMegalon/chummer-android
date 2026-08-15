@@ -15,8 +15,8 @@
     "completionProvenCount": 531,
     "phoneStatusCounts": {
       "implemented_pending_emulator": 30,
-      "implemented_verified_api36": 90,
-      "missing": 1398,
+      "implemented_verified_api36": 94,
+      "missing": 1394,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 144
@@ -77,7 +77,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "dffb72a5fe0714dbd67f299b56cb0cdc139f305fead53c41d196eb77e99e82cc"
+        "sha256": "7a6b42e367ca0e07429ee300ec6fecd5864060a7be2899c1075171d1dff30677"
       },
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
@@ -97,7 +97,7 @@
       {
         "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
         "exists": true,
-        "sha256": "4ebb8b06835998353b5edcf7a7bf04d3c6c71ba5f213846692c8825b71289277"
+        "sha256": "ba71ed0e759f6bceeade8bac08631a830e96384bd1d9d802052cadb88af948be"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
@@ -133,6 +133,11 @@
         "path": "tests/run_api36_new_character_settings_e2e.py",
         "exists": true,
         "sha256": "bee4b95da61bfaa4eba5e19cc326a3b49a81537f712b5e79f1b3669e762ba618"
+      },
+      {
+        "path": "tests/run_api36_new_character_priority_e2e.py",
+        "exists": true,
+        "sha256": "5add9e4f5677e96f79993bac3daba464b48cc6eaf2ec55944fd627a38857d349"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
@@ -182,7 +187,12 @@
       {
         "path": "docs/editability-evidence/api36-phone-new-character-build-settings/receipt.json",
         "exists": true,
-        "sha256": "4028860bd0319dfdccc4665abcb40873a77d33bdde916a08feb2c118d625af07"
+        "sha256": "a72a3ec8933db965f73583f67e72c5dcbaeaec3383d5e510fddb6469863fcf37"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
+        "exists": true,
+        "sha256": "dff962d2ebca585110e168602bb64dd1f4a2190dd08aa87265d4540fd2f86705"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
@@ -217,12 +227,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
         "exists": true,
-        "sha256": "8fb710ea3cd35e1e9a0871d856a1b41803a0833724ea1fcbdeac53f7227ef274"
+        "sha256": "9584203581803ac53352f2d1043cc0da008a4d2549cd8f0a843d71645cf98b65"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
         "exists": true,
-        "sha256": "73fc8ad93717495f1843f18a91ecdedf98f1da9a4a707dd453bc454e668cc460"
+        "sha256": "ff5ede614e561bab5380aa5b11f1411d352d433b6cc837adf341963ff9ae90f1"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
@@ -247,7 +257,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "42c1983f17e5a92e29583294e907ab7b725caf7a8ba5dc76b919a342848917db"
+      "sha256": "63c1ce74a2892cae63c9c06c4d0e02268af165cb856d343c4969248cddbd689f"
     }
   },
   "coverageByFamily": {
@@ -317,7 +327,7 @@
     "character_settings": {
       "rowCount": 209,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 185,
+      "phoneMissingCount": 181,
       "tabletMissingCount": 197,
       "completionProvenCount": 12
     },
@@ -10521,8 +10531,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-build-settings/receipt.json",
-          "receiptSha256": "4028860bd0319dfdccc4665abcb40873a77d33bdde916a08feb2c118d625af07",
-          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
+          "receiptSha256": "a72a3ec8933db965f73583f67e72c5dcbaeaec3383d5e510fddb6469863fcf37",
+          "apkSha256": "9ae8a5b3fae1ce86935908b0328bd528235cf5e633feb0ff145965fc25a9dc94"
         },
         "tablet": {
           "status": "missing",
@@ -10586,8 +10596,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-build-settings/receipt.json",
-          "receiptSha256": "4028860bd0319dfdccc4665abcb40873a77d33bdde916a08feb2c118d625af07",
-          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
+          "receiptSha256": "a72a3ec8933db965f73583f67e72c5dcbaeaec3383d5e510fddb6469863fcf37",
+          "apkSha256": "9ae8a5b3fae1ce86935908b0328bd528235cf5e633feb0ff145965fc25a9dc94"
         },
         "tablet": {
           "status": "missing",
@@ -10708,8 +10718,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-build-settings/receipt.json",
-          "receiptSha256": "4028860bd0319dfdccc4665abcb40873a77d33bdde916a08feb2c118d625af07",
-          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
+          "receiptSha256": "a72a3ec8933db965f73583f67e72c5dcbaeaec3383d5e510fddb6469863fcf37",
+          "apkSha256": "9ae8a5b3fae1ce86935908b0328bd528235cf5e633feb0ff145965fc25a9dc94"
         },
         "tablet": {
           "status": "missing",
@@ -11953,8 +11963,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
-          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
+          "receiptSha256": "dff962d2ebca585110e168602bb64dd1f4a2190dd08aa87265d4540fd2f86705",
+          "apkSha256": "9ae8a5b3fae1ce86935908b0328bd528235cf5e633feb0ff145965fc25a9dc94"
         },
         "tablet": {
           "status": "missing",
@@ -12051,11 +12061,17 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharactermetavariant",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -12063,12 +12079,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "character/metavariant equals the submitted metavariant after workspace reopen, UI readback, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
+          "receiptSha256": "dff962d2ebca585110e168602bb64dd1f4a2190dd08aa87265d4540fd2f86705",
+          "apkSha256": "9ae8a5b3fae1ce86935908b0328bd528235cf5e633feb0ff145965fc25a9dc94"
         },
         "tablet": {
           "status": "missing",
@@ -12127,13 +12145,13 @@
         "sourceRefs": []
       },
       "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
-      "persistenceAssertion": "the committed metatype-priority workflow produces a durable workspace with every selected priority value",
+      "persistenceAssertion": "the committed metatype-priority workflow produces a durable workspace with every selected priority value, metavariant, and ordered free-skill choice",
       "e2e": {
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
-          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
+          "receiptSha256": "dff962d2ebca585110e168602bb64dd1f4a2190dd08aa87265d4540fd2f86705",
+          "apkSha256": "9ae8a5b3fae1ce86935908b0328bd528235cf5e633feb0ff145965fc25a9dc94"
         },
         "tablet": {
           "status": "missing",
@@ -12201,8 +12219,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
-          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
+          "receiptSha256": "dff962d2ebca585110e168602bb64dd1f4a2190dd08aa87265d4540fd2f86705",
+          "apkSha256": "9ae8a5b3fae1ce86935908b0328bd528235cf5e633feb0ff145965fc25a9dc94"
         },
         "tablet": {
           "status": "missing",
@@ -12266,8 +12284,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
-          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
+          "receiptSha256": "dff962d2ebca585110e168602bb64dd1f4a2190dd08aa87265d4540fd2f86705",
+          "apkSha256": "9ae8a5b3fae1ce86935908b0328bd528235cf5e633feb0ff145965fc25a9dc94"
         },
         "tablet": {
           "status": "missing",
@@ -12302,11 +12320,17 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharacterpriorityskillchoice1",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -12314,12 +12338,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "the nested character/priorityskills/priorityskill sequence retains the submitted first free skill after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
+          "receiptSha256": "dff962d2ebca585110e168602bb64dd1f4a2190dd08aa87265d4540fd2f86705",
+          "apkSha256": "9ae8a5b3fae1ce86935908b0328bd528235cf5e633feb0ff145965fc25a9dc94"
         },
         "tablet": {
           "status": "missing",
@@ -12354,11 +12380,17 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharacterpriorityskillchoice2",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -12366,12 +12398,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "the nested character/priorityskills/priorityskill sequence retains the submitted second free skill in order after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
+          "receiptSha256": "dff962d2ebca585110e168602bb64dd1f4a2190dd08aa87265d4540fd2f86705",
+          "apkSha256": "9ae8a5b3fae1ce86935908b0328bd528235cf5e633feb0ff145965fc25a9dc94"
         },
         "tablet": {
           "status": "missing",
@@ -12406,11 +12440,17 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharacterpriorityskillchoice3",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -12418,12 +12458,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "the nested character/priorityskills/priorityskill sequence retains the submitted third free skill in order after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
+          "receiptSha256": "dff962d2ebca585110e168602bb64dd1f4a2190dd08aa87265d4540fd2f86705",
+          "apkSha256": "9ae8a5b3fae1ce86935908b0328bd528235cf5e633feb0ff145965fc25a9dc94"
         },
         "tablet": {
           "status": "missing",
@@ -12487,8 +12529,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
-          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
+          "receiptSha256": "dff962d2ebca585110e168602bb64dd1f4a2190dd08aa87265d4540fd2f86705",
+          "apkSha256": "9ae8a5b3fae1ce86935908b0328bd528235cf5e633feb0ff145965fc25a9dc94"
         },
         "tablet": {
           "status": "missing",
@@ -12552,8 +12594,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
-          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
+          "receiptSha256": "dff962d2ebca585110e168602bb64dd1f4a2190dd08aa87265d4540fd2f86705",
+          "apkSha256": "9ae8a5b3fae1ce86935908b0328bd528235cf5e633feb0ff145965fc25a9dc94"
         },
         "tablet": {
           "status": "missing",
@@ -12617,8 +12659,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
-          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
+          "receiptSha256": "dff962d2ebca585110e168602bb64dd1f4a2190dd08aa87265d4540fd2f86705",
+          "apkSha256": "9ae8a5b3fae1ce86935908b0328bd528235cf5e633feb0ff145965fc25a9dc94"
         },
         "tablet": {
           "status": "missing",
@@ -12682,8 +12724,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
-          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
+          "receiptSha256": "dff962d2ebca585110e168602bb64dd1f4a2190dd08aa87265d4540fd2f86705",
+          "apkSha256": "9ae8a5b3fae1ce86935908b0328bd528235cf5e633feb0ff145965fc25a9dc94"
         },
         "tablet": {
           "status": "missing",
@@ -12747,8 +12789,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
-          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
+          "receiptSha256": "dff962d2ebca585110e168602bb64dd1f4a2190dd08aa87265d4540fd2f86705",
+          "apkSha256": "9ae8a5b3fae1ce86935908b0328bd528235cf5e633feb0ff145965fc25a9dc94"
         },
         "tablet": {
           "status": "missing",
