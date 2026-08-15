@@ -67,6 +67,26 @@ public abstract class NativePageBase : ContentPage
         }
     }
 
+    protected async Task RunWithConditionalRefreshAsync(Func<Task<bool>> action)
+    {
+        try
+        {
+            if (await action())
+            {
+                Refresh();
+            }
+            await ShowActiveDialogAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            // Android pickers and page transitions use cancellation for a normal back action.
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Chummer", ex.Message, "OK");
+        }
+    }
+
     protected async Task ShowActiveDialogAsync()
     {
         DesktopDialogState? dialog = Coordinator.State.ActiveDialog;

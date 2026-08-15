@@ -110,15 +110,27 @@ internal static class NativeTheme
         row.Add(chevron, 1);
 
         Border card = Card(row, new Thickness(16, 12));
-        card.AutomationId = automationId;
         card.Opacity = enabled ? 1 : 0.55;
         SemanticProperties.SetDescription(card, string.IsNullOrWhiteSpace(detail) ? title : $"{title}. {detail}");
-        if (enabled)
+
+        Button interaction = new()
         {
-            TapGestureRecognizer tap = new();
-            tap.Tapped += async (_, _) => await selected();
-            card.GestureRecognizers.Add(tap);
-        }
+            AutomationId = automationId,
+            Text = string.Empty,
+            BackgroundColor = Colors.Transparent,
+            BorderWidth = 0,
+            Padding = 0,
+            IsEnabled = enabled,
+            HorizontalOptions = LayoutOptions.Fill,
+            VerticalOptions = LayoutOptions.Fill,
+            ZIndex = 1
+        };
+        SemanticProperties.SetDescription(
+            interaction,
+            string.IsNullOrWhiteSpace(detail) ? title : $"{title}. {detail}");
+        interaction.Clicked += async (_, _) => await selected();
+        row.Add(interaction);
+        Grid.SetColumnSpan(interaction, 2);
 
         return card;
     }

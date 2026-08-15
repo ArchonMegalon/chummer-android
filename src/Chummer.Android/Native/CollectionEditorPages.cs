@@ -96,7 +96,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
 
         Button save = NativeTheme.PrimaryButton("Save changes");
         save.AutomationId = $"collection-save-{TargetToken()}";
-        save.Clicked += async (_, _) => await RunAsync(() => SaveAsync(item));
+        save.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(() => SaveAsync(item));
         _body.Add(save);
 
         AddLinkedCharacterActions(item);
@@ -292,7 +292,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         _body.Add(_matrixDamagePicker);
     }
 
-    private async Task SaveAsync(WorkspaceCollectionItemEditorState item)
+    private async Task<bool> SaveAsync(WorkspaceCollectionItemEditorState item)
     {
         Dictionary<WorkspaceCollectionTextField, string?> textChanges = [];
         foreach (WorkspaceCollectionTextValueState original in item.TextValues)
@@ -306,7 +306,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
             if (original.IsRequired && string.IsNullOrWhiteSpace(value))
             {
                 await DisplayAlertAsync("Name required", "Enter a name before saving.", "OK");
-                return;
+                return false;
             }
 
             if (!string.Equals(value, original.Value, StringComparison.Ordinal))
@@ -326,7 +326,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
                     "Invalid rating",
                     $"Enter a whole number from {rating.Minimum} to {rating.Maximum}.",
                     "OK");
-                return;
+                return false;
             }
 
             ratingChange = value != rating.Value ? value : null;
@@ -343,7 +343,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
                     "Invalid quantity",
                     $"Enter a value greater than {quantity.MinimumExclusive} and no greater than {quantity.Maximum}.",
                     "OK");
-                return;
+                return false;
             }
 
             quantityChange = value != quantity.Value ? value : null;
@@ -365,7 +365,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
                     "Invalid Connection",
                     $"Enter a whole number from 1 to {contact.ConnectionMaximum}.",
                     "OK");
-                return;
+                return false;
             }
             if (!int.TryParse(
                     _contactLoyaltyInput?.Text,
@@ -379,7 +379,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
                     "Invalid Loyalty",
                     $"Enter a whole number from 1 to {contact.LoyaltyMaximum}.",
                     "OK");
-                return;
+                return false;
             }
 
             contactConnectionChange = contact.ConnectionEditable && connection != contact.Connection
@@ -410,7 +410,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
                     "Invalid damage",
                     $"Choose a value from 0 to {vehicleCondition.Maximum}.",
                     "OK");
-                return;
+                return false;
             }
             vehiclePhysicalDamageChange = value != vehicleCondition.Filled ? value : null;
         }
@@ -429,7 +429,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
                     "Invalid Matrix damage",
                     $"Choose a value from 0 to {vehicleMatrixCondition.Maximum}.",
                     "OK");
-                return;
+                return false;
             }
             if (value != vehicleMatrixCondition.Filled)
             {
@@ -455,7 +455,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
                             "Unsupported Matrix item",
                             "Reload the section before editing Matrix damage.",
                             "OK");
-                        return;
+                        return false;
                 }
             }
         }
@@ -474,7 +474,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
             && cyberwareMatrixDamageChange is null)
         {
             await DisplayAlertAsync("No changes", "Nothing has changed on this item.", "OK");
-            return;
+            return false;
         }
 
         await Coordinator.ApplyCollectionMutationAsync(new WorkspacePatchCollectionItemRequest(
@@ -491,6 +491,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
             CyberwareMatrixDamage: cyberwareMatrixDamageChange,
             ContactConnection: contactConnectionChange,
             ContactLoyalty: contactLoyaltyChange));
+        return true;
     }
 
     private void AddMoveAndDeleteActions(WorkspaceCollectionItemEditorState item)

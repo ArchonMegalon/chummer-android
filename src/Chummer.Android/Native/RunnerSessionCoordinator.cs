@@ -27,6 +27,7 @@ public sealed record NativeAccountErasureResult(
 public sealed class RunnerSessionCoordinator : IDisposable
 {
     private const string SelectedGroupPreferenceKey = "chummer.android.selected-group.v1";
+    private const string SelectedWorkspacePreferenceKey = "chummer.android.selected-workspace.v1";
     private readonly ICharacterOverviewPresenter _presenter;
     private readonly IShellPresenter _shellPresenter;
     private readonly IShellSurfaceResolver _surfaceResolver;
@@ -120,6 +121,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
             await _shellPresenter.InitializeAsync(cancellationToken);
             await _presenter.InitializeAsync(cancellationToken);
+            await RestoreSelectedWorkspaceAsync(cancellationToken);
             await _account.InitializeAsync(cancellationToken);
             await SyncShellAsync(cancellationToken);
             _surface = _surfaceResolver.Resolve(State, _shellPresenter.State);
@@ -209,6 +211,15 @@ public sealed class RunnerSessionCoordinator : IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(commandId);
         _notice = null;
         await _presenter.ExecuteCommandAsync(commandId, cancellationToken);
+        await SyncShellAsync(cancellationToken);
+        await ProcessPendingOutputsAsync(cancellationToken);
+    }
+
+    public async Task HandleUiControlAsync(string controlId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(controlId);
+        _notice = null;
+        await _presenter.HandleUiControlAsync(controlId, cancellationToken);
         await SyncShellAsync(cancellationToken);
         await ProcessPendingOutputsAsync(cancellationToken);
     }
@@ -374,7 +385,18 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     public async Task ExecuteDialogActionAsync(string actionId, CancellationToken cancellationToken = default)
     {
+        long contentRevision = State.ContentRevision;
+        WorkspaceSurfaceActionDefinition? activeSectionAction = _surface.WorkspaceActions.FirstOrDefault(action =>
+            action.Kind == WorkspaceSurfaceActionKind.Section
+            && (string.Equals(action.Id, State.ActiveActionId, StringComparison.Ordinal)
+                || string.Equals(action.TargetId, State.ActiveSectionId, StringComparison.Ordinal)));
         await _presenter.ExecuteDialogActionAsync(actionId, cancellationToken);
+        if (activeSectionAction is not null
+            && State.ActiveDialog is null
+            && State.ContentRevision > contentRevision)
+        {
+            await _presenter.ExecuteWorkspaceActionAsync(activeSectionAction, cancellationToken);
+        }
         await SyncShellAsync(cancellationToken);
         await ProcessPendingOutputsAsync(cancellationToken);
     }
@@ -693,12 +715,56 @@ public sealed class RunnerSessionCoordinator : IDisposable
         try
         {
             CharacterWorkspaceId? active = State.Session.ActiveWorkspaceId ?? State.WorkspaceId;
+            if (active is not null)
+            {
+                Preferences.Default.Set(SelectedWorkspacePreferenceKey, active.Value.Value);
+            }
+            else if (_initialized && State.OpenWorkspaces.Count == 0)
+            {
+                Preferences.Default.Remove(SelectedWorkspacePreferenceKey);
+            }
             await _shellPresenter.SyncWorkspaceContextAsync(active, cancellationToken);
             RefreshSurface();
         }
         finally
         {
             _shellSyncGate.Release();
+        }
+    }
+
+    private async Task RestoreSelectedWorkspaceAsync(CancellationToken cancellationToken)
+    {
+        if (State.Profile is not null && State.WorkspaceId is not null)
+        {
+            return;
+        }
+
+        string selectedId = Preferences.Default.Get(SelectedWorkspacePreferenceKey, string.Empty);
+        CharacterWorkspaceId? workspaceId = State.Session.ActiveWorkspaceId;
+        workspaceId ??= State.OpenWorkspaces.FirstOrDefault(workspace =>
+            string.Equals(workspace.Id.Value, selectedId, StringComparison.Ordinal))?.Id;
+        if (workspaceId is null && !string.IsNullOrWhiteSpace(selectedId))
+        {
+            workspaceId = new CharacterWorkspaceId(selectedId);
+        }
+        workspaceId ??= State.OpenWorkspaces.Count == 1 ? State.OpenWorkspaces[0].Id : null;
+        if (workspaceId is null)
+        {
+            return;
+        }
+
+        await _presenter.LoadAsync(workspaceId.Value, cancellationToken);
+        if (State.Profile is null
+            && !string.IsNullOrWhiteSpace(selectedId)
+            && !string.Equals(workspaceId.Value.Value, selectedId, StringComparison.Ordinal))
+        {
+            workspaceId = new CharacterWorkspaceId(selectedId);
+            await _presenter.LoadAsync(workspaceId.Value, cancellationToken);
+        }
+
+        if (State.Profile is not null)
+        {
+            Preferences.Default.Set(SelectedWorkspacePreferenceKey, workspaceId.Value.Value);
         }
     }
 
