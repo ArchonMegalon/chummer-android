@@ -14,8 +14,8 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 528,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 32,
-      "implemented_verified_api36": 76,
+      "implemented_pending_emulator": 30,
+      "implemented_verified_api36": 78,
       "missing": 1413,
       "not_applicable_non_mutating": 454,
       "partial_create_only": 110,
@@ -115,6 +115,11 @@
         "sha256": "7dedbbf4921d5db8f08c753199bc2500c7ea7aaf6affe1118beec0203ccdff57"
       },
       {
+        "path": "tests/run_api36_career_attribute_e2e.py",
+        "exists": true,
+        "sha256": "9ff98cf631349137b8957ee062ffe5a78329116d44b64eb99e64fc1e327ea53e"
+      },
+      {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
         "exists": true,
         "sha256": "aebca5d1b09a338a798afb45805fe0679c174c2f4f1687e53624990ce095ae25"
@@ -123,6 +128,11 @@
         "path": "tests/fixtures/creation-contact-pet-e2e.chum5",
         "exists": true,
         "sha256": "38fe0fc0da57dd6462998dab99412db7e5a3f1c4e5f5dbbe78333f425eb9cf66"
+      },
+      {
+        "path": "tests/fixtures/career-attribute-e2e.chum5",
+        "exists": true,
+        "sha256": "a6850a7891f24b9fc158adec4da66743fa1ef7c46815956e7309592c159c0e1c"
       },
       {
         "path": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
@@ -148,6 +158,11 @@
         "path": "docs/editability-evidence/api36-phone-attributes/receipt.json",
         "exists": true,
         "sha256": "548f46940ca91b386f83db47bf2b0f421067371e1e21851cb77f0284bebe1555"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-attributes/receipt.json",
+        "exists": true,
+        "sha256": "2b3f8a1d072d765d346535a86ca6f35a5c84eebd25de1836ff32df536fdf1f18"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
@@ -207,7 +222,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "3533f6db6009a1dc18060e5ef6e8bda625d09e8926b881174a57c19b694f40f6"
+      "sha256": "4978c2e4de3df0b96db5945d08761df4e6058d8fc156878ade9d80185488acaf"
     }
   },
   "coverageByFamily": {
@@ -762,7 +777,7 @@
       "mutationFamily": "attributes",
       "operation": "adjust",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Attributes > selected attribute",
         "surface": "AttributeEditPage",
         "automationId": "attribute-burn-edge",
@@ -783,8 +798,10 @@
       "persistenceAssertion": "selected attribute burn mutation is durable after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-career-attributes/receipt.json",
+          "receiptSha256": "2b3f8a1d072d765d346535a86ca6f35a5c84eebd25de1836ff32df536fdf1f18",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "missing",
@@ -824,7 +841,7 @@
       "mutationFamily": "attributes",
       "operation": "adjust",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Attributes > selected attribute",
         "surface": "AttributeEditPage",
         "automationId": "attribute-improve-{attribute}",
@@ -845,8 +862,10 @@
       "persistenceAssertion": "selected attribute improve mutation is durable after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-career-attributes/receipt.json",
+          "receiptSha256": "2b3f8a1d072d765d346535a86ca6f35a5c84eebd25de1836ff32df536fdf1f18",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
           "status": "missing",

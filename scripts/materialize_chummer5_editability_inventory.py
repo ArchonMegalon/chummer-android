@@ -86,6 +86,19 @@ ATTRIBUTE_E2E_JOURNEYS = (
     "attributeKarmaEditPersisted",
     "processRestartAttributePersistence",
 )
+ATTRIBUTE_CAREER_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-career-attributes"
+    / "receipt.json"
+)
+ATTRIBUTE_CAREER_E2E_JOURNEYS = (
+    "careerRunnerImport",
+    "attributeImprovePersisted",
+    "attributeBurnEdgePersisted",
+    "processRestartCareerAttributePersistence",
+)
 
 SCHEMA = "chummer.android.chummer5-editability-inventory/v1"
 REQUIRED_SOURCE_ROOTS = (Path("Chummer/Forms"), Path("Chummer/Controls"))
@@ -568,6 +581,46 @@ def _validated_attribute_phone_e2e_receipt() -> dict[str, Any] | None:
         "status": "executed_api36",
         "ref": ATTRIBUTE_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(ATTRIBUTE_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_attribute_career_phone_e2e_receipt() -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_career_attribute_e2e.py"
+    creation_driver = REPO_ROOT / "tests" / "run_api36_attribute_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    fixture = REPO_ROOT / "tests" / "fixtures" / "career-attribute-e2e.chum5"
+    if not all(path.is_file() for path in (driver, creation_driver, shared_driver, fixture)):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(ATTRIBUTE_CAREER_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "career-attributes"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("creationAttributeDriverSha256") == _sha256_file(creation_driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("inputFixtureSha256") == _sha256_file(fixture)
+        and isinstance(journeys, dict)
+        and all(
+            journeys.get(journey) == "pass"
+            for journey in ATTRIBUTE_CAREER_E2E_JOURNEYS
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": ATTRIBUTE_CAREER_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(ATTRIBUTE_CAREER_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
 
@@ -1191,6 +1244,7 @@ def _known_phone_mapping(
     condition_e2e_receipts: dict[str, dict[str, Any]],
     contact_pet_e2e_receipts: dict[str, dict[str, Any]],
     attribute_phone_e2e_receipt: dict[str, Any] | None,
+    attribute_career_phone_e2e_receipt: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     legacy = row["legacy"]
     class_name = legacy["formOrControl"]
@@ -1664,24 +1718,38 @@ def _known_phone_mapping(
         operation, automation_id = ATTRIBUTE_FIELDS[control]
         phone_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "AttributeEditPage.cs"
         coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
-        e2e_driver = REPO_ROOT / "tests" / "run_api36_attribute_e2e.py"
         presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs"
         phone_implemented = (
             _contains(phone_page, f'"{operation}"', "ApplyAttributeEditAsync")
             and _contains(coordinator, "ApplyAttributeEditAsync")
             and _contains(presenter, "ApplyAttributeEditAsync", "ApplyWorkspaceXmlMutationAsync")
         )
-        e2e_marker = {
-            "base": '"attributeBaseEditPersisted": "pass"',
-            "karma": '"attributeKarmaEditPersisted": "pass"',
-        }.get(operation)
-        e2e_scripted = e2e_marker is not None and _contains(
-            e2e_driver,
-            e2e_marker,
-            '"processRestartAttributePersistence": "pass"',
-            "assert_body_values",
-        )
-        phone_e2e = attribute_phone_e2e_receipt if e2e_scripted else None
+        if operation in {"base", "karma"}:
+            e2e_driver = REPO_ROOT / "tests" / "run_api36_attribute_e2e.py"
+            e2e_marker = {
+                "base": '"attributeBaseEditPersisted": "pass"',
+                "karma": '"attributeKarmaEditPersisted": "pass"',
+            }[operation]
+            e2e_scripted = _contains(
+                e2e_driver,
+                e2e_marker,
+                '"processRestartAttributePersistence": "pass"',
+                "assert_body_values",
+            )
+            phone_e2e = attribute_phone_e2e_receipt if e2e_scripted else None
+        else:
+            e2e_driver = REPO_ROOT / "tests" / "run_api36_career_attribute_e2e.py"
+            e2e_marker = {
+                "improve": '"attributeImprovePersisted": "pass"',
+                "burn": '"attributeBurnEdgePersisted": "pass"',
+            }.get(operation)
+            e2e_scripted = e2e_marker is not None and _contains(
+                e2e_driver,
+                e2e_marker,
+                '"processRestartCareerAttributePersistence": "pass"',
+                "assert_attribute_total",
+            )
+            phone_e2e = attribute_career_phone_e2e_receipt if e2e_scripted else None
         phone_verified = bool(phone_implemented and phone_e2e is not None)
         source_refs = [
             "src/Chummer.Android/Native/AttributeEditPage.cs",
@@ -1705,7 +1773,7 @@ def _known_phone_mapping(
             "persistenceAssertion": f"selected attribute {operation} mutation is durable after reopen and process restart",
             "e2e": phone_e2e or {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
-                "ref": "tests/run_api36_attribute_e2e.py" if e2e_scripted else None,
+                "ref": e2e_driver.relative_to(REPO_ROOT).as_posix() if e2e_scripted else None,
             },
         }
     character_condition_match = CHARACTER_CONDITION_CONTROL_RE.fullmatch(control)
@@ -1984,6 +2052,7 @@ def enrich_rows(
     condition_e2e_receipts = _validated_condition_e2e_receipts()
     contact_pet_e2e_receipts = _validated_contact_pet_e2e_receipts()
     attribute_phone_e2e_receipt = _validated_attribute_phone_e2e_receipt()
+    attribute_career_phone_e2e_receipt = _validated_attribute_career_phone_e2e_receipt()
     for row in rows:
         family = row["mutationFamily"]
         family_contract = surfaces.get(family, {})
@@ -2019,6 +2088,7 @@ def enrich_rows(
             condition_e2e_receipts,
             contact_pet_e2e_receipts,
             attribute_phone_e2e_receipt,
+            attribute_career_phone_e2e_receipt,
         )
         if known is not None:
             phone = {
@@ -2111,11 +2181,14 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs",
         REPO_ROOT / "tests" / "run_api36_editing_e2e.py",
         REPO_ROOT / "tests" / "run_api36_attribute_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_career_attribute_e2e.py",
         REPO_ROOT / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-contact-pet-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-attribute-e2e.chum5",
         *CONDITION_E2E_RECEIPTS.values(),
         *CONTACT_PET_E2E_RECEIPTS.values(),
         ATTRIBUTE_PHONE_E2E_RECEIPT,
+        ATTRIBUTE_CAREER_PHONE_E2E_RECEIPT,
         WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterContactEditSemantics.cs",
         WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterPetEditSemantics.cs",
         WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",

@@ -1,0 +1,22 @@
+{
+  "schema": "chummer.android.editing-e2e/v1",
+  "status": "pass",
+  "generatedAtUtc": "2026-08-15T14:45:01.629902+00:00",
+  "serial": "emulator-5554",
+  "profile": "phone",
+  "journey": "career-attributes",
+  "apiLevel": 36,
+  "apk": "/docker/chummercomplete/chummer-android/src/Chummer.Android/bin/Debug/net10.0-android36.0/android-x64/com.myexternalbrain.chummer-Signed.apk",
+  "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c",
+  "driverSha256": "9ff98cf631349137b8957ee062ffe5a78329116d44b64eb99e64fc1e327ea53e",
+  "creationAttributeDriverSha256": "7dedbbf4921d5db8f08c753199bc2500c7ea7aaf6affe1118beec0203ccdff57",
+  "sharedDriverSha256": "38ad82e00c5f8ea66d667123222ea916006e690620b6fb4f9314f46716eec2f5",
+  "inputFixture": "/docker/chummercomplete/chummer-android/tests/fixtures/career-attribute-e2e.chum5",
+  "inputFixtureSha256": "a6850a7891f24b9fc158adec4da66743fa1ef7c46815956e7309592c159c0e1c",
+  "journeys": {
+    "careerRunnerImport": "pass",
+    "attributeImprovePersisted": "pass",
+    "attributeBurnEdgePersisted": "pass",
+    "processRestartCareerAttributePersistence": "pass"
+  }
+}

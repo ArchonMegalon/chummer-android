@@ -223,8 +223,10 @@ namespace Chummer.Sample
             self.assertFalse(row["completionProven"])
         for control_name in ("cmdBurnEdge", "cmdImproveATT"):
             row = attribute_by_name[control_name]
-            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
-            self.assertEqual("missing", row["e2e"]["phone"]["status"])
+            self.assertEqual("implemented_verified_api36", row["phone"]["status"])
+            self.assertEqual("executed_api36", row["e2e"]["phone"]["status"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("missing", row["e2e"]["tablet"]["status"])
             self.assertFalse(row["completionProven"])
         self.assertTrue(all(row["presenterMutation"] for row in matrix_rows))
         condition_rows = character_condition_rows + dashboard_condition_rows + vehicle_physical_rows
@@ -341,8 +343,8 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 32,
-                "implemented_verified_api36": 76,
+                "implemented_pending_emulator": 30,
+                "implemented_verified_api36": 78,
                 "missing": 1413,
                 "not_applicable_non_mutating": 454,
                 "partial_create_only": 110,
@@ -435,6 +437,19 @@ namespace Chummer.Sample
                 receipt["profile"] = "tablet"
                 receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
                 self.assertIsNone(inventory._validated_attribute_phone_e2e_receipt())
+
+    def test_career_attribute_receipt_is_fixture_and_driver_hash_bound(self) -> None:
+        validated = inventory._validated_attribute_career_phone_e2e_receipt()
+        self.assertIsNotNone(validated)
+
+        source = inventory.ATTRIBUTE_CAREER_PHONE_E2E_RECEIPT
+        receipt = json.loads(source.read_text(encoding="utf-8"))
+        receipt["inputFixtureSha256"] = "0" * 64
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            receipt_path = Path(temporary) / "receipt.json"
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+            with patch.object(inventory, "ATTRIBUTE_CAREER_PHONE_E2E_RECEIPT", receipt_path):
+                self.assertIsNone(inventory._validated_attribute_career_phone_e2e_receipt())
 
 
 if __name__ == "__main__":

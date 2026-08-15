@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Attribute E2E</name>
+  <alias>CareerAttributeE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <karma>35</karma>
+  <nuyen>8500</nuyen>
+  <attributes>
+    <attribute>
+      <name>Body</name>
+      <base>2</base>
+      <karma>0</karma>
+      <value>2</value>
+      <totalvalue>2</totalvalue>
+      <metatypemin>1</metatypemin>
+      <metatypemax>6</metatypemax>
+      <metatypeaugmax>9</metatypeaugmax>
+      <metatypecategory>Physical</metatypecategory>
+    </attribute>
+    <attribute>
+      <name>Edge</name>
+      <base>2</base>
+      <karma>0</karma>
+      <value>2</value>
+      <totalvalue>2</totalvalue>
+      <metatypemin>1</metatypemin>
+      <metatypemax>6</metatypemax>
+      <metatypeaugmax>7</metatypeaugmax>
+      <metatypecategory>Special</metatypecategory>
+    </attribute>
+  </attributes>
+</character>
