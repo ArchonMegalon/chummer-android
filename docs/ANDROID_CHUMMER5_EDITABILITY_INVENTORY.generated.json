@@ -6,26 +6,26 @@
     "rowCount": 2229,
     "sourceFileCount": 300,
     "designerFileCount": 137,
-    "definiteMutationCandidateCount": 1775,
+    "definiteMutationCandidateCount": 1772,
     "reviewRequiredCount": 0,
     "legacyReviewCompleteCount": 2229,
-    "reviewedNonMutatingCount": 454,
-    "editParityRequiredCount": 1775,
+    "reviewedNonMutatingCount": 457,
+    "editParityRequiredCount": 1772,
     "unclassifiedCount": 0,
-    "completionProvenCount": 528,
+    "completionProvenCount": 531,
     "phoneStatusCounts": {
       "implemented_pending_emulator": 30,
-      "implemented_verified_api36": 78,
-      "missing": 1413,
-      "not_applicable_non_mutating": 454,
+      "implemented_verified_api36": 81,
+      "missing": 1407,
+      "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 144
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
       "implemented_verified_api36": 74,
-      "missing": 1553,
-      "not_applicable_non_mutating": 454,
+      "missing": 1550,
+      "not_applicable_non_mutating": 457,
       "partial_exact_saved_data": 144
     }
   },
@@ -75,6 +75,11 @@
         "sha256": "c849741c55cb86fe5807d716408548fcdedef7a79f7a4973746744c1f5415a66"
       },
       {
+        "path": "src/Chummer.Android/Native/BuildPage.cs",
+        "exists": true,
+        "sha256": "dffb72a5fe0714dbd67f299b56cb0cdc139f305fead53c41d196eb77e99e82cc"
+      },
+      {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
         "sha256": "ba43cf1a72dbe93081bf9e3e6b2618e493b07bcac15cc7d02ab2f03f6deaf060"
@@ -88,6 +93,11 @@
         "path": "src/Chummer.Android/Native/OriginDossierPage.cs",
         "exists": true,
         "sha256": "d3d8540fb0107d04a02f9c91c3613b4e02dbe0d4217f0b0957492e338f0d71b2"
+      },
+      {
+        "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
+        "exists": true,
+        "sha256": "4ebb8b06835998353b5edcf7a7bf04d3c6c71ba5f213846692c8825b71289277"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
@@ -118,6 +128,11 @@
         "path": "tests/run_api36_career_attribute_e2e.py",
         "exists": true,
         "sha256": "9ff98cf631349137b8957ee062ffe5a78329116d44b64eb99e64fc1e327ea53e"
+      },
+      {
+        "path": "tests/run_api36_new_character_settings_e2e.py",
+        "exists": true,
+        "sha256": "bee4b95da61bfaa4eba5e19cc326a3b49a81537f712b5e79f1b3669e762ba618"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
@@ -165,6 +180,11 @@
         "sha256": "2b3f8a1d072d765d346535a86ca6f35a5c84eebd25de1836ff32df536fdf1f18"
       },
       {
+        "path": "docs/editability-evidence/api36-phone-new-character-build-settings/receipt.json",
+        "exists": true,
+        "sha256": "4028860bd0319dfdccc4665abcb40873a77d33bdde916a08feb2c118d625af07"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
         "exists": true,
         "sha256": "20531172c8984c8d572b17c95fe1d92caf0076509bc382ff6bd0179e686aebf3"
@@ -197,7 +217,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
         "exists": true,
-        "sha256": "9d79b1c084bc21c88bceae9019cc5964f448e23e2cb3727791cba202dbea9715"
+        "sha256": "8fb710ea3cd35e1e9a0871d856a1b41803a0833724ea1fcbdeac53f7227ef274"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+        "exists": true,
+        "sha256": "73fc8ad93717495f1843f18a91ecdedf98f1da9a4a707dd453bc454e668cc460"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
@@ -222,7 +247,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "4978c2e4de3df0b96db5945d08761df4e6058d8fc156878ade9d80185488acaf"
+      "sha256": "115ad52ef15326c6bf3512b701dcc5af95587c6eb5c8155382235e91f0e18a48"
     }
   },
   "coverageByFamily": {
@@ -292,9 +317,9 @@
     "character_settings": {
       "rowCount": 209,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 200,
-      "tabletMissingCount": 200,
-      "completionProvenCount": 9
+      "phoneMissingCount": 194,
+      "tabletMissingCount": 197,
+      "completionProvenCount": 12
     },
     "complex_forms": {
       "rowCount": 15,
@@ -10472,11 +10497,17 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharacterignorerules",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_settings_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -10484,12 +10515,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CreateCharacterFromDialogAsync / CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "character/ignorerules remains True after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-build-settings/receipt.json",
+          "receiptSha256": "4028860bd0319dfdccc4665abcb40873a77d33bdde916a08feb2c118d625af07",
+          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
         },
         "tablet": {
           "status": "missing",
@@ -10529,11 +10562,17 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharactersetting",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_settings_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -10541,12 +10580,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CreateCharacterFromDialogAsync / CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "character/settings equals the submitted setting after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-build-settings/receipt.json",
+          "receiptSha256": "4028860bd0319dfdccc4665abcb40873a77d33bdde916a08feb2c118d625af07",
+          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
         },
         "tablet": {
           "status": "missing",
@@ -10643,11 +10684,17 @@
       "mutationFamily": "character_settings",
       "operation": "commit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-action-create-character",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_settings_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -10655,12 +10702,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CreateCharacterFromDialogAsync / CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "the committed creation workflow produces a durable workspace with the selected build settings",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-build-settings/receipt.json",
+          "receiptSha256": "4028860bd0319dfdccc4665abcb40873a77d33bdde916a08feb2c118d625af07",
+          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
         },
         "tablet": {
           "status": "missing",
@@ -10739,9 +10788,9 @@
         "controlName": "cboBuildMethod",
         "controlType": "ElasticComboBox",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (no event handler)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "legacy designer remnant is never added to the SelectBuildMethod control tree and has no event wiring",
         "text": null,
         "tag": null,
         "readOnlyAtDesignTime": null,
@@ -10750,16 +10799,16 @@
         "events": []
       },
       "mutationFamily": "character_settings",
-      "operation": "set_value",
+      "operation": "unreachable_designer_field",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -10768,18 +10817,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Creation Forms/SelectBuildMethod.Designer.cs::Chummer.SelectBuildMethod::nudMaxAvail",
@@ -10791,9 +10840,9 @@
         "controlName": "nudMaxAvail",
         "controlType": "NumericUpDownEx",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (no event handler)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "legacy designer remnant is never added to the SelectBuildMethod control tree and has no event wiring",
         "text": null,
         "tag": null,
         "readOnlyAtDesignTime": null,
@@ -10802,16 +10851,16 @@
         "events": []
       },
       "mutationFamily": "character_settings",
-      "operation": "set_value",
+      "operation": "unreachable_designer_field",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -10820,18 +10869,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Creation Forms/SelectBuildMethod.Designer.cs::Chummer.SelectBuildMethod::cboGamePlay",
@@ -10843,9 +10892,9 @@
         "controlName": "cboGamePlay",
         "controlType": "ElasticComboBox",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (no event handler)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "legacy designer remnant is never added to the SelectBuildMethod control tree and has no event wiring",
         "text": null,
         "tag": null,
         "readOnlyAtDesignTime": null,
@@ -10854,16 +10903,16 @@
         "events": []
       },
       "mutationFamily": "character_settings",
-      "operation": "set_value",
+      "operation": "unreachable_designer_field",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -10872,18 +10921,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Creation Forms/SelectLifeModule.Designer.cs::Chummer.SelectLifeModule::treModules",
