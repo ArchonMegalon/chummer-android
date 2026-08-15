@@ -1,0 +1,31 @@
+{
+  "schema": "chummer.android.editing-e2e/v1",
+  "status": "pass",
+  "generatedAtUtc": "2026-08-15T15:46:57.957158+00:00",
+  "serial": "emulator-5554",
+  "profile": "phone",
+  "journey": "new-character-metatype-priority",
+  "apiLevel": 36,
+  "apk": "/docker/chummercomplete/chummer-android/src/Chummer.Android/bin/Debug/net10.0-android36.0/android-x64/com.myexternalbrain.chummer-Signed.apk",
+  "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215",
+  "driverSha256": "5bd15962d2bec6fd4f56ee12564980170854cb83cedaed6db3de6bf27b47611a",
+  "sharedDriverSha256": "38ad82e00c5f8ea66d667123222ea916006e690620b6fb4f9314f46716eec2f5",
+  "dialogFactorySha256": "73fc8ad93717495f1843f18a91ecdedf98f1da9a4a707dd453bc454e668cc460",
+  "dialogCoordinatorSha256": "8fb710ea3cd35e1e9a0871d856a1b41803a0833724ea1fcbdeac53f7227ef274",
+  "nativeDialogPageSha256": "4ebb8b06835998353b5edcf7a7bf04d3c6c71ba5f213846692c8825b71289277",
+  "buildPageSha256": "dffb72a5fe0714dbd67f299b56cb0cdc139f305fead53c41d196eb77e99e82cc",
+  "journeys": {
+    "metatypeCategoryEdited": "pass",
+    "metatypeEdited": "pass",
+    "heritagePriorityEdited": "pass",
+    "attributesPriorityEdited": "pass",
+    "talentPriorityEdited": "pass",
+    "skillsPriorityEdited": "pass",
+    "resourcesPriorityEdited": "pass",
+    "talentChoiceEdited": "pass",
+    "creationCommitCompleted": "pass",
+    "metatypeUiReadback": "pass",
+    "workspacePriorityPersisted": "pass",
+    "processRestartPriorityPersistence": "pass"
+  }
+}

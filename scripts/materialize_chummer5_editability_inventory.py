@@ -114,6 +114,27 @@ NEW_CHARACTER_SETTINGS_E2E_JOURNEYS = (
     "workspaceBuildSettingsPersisted",
     "processRestartBuildSettingsPersistence",
 )
+NEW_CHARACTER_PRIORITY_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-new-character-priority"
+    / "receipt.json"
+)
+NEW_CHARACTER_PRIORITY_E2E_JOURNEYS = (
+    "metatypeCategoryEdited",
+    "metatypeEdited",
+    "heritagePriorityEdited",
+    "attributesPriorityEdited",
+    "talentPriorityEdited",
+    "skillsPriorityEdited",
+    "resourcesPriorityEdited",
+    "talentChoiceEdited",
+    "creationCommitCompleted",
+    "metatypeUiReadback",
+    "workspacePriorityPersisted",
+    "processRestartPriorityPersistence",
+)
 
 INERT_LEGACY_DESIGNER_FIELDS = {
     ("SelectBuildMethod", "cboBuildMethod"):
@@ -691,6 +712,52 @@ def _validated_new_character_settings_phone_e2e_receipt() -> dict[str, Any] | No
         "status": "executed_api36",
         "ref": NEW_CHARACTER_SETTINGS_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(NEW_CHARACTER_SETTINGS_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_new_character_priority_phone_e2e_receipt() -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_new_character_priority_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    native_dialog = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "NativeDialogPage.cs"
+    build_page = native_dialog.with_name("BuildPage.cs")
+    presentation_root = WORKSPACE_ROOT / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+    dialog_factory = presentation_root / "DesktopDialogFactory.cs"
+    dialog_coordinator = presentation_root / "DialogCoordinator.cs"
+    sources = (driver, shared_driver, native_dialog, build_page, dialog_factory, dialog_coordinator)
+    if not all(path.is_file() for path in sources):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(NEW_CHARACTER_PRIORITY_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "new-character-metatype-priority"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("nativeDialogPageSha256") == _sha256_file(native_dialog)
+        and receipt.get("buildPageSha256") == _sha256_file(build_page)
+        and receipt.get("dialogFactorySha256") == _sha256_file(dialog_factory)
+        and receipt.get("dialogCoordinatorSha256") == _sha256_file(dialog_coordinator)
+        and isinstance(journeys, dict)
+        and all(
+            journeys.get(journey) == "pass"
+            for journey in NEW_CHARACTER_PRIORITY_E2E_JOURNEYS
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": NEW_CHARACTER_PRIORITY_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(NEW_CHARACTER_PRIORITY_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
 
@@ -1320,6 +1387,7 @@ def _known_phone_mapping(
     attribute_phone_e2e_receipt: dict[str, Any] | None,
     attribute_career_phone_e2e_receipt: dict[str, Any] | None,
     new_character_settings_phone_e2e_receipt: dict[str, Any] | None,
+    new_character_priority_phone_e2e_receipt: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     legacy = row["legacy"]
     class_name = legacy["formOrControl"]
@@ -1383,6 +1451,117 @@ def _known_phone_mapping(
             "automationId": automation_ids[control],
             "sourceRefs": source_refs,
             "presenterMutation": "DialogCoordinator.CreateCharacterFromDialogAsync / CompleteNewCharacterWorkflowAsync",
+            "persistenceAssertion": assertions[control],
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": e2e_driver.relative_to(REPO_ROOT).as_posix() if e2e_scripted else None,
+            },
+        }
+    if class_name == "SelectMetatypePriority" and control in {
+        "cboCategory",
+        "lstMetatypes",
+        "cboHeritage",
+        "cboAttributes",
+        "cboTalent",
+        "cboSkills",
+        "cboResources",
+        "cboTalents",
+        "cmdOK",
+    }:
+        native_dialog = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "NativeDialogPage.cs"
+        build_page = native_dialog.with_name("BuildPage.cs")
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_new_character_priority_e2e.py"
+        dialog_factory = presentation_root / "Chummer.Presentation" / "Overview" / "DesktopDialogFactory.cs"
+        dialog_coordinator = presentation_root / "Chummer.Presentation" / "Overview" / "DialogCoordinator.cs"
+        implementation_complete = (
+            _contains(native_dialog, 'AutomationId = $"dialog-field-{Token(field.Id)}"', 'AutomationId = $"dialog-action-{Token(action.Id)}"')
+            and _contains(build_page, 'NativeTheme.Metric("Metatype"', "Coordinator.State.Profile?.Metatype")
+            and _contains(
+                dialog_factory,
+                '"newCharacterMetatypeCategory"',
+                '"newCharacterMetatype"',
+                '"newCharacterPriorityHeritage"',
+                '"newCharacterPriorityAttributes"',
+                '"newCharacterPriorityTalent"',
+                '"newCharacterPrioritySkills"',
+                '"newCharacterPriorityResources"',
+                '"newCharacterPriorityTalentChoice"',
+                '"complete_new_character_workflow"',
+            )
+            and _contains(
+                dialog_coordinator,
+                '"metatypecategory"',
+                '"metatype"',
+                '"prioritymetatype"',
+                '"priorityattributes"',
+                '"priorityspecial"',
+                '"priorityskills"',
+                '"priorityresources"',
+                '"prioritytalent"',
+                "CompleteNewCharacterWorkflowAsync",
+            )
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            "dialog-field-newcharactermetatypecategory",
+            "dialog-field-newcharactermetatype",
+            "dialog-field-newcharacterpriorityheritage",
+            "dialog-field-newcharacterpriorityattributes",
+            "dialog-field-newcharacterprioritytalent",
+            "dialog-field-newcharacterpriorityskills",
+            "dialog-field-newcharacterpriorityresources",
+            "dialog-field-newcharacterprioritytalentchoice",
+            "dialog-action-complete-new-character-workflow",
+            '"workspacePriorityPersisted": "pass"',
+            '"processRestartPriorityPersistence": "pass"',
+        )
+        phone_e2e = (
+            new_character_priority_phone_e2e_receipt
+            if implementation_complete and e2e_scripted
+            else None
+        )
+        automation_ids = {
+            "cboCategory": "dialog-field-newcharactermetatypecategory",
+            "lstMetatypes": "dialog-field-newcharactermetatype",
+            "cboHeritage": "dialog-field-newcharacterpriorityheritage",
+            "cboAttributes": "dialog-field-newcharacterpriorityattributes",
+            "cboTalent": "dialog-field-newcharacterprioritytalent",
+            "cboSkills": "dialog-field-newcharacterpriorityskills",
+            "cboResources": "dialog-field-newcharacterpriorityresources",
+            "cboTalents": "dialog-field-newcharacterprioritytalentchoice",
+            "cmdOK": "dialog-action-complete-new-character-workflow",
+        }
+        assertions = {
+            "cboCategory": "character/metatypecategory equals the submitted category after workspace reopen and process restart",
+            "lstMetatypes": "character/metatype equals the submitted metatype after workspace reopen and process restart",
+            "cboHeritage": "character/prioritymetatype equals the submitted priority after workspace reopen and process restart",
+            "cboAttributes": "character/priorityattributes equals the submitted priority after workspace reopen and process restart",
+            "cboTalent": "character/priorityspecial equals the submitted priority after workspace reopen and process restart",
+            "cboSkills": "character/priorityskills equals the submitted priority after workspace reopen and process restart",
+            "cboResources": "character/priorityresources equals the submitted priority after workspace reopen and process restart",
+            "cboTalents": "character/prioritytalent equals the submitted talent after workspace reopen and process restart",
+            "cmdOK": "the committed metatype-priority workflow produces a durable workspace with every selected priority value",
+        }
+        source_refs = [
+            "src/Chummer.Android/Native/NativeDialogPage.cs",
+            "src/Chummer.Android/Native/BuildPage.cs",
+            "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+            "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+            "tests/run_api36_new_character_priority_e2e.py",
+        ]
+        return {
+            "status": (
+                "implemented_verified_api36"
+                if phone_e2e is not None
+                else "implemented_pending_emulator"
+                if implementation_complete
+                else "missing"
+            ),
+            "route": "Home > New runner > Select Build Method > Select Metatype Priority",
+            "surface": "NativeDialogPage",
+            "automationId": automation_ids[control],
+            "sourceRefs": source_refs,
+            "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
             "persistenceAssertion": assertions[control],
             "e2e": phone_e2e or {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
@@ -2194,6 +2373,7 @@ def enrich_rows(
     attribute_phone_e2e_receipt = _validated_attribute_phone_e2e_receipt()
     attribute_career_phone_e2e_receipt = _validated_attribute_career_phone_e2e_receipt()
     new_character_settings_phone_e2e_receipt = _validated_new_character_settings_phone_e2e_receipt()
+    new_character_priority_phone_e2e_receipt = _validated_new_character_priority_phone_e2e_receipt()
     for row in rows:
         family = row["mutationFamily"]
         family_contract = surfaces.get(family, {})
@@ -2231,6 +2411,7 @@ def enrich_rows(
             attribute_phone_e2e_receipt,
             attribute_career_phone_e2e_receipt,
             new_character_settings_phone_e2e_receipt,
+            new_character_priority_phone_e2e_receipt,
         )
         if known is not None:
             phone = {

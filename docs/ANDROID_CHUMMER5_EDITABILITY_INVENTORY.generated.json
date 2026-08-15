@@ -15,8 +15,8 @@
     "completionProvenCount": 531,
     "phoneStatusCounts": {
       "implemented_pending_emulator": 30,
-      "implemented_verified_api36": 81,
-      "missing": 1407,
+      "implemented_verified_api36": 90,
+      "missing": 1398,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 144
@@ -247,7 +247,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "115ad52ef15326c6bf3512b701dcc5af95587c6eb5c8155382235e91f0e18a48"
+      "sha256": "42c1983f17e5a92e29583294e907ab7b725caf7a8ba5dc76b919a342848917db"
     }
   },
   "coverageByFamily": {
@@ -317,7 +317,7 @@
     "character_settings": {
       "rowCount": 209,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 194,
+      "phoneMissingCount": 185,
       "tabletMissingCount": 197,
       "completionProvenCount": 12
     },
@@ -11929,11 +11929,17 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharactermetatypecategory",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -11941,12 +11947,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "character/metatypecategory equals the submitted category after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
+          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
+          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
         },
         "tablet": {
           "status": "missing",
@@ -12100,11 +12108,17 @@
       "mutationFamily": "character_settings",
       "operation": "commit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-action-complete-new-character-workflow",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -12112,12 +12126,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "the committed metatype-priority workflow produces a durable workspace with every selected priority value",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
+          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
+          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
         },
         "tablet": {
           "status": "missing",
@@ -12161,11 +12177,17 @@
       "mutationFamily": "character_settings",
       "operation": "select_or_mutate_collection",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharactermetatype",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -12173,12 +12195,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "character/metatype equals the submitted metatype after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
+          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
+          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
         },
         "tablet": {
           "status": "missing",
@@ -12218,11 +12242,17 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharacterprioritytalentchoice",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -12230,12 +12260,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "character/prioritytalent equals the submitted talent after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
+          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
+          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
         },
         "tablet": {
           "status": "missing",
@@ -12431,11 +12463,17 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharacterpriorityresources",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -12443,12 +12481,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "character/priorityresources equals the submitted priority after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
+          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
+          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
         },
         "tablet": {
           "status": "missing",
@@ -12488,11 +12528,17 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharacterpriorityskills",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -12500,12 +12546,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "character/priorityskills equals the submitted priority after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
+          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
+          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
         },
         "tablet": {
           "status": "missing",
@@ -12545,11 +12593,17 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharacterprioritytalent",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -12557,12 +12611,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "character/priorityspecial equals the submitted priority after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
+          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
+          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
         },
         "tablet": {
           "status": "missing",
@@ -12602,11 +12658,17 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharacterpriorityattributes",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -12614,12 +12676,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "character/priorityattributes equals the submitted priority after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
+          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
+          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
         },
         "tablet": {
           "status": "missing",
@@ -12659,11 +12723,17 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharacterpriorityheritage",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -12671,12 +12741,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "character/prioritymetatype equals the submitted priority after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
+          "receiptSha256": "1a0cc90bd254332e33a684c8746b18f5b30729458d5d7b26896233ad377a1eb4",
+          "apkSha256": "64bdf477d199ab60964b3303d85271aca0f3d9a02d6e191ac49f8eb665c52215"
         },
         "tablet": {
           "status": "missing",

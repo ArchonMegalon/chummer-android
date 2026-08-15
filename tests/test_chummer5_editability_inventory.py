@@ -344,8 +344,8 @@ namespace Chummer.Sample
         self.assertEqual(
             {
                 "implemented_pending_emulator": 30,
-                "implemented_verified_api36": 81,
-                "missing": 1407,
+                "implemented_verified_api36": 90,
+                "missing": 1398,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 144,
@@ -401,6 +401,58 @@ namespace Chummer.Sample
 
         self.assertEqual("missing", rows["cmdEditCharacterSetting"]["phone"]["status"])
         self.assertEqual("not_applicable_non_mutating", rows["cmdCancel"]["phone"]["status"])
+
+    def test_select_metatype_priority_phone_mapping_is_exact_and_phone_only(self) -> None:
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = {
+            row["legacy"]["controlName"]: row
+            for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == "SelectMetatypePriority"
+        }
+        proven = {
+            "cboCategory",
+            "lstMetatypes",
+            "cboHeritage",
+            "cboAttributes",
+            "cboTalent",
+            "cboSkills",
+            "cboResources",
+            "cboTalents",
+            "cmdOK",
+        }
+
+        for control in proven:
+            row = rows[control]
+            self.assertTrue(row["editParityRequired"])
+            self.assertEqual("implemented_verified_api36", row["phone"]["status"])
+            self.assertEqual("executed_api36", row["e2e"]["phone"]["status"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertIn("Select Metatype Priority", row["phone"]["route"])
+
+        remaining = {
+            "cboMetavariant",
+            "cboSkill1",
+            "cboSkill2",
+            "cboSkill3",
+            "chkPossessionBased",
+            "cboPossessionMethod",
+            "nudForce",
+        }
+        self.assertEqual(
+            remaining,
+            {
+                control
+                for control, row in rows.items()
+                if row["editParityRequired"] and control not in proven
+            },
+        )
+        self.assertTrue(
+            all(rows[control]["phone"]["status"] == "missing" for control in remaining)
+        )
 
     def test_condition_receipts_fail_closed_when_a_driver_hash_is_stale(self) -> None:
         self.assertEqual(
@@ -492,6 +544,19 @@ namespace Chummer.Sample
             receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
             with patch.object(inventory, "NEW_CHARACTER_SETTINGS_PHONE_E2E_RECEIPT", receipt_path):
                 self.assertIsNone(inventory._validated_new_character_settings_phone_e2e_receipt())
+
+    def test_new_character_priority_receipt_is_source_hash_bound(self) -> None:
+        validated = inventory._validated_new_character_priority_phone_e2e_receipt()
+        self.assertIsNotNone(validated)
+
+        source = inventory.NEW_CHARACTER_PRIORITY_PHONE_E2E_RECEIPT
+        receipt = json.loads(source.read_text(encoding="utf-8"))
+        receipt["driverSha256"] = "0" * 64
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            receipt_path = Path(temporary) / "receipt.json"
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+            with patch.object(inventory, "NEW_CHARACTER_PRIORITY_PHONE_E2E_RECEIPT", receipt_path):
+                self.assertIsNone(inventory._validated_new_character_priority_phone_e2e_receipt())
 
 
 if __name__ == "__main__":
