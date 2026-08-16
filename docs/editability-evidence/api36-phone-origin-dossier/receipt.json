@@ -1,0 +1,161 @@
+{
+  "schema": "chummer.android.editing-e2e/v1",
+  "status": "pass",
+  "generatedAtUtc": "2026-08-16T11:56:10.455843+00:00",
+  "serial": "emulator-5554",
+  "profile": "phone",
+  "journey": "origin-dossier",
+  "apiLevel": 36,
+  "apk": "/docker/chummercomplete/.integration-worktrees/chummer-android-main-20260816/src/Chummer.Android/bin/Debug/net10.0-android36.0/android-x64/com.myexternalbrain.chummer-Signed.apk",
+  "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+  "driverSha256": "ef9ba7c9f8148939e126bfacfa076b381559b1ce5742eb3b504ba92c30879900",
+  "sharedDriverSha256": "38ad82e00c5f8ea66d667123222ea916006e690620b6fb4f9314f46716eec2f5",
+  "originDossierPageSha256": "d3d8540fb0107d04a02f9c91c3613b4e02dbe0d4217f0b0957492e338f0d71b2",
+  "runnerSessionCoordinatorSha256": "49e52ec4ccc7a07149ad44a9e1272d61a774f155a36b23b3a322c566de8bd0ff",
+  "workspaceMutationsSha256": "6370f3432d1fe3df6623fbabf90d1257f4608777f2c92208f978085b77ad46e4",
+  "careerFixture": "/docker/chummercomplete/.integration-worktrees/chummer-android-main-20260816/tests/fixtures/career-condition-monitor-e2e.chum5",
+  "careerFixtureSha256": "aebca5d1b09a338a798afb45805fe0679c174c2f4f1687e53624990ce095ae25",
+  "controlCount": 26,
+  "controls": {
+    "CharacterCreate.txtCharacterName": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCreate.txtAlias": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCreate.txtPlayerName": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCreate.txtGender": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCreate.txtAge": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCreate.txtHeight": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCreate.txtWeight": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCreate.txtHair": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCreate.txtEyes": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCreate.txtSkin": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCreate.rtfConcept": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCreate.rtfDescription": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCreate.rtfBackground": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCareer.txtCharacterName": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCareer.txtAlias": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCareer.txtPlayerName": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCareer.txtGender": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCareer.txtAge": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCareer.txtHeight": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCareer.txtWeight": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCareer.txtHair": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCareer.txtEyes": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCareer.txtSkin": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCareer.rtfConcept": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCareer.rtfDescription": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "CharacterCareer.rtfBackground": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    }
+  },
+  "journeys": {
+    "creationRunnerCreated": "pass",
+    "allCreationOriginFieldsEdited": "pass",
+    "creationWorkspaceXmlPersisted": "pass",
+    "creationProcessRestartUiReadback": "pass",
+    "careerRunnerImported": "pass",
+    "allCareerOriginFieldsEdited": "pass",
+    "careerWorkspaceXmlPersisted": "pass",
+    "careerProcessRestartUiReadback": "pass"
+  }
+}

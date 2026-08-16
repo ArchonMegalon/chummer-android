@@ -14,8 +14,8 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 40,
-      "implemented_verified_api36": 249,
+      "implemented_pending_emulator": 14,
+      "implemented_verified_api36": 275,
       "missing": 1229,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
@@ -140,6 +140,11 @@
         "sha256": "067331f50080d3971c9e62bcd162734321e771e72c8140cf88f09124f0281d7f"
       },
       {
+        "path": "tests/run_api36_origin_dossier_e2e.py",
+        "exists": true,
+        "sha256": "ef9ba7c9f8148939e126bfacfa076b381559b1ce5742eb3b504ba92c30879900"
+      },
+      {
         "path": "tests/run_api36_new_character_settings_e2e.py",
         "exists": true,
         "sha256": "ba8b93a395da79473fab4e2eb23a4829817966547ae499e9ddc895f44af7101b"
@@ -208,6 +213,11 @@
         "path": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
         "exists": true,
         "sha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+        "exists": true,
+        "sha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
@@ -292,7 +302,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "ea42de169ccffba9f8a94a65a0ff6d824b90702428ac860e22fd336d48614b6d"
+      "sha256": "f3ff41a9b2fa40ae05277272280e79f41cb6f5d01620e4b0cbf03a4e1bbd3db2"
     }
   },
   "coverageByFamily": {
@@ -13839,7 +13849,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-alias",
@@ -13859,8 +13869,15 @@
       "persistenceAssertion": "character/alias equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -23250,7 +23267,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-name",
@@ -23270,8 +23287,15 @@
       "persistenceAssertion": "character/name equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -23306,7 +23330,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-player-name",
@@ -23326,8 +23350,15 @@
       "persistenceAssertion": "character/playername equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -23362,7 +23393,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-skin",
@@ -23382,8 +23413,15 @@
       "persistenceAssertion": "character/skin equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -23418,7 +23456,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-weight",
@@ -23438,8 +23476,15 @@
       "persistenceAssertion": "character/weight equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -23474,7 +23519,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-height",
@@ -23494,8 +23539,15 @@
       "persistenceAssertion": "character/height equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -23530,7 +23582,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-hair",
@@ -23550,8 +23602,15 @@
       "persistenceAssertion": "character/hair equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -23586,7 +23645,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-eyes",
@@ -23606,8 +23665,15 @@
       "persistenceAssertion": "character/eyes equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -23642,7 +23708,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-age",
@@ -23662,8 +23728,15 @@
       "persistenceAssertion": "character/age equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -23698,7 +23771,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-sex",
@@ -23718,8 +23791,15 @@
       "persistenceAssertion": "character/sex equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -34119,7 +34199,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-description",
@@ -34139,8 +34219,15 @@
       "persistenceAssertion": "character/description equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -34175,7 +34262,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-background",
@@ -34195,8 +34282,15 @@
       "persistenceAssertion": "character/background equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -34231,7 +34325,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-concept",
@@ -34251,8 +34345,15 @@
       "persistenceAssertion": "character/concept equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -51812,7 +51913,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-skin",
@@ -51832,8 +51933,15 @@
       "persistenceAssertion": "character/skin equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -51868,7 +51976,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-weight",
@@ -51888,8 +51996,15 @@
       "persistenceAssertion": "character/weight equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -51924,7 +52039,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-height",
@@ -51944,8 +52059,15 @@
       "persistenceAssertion": "character/height equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -51980,7 +52102,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-hair",
@@ -52000,8 +52122,15 @@
       "persistenceAssertion": "character/hair equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -52036,7 +52165,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-eyes",
@@ -52056,8 +52185,15 @@
       "persistenceAssertion": "character/eyes equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -52092,7 +52228,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-age",
@@ -52112,8 +52248,15 @@
       "persistenceAssertion": "character/age equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -52148,7 +52291,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-sex",
@@ -52168,8 +52311,15 @@
       "persistenceAssertion": "character/sex equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -52935,7 +53085,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-player-name",
@@ -52955,8 +53105,15 @@
       "persistenceAssertion": "character/playername equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -53849,7 +54006,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-name",
@@ -53869,8 +54026,15 @@
       "persistenceAssertion": "character/name equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -57709,7 +57873,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-alias",
@@ -57729,8 +57893,15 @@
       "persistenceAssertion": "character/alias equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -58789,7 +58960,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-description",
@@ -58809,8 +58980,15 @@
       "persistenceAssertion": "character/description equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -58845,7 +59023,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-background",
@@ -58865,8 +59043,15 @@
       "persistenceAssertion": "character/background equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -58901,7 +59086,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-concept",
@@ -58921,8 +59106,15 @@
       "persistenceAssertion": "character/concept equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
+          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",

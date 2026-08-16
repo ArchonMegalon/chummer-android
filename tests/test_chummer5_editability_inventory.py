@@ -213,6 +213,19 @@ namespace Chummer.Sample
         ]
         self.assertEqual(4, len(linked_character_rows))
         self.assertTrue(all(row["presenterMutation"] for row in origin_rows + attribute_rows))
+        for row in origin_rows:
+            self.assertEqual("implemented_verified_api36", row["phone"]["status"])
+            self.assertEqual("executed_api36", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                {
+                    key: "pass"
+                    for key in inventory.ORIGIN_DOSSIER_CONTROL_E2E_PROOF_KEYS
+                },
+                row["e2e"]["phone"]["controlProof"],
+            )
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("missing", row["e2e"]["tablet"]["status"])
+            self.assertFalse(row["completionProven"])
         attribute_by_name = {row["legacy"]["controlName"]: row for row in attribute_rows}
         for control_name in ("nudBase", "nudKarma"):
             row = attribute_by_name[control_name]
@@ -343,8 +356,8 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 40,
-                "implemented_verified_api36": 249,
+                "implemented_pending_emulator": 14,
+                "implemented_verified_api36": 275,
                 "missing": 1229,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
@@ -622,6 +635,71 @@ namespace Chummer.Sample
             receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
             with patch.object(inventory, "CHARACTER_SETTINGS_PHONE_E2E_RECEIPT", receipt_path):
                 self.assertIsNone(inventory._validated_character_settings_phone_e2e_receipt())
+
+    def test_origin_dossier_receipt_is_control_and_source_graph_hash_bound(self) -> None:
+        driver = REPO / "tests" / "run_api36_origin_dossier_e2e.py"
+        shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
+        native_root = REPO / "src" / "Chummer.Android" / "Native"
+        workspace_mutations = (
+            inventory.WORKSPACE_ROOT
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+            / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        )
+        fixture = REPO / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5"
+        controls = {
+            f"{form_name}.{control}": {
+                key: "pass"
+                for key in inventory.ORIGIN_DOSSIER_CONTROL_E2E_PROOF_KEYS
+            }
+            for form_name in ("CharacterCreate", "CharacterCareer")
+            for control in inventory.ORIGIN_FIELDS
+        }
+        receipt = {
+            "schema": "chummer.android.editing-e2e/v1",
+            "status": "pass",
+            "profile": "phone",
+            "journey": "origin-dossier",
+            "apiLevel": 36,
+            "apkSha256": "a" * 64,
+            "driverSha256": inventory._sha256_file(driver),
+            "sharedDriverSha256": inventory._sha256_file(shared_driver),
+            "originDossierPageSha256": inventory._sha256_file(
+                native_root / "OriginDossierPage.cs"
+            ),
+            "runnerSessionCoordinatorSha256": inventory._sha256_file(
+                native_root / "RunnerSessionCoordinator.cs"
+            ),
+            "workspaceMutationsSha256": inventory._sha256_file(workspace_mutations),
+            "careerFixtureSha256": inventory._sha256_file(fixture),
+            "controlCount": len(controls),
+            "controls": controls,
+            "journeys": {
+                journey: "pass"
+                for journey in inventory.ORIGIN_DOSSIER_E2E_JOURNEYS
+            },
+        }
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            receipt_path = Path(temporary) / "receipt.json"
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+            with patch.object(inventory, "ORIGIN_DOSSIER_PHONE_E2E_RECEIPT", receipt_path):
+                validated = inventory._validated_origin_dossier_phone_e2e_receipt()
+                self.assertIsNotNone(validated)
+                assert validated is not None
+                self.assertEqual(controls, validated["controlProofs"])
+
+                for stale_hash in (
+                    "driverSha256",
+                    "workspaceMutationsSha256",
+                    "careerFixtureSha256",
+                ):
+                    stale_receipt = {**receipt, stale_hash: "0" * 64}
+                    receipt_path.write_text(json.dumps(stale_receipt), encoding="utf-8")
+                    self.assertIsNone(
+                        inventory._validated_origin_dossier_phone_e2e_receipt(),
+                        stale_hash,
+                    )
 
     def test_new_character_priority_receipt_is_source_hash_bound(self) -> None:
         validated = inventory._validated_new_character_priority_phone_e2e_receipt()
