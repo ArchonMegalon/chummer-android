@@ -343,8 +343,8 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 183,
-                "implemented_verified_api36": 106,
+                "implemented_pending_emulator": 40,
+                "implemented_verified_api36": 249,
                 "missing": 1229,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
@@ -408,6 +408,18 @@ namespace Chummer.Sample
                 encoding="utf-8"
             )
         )
+        contract = json.loads(
+            (REPO / "docs" / "CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        value_controls = {
+            row["legacyControl"]
+            for row in contract["controls"]
+            if row["semanticOperation"]
+            in {"set_value", "edit_sourcebooks", "edit_custom_data_directories"}
+        }
+        exact_controls = value_controls | inventory.CHARACTER_SETTINGS_EXACT_API36_ACTIONS
         rows = {
             row["legacy"]["controlName"]: row
             for row in payload["rows"]
@@ -416,8 +428,9 @@ namespace Chummer.Sample
         }
 
         self.assertEqual(162, len(rows))
+        self.assertEqual(150, len(value_controls))
         self.assertEqual(
-            inventory.CHARACTER_SETTINGS_EXACT_API36_CONTROLS,
+            exact_controls,
             {
                 control
                 for control, row in rows.items()
@@ -425,19 +438,24 @@ namespace Chummer.Sample
             },
         )
         self.assertEqual(
-            153,
+            10,
             sum(
                 row["phone"]["status"] == "implemented_pending_emulator"
                 for row in rows.values()
             ),
         )
-        for control in inventory.CHARACTER_SETTINGS_EXACT_API36_CONTROLS:
+        for control in exact_controls:
             self.assertEqual("executed_api36", rows[control]["e2e"]["phone"]["status"])
+        for control in value_controls:
+            self.assertEqual(
+                {key: "pass" for key in inventory.CHARACTER_SETTINGS_CONTROL_E2E_PROOF_KEYS},
+                rows[control]["e2e"]["phone"]["controlProof"],
+            )
         self.assertTrue(
             all(
                 row["e2e"]["phone"]["status"] == "section_representative_api36"
                 for control, row in rows.items()
-                if control not in inventory.CHARACTER_SETTINGS_EXACT_API36_CONTROLS
+                if control not in exact_controls
             )
         )
         self.assertTrue(all(row["tablet"]["status"] == "missing" for row in rows.values()))

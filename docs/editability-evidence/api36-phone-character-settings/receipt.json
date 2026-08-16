@@ -1,14 +1,14 @@
 {
   "schema": "chummer.android.editing-e2e/v1",
   "status": "pass",
-  "generatedAtUtc": "2026-08-16T06:21:00.384057+00:00",
+  "generatedAtUtc": "2026-08-16T11:31:21.776728+00:00",
   "serial": "emulator-5554",
   "profile": "phone",
   "journey": "character-settings",
   "apiLevel": 36,
   "apk": "/docker/chummercomplete/.integration-worktrees/chummer-android-main-20260816/src/Chummer.Android/bin/Debug/net10.0-android36.0/android-x64/com.myexternalbrain.chummer-Signed.apk",
   "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-  "driverSha256": "4952ba8babc29b88871ace0e592596525a5bcd27915e111453ebed5122cb75d0",
+  "driverSha256": "067331f50080d3971c9e62bcd162734321e771e72c8140cf88f09124f0281d7f",
   "sharedDriverSha256": "38ad82e00c5f8ea66d667123222ea916006e690620b6fb4f9314f46716eec2f5",
   "nativeCommandPageSha256": "0e72064df8520cc9f26a50fdfdf28e4fac27e720b3cbf3e8ac0b808b1ba6102c",
   "nativeDialogPageSha256": "bf0629ba8c38c84bcca256caff0737b4e0c1b15a53e99d7b5a543a95c4971196",
@@ -18,6 +18,759 @@
   "characterSettingsProfilesSha256": "989158b6876e6ac1bbf70813bbe5e4a7f4d7055c8cd0cefa65531cae911eb575",
   "characterSettingsContractSha256": "9a418082fa297c94d6af83096717cfcd34fe507e649cf00b562a1373cbf8fc96",
   "dialogCoordinatorSha256": "817d0cce1486fe177e0900eb0c5c4618451f687e093051fdeb887d7319230fc8",
+  "valueControlCount": 150,
+  "controls": {
+    "cboBuildMethod": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "cboLimbCount": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "cboPriorityTable": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkAllowCyberwareESSDiscounts": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkAllowFreeGrids": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkAllowInitiation": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkAllowLimitedSpellsForBareHandedAdept": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkAllowPointBuySpecializationsOnKarmaSkills": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkAllowSkillRegrouping": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkAllowTechnomancerSchooling": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkAlternateMetatypeAttributeKarma": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkCompensateSkillGroupKarmaDifference": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkCyberlegMovement": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkCyberlimbAttributeBonusCap": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkDontDoubleQualityPurchases": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkDontDoubleQualityRefunds": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkDontRoundEssenceInternally": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkDontUseCyberlimbCalculation": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkDroneArmorMultiplier": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkDronemods": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkDronemodsMaximumPilot": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkESSLossReducesMaximumOnly": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkEnable4eStyleEnemyTracking": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkEncumbrancePenaltyAgility": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkEncumbrancePenaltyMovementSpeed": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkEncumbrancePenaltyPhysicalLimit": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkEncumbrancePenaltyReaction": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkEncumbrancePenaltyWoundModifier": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkEnemyKarmaQualityLimit": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkEnforceCapacity": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkExceedNegativeQualities": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkExceedNegativeQualitiesNoBonus": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkExceedPositiveQualities": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkExceedPositiveQualitiesCostDoubled": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkExtendAnyDetectionSpell": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkFreeMartialArtSpecialization": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkGrade": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkIgnoreArt": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkIgnoreComplexFormLimit": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkIncreasedImprovedAbilityModifier": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkLicenseEachRestrictedItem": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkMoreLethalGameplay": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkMysAdPp": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkMysAdeptSecondMAGAttribute": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkNoArmorEncumbrance": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkPrioritySpellsAsAdeptPowers": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkRedlinerLimbsArms": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkRedlinerLimbsLegs": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkRedlinerLimbsSkull": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkRedlinerLimbsTorso": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkRestrictRecoil": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkReverseAttributePriorityOrder": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkSpecialKarmaCost": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkSpecializationsBreakSkillGroups": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkStrictSkillGroups": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkUnarmedSkillImprovements": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkUncappedArmorAccessoryBonuses": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkUnclampAttributeMinimum": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkUseCalculatedPublicAwareness": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "chkUsePointsOnBrokenGroups": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudCyberlimbAttributeBonusCap": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudDroneArmorMultiplier": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudEncumbrancePenaltyAgility": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudEncumbrancePenaltyMovementSpeed": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudEncumbrancePenaltyPhysicalLimit": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudEncumbrancePenaltyReaction": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudEncumbrancePenaltyWoundModifier": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudEssenceDecimals": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaAlchemicalFocus": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaAttribute": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaBanishingFocus": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaBindingFocus": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaCarryover": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaCenteringFocus": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaContact": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaCounterspellingFocus": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaDisenchantingFocus": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaFlexibleSignatureFocus": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaGainedFromEnemies": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaImproveActiveSkill": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaImproveKnowledgeSkill": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaImproveSkillGroup": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaInitiation": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaInitiationFlat": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaJoinGroup": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaKnowledgeSpecialization": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaLeaveGroup": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaMaskingFocus": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaMetamagic": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaMysticAdeptPowerPoint": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaNewAIAdvancedProgram": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaNewAIProgram": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaNewActiveSkill": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaNewComplexForm": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaNewKnowledgeSkill": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaNewSkillGroup": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaNuyenPerWftM": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaNuyenPerWftP": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaPowerFocus": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaQiFocus": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaQuality": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaRitualSpellcastingFocus": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaSpecialization": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaSpell": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaSpellShapingFocus": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaSpellcastingFocus": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaSpirit": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaSpiritFettering": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaSummoningFocus": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaSustainingFocus": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaTechnique": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudKarmaWeaponFocus": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMaxAstralInitiativeDice": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMaxAvail": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMaxColdSimInitiativeDice": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMaxHotSimInitiativeDice": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMaxInitiativeDice": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMaxKnowledgeSkillRating": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMaxKnowledgeSkillRatingCreate": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMaxMartialArts": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMaxMartialTechniques": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMaxNumberMaxAttributes": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMaxNuyenKarma": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMaxSkillRating": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMaxSkillRatingCreate": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMetatypeCostsKarmaMultiplier": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMinAstralInitiativeDice": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMinColdSimInitiativeDice": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMinHotSimInitiativeDice": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudMinInitiativeDice": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudNuyenCarryover": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudNuyenDecimalsMaximum": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudNuyenDecimalsMinimum": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudQualityKarmaLimit": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudStartingKarma": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudSumToTen": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "nudWeightDecimals": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "treCustomDataDirectories": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "treSourcebook": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "txtBoundSpiritLimit": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "txtCarryLimit": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "txtContactPoints": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "txtEncumbranceInterval": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "txtEssenceModifierPostExpression": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "txtGameplayOptionName": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "txtKnowledgePoints": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "txtLiftLimit": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "txtNuyenExpression": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "txtPriorities": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "txtRegisteredSpriteLimit": {
+      "mutated": "pass",
+      "catalogPersisted": "pass",
+      "processRestartUiReadback": "pass"
+    }
+  },
   "journeys": {
     "actionSearchRoute": "pass",
     "allEightPhoneSectionsReachable": "pass",
@@ -27,9 +780,13 @@
     "pickerEdited": "pass",
     "sourcebookCollectionEdited": "pass",
     "customDataCollectionEdited": "pass",
+    "profileSavedWithoutClosing": "pass",
     "profileSavedAndClosed": "pass",
     "catalogXmlPersisted": "pass",
     "processRestartCatalogPersistence": "pass",
-    "processRestartUiReadback": "pass"
+    "processRestartUiReadback": "pass",
+    "allValueControlsEdited": "pass",
+    "allValueControlsCatalogPersisted": "pass",
+    "allValueControlsRestartUiReadback": "pass"
   }
 }

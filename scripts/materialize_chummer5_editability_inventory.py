@@ -178,24 +178,21 @@ CHARACTER_SETTINGS_E2E_JOURNEYS = (
     "pickerEdited",
     "sourcebookCollectionEdited",
     "customDataCollectionEdited",
+    "profileSavedWithoutClosing",
     "profileSavedAndClosed",
     "catalogXmlPersisted",
     "processRestartCatalogPersistence",
     "processRestartUiReadback",
+    "allValueControlsEdited",
+    "allValueControlsCatalogPersisted",
+    "allValueControlsRestartUiReadback",
 )
-CHARACTER_SETTINGS_EXACT_API36_CONTROLS = frozenset(
-    {
-        "chkDontUseCyberlimbCalculation",
-        "treSourcebook",
-        "chkEnforceCapacity",
-        "nudNuyenDecimalsMinimum",
-        "nudKarmaMysticAdeptPowerPoint",
-        "treCustomDataDirectories",
-        "chkNoArmorEncumbrance",
-        "cboBuildMethod",
-        "cmdOK",
-    }
+CHARACTER_SETTINGS_CONTROL_E2E_PROOF_KEYS = (
+    "mutated",
+    "catalogPersisted",
+    "processRestartUiReadback",
 )
+CHARACTER_SETTINGS_EXACT_API36_ACTIONS = frozenset({"cmdSave", "cmdOK"})
 CHARACTER_SETTINGS_ACTION_AUTOMATION_IDS = {
     "cboSetting": "dialog-field-charactersettingsprofile",
     "cmdEnableSourcebooks": "dialog-field-charactersettingscontrol-tresourcebook",
@@ -824,7 +821,15 @@ def _validated_character_settings_phone_e2e_receipt() -> dict[str, Any] | None:
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         return None
     journeys = receipt.get("journeys")
+    control_proofs = receipt.get("controls")
     apk_sha = str(receipt.get("apkSha256") or "")
+    contract_text = _read_text(contract)
+    fields_marker = "internal static IReadOnlyList<Chummer5CharacterSettingsFieldDefinition> Fields"
+    values_marker = "internal static IReadOnlyDictionary<string, IReadOnlyList<string>> BuiltInStandardValues"
+    if fields_marker not in contract_text or values_marker not in contract_text:
+        return None
+    fields_block = contract_text.split(fields_marker, 1)[1].split(values_marker, 1)[0]
+    expected_control_proofs = set(re.findall(r'new\("([^"]+)"', fields_block))
     expected_hashes = {
         "driverSha256": driver,
         "sharedDriverSha256": shared_driver,
@@ -846,6 +851,14 @@ def _validated_character_settings_phone_e2e_receipt() -> dict[str, Any] | None:
         and all(receipt.get(key) == _sha256_file(path) for key, path in expected_hashes.items())
         and isinstance(journeys, dict)
         and all(journeys.get(journey) == "pass" for journey in CHARACTER_SETTINGS_E2E_JOURNEYS)
+        and isinstance(control_proofs, dict)
+        and receipt.get("valueControlCount") == len(expected_control_proofs) == 150
+        and set(control_proofs) == expected_control_proofs
+        and all(
+            isinstance(proof, dict)
+            and all(proof.get(key) == "pass" for key in CHARACTER_SETTINGS_CONTROL_E2E_PROOF_KEYS)
+            for proof in control_proofs.values()
+        )
         and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
     ):
         return None
@@ -854,6 +867,7 @@ def _validated_character_settings_phone_e2e_receipt() -> dict[str, Any] | None:
         "ref": CHARACTER_SETTINGS_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(CHARACTER_SETTINGS_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
+        "controlProofs": control_proofs,
     }
 
 
@@ -1614,6 +1628,10 @@ def _known_phone_mapping(
             "dialog-field-charactersettingscontrol-chknoarmorencumbrance",
             "dialog-field-charactersettingscontrol-cbobuildmethod",
             "dialog-action-save-and-close",
+            '"controls": control_proofs',
+            '"allValueControlsEdited": "pass"',
+            '"allValueControlsCatalogPersisted": "pass"',
+            '"allValueControlsRestartUiReadback": "pass"',
             '"processRestartUiReadback": "pass"',
         )
         phone_e2e = (
@@ -1621,7 +1639,21 @@ def _known_phone_mapping(
             if implementation_complete and e2e_scripted
             else None
         )
-        exact_api36 = phone_e2e is not None and control in CHARACTER_SETTINGS_EXACT_API36_CONTROLS
+        control_proofs = phone_e2e.get("controlProofs") if phone_e2e is not None else None
+        control_proof = (
+            control_proofs.get(control)
+            if isinstance(control_proofs, dict)
+            else None
+        )
+        exact_api36 = phone_e2e is not None and (
+            isinstance(control_proof, dict)
+            or control in CHARACTER_SETTINGS_EXACT_API36_ACTIONS
+        )
+        receipt_e2e = (
+            {key: value for key, value in phone_e2e.items() if key != "controlProofs"}
+            if phone_e2e is not None
+            else None
+        )
         automation_id = action_automation_id or (
             f"dialog-field-charactersettingscontrol-{_android_token(control)}"
         )
@@ -1637,10 +1669,16 @@ def _known_phone_mapping(
             "tests/run_api36_character_settings_e2e.py",
         ]
         representative_e2e = None
-        if phone_e2e is not None:
+        if receipt_e2e is not None:
             representative_e2e = {
-                **phone_e2e,
+                **receipt_e2e,
                 "status": "section_representative_api36",
+            }
+        exact_e2e = None
+        if receipt_e2e is not None and exact_api36:
+            exact_e2e = {
+                **receipt_e2e,
+                **({"controlProof": control_proof} if isinstance(control_proof, dict) else {}),
             }
         return {
             "status": (
@@ -1663,7 +1701,7 @@ def _known_phone_mapping(
             "persistenceAssertion": (
                 f"the active settings profile retains the {control} value or equivalent collection/profile operation after save, reopen, and process restart"
             ),
-            "e2e": phone_e2e if exact_api36 else representative_e2e or {
+            "e2e": exact_e2e if exact_api36 else representative_e2e or {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": e2e_driver.relative_to(REPO_ROOT).as_posix() if e2e_scripted else None,
             },
