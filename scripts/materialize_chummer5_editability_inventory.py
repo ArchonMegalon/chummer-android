@@ -21,7 +21,23 @@ from typing import Any, Iterable
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-WORKSPACE_ROOT = Path(os.environ.get("CHUMMER_COMPLETE_ROOT", REPO_ROOT.parent)).resolve()
+
+
+def _resolve_workspace_root() -> Path:
+    configured = os.environ.get("CHUMMER_COMPLETE_ROOT")
+    if configured:
+        return Path(configured).resolve()
+
+    for candidate in REPO_ROOT.parents:
+        if (
+            (candidate / "chummer-presentation").is_dir()
+            and (candidate / "chummer-design").is_dir()
+        ):
+            return candidate.resolve()
+    return REPO_ROOT.parent.resolve()
+
+
+WORKSPACE_ROOT = _resolve_workspace_root()
 DEFAULT_CHUMMER5_ROOT = Path(
     os.environ.get("CHUMMER5A_ROOT", "/docker/chummer5a")
 ).resolve()
@@ -134,11 +150,17 @@ NEW_CHARACTER_PRIORITY_E2E_JOURNEYS = (
     "prioritySkillChoice1Edited",
     "prioritySkillChoice2Edited",
     "prioritySkillChoice3Edited",
+    "forceEdited",
+    "possessionBasedEnabled",
+    "possessionMethodEdited",
     "creationCommitCompleted",
     "metatypeUiReadback",
     "metavariantUiReadback",
     "workspacePriorityPersisted",
     "processRestartPriorityPersistence",
+    "spiritUiReadback",
+    "workspaceSpiritPossessionPersisted",
+    "processRestartSpiritPossessionPersistence",
 )
 CHARACTER_SETTINGS_PHONE_E2E_RECEIPT = (
     REPO_ROOT
@@ -1724,6 +1746,9 @@ def _known_phone_mapping(
         "cboSkill1",
         "cboSkill2",
         "cboSkill3",
+        "chkPossessionBased",
+        "cboPossessionMethod",
+        "nudForce",
         "cmdOK",
     }:
         native_dialog = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "NativeDialogPage.cs"
@@ -1754,6 +1779,9 @@ def _known_phone_mapping(
                 '"newCharacterPrioritySkillChoice1"',
                 '"newCharacterPrioritySkillChoice2"',
                 '"newCharacterPrioritySkillChoice3"',
+                '"newCharacterForce"',
+                '"newCharacterPossessionBased"',
+                '"newCharacterPossessionMethod"',
                 '"complete_new_character_workflow"',
             )
             and _contains(
@@ -1770,6 +1798,9 @@ def _known_phone_mapping(
                 '"newCharacterPrioritySkillChoice1"',
                 '"newCharacterPrioritySkillChoice2"',
                 '"newCharacterPrioritySkillChoice3"',
+                '"force"',
+                '"possessionmethod"',
+                '"critterpowers"',
                 'new XElement("priorityskill", skill)',
                 "CompleteNewCharacterWorkflowAsync",
             )
@@ -1788,14 +1819,22 @@ def _known_phone_mapping(
             "dialog-field-newcharacterpriorityskillchoice1",
             "dialog-field-newcharacterpriorityskillchoice2",
             "dialog-field-newcharacterpriorityskillchoice3",
+            "dialog-field-newcharacterforce",
+            "dialog-field-newcharacterpossessionbased",
+            "dialog-field-newcharacterpossessionmethod",
             "dialog-action-complete-new-character-workflow",
             '"metavariantEdited": "pass"',
             '"prioritySkillChoice1Edited": "pass"',
             '"prioritySkillChoice2Edited": "pass"',
             '"prioritySkillChoice3Edited": "pass"',
+            '"forceEdited": "pass"',
+            '"possessionBasedEnabled": "pass"',
+            '"possessionMethodEdited": "pass"',
             '"metavariantUiReadback": "pass"',
             '"workspacePriorityPersisted": "pass"',
             '"processRestartPriorityPersistence": "pass"',
+            '"workspaceSpiritPossessionPersisted": "pass"',
+            '"processRestartSpiritPossessionPersistence": "pass"',
         )
         phone_e2e = (
             new_character_priority_phone_e2e_receipt
@@ -1815,6 +1854,9 @@ def _known_phone_mapping(
             "cboSkill1": "dialog-field-newcharacterpriorityskillchoice1",
             "cboSkill2": "dialog-field-newcharacterpriorityskillchoice2",
             "cboSkill3": "dialog-field-newcharacterpriorityskillchoice3",
+            "chkPossessionBased": "dialog-field-newcharacterpossessionbased",
+            "cboPossessionMethod": "dialog-field-newcharacterpossessionmethod",
+            "nudForce": "dialog-field-newcharacterforce",
             "cmdOK": "dialog-action-complete-new-character-workflow",
         }
         assertions = {
@@ -1830,6 +1872,9 @@ def _known_phone_mapping(
             "cboSkill1": "the nested character/priorityskills/priorityskill sequence retains the submitted first free skill after workspace reopen and process restart",
             "cboSkill2": "the nested character/priorityskills/priorityskill sequence retains the submitted second free skill in order after workspace reopen and process restart",
             "cboSkill3": "the nested character/priorityskills/priorityskill sequence retains the submitted third free skill in order after workspace reopen and process restart",
+            "chkPossessionBased": "the enabled possess-based tradition writes the selected possession method and matching critter power after workspace reopen and process restart",
+            "cboPossessionMethod": "character/possessionmethod and the matching Chummer5 critterpower retain the submitted Possession or Inhabitation method after workspace reopen and process restart",
+            "nudForce": "character/force equals the submitted force after workspace reopen, UI readback, and process restart",
             "cmdOK": "the committed metatype-priority workflow produces a durable workspace with every selected priority value, metavariant, and ordered free-skill choice",
         }
         source_refs = [

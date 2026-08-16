@@ -201,6 +201,7 @@ public sealed class NativeDialogPage : ContentPage
                 || string.Equals(fieldId, "newCharacterPrioritySkills", StringComparison.Ordinal)
                 || string.Equals(fieldId, "newCharacterPriorityResources", StringComparison.Ordinal)
                 || string.Equals(fieldId, "newCharacterPriorityTalentChoice", StringComparison.Ordinal)
+                || string.Equals(fieldId, "newCharacterPossessionBased", StringComparison.Ordinal)
                 || string.Equals(fieldId, "newCharacterPrioritySkillChoice1", StringComparison.Ordinal)
                 || string.Equals(fieldId, "newCharacterPrioritySkillChoice2", StringComparison.Ordinal)
                 || string.Equals(fieldId, "newCharacterPrioritySkillChoice3", StringComparison.Ordinal)));

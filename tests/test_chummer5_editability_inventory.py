@@ -344,8 +344,8 @@ namespace Chummer.Sample
         self.assertEqual(
             {
                 "implemented_pending_emulator": 183,
-                "implemented_verified_api36": 103,
-                "missing": 1232,
+                "implemented_verified_api36": 106,
+                "missing": 1229,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 144,
@@ -474,6 +474,9 @@ namespace Chummer.Sample
             "cboSkill1",
             "cboSkill2",
             "cboSkill3",
+            "chkPossessionBased",
+            "cboPossessionMethod",
+            "nudForce",
             "cmdOK",
         }
 
@@ -485,11 +488,7 @@ namespace Chummer.Sample
             self.assertEqual("missing", row["tablet"]["status"])
             self.assertIn("Select Metatype Priority", row["phone"]["route"])
 
-        remaining = {
-            "chkPossessionBased",
-            "cboPossessionMethod",
-            "nudForce",
-        }
+        remaining: set[str] = set()
         self.assertEqual(
             remaining,
             {

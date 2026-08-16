@@ -98,7 +98,31 @@ def main() -> int:
     driver_path = Path(__file__).resolve()
     shared_driver_path = Path(shared.__file__).resolve()
     android_root = driver_path.parents[1]
-    workspace_root = Path(os.environ.get("CHUMMER_COMPLETE_ROOT", android_root.parent)).resolve()
+    configured_workspace_root = os.environ.get("CHUMMER_COMPLETE_ROOT")
+    workspace_candidates = (
+        [Path(configured_workspace_root).resolve()]
+        if configured_workspace_root
+        else [candidate.resolve() for candidate in android_root.parents]
+    )
+    workspace_root = next(
+        (
+            candidate
+            for candidate in workspace_candidates
+            if (
+                candidate
+                / "chummer-presentation"
+                / "Chummer.Presentation"
+                / "Overview"
+            ).is_dir()
+        ),
+        None,
+    )
+    if workspace_root is None:
+        searched = ", ".join(str(candidate) for candidate in workspace_candidates)
+        raise FileNotFoundError(
+            "Could not locate the Chummer workspace root containing "
+            f"chummer-presentation; searched: {searched}"
+        )
     dialog_factory_path = (
         workspace_root
         / "chummer-presentation"

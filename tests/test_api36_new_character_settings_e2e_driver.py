@@ -46,6 +46,8 @@ class Api36NewCharacterSettingsE2EDriverTests(unittest.TestCase):
         source = DRIVER.read_text(encoding="utf-8")
         for marker in (
             '"--no-streaming"',
+            'configured_workspace_root = os.environ.get("CHUMMER_COMPLETE_ROOT")',
+            '/ "chummer-presentation"',
             '"dialogFactorySha256"',
             '"dialogCoordinatorSha256"',
             '"nativeDialogPageSha256"',

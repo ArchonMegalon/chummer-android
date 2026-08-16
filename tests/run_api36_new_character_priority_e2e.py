@@ -32,6 +32,12 @@ EXPECTED_XML = {
     "technomancer": "False",
 }
 EXPECTED_PRIORITY_SKILLS = ("Summoning", "Binding", "Gymnastics")
+EXPECTED_SPIRIT_XML = {
+    "metatypecategory": "Spirits",
+    "metatype": "Spirit of Air",
+    "force": "6",
+    "possessionmethod": "Inhabitation",
+}
 
 
 def sha256(path: Path) -> str:
@@ -184,6 +190,48 @@ def assert_profile_readback(device: shared.Device) -> None:
     device.assert_text("Dryad", timeout=30)
 
 
+def assert_persisted_spirit(device: shared.Device) -> None:
+    observed: list[dict[str, str]] = []
+    for payload in workspace_payloads(device):
+        try:
+            character = ET.fromstring(payload)
+        except ET.ParseError:
+            continue
+        values = {
+            key: character.findtext(key, default="")
+            for key in EXPECTED_SPIRIT_XML
+        }
+        observed.append(values)
+        possession_power = next(
+            (
+                power
+                for power in character.findall("critterpowers/critterpower")
+                if power.findtext("name", default="") == "Inhabitation"
+            ),
+            None,
+        )
+        if (
+            values == EXPECTED_SPIRIT_XML
+            and possession_power is not None
+            and possession_power.findtext("sourceid", default="")
+            == "30918b00-6dae-4989-9b6e-219c4bd6ac7e"
+            and possession_power.findtext("action", default="") == "Auto"
+            and possession_power.findtext("duration", default="") == "Special"
+        ):
+            return
+    device.capture("spirit-possession-not-persisted")
+    raise RuntimeError(
+        "Phone Force and possession selections were not durable in the workspace store; "
+        f"observed {observed!r}"
+    )
+
+
+def assert_spirit_profile_readback(device: shared.Device) -> None:
+    shared.open_build(device, "phone")
+    shared.reset_scroll_to_top(device, swipes=16)
+    device.assert_text("Spirit of Air", timeout=30)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--adb", type=Path, required=True)
@@ -196,7 +244,31 @@ def main() -> int:
     driver_path = Path(__file__).resolve()
     shared_driver_path = Path(shared.__file__).resolve()
     android_root = driver_path.parents[1]
-    workspace_root = Path(os.environ.get("CHUMMER_COMPLETE_ROOT", android_root.parent)).resolve()
+    configured_workspace_root = os.environ.get("CHUMMER_COMPLETE_ROOT")
+    workspace_candidates = (
+        [Path(configured_workspace_root).resolve()]
+        if configured_workspace_root
+        else [candidate.resolve() for candidate in android_root.parents]
+    )
+    workspace_root = next(
+        (
+            candidate
+            for candidate in workspace_candidates
+            if (
+                candidate
+                / "chummer-presentation"
+                / "Chummer.Presentation"
+                / "Overview"
+            ).is_dir()
+        ),
+        None,
+    )
+    if workspace_root is None:
+        searched = ", ".join(str(candidate) for candidate in workspace_candidates)
+        raise FileNotFoundError(
+            "Could not locate the Chummer workspace root containing "
+            f"chummer-presentation; searched: {searched}"
+        )
     presentation_root = (
         workspace_root
         / "chummer-presentation"
@@ -273,6 +345,57 @@ def main() -> int:
     assert_profile_readback(device)
     device.capture("phone-metatype-priority-after-restart")
 
+    device.shell("pm", "clear", shared.PACKAGE)
+    shared.launch_app(device)
+    device.wait("Your runners", timeout=90)
+    device.tap_until_visible("home-new-runner", "Select Build Method")
+    device.tap("dialog-action-create-character", scroll=True, max_scrolls=16)
+    device.wait("Select Metatype Priority", timeout=60)
+
+    select_option(
+        device,
+        "dialog-field-newcharactermetatypecategory",
+        "Spirit choices",
+    )
+    select_option(device, "dialog-field-newcharactermetatype", "Spirit of Air")
+    device.set_text(
+        "dialog-field-newcharacterforce",
+        "Force",
+        "6",
+        scroll=True,
+        max_scrolls=20,
+        scroll_distance_ratio=0.22,
+    )
+    device.tap(
+        "dialog-field-newcharacterpossessionbased",
+        scroll=True,
+        max_scrolls=20,
+        scroll_distance_ratio=0.22,
+    )
+    select_option(
+        device,
+        "dialog-field-newcharacterpossessionmethod",
+        "Inhabitation",
+    )
+    device.tap(
+        "dialog-action-complete-new-character-workflow",
+        scroll=True,
+        max_scrolls=24,
+        scroll_distance_ratio=0.22,
+    )
+    device.wait("Continue building", timeout=90)
+
+    assert_persisted_spirit(device)
+    assert_spirit_profile_readback(device)
+    device.capture("phone-spirit-force-possession-persisted")
+
+    device.shell("am", "force-stop", shared.PACKAGE)
+    shared.launch_app(device)
+    device.wait("Continue building", timeout=90)
+    assert_persisted_spirit(device)
+    assert_spirit_profile_readback(device)
+    device.capture("phone-spirit-force-possession-after-restart")
+
     receipt = {
         "schema": "chummer.android.editing-e2e/v1",
         "status": "pass",
@@ -302,11 +425,17 @@ def main() -> int:
             "prioritySkillChoice1Edited": "pass",
             "prioritySkillChoice2Edited": "pass",
             "prioritySkillChoice3Edited": "pass",
+            "forceEdited": "pass",
+            "possessionBasedEnabled": "pass",
+            "possessionMethodEdited": "pass",
             "creationCommitCompleted": "pass",
             "metatypeUiReadback": "pass",
             "metavariantUiReadback": "pass",
             "workspacePriorityPersisted": "pass",
             "processRestartPriorityPersistence": "pass",
+            "spiritUiReadback": "pass",
+            "workspaceSpiritPossessionPersisted": "pass",
+            "processRestartSpiritPossessionPersistence": "pass",
         },
     }
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
