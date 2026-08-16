@@ -490,9 +490,6 @@ LEGACY_CAREER_COLLECTION_DELETE_CONTROLS = {
     "cmdDeleteQuality": ("Quality", "Qualities"),
 }
 SPIRIT_GENERIC_EDITOR_CONTROLS = {
-    "cboSpiritName": ("text", "Name", "name"),
-    "cmdNotes": ("text", "Notes", "notes"),
-    "chkBound": ("toggle", "Bound", "bound"),
     "cmdDelete": ("delete", None, "spirit"),
 }
 
