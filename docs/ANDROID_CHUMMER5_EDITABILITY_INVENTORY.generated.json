@@ -14,8 +14,8 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 14,
-      "implemented_verified_api36": 275,
+      "implemented_pending_emulator": 10,
+      "implemented_verified_api36": 279,
       "missing": 1229,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
@@ -145,6 +145,11 @@
         "sha256": "ef9ba7c9f8148939e126bfacfa076b381559b1ce5742eb3b504ba92c30879900"
       },
       {
+        "path": "tests/run_api36_linked_runner_e2e.py",
+        "exists": true,
+        "sha256": "4c297f78259b5055dbd982610cb3e0cf20d73d6ced5d6f0ba89e9510111f14a4"
+      },
+      {
         "path": "tests/run_api36_new_character_settings_e2e.py",
         "exists": true,
         "sha256": "ba8b93a395da79473fab4e2eb23a4829817966547ae499e9ddc895f44af7101b"
@@ -218,6 +223,11 @@
         "path": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
         "exists": true,
         "sha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-linked-runner/receipt.json",
+        "exists": true,
+        "sha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
@@ -302,7 +312,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "f3ff41a9b2fa40ae05277272280e79f41cb6f5d01620e4b0cbf03a4e1bbd3db2"
+      "sha256": "d8924e87ad9a3d109d0d9fbb1955de934fa46c5b791accf01eba4a203ca49d33"
     }
   },
   "coverageByFamily": {
@@ -1449,7 +1459,7 @@
       "mutationFamily": "contacts",
       "operation": "delete",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact > Linked runner",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-linked-remove-{stable-target}",
@@ -1485,8 +1495,15 @@
       "persistenceAssertion": "selected stable Contact guid retains governed file/relative link state and linked identity after reopen/process restart, or restores its saved identity after unlink",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-linked-runner/receipt.json",
+          "receiptSha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "scripted_not_executed",
@@ -1526,7 +1543,7 @@
       "mutationFamily": "contacts",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Contacts > selected contact > Linked runner",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-linked-attach-{stable-target}",
@@ -1562,8 +1579,15 @@
       "persistenceAssertion": "selected stable Contact guid retains governed file/relative link state and linked identity after reopen/process restart, or restores its saved identity after unlink",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-linked-runner/receipt.json",
+          "receiptSha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "scripted_not_executed",
@@ -2878,7 +2902,7 @@
       "mutationFamily": "contacts",
       "operation": "delete",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Pets > selected pet > Linked runner",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-linked-remove-{stable-target}",
@@ -2914,8 +2938,15 @@
       "persistenceAssertion": "selected stable Pet guid retains governed file/relative link state and linked identity after reopen/process restart, or restores its saved identity after unlink",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-linked-runner/receipt.json",
+          "receiptSha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "scripted_not_executed",
@@ -2955,7 +2986,7 @@
       "mutationFamily": "contacts",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Relationships > Pets > selected pet > Linked runner",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-linked-attach-{stable-target}",
@@ -2991,8 +3022,15 @@
       "persistenceAssertion": "selected stable Pet guid retains governed file/relative link state and linked identity after reopen/process restart, or restores its saved identity after unlink",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_editing_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-linked-runner/receipt.json",
+          "receiptSha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "workspacePersisted": "pass",
+            "processRestartUiReadback": "pass"
+          }
         },
         "tablet": {
           "status": "scripted_not_executed",

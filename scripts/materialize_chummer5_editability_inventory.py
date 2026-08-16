@@ -214,6 +214,28 @@ ORIGIN_DOSSIER_CONTROL_E2E_PROOF_KEYS = (
     "workspacePersisted",
     "processRestartUiReadback",
 )
+LINKED_RUNNER_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-linked-runner"
+    / "receipt.json"
+)
+LINKED_RUNNER_E2E_JOURNEYS = (
+    "creationRunnerImported",
+    "invalidLinkedRunnerRejected",
+    "contactLinkedRunnerAttachPersisted",
+    "petLinkedRunnerAttachPersisted",
+    "processRestartAttachPersistence",
+    "contactLinkedRunnerRemovePersisted",
+    "petLinkedRunnerRemovePersisted",
+    "processRestartRemovePersistence",
+)
+LINKED_RUNNER_CONTROL_E2E_PROOF_KEYS = (
+    "mutated",
+    "workspacePersisted",
+    "processRestartUiReadback",
+)
 CHARACTER_SETTINGS_EXACT_API36_ACTIONS = frozenset({"cmdSave", "cmdOK"})
 CHARACTER_SETTINGS_ACTION_AUTOMATION_IDS = {
     "cboSetting": "dialog-field-charactersettingsprofile",
@@ -959,6 +981,72 @@ def _validated_origin_dossier_phone_e2e_receipt() -> dict[str, Any] | None:
     }
 
 
+def _validated_linked_runner_phone_e2e_receipt() -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_linked_runner_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    native_root = REPO_ROOT / "src" / "Chummer.Android"
+    overview = WORKSPACE_ROOT / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+    fixture_root = REPO_ROOT / "tests" / "fixtures"
+    expected_hashes = {
+        "driverSha256": driver,
+        "sharedDriverSha256": shared_driver,
+        "collectionEditorPagesSha256": native_root / "Native" / "CollectionEditorPages.cs",
+        "runnerSessionCoordinatorSha256": native_root / "Native" / "RunnerSessionCoordinator.cs",
+        "linkedCharacterFileServiceSha256": native_root / "Platform" / "IAndroidLinkedCharacterFileService.cs",
+        "linkedDocumentCodecSha256": WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",
+        "workspaceCollectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
+        "workspaceCollectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
+        "workspaceCollectionMutationRequestSha256": overview / "WorkspaceCollectionMutationRequest.cs",
+        "workspaceXmlMutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+        "workspaceMutationsSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "inputFixtureSha256": fixture_root / "creation-contact-pet-e2e.chum5",
+        "linkedFixtureSha256": fixture_root / "linked-runner-e2e.chum5",
+        "invalidLinkedFixtureSha256": fixture_root / "invalid-linked-runner-e2e.chum5",
+    }
+    if not all(path.is_file() for path in expected_hashes.values()):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(LINKED_RUNNER_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    control_proofs = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_controls = {
+        f"{class_name}.{control}"
+        for class_name in ("ContactControl", "PetControl")
+        for control in ("tsAttachCharacter", "tsRemoveCharacter")
+    }
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "linked-runner"
+        and receipt.get("apiLevel") == 36
+        and all(receipt.get(key) == _sha256_file(path) for key, path in expected_hashes.items())
+        and isinstance(journeys, dict)
+        and all(journeys.get(journey) == "pass" for journey in LINKED_RUNNER_E2E_JOURNEYS)
+        and isinstance(control_proofs, dict)
+        and receipt.get("controlCount") == len(expected_controls) == 4
+        and set(control_proofs) == expected_controls
+        and all(
+            isinstance(proof, dict)
+            and all(proof.get(key) == "pass" for key in LINKED_RUNNER_CONTROL_E2E_PROOF_KEYS)
+            for proof in control_proofs.values()
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": LINKED_RUNNER_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(LINKED_RUNNER_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+        "controlProofs": control_proofs,
+    }
+
+
 def _validated_new_character_priority_phone_e2e_receipt() -> dict[str, Any] | None:
     driver = REPO_ROOT / "tests" / "run_api36_new_character_priority_e2e.py"
     shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
@@ -1635,6 +1723,7 @@ def _known_phone_mapping(
     attribute_career_phone_e2e_receipt: dict[str, Any] | None,
     character_settings_phone_e2e_receipt: dict[str, Any] | None,
     origin_dossier_phone_e2e_receipt: dict[str, Any] | None,
+    linked_runner_phone_e2e_receipt: dict[str, Any] | None,
     new_character_settings_phone_e2e_receipt: dict[str, Any] | None,
     new_character_priority_phone_e2e_receipt: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
@@ -2038,7 +2127,8 @@ def _known_phone_mapping(
         tablet_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TabletBuildPage.cs"
         coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
         staging = REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs"
-        e2e_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_linked_runner_e2e.py"
+        tablet_e2e_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
         codec = (
             WORKSPACE_ROOT
             / "chummer-core-engine"
@@ -2096,9 +2186,30 @@ def _known_phone_mapping(
         )
         e2e_scripted = _contains(
             e2e_driver,
+            '"journey": "linked-runner"',
+            "assert_link_persisted_then_remove",
+            "assert_unlinked_after_restart",
+            '"processRestartAttachPersistence": "pass"',
+            '"processRestartRemovePersistence": "pass"',
+        )
+        tablet_e2e_scripted = _contains(
+            tablet_e2e_driver,
             "assert_linked_identity",
             "assert_link_persisted_then_remove",
             e2e_marker,
+        )
+        phone_e2e = linked_runner_phone_e2e_receipt if phone_implemented and e2e_scripted else None
+        control_proofs = phone_e2e.get("controlProofs") if phone_e2e is not None else None
+        control_proof = (
+            control_proofs.get(f"{class_name}.{control}")
+            if isinstance(control_proofs, dict)
+            else None
+        )
+        exact_api36 = isinstance(control_proof, dict)
+        receipt_e2e = (
+            {key: value for key, value in phone_e2e.items() if key != "controlProofs"}
+            if phone_e2e is not None
+            else None
         )
         source_refs = [
             "src/Chummer.Android/Native/CollectionEditorPages.cs",
@@ -2116,7 +2227,13 @@ def _known_phone_mapping(
             f"Workspace{operation}LinkedCharacterRequest on WorkspaceCollectionKind.{kind}"
         )
         return {
-            "status": "implemented_pending_emulator" if phone_implemented else "missing",
+            "status": (
+                "implemented_verified_api36"
+                if exact_api36
+                else "implemented_pending_emulator"
+                if phone_implemented
+                else "missing"
+            ),
             "route": f"Build > Relationships > {kind}s > selected {kind.lower()} > Linked runner",
             "surface": "CollectionItemEditorPage",
             "automationId": f"collection-linked-{phone_token}-{{stable-target}}",
@@ -2127,8 +2244,11 @@ def _known_phone_mapping(
                 "linked identity after reopen/process restart, or restores its saved identity after unlink"
             ),
             "e2e": {
+                **receipt_e2e,
+                "controlProof": control_proof,
+            } if exact_api36 and receipt_e2e is not None else {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
-                "ref": "tests/run_api36_editing_e2e.py" if e2e_scripted else None,
+                "ref": e2e_driver.relative_to(REPO_ROOT).as_posix() if e2e_scripted else None,
             },
             "tablet": {
                 "status": "implemented_pending_emulator" if tablet_implemented else "missing",
@@ -2137,8 +2257,8 @@ def _known_phone_mapping(
                 "sourceRefs": source_refs,
             },
             "tabletE2e": {
-                "status": "scripted_not_executed" if e2e_scripted else "missing",
-                "ref": "tests/run_api36_editing_e2e.py" if e2e_scripted else None,
+                "status": "scripted_not_executed" if tablet_e2e_scripted else "missing",
+                "ref": tablet_e2e_driver.relative_to(REPO_ROOT).as_posix() if tablet_e2e_scripted else None,
             },
         }
     if class_name == "PetControl" and (control in PET_TEXT_FIELDS or control == "cmdDelete"):
@@ -2872,6 +2992,7 @@ def enrich_rows(
     attribute_career_phone_e2e_receipt = _validated_attribute_career_phone_e2e_receipt()
     character_settings_phone_e2e_receipt = _validated_character_settings_phone_e2e_receipt()
     origin_dossier_phone_e2e_receipt = _validated_origin_dossier_phone_e2e_receipt()
+    linked_runner_phone_e2e_receipt = _validated_linked_runner_phone_e2e_receipt()
     new_character_settings_phone_e2e_receipt = _validated_new_character_settings_phone_e2e_receipt()
     new_character_priority_phone_e2e_receipt = _validated_new_character_priority_phone_e2e_receipt()
     for row in rows:
@@ -2912,6 +3033,7 @@ def enrich_rows(
             attribute_career_phone_e2e_receipt,
             character_settings_phone_e2e_receipt,
             origin_dossier_phone_e2e_receipt,
+            linked_runner_phone_e2e_receipt,
             new_character_settings_phone_e2e_receipt,
             new_character_priority_phone_e2e_receipt,
         )
@@ -3012,6 +3134,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_career_attribute_e2e.py",
         REPO_ROOT / "tests" / "run_api36_character_settings_e2e.py",
         REPO_ROOT / "tests" / "run_api36_origin_dossier_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_linked_runner_e2e.py",
         REPO_ROOT / "tests" / "run_api36_new_character_settings_e2e.py",
         REPO_ROOT / "tests" / "run_api36_new_character_priority_e2e.py",
         REPO_ROOT / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5",
@@ -3025,6 +3148,7 @@ def build_inventory(
         NEW_CHARACTER_PRIORITY_PHONE_E2E_RECEIPT,
         CHARACTER_SETTINGS_PHONE_E2E_RECEIPT,
         ORIGIN_DOSSIER_PHONE_E2E_RECEIPT,
+        LINKED_RUNNER_PHONE_E2E_RECEIPT,
         WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterContactEditSemantics.cs",
         WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterPetEditSemantics.cs",
         WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",

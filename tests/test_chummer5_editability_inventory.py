@@ -334,7 +334,7 @@ namespace Chummer.Sample
             for row in rows
             if row["legacy"]["formOrControl"] == "ContactControl"
         }
-        self.assertEqual("implemented_pending_emulator", contact_by_name["tsAttachCharacter"]["phone"]["status"])
+        self.assertEqual("implemented_verified_api36", contact_by_name["tsAttachCharacter"]["phone"]["status"])
         self.assertEqual("implemented_pending_emulator", contact_by_name["tsRemoveCharacter"]["tablet"]["status"])
         self.assertEqual("not_applicable_non_mutating", contact_by_name["cmdLink"]["phone"]["status"])
         pet_by_name = {
@@ -342,22 +342,27 @@ namespace Chummer.Sample
             for row in rows
             if row["legacy"]["formOrControl"] == "PetControl"
         }
-        self.assertEqual("implemented_pending_emulator", pet_by_name["tsAttachCharacter"]["phone"]["status"])
+        self.assertEqual("implemented_verified_api36", pet_by_name["tsAttachCharacter"]["phone"]["status"])
         self.assertEqual("implemented_pending_emulator", pet_by_name["tsRemoveCharacter"]["tablet"]["status"])
         self.assertEqual("not_applicable_non_mutating", pet_by_name["cmdLink"]["phone"]["status"])
         self.assertTrue(
             all(
-                row["phone"]["status"] == "implemented_pending_emulator"
+                row["phone"]["status"] == "implemented_verified_api36"
                 and row["tablet"]["status"] == "implemented_pending_emulator"
-                and row["e2e"]["phone"]["status"] == "scripted_not_executed"
+                and row["e2e"]["phone"]["status"] == "executed_api36"
+                and row["e2e"]["phone"]["controlProof"]
+                == {
+                    key: "pass"
+                    for key in inventory.LINKED_RUNNER_CONTROL_E2E_PROOF_KEYS
+                }
                 and row["e2e"]["tablet"]["status"] == "scripted_not_executed"
                 for row in linked_character_rows
             )
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 14,
-                "implemented_verified_api36": 275,
+                "implemented_pending_emulator": 10,
+                "implemented_verified_api36": 279,
                 "missing": 1229,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
@@ -698,6 +703,80 @@ namespace Chummer.Sample
                     receipt_path.write_text(json.dumps(stale_receipt), encoding="utf-8")
                     self.assertIsNone(
                         inventory._validated_origin_dossier_phone_e2e_receipt(),
+                        stale_hash,
+                    )
+
+    def test_linked_runner_receipt_is_control_and_source_graph_hash_bound(self) -> None:
+        self.assertIsNotNone(inventory._validated_linked_runner_phone_e2e_receipt())
+
+        native_root = REPO / "src" / "Chummer.Android"
+        overview = (
+            inventory.WORKSPACE_ROOT
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+        )
+        fixture_root = REPO / "tests" / "fixtures"
+        source_paths = {
+            "driverSha256": REPO / "tests" / "run_api36_linked_runner_e2e.py",
+            "sharedDriverSha256": REPO / "tests" / "run_api36_editing_e2e.py",
+            "collectionEditorPagesSha256": native_root / "Native" / "CollectionEditorPages.cs",
+            "runnerSessionCoordinatorSha256": native_root / "Native" / "RunnerSessionCoordinator.cs",
+            "linkedCharacterFileServiceSha256": native_root / "Platform" / "IAndroidLinkedCharacterFileService.cs",
+            "linkedDocumentCodecSha256": inventory.WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",
+            "workspaceCollectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
+            "workspaceCollectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
+            "workspaceCollectionMutationRequestSha256": overview / "WorkspaceCollectionMutationRequest.cs",
+            "workspaceXmlMutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+            "workspaceMutationsSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+            "inputFixtureSha256": fixture_root / "creation-contact-pet-e2e.chum5",
+            "linkedFixtureSha256": fixture_root / "linked-runner-e2e.chum5",
+            "invalidLinkedFixtureSha256": fixture_root / "invalid-linked-runner-e2e.chum5",
+        }
+        controls = {
+            f"{class_name}.{control}": {
+                key: "pass"
+                for key in inventory.LINKED_RUNNER_CONTROL_E2E_PROOF_KEYS
+            }
+            for class_name in ("ContactControl", "PetControl")
+            for control in ("tsAttachCharacter", "tsRemoveCharacter")
+        }
+        receipt = {
+            "schema": "chummer.android.editing-e2e/v1",
+            "status": "pass",
+            "profile": "phone",
+            "journey": "linked-runner",
+            "apiLevel": 36,
+            "apkSha256": "a" * 64,
+            **{
+                key: inventory._sha256_file(path)
+                for key, path in source_paths.items()
+            },
+            "controlCount": len(controls),
+            "controls": controls,
+            "journeys": {
+                journey: "pass"
+                for journey in inventory.LINKED_RUNNER_E2E_JOURNEYS
+            },
+        }
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            receipt_path = Path(temporary) / "receipt.json"
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+            with patch.object(inventory, "LINKED_RUNNER_PHONE_E2E_RECEIPT", receipt_path):
+                validated = inventory._validated_linked_runner_phone_e2e_receipt()
+                self.assertIsNotNone(validated)
+                assert validated is not None
+                self.assertEqual(controls, validated["controlProofs"])
+
+                for stale_hash in (
+                    "driverSha256",
+                    "linkedDocumentCodecSha256",
+                    "invalidLinkedFixtureSha256",
+                ):
+                    stale_receipt = {**receipt, stale_hash: "0" * 64}
+                    receipt_path.write_text(json.dumps(stale_receipt), encoding="utf-8")
+                    self.assertIsNone(
+                        inventory._validated_linked_runner_phone_e2e_receipt(),
                         stale_hash,
                     )
 

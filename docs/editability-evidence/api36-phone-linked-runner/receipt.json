@@ -1,0 +1,61 @@
+{
+  "schema": "chummer.android.editing-e2e/v1",
+  "status": "pass",
+  "generatedAtUtc": "2026-08-16T12:13:20.684112+00:00",
+  "serial": "emulator-5554",
+  "profile": "phone",
+  "journey": "linked-runner",
+  "apiLevel": 36,
+  "apk": "/docker/chummercomplete/.integration-worktrees/chummer-android-main-20260816/src/Chummer.Android/bin/Debug/net10.0-android36.0/android-x64/com.myexternalbrain.chummer-Signed.apk",
+  "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+  "driverSha256": "4c297f78259b5055dbd982610cb3e0cf20d73d6ced5d6f0ba89e9510111f14a4",
+  "sharedDriverSha256": "38ad82e00c5f8ea66d667123222ea916006e690620b6fb4f9314f46716eec2f5",
+  "collectionEditorPagesSha256": "ba43cf1a72dbe93081bf9e3e6b2618e493b07bcac15cc7d02ab2f03f6deaf060",
+  "runnerSessionCoordinatorSha256": "49e52ec4ccc7a07149ad44a9e1272d61a774f155a36b23b3a322c566de8bd0ff",
+  "linkedCharacterFileServiceSha256": "16bdd17a9bd8aa84fb3e3f0cfaf757978bb22aeab78af79a3ac6103655f60d4a",
+  "linkedDocumentCodecSha256": "1836a660b1c243e53756e9a35e1025663f9332100e3aca68394045f3480cc77c",
+  "workspaceCollectionEditorProjectorSha256": "993db08bd532485ab9311569ddcf97836159445eda82b9f83e67f25c68e17480",
+  "workspaceCollectionEditorStateSha256": "9c65afcc52394d9d1ec7fb31f3bb31bbecfa9d2eeeda558d00211520d9e949f0",
+  "workspaceCollectionMutationRequestSha256": "287d4ddc4a432d7f9977edffaa5797d94f9af5e2482eb8771d85d8c004c54c32",
+  "workspaceXmlMutationCatalogSha256": "b006adea00967c294c22bc911818c8d9044d60ad03e5d48ef61b4445cb995fc7",
+  "workspaceMutationsSha256": "6370f3432d1fe3df6623fbabf90d1257f4608777f2c92208f978085b77ad46e4",
+  "inputFixture": "/docker/chummercomplete/.integration-worktrees/chummer-android-main-20260816/tests/fixtures/creation-contact-pet-e2e.chum5",
+  "linkedFixture": "/docker/chummercomplete/.integration-worktrees/chummer-android-main-20260816/tests/fixtures/linked-runner-e2e.chum5",
+  "invalidLinkedFixture": "/docker/chummercomplete/.integration-worktrees/chummer-android-main-20260816/tests/fixtures/invalid-linked-runner-e2e.chum5",
+  "inputFixtureSha256": "38fe0fc0da57dd6462998dab99412db7e5a3f1c4e5f5dbbe78333f425eb9cf66",
+  "linkedFixtureSha256": "734fbf925031d18a47d6aa2379db2740efc3b9e2600a0310f7e0fdfe984c0c9e",
+  "invalidLinkedFixtureSha256": "656b0f399f3cd5904a075e3df2449cc558b0e5a9e42322d9778c96611777f991",
+  "controlCount": 4,
+  "controls": {
+    "ContactControl.tsAttachCharacter": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "ContactControl.tsRemoveCharacter": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "PetControl.tsAttachCharacter": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    },
+    "PetControl.tsRemoveCharacter": {
+      "mutated": "pass",
+      "workspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    }
+  },
+  "journeys": {
+    "creationRunnerImported": "pass",
+    "invalidLinkedRunnerRejected": "pass",
+    "contactLinkedRunnerAttachPersisted": "pass",
+    "petLinkedRunnerAttachPersisted": "pass",
+    "processRestartAttachPersistence": "pass",
+    "contactLinkedRunnerRemovePersisted": "pass",
+    "petLinkedRunnerRemovePersisted": "pass",
+    "processRestartRemovePersistence": "pass"
+  }
+}
