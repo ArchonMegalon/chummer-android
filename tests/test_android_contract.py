@@ -301,9 +301,9 @@ class AndroidContractTests(unittest.TestCase):
             ),
         )
         self.assertIn('row.AutomationId = $"command-action-{Token(command.Id)}"', commands)
-        self.assertIn('string.Equals(dialog.Id, "dialog.character_settings"', dialog)
-        self.assertIn('string.Equals(fieldId, "characterSettingsProfile"', dialog)
-        self.assertIn('string.Equals(fieldId, "characterSettingsSection"', dialog)
+        self.assertIn("RequiresStructuralRerender", dialog)
+        self.assertIn("FieldShapeMatches", dialog)
+        self.assertIn("OptionsMatch", dialog)
 
     def test_tablet_collection_keeps_item_name_visible_ahead_of_metadata(self) -> None:
         tablet = (PROJECT / "Native" / "TabletBuildPage.cs").read_text(encoding="utf-8")
@@ -879,9 +879,11 @@ class AndroidContractTests(unittest.TestCase):
         build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
         update = dialog[dialog.index("private async Task UpdateFieldAsync") :]
         self.assertIn("await _coordinator.UpdateDialogFieldAsync(fieldId, value)", update)
+        self.assertIn("DesktopDialogState? previous = _coordinator.State.ActiveDialog", update)
         self.assertIn("DesktopDialogState? next = _coordinator.State.ActiveDialog", update)
-        self.assertIn("RequiresStructuralRerender(next, fieldId)", update)
-        self.assertIn('"newCharacterPriorityTalentChoice"', update)
+        self.assertIn("RequiresStructuralRerender(previous, next, fieldId)", update)
+        self.assertIn("!FieldShapeMatches(previousField, nextField)", update)
+        self.assertIn("!previous.Actions.SequenceEqual(next.Actions)", update)
         self.assertIn("Render(next)", update)
         self.assertIn('NativeTheme.Metric("Metavariant"', build)
         self.assertIn("Coordinator.State.Profile?.Metavariant", build)

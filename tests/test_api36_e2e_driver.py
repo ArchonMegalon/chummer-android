@@ -305,6 +305,21 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         )
         self.assertIn("time.sleep(1.25)", source)
 
+    def test_native_dialog_rebuilds_from_state_shape_changes_not_a_dialog_allowlist(self) -> None:
+        source = (
+            REPO_ROOT / "src" / "Chummer.Android" / "Native" / "NativeDialogPage.cs"
+        ).read_text(encoding="utf-8")
+        start = source.index("private async Task UpdateFieldAsync")
+        end = source.index("private async Task ExecuteAsync", start)
+        block = source[start:end]
+
+        self.assertIn("DesktopDialogState? previous", block)
+        self.assertIn("RequiresStructuralRerender(previous, next, fieldId)", block)
+        self.assertIn("FieldShapeMatches", block)
+        self.assertIn("OptionsMatch", block)
+        self.assertNotIn("dialog.new_character.priority_workflow", block)
+        self.assertNotIn("dialog.new_character.karma_workflow", block)
+
     def test_collection_openers_use_overlapping_search_below_the_action_list(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
         for function_name, action, quick_add in (

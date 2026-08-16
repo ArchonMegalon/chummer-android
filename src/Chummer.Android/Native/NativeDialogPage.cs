@@ -173,9 +173,10 @@ public sealed class NativeDialogPage : ContentPage
     {
         try
         {
+            DesktopDialogState? previous = _coordinator.State.ActiveDialog;
             await _coordinator.UpdateDialogFieldAsync(fieldId, value);
             DesktopDialogState? next = _coordinator.State.ActiveDialog;
-            if (next is not null && RequiresStructuralRerender(next, fieldId))
+            if (next is not null && RequiresStructuralRerender(previous, next, fieldId))
             {
                 Title = next.Title;
                 Render(next);
@@ -187,30 +188,55 @@ public sealed class NativeDialogPage : ContentPage
         }
     }
 
-    private static bool RequiresStructuralRerender(DesktopDialogState dialog, string fieldId)
-        => (string.Equals(dialog.Id, "dialog.character_settings", StringComparison.Ordinal)
-                && (string.Equals(fieldId, "characterSettingsProfile", StringComparison.Ordinal)
-                    || string.Equals(fieldId, "characterSettingsSection", StringComparison.Ordinal)))
-            || (string.Equals(dialog.Id, "dialog.new_character.priority_workflow", StringComparison.Ordinal)
-            && (string.Equals(fieldId, "newCharacterMetatypeCategory", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterMetatype", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterMetavariant", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterPriorityHeritage", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterPriorityAttributes", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterPriorityTalent", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterPrioritySkills", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterPriorityResources", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterPriorityTalentChoice", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterPossessionBased", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterPrioritySkillChoice1", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterPrioritySkillChoice2", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterPrioritySkillChoice3", StringComparison.Ordinal)))
-            || (string.Equals(dialog.Id, "dialog.new_character.karma_workflow", StringComparison.Ordinal)
-            && (string.Equals(fieldId, "newCharacterMetatypeSearch", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterMetatypeCategory", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterMetatype", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterMetavariant", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterPossessionBased", StringComparison.Ordinal)));
+    private static bool RequiresStructuralRerender(
+        DesktopDialogState? previous,
+        DesktopDialogState next,
+        string changedFieldId)
+    {
+        if (previous is null
+            || !string.Equals(previous.Id, next.Id, StringComparison.Ordinal)
+            || !string.Equals(previous.Title, next.Title, StringComparison.Ordinal)
+            || !string.Equals(previous.Message, next.Message, StringComparison.Ordinal)
+            || previous.Fields.Count != next.Fields.Count
+            || previous.Actions.Count != next.Actions.Count)
+        {
+            return true;
+        }
+
+        Dictionary<string, DesktopDialogField> previousFields = previous.Fields
+            .ToDictionary(static field => field.Id, StringComparer.Ordinal);
+        foreach (DesktopDialogField nextField in next.Fields)
+        {
+            if (!previousFields.TryGetValue(nextField.Id, out DesktopDialogField? previousField)
+                || !FieldShapeMatches(previousField, nextField)
+                || (!string.Equals(nextField.Id, changedFieldId, StringComparison.Ordinal)
+                    && !string.Equals(previousField.Value, nextField.Value, StringComparison.Ordinal)))
+            {
+                return true;
+            }
+        }
+
+        return !previous.Actions.SequenceEqual(next.Actions);
+    }
+
+    private static bool FieldShapeMatches(DesktopDialogField previous, DesktopDialogField next)
+        => string.Equals(previous.Label, next.Label, StringComparison.Ordinal)
+            && string.Equals(previous.Placeholder, next.Placeholder, StringComparison.Ordinal)
+            && previous.IsMultiline == next.IsMultiline
+            && previous.IsReadOnly == next.IsReadOnly
+            && string.Equals(previous.InputType, next.InputType, StringComparison.Ordinal)
+            && string.Equals(previous.VisualKind, next.VisualKind, StringComparison.Ordinal)
+            && string.Equals(previous.LayoutSlot, next.LayoutSlot, StringComparison.Ordinal)
+            && OptionsMatch(previous.Options, next.Options);
+
+    private static bool OptionsMatch(
+        IReadOnlyList<DesktopDialogFieldOption>? previous,
+        IReadOnlyList<DesktopDialogFieldOption>? next)
+    {
+        IReadOnlyList<DesktopDialogFieldOption> previousOptions = previous ?? [];
+        IReadOnlyList<DesktopDialogFieldOption> nextOptions = next ?? [];
+        return previousOptions.SequenceEqual(nextOptions);
+    }
 
     private async Task ExecuteAsync(string actionId)
     {
