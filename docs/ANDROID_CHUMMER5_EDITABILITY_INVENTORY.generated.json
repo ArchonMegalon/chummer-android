@@ -14,8 +14,7 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 10,
-      "implemented_verified_api36": 279,
+      "implemented_verified_api36": 289,
       "missing": 1229,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
@@ -140,6 +139,11 @@
         "sha256": "067331f50080d3971c9e62bcd162734321e771e72c8140cf88f09124f0281d7f"
       },
       {
+        "path": "tests/run_api36_character_settings_actions_e2e.py",
+        "exists": true,
+        "sha256": "2c148c0ff3c7a21050563de3aa067a397765b6a150e6ae7bbf493f4f9ce27f8e"
+      },
+      {
         "path": "tests/run_api36_origin_dossier_e2e.py",
         "exists": true,
         "sha256": "ef9ba7c9f8148939e126bfacfa076b381559b1ce5742eb3b504ba92c30879900"
@@ -218,6 +222,11 @@
         "path": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
         "exists": true,
         "sha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
+        "exists": true,
+        "sha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c"
       },
       {
         "path": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
@@ -312,7 +321,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "d8924e87ad9a3d109d0d9fbb1955de934fa46c5b791accf01eba4a203ca49d33"
+      "sha256": "289279b1988cf8dcf99ffdfe2a308dce038da4b2ff9fef97285b15da1ca1c209"
     }
   },
   "coverageByFamily": {
@@ -80631,7 +80640,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Actions > Character Settings",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-charactersettingsprofile",
@@ -80644,9 +80653,10 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
-        "coverageLimit": "all 150 value controls round-trip mechanically and every section/control kind is device-proven, but this exact legacy control still needs an individual API 36 mutation"
+        "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
       "tablet": {
         "status": "missing",
@@ -80658,10 +80668,15 @@
       "persistenceAssertion": "the active settings profile retains the cboSetting value or equivalent collection/profile operation after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "section_representative_api36",
-          "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
+          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "catalogPersisted": "pass",
+            "processRestartReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -80771,7 +80786,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -80841,7 +80857,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -80911,7 +80928,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -80981,7 +80999,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -81051,7 +81070,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -81121,7 +81141,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -81191,7 +81212,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -81261,7 +81283,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -81331,7 +81354,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -81401,7 +81425,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -81471,7 +81496,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -81546,7 +81572,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -81608,7 +81635,7 @@
       "mutationFamily": "sourcebook_selection",
       "operation": "commit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Actions > Character Settings",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-charactersettingscontrol-tresourcebook",
@@ -81621,9 +81648,10 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
-        "coverageLimit": "all 150 value controls round-trip mechanically and every section/control kind is device-proven, but this exact legacy control still needs an individual API 36 mutation"
+        "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
       "tablet": {
         "status": "missing",
@@ -81635,10 +81663,15 @@
       "persistenceAssertion": "the active settings profile retains the cmdEnableSourcebooks value or equivalent collection/profile operation after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "section_representative_api36",
-          "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
+          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "catalogPersisted": "pass",
+            "processRestartReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -81686,7 +81719,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -81756,7 +81790,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -81826,7 +81861,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -81896,7 +81932,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -81966,7 +82003,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -82036,7 +82074,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -82106,7 +82145,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -82176,7 +82216,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -82246,7 +82287,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -82316,7 +82358,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -82386,7 +82429,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -82456,7 +82500,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -82526,7 +82571,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -82596,7 +82642,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -82666,7 +82713,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -82736,7 +82784,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -82806,7 +82855,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -82876,7 +82926,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -82946,7 +82997,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -83016,7 +83068,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -83086,7 +83139,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -83156,7 +83210,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -83226,7 +83281,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -83296,7 +83352,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -83366,7 +83423,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -83436,7 +83494,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -83506,7 +83565,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -83576,7 +83636,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -83646,7 +83707,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -83716,7 +83778,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -83786,7 +83849,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -83856,7 +83920,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -83926,7 +83991,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -83996,7 +84062,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -84066,7 +84133,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -84136,7 +84204,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -84206,7 +84275,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -84276,7 +84346,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -84346,7 +84417,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -84416,7 +84488,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -84486,7 +84559,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -84548,7 +84622,7 @@
       "mutationFamily": "character_settings",
       "operation": "adjust",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Actions > Character Settings",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-charactersettingscontrol-trecustomdatadirectories",
@@ -84561,9 +84635,10 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
-        "coverageLimit": "all 150 value controls round-trip mechanically and every section/control kind is device-proven, but this exact legacy control still needs an individual API 36 mutation"
+        "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
       "tablet": {
         "status": "missing",
@@ -84575,10 +84650,15 @@
       "persistenceAssertion": "the active settings profile retains the cmdDecreaseCustomDirectoryLoadOrder value or equivalent collection/profile operation after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "section_representative_api36",
-          "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
+          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "catalogPersisted": "pass",
+            "processRestartReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -84618,7 +84698,7 @@
       "mutationFamily": "character_settings",
       "operation": "adjust",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Actions > Character Settings",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-charactersettingscontrol-trecustomdatadirectories",
@@ -84631,9 +84711,10 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
-        "coverageLimit": "all 150 value controls round-trip mechanically and every section/control kind is device-proven, but this exact legacy control still needs an individual API 36 mutation"
+        "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
       "tablet": {
         "status": "missing",
@@ -84645,10 +84726,15 @@
       "persistenceAssertion": "the active settings profile retains the cmdIncreaseCustomDirectoryLoadOrder value or equivalent collection/profile operation after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "section_representative_api36",
-          "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
+          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "catalogPersisted": "pass",
+            "processRestartReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -84705,7 +84791,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -84775,7 +84862,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -84845,7 +84933,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -84915,7 +85004,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -84985,7 +85075,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -85055,7 +85146,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -85125,7 +85217,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -85195,7 +85288,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -85265,7 +85359,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -85335,7 +85430,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -85405,7 +85501,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -85475,7 +85572,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -85545,7 +85643,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -85615,7 +85714,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -85685,7 +85785,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -85755,7 +85856,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -85825,7 +85927,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -85895,7 +85998,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -85965,7 +86069,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -86035,7 +86140,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -86105,7 +86211,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -86175,7 +86282,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -86245,7 +86353,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -86315,7 +86424,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -86385,7 +86495,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -86455,7 +86566,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -86525,7 +86637,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -86595,7 +86708,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -86665,7 +86779,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -86735,7 +86850,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -86805,7 +86921,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -86875,7 +86992,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -86945,7 +87063,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -87020,7 +87139,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -87090,7 +87210,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -87155,7 +87276,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -87225,7 +87347,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -87295,7 +87418,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -87365,7 +87489,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -87435,7 +87560,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -87505,7 +87631,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -87580,7 +87707,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -87655,7 +87783,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -87730,7 +87859,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -87800,7 +87930,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -87879,7 +88010,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -87949,7 +88081,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -88024,7 +88157,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -88094,7 +88228,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -88164,7 +88299,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -88234,7 +88370,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -88304,7 +88441,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -88374,7 +88512,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -88444,7 +88583,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -88514,7 +88654,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -88576,7 +88717,7 @@
       "mutationFamily": "character_settings",
       "operation": "commit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Actions > Character Settings",
         "surface": "NativeDialogPage",
         "automationId": "dialog-action-save-as",
@@ -88589,9 +88730,10 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
-        "coverageLimit": "all 150 value controls round-trip mechanically and every section/control kind is device-proven, but this exact legacy control still needs an individual API 36 mutation"
+        "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
       "tablet": {
         "status": "missing",
@@ -88603,10 +88745,15 @@
       "persistenceAssertion": "the active settings profile retains the cmdSaveAs value or equivalent collection/profile operation after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "section_representative_api36",
-          "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
+          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "catalogPersisted": "pass",
+            "processRestartReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -88646,7 +88793,7 @@
       "mutationFamily": "character_settings",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Actions > Character Settings",
         "surface": "NativeDialogPage",
         "automationId": "dialog-action-restore-defaults",
@@ -88659,9 +88806,10 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
-        "coverageLimit": "all 150 value controls round-trip mechanically and every section/control kind is device-proven, but this exact legacy control still needs an individual API 36 mutation"
+        "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
       "tablet": {
         "status": "missing",
@@ -88673,10 +88821,15 @@
       "persistenceAssertion": "the active settings profile retains the cmdRestoreDefaults value or equivalent collection/profile operation after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "section_representative_api36",
-          "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
+          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "catalogPersisted": "pass",
+            "processRestartReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -88724,7 +88877,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -88786,7 +88940,7 @@
       "mutationFamily": "character_settings",
       "operation": "delete",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Actions > Character Settings",
         "surface": "NativeDialogPage",
         "automationId": "dialog-action-delete",
@@ -88799,9 +88953,10 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
-        "coverageLimit": "all 150 value controls round-trip mechanically and every section/control kind is device-proven, but this exact legacy control still needs an individual API 36 mutation"
+        "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
       "tablet": {
         "status": "missing",
@@ -88813,10 +88968,15 @@
       "persistenceAssertion": "the active settings profile retains the cmdDelete value or equivalent collection/profile operation after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "section_representative_api36",
-          "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
+          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "catalogPersisted": "pass",
+            "processRestartReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -88913,7 +89073,7 @@
       "mutationFamily": "character_settings",
       "operation": "edit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Actions > Character Settings",
         "surface": "NativeDialogPage",
         "automationId": "dialog-action-rename",
@@ -88926,9 +89086,10 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
-        "coverageLimit": "all 150 value controls round-trip mechanically and every section/control kind is device-proven, but this exact legacy control still needs an individual API 36 mutation"
+        "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
       "tablet": {
         "status": "missing",
@@ -88940,10 +89101,15 @@
       "persistenceAssertion": "the active settings profile retains the cmdRename value or equivalent collection/profile operation after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "section_representative_api36",
-          "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
+          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "catalogPersisted": "pass",
+            "processRestartReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -88991,7 +89157,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -89066,7 +89233,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -89136,7 +89304,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -89198,7 +89367,7 @@
       "mutationFamily": "character_settings",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Actions > Character Settings",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-charactersettingscontrol-trecustomdatadirectories",
@@ -89211,9 +89380,10 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
-        "coverageLimit": "all 150 value controls round-trip mechanically and every section/control kind is device-proven, but this exact legacy control still needs an individual API 36 mutation"
+        "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
       "tablet": {
         "status": "missing",
@@ -89225,10 +89395,15 @@
       "persistenceAssertion": "the active settings profile retains the cmdToBottomCustomDirectoryLoadOrder value or equivalent collection/profile operation after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "section_representative_api36",
-          "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
+          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "catalogPersisted": "pass",
+            "processRestartReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -89268,7 +89443,7 @@
       "mutationFamily": "character_settings",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Actions > Character Settings",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-charactersettingscontrol-trecustomdatadirectories",
@@ -89281,9 +89456,10 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
-        "coverageLimit": "all 150 value controls round-trip mechanically and every section/control kind is device-proven, but this exact legacy control still needs an individual API 36 mutation"
+        "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
       "tablet": {
         "status": "missing",
@@ -89295,10 +89471,15 @@
       "persistenceAssertion": "the active settings profile retains the cmdToTopCustomDirectoryLoadOrder value or equivalent collection/profile operation after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "section_representative_api36",
-          "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
+          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
+          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "controlProof": {
+            "mutated": "pass",
+            "catalogPersisted": "pass",
+            "processRestartReadback": "pass"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -89351,7 +89532,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -89426,7 +89608,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -89496,7 +89679,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -89566,7 +89750,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -89636,7 +89821,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -89706,7 +89892,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -89776,7 +89963,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -89846,7 +90034,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -89916,7 +90105,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -89986,7 +90176,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -90056,7 +90247,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -90126,7 +90318,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -90196,7 +90389,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -90323,7 +90517,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -90398,7 +90593,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -90473,7 +90669,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -90543,7 +90740,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -90613,7 +90811,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -90683,7 +90882,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -90753,7 +90953,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -90823,7 +91024,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -90893,7 +91095,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -90963,7 +91166,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -91033,7 +91237,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -91103,7 +91308,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -91173,7 +91379,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -91243,7 +91450,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -91313,7 +91521,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -91383,7 +91592,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -91453,7 +91663,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -91523,7 +91734,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -91593,7 +91805,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -91663,7 +91876,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -91733,7 +91947,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -91808,7 +92023,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -91878,7 +92094,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -91948,7 +92165,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -92018,7 +92236,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -92088,7 +92307,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },
@@ -92163,7 +92383,8 @@
           "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
           "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
           "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
-          "tests/run_api36_character_settings_e2e.py"
+          "tests/run_api36_character_settings_e2e.py",
+          "tests/run_api36_character_settings_actions_e2e.py"
         ],
         "coverageLimit": "this exact legacy control was mutated and read back after process restart on API 36"
       },

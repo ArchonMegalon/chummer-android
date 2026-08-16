@@ -361,8 +361,7 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 10,
-                "implemented_verified_api36": 279,
+                "implemented_verified_api36": 289,
                 "missing": 1229,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
@@ -437,7 +436,7 @@ namespace Chummer.Sample
             if row["semanticOperation"]
             in {"set_value", "edit_sourcebooks", "edit_custom_data_directories"}
         }
-        exact_controls = value_controls | inventory.CHARACTER_SETTINGS_EXACT_API36_ACTIONS
+        exact_controls = value_controls | set(inventory.CHARACTER_SETTINGS_ACTION_AUTOMATION_IDS)
         rows = {
             row["legacy"]["controlName"]: row
             for row in payload["rows"]
@@ -456,7 +455,7 @@ namespace Chummer.Sample
             },
         )
         self.assertEqual(
-            10,
+            0,
             sum(
                 row["phone"]["status"] == "implemented_pending_emulator"
                 for row in rows.values()
@@ -467,6 +466,14 @@ namespace Chummer.Sample
         for control in value_controls:
             self.assertEqual(
                 {key: "pass" for key in inventory.CHARACTER_SETTINGS_CONTROL_E2E_PROOF_KEYS},
+                rows[control]["e2e"]["phone"]["controlProof"],
+            )
+        for control in inventory.CHARACTER_SETTINGS_ACTION_E2E_CONTROLS:
+            self.assertEqual(
+                {
+                    key: "pass"
+                    for key in inventory.CHARACTER_SETTINGS_ACTION_CONTROL_E2E_PROOF_KEYS
+                },
                 rows[control]["e2e"]["phone"]["controlProof"],
             )
         self.assertTrue(
@@ -640,6 +647,81 @@ namespace Chummer.Sample
             receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
             with patch.object(inventory, "CHARACTER_SETTINGS_PHONE_E2E_RECEIPT", receipt_path):
                 self.assertIsNone(inventory._validated_character_settings_phone_e2e_receipt())
+
+    def test_character_settings_action_receipt_is_control_and_source_graph_hash_bound(self) -> None:
+        self.assertIsNotNone(
+            inventory._validated_character_settings_actions_phone_e2e_receipt()
+        )
+
+        native_root = REPO / "src" / "Chummer.Android" / "Native"
+        overview = (
+            inventory.WORKSPACE_ROOT
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+        )
+        source_paths = {
+            "driverSha256": REPO / "tests" / "run_api36_character_settings_actions_e2e.py",
+            "characterSettingsDriverSha256": REPO / "tests" / "run_api36_character_settings_e2e.py",
+            "sharedDriverSha256": REPO / "tests" / "run_api36_editing_e2e.py",
+            "nativeCommandPageSha256": native_root / "NativeCommandPage.cs",
+            "nativeDialogPageSha256": native_root / "NativeDialogPage.cs",
+            "runnerSessionCoordinatorSha256": native_root / "RunnerSessionCoordinator.cs",
+            "dialogFactorySha256": overview / "DesktopDialogFactory.cs",
+            "characterSettingsDialogSha256": overview / "DesktopDialogFactory.CharacterSettings.cs",
+            "characterSettingsProfilesSha256": overview / "Chummer5CharacterSettingsProfiles.cs",
+            "characterSettingsContractSha256": overview / "Chummer5CharacterSettingsRuntimeContract.Generated.cs",
+            "dialogCoordinatorSha256": overview / "DialogCoordinator.cs",
+        }
+        controls = {
+            control: {
+                key: "pass"
+                for key in inventory.CHARACTER_SETTINGS_ACTION_CONTROL_E2E_PROOF_KEYS
+            }
+            for control in inventory.CHARACTER_SETTINGS_ACTION_E2E_CONTROLS
+        }
+        receipt = {
+            "schema": "chummer.android.editing-e2e/v1",
+            "status": "pass",
+            "profile": "phone",
+            "journey": "character-settings-actions",
+            "apiLevel": 36,
+            "apkSha256": "a" * 64,
+            **{
+                key: inventory._sha256_file(path)
+                for key, path in source_paths.items()
+            },
+            "controlCount": len(controls),
+            "controls": controls,
+            "journeys": {
+                journey: "pass"
+                for journey in inventory.CHARACTER_SETTINGS_ACTIONS_E2E_JOURNEYS
+            },
+        }
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            receipt_path = Path(temporary) / "receipt.json"
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+            with patch.object(
+                inventory,
+                "CHARACTER_SETTINGS_ACTIONS_PHONE_E2E_RECEIPT",
+                receipt_path,
+            ):
+                validated = inventory._validated_character_settings_actions_phone_e2e_receipt()
+                self.assertIsNotNone(validated)
+                assert validated is not None
+                self.assertEqual(controls, validated["controlProofs"])
+
+                for stale_hash in (
+                    "driverSha256",
+                    "characterSettingsProfilesSha256",
+                    "dialogCoordinatorSha256",
+                ):
+                    stale_receipt = {**receipt, stale_hash: "0" * 64}
+                    receipt_path.write_text(json.dumps(stale_receipt), encoding="utf-8")
+                    self.assertIsNone(
+                        inventory._validated_character_settings_actions_phone_e2e_receipt(),
+                        stale_hash,
+                    )
 
     def test_origin_dossier_receipt_is_control_and_source_graph_hash_bound(self) -> None:
         driver = REPO / "tests" / "run_api36_origin_dossier_e2e.py"

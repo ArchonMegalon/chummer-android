@@ -192,6 +192,32 @@ CHARACTER_SETTINGS_CONTROL_E2E_PROOF_KEYS = (
     "catalogPersisted",
     "processRestartUiReadback",
 )
+CHARACTER_SETTINGS_ACTIONS_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-character-settings-actions"
+    / "receipt.json"
+)
+CHARACTER_SETTINGS_ACTIONS_E2E_JOURNEYS = (
+    "profileSavedAs",
+    "profileRenamed",
+    "profileSelected",
+    "sourcebooksEnabled",
+    "customDataMovedDown",
+    "customDataMovedUp",
+    "customDataMovedToBottom",
+    "customDataMovedToTop",
+    "defaultsRestored",
+    "profileDeleted",
+    "processRestartCatalogPersistence",
+    "processRestartUiReadback",
+)
+CHARACTER_SETTINGS_ACTION_CONTROL_E2E_PROOF_KEYS = (
+    "mutated",
+    "catalogPersisted",
+    "processRestartReadback",
+)
 ORIGIN_DOSSIER_PHONE_E2E_RECEIPT = (
     REPO_ROOT
     / "docs"
@@ -251,6 +277,10 @@ CHARACTER_SETTINGS_ACTION_AUTOMATION_IDS = {
     "cmdToBottomCustomDirectoryLoadOrder": "dialog-field-charactersettingscontrol-trecustomdatadirectories",
     "cmdToTopCustomDirectoryLoadOrder": "dialog-field-charactersettingscontrol-trecustomdatadirectories",
 }
+CHARACTER_SETTINGS_ACTION_E2E_CONTROLS = (
+    frozenset(CHARACTER_SETTINGS_ACTION_AUTOMATION_IDS)
+    - CHARACTER_SETTINGS_EXACT_API36_ACTIONS
+)
 
 INERT_LEGACY_DESIGNER_FIELDS = {
     ("SelectBuildMethod", "cboBuildMethod"):
@@ -910,6 +940,70 @@ def _validated_character_settings_phone_e2e_receipt() -> dict[str, Any] | None:
         "status": "executed_api36",
         "ref": CHARACTER_SETTINGS_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(CHARACTER_SETTINGS_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+        "controlProofs": control_proofs,
+    }
+
+
+def _validated_character_settings_actions_phone_e2e_receipt() -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_character_settings_actions_e2e.py"
+    character_settings_driver = REPO_ROOT / "tests" / "run_api36_character_settings_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
+    overview = WORKSPACE_ROOT / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+    expected_hashes = {
+        "driverSha256": driver,
+        "characterSettingsDriverSha256": character_settings_driver,
+        "sharedDriverSha256": shared_driver,
+        "nativeCommandPageSha256": native_root / "NativeCommandPage.cs",
+        "nativeDialogPageSha256": native_root / "NativeDialogPage.cs",
+        "runnerSessionCoordinatorSha256": native_root / "RunnerSessionCoordinator.cs",
+        "dialogFactorySha256": overview / "DesktopDialogFactory.cs",
+        "characterSettingsDialogSha256": overview / "DesktopDialogFactory.CharacterSettings.cs",
+        "characterSettingsProfilesSha256": overview / "Chummer5CharacterSettingsProfiles.cs",
+        "characterSettingsContractSha256": overview / "Chummer5CharacterSettingsRuntimeContract.Generated.cs",
+        "dialogCoordinatorSha256": overview / "DialogCoordinator.cs",
+    }
+    if not all(path.is_file() for path in expected_hashes.values()):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(CHARACTER_SETTINGS_ACTIONS_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    control_proofs = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "character-settings-actions"
+        and receipt.get("apiLevel") == 36
+        and all(receipt.get(key) == _sha256_file(path) for key, path in expected_hashes.items())
+        and isinstance(journeys, dict)
+        and all(
+            journeys.get(journey) == "pass"
+            for journey in CHARACTER_SETTINGS_ACTIONS_E2E_JOURNEYS
+        )
+        and isinstance(control_proofs, dict)
+        and receipt.get("controlCount") == len(CHARACTER_SETTINGS_ACTION_E2E_CONTROLS) == 10
+        and set(control_proofs) == CHARACTER_SETTINGS_ACTION_E2E_CONTROLS
+        and all(
+            isinstance(proof, dict)
+            and all(
+                proof.get(key) == "pass"
+                for key in CHARACTER_SETTINGS_ACTION_CONTROL_E2E_PROOF_KEYS
+            )
+            for proof in control_proofs.values()
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": CHARACTER_SETTINGS_ACTIONS_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(CHARACTER_SETTINGS_ACTIONS_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
         "controlProofs": control_proofs,
     }
@@ -1722,6 +1816,7 @@ def _known_phone_mapping(
     attribute_phone_e2e_receipt: dict[str, Any] | None,
     attribute_career_phone_e2e_receipt: dict[str, Any] | None,
     character_settings_phone_e2e_receipt: dict[str, Any] | None,
+    character_settings_actions_phone_e2e_receipt: dict[str, Any] | None,
     origin_dossier_phone_e2e_receipt: dict[str, Any] | None,
     linked_runner_phone_e2e_receipt: dict[str, Any] | None,
     new_character_settings_phone_e2e_receipt: dict[str, Any] | None,
@@ -1817,19 +1912,48 @@ def _known_phone_mapping(
             if implementation_complete and e2e_scripted
             else None
         )
-        control_proofs = phone_e2e.get("controlProofs") if phone_e2e is not None else None
-        control_proof = (
-            control_proofs.get(control)
-            if isinstance(control_proofs, dict)
+        value_control_proofs = phone_e2e.get("controlProofs") if phone_e2e is not None else None
+        value_control_proof = (
+            value_control_proofs.get(control)
+            if isinstance(value_control_proofs, dict)
             else None
         )
-        exact_api36 = phone_e2e is not None and (
-            isinstance(control_proof, dict)
+        value_exact_api36 = phone_e2e is not None and (
+            isinstance(value_control_proof, dict)
             or control in CHARACTER_SETTINGS_EXACT_API36_ACTIONS
         )
-        receipt_e2e = (
+        action_control_proofs = (
+            character_settings_actions_phone_e2e_receipt.get("controlProofs")
+            if character_settings_actions_phone_e2e_receipt is not None
+            else None
+        )
+        action_control_proof = (
+            action_control_proofs.get(control)
+            if isinstance(action_control_proofs, dict)
+            else None
+        )
+        action_exact_api36 = isinstance(action_control_proof, dict)
+        exact_api36 = value_exact_api36 or action_exact_api36
+        exact_receipt = (
+            character_settings_actions_phone_e2e_receipt
+            if action_exact_api36
+            else phone_e2e
+            if value_exact_api36
+            else None
+        )
+        exact_control_proof = (
+            action_control_proof
+            if action_exact_api36
+            else value_control_proof
+        )
+        base_receipt_e2e = (
             {key: value for key, value in phone_e2e.items() if key != "controlProofs"}
             if phone_e2e is not None
+            else None
+        )
+        receipt_e2e = (
+            {key: value for key, value in exact_receipt.items() if key != "controlProofs"}
+            if exact_receipt is not None
             else None
         )
         automation_id = action_automation_id or (
@@ -1845,18 +1969,23 @@ def _known_phone_mapping(
             "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
             "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
             "tests/run_api36_character_settings_e2e.py",
+            "tests/run_api36_character_settings_actions_e2e.py",
         ]
         representative_e2e = None
-        if receipt_e2e is not None:
+        if base_receipt_e2e is not None:
             representative_e2e = {
-                **receipt_e2e,
+                **base_receipt_e2e,
                 "status": "section_representative_api36",
             }
         exact_e2e = None
         if receipt_e2e is not None and exact_api36:
             exact_e2e = {
                 **receipt_e2e,
-                **({"controlProof": control_proof} if isinstance(control_proof, dict) else {}),
+                **(
+                    {"controlProof": exact_control_proof}
+                    if isinstance(exact_control_proof, dict)
+                    else {}
+                ),
             }
         return {
             "status": (
@@ -2991,6 +3120,7 @@ def enrich_rows(
     attribute_phone_e2e_receipt = _validated_attribute_phone_e2e_receipt()
     attribute_career_phone_e2e_receipt = _validated_attribute_career_phone_e2e_receipt()
     character_settings_phone_e2e_receipt = _validated_character_settings_phone_e2e_receipt()
+    character_settings_actions_phone_e2e_receipt = _validated_character_settings_actions_phone_e2e_receipt()
     origin_dossier_phone_e2e_receipt = _validated_origin_dossier_phone_e2e_receipt()
     linked_runner_phone_e2e_receipt = _validated_linked_runner_phone_e2e_receipt()
     new_character_settings_phone_e2e_receipt = _validated_new_character_settings_phone_e2e_receipt()
@@ -3032,6 +3162,7 @@ def enrich_rows(
             attribute_phone_e2e_receipt,
             attribute_career_phone_e2e_receipt,
             character_settings_phone_e2e_receipt,
+            character_settings_actions_phone_e2e_receipt,
             origin_dossier_phone_e2e_receipt,
             linked_runner_phone_e2e_receipt,
             new_character_settings_phone_e2e_receipt,
@@ -3133,6 +3264,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_attribute_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_attribute_e2e.py",
         REPO_ROOT / "tests" / "run_api36_character_settings_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_character_settings_actions_e2e.py",
         REPO_ROOT / "tests" / "run_api36_origin_dossier_e2e.py",
         REPO_ROOT / "tests" / "run_api36_linked_runner_e2e.py",
         REPO_ROOT / "tests" / "run_api36_new_character_settings_e2e.py",
@@ -3147,6 +3279,7 @@ def build_inventory(
         NEW_CHARACTER_SETTINGS_PHONE_E2E_RECEIPT,
         NEW_CHARACTER_PRIORITY_PHONE_E2E_RECEIPT,
         CHARACTER_SETTINGS_PHONE_E2E_RECEIPT,
+        CHARACTER_SETTINGS_ACTIONS_PHONE_E2E_RECEIPT,
         ORIGIN_DOSSIER_PHONE_E2E_RECEIPT,
         LINKED_RUNNER_PHONE_E2E_RECEIPT,
         WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterContactEditSemantics.cs",
