@@ -88,9 +88,9 @@ public sealed class NativeDialogPage : ContentPage
         label.FontAttributes = FontAttributes.Bold;
         fieldLayout.Add(label);
 
-        if (field.Options is { Count: > 0 })
+        if (string.Equals(field.InputType, "select", StringComparison.OrdinalIgnoreCase))
         {
-            IReadOnlyList<DesktopDialogFieldOption> options = field.Options;
+            IReadOnlyList<DesktopDialogFieldOption> options = field.Options ?? [];
             int selectedIndex = options.ToList().FindIndex(option =>
                 string.Equals(option.Value, field.Value, StringComparison.Ordinal));
             Picker picker = new()
@@ -204,7 +204,13 @@ public sealed class NativeDialogPage : ContentPage
                 || string.Equals(fieldId, "newCharacterPossessionBased", StringComparison.Ordinal)
                 || string.Equals(fieldId, "newCharacterPrioritySkillChoice1", StringComparison.Ordinal)
                 || string.Equals(fieldId, "newCharacterPrioritySkillChoice2", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterPrioritySkillChoice3", StringComparison.Ordinal)));
+                || string.Equals(fieldId, "newCharacterPrioritySkillChoice3", StringComparison.Ordinal)))
+            || (string.Equals(dialog.Id, "dialog.new_character.karma_workflow", StringComparison.Ordinal)
+            && (string.Equals(fieldId, "newCharacterMetatypeSearch", StringComparison.Ordinal)
+                || string.Equals(fieldId, "newCharacterMetatypeCategory", StringComparison.Ordinal)
+                || string.Equals(fieldId, "newCharacterMetatype", StringComparison.Ordinal)
+                || string.Equals(fieldId, "newCharacterMetavariant", StringComparison.Ordinal)
+                || string.Equals(fieldId, "newCharacterPossessionBased", StringComparison.Ordinal)));
 
     private async Task ExecuteAsync(string actionId)
     {

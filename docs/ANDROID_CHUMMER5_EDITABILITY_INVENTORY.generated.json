@@ -14,8 +14,8 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_verified_api36": 289,
-      "missing": 1229,
+      "implemented_verified_api36": 297,
+      "missing": 1221,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 144
@@ -96,7 +96,7 @@
       {
         "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
         "exists": true,
-        "sha256": "bf0629ba8c38c84bcca256caff0737b4e0c1b15a53e99d7b5a543a95c4971196"
+        "sha256": "e21a8d6a2e744be3ae5ffd8b8080305973d1f23d87d8e19c44fe1246798354fb"
       },
       {
         "path": "src/Chummer.Android/Native/NativeCommandPage.cs",
@@ -159,6 +159,11 @@
         "sha256": "ba8b93a395da79473fab4e2eb23a4829817966547ae499e9ddc895f44af7101b"
       },
       {
+        "path": "tests/run_api36_new_character_karma_e2e.py",
+        "exists": true,
+        "sha256": "de02826030d27feb9e9f028f342d4cab11ca77db755ba63555534e165749c391"
+      },
+      {
         "path": "tests/run_api36_new_character_priority_e2e.py",
         "exists": true,
         "sha256": "d549ce6b1e1ca74fa93da21b5aa5296ba64a5aa4864416731f74123895096226"
@@ -211,22 +216,27 @@
       {
         "path": "docs/editability-evidence/api36-phone-new-character-build-settings/receipt.json",
         "exists": true,
-        "sha256": "e3b83219eda12053c127b90c8d8fc2d602da0fb70f7152065df2dcb09ff06cc2"
+        "sha256": "a3a9b870234704e663e6bbb3f3094a1dbbce7d162d82814c7a2c2142adc45d0c"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-new-character-karma/receipt.json",
+        "exists": true,
+        "sha256": "94eca50a5f922390530d29021d7cda2b7816aa2b073daea51dee92c00bc60897"
       },
       {
         "path": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
         "exists": true,
-        "sha256": "8142dc6905af6a0439c2b1cb3420fa857a7f376f50bfbbb0ed98b24745f017ae"
+        "sha256": "969a58775ee2ac27511cc07ef493097be81f7b1af9ff17ea771f6f4fed392ba2"
       },
       {
         "path": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
         "exists": true,
-        "sha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e"
+        "sha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54"
       },
       {
         "path": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
         "exists": true,
-        "sha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c"
+        "sha256": "f62f80db830a51a49dee0d225ce2f5f521eec8345c18c2cba0326b903a02c7f1"
       },
       {
         "path": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
@@ -271,12 +281,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
         "exists": true,
-        "sha256": "817d0cce1486fe177e0900eb0c5c4618451f687e093051fdeb887d7319230fc8"
+        "sha256": "9166142eb461aee7cc980f0b5eb14cc527edde6fb440d5ab2f19b4e2f4899f27"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
         "exists": true,
-        "sha256": "7ffc1282173a86e500ac393e220b90a9cfb6d35edb59fc1e48ad35ca9faf0965"
+        "sha256": "4f17bf482841f9beb451bf82b0abc94b295bc765757607b1f401b7585608cb74"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
@@ -321,7 +331,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "289279b1988cf8dcf99ffdfe2a308dce038da4b2ff9fef97285b15da1ca1c209"
+      "sha256": "cb15d5c0e89b6c523518ce78eaed874f2a0ca9ee61b9af921ef58721691c8704"
     }
   },
   "coverageByFamily": {
@@ -391,7 +401,7 @@
     "character_settings": {
       "rowCount": 209,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 19,
+      "phoneMissingCount": 11,
       "tabletMissingCount": 197,
       "completionProvenCount": 12
     },
@@ -10623,8 +10633,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-build-settings/receipt.json",
-          "receiptSha256": "e3b83219eda12053c127b90c8d8fc2d602da0fb70f7152065df2dcb09ff06cc2",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "a3a9b870234704e663e6bbb3f3094a1dbbce7d162d82814c7a2c2142adc45d0c",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -10688,8 +10698,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-build-settings/receipt.json",
-          "receiptSha256": "e3b83219eda12053c127b90c8d8fc2d602da0fb70f7152065df2dcb09ff06cc2",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "a3a9b870234704e663e6bbb3f3094a1dbbce7d162d82814c7a2c2142adc45d0c",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -10810,8 +10820,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-build-settings/receipt.json",
-          "receiptSha256": "e3b83219eda12053c127b90c8d8fc2d602da0fb70f7152065df2dcb09ff06cc2",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "a3a9b870234704e663e6bbb3f3094a1dbbce7d162d82814c7a2c2142adc45d0c",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -11462,11 +11472,18 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharacterpossessionmethod",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_karma_e2e.py",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -11474,12 +11491,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "character/possessionmethod and the matching Chummer5 critterpower retain the submitted Karma possession method after process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-karma/receipt.json",
+          "receiptSha256": "94eca50a5f922390530d29021d7cda2b7816aa2b073daea51dee92c00bc60897",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -11519,11 +11538,18 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharacterpossessionbased",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_karma_e2e.py",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -11531,12 +11557,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "the enabled Karma possess-based tradition writes the selected possession method and matching critter power after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-karma/receipt.json",
+          "receiptSha256": "94eca50a5f922390530d29021d7cda2b7816aa2b073daea51dee92c00bc60897",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -11571,11 +11599,18 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharacterforce",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_karma_e2e.py",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -11583,12 +11618,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "character/force equals the submitted Karma force after workspace reopen, UI readback, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-karma/receipt.json",
+          "receiptSha256": "94eca50a5f922390530d29021d7cda2b7816aa2b073daea51dee92c00bc60897",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -11628,11 +11665,18 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharactermetatypecategory",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_karma_e2e.py",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -11640,12 +11684,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "character/metatypecategory equals the submitted Karma category after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-karma/receipt.json",
+          "receiptSha256": "94eca50a5f922390530d29021d7cda2b7816aa2b073daea51dee92c00bc60897",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -11685,11 +11731,18 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharactermetavariant",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_karma_e2e.py",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -11697,12 +11750,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "character/metavariant equals the submitted Karma metavariant after workspace reopen, UI readback, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-karma/receipt.json",
+          "receiptSha256": "94eca50a5f922390530d29021d7cda2b7816aa2b073daea51dee92c00bc60897",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -11746,11 +11801,18 @@
       "mutationFamily": "character_settings",
       "operation": "select_or_mutate_collection",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharactermetatype",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_karma_e2e.py",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -11758,12 +11820,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "character/metatype equals the submitted Karma metatype after workspace reopen, UI readback, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-karma/receipt.json",
+          "receiptSha256": "94eca50a5f922390530d29021d7cda2b7816aa2b073daea51dee92c00bc60897",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -11917,11 +11981,18 @@
       "mutationFamily": "character_settings",
       "operation": "commit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-action-complete-new-character-workflow",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_karma_e2e.py",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -11929,12 +12000,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "the committed metatype-Karma workflow produces a durable workspace with the selected metatype, metavariant, Force, and possession state",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-karma/receipt.json",
+          "receiptSha256": "94eca50a5f922390530d29021d7cda2b7816aa2b073daea51dee92c00bc60897",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -11974,11 +12047,18 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
+        "surface": "NativeDialogPage",
+        "automationId": "dialog-field-newcharactermetatypesearch",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/NativeDialogPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+          "tests/run_api36_new_character_karma_e2e.py",
+          "tests/run_api36_new_character_priority_e2e.py"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -11986,12 +12066,14 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
+      "persistenceAssertion": "the entered search narrows the rendered metatype picker to Elf before the selected result is committed",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-new-character-karma/receipt.json",
+          "receiptSha256": "94eca50a5f922390530d29021d7cda2b7816aa2b073daea51dee92c00bc60897",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -12055,8 +12137,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "8142dc6905af6a0439c2b1cb3420fa857a7f376f50bfbbb0ed98b24745f017ae",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "969a58775ee2ac27511cc07ef493097be81f7b1af9ff17ea771f6f4fed392ba2",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -12177,8 +12259,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "8142dc6905af6a0439c2b1cb3420fa857a7f376f50bfbbb0ed98b24745f017ae",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "969a58775ee2ac27511cc07ef493097be81f7b1af9ff17ea771f6f4fed392ba2",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -12242,8 +12324,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "8142dc6905af6a0439c2b1cb3420fa857a7f376f50bfbbb0ed98b24745f017ae",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "969a58775ee2ac27511cc07ef493097be81f7b1af9ff17ea771f6f4fed392ba2",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -12311,8 +12393,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "8142dc6905af6a0439c2b1cb3420fa857a7f376f50bfbbb0ed98b24745f017ae",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "969a58775ee2ac27511cc07ef493097be81f7b1af9ff17ea771f6f4fed392ba2",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -12376,8 +12458,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "8142dc6905af6a0439c2b1cb3420fa857a7f376f50bfbbb0ed98b24745f017ae",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "969a58775ee2ac27511cc07ef493097be81f7b1af9ff17ea771f6f4fed392ba2",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -12436,8 +12518,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "8142dc6905af6a0439c2b1cb3420fa857a7f376f50bfbbb0ed98b24745f017ae",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "969a58775ee2ac27511cc07ef493097be81f7b1af9ff17ea771f6f4fed392ba2",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -12496,8 +12578,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "8142dc6905af6a0439c2b1cb3420fa857a7f376f50bfbbb0ed98b24745f017ae",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "969a58775ee2ac27511cc07ef493097be81f7b1af9ff17ea771f6f4fed392ba2",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -12556,8 +12638,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "8142dc6905af6a0439c2b1cb3420fa857a7f376f50bfbbb0ed98b24745f017ae",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "969a58775ee2ac27511cc07ef493097be81f7b1af9ff17ea771f6f4fed392ba2",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -12621,8 +12703,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "8142dc6905af6a0439c2b1cb3420fa857a7f376f50bfbbb0ed98b24745f017ae",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "969a58775ee2ac27511cc07ef493097be81f7b1af9ff17ea771f6f4fed392ba2",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -12686,8 +12768,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "8142dc6905af6a0439c2b1cb3420fa857a7f376f50bfbbb0ed98b24745f017ae",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "969a58775ee2ac27511cc07ef493097be81f7b1af9ff17ea771f6f4fed392ba2",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -12751,8 +12833,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "8142dc6905af6a0439c2b1cb3420fa857a7f376f50bfbbb0ed98b24745f017ae",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "969a58775ee2ac27511cc07ef493097be81f7b1af9ff17ea771f6f4fed392ba2",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -12816,8 +12898,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "8142dc6905af6a0439c2b1cb3420fa857a7f376f50bfbbb0ed98b24745f017ae",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "969a58775ee2ac27511cc07ef493097be81f7b1af9ff17ea771f6f4fed392ba2",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -12881,8 +12963,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "8142dc6905af6a0439c2b1cb3420fa857a7f376f50bfbbb0ed98b24745f017ae",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "969a58775ee2ac27511cc07ef493097be81f7b1af9ff17ea771f6f4fed392ba2",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -12946,8 +13028,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "8142dc6905af6a0439c2b1cb3420fa857a7f376f50bfbbb0ed98b24745f017ae",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "969a58775ee2ac27511cc07ef493097be81f7b1af9ff17ea771f6f4fed392ba2",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -13006,8 +13088,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "8142dc6905af6a0439c2b1cb3420fa857a7f376f50bfbbb0ed98b24745f017ae",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "969a58775ee2ac27511cc07ef493097be81f7b1af9ff17ea771f6f4fed392ba2",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -13066,8 +13148,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-new-character-priority/receipt.json",
-          "receiptSha256": "8142dc6905af6a0439c2b1cb3420fa857a7f376f50bfbbb0ed98b24745f017ae",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "969a58775ee2ac27511cc07ef493097be81f7b1af9ff17ea771f6f4fed392ba2",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -80670,8 +80752,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
-          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "f62f80db830a51a49dee0d225ce2f5f521eec8345c18c2cba0326b903a02c7f1",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -80803,8 +80885,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -80874,8 +80956,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -80945,8 +81027,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -81016,8 +81098,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -81087,8 +81169,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -81158,8 +81240,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -81229,8 +81311,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -81300,8 +81382,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -81371,8 +81453,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -81442,8 +81524,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -81513,8 +81595,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -81589,8 +81671,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -81665,8 +81747,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
-          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "f62f80db830a51a49dee0d225ce2f5f521eec8345c18c2cba0326b903a02c7f1",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -81736,8 +81818,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -81807,8 +81889,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -81878,8 +81960,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -81949,8 +82031,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -82020,8 +82102,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -82091,8 +82173,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -82162,8 +82244,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -82233,8 +82315,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -82304,8 +82386,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -82375,8 +82457,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -82446,8 +82528,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -82517,8 +82599,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -82588,8 +82670,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -82659,8 +82741,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -82730,8 +82812,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -82801,8 +82883,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -82872,8 +82954,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -82943,8 +83025,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -83014,8 +83096,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -83085,8 +83167,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -83156,8 +83238,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -83227,8 +83309,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -83298,8 +83380,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -83369,8 +83451,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -83440,8 +83522,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -83511,8 +83593,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -83582,8 +83664,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -83653,8 +83735,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -83724,8 +83806,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -83795,8 +83877,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -83866,8 +83948,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -83937,8 +84019,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -84008,8 +84090,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -84079,8 +84161,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -84150,8 +84232,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -84221,8 +84303,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -84292,8 +84374,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -84363,8 +84445,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -84434,8 +84516,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -84505,8 +84587,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -84576,8 +84658,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -84652,8 +84734,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
-          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "f62f80db830a51a49dee0d225ce2f5f521eec8345c18c2cba0326b903a02c7f1",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -84728,8 +84810,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
-          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "f62f80db830a51a49dee0d225ce2f5f521eec8345c18c2cba0326b903a02c7f1",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -84808,8 +84890,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -84879,8 +84961,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -84950,8 +85032,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -85021,8 +85103,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -85092,8 +85174,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -85163,8 +85245,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -85234,8 +85316,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -85305,8 +85387,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -85376,8 +85458,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -85447,8 +85529,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -85518,8 +85600,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -85589,8 +85671,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -85660,8 +85742,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -85731,8 +85813,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -85802,8 +85884,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -85873,8 +85955,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -85944,8 +86026,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -86015,8 +86097,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -86086,8 +86168,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -86157,8 +86239,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -86228,8 +86310,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -86299,8 +86381,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -86370,8 +86452,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -86441,8 +86523,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -86512,8 +86594,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -86583,8 +86665,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -86654,8 +86736,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -86725,8 +86807,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -86796,8 +86878,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -86867,8 +86949,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -86938,8 +87020,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -87009,8 +87091,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -87080,8 +87162,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -87156,8 +87238,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -87227,8 +87309,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1"
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e"
         },
         "tablet": {
           "status": "missing",
@@ -87293,8 +87375,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -87364,8 +87446,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -87435,8 +87517,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -87506,8 +87588,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -87577,8 +87659,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -87648,8 +87730,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -87724,8 +87806,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -87800,8 +87882,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -87876,8 +87958,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -87947,8 +88029,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -88027,8 +88109,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -88098,8 +88180,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -88174,8 +88256,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -88245,8 +88327,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -88316,8 +88398,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -88387,8 +88469,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -88458,8 +88540,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -88529,8 +88611,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -88600,8 +88682,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -88671,8 +88753,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -88747,8 +88829,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
-          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "f62f80db830a51a49dee0d225ce2f5f521eec8345c18c2cba0326b903a02c7f1",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -88823,8 +88905,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
-          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "f62f80db830a51a49dee0d225ce2f5f521eec8345c18c2cba0326b903a02c7f1",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -88894,8 +88976,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -88970,8 +89052,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
-          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "f62f80db830a51a49dee0d225ce2f5f521eec8345c18c2cba0326b903a02c7f1",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -89103,8 +89185,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
-          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "f62f80db830a51a49dee0d225ce2f5f521eec8345c18c2cba0326b903a02c7f1",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -89174,8 +89256,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -89250,8 +89332,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -89321,8 +89403,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -89397,8 +89479,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
-          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "f62f80db830a51a49dee0d225ce2f5f521eec8345c18c2cba0326b903a02c7f1",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -89473,8 +89555,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings-actions/receipt.json",
-          "receiptSha256": "811de1b0ace79347ad42a860acfb0b670f5e9febb30a3b7cb3222be6caf1195c",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "f62f80db830a51a49dee0d225ce2f5f521eec8345c18c2cba0326b903a02c7f1",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -89549,8 +89631,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -89625,8 +89707,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -89696,8 +89778,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -89767,8 +89849,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -89838,8 +89920,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -89909,8 +89991,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -89980,8 +90062,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -90051,8 +90133,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -90122,8 +90204,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -90193,8 +90275,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -90264,8 +90346,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -90335,8 +90417,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -90406,8 +90488,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -90534,8 +90616,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -90610,8 +90692,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -90686,8 +90768,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -90757,8 +90839,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -90828,8 +90910,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -90899,8 +90981,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -90970,8 +91052,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -91041,8 +91123,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -91112,8 +91194,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -91183,8 +91265,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -91254,8 +91336,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -91325,8 +91407,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -91396,8 +91478,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -91467,8 +91549,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -91538,8 +91620,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -91609,8 +91691,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -91680,8 +91762,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -91751,8 +91833,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -91822,8 +91904,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -91893,8 +91975,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -91964,8 +92046,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -92040,8 +92122,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -92111,8 +92193,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -92182,8 +92264,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -92253,8 +92335,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -92324,8 +92406,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",
@@ -92400,8 +92482,8 @@
         "phone": {
           "status": "executed_api36",
           "ref": "docs/editability-evidence/api36-phone-character-settings/receipt.json",
-          "receiptSha256": "7c2b3877998ecc09a82c4233d05080af7015d6d1f71e9a4e193deca88a70506e",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
+          "receiptSha256": "de32fd98db20f6ffcdd23800578eed294c2c8262f2e57601fe7f90e9d7959e54",
+          "apkSha256": "8ba538ef8a7aeeb5094fb23fe8983031e8024ed2dd5b4d48099f0b43a73e902e",
           "controlProof": {
             "mutated": "pass",
             "catalogPersisted": "pass",

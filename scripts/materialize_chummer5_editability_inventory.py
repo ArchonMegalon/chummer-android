@@ -137,6 +137,32 @@ NEW_CHARACTER_PRIORITY_PHONE_E2E_RECEIPT = (
     / "api36-phone-new-character-priority"
     / "receipt.json"
 )
+NEW_CHARACTER_KARMA_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-new-character-karma"
+    / "receipt.json"
+)
+NEW_CHARACTER_KARMA_E2E_JOURNEYS = (
+    "buildMethodKarmaSelected",
+    "metatypeSearchEdited",
+    "metatypeSearchFiltered",
+    "metatypeCategoryEdited",
+    "metatypeEdited",
+    "metavariantEdited",
+    "forceEdited",
+    "possessionBasedEnabled",
+    "possessionMethodEdited",
+    "creationCommitCompleted",
+    "metatypeUiReadback",
+    "metavariantUiReadback",
+    "workspaceKarmaPersisted",
+    "processRestartKarmaPersistence",
+    "spiritUiReadback",
+    "workspaceSpiritPossessionPersisted",
+    "processRestartSpiritPossessionPersistence",
+)
 NEW_CHARACTER_PRIORITY_E2E_JOURNEYS = (
     "metatypeCategoryEdited",
     "metatypeEdited",
@@ -1141,6 +1167,59 @@ def _validated_linked_runner_phone_e2e_receipt() -> dict[str, Any] | None:
     }
 
 
+def _validated_new_character_karma_phone_e2e_receipt() -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_new_character_karma_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    helper_driver = REPO_ROOT / "tests" / "run_api36_new_character_priority_e2e.py"
+    native_dialog = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "NativeDialogPage.cs"
+    build_page = native_dialog.with_name("BuildPage.cs")
+    presentation_root = WORKSPACE_ROOT / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+    dialog_factory = presentation_root / "DesktopDialogFactory.cs"
+    dialog_coordinator = presentation_root / "DialogCoordinator.cs"
+    sources = (
+        driver,
+        shared_driver,
+        helper_driver,
+        native_dialog,
+        build_page,
+        dialog_factory,
+        dialog_coordinator,
+    )
+    if not all(path.is_file() for path in sources):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(NEW_CHARACTER_KARMA_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "new-character-metatype-karma"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("helperDriverSha256") == _sha256_file(helper_driver)
+        and receipt.get("nativeDialogPageSha256") == _sha256_file(native_dialog)
+        and receipt.get("buildPageSha256") == _sha256_file(build_page)
+        and receipt.get("dialogFactorySha256") == _sha256_file(dialog_factory)
+        and receipt.get("dialogCoordinatorSha256") == _sha256_file(dialog_coordinator)
+        and isinstance(journeys, dict)
+        and all(journeys.get(journey) == "pass" for journey in NEW_CHARACTER_KARMA_E2E_JOURNEYS)
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": NEW_CHARACTER_KARMA_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(NEW_CHARACTER_KARMA_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
 def _validated_new_character_priority_phone_e2e_receipt() -> dict[str, Any] | None:
     driver = REPO_ROOT / "tests" / "run_api36_new_character_priority_e2e.py"
     shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
@@ -1820,6 +1899,7 @@ def _known_phone_mapping(
     origin_dossier_phone_e2e_receipt: dict[str, Any] | None,
     linked_runner_phone_e2e_receipt: dict[str, Any] | None,
     new_character_settings_phone_e2e_receipt: dict[str, Any] | None,
+    new_character_karma_phone_e2e_receipt: dict[str, Any] | None,
     new_character_priority_phone_e2e_receipt: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     legacy = row["legacy"]
@@ -2072,6 +2152,130 @@ def _known_phone_mapping(
             "automationId": automation_ids[control],
             "sourceRefs": source_refs,
             "presenterMutation": "DialogCoordinator.CreateCharacterFromDialogAsync / CompleteNewCharacterWorkflowAsync",
+            "persistenceAssertion": assertions[control],
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": e2e_driver.relative_to(REPO_ROOT).as_posix() if e2e_scripted else None,
+            },
+        }
+    if class_name == "SelectMetatypeKarma" and control in {
+        "txtSearch",
+        "cboCategory",
+        "lstMetatypes",
+        "cboMetavariant",
+        "chkPossessionBased",
+        "cboPossessionMethod",
+        "nudForce",
+        "cmdOK",
+    }:
+        native_dialog = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "NativeDialogPage.cs"
+        build_page = native_dialog.with_name("BuildPage.cs")
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_new_character_karma_e2e.py"
+        helper_driver = REPO_ROOT / "tests" / "run_api36_new_character_priority_e2e.py"
+        dialog_factory = presentation_root / "Chummer.Presentation" / "Overview" / "DesktopDialogFactory.cs"
+        dialog_coordinator = presentation_root / "Chummer.Presentation" / "Overview" / "DialogCoordinator.cs"
+        implementation_complete = (
+            _contains(
+                native_dialog,
+                'AutomationId = $"dialog-field-{Token(field.Id)}"',
+                'AutomationId = $"dialog-action-{Token(action.Id)}"',
+                '"dialog.new_character.karma_workflow"',
+                '"newCharacterMetatypeSearch"',
+            )
+            and _contains(
+                build_page,
+                'NativeTheme.Metric("Metatype"',
+                "Coordinator.State.Profile?.Metatype",
+                'NativeTheme.Metric("Metavariant"',
+                "Coordinator.State.Profile?.Metavariant",
+            )
+            and _contains(
+                dialog_factory,
+                'NewCharacterKarmaWorkflowDialogId = "dialog.new_character.karma_workflow"',
+                'NewCharacterMetatypeSearchFieldId = "newCharacterMetatypeSearch"',
+                '"newCharacterMetatypeCategory"',
+                '"newCharacterMetatype"',
+                '"newCharacterMetavariant"',
+                '"newCharacterForce"',
+                '"newCharacterPossessionBased"',
+                '"newCharacterPossessionMethod"',
+                '"complete_new_character_workflow"',
+                "ResolveKarmaWorkflowResolution",
+            )
+            and _contains(
+                dialog_coordinator,
+                '"dialog.new_character.karma_workflow"',
+                '"metatypecategory"',
+                '"metatype"',
+                '"metavariant"',
+                '"force"',
+                '"possessionmethod"',
+                '"critterpowers"',
+                "CompleteNewCharacterWorkflowAsync",
+            )
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            "dialog-field-newcharactermetatypesearch",
+            "dialog-field-newcharactermetatypecategory",
+            "dialog-field-newcharactermetatype",
+            "dialog-field-newcharactermetavariant",
+            "dialog-field-newcharacterforce",
+            "dialog-field-newcharacterpossessionbased",
+            "dialog-field-newcharacterpossessionmethod",
+            "dialog-action-complete-new-character-workflow",
+            '"metatypeSearchFiltered": "pass"',
+            '"workspaceKarmaPersisted": "pass"',
+            '"processRestartKarmaPersistence": "pass"',
+            '"workspaceSpiritPossessionPersisted": "pass"',
+            '"processRestartSpiritPossessionPersistence": "pass"',
+        ) and _contains(helper_driver, "def select_option", "def workspace_payloads")
+        phone_e2e = (
+            new_character_karma_phone_e2e_receipt
+            if implementation_complete and e2e_scripted
+            else None
+        )
+        automation_ids = {
+            "txtSearch": "dialog-field-newcharactermetatypesearch",
+            "cboCategory": "dialog-field-newcharactermetatypecategory",
+            "lstMetatypes": "dialog-field-newcharactermetatype",
+            "cboMetavariant": "dialog-field-newcharactermetavariant",
+            "chkPossessionBased": "dialog-field-newcharacterpossessionbased",
+            "cboPossessionMethod": "dialog-field-newcharacterpossessionmethod",
+            "nudForce": "dialog-field-newcharacterforce",
+            "cmdOK": "dialog-action-complete-new-character-workflow",
+        }
+        assertions = {
+            "txtSearch": "the entered search narrows the rendered metatype picker to Elf before the selected result is committed",
+            "cboCategory": "character/metatypecategory equals the submitted Karma category after workspace reopen and process restart",
+            "lstMetatypes": "character/metatype equals the submitted Karma metatype after workspace reopen, UI readback, and process restart",
+            "cboMetavariant": "character/metavariant equals the submitted Karma metavariant after workspace reopen, UI readback, and process restart",
+            "chkPossessionBased": "the enabled Karma possess-based tradition writes the selected possession method and matching critter power after workspace reopen and process restart",
+            "cboPossessionMethod": "character/possessionmethod and the matching Chummer5 critterpower retain the submitted Karma possession method after process restart",
+            "nudForce": "character/force equals the submitted Karma force after workspace reopen, UI readback, and process restart",
+            "cmdOK": "the committed metatype-Karma workflow produces a durable workspace with the selected metatype, metavariant, Force, and possession state",
+        }
+        source_refs = [
+            "src/Chummer.Android/Native/NativeDialogPage.cs",
+            "src/Chummer.Android/Native/BuildPage.cs",
+            "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+            "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+            "tests/run_api36_new_character_karma_e2e.py",
+            "tests/run_api36_new_character_priority_e2e.py",
+        ]
+        return {
+            "status": (
+                "implemented_verified_api36"
+                if phone_e2e is not None
+                else "implemented_pending_emulator"
+                if implementation_complete
+                else "missing"
+            ),
+            "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
+            "surface": "NativeDialogPage",
+            "automationId": automation_ids[control],
+            "sourceRefs": source_refs,
+            "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
             "persistenceAssertion": assertions[control],
             "e2e": phone_e2e or {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
@@ -3124,6 +3328,7 @@ def enrich_rows(
     origin_dossier_phone_e2e_receipt = _validated_origin_dossier_phone_e2e_receipt()
     linked_runner_phone_e2e_receipt = _validated_linked_runner_phone_e2e_receipt()
     new_character_settings_phone_e2e_receipt = _validated_new_character_settings_phone_e2e_receipt()
+    new_character_karma_phone_e2e_receipt = _validated_new_character_karma_phone_e2e_receipt()
     new_character_priority_phone_e2e_receipt = _validated_new_character_priority_phone_e2e_receipt()
     for row in rows:
         family = row["mutationFamily"]
@@ -3166,6 +3371,7 @@ def enrich_rows(
             origin_dossier_phone_e2e_receipt,
             linked_runner_phone_e2e_receipt,
             new_character_settings_phone_e2e_receipt,
+            new_character_karma_phone_e2e_receipt,
             new_character_priority_phone_e2e_receipt,
         )
         if known is not None:
@@ -3268,6 +3474,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_origin_dossier_e2e.py",
         REPO_ROOT / "tests" / "run_api36_linked_runner_e2e.py",
         REPO_ROOT / "tests" / "run_api36_new_character_settings_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_new_character_karma_e2e.py",
         REPO_ROOT / "tests" / "run_api36_new_character_priority_e2e.py",
         REPO_ROOT / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-contact-pet-e2e.chum5",
@@ -3277,6 +3484,7 @@ def build_inventory(
         ATTRIBUTE_PHONE_E2E_RECEIPT,
         ATTRIBUTE_CAREER_PHONE_E2E_RECEIPT,
         NEW_CHARACTER_SETTINGS_PHONE_E2E_RECEIPT,
+        NEW_CHARACTER_KARMA_PHONE_E2E_RECEIPT,
         NEW_CHARACTER_PRIORITY_PHONE_E2E_RECEIPT,
         CHARACTER_SETTINGS_PHONE_E2E_RECEIPT,
         CHARACTER_SETTINGS_ACTIONS_PHONE_E2E_RECEIPT,

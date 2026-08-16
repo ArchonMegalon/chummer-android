@@ -864,7 +864,11 @@ class AndroidContractTests(unittest.TestCase):
         dialog = (PROJECT / "Native" / "NativeDialogPage.cs").read_text(encoding="utf-8")
         play = (PROJECT / "Native" / "PlayPage.cs").read_text(encoding="utf-8")
         campaign = (PROJECT / "Native" / "CampaignPage.cs").read_text(encoding="utf-8")
-        self.assertIn("field.Options is { Count: > 0 }", dialog)
+        self.assertIn(
+            'string.Equals(field.InputType, "select", StringComparison.OrdinalIgnoreCase)',
+            dialog,
+        )
+        self.assertIn("field.Options ?? []", dialog)
         self.assertIn("Picker picker", dialog)
         self.assertIn("Picker groups", play)
         self.assertIn("Picker picker", campaign)
