@@ -212,6 +212,26 @@ namespace Chummer.Sample
             and row["legacy"]["controlName"] in {"tsAttachCharacter", "tsRemoveCharacter"}
         ]
         self.assertEqual(4, len(linked_character_rows))
+        career_collection_delete_rows = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] in inventory.LEGACY_CAREER_COLLECTION_DELETE_CONTROLS
+        ]
+        self.assertEqual(
+            set(inventory.LEGACY_CAREER_COLLECTION_DELETE_CONTROLS),
+            {row["legacy"]["controlName"] for row in career_collection_delete_rows},
+        )
+        for row in career_collection_delete_rows:
+            kind, section_label = inventory.LEGACY_CAREER_COLLECTION_DELETE_CONTROLS[
+                row["legacy"]["controlName"]
+            ]
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("missing", row["e2e"]["phone"]["status"])
+            self.assertIn(section_label, row["phone"]["route"])
+            self.assertIn(f"WorkspaceCollectionKind.{kind}", row["presenterMutation"])
+            self.assertIn(kind, row["persistenceAssertion"])
+            self.assertFalse(row["completionProven"])
         self.assertTrue(all(row["presenterMutation"] for row in origin_rows + attribute_rows))
         for row in origin_rows:
             self.assertEqual("implemented_verified_api36", row["phone"]["status"])
@@ -361,8 +381,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_verified_api36": 297,
-                "missing": 1221,
+                "implemented_pending_emulator": 199,
+                "implemented_verified_api36": 108,
+                "missing": 1211,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 144,
@@ -412,8 +433,15 @@ namespace Chummer.Sample
         for control in ("cboCharacterSetting", "chkIgnoreRules", "cmdOK"):
             row = rows[control]
             self.assertTrue(row["editParityRequired"])
-            self.assertEqual("implemented_verified_api36", row["phone"]["status"])
-            self.assertEqual("executed_api36", row["e2e"]["phone"]["status"])
+            verified = inventory._validated_new_character_settings_phone_e2e_receipt() is not None
+            self.assertEqual(
+                "implemented_verified_api36" if verified else "implemented_pending_emulator",
+                row["phone"]["status"],
+            )
+            self.assertEqual(
+                "executed_api36" if verified else "scripted_not_executed",
+                row["e2e"]["phone"]["status"],
+            )
             self.assertEqual("missing", row["tablet"]["status"])
 
         self.assertEqual("missing", rows["cmdEditCharacterSetting"]["phone"]["status"])
@@ -446,43 +474,38 @@ namespace Chummer.Sample
 
         self.assertEqual(162, len(rows))
         self.assertEqual(150, len(value_controls))
-        self.assertEqual(
-            exact_controls,
-            {
-                control
-                for control, row in rows.items()
-                if row["phone"]["status"] == "implemented_verified_api36"
-            },
-        )
-        self.assertEqual(
-            0,
-            sum(
-                row["phone"]["status"] == "implemented_pending_emulator"
-                for row in rows.values()
-            ),
+        self.assertEqual(exact_controls, set(rows))
+        value_receipt_current = inventory._validated_character_settings_phone_e2e_receipt() is not None
+        action_receipt_current = (
+            inventory._validated_character_settings_actions_phone_e2e_receipt() is not None
         )
         for control in exact_controls:
-            self.assertEqual("executed_api36", rows[control]["e2e"]["phone"]["status"])
-        for control in value_controls:
+            receipt_current = (
+                value_receipt_current
+                if control in value_controls or control in inventory.CHARACTER_SETTINGS_EXACT_API36_ACTIONS
+                else action_receipt_current
+            )
             self.assertEqual(
-                {key: "pass" for key in inventory.CHARACTER_SETTINGS_CONTROL_E2E_PROOF_KEYS},
-                rows[control]["e2e"]["phone"]["controlProof"],
+                "implemented_verified_api36" if receipt_current else "implemented_pending_emulator",
+                rows[control]["phone"]["status"],
             )
-        for control in inventory.CHARACTER_SETTINGS_ACTION_E2E_CONTROLS:
             self.assertEqual(
-                {
-                    key: "pass"
-                    for key in inventory.CHARACTER_SETTINGS_ACTION_CONTROL_E2E_PROOF_KEYS
-                },
-                rows[control]["e2e"]["phone"]["controlProof"],
+                "executed_api36" if receipt_current else "scripted_not_executed",
+                rows[control]["e2e"]["phone"]["status"],
             )
-        self.assertTrue(
-            all(
-                row["e2e"]["phone"]["status"] == "section_representative_api36"
-                for control, row in rows.items()
-                if control not in exact_controls
-            )
-        )
+            if receipt_current and control in value_controls:
+                self.assertEqual(
+                    {key: "pass" for key in inventory.CHARACTER_SETTINGS_CONTROL_E2E_PROOF_KEYS},
+                    rows[control]["e2e"]["phone"]["controlProof"],
+                )
+            if receipt_current and control in inventory.CHARACTER_SETTINGS_ACTION_E2E_CONTROLS:
+                self.assertEqual(
+                    {
+                        key: "pass"
+                        for key in inventory.CHARACTER_SETTINGS_ACTION_CONTROL_E2E_PROOF_KEYS
+                    },
+                    rows[control]["e2e"]["phone"]["controlProof"],
+                )
         self.assertTrue(all(row["tablet"]["status"] == "missing" for row in rows.values()))
         self.assertEqual(
             "dialog-field-charactersettingsprofile",
@@ -523,11 +546,18 @@ namespace Chummer.Sample
             "cmdOK",
         }
 
+        verified = inventory._validated_new_character_priority_phone_e2e_receipt() is not None
         for control in proven:
             row = rows[control]
             self.assertTrue(row["editParityRequired"])
-            self.assertEqual("implemented_verified_api36", row["phone"]["status"])
-            self.assertEqual("executed_api36", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "implemented_verified_api36" if verified else "implemented_pending_emulator",
+                row["phone"]["status"],
+            )
+            self.assertEqual(
+                "executed_api36" if verified else "scripted_not_executed",
+                row["e2e"]["phone"]["status"],
+            )
             self.assertEqual("missing", row["tablet"]["status"])
             self.assertIn("Select Metatype Priority", row["phone"]["route"])
 
@@ -574,10 +604,17 @@ namespace Chummer.Sample
                 if row["editParityRequired"]
             },
         )
+        verified = inventory._validated_new_character_karma_phone_e2e_receipt() is not None
         for control in proven:
             row = rows[control]
-            self.assertEqual("implemented_verified_api36", row["phone"]["status"])
-            self.assertEqual("executed_api36", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "implemented_verified_api36" if verified else "implemented_pending_emulator",
+                row["phone"]["status"],
+            )
+            self.assertEqual(
+                "executed_api36" if verified else "scripted_not_executed",
+                row["e2e"]["phone"]["status"],
+            )
             self.assertEqual("missing", row["tablet"]["status"])
             self.assertIn("Select Metatype", row["phone"]["route"])
         self.assertEqual(

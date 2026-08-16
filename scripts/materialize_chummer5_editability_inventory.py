@@ -477,6 +477,18 @@ PET_TEXT_FIELDS = {
     "cboMetatype": ("Metatype", "metatype", "metatype"),
     "cmdNotes": ("Notes", "notes", "notes"),
 }
+LEGACY_CAREER_COLLECTION_DELETE_CONTROLS = {
+    "cmdDeleteGear": ("Gear", "Gear"),
+    "cmdDeleteWeapon": ("Weapon", "Weapons"),
+    "cmdDeleteArmor": ("Armor", "Armor"),
+    "cmdDeleteVehicle": ("Vehicle", "Vehicles"),
+    "cmdDeleteCyberware": ("Cyberware", "Cyberware"),
+    "cmdDeleteSpell": ("Spell", "Spells"),
+    "cmdDeleteComplexForm": ("ComplexForm", "Complex forms"),
+    "cmdDeleteAIProgram": ("MatrixProgram", "AI programs"),
+    "cmdDeleteCritterPower": ("CritterPower", "Critter powers"),
+    "cmdDeleteQuality": ("Quality", "Qualities"),
+}
 
 MATRIX_CONDITION_CONTROL_RE = re.compile(
     r"^chk(?P<kind>Cyberware|Gear|Armor|Weapon|Vehicle)MatrixCM(?P<box>[1-9]|1[0-9]|2[0-4])$"
@@ -2179,8 +2191,9 @@ def _known_phone_mapping(
                 native_dialog,
                 'AutomationId = $"dialog-field-{Token(field.Id)}"',
                 'AutomationId = $"dialog-action-{Token(action.Id)}"',
-                '"dialog.new_character.karma_workflow"',
-                '"newCharacterMetatypeSearch"',
+                "UpdateFieldAsync",
+                "RequiresStructuralRerender",
+                "Render(next)",
             )
             and _contains(
                 build_page,
@@ -2192,15 +2205,17 @@ def _known_phone_mapping(
             and _contains(
                 dialog_factory,
                 'NewCharacterKarmaWorkflowDialogId = "dialog.new_character.karma_workflow"',
-                'NewCharacterMetatypeSearchFieldId = "newCharacterMetatypeSearch"',
+                'NewCharacterKarmaMetatypeSearchFieldId = "newCharacterMetatypeSearch"',
                 '"newCharacterMetatypeCategory"',
                 '"newCharacterMetatype"',
-                '"newCharacterMetavariant"',
-                '"newCharacterForce"',
-                '"newCharacterPossessionBased"',
-                '"newCharacterPossessionMethod"',
+                "NewCharacterMetavariantFieldId",
+                "NewCharacterForceFieldId",
+                "NewCharacterPossessionBasedFieldId",
+                "NewCharacterPossessionMethodFieldId",
                 '"complete_new_character_workflow"',
-                "ResolveKarmaWorkflowResolution",
+                "BuildNewCharacterKarmaWorkflowDialog",
+                "FilterKarmaMetatypeOptions",
+                "RebuildNewCharacterKarmaWorkflowDialog",
             )
             and _contains(
                 dialog_coordinator,
@@ -2211,6 +2226,8 @@ def _known_phone_mapping(
                 '"force"',
                 '"possessionmethod"',
                 '"critterpowers"',
+                "TryValidateNewCharacterSpiritSelection",
+                "ApplySpiritSelection",
                 "CompleteNewCharacterWorkflowAsync",
             )
         )
@@ -2593,6 +2610,68 @@ def _known_phone_mapping(
                 "status": "scripted_not_executed" if tablet_e2e_scripted else "missing",
                 "ref": tablet_e2e_driver.relative_to(REPO_ROOT).as_posix() if tablet_e2e_scripted else None,
             },
+        }
+    if (
+        class_name == "CharacterCareer"
+        and control in LEGACY_CAREER_COLLECTION_DELETE_CONTROLS
+    ):
+        kind, section_label = LEGACY_CAREER_COLLECTION_DELETE_CONTROLS[control]
+        expected_handler = f"{control}_Click"
+        if not any(event.get("handler") == expected_handler for event in legacy.get("events", [])):
+            return None
+
+        phone_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        phone_route = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildFlowPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        request = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionMutationRequest.cs"
+        mutation = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs"
+        projector = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorProjector.cs"
+        presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        shared = (
+            _contains(request, "WorkspaceCollectionItemTarget", "WorkspaceDeleteCollectionItemRequest")
+            and _contains(projector, f"WorkspaceCollectionKind.{kind}")
+            and _contains(mutation, "ApplyDeleteMutation", f"WorkspaceCollectionKind.{kind}")
+            and _contains(coordinator, "ApplyCollectionMutationAsync")
+            and _contains(presenter, "ApplyCollectionMutationAsync", "ApplyWorkspaceXmlMutationAsync")
+        )
+        phone_implemented = shared and _contains(
+            phone_route,
+            "AddCollectionRows",
+            "CollectionItemEditorPage",
+        ) and _contains(
+            phone_page,
+            "collection-delete-",
+            "WorkspaceDeleteCollectionItemRequest",
+            "item.CanDelete",
+        )
+        return {
+            "status": "implemented_pending_emulator" if phone_implemented else "missing",
+            "route": f"Build > {section_label} > selected item > Delete item",
+            "surface": "CollectionItemEditorPage",
+            "automationId": "collection-delete-{stable-target}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/BuildFlowPages.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / "
+                f"WorkspaceDeleteCollectionItemRequest on WorkspaceCollectionKind.{kind}"
+            ),
+            "persistenceAssertion": (
+                f"selected stable {kind} guid is absent from the saved runner after reopen and process restart"
+            ),
+            "e2e": {"status": "missing", "ref": None},
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
         }
     if class_name == "PetControl" and (control in PET_TEXT_FIELDS or control == "cmdDelete"):
         phone_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
