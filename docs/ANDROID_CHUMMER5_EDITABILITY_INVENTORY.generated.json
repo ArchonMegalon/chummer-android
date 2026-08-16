@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 199,
+      "implemented_pending_emulator": 203,
       "implemented_verified_api36": 108,
-      "missing": 1211,
+      "missing": 1207,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 144
@@ -332,7 +332,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "094cafb181c5b6333243110af9769707a60d7d8d441826101523dcaae15e8407"
+      "sha256": "5cd06d9f0e69ab64baeed4609f8e7e2443d91bde59ce4cb7848c1b975e602d3c"
     }
   },
   "coverageByFamily": {
@@ -675,7 +675,7 @@
     "spirits_and_sprites": {
       "rowCount": 32,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 23,
+      "phoneMissingCount": 19,
       "tabletMissingCount": 28,
       "completionProvenCount": 4
     },
@@ -3404,11 +3404,18 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-bound-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -3416,8 +3423,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Bound on WorkspaceCollectionKind.Spirit",
+      "persistenceAssertion": "selected stable Spirit guid retains bound after reopen and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -3456,11 +3463,18 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-name-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -3468,8 +3482,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Name on WorkspaceCollectionKind.Spirit",
+      "persistenceAssertion": "selected stable Spirit guid retains name after reopen and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -3845,11 +3859,18 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -3857,8 +3878,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Spirit",
+      "persistenceAssertion": "selected stable Spirit guid retains notes after reopen and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -3959,11 +3980,18 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-delete-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -3971,8 +3999,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceDeleteCollectionItemRequest on WorkspaceCollectionKind.Spirit",
+      "persistenceAssertion": "selected stable Spirit guid is absent from the saved runner after reopen and process restart",
       "e2e": {
         "phone": {
           "status": "missing",

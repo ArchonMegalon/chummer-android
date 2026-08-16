@@ -489,6 +489,12 @@ LEGACY_CAREER_COLLECTION_DELETE_CONTROLS = {
     "cmdDeleteCritterPower": ("CritterPower", "Critter powers"),
     "cmdDeleteQuality": ("Quality", "Qualities"),
 }
+SPIRIT_GENERIC_EDITOR_CONTROLS = {
+    "cboSpiritName": ("text", "Name", "name"),
+    "cmdNotes": ("text", "Notes", "notes"),
+    "chkBound": ("toggle", "Bound", "bound"),
+    "cmdDelete": ("delete", None, "spirit"),
+}
 
 MATRIX_CONDITION_CONTROL_RE = re.compile(
     r"^chk(?P<kind>Cyberware|Gear|Armor|Weapon|Vehicle)MatrixCM(?P<box>[1-9]|1[0-9]|2[0-4])$"
@@ -2664,6 +2670,140 @@ def _known_phone_mapping(
             "persistenceAssertion": (
                 f"selected stable {kind} guid is absent from the saved runner after reopen and process restart"
             ),
+            "e2e": {"status": "missing", "ref": None},
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "SpiritControl" and control in SPIRIT_GENERIC_EDITOR_CONTROLS:
+        editor_kind, field, xml_element = SPIRIT_GENERIC_EDITOR_CONTROLS[control]
+        phone_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        phone_route = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildFlowPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        request = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionMutationRequest.cs"
+        mutation = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs"
+        projector = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorProjector.cs"
+        presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        common_shared = (
+            _contains(request, "WorkspaceCollectionKind", "    Spirit,")
+            and _contains(projector, '"spirits"', "WorkspaceCollectionKind.Spirit")
+            and _contains(mutation, "WorkspaceCollectionKind.Spirit", 'new(["spirits"], "spirit")')
+            and _contains(coordinator, "ApplyCollectionMutationAsync")
+            and _contains(presenter, "ApplyCollectionMutationAsync", "ApplyWorkspaceXmlMutationAsync")
+        )
+        source_refs = [
+            "src/Chummer.Android/Native/BuildFlowPages.cs",
+            "src/Chummer.Android/Native/CollectionEditorPages.cs",
+            "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+            "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+            "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+            "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+        ]
+        if editor_kind == "text":
+            assert field is not None
+            shared = common_shared and _contains(
+                request,
+                "WorkspacePatchCollectionItemRequest",
+                f"    {field},",
+            ) and _contains(
+                projector,
+                f"WorkspaceCollectionTextField.{field}",
+                "case WorkspaceCollectionKind.Spirit:",
+            ) and _contains(
+                mutation,
+                "ApplyTextMutation",
+                f'"{xml_element}"',
+            )
+            phone_implemented = shared and _contains(
+                phone_route,
+                "AddCollectionRows",
+                "CollectionItemEditorPage",
+            ) and _contains(
+                phone_page,
+                "collection-field-",
+                "WorkspacePatchCollectionItemRequest",
+                "original.IsEnabled",
+            )
+            presenter_mutation = (
+                "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / "
+                f"WorkspaceCollectionTextField.{field} on WorkspaceCollectionKind.Spirit"
+            )
+            phone_automation_id = f"collection-field-{xml_element}-{{stable-target}}"
+            persistence_assertion = (
+                f"selected stable Spirit guid retains {xml_element} after reopen and process restart"
+            )
+        elif editor_kind == "toggle":
+            assert field is not None
+            shared = common_shared and _contains(
+                request,
+                "WorkspacePatchCollectionItemRequest",
+                f"    {field},",
+            ) and _contains(
+                projector,
+                "WorkspaceCollectionKind.Spirit => [WorkspaceCollectionToggleField.Bound]",
+            ) and _contains(
+                mutation,
+                "WorkspaceCollectionToggleField.Bound",
+                f'"{xml_element}"',
+            )
+            phone_implemented = shared and _contains(
+                phone_route,
+                "AddCollectionRows",
+                "CollectionItemEditorPage",
+            ) and _contains(
+                phone_page,
+                "collection-toggle-",
+                "WorkspacePatchCollectionItemRequest",
+                "original.IsEnabled",
+            )
+            presenter_mutation = (
+                "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / "
+                f"WorkspaceCollectionToggleField.{field} on WorkspaceCollectionKind.Spirit"
+            )
+            phone_automation_id = f"collection-toggle-{xml_element}-{{stable-target}}"
+            persistence_assertion = (
+                f"selected stable Spirit guid retains {xml_element} after reopen and process restart"
+            )
+        else:
+            shared = common_shared and _contains(
+                request,
+                "WorkspaceDeleteCollectionItemRequest",
+            ) and _contains(
+                mutation,
+                "ApplyDeleteMutation",
+                "WorkspaceCollectionKind.Spirit",
+            )
+            phone_implemented = shared and _contains(
+                phone_route,
+                "AddCollectionRows",
+                "CollectionItemEditorPage",
+            ) and _contains(
+                phone_page,
+                "collection-delete-",
+                "WorkspaceDeleteCollectionItemRequest",
+                "item.CanDelete",
+            )
+            presenter_mutation = (
+                "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / "
+                "WorkspaceDeleteCollectionItemRequest on WorkspaceCollectionKind.Spirit"
+            )
+            phone_automation_id = "collection-delete-{stable-target}"
+            persistence_assertion = (
+                "selected stable Spirit guid is absent from the saved runner after reopen and process restart"
+            )
+
+        return {
+            "status": "implemented_pending_emulator" if phone_implemented else "missing",
+            "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
+            "surface": "CollectionItemEditorPage",
+            "automationId": phone_automation_id,
+            "sourceRefs": source_refs,
+            "presenterMutation": presenter_mutation,
+            "persistenceAssertion": persistence_assertion,
             "e2e": {"status": "missing", "ref": None},
             "tablet": {
                 "status": "missing",

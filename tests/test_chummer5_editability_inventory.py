@@ -232,6 +232,29 @@ namespace Chummer.Sample
             self.assertIn(f"WorkspaceCollectionKind.{kind}", row["presenterMutation"])
             self.assertIn(kind, row["persistenceAssertion"])
             self.assertFalse(row["completionProven"])
+        spirit_rows = {
+            row["legacy"]["controlName"]: row
+            for row in rows
+            if row["legacy"]["formOrControl"] == "SpiritControl"
+            and row["legacy"]["controlName"] in inventory.SPIRIT_GENERIC_EDITOR_CONTROLS
+        }
+        self.assertEqual(set(inventory.SPIRIT_GENERIC_EDITOR_CONTROLS), set(spirit_rows))
+        for control, (_, field, token) in inventory.SPIRIT_GENERIC_EDITOR_CONTROLS.items():
+            row = spirit_rows[control]
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("missing", row["e2e"]["phone"]["status"])
+            self.assertIn("Spirits and sprites", row["phone"]["route"])
+            self.assertIn("WorkspaceCollectionKind.Spirit", row["presenterMutation"])
+            self.assertIn("stable Spirit guid", row["persistenceAssertion"])
+            self.assertFalse(row["completionProven"])
+            if field is not None:
+                self.assertEqual(
+                    f"collection-{'field' if control != 'chkBound' else 'toggle'}-{token}-{{stable-target}}",
+                    row["phone"]["automationId"],
+                )
+            else:
+                self.assertEqual("collection-delete-{stable-target}", row["phone"]["automationId"])
         self.assertTrue(all(row["presenterMutation"] for row in origin_rows + attribute_rows))
         for row in origin_rows:
             self.assertEqual("implemented_verified_api36", row["phone"]["status"])
@@ -381,9 +404,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 199,
+                "implemented_pending_emulator": 203,
                 "implemented_verified_api36": 108,
-                "missing": 1211,
+                "missing": 1207,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 144,
