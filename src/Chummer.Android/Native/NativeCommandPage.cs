@@ -15,6 +15,7 @@ public sealed class NativeCommandPage : ContentPage
         BackgroundColor = NativeTheme.Paper;
         SearchBar search = new()
         {
+            AutomationId = "command-search",
             Placeholder = "Find an action",
             BackgroundColor = NativeTheme.Surface
         };
@@ -72,6 +73,7 @@ public sealed class NativeCommandPage : ContentPage
             }
 
             Button button = NativeTheme.SecondaryButton(RunnerSessionCoordinator.HumanizeId(command.Id));
+            button.AutomationId = $"command-action-{Token(command.Id)}";
             button.IsEnabled = _coordinator.IsCommandEnabled(command);
             button.Clicked += async (_, _) => await ExecuteAsync(command.Id);
             _commands.Add(button);
@@ -93,6 +95,9 @@ public sealed class NativeCommandPage : ContentPage
             await DisplayAlertAsync("Chummer", ex.Message, "OK");
         }
     }
+
+    private static string Token(string value)
+        => new(value.Trim().ToLowerInvariant().Select(character => char.IsLetterOrDigit(character) ? character : '-').ToArray());
 }
 
 internal sealed class NativeCommandGroupPage : NativePageBase
@@ -123,11 +128,25 @@ internal sealed class NativeCommandGroupPage : NativePageBase
         _body.Add(NativeTheme.Title(RunnerSessionCoordinator.HumanizeId(_groupId), 24));
         foreach (AppCommandDefinition command in _commands)
         {
-            _body.Add(NativeTheme.NavigationRow(
+            Border row = NativeTheme.NavigationRow(
                 RunnerSessionCoordinator.HumanizeId(command.Id),
                 null,
-                () => RunAsync(() => Coordinator.ExecuteCommandAsync(command.Id)),
-                Coordinator.IsCommandEnabled(command)));
+                () => RunAsync(() => ExecuteAsync(command.Id)),
+                Coordinator.IsCommandEnabled(command));
+            row.AutomationId = $"command-action-{Token(command.Id)}";
+            _body.Add(row);
         }
     }
+
+    private async Task ExecuteAsync(string commandId)
+    {
+        await Coordinator.ExecuteCommandAsync(commandId);
+        if (Coordinator.State.ActiveDialog is { } dialog)
+        {
+            await Navigation.PushModalAsync(new NavigationPage(new NativeDialogPage(Coordinator, dialog)));
+        }
+    }
+
+    private static string Token(string value)
+        => new(value.Trim().ToLowerInvariant().Select(character => char.IsLetterOrDigit(character) ? character : '-').ToArray());
 }

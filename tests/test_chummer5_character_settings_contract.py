@@ -71,6 +71,18 @@ class Chummer5CharacterSettingsContractTests(unittest.TestCase):
             rows["chkEncumbrancePenaltyWoundModifier"]["persistencePaths"],
         )
 
+    def test_repo_owned_source_input_is_clone_portable(self) -> None:
+        payload = json.loads(OUTPUT.read_text(encoding="utf-8"))
+        inventory_input = next(
+            row
+            for row in payload["sourceInputs"]
+            if row["path"].endswith("ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json")
+        )
+        self.assertEqual(
+            "docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json",
+            inventory_input["path"],
+        )
+
     def test_check_rejects_a_stale_output(self) -> None:
         payload = json.loads(OUTPUT.read_text(encoding="utf-8"))
         payload["summary"]["controlCount"] = 0

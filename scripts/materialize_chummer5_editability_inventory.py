@@ -140,6 +140,54 @@ NEW_CHARACTER_PRIORITY_E2E_JOURNEYS = (
     "workspacePriorityPersisted",
     "processRestartPriorityPersistence",
 )
+CHARACTER_SETTINGS_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-character-settings"
+    / "receipt.json"
+)
+CHARACTER_SETTINGS_E2E_JOURNEYS = (
+    "actionSearchRoute",
+    "allEightPhoneSectionsReachable",
+    "checkboxEdited",
+    "textEdited",
+    "numberEdited",
+    "pickerEdited",
+    "sourcebookCollectionEdited",
+    "customDataCollectionEdited",
+    "profileSavedAndClosed",
+    "catalogXmlPersisted",
+    "processRestartCatalogPersistence",
+    "processRestartUiReadback",
+)
+CHARACTER_SETTINGS_EXACT_API36_CONTROLS = frozenset(
+    {
+        "chkDontUseCyberlimbCalculation",
+        "treSourcebook",
+        "chkEnforceCapacity",
+        "nudNuyenDecimalsMinimum",
+        "nudKarmaMysticAdeptPowerPoint",
+        "treCustomDataDirectories",
+        "chkNoArmorEncumbrance",
+        "cboBuildMethod",
+        "cmdOK",
+    }
+)
+CHARACTER_SETTINGS_ACTION_AUTOMATION_IDS = {
+    "cboSetting": "dialog-field-charactersettingsprofile",
+    "cmdEnableSourcebooks": "dialog-field-charactersettingscontrol-tresourcebook",
+    "cmdDecreaseCustomDirectoryLoadOrder": "dialog-field-charactersettingscontrol-trecustomdatadirectories",
+    "cmdIncreaseCustomDirectoryLoadOrder": "dialog-field-charactersettingscontrol-trecustomdatadirectories",
+    "cmdSave": "dialog-action-save",
+    "cmdOK": "dialog-action-save-and-close",
+    "cmdSaveAs": "dialog-action-save-as",
+    "cmdRestoreDefaults": "dialog-action-restore-defaults",
+    "cmdDelete": "dialog-action-delete",
+    "cmdRename": "dialog-action-rename",
+    "cmdToBottomCustomDirectoryLoadOrder": "dialog-field-charactersettingscontrol-trecustomdatadirectories",
+    "cmdToTopCustomDirectoryLoadOrder": "dialog-field-charactersettingscontrol-trecustomdatadirectories",
+}
 
 INERT_LEGACY_DESIGNER_FIELDS = {
     ("SelectBuildMethod", "cboBuildMethod"):
@@ -717,6 +765,72 @@ def _validated_new_character_settings_phone_e2e_receipt() -> dict[str, Any] | No
         "status": "executed_api36",
         "ref": NEW_CHARACTER_SETTINGS_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(NEW_CHARACTER_SETTINGS_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_character_settings_phone_e2e_receipt() -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_character_settings_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
+    native_command = native_root / "NativeCommandPage.cs"
+    native_dialog = native_root / "NativeDialogPage.cs"
+    coordinator = native_root / "RunnerSessionCoordinator.cs"
+    presentation_root = WORKSPACE_ROOT / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+    dialog_factory = presentation_root / "DesktopDialogFactory.cs"
+    character_settings_dialog = presentation_root / "DesktopDialogFactory.CharacterSettings.cs"
+    profiles = presentation_root / "Chummer5CharacterSettingsProfiles.cs"
+    contract = presentation_root / "Chummer5CharacterSettingsRuntimeContract.Generated.cs"
+    dialog_coordinator = presentation_root / "DialogCoordinator.cs"
+    sources = (
+        driver,
+        shared_driver,
+        native_command,
+        native_dialog,
+        coordinator,
+        dialog_factory,
+        character_settings_dialog,
+        profiles,
+        contract,
+        dialog_coordinator,
+    )
+    if not all(path.is_file() for path in sources):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(CHARACTER_SETTINGS_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_hashes = {
+        "driverSha256": driver,
+        "sharedDriverSha256": shared_driver,
+        "nativeCommandPageSha256": native_command,
+        "nativeDialogPageSha256": native_dialog,
+        "runnerSessionCoordinatorSha256": coordinator,
+        "dialogFactorySha256": dialog_factory,
+        "characterSettingsDialogSha256": character_settings_dialog,
+        "characterSettingsProfilesSha256": profiles,
+        "characterSettingsContractSha256": contract,
+        "dialogCoordinatorSha256": dialog_coordinator,
+    }
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "character-settings"
+        and receipt.get("apiLevel") == 36
+        and all(receipt.get(key) == _sha256_file(path) for key, path in expected_hashes.items())
+        and isinstance(journeys, dict)
+        and all(journeys.get(journey) == "pass" for journey in CHARACTER_SETTINGS_E2E_JOURNEYS)
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": CHARACTER_SETTINGS_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(CHARACTER_SETTINGS_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
 
@@ -1384,6 +1498,10 @@ def _contains(path: Path, *markers: str) -> bool:
     return all(marker in text for marker in markers)
 
 
+def _android_token(value: str) -> str:
+    return "".join(character if character.isalnum() else "-" for character in value.strip().lower())
+
+
 def _known_phone_mapping(
     row: dict[str, Any],
     presentation_root: Path,
@@ -1391,12 +1509,143 @@ def _known_phone_mapping(
     contact_pet_e2e_receipts: dict[str, dict[str, Any]],
     attribute_phone_e2e_receipt: dict[str, Any] | None,
     attribute_career_phone_e2e_receipt: dict[str, Any] | None,
+    character_settings_phone_e2e_receipt: dict[str, Any] | None,
     new_character_settings_phone_e2e_receipt: dict[str, Any] | None,
     new_character_priority_phone_e2e_receipt: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     legacy = row["legacy"]
     class_name = legacy["formOrControl"]
     control = legacy["controlName"]
+    if class_name == "EditCharacterSettings":
+        native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
+        native_command = native_root / "NativeCommandPage.cs"
+        native_dialog = native_root / "NativeDialogPage.cs"
+        coordinator = native_root / "RunnerSessionCoordinator.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_character_settings_e2e.py"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        dialog_factory = overview / "DesktopDialogFactory.cs"
+        character_settings_dialog = overview / "DesktopDialogFactory.CharacterSettings.cs"
+        profiles = overview / "Chummer5CharacterSettingsProfiles.cs"
+        runtime_contract = overview / "Chummer5CharacterSettingsRuntimeContract.Generated.cs"
+        dialog_coordinator = overview / "DialogCoordinator.cs"
+        profile_tests = presentation_root / "Chummer.Tests" / "Presentation" / "Chummer5CharacterSettingsProfilesTests.cs"
+
+        action_automation_id = CHARACTER_SETTINGS_ACTION_AUTOMATION_IDS.get(control)
+        value_field = _contains(runtime_contract, f'new("{control}",')
+        if not value_field and action_automation_id is None:
+            return None
+
+        implementation_complete = (
+            _contains(
+                native_command,
+                'AutomationId = $"command-action-{Token(command.Id)}"',
+                "new NativeDialogPage(_coordinator, dialog)",
+            )
+            and _contains(
+                native_dialog,
+                'AutomationId = $"dialog-field-{Token(field.Id)}"',
+                'AutomationId = $"dialog-action-{Token(action.Id)}"',
+                "RequiresStructuralRerender",
+            )
+            and _contains(
+                coordinator,
+                "CharacterSettingsCatalogPreferenceKey",
+                "Preferences.Default.Set",
+                "DesktopPreferenceStateRuntime.SetCurrent",
+            )
+            and _contains(dialog_factory, '"character_settings" => BuildCharacterSettingsDialog(preferences)')
+            and _contains(
+                character_settings_dialog,
+                "BuildCharacterSettingsDialog",
+                "Chummer5CharacterSettingsRuntimeContractGenerated.Fields",
+                "SaveAndCloseActionId",
+            )
+            and _contains(
+                profiles,
+                "TryApplyVisibleFields",
+                "SaveAs(",
+                "RestoreDefaults(",
+                "SerializeCatalog",
+            )
+            and _contains(
+                dialog_coordinator,
+                "ApplyCharacterSettings",
+                "SaveAndCloseActionId",
+                "CharacterSettingsCatalogJson",
+            )
+            and _contains(
+                profile_tests,
+                "Assert.AreEqual(150, definitions.Count)",
+                "Every_legacy_value_control_round_trips_through_chummer5_settings_xml",
+                "Profile_actions_preserve_ids_names_xml_and_a_deterministic_fallback",
+            )
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            "command-action-character-settings",
+            "dialog-field-charactersettingscontrol-chkdontusecyberlimbcalculation",
+            "dialog-field-charactersettingscontrol-tresourcebook",
+            "dialog-field-charactersettingscontrol-chkenforcecapacity",
+            "dialog-field-charactersettingscontrol-nudnuyendecimalsminimum",
+            "dialog-field-charactersettingscontrol-nudkarmamysticadeptpowerpoint",
+            "dialog-field-charactersettingscontrol-trecustomdatadirectories",
+            "dialog-field-charactersettingscontrol-chknoarmorencumbrance",
+            "dialog-field-charactersettingscontrol-cbobuildmethod",
+            "dialog-action-save-and-close",
+            '"processRestartUiReadback": "pass"',
+        )
+        phone_e2e = (
+            character_settings_phone_e2e_receipt
+            if implementation_complete and e2e_scripted
+            else None
+        )
+        exact_api36 = phone_e2e is not None and control in CHARACTER_SETTINGS_EXACT_API36_CONTROLS
+        automation_id = action_automation_id or (
+            f"dialog-field-charactersettingscontrol-{_android_token(control)}"
+        )
+        source_refs = [
+            "src/Chummer.Android/Native/NativeCommandPage.cs",
+            "src/Chummer.Android/Native/NativeDialogPage.cs",
+            "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+            "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
+            "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
+            "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
+            "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+            "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
+            "tests/run_api36_character_settings_e2e.py",
+        ]
+        representative_e2e = None
+        if phone_e2e is not None:
+            representative_e2e = {
+                **phone_e2e,
+                "status": "section_representative_api36",
+            }
+        return {
+            "status": (
+                "implemented_verified_api36"
+                if exact_api36
+                else "implemented_pending_emulator"
+                if implementation_complete
+                else "missing"
+            ),
+            "route": "Build > Actions > Character Settings",
+            "surface": "NativeDialogPage",
+            "automationId": automation_id,
+            "coverageLimit": (
+                "this exact legacy control was mutated and read back after process restart on API 36"
+                if exact_api36
+                else "all 150 value controls round-trip mechanically and every section/control kind is device-proven, but this exact legacy control still needs an individual API 36 mutation"
+            ),
+            "sourceRefs": source_refs,
+            "presenterMutation": "Chummer5CharacterSettingsProfiles / DialogCoordinator.ApplyCharacterSettings",
+            "persistenceAssertion": (
+                f"the active settings profile retains the {control} value or equivalent collection/profile operation after save, reopen, and process restart"
+            ),
+            "e2e": phone_e2e if exact_api36 else representative_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": e2e_driver.relative_to(REPO_ROOT).as_posix() if e2e_scripted else None,
+            },
+        }
     if class_name == "SelectBuildMethod" and control in {
         "cboCharacterSetting",
         "chkIgnoreRules",
@@ -2413,6 +2662,7 @@ def enrich_rows(
     contact_pet_e2e_receipts = _validated_contact_pet_e2e_receipts()
     attribute_phone_e2e_receipt = _validated_attribute_phone_e2e_receipt()
     attribute_career_phone_e2e_receipt = _validated_attribute_career_phone_e2e_receipt()
+    character_settings_phone_e2e_receipt = _validated_character_settings_phone_e2e_receipt()
     new_character_settings_phone_e2e_receipt = _validated_new_character_settings_phone_e2e_receipt()
     new_character_priority_phone_e2e_receipt = _validated_new_character_priority_phone_e2e_receipt()
     for row in rows:
@@ -2451,6 +2701,7 @@ def enrich_rows(
             contact_pet_e2e_receipts,
             attribute_phone_e2e_receipt,
             attribute_career_phone_e2e_receipt,
+            character_settings_phone_e2e_receipt,
             new_character_settings_phone_e2e_receipt,
             new_character_priority_phone_e2e_receipt,
         )
@@ -2542,12 +2793,14 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ConditionMonitorEditPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "OriginDossierPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "NativeDialogPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "NativeCommandPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TabletBuildPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs",
         REPO_ROOT / "tests" / "run_api36_editing_e2e.py",
         REPO_ROOT / "tests" / "run_api36_attribute_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_attribute_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_character_settings_e2e.py",
         REPO_ROOT / "tests" / "run_api36_new_character_settings_e2e.py",
         REPO_ROOT / "tests" / "run_api36_new_character_priority_e2e.py",
         REPO_ROOT / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5",
@@ -2559,6 +2812,7 @@ def build_inventory(
         ATTRIBUTE_CAREER_PHONE_E2E_RECEIPT,
         NEW_CHARACTER_SETTINGS_PHONE_E2E_RECEIPT,
         NEW_CHARACTER_PRIORITY_PHONE_E2E_RECEIPT,
+        CHARACTER_SETTINGS_PHONE_E2E_RECEIPT,
         WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterContactEditSemantics.cs",
         WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterPetEditSemantics.cs",
         WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",
@@ -2567,10 +2821,14 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditorState.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "DialogCoordinator.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "DesktopDialogFactory.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "DesktopDialogFactory.CharacterSettings.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "Chummer5CharacterSettingsProfiles.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "Chummer5CharacterSettingsRuntimeContract.Generated.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorProjector.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorState.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionMutationRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs",
+        presentation_root / "Chummer.Tests" / "Presentation" / "Chummer5CharacterSettingsProfilesTests.cs",
     ]
     return {
         "schema": SCHEMA,

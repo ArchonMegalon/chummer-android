@@ -28,6 +28,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
 {
     private const string SelectedGroupPreferenceKey = "chummer.android.selected-group.v1";
     private const string SelectedWorkspacePreferenceKey = "chummer.android.selected-workspace.v1";
+    private const string CharacterSettingsCatalogPreferenceKey = "chummer.android.character-settings-catalog.v1";
     private readonly ICharacterOverviewPresenter _presenter;
     private readonly IShellPresenter _shellPresenter;
     private readonly IShellSurfaceResolver _surfaceResolver;
@@ -45,6 +46,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private long _handledExportVersion;
     private long _handledPrintVersion;
     private string? _notice;
+    private string _persistedCharacterSettingsCatalogJson = string.Empty;
     private IReadOnlyList<AndroidOnlineCharacter> _onlineCharacters = [];
     private IReadOnlyList<AndroidLinkedGroup> _groups = [];
     private IReadOnlyList<AndroidChronicleProject> _chronicles = [];
@@ -119,6 +121,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 return;
             }
 
+            RestoreCharacterSettingsCatalog();
             await _shellPresenter.InitializeAsync(cancellationToken);
             await _presenter.InitializeAsync(cancellationToken);
             await RestoreSelectedWorkspaceAsync(cancellationToken);
@@ -908,9 +911,45 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     private void OnPresenterStateChanged(object? sender, EventArgs e)
     {
+        PersistCharacterSettingsCatalog();
         RefreshSurface();
         NotifyChanged();
         _ = ProcessPendingOutputsAsync();
+    }
+
+    private void RestoreCharacterSettingsCatalog()
+    {
+        _persistedCharacterSettingsCatalogJson = Preferences.Default.Get(
+            CharacterSettingsCatalogPreferenceKey,
+            string.Empty);
+        if (!string.IsNullOrWhiteSpace(_persistedCharacterSettingsCatalogJson))
+        {
+            DesktopPreferenceStateRuntime.SetCurrent(
+                DesktopPreferenceStateRuntime.Current with
+                {
+                    CharacterSettingsCatalogJson = _persistedCharacterSettingsCatalogJson
+                });
+        }
+    }
+
+    private void PersistCharacterSettingsCatalog()
+    {
+        string catalogJson = State.Preferences.CharacterSettingsCatalogJson ?? string.Empty;
+        if (string.Equals(catalogJson, _persistedCharacterSettingsCatalogJson, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(catalogJson))
+        {
+            Preferences.Default.Remove(CharacterSettingsCatalogPreferenceKey);
+        }
+        else
+        {
+            Preferences.Default.Set(CharacterSettingsCatalogPreferenceKey, catalogJson);
+        }
+        _persistedCharacterSettingsCatalogJson = catalogJson;
+        DesktopPreferenceStateRuntime.SetCurrent(State.Preferences);
     }
 
     private void OnShellStateChanged(object? sender, EventArgs e)

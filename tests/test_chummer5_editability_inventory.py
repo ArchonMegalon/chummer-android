@@ -343,9 +343,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 30,
-                "implemented_verified_api36": 94,
-                "missing": 1394,
+                "implemented_pending_emulator": 183,
+                "implemented_verified_api36": 103,
+                "missing": 1232,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 144,
@@ -401,6 +401,54 @@ namespace Chummer.Sample
 
         self.assertEqual("missing", rows["cmdEditCharacterSetting"]["phone"]["status"])
         self.assertEqual("not_applicable_non_mutating", rows["cmdCancel"]["phone"]["status"])
+
+    def test_character_settings_phone_mapping_is_complete_and_exactly_scoped(self) -> None:
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = {
+            row["legacy"]["controlName"]: row
+            for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == "EditCharacterSettings"
+            and row["editParityRequired"]
+        }
+
+        self.assertEqual(162, len(rows))
+        self.assertEqual(
+            inventory.CHARACTER_SETTINGS_EXACT_API36_CONTROLS,
+            {
+                control
+                for control, row in rows.items()
+                if row["phone"]["status"] == "implemented_verified_api36"
+            },
+        )
+        self.assertEqual(
+            153,
+            sum(
+                row["phone"]["status"] == "implemented_pending_emulator"
+                for row in rows.values()
+            ),
+        )
+        for control in inventory.CHARACTER_SETTINGS_EXACT_API36_CONTROLS:
+            self.assertEqual("executed_api36", rows[control]["e2e"]["phone"]["status"])
+        self.assertTrue(
+            all(
+                row["e2e"]["phone"]["status"] == "section_representative_api36"
+                for control, row in rows.items()
+                if control not in inventory.CHARACTER_SETTINGS_EXACT_API36_CONTROLS
+            )
+        )
+        self.assertTrue(all(row["tablet"]["status"] == "missing" for row in rows.values()))
+        self.assertEqual(
+            "dialog-field-charactersettingsprofile",
+            rows["cboSetting"]["phone"]["automationId"],
+        )
+        self.assertEqual(
+            "dialog-action-save-and-close",
+            rows["cmdOK"]["phone"]["automationId"],
+        )
 
     def test_select_metatype_priority_phone_mapping_is_exact_and_phone_only(self) -> None:
         payload = json.loads(
@@ -544,6 +592,19 @@ namespace Chummer.Sample
             receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
             with patch.object(inventory, "NEW_CHARACTER_SETTINGS_PHONE_E2E_RECEIPT", receipt_path):
                 self.assertIsNone(inventory._validated_new_character_settings_phone_e2e_receipt())
+
+    def test_character_settings_receipt_is_full_source_graph_hash_bound(self) -> None:
+        validated = inventory._validated_character_settings_phone_e2e_receipt()
+        self.assertIsNotNone(validated)
+
+        source = inventory.CHARACTER_SETTINGS_PHONE_E2E_RECEIPT
+        receipt = json.loads(source.read_text(encoding="utf-8"))
+        receipt["characterSettingsContractSha256"] = "0" * 64
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            receipt_path = Path(temporary) / "receipt.json"
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+            with patch.object(inventory, "CHARACTER_SETTINGS_PHONE_E2E_RECEIPT", receipt_path):
+                self.assertIsNone(inventory._validated_character_settings_phone_e2e_receipt())
 
     def test_new_character_priority_receipt_is_source_hash_bound(self) -> None:
         validated = inventory._validated_new_character_priority_phone_e2e_receipt()

@@ -24,8 +24,8 @@
       "sha256": "fcc5551d18e571b6519b79b909ac953710dde4dafd79697911f239e1819b573c"
     },
     {
-      "path": "/docker/chummercomplete/chummer-android/docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json",
-      "sha256": "ffa60a6f7685a3b042ea156b2a8448a29e386bf0e1c2a94278afe353857f3f42"
+      "path": "docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json",
+      "sha256": "c219c7d7e82c06bbf8a3cfd049745561b6dfec637aa36f1345e6fee678971424"
     }
   ],
   "controls": [

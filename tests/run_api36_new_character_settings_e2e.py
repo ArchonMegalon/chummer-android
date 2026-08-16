@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
@@ -96,7 +97,8 @@ def main() -> int:
 
     driver_path = Path(__file__).resolve()
     shared_driver_path = Path(shared.__file__).resolve()
-    workspace_root = driver_path.parents[2]
+    android_root = driver_path.parents[1]
+    workspace_root = Path(os.environ.get("CHUMMER_COMPLETE_ROOT", android_root.parent)).resolve()
     dialog_factory_path = (
         workspace_root
         / "chummer-presentation"
@@ -106,8 +108,7 @@ def main() -> int:
     )
     dialog_coordinator_path = dialog_factory_path.with_name("DialogCoordinator.cs")
     native_dialog_path = (
-        workspace_root
-        / "chummer-android"
+        android_root
         / "src"
         / "Chummer.Android"
         / "Native"

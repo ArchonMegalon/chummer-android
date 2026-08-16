@@ -246,6 +246,22 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("else if (_initialized && State.OpenWorkspaces.Count == 0)", coordinator)
         self.assertIn("Preferences.Default.Set(SelectedWorkspacePreferenceKey", coordinator)
 
+    def test_character_settings_catalog_survives_android_process_restart(self) -> None:
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+
+        initialize = coordinator[coordinator.index("public async Task InitializeAsync") :]
+        initialize = initialize[: initialize.index("public async Task OpenLocalAsync")]
+        state_changed = coordinator[coordinator.index("private void OnPresenterStateChanged") :]
+        state_changed = state_changed[: state_changed.index("private void OnShellStateChanged")]
+
+        self.assertIn("CharacterSettingsCatalogPreferenceKey", coordinator)
+        self.assertLess(
+            initialize.index("RestoreCharacterSettingsCatalog();"),
+            initialize.index("await _presenter.InitializeAsync"),
+        )
+        self.assertIn("PersistCharacterSettingsCatalog();", state_changed)
+        self.assertIn("DesktopPreferenceStateRuntime.SetCurrent", coordinator)
+
     def test_build_uses_native_drill_down_navigation_without_horizontal_pwa_tabs(self) -> None:
         build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
         flow = (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8")
@@ -272,6 +288,22 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("ScrollOrientation.Horizontal", build)
         self.assertNotIn("AddTabs", build)
         self.assertNotIn("Show all", build)
+
+    def test_action_search_and_groups_present_dynamic_dialogs(self) -> None:
+        commands = (PROJECT / "Native" / "NativeCommandPage.cs").read_text(encoding="utf-8")
+        dialog = (PROJECT / "Native" / "NativeDialogPage.cs").read_text(encoding="utf-8")
+
+        self.assertIn('AutomationId = "command-search"', commands)
+        self.assertEqual(
+            2,
+            commands.count(
+                "await Navigation.PushModalAsync(new NavigationPage(new NativeDialogPage"
+            ),
+        )
+        self.assertIn('row.AutomationId = $"command-action-{Token(command.Id)}"', commands)
+        self.assertIn('string.Equals(dialog.Id, "dialog.character_settings"', dialog)
+        self.assertIn('string.Equals(fieldId, "characterSettingsProfile"', dialog)
+        self.assertIn('string.Equals(fieldId, "characterSettingsSection"', dialog)
 
     def test_tablet_collection_keeps_item_name_visible_ahead_of_metadata(self) -> None:
         tablet = (PROJECT / "Native" / "TabletBuildPage.cs").read_text(encoding="utf-8")

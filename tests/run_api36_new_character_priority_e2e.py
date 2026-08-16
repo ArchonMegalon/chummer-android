@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
@@ -108,6 +109,7 @@ def select_option(
 ) -> None:
     tap_exact_field(device, selector, scroll=scroll)
     tap_exact_option(device, option_label)
+    shared.reset_scroll_to_top(device, swipes=16)
     deadline = time.monotonic() + 90
     scrolls = 0
     while time.monotonic() < deadline:
@@ -193,7 +195,8 @@ def main() -> int:
 
     driver_path = Path(__file__).resolve()
     shared_driver_path = Path(shared.__file__).resolve()
-    workspace_root = driver_path.parents[2]
+    android_root = driver_path.parents[1]
+    workspace_root = Path(os.environ.get("CHUMMER_COMPLETE_ROOT", android_root.parent)).resolve()
     presentation_root = (
         workspace_root
         / "chummer-presentation"
@@ -203,8 +206,7 @@ def main() -> int:
     dialog_factory_path = presentation_root / "DesktopDialogFactory.cs"
     dialog_coordinator_path = presentation_root / "DialogCoordinator.cs"
     native_dialog_path = (
-        workspace_root
-        / "chummer-android"
+        android_root
         / "src"
         / "Chummer.Android"
         / "Native"

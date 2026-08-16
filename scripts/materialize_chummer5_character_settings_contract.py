@@ -129,6 +129,13 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _source_label(path: Path) -> str:
+    try:
+        return path.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return str(path)
+
+
 def _balanced_end(text: str, opening: int, opener: str, closer: str) -> int:
     depth = 0
     in_string = False
@@ -419,7 +426,7 @@ def build_contract(chummer5_root: Path, inventory_path: Path) -> dict[str, objec
         },
         "unresolvedControls": sorted(unresolved),
         "sourceInputs": [
-            {"path": str(path), "sha256": _sha256(path)}
+            {"path": _source_label(path), "sha256": _sha256(path)}
             for path in (form_path, character_settings_path, settings_xml_path, inventory_path)
         ],
         "controls": controls,

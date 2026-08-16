@@ -188,7 +188,10 @@ public sealed class NativeDialogPage : ContentPage
     }
 
     private static bool RequiresStructuralRerender(DesktopDialogState dialog, string fieldId)
-        => string.Equals(dialog.Id, "dialog.new_character.priority_workflow", StringComparison.Ordinal)
+        => (string.Equals(dialog.Id, "dialog.character_settings", StringComparison.Ordinal)
+                && (string.Equals(fieldId, "characterSettingsProfile", StringComparison.Ordinal)
+                    || string.Equals(fieldId, "characterSettingsSection", StringComparison.Ordinal)))
+            || (string.Equals(dialog.Id, "dialog.new_character.priority_workflow", StringComparison.Ordinal)
             && (string.Equals(fieldId, "newCharacterMetatypeCategory", StringComparison.Ordinal)
                 || string.Equals(fieldId, "newCharacterMetatype", StringComparison.Ordinal)
                 || string.Equals(fieldId, "newCharacterMetavariant", StringComparison.Ordinal)
@@ -200,7 +203,7 @@ public sealed class NativeDialogPage : ContentPage
                 || string.Equals(fieldId, "newCharacterPriorityTalentChoice", StringComparison.Ordinal)
                 || string.Equals(fieldId, "newCharacterPrioritySkillChoice1", StringComparison.Ordinal)
                 || string.Equals(fieldId, "newCharacterPrioritySkillChoice2", StringComparison.Ordinal)
-                || string.Equals(fieldId, "newCharacterPrioritySkillChoice3", StringComparison.Ordinal));
+                || string.Equals(fieldId, "newCharacterPrioritySkillChoice3", StringComparison.Ordinal)));
 
     private async Task ExecuteAsync(string actionId)
     {
