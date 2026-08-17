@@ -243,7 +243,7 @@ namespace Chummer.Sample
             row = spirit_rows[control]
             self.assertEqual(
                 "partial_exact_saved_data"
-                if editor_kind == "force"
+                if editor_kind in {"force", "critter"}
                 else "implemented_pending_emulator",
                 row["phone"]["status"],
             )
@@ -253,7 +253,7 @@ namespace Chummer.Sample
             self.assertIn("WorkspaceCollectionKind.Spirit", row["presenterMutation"])
             self.assertIn("stable Spirit guid", row["persistenceAssertion"])
             self.assertFalse(row["completionProven"])
-            if editor_kind == "text":
+            if editor_kind in {"text", "critter"}:
                 self.assertEqual(
                     f"collection-field-{token}-{{stable-target}}",
                     row["phone"]["automationId"],
@@ -417,10 +417,10 @@ namespace Chummer.Sample
             {
                 "implemented_pending_emulator": 206,
                 "implemented_verified_api36": 104,
-                "missing": 1207,
+                "missing": 1206,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
-                "partial_exact_saved_data": 145,
+                "partial_exact_saved_data": 146,
             },
             payload["summary"]["phoneStatusCounts"],
         )

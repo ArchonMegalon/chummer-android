@@ -490,6 +490,7 @@ LEGACY_CAREER_COLLECTION_DELETE_CONTROLS = {
     "cmdDeleteQuality": ("Quality", "Qualities"),
 }
 SPIRIT_GENERIC_EDITOR_CONTROLS = {
+    "txtCritterName": ("critter", "CritterName", "crittername"),
     "nudForce": ("force", "Force", "force"),
     "nudServices": ("integer", "Services", "services"),
     "chkBound": ("toggle", "Bound", "bound"),
@@ -2858,6 +2859,50 @@ def _known_phone_mapping(
                 "selected stable Spirit guid or stable Sprite guid retains force after reopen and process restart "
                 "when the saved runner determines the exact Chummer5 ceiling"
             )
+        elif editor_kind == "critter":
+            assert field is not None
+            shared = common_shared and _contains(
+                request,
+                "public enum WorkspaceCollectionTextField",
+                "CritterName",
+            ) and _contains(
+                projector,
+                "WorkspaceCollectionTextField.CritterName",
+                "critterNameEditableExact",
+            ) and _contains(
+                mutation,
+                "WorkspaceCollectionTextField.CritterName",
+                "Spirit Critter Name is read-only",
+                '"crittername"',
+            ) and _contains(
+                core_models,
+                "CritterName",
+                "CritterNameEditableExact",
+            ) and _contains(
+                core_parser,
+                'ReadValue(spirit, "crittername")',
+                'ReadValue(spirit, "file")',
+                'ReadValue(spirit, "relative")',
+            )
+            phone_implemented = shared and _contains(
+                phone_route,
+                "AddCollectionRows",
+                "CollectionItemEditorPage",
+            ) and _contains(
+                phone_page,
+                "collection-field-",
+                "original.IsEnabled",
+            )
+            presenter_mutation = (
+                "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / "
+                "WorkspaceCollectionTextField.CritterName on WorkspaceCollectionKind.Spirit "
+                "when saved data proves no linked-character path"
+            )
+            phone_automation_id = "collection-field-crittername-{stable-target}"
+            persistence_assertion = (
+                "selected stable Spirit guid retains crittername after reopen and process restart "
+                "when both saved linked-character paths are blank"
+            )
         else:
             shared = common_shared and _contains(
                 request,
@@ -2889,7 +2934,7 @@ def _known_phone_mapping(
         return {
             "status": (
                 "partial_exact_saved_data"
-                if editor_kind == "force" and phone_implemented
+                if editor_kind in {"force", "critter"} and phone_implemented
                 else "implemented_pending_emulator" if phone_implemented else "missing"
             ),
             "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
