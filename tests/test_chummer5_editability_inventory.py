@@ -387,7 +387,7 @@ namespace Chummer.Sample
             for row in rows
             if row["legacy"]["formOrControl"] == "ContactControl"
         }
-        self.assertEqual("implemented_verified_api36", contact_by_name["tsAttachCharacter"]["phone"]["status"])
+        self.assertEqual("implemented_pending_emulator", contact_by_name["tsAttachCharacter"]["phone"]["status"])
         self.assertEqual("implemented_pending_emulator", contact_by_name["tsRemoveCharacter"]["tablet"]["status"])
         self.assertEqual("not_applicable_non_mutating", contact_by_name["cmdLink"]["phone"]["status"])
         pet_by_name = {
@@ -395,28 +395,24 @@ namespace Chummer.Sample
             for row in rows
             if row["legacy"]["formOrControl"] == "PetControl"
         }
-        self.assertEqual("implemented_verified_api36", pet_by_name["tsAttachCharacter"]["phone"]["status"])
+        self.assertEqual("implemented_pending_emulator", pet_by_name["tsAttachCharacter"]["phone"]["status"])
         self.assertEqual("implemented_pending_emulator", pet_by_name["tsRemoveCharacter"]["tablet"]["status"])
         self.assertEqual("not_applicable_non_mutating", pet_by_name["cmdLink"]["phone"]["status"])
         self.assertTrue(
             all(
-                row["phone"]["status"] == "implemented_verified_api36"
+                row["phone"]["status"] == "implemented_pending_emulator"
                 and row["tablet"]["status"] == "implemented_pending_emulator"
-                and row["e2e"]["phone"]["status"] == "executed_api36"
-                and row["e2e"]["phone"]["controlProof"]
-                == {
-                    key: "pass"
-                    for key in inventory.LINKED_RUNNER_CONTROL_E2E_PROOF_KEYS
-                }
+                and row["e2e"]["phone"]["status"] == "scripted_not_executed"
                 and row["e2e"]["tablet"]["status"] == "scripted_not_executed"
+                and not row["completionProven"]
                 for row in linked_character_rows
             )
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 200,
-                "implemented_verified_api36": 108,
-                "missing": 1210,
+                "implemented_pending_emulator": 206,
+                "implemented_verified_api36": 104,
+                "missing": 1208,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 144,
