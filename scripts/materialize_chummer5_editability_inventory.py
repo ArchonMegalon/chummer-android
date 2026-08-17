@@ -490,6 +490,8 @@ LEGACY_CAREER_COLLECTION_DELETE_CONTROLS = {
     "cmdDeleteQuality": ("Quality", "Qualities"),
 }
 SPIRIT_GENERIC_EDITOR_CONTROLS = {
+    "nudServices": ("integer", "Services", "services"),
+    "chkBound": ("toggle", "Bound", "bound"),
     "cmdDelete": ("delete", None, "spirit"),
 }
 
@@ -2746,6 +2748,11 @@ def _known_phone_mapping(
                 mutation,
                 "WorkspaceCollectionToggleField.Bound",
                 f'"{xml_element}"',
+                "Spirit Bound/Registered",
+            ) and _contains(
+                projector,
+                "WorkspaceCollectionKind.Spirit",
+                'ReadBool(section, "created")',
             )
             phone_implemented = shared and _contains(
                 phone_route,
@@ -2762,6 +2769,39 @@ def _known_phone_mapping(
                 f"WorkspaceCollectionToggleField.{field} on WorkspaceCollectionKind.Spirit"
             )
             phone_automation_id = f"collection-toggle-{xml_element}-{{stable-target}}"
+            persistence_assertion = (
+                f"selected stable Spirit guid retains {xml_element} after reopen and process restart"
+            )
+        elif editor_kind == "integer":
+            assert field is not None
+            shared = common_shared and _contains(
+                request,
+                "WorkspaceSetCollectionIntegerRequest",
+                f"    {field}"
+            ) and _contains(
+                projector,
+                f"WorkspaceCollectionIntegerField.{field}",
+                "ResolveIntegerFields",
+            ) and _contains(
+                mutation,
+                "ApplyIntegerMutation",
+                f"WorkspaceCollectionIntegerField.{field}",
+                f'"{xml_element}"',
+            )
+            phone_implemented = shared and _contains(
+                phone_route,
+                "AddCollectionRows",
+                "CollectionItemEditorPage",
+            ) and _contains(
+                phone_page,
+                "collection-integer-",
+                "IntegerValues",
+            )
+            presenter_mutation = (
+                "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / "
+                f"WorkspaceCollectionIntegerField.{field} on WorkspaceCollectionKind.Spirit"
+            )
+            phone_automation_id = f"collection-integer-{xml_element}-{{stable-target}}"
             persistence_assertion = (
                 f"selected stable Spirit guid retains {xml_element} after reopen and process restart"
             )
@@ -3655,6 +3695,7 @@ def build_inventory(
 ) -> dict[str, Any]:
     if not registry_path.is_file():
         raise FileNotFoundError(f"Missing Android parity registry: {registry_path}")
+    core_engine_root = presentation_root.parent / "chummer-core-engine"
     registry = json.loads(_read_text(registry_path))
     rows, source_summary = extract_legacy_rows(chummer5_root)
     enrich_rows(rows, registry, presentation_root)
@@ -3706,9 +3747,11 @@ def build_inventory(
         CHARACTER_SETTINGS_ACTIONS_PHONE_E2E_RECEIPT,
         ORIGIN_DOSSIER_PHONE_E2E_RECEIPT,
         LINKED_RUNNER_PHONE_E2E_RECEIPT,
-        WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterContactEditSemantics.cs",
-        WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterPetEditSemantics.cs",
-        WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterContactEditSemantics.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterPetEditSemantics.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+        core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+        core_engine_root / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditorState.cs",

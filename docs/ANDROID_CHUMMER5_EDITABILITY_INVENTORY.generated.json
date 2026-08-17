@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 200,
-      "implemented_verified_api36": 108,
-      "missing": 1210,
+      "implemented_pending_emulator": 206,
+      "implemented_verified_api36": 104,
+      "missing": 1208,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 144
@@ -82,7 +82,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "ba43cf1a72dbe93081bf9e3e6b2618e493b07bcac15cc7d02ab2f03f6deaf060"
+        "sha256": "174280491bc2c4e738a32101a61599e41a2d21788b17f398302d34cda9c1802e"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -250,17 +250,27 @@
         "sha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65"
       },
       {
-        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
+        "path": ".integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
         "exists": true,
         "sha256": "20531172c8984c8d572b17c95fe1d92caf0076509bc382ff6bd0179e686aebf3"
       },
       {
-        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
+        "path": ".integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
         "exists": true,
         "sha256": "c2fc2d67a03f3ebcbd0117ea66ab1f853d13d2539de36109462db6c57891b479"
       },
       {
-        "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
+        "path": ".integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+        "exists": true,
+        "sha256": "fbe6d1628d82631e4d1c89bf0ef8ee30b8512b608368683ff57458548396eea5"
+      },
+      {
+        "path": ".integration-worktrees/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+        "exists": true,
+        "sha256": "2f434d8088dba6a96c740699655338badffca30173a19f9d1206e54d5d4e6239"
+      },
+      {
+        "path": ".integration-worktrees/chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
         "exists": true,
         "sha256": "1836a660b1c243e53756e9a35e1025663f9332100e3aca68394045f3480cc77c"
       },
@@ -307,22 +317,22 @@
       {
         "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "993db08bd532485ab9311569ddcf97836159445eda82b9f83e67f25c68e17480"
+        "sha256": "631e1f631f828f8fd4bfbb1b9e09541f56f606ee2e289ab68b36c26b7ef52ed5"
       },
       {
         "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "9c65afcc52394d9d1ec7fb31f3bb31bbecfa9d2eeeda558d00211520d9e949f0"
+        "sha256": "e1e46f3b6ada5517cdb89e5fb24639d36196f4bd0507d4d2c021d5509472a43c"
       },
       {
         "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
         "exists": true,
-        "sha256": "287d4ddc4a432d7f9977edffaa5797d94f9af5e2482eb8771d85d8c004c54c32"
+        "sha256": "3082148bc16d59122d2830e522e665accfa374c700a253edc330b51dda5ea17c"
       },
       {
         "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "b006adea00967c294c22bc911818c8d9044d60ad03e5d48ef61b4445cb995fc7"
+        "sha256": "24d7bd9f37f1fcf11f595707f90b152a5587576cb000c36c852f2cf3e198e5c4"
       },
       {
         "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -332,7 +342,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "72e668e8190d0b6d5670d27bb3592359edf8532d8cf5feb878d87cf6e77858e3"
+      "sha256": "9afe8fb4d8758f28cf7de3ff72f5706ff24117dbcac4e0ec1303fe39d0acca50"
     }
   },
   "coverageByFamily": {
@@ -675,7 +685,7 @@
     "spirits_and_sprites": {
       "rowCount": 32,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 22,
+      "phoneMissingCount": 20,
       "tabletMissingCount": 28,
       "completionProvenCount": 4
     },
@@ -1479,7 +1489,7 @@
       "mutationFamily": "contacts",
       "operation": "delete",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact > Linked runner",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-linked-remove-{stable-target}",
@@ -1515,15 +1525,8 @@
       "persistenceAssertion": "selected stable Contact guid retains governed file/relative link state and linked identity after reopen/process restart, or restores its saved identity after unlink",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-linked-runner/receipt.json",
-          "receiptSha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_linked_runner_e2e.py"
         },
         "tablet": {
           "status": "scripted_not_executed",
@@ -1563,7 +1566,7 @@
       "mutationFamily": "contacts",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Contacts > selected contact > Linked runner",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-linked-attach-{stable-target}",
@@ -1599,15 +1602,8 @@
       "persistenceAssertion": "selected stable Contact guid retains governed file/relative link state and linked identity after reopen/process restart, or restores its saved identity after unlink",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-linked-runner/receipt.json",
-          "receiptSha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_linked_runner_e2e.py"
         },
         "tablet": {
           "status": "scripted_not_executed",
@@ -2922,7 +2918,7 @@
       "mutationFamily": "contacts",
       "operation": "delete",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Pets > selected pet > Linked runner",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-linked-remove-{stable-target}",
@@ -2958,15 +2954,8 @@
       "persistenceAssertion": "selected stable Pet guid retains governed file/relative link state and linked identity after reopen/process restart, or restores its saved identity after unlink",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-linked-runner/receipt.json",
-          "receiptSha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_linked_runner_e2e.py"
         },
         "tablet": {
           "status": "scripted_not_executed",
@@ -3006,7 +2995,7 @@
       "mutationFamily": "contacts",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Relationships > Pets > selected pet > Linked runner",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-linked-attach-{stable-target}",
@@ -3042,15 +3031,8 @@
       "persistenceAssertion": "selected stable Pet guid retains governed file/relative link state and linked identity after reopen/process restart, or restores its saved identity after unlink",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-linked-runner/receipt.json",
-          "receiptSha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_linked_runner_e2e.py"
         },
         "tablet": {
           "status": "scripted_not_executed",
@@ -3300,11 +3282,18 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-integer-services-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -3312,8 +3301,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionIntegerField.Services on WorkspaceCollectionKind.Spirit",
+      "persistenceAssertion": "selected stable Spirit guid retains services after reopen and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -3404,11 +3393,18 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-bound-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -3416,8 +3412,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Bound on WorkspaceCollectionKind.Spirit",
+      "persistenceAssertion": "selected stable Spirit guid retains bound after reopen and process restart",
       "e2e": {
         "phone": {
           "status": "missing",

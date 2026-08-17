@@ -13,6 +13,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
     };
     private readonly Dictionary<WorkspaceCollectionTextField, InputView> _textInputs = [];
     private readonly Dictionary<WorkspaceCollectionToggleField, Switch> _toggleInputs = [];
+    private readonly Dictionary<WorkspaceCollectionIntegerField, Entry> _integerInputs = [];
     private Entry? _ratingInput;
     private Entry? _quantityInput;
     private Entry? _contactConnectionInput;
@@ -36,6 +37,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         _body.Clear();
         _textInputs.Clear();
         _toggleInputs.Clear();
+        _integerInputs.Clear();
         _ratingInput = null;
         _quantityInput = null;
         _contactConnectionInput = null;
@@ -73,6 +75,11 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 "Quantity",
                 quantity.Value.ToString(CultureInfo.InvariantCulture),
                 $"collection-quantity-{TargetToken()}");
+        }
+
+        foreach (WorkspaceCollectionIntegerValueState value in item.IntegerValues)
+        {
+            AddIntegerField(value);
         }
 
         if (item.Contact is { } contact)
@@ -154,6 +161,21 @@ public sealed class CollectionItemEditorPage : NativePageBase
         field.Add(input);
         _body.Add(field);
         return input;
+    }
+
+    private void AddIntegerField(WorkspaceCollectionIntegerValueState value)
+    {
+        string label = value.Field switch
+        {
+            WorkspaceCollectionIntegerField.Services => "Services / tasks owed",
+            _ => RunnerSessionCoordinator.HumanizeId(value.Field.ToString())
+        };
+        Entry input = AddNumberField(
+            label,
+            value.Value.ToString(CultureInfo.InvariantCulture),
+            $"collection-integer-{Token(value.Field.ToString())}-{TargetToken()}");
+        input.IsEnabled = value.IsEnabled;
+        _integerInputs.Add(value.Field, input);
     }
 
     private void AddContactRatings(WorkspaceContactEditorState contact)
@@ -349,6 +371,35 @@ public sealed class CollectionItemEditorPage : NativePageBase
             quantityChange = value != quantity.Value ? value : null;
         }
 
+        Dictionary<WorkspaceCollectionIntegerField, int> integerChanges = [];
+        foreach (WorkspaceCollectionIntegerValueState original in item.IntegerValues)
+        {
+            if (!original.IsEnabled)
+            {
+                continue;
+            }
+
+            if (!int.TryParse(
+                    _integerInputs[original.Field].Text,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out int value)
+                || value < original.Minimum
+                || value > original.Maximum)
+            {
+                await DisplayAlertAsync(
+                    "Invalid value",
+                    $"Enter a whole number from {original.Minimum} to {original.Maximum}.",
+                    "OK");
+                return false;
+            }
+
+            if (value != original.Value)
+            {
+                integerChanges[original.Field] = value;
+            }
+        }
+
         int? contactConnectionChange = null;
         int? contactLoyaltyChange = null;
         if (item.Contact is { Exact: true } contact)
@@ -463,6 +514,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         if (textChanges.Count == 0
             && ratingChange is null
             && quantityChange is null
+            && integerChanges.Count == 0
             && contactConnectionChange is null
             && contactLoyaltyChange is null
             && toggleChanges.Count == 0
@@ -490,7 +542,8 @@ public sealed class CollectionItemEditorPage : NativePageBase
             WeaponMatrixDamage: weaponMatrixDamageChange,
             CyberwareMatrixDamage: cyberwareMatrixDamageChange,
             ContactConnection: contactConnectionChange,
-            ContactLoyalty: contactLoyaltyChange));
+            ContactLoyalty: contactLoyaltyChange,
+            IntegerValues: integerChanges));
         return true;
     }
 

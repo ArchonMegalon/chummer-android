@@ -239,7 +239,7 @@ namespace Chummer.Sample
             and row["legacy"]["controlName"] in inventory.SPIRIT_GENERIC_EDITOR_CONTROLS
         }
         self.assertEqual(set(inventory.SPIRIT_GENERIC_EDITOR_CONTROLS), set(spirit_rows))
-        for control, (_, field, token) in inventory.SPIRIT_GENERIC_EDITOR_CONTROLS.items():
+        for control, (editor_kind, field, token) in inventory.SPIRIT_GENERIC_EDITOR_CONTROLS.items():
             row = spirit_rows[control]
             self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
             self.assertEqual("missing", row["tablet"]["status"])
@@ -248,9 +248,19 @@ namespace Chummer.Sample
             self.assertIn("WorkspaceCollectionKind.Spirit", row["presenterMutation"])
             self.assertIn("stable Spirit guid", row["persistenceAssertion"])
             self.assertFalse(row["completionProven"])
-            if field is not None:
+            if editor_kind == "text":
                 self.assertEqual(
-                    f"collection-{'field' if control != 'chkBound' else 'toggle'}-{token}-{{stable-target}}",
+                    f"collection-field-{token}-{{stable-target}}",
+                    row["phone"]["automationId"],
+                )
+            elif editor_kind == "toggle":
+                self.assertEqual(
+                    f"collection-toggle-{token}-{{stable-target}}",
+                    row["phone"]["automationId"],
+                )
+            elif editor_kind == "integer":
+                self.assertEqual(
+                    f"collection-integer-{token}-{{stable-target}}",
                     row["phone"]["automationId"],
                 )
             else:
