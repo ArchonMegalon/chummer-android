@@ -241,7 +241,12 @@ namespace Chummer.Sample
         self.assertEqual(set(inventory.SPIRIT_GENERIC_EDITOR_CONTROLS), set(spirit_rows))
         for control, (editor_kind, field, token) in inventory.SPIRIT_GENERIC_EDITOR_CONTROLS.items():
             row = spirit_rows[control]
-            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "partial_exact_saved_data"
+                if editor_kind == "force"
+                else "implemented_pending_emulator",
+                row["phone"]["status"],
+            )
             self.assertEqual("missing", row["tablet"]["status"])
             self.assertEqual("missing", row["e2e"]["phone"]["status"])
             self.assertIn("Spirits and sprites", row["phone"]["route"])
@@ -258,7 +263,7 @@ namespace Chummer.Sample
                     f"collection-toggle-{token}-{{stable-target}}",
                     row["phone"]["automationId"],
                 )
-            elif editor_kind == "integer":
+            elif editor_kind in {"integer", "force"}:
                 self.assertEqual(
                     f"collection-integer-{token}-{{stable-target}}",
                     row["phone"]["automationId"],
@@ -412,10 +417,10 @@ namespace Chummer.Sample
             {
                 "implemented_pending_emulator": 206,
                 "implemented_verified_api36": 104,
-                "missing": 1208,
+                "missing": 1207,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
-                "partial_exact_saved_data": 144,
+                "partial_exact_saved_data": 145,
             },
             payload["summary"]["phoneStatusCounts"],
         )

@@ -165,9 +165,10 @@ public sealed class CollectionItemEditorPage : NativePageBase
 
     private void AddIntegerField(WorkspaceCollectionIntegerValueState value)
     {
-        string label = value.Field switch
+        string label = value.Label ?? value.Field switch
         {
             WorkspaceCollectionIntegerField.Services => "Services / tasks owed",
+            WorkspaceCollectionIntegerField.Force => "Force / Rating",
             _ => RunnerSessionCoordinator.HumanizeId(value.Field.ToString())
         };
         Entry input = AddNumberField(

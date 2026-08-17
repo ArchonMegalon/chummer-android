@@ -490,6 +490,7 @@ LEGACY_CAREER_COLLECTION_DELETE_CONTROLS = {
     "cmdDeleteQuality": ("Quality", "Qualities"),
 }
 SPIRIT_GENERIC_EDITOR_CONTROLS = {
+    "nudForce": ("force", "Force", "force"),
     "nudServices": ("integer", "Services", "services"),
     "chkBound": ("toggle", "Bound", "bound"),
     "cmdDelete": ("delete", None, "spirit"),
@@ -2632,6 +2633,8 @@ def _known_phone_mapping(
         mutation = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs"
         projector = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorProjector.cs"
         presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        core_models = presentation_root.parent / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        core_parser = presentation_root.parent / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
         shared = (
             _contains(request, "WorkspaceCollectionItemTarget", "WorkspaceDeleteCollectionItemRequest")
             and _contains(projector, f"WorkspaceCollectionKind.{kind}")
@@ -2687,6 +2690,8 @@ def _known_phone_mapping(
         mutation = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs"
         projector = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorProjector.cs"
         presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        core_models = presentation_root.parent / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        core_parser = presentation_root.parent / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
         common_shared = (
             _contains(request, "WorkspaceCollectionKind", "    Spirit,")
             and _contains(projector, '"spirits"', "WorkspaceCollectionKind.Spirit")
@@ -2701,6 +2706,8 @@ def _known_phone_mapping(
             "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
             "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
             "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+            "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+            "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         ]
         if editor_kind == "text":
             assert field is not None
@@ -2805,6 +2812,52 @@ def _known_phone_mapping(
             persistence_assertion = (
                 f"selected stable Spirit guid retains {xml_element} after reopen and process restart"
             )
+        elif editor_kind == "force":
+            assert field is not None
+            shared = common_shared and _contains(
+                request,
+                "WorkspaceSetCollectionIntegerRequest",
+                "    Force",
+            ) and _contains(
+                projector,
+                "WorkspaceCollectionIntegerField.Force",
+                "forceMaximumExact",
+                "forceEditable",
+            ) and _contains(
+                mutation,
+                "WorkspaceCollectionIntegerField.Force",
+                "TryCalculateSpiritForceMaximum",
+                "Force/Rating is read-only",
+            ) and _contains(
+                core_models,
+                "ForceMaximumExact",
+                "ForceEditable",
+                "EntityType",
+            ) and _contains(
+                core_parser,
+                "TryCalculateSpiritForceMaximum",
+                "spiritforcebasedontotalmag",
+            )
+            phone_implemented = shared and _contains(
+                phone_route,
+                "AddCollectionRows",
+                "CollectionItemEditorPage",
+            ) and _contains(
+                phone_page,
+                "collection-integer-",
+                "WorkspaceCollectionIntegerField.Force",
+                "IntegerValues",
+            )
+            presenter_mutation = (
+                "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / "
+                "WorkspaceCollectionIntegerField.Force on WorkspaceCollectionKind.Spirit "
+                "when the Chummer5 ceiling is exact"
+            )
+            phone_automation_id = "collection-integer-force-{stable-target}"
+            persistence_assertion = (
+                "selected stable Spirit guid or stable Sprite guid retains force after reopen and process restart "
+                "when the saved runner determines the exact Chummer5 ceiling"
+            )
         else:
             shared = common_shared and _contains(
                 request,
@@ -2834,7 +2887,11 @@ def _known_phone_mapping(
             )
 
         return {
-            "status": "implemented_pending_emulator" if phone_implemented else "missing",
+            "status": (
+                "partial_exact_saved_data"
+                if editor_kind == "force" and phone_implemented
+                else "implemented_pending_emulator" if phone_implemented else "missing"
+            ),
             "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
             "surface": "CollectionItemEditorPage",
             "automationId": phone_automation_id,

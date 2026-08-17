@@ -16,10 +16,10 @@
     "phoneStatusCounts": {
       "implemented_pending_emulator": 206,
       "implemented_verified_api36": 104,
-      "missing": 1208,
+      "missing": 1207,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
-      "partial_exact_saved_data": 144
+      "partial_exact_saved_data": 145
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
@@ -82,7 +82,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "174280491bc2c4e738a32101a61599e41a2d21788b17f398302d34cda9c1802e"
+        "sha256": "eaffd5089a018f9879fc8705f154a28046168314bd19429dca77f0b48324192f"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -262,12 +262,12 @@
       {
         "path": ".integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "fbe6d1628d82631e4d1c89bf0ef8ee30b8512b608368683ff57458548396eea5"
+        "sha256": "bbfd34cf9afe7ccead15c25c6ecfb6599352de3c408f76fd926ac8dfd3d7ef81"
       },
       {
         "path": ".integration-worktrees/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "2f434d8088dba6a96c740699655338badffca30173a19f9d1206e54d5d4e6239"
+        "sha256": "65938f605016fbf384a0d4b571afedb7a01ec6780f200b04e31b1302bf0e715d"
       },
       {
         "path": ".integration-worktrees/chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -317,22 +317,22 @@
       {
         "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "631e1f631f828f8fd4bfbb1b9e09541f56f606ee2e289ab68b36c26b7ef52ed5"
+        "sha256": "bf0bb180ca842a694c7d5f1ecb155bfb930e05417f23e973bbbcde5a63603bf3"
       },
       {
         "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "e1e46f3b6ada5517cdb89e5fb24639d36196f4bd0507d4d2c021d5509472a43c"
+        "sha256": "bcb0eb3964ebe03322101344715c37214f31a817fc33edac224ca46ce21eb3ed"
       },
       {
         "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
         "exists": true,
-        "sha256": "3082148bc16d59122d2830e522e665accfa374c700a253edc330b51dda5ea17c"
+        "sha256": "c33dc5572f6aae9aa6327bac4282b1837fb7920861d14486ebe27cd7b65d0e35"
       },
       {
         "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "24d7bd9f37f1fcf11f595707f90b152a5587576cb000c36c852f2cf3e198e5c4"
+        "sha256": "802a9d684caf8e7d25573b611ac523da6c3e068f178910a9479aa6c848164844"
       },
       {
         "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -342,7 +342,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "9afe8fb4d8758f28cf7de3ff72f5706ff24117dbcac4e0ec1303fe39d0acca50"
+      "sha256": "7807b41e49c969b075310ca439437b39957fdfaea4d820ee9b412ba056ce1af4"
     }
   },
   "coverageByFamily": {
@@ -685,7 +685,7 @@
     "spirits_and_sprites": {
       "rowCount": 32,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 20,
+      "phoneMissingCount": 19,
       "tabletMissingCount": 28,
       "completionProvenCount": 4
     },
@@ -3292,7 +3292,9 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
         ]
       },
       "tablet": {
@@ -3341,11 +3343,20 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-integer-force-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -3353,8 +3364,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionIntegerField.Force on WorkspaceCollectionKind.Spirit when the Chummer5 ceiling is exact",
+      "persistenceAssertion": "selected stable Spirit guid or stable Sprite guid retains force after reopen and process restart when the saved runner determines the exact Chummer5 ceiling",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -3403,7 +3414,9 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
         ]
       },
       "tablet": {
@@ -3965,7 +3978,9 @@
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
         ]
       },
       "tablet": {
