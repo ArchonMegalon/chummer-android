@@ -212,6 +212,22 @@ namespace Chummer.Sample
             and row["legacy"]["controlName"] in {"tsAttachCharacter", "tsRemoveCharacter"}
         ]
         self.assertEqual(4, len(linked_character_rows))
+        spirit_linked_runner_rows = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "SpiritControl"
+            and row["legacy"]["controlName"] in inventory.SPIRIT_LINKED_RUNNER_CONTROLS
+        ]
+        self.assertEqual(
+            set(inventory.SPIRIT_LINKED_RUNNER_CONTROLS),
+            {row["legacy"]["controlName"] for row in spirit_linked_runner_rows},
+        )
+        for row in spirit_linked_runner_rows:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("missing", row["e2e"]["phone"]["status"])
+            self.assertIn("Spirits and sprites", row["phone"]["route"])
+            self.assertIn("WorkspaceCollectionKind.Spirit", row["presenterMutation"])
+            self.assertIn("stable Spirit or Sprite guid", row["persistenceAssertion"])
         career_collection_delete_rows = [
             row for row in rows
             if row["legacy"]["formOrControl"] == "CharacterCareer"
@@ -415,9 +431,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 206,
+                "implemented_pending_emulator": 209,
                 "implemented_verified_api36": 104,
-                "missing": 1206,
+                "missing": 1203,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 146,

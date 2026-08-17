@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 206,
+      "implemented_pending_emulator": 209,
       "implemented_verified_api36": 104,
-      "missing": 1206,
+      "missing": 1203,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
@@ -250,99 +250,99 @@
         "sha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65"
       },
       {
-        "path": ".integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
         "exists": true,
         "sha256": "20531172c8984c8d572b17c95fe1d92caf0076509bc382ff6bd0179e686aebf3"
       },
       {
-        "path": ".integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
         "exists": true,
         "sha256": "c2fc2d67a03f3ebcbd0117ea66ab1f853d13d2539de36109462db6c57891b479"
       },
       {
-        "path": ".integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "e54dda0d2cbe6cfeefec57b32b0147d20be81ba77331b6b8961c2257952b2dc6"
+        "sha256": "e70c7c152a4a5b09fd9f9493db28e62a0107a1c6405b873af4a9d5a895210bae"
       },
       {
-        "path": ".integration-worktrees/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "d6281ee2a1a6cbd33d2e44b556c2a1b358f05629776373dae9a625c8c95c71d6"
+        "sha256": "52783ea5fc1af6286a6397af0c2635691347d609561670a6aeb0534c32caa6d5"
       },
       {
-        "path": ".integration-worktrees/chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
         "exists": true,
         "sha256": "1836a660b1c243e53756e9a35e1025663f9332100e3aca68394045f3480cc77c"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
         "sha256": "6370f3432d1fe3df6623fbabf90d1257f4608777f2c92208f978085b77ad46e4"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
         "exists": true,
         "sha256": "aeb6d8082f6660647d992968253ea798aee8ab69b32170e6f058d9074860b10a"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
         "exists": true,
         "sha256": "8e4b80c97d8457e4a522ba15e7f310cbb10761aac2dc50e616b72ff344994c33"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/DialogCoordinator.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/DialogCoordinator.cs",
         "exists": true,
         "sha256": "27d967bf701f1cdfafc7eac314f0ef4d52d26e6631faec47abee4507ce179a38"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
         "exists": true,
         "sha256": "f7716c2f6370b92763600e08a4a762fb5cd747bbbd37d30a2b0c8b7842e6ede3"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
         "exists": true,
         "sha256": "758669c780238031334020ad7af44b5b17612a697cbeff172662788995967ba5"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
         "exists": true,
         "sha256": "989158b6876e6ac1bbf70813bbe5e4a7f4d7055c8cd0cefa65531cae911eb575"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
         "exists": true,
         "sha256": "9a418082fa297c94d6af83096717cfcd34fe507e649cf00b562a1373cbf8fc96"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "51b702c07e7d2cc244d9f11672bf6809b4168f0e6065e9a835e9e69351d0dd5d"
+        "sha256": "28e2d660513bd41c32af5b7111582efe3a348f557063f21c3b73f46347a49881"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
         "sha256": "bcb0eb3964ebe03322101344715c37214f31a817fc33edac224ca46ce21eb3ed"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
         "exists": true,
         "sha256": "66198f194be80c7092a36c3ae359f05a4a6465829225a2452733e2de382b170f"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "17f49581249f4d782dfa9c0979d2a020e3ffc6373d01d83fcf07ad5e5dbc510e"
+        "sha256": "cf827f887aa4a3244d144766e088a5338e0182e10b298877f5cda785f237dde0"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
+        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
         "exists": true,
         "sha256": "9753a446b1eddbbe3c45cddf4d19b297896c5052b77ccfb42e593c8d5590a16b"
       }
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "c3bc67984fe4fb8066322cba03d64ba8253a7ad912f495da7a0324637bf4f8bc"
+      "sha256": "f375563874987e1edef0dfde431895fed860e55fe10062b30eccfecc50014fb8"
     }
   },
   "coverageByFamily": {
@@ -685,7 +685,7 @@
     "spirits_and_sprites": {
       "rowCount": 32,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 18,
+      "phoneMissingCount": 15,
       "tabletMissingCount": 28,
       "completionProvenCount": 4
     },
@@ -3692,11 +3692,21 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite > Linked runner",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-linked-remove-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -3704,8 +3714,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceRemoveLinkedCharacterRequest on WorkspaceCollectionKind.Spirit",
+      "persistenceAssertion": "selected stable Spirit or Sprite guid retains governed file/relative link state and linked identity after reopen and process restart, or restores its saved spirit identity after unlink",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -3749,11 +3759,21 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite > Linked runner",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-linked-attach-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -3761,8 +3781,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceSetLinkedCharacterRequest on WorkspaceCollectionKind.Spirit",
+      "persistenceAssertion": "selected stable Spirit or Sprite guid retains governed file/relative link state and linked identity after reopen and process restart, or restores its saved spirit identity after unlink",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -3920,11 +3940,21 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite > Linked runner",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-linked-attach-{stable-target}|collection-linked-remove-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -3932,8 +3962,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceSetLinkedCharacterRequest / WorkspaceRemoveLinkedCharacterRequest on WorkspaceCollectionKind.Spirit",
+      "persistenceAssertion": "selected stable Spirit or Sprite guid retains governed file/relative link state and linked identity after reopen and process restart, or restores its saved spirit identity after unlink",
       "e2e": {
         "phone": {
           "status": "missing",

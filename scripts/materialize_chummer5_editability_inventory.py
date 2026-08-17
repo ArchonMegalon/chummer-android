@@ -496,6 +496,11 @@ SPIRIT_GENERIC_EDITOR_CONTROLS = {
     "chkBound": ("toggle", "Bound", "bound"),
     "cmdDelete": ("delete", None, "spirit"),
 }
+SPIRIT_LINKED_RUNNER_CONTROLS = {
+    "cmdLink": "manage",
+    "tsAttachCharacter": "attach",
+    "tsRemoveCharacter": "remove",
+}
 
 MATRIX_CONDITION_CONTROL_RE = re.compile(
     r"^chk(?P<kind>Cyberware|Gear|Armor|Weapon|Vehicle)MatrixCM(?P<box>[1-9]|1[0-9]|2[0-4])$"
@@ -2475,6 +2480,111 @@ def _known_phone_mapping(
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": e2e_driver.relative_to(REPO_ROOT).as_posix() if e2e_scripted else None,
             },
+        }
+    if class_name == "SpiritControl" and control in SPIRIT_LINKED_RUNNER_CONTROLS:
+        phone_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        staging = REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs"
+        state = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorState.cs"
+        request = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionMutationRequest.cs"
+        mutation = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs"
+        projector = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorProjector.cs"
+        presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        core_models = WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        core_parser = WORKSPACE_ROOT / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        action = SPIRIT_LINKED_RUNNER_CONTROLS[control]
+        shared = (
+            _contains(staging, "ICharacterLinkedDocumentCodec", 'DirectoryName = "linked-characters"', "File.Move")
+            and _contains(state, "WorkspaceLinkedCharacterState", "LinkedCharacter")
+            and _contains(
+                request,
+                "WorkspaceSetLinkedCharacterRequest",
+                "WorkspaceRemoveLinkedCharacterRequest",
+            )
+            and _contains(
+                mutation,
+                "ApplyLinkedCharacterMutation",
+                "ApplyRemoveLinkedCharacterMutation",
+                "WorkspaceCollectionKind.Spirit",
+            )
+            and _contains(
+                projector,
+                "WorkspaceCollectionKind.Spirit",
+                "ProjectLinkedCharacter(schema.Kind, item)",
+            )
+            and _contains(core_models, "CharacterLinkedAssociationSummary? LinkedCharacter")
+            and _contains(
+                core_parser,
+                'ReadValue(spirit, "file")',
+                "CharacterLinkedAssociationSummary(",
+            )
+            and _contains(presenter, "ApplyCollectionMutationAsync", "ApplyWorkspaceXmlMutationAsync")
+            and _contains(
+                coordinator,
+                "AttachLinkedCharacterAsync",
+                "RemoveLinkedCharacterAsync",
+                "_linkedCharacters.DeleteOwnedAsync",
+            )
+        )
+        attach_available = _contains(
+            phone_page,
+            "collection-linked-attach-",
+            "Coordinator.AttachLinkedCharacterAsync",
+        )
+        remove_available = _contains(
+            phone_page,
+            "collection-linked-remove-",
+            "Coordinator.RemoveLinkedCharacterAsync",
+        )
+        phone_implemented = shared and (
+            attach_available
+            if action == "attach"
+            else remove_available
+            if action == "remove"
+            else attach_available and remove_available
+        )
+        automation_id = {
+            "attach": "collection-linked-attach-{stable-target}",
+            "remove": "collection-linked-remove-{stable-target}",
+            "manage": "collection-linked-attach-{stable-target}|collection-linked-remove-{stable-target}",
+        }[action]
+        operation = {
+            "attach": "WorkspaceSetLinkedCharacterRequest",
+            "remove": "WorkspaceRemoveLinkedCharacterRequest",
+            "manage": "WorkspaceSetLinkedCharacterRequest / WorkspaceRemoveLinkedCharacterRequest",
+        }[action]
+        return {
+            "status": "implemented_pending_emulator" if phone_implemented else "missing",
+            "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite > Linked runner",
+            "surface": "CollectionItemEditorPage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / "
+                f"{operation} on WorkspaceCollectionKind.Spirit"
+            ),
+            "persistenceAssertion": (
+                "selected stable Spirit or Sprite guid retains governed file/relative link state and "
+                "linked identity after reopen and process restart, or restores its saved spirit identity after unlink"
+            ),
+            "e2e": {"status": "missing", "ref": None},
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
         }
     if class_name in {"ContactControl", "PetControl"} and control in {
         "tsAttachCharacter",
