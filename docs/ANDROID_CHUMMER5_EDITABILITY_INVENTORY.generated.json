@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 209,
+      "implemented_pending_emulator": 210,
       "implemented_verified_api36": 104,
-      "missing": 1203,
+      "missing": 1202,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
@@ -317,7 +317,7 @@
       {
         "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "28e2d660513bd41c32af5b7111582efe3a348f557063f21c3b73f46347a49881"
+        "sha256": "f2f6f546cfdcef8208876838aeda00ce707c1409ddc7391736bce9e4d95286b1"
       },
       {
         "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
@@ -342,7 +342,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "f375563874987e1edef0dfde431895fed860e55fe10062b30eccfecc50014fb8"
+      "sha256": "72a7c2ec4f1c8347dc2c7a4926975f76b93281057abd94036a720ff853581efb"
     }
   },
   "coverageByFamily": {
@@ -685,7 +685,7 @@
     "spirits_and_sprites": {
       "rowCount": 32,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 15,
+      "phoneMissingCount": 14,
       "tabletMissingCount": 28,
       "completionProvenCount": 4
     },
@@ -3883,11 +3883,20 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -3895,8 +3904,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Spirit",
+      "persistenceAssertion": "selected stable Spirit guid retains notes after reopen and process restart",
       "e2e": {
         "phone": {
           "status": "missing",

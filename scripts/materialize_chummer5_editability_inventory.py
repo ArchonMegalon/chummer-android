@@ -490,6 +490,7 @@ LEGACY_CAREER_COLLECTION_DELETE_CONTROLS = {
     "cmdDeleteQuality": ("Quality", "Qualities"),
 }
 SPIRIT_GENERIC_EDITOR_CONTROLS = {
+    "cmdNotes": ("text", "Notes", "notes"),
     "txtCritterName": ("critter", "CritterName", "crittername"),
     "nudForce": ("force", "Force", "force"),
     "nudServices": ("integer", "Services", "services"),
