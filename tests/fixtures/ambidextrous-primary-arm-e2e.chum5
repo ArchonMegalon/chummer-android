@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Ambidextrous Primary Arm E2E</name>
+  <alias>AmbidextrousPrimaryArmE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <primaryarm>Right</primaryarm>
+  <improvements>
+    <improvement>
+      <improvementttype>Ambidextrous</improvementttype>
+      <improvementsource>Quality</improvementsource>
+      <enabled>True</enabled>
+    </improvement>
+  </improvements>
+</character>

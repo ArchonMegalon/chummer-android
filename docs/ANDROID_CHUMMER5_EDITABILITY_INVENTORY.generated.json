@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 321,
+      "implemented_pending_emulator": 323,
       "implemented_verified_api36": 78,
-      "missing": 1117,
+      "missing": 1115,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
@@ -77,7 +77,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "958017c9cb77946dd579ff1466253e45c48def770fe5dd26475f9c37a95ac57b"
+        "sha256": "6fb7ae4a7e86f7bae300b9e83bbf321c98b1eee408ed456fa7625b4aa99390be"
       },
       {
         "path": "src/Chummer.Android/Native/CareerReputationPage.cs",
@@ -88,6 +88,11 @@
         "path": "src/Chummer.Android/Native/SituationalModifiersPage.cs",
         "exists": true,
         "sha256": "569a7d435269edf6da84192365b6f1330da86c0700f62479b853056d307af33d"
+      },
+      {
+        "path": "src/Chummer.Android/Native/PrimaryArmPage.cs",
+        "exists": true,
+        "sha256": "39bf2fc3f9dfedc1cb1ea8397d95f9c7436207660f572a02174132f1a141d6ea"
       },
       {
         "path": "src/Chummer.Android/Native/CharacterNotesPage.cs",
@@ -122,7 +127,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "0e007e5492293d6204e44c34b1cc5fe5eeabb9c4bc1873d34256d2600fd94dee"
+        "sha256": "cef203c814eb7bc6e357c47d8cc9f1a52a0d169e4a037064757df08ddec04c84"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -153,6 +158,11 @@
         "path": "tests/run_api36_situational_modifiers_e2e.py",
         "exists": true,
         "sha256": "ce8cf51ee9f8d6c65923490cf876708d888052a9d84ba62e1ea03a85407711bb"
+      },
+      {
+        "path": "tests/run_api36_primary_arm_e2e.py",
+        "exists": true,
+        "sha256": "a62a57a6eab0f697e62060e2679142f052f2c3a8c8e61610b46e7363c4db3d13"
       },
       {
         "path": "tests/run_api36_nested_collection_notes_e2e.py",
@@ -228,6 +238,21 @@
         "path": "tests/fixtures/career-situational-modifiers-e2e.chum5",
         "exists": true,
         "sha256": "1651265d07253ffe333cb5e1e889d01dff89500e6d73e65c0870e32825f75e94"
+      },
+      {
+        "path": "tests/fixtures/creation-primary-arm-e2e.chum5",
+        "exists": true,
+        "sha256": "1c63ec0738650281f4852397d4a2d8dbc7fbe044695adf96de0c0a346284b5eb"
+      },
+      {
+        "path": "tests/fixtures/career-primary-arm-e2e.chum5",
+        "exists": true,
+        "sha256": "8eec7d61cf0113524bf7813ce3a272fa336c1607dc46b1fe2ac12cfeda54d76f"
+      },
+      {
+        "path": "tests/fixtures/ambidextrous-primary-arm-e2e.chum5",
+        "exists": true,
+        "sha256": "0cc4f19c6b104b7ba7f0102d30360f1349c01aea0feeafb4e0590a3cf73279b3"
       },
       {
         "path": "tests/fixtures/creation-nested-notes-e2e.chum5",
@@ -325,6 +350,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-primary-arm/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-nested-collection-notes/receipt.json",
         "exists": false,
         "sha256": null
@@ -347,7 +377,7 @@
       {
         "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "a874718d1e0ffa2bb39164f243a61b6c4b391a5257c85cbddfbd8fe546e65334"
+        "sha256": "50a518dbc23c806dd5d62b710833c69e35761cd618dd99376eb90f1b1406c29e"
       },
       {
         "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
@@ -367,7 +397,7 @@
       {
         "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "61ecef715ed0bd47ca91db012e520639d3e9920fe4cd2b340abf14eede898cbc"
+        "sha256": "45959643e3e795ac8b76b04e67c6c584f2424697fb2a592a3237fff6eb00586a"
       },
       {
         "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
@@ -387,7 +417,7 @@
       {
         "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "e8db47f183bf9bbe386ff8b891b11dff511a5674b549ea965cc4377ec30ab62b"
+        "sha256": "ce753f47ab825f37356a96389a0744eb745fb171fe6c12d67f34ed58eac85374"
       },
       {
         "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -398,6 +428,11 @@
         "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
         "exists": true,
         "sha256": "2c6bda77607d71c1d335c298048bcd87f2363fd15440d3db08c9c16252dabc83"
+      },
+      {
+        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
+        "exists": true,
+        "sha256": "ab174728493660115b62887154ec2990c64945d209a762023d941b847a06e0cb"
       },
       {
         "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
@@ -457,7 +492,7 @@
       {
         "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "b56967ef2ed4759a2d74c688c30f1eab58bb48fe7c813e32f3089bba21fe0178"
+        "sha256": "d3a8d7a29c823cf80655dfab8d8c721b87f17d08132c71d90516496a7aacf314"
       },
       {
         "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -467,7 +502,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "a931e01a6b7c4202e9f96a0352926398f2d53c329c29026d8de5c901a7979e8a"
+      "sha256": "0c887a6ba9889d8441c2cea98878a2057d936e3448865c5f3ce0a14b56e4c38d"
     }
   },
   "coverageByFamily": {
@@ -537,7 +572,7 @@
     "character_settings": {
       "rowCount": 209,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 11,
+      "phoneMissingCount": 9,
       "tabletMissingCount": 197,
       "completionProvenCount": 12
     },
@@ -25511,11 +25546,20 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Primary arm",
+        "surface": "PrimaryArmPage",
+        "automationId": "primary-arm-choice",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/PrimaryArmPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -25523,12 +25567,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyPrimaryArmEditAsync(PrimaryArmEditRequest)",
+      "persistenceAssertion": "character/primaryarm equals exact Left or Right after save, same-session reopen, and process restart; enabled Ambidextrous improvement remains read-only",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_primary_arm_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -57733,11 +57777,20 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Primary arm",
+        "surface": "PrimaryArmPage",
+        "automationId": "primary-arm-choice",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/PrimaryArmPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -57745,12 +57798,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyPrimaryArmEditAsync(PrimaryArmEditRequest)",
+      "persistenceAssertion": "character/primaryarm equals exact Left or Right after save, same-session reopen, and process restart; enabled Ambidextrous improvement remains read-only",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_primary_arm_e2e.py"
         },
         "tablet": {
           "status": "missing",

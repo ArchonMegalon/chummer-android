@@ -509,6 +509,32 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<PrimaryArmEditorState?> PreparePrimaryArmEditAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PreparePrimaryArmEditAsync(cancellationToken);
+
+    public async Task ApplyPrimaryArmEditAsync(
+        PrimaryArmEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Primary Arm was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyPrimaryArmEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Primary arm saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public async Task ExecuteDialogActionAsync(string actionId, CancellationToken cancellationToken = default)
     {
         long contentRevision = State.ContentRevision;

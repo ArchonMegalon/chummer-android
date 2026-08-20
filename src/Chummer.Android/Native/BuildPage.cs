@@ -87,6 +87,18 @@ public sealed class BuildPage : NativePageBase
                 }
             },
             automationId: "build-situational-modifiers"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Primary arm",
+            "Preferred arm or Ambidextrous read-only state",
+            async () =>
+            {
+                PrimaryArmEditorState? editor = await Coordinator.PreparePrimaryArmEditAsync();
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new PrimaryArmPage(Coordinator, editor));
+                }
+            },
+            automationId: "build-primary-arm"));
         if (Coordinator.State.Profile?.Created == true)
         {
             _body.Add(NativeTheme.NavigationRow(

@@ -488,6 +488,49 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('"driverSha256": shared.sha256(driver)', driver)
         self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', driver)
 
+    def test_primary_arm_has_revision_bound_ambidextrous_safe_phone_path(self) -> None:
+        build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
+        page = (PROJECT / "Native" / "PrimaryArmPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+
+        self.assertIn('automationId: "build-primary-arm"', build)
+        self.assertIn("PreparePrimaryArmEditAsync", build + coordinator)
+        self.assertIn("ApplyPrimaryArmEditAsync", page + coordinator)
+        self.assertIn("PrimaryArmEditRequest", page)
+        self.assertIn("ExpectedContentRevision", coordinator)
+        self.assertIn("State.WorkspaceId != request.WorkspaceId", coordinator)
+        self.assertIn("State.ContentRevision != request.ExpectedContentRevision", coordinator)
+        self.assertIn("await _presenter.SaveAsync", coordinator)
+        self.assertIn('["Ambidextrous"]', page)
+        self.assertIn('["Left", "Right"]', page)
+        self.assertIn('"primary-arm-choice"', page)
+        self.assertIn('"primary-arm-save"', page)
+        self.assertNotIn("XDocument", page + coordinator)
+
+    def test_primary_arm_has_digest_bound_api36_restart_and_gate_proof_lane(self) -> None:
+        driver = (REPO / "tests" / "run_api36_primary_arm_e2e.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('"journey": "primary-arm"', driver)
+        for form in ("CharacterCreate", "CharacterCareer"):
+            self.assertIn(f'"{form}"', driver)
+        self.assertIn('CONTROL = "cboPrimaryArm"', driver)
+        self.assertIn('"creationPrimaryArmEdited": "pass"', driver)
+        self.assertIn('"creationWorkspaceXmlPersisted": "pass"', driver)
+        self.assertIn('"creationProcessRestartUiReadback": "pass"', driver)
+        self.assertIn('"careerPrimaryArmEdited": "pass"', driver)
+        self.assertIn('"careerWorkspaceXmlPersisted": "pass"', driver)
+        self.assertIn('"careerProcessRestartUiReadback": "pass"', driver)
+        self.assertIn('"ambidextrousReadOnlyGateEnforced": "pass"', driver)
+        self.assertIn('picker.attributes.get("enabled") != "false"', driver)
+        self.assertIn('save.attributes.get("enabled") != "false"', driver)
+        self.assertIn('"controls": controls', driver)
+        self.assertIn('api != "36"', driver)
+        self.assertIn('"apkSha256": shared.sha256(args.apk.resolve())', driver)
+        self.assertIn('"driverSha256": shared.sha256(driver)', driver)
+        self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', driver)
+
     def test_nested_collection_notes_have_digest_bound_api36_restart_proof_lane(self) -> None:
         driver = (
             REPO / "tests" / "run_api36_nested_collection_notes_e2e.py"
