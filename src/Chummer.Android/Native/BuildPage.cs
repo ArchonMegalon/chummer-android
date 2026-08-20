@@ -18,6 +18,7 @@ public sealed class BuildPage : NativePageBase
         _save = new ToolbarItem
         {
             Text = "Save",
+            AutomationId = "build-save-runner",
             Command = new Command(async () => await RunAsync(() => Coordinator.SaveAsync()))
         };
         ToolbarItems.Add(_save);

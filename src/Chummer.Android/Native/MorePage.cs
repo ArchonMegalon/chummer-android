@@ -34,6 +34,7 @@ public sealed class MorePage : NativePageBase
         Button open = NativeTheme.SecondaryButton("Open file");
         open.Clicked += async (_, _) => await RunAsync(() => Coordinator.OpenLocalAsync());
         Button save = NativeTheme.SecondaryButton("Save");
+        save.AutomationId = "more-save-runner";
         save.IsEnabled = Coordinator.State.Profile is not null;
         save.Clicked += async (_, _) => await RunAsync(() => Coordinator.SaveAsync());
         Button export = NativeTheme.SecondaryButton("Export");

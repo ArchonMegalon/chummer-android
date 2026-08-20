@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 323,
+      "implemented_pending_emulator": 328,
       "implemented_verified_api36": 78,
-      "missing": 1115,
+      "missing": 1110,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
@@ -77,7 +77,12 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "6fb7ae4a7e86f7bae300b9e83bbf321c98b1eee408ed456fa7625b4aa99390be"
+        "sha256": "d604652ef1c374344ee7e416658e0cf4530ed3fecbfea7cca05f888fac192e1a"
+      },
+      {
+        "path": "src/Chummer.Android/Native/MorePage.cs",
+        "exists": true,
+        "sha256": "d467096092c111b6b4be60da9e317a62337bd55a134338f5d3b7d8f5e06ab0c6"
       },
       {
         "path": "src/Chummer.Android/Native/CareerReputationPage.cs",
@@ -127,7 +132,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "cef203c814eb7bc6e357c47d8cc9f1a52a0d169e4a037064757df08ddec04c84"
+        "sha256": "6fc329b9e5a345b25886983edfb265118f06b1d7225a041ce76ae7d51fc6749d"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -163,6 +168,11 @@
         "path": "tests/run_api36_primary_arm_e2e.py",
         "exists": true,
         "sha256": "a62a57a6eab0f697e62060e2679142f052f2c3a8c8e61610b46e7363c4db3d13"
+      },
+      {
+        "path": "tests/run_api36_explicit_save_e2e.py",
+        "exists": true,
+        "sha256": "b3802c85e3933a1d0549fa6f26da31d13fa2baf89e9a28b34d7d1b57a8e2d08a"
       },
       {
         "path": "tests/run_api36_nested_collection_notes_e2e.py",
@@ -253,6 +263,16 @@
         "path": "tests/fixtures/ambidextrous-primary-arm-e2e.chum5",
         "exists": true,
         "sha256": "0cc4f19c6b104b7ba7f0102d30360f1349c01aea0feeafb4e0590a3cf73279b3"
+      },
+      {
+        "path": "tests/fixtures/creation-explicit-save-e2e.chum5",
+        "exists": true,
+        "sha256": "42eaa64948c87cf05aac2513e5627f64b985701ee69826e3a75efb3de6fb54c0"
+      },
+      {
+        "path": "tests/fixtures/career-explicit-save-e2e.chum5",
+        "exists": true,
+        "sha256": "3f85cde4f46b01a25551815664193abc87e56cdc02e34a4a52b6902e57a5a02e"
       },
       {
         "path": "tests/fixtures/creation-nested-notes-e2e.chum5",
@@ -351,6 +371,11 @@
       },
       {
         "path": "docs/editability-evidence/api36-phone-primary-arm/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-explicit-save/receipt.json",
         "exists": false,
         "sha256": null
       },
@@ -502,7 +527,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "0c887a6ba9889d8441c2cea98878a2057d936e3448865c5f3ce0a14b56e4c38d"
+      "sha256": "54e246217db8c4c569a95e4743dbee883c2aea9d86dd5b5ae975cc40bb5b7e3b"
     }
   },
   "coverageByFamily": {
@@ -516,7 +541,7 @@
     "application_file_workflows": {
       "rowCount": 93,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 30,
+      "phoneMissingCount": 25,
       "tabletMissingCount": 30,
       "completionProvenCount": 63
     },
@@ -39360,11 +39385,17 @@
       "mutationFamily": "application_file_workflows",
       "operation": "commit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > toolbar Save",
+        "surface": "BuildPage toolbar",
+        "automationId": "build-save-runner",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/MorePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -39372,12 +39403,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.SaveAsync",
+      "persistenceAssertion": "workspace SavedRevision equals ContentRevision after explicit save and the exact runner payload survives process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_explicit_save_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -39759,11 +39790,17 @@
       "mutationFamily": "application_file_workflows",
       "operation": "commit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "More > Save",
+        "surface": "MorePage",
+        "automationId": "more-save-runner",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/MorePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -39771,12 +39808,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.SaveAsync",
+      "persistenceAssertion": "workspace SavedRevision equals ContentRevision after explicit save and the exact runner payload survives process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_explicit_save_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -61010,11 +61047,17 @@
       "mutationFamily": "application_file_workflows",
       "operation": "commit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > toolbar Save",
+        "surface": "BuildPage toolbar",
+        "automationId": "build-save-runner",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/MorePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -61022,12 +61065,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.SaveAsync",
+      "persistenceAssertion": "workspace SavedRevision equals ContentRevision after explicit save and the exact runner payload survives process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_explicit_save_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -61466,11 +61509,17 @@
       "mutationFamily": "application_file_workflows",
       "operation": "commit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "More > Save",
+        "surface": "MorePage",
+        "automationId": "more-save-runner",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/MorePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -61478,12 +61527,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.SaveAsync",
+      "persistenceAssertion": "workspace SavedRevision equals ContentRevision after explicit save and the exact runner payload survives process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_explicit_save_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -73765,11 +73814,17 @@
       "mutationFamily": "application_file_workflows",
       "operation": "commit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > toolbar Save",
+        "surface": "BuildPage toolbar",
+        "automationId": "build-save-runner",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/MorePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -73777,12 +73832,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.SaveAsync",
+      "persistenceAssertion": "workspace SavedRevision equals ContentRevision after explicit save and the exact runner payload survives process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_explicit_save_e2e.py"
         },
         "tablet": {
           "status": "missing",

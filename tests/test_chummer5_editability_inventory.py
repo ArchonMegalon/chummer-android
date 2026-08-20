@@ -216,6 +216,34 @@ namespace Chummer.Sample
             )
             self.assertIn(xml_element, row["persistenceAssertion"])
             self.assertFalse(row["completionProven"])
+
+        explicit_save = [
+            row for row in rows
+            if (
+                row["legacy"]["formOrControl"],
+                row["legacy"]["controlName"],
+            ) in inventory.EXPLICIT_SAVE_CONTROLS
+        ]
+        self.assertEqual(5, len(explicit_save))
+        for row in explicit_save:
+            route, surface, automation_id = inventory.EXPLICIT_SAVE_CONTROLS[
+                (
+                    row["legacy"]["formOrControl"],
+                    row["legacy"]["controlName"],
+                )
+            ]
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(route, row["phone"]["route"])
+            self.assertEqual(surface, row["phone"]["surface"])
+            self.assertEqual(automation_id, row["phone"]["automationId"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_explicit_save_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertIn("SavedRevision equals ContentRevision", row["persistenceAssertion"])
+            self.assertFalse(row["completionProven"])
         for row in rows:
             self.assertTrue(set(payload["requiredRowFields"]).issubset(row))
             self.assertTrue(row["legacyReviewComplete"])
@@ -711,9 +739,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 323,
+                "implemented_pending_emulator": 328,
                 "implemented_verified_api36": 78,
-                "missing": 1115,
+                "missing": 1110,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 146,

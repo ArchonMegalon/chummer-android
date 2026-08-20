@@ -358,6 +358,31 @@ PRIMARY_ARM_CONTROL_E2E_PROOF_KEYS = (
     "workspacePersisted",
     "processRestartUiReadback",
 )
+EXPLICIT_SAVE_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-explicit-save"
+    / "receipt.json"
+)
+EXPLICIT_SAVE_E2E_JOURNEYS = (
+    "creationRunnerImported",
+    "creationBuildToolbarSaveInvoked",
+    "creationMorePageSaveInvoked",
+    "creationWorkspaceRevisionSaved",
+    "creationProcessRestartReadback",
+    "careerRunnerImported",
+    "careerBuildToolbarSaveInvoked",
+    "careerMorePageSaveInvoked",
+    "careerWorkspaceRevisionSaved",
+    "careerProcessRestartReadback",
+    "selectedRunnerSaveEquivalent",
+)
+EXPLICIT_SAVE_CONTROL_E2E_PROOF_KEYS = (
+    "invoked",
+    "workspacePersisted",
+    "processRestartReadback",
+)
 NESTED_COLLECTION_NOTES_PHONE_E2E_RECEIPT = (
     REPO_ROOT
     / "docs"
@@ -584,6 +609,33 @@ SITUATIONAL_MODIFIER_CONTROLS = {
 }
 PRIMARY_ARM_CONTROLS = {
     "cboPrimaryArm": ("primaryarm", "primary-arm-choice", "PrimaryArm"),
+}
+EXPLICIT_SAVE_CONTROLS = {
+    ("CharacterCreate", "tsbSave"): (
+        "Build > toolbar Save",
+        "BuildPage toolbar",
+        "build-save-runner",
+    ),
+    ("CharacterCreate", "mnuFileSave"): (
+        "More > Save",
+        "MorePage",
+        "more-save-runner",
+    ),
+    ("CharacterCareer", "tsbSave"): (
+        "Build > toolbar Save",
+        "BuildPage toolbar",
+        "build-save-runner",
+    ),
+    ("CharacterCareer", "mnuFileSave"): (
+        "More > Save",
+        "MorePage",
+        "more-save-runner",
+    ),
+    ("ChummerMainForm", "tsSave"): (
+        "Build > toolbar Save",
+        "BuildPage toolbar",
+        "build-save-runner",
+    ),
 }
 CONTACT_TEXT_FIELDS = {
     "txtContactName": ("Name", "name", "name"),
@@ -1331,6 +1383,71 @@ def _validated_primary_arm_phone_e2e_receipt(
         "status": "executed_api36",
         "ref": PRIMARY_ARM_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(PRIMARY_ARM_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_explicit_save_phone_e2e_receipt(
+    presentation_root: Path,
+) -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_explicit_save_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-explicit-save-e2e.chum5"
+    career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-explicit-save-e2e.chum5"
+    source_digests = {
+        "buildPageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs",
+        "morePageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "MorePage.cs",
+        "coordinatorSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+        "presenterInterfaceSha256": presentation_root / "Chummer.Presentation" / "Overview" / "ICharacterOverviewPresenter.cs",
+        "presenterPersistenceSha256": presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.Persistence.cs",
+    }
+    if not all(
+        path.is_file()
+        for path in (driver, shared_driver, creation_fixture, career_fixture, *source_digests.values())
+    ):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(EXPLICIT_SAVE_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    controls = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_controls = {
+        f"{form}.{control}" for form, control in EXPLICIT_SAVE_CONTROLS
+    }
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "explicit-save"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("creationFixtureSha256") == _sha256_file(creation_fixture)
+        and receipt.get("careerFixtureSha256") == _sha256_file(career_fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(journeys, dict)
+        and all(journeys.get(journey) == "pass" for journey in EXPLICIT_SAVE_E2E_JOURNEYS)
+        and isinstance(controls, dict)
+        and set(controls) == expected_controls
+        and receipt.get("controlCount") == len(expected_controls)
+        and all(
+            isinstance(controls.get(control), dict)
+            and all(
+                controls[control].get(proof_key) == "pass"
+                for proof_key in EXPLICIT_SAVE_CONTROL_E2E_PROOF_KEYS
+            )
+            for control in expected_controls
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": EXPLICIT_SAVE_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(EXPLICIT_SAVE_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
 
@@ -2514,11 +2631,86 @@ def _known_phone_mapping(
     career_reputation_phone_e2e_receipt: dict[str, Any] | None,
     situational_modifiers_phone_e2e_receipt: dict[str, Any] | None,
     primary_arm_phone_e2e_receipt: dict[str, Any] | None,
+    explicit_save_phone_e2e_receipt: dict[str, Any] | None,
     nested_collection_notes_phone_e2e_receipt: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     legacy = row["legacy"]
     class_name = legacy["formOrControl"]
     control = legacy["controlName"]
+    save_mapping = EXPLICIT_SAVE_CONTROLS.get((class_name, control))
+    if save_mapping is not None:
+        route, surface, automation_id = save_mapping
+        native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
+        build_page = native_root / "BuildPage.cs"
+        more_page = native_root / "MorePage.cs"
+        coordinator = native_root / "RunnerSessionCoordinator.cs"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_explicit_save_e2e.py"
+        implemented = (
+            _contains(
+                build_page,
+                'AutomationId = "build-save-runner"',
+                "Coordinator.SaveAsync",
+            )
+            and _contains(
+                more_page,
+                'save.AutomationId = "more-save-runner"',
+                "Coordinator.SaveAsync",
+            )
+            and _contains(
+                coordinator,
+                "public async Task SaveAsync",
+                "_presenter.SaveAsync",
+                '_notice = State.Error is null ? "Saved." : null',
+            )
+            and _contains(presenter_interface, "Task SaveAsync(CancellationToken ct)")
+            and _contains(
+                presenter_persistence,
+                "public async Task SaveAsync",
+                "expectedContentRevision",
+                "SavedRevision",
+                "TryCaptureRecoveryPayloadAsync",
+            )
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"journey": "explicit-save"',
+            '"creationBuildToolbarSaveInvoked": "pass"',
+            '"creationMorePageSaveInvoked": "pass"',
+            '"creationWorkspaceRevisionSaved": "pass"',
+            '"creationProcessRestartReadback": "pass"',
+            '"careerBuildToolbarSaveInvoked": "pass"',
+            '"careerMorePageSaveInvoked": "pass"',
+            '"careerWorkspaceRevisionSaved": "pass"',
+            '"careerProcessRestartReadback": "pass"',
+            '"selectedRunnerSaveEquivalent": "pass"',
+            '"controls": controls',
+        )
+        phone_e2e = explicit_save_phone_e2e_receipt if implemented and e2e_scripted else None
+        return {
+            "status": "implemented_verified_api36" if phone_e2e else "implemented_pending_emulator" if implemented else "missing",
+            "route": route,
+            "surface": surface,
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/MorePage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+            ],
+            "presenterMutation": "ICharacterOverviewPresenter.SaveAsync",
+            "persistenceAssertion": (
+                "workspace SavedRevision equals ContentRevision after explicit save and the exact "
+                "runner payload survives process restart"
+            ),
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_explicit_save_e2e.py" if e2e_scripted else None,
+            },
+        }
     if class_name == "EditCharacterSettings":
         native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
         native_command = native_root / "NativeCommandPage.cs"
@@ -5230,6 +5422,9 @@ def enrich_rows(
         presentation_root,
         core_engine_root,
     )
+    explicit_save_phone_e2e_receipt = _validated_explicit_save_phone_e2e_receipt(
+        presentation_root,
+    )
     nested_collection_notes_phone_e2e_receipt = _validated_nested_collection_notes_phone_e2e_receipt(
         presentation_root,
         core_engine_root,
@@ -5282,6 +5477,7 @@ def enrich_rows(
             career_reputation_phone_e2e_receipt,
             situational_modifiers_phone_e2e_receipt,
             primary_arm_phone_e2e_receipt,
+            explicit_save_phone_e2e_receipt,
             nested_collection_notes_phone_e2e_receipt,
         )
         if known is not None:
@@ -5369,6 +5565,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "AttributeEditPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildFlowPages.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "MorePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerReputationPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SituationalModifiersPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "PrimaryArmPage.cs",
@@ -5386,6 +5583,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_career_reputation_e2e.py",
         REPO_ROOT / "tests" / "run_api36_situational_modifiers_e2e.py",
         REPO_ROOT / "tests" / "run_api36_primary_arm_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_explicit_save_e2e.py",
         REPO_ROOT / "tests" / "run_api36_nested_collection_notes_e2e.py",
         REPO_ROOT / "tests" / "run_api36_attribute_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_attribute_e2e.py",
@@ -5404,6 +5602,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "creation-primary-arm-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-primary-arm-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "ambidextrous-primary-arm-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-explicit-save-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-explicit-save-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-nested-notes-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-nested-notes-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-contact-pet-e2e.chum5",
@@ -5422,6 +5622,7 @@ def build_inventory(
         CAREER_REPUTATION_PHONE_E2E_RECEIPT,
         SITUATIONAL_MODIFIERS_PHONE_E2E_RECEIPT,
         PRIMARY_ARM_PHONE_E2E_RECEIPT,
+        EXPLICIT_SAVE_PHONE_E2E_RECEIPT,
         NESTED_COLLECTION_NOTES_PHONE_E2E_RECEIPT,
         LINKED_RUNNER_PHONE_E2E_RECEIPT,
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterContactEditSemantics.cs",

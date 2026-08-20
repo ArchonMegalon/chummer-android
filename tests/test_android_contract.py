@@ -531,6 +531,33 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('"driverSha256": shared.sha256(driver)', driver)
         self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', driver)
 
+    def test_explicit_save_actions_are_truthful_and_have_api36_restart_proof(self) -> None:
+        build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
+        more = (PROJECT / "Native" / "MorePage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(
+            encoding="utf-8"
+        )
+        driver = (REPO / "tests" / "run_api36_explicit_save_e2e.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('AutomationId = "build-save-runner"', build)
+        self.assertIn('save.AutomationId = "more-save-runner"', more)
+        self.assertIn("Coordinator.SaveAsync", build + more)
+        self.assertIn("await _presenter.SaveAsync", coordinator)
+        self.assertIn('_notice = State.Error is null ? "Saved." : null', coordinator)
+        self.assertIn('"journey": "explicit-save"', driver)
+        self.assertIn('"creationBuildToolbarSaveInvoked": "pass"', driver)
+        self.assertIn('"creationMorePageSaveInvoked": "pass"', driver)
+        self.assertIn('"careerBuildToolbarSaveInvoked": "pass"', driver)
+        self.assertIn('"careerMorePageSaveInvoked": "pass"', driver)
+        self.assertIn('saved_revision != content_revision', driver)
+        self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', driver)
+        self.assertIn('"controls": controls', driver)
+        self.assertIn('api != "36"', driver)
+        self.assertIn('"apkSha256": shared.sha256(args.apk.resolve())', driver)
+        self.assertIn('"driverSha256": shared.sha256(driver)', driver)
+
     def test_nested_collection_notes_have_digest_bound_api36_restart_proof_lane(self) -> None:
         driver = (
             REPO / "tests" / "run_api36_nested_collection_notes_e2e.py"

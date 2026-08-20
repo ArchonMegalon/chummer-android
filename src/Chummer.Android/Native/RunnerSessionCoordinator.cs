@@ -559,7 +559,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
         await _presenter.SaveAsync(cancellationToken);
-        _notice = "Saved.";
+        _notice = State.Error is null ? "Saved." : null;
         NotifyChanged();
     }
 
