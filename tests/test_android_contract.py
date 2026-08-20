@@ -392,6 +392,59 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('"sharedDriverSha256": Path(shared.__file__).resolve()', driver)
         self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', driver)
 
+    def test_career_reputation_has_revision_and_source_bound_phone_save_path(self) -> None:
+        build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
+        page = (PROJECT / "Native" / "CareerReputationPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+
+        self.assertIn('automationId: "build-career-reputation"', build)
+        self.assertIn("if (Coordinator.State.Profile?.Created == true)", build)
+        self.assertIn("PrepareCareerReputationEditAsync", build + coordinator)
+        self.assertIn("ApplyCareerReputationEditAsync", page + coordinator)
+        self.assertIn("CareerReputationEditRequest", page)
+        self.assertIn("ExpectedContentRevision", coordinator)
+        self.assertIn("State.WorkspaceId != request.WorkspaceId", coordinator)
+        self.assertIn("State.ContentRevision != request.ExpectedContentRevision", coordinator)
+        self.assertIn("await _presenter.SaveAsync", coordinator)
+        for automation_id in (
+            "career-reputation-street-cred",
+            "career-reputation-notoriety",
+            "career-reputation-public-awareness",
+            "career-reputation-astral",
+            "career-reputation-wild",
+            "career-reputation-save",
+        ):
+            self.assertIn(automation_id, page)
+        self.assertIn("if (editor.AstralReputationVisible)", page)
+        self.assertIn("if (editor.WildReputationVisible)", page)
+        self.assertIn("Enumerable.Range(0, 101)", page)
+        self.assertNotIn("XDocument", page + coordinator)
+
+    def test_career_reputation_has_digest_bound_api36_restart_proof_lane(self) -> None:
+        driver = (REPO / "tests" / "run_api36_career_reputation_e2e.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('"career-reputation"', driver)
+        for control in (
+            "nudStreetCred",
+            "nudNotoriety",
+            "nudPublicAware",
+            "nudAstralReputation",
+            "nudWildReputation",
+        ):
+            self.assertIn(f'"{control}"', driver)
+        self.assertIn('"coreOnlySourceVisibilityEnforced": "pass"', driver)
+        self.assertIn('"allCareerReputationEdited": "pass"', driver)
+        self.assertIn('"careerWorkspaceXmlPersisted": "pass"', driver)
+        self.assertIn('"careerUiReopenReadback": "pass"', driver)
+        self.assertIn('"careerProcessRestartUiReadback": "pass"', driver)
+        self.assertIn('"controls": controls', driver)
+        self.assertIn('api != "36"', driver)
+        self.assertIn('"apkSha256": shared.sha256(args.apk.resolve())', driver)
+        self.assertIn('"driverSha256": shared.sha256(driver)', driver)
+        self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', driver)
+
     def test_nested_collection_notes_have_digest_bound_api36_restart_proof_lane(self) -> None:
         driver = (
             REPO / "tests" / "run_api36_nested_collection_notes_e2e.py"

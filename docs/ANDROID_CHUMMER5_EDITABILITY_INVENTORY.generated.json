@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 312,
+      "implemented_pending_emulator": 317,
       "implemented_verified_api36": 78,
-      "missing": 1126,
+      "missing": 1121,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
@@ -77,7 +77,12 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "3fe94c62f261bb947f614236b14815ab79c16a835278e5fa0e796f87d3f09a78"
+        "sha256": "49b343342e995ea0b8398f91d119d96c19c9e3d6ef66283f2fa76107d7d8e679"
+      },
+      {
+        "path": "src/Chummer.Android/Native/CareerReputationPage.cs",
+        "exists": true,
+        "sha256": "7b86253464f2d77687a8c3a59c666104c1def479a5cd60d3a82fa6dfaf516ac7"
       },
       {
         "path": "src/Chummer.Android/Native/CharacterNotesPage.cs",
@@ -112,7 +117,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "f45b2edb029f82f6ba96bb25f683f34e59db543ffc60a95de46c049428aff88b"
+        "sha256": "4c23502f967497fe1e6d178528dc2707bfd9ea3252b4f563f036b8b387c4f8b6"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -133,6 +138,11 @@
         "path": "tests/run_api36_character_notes_e2e.py",
         "exists": true,
         "sha256": "0777732f792516a1230e2237ef96a51d6ba1571f0def6ee60422f9ed9c5ac2b4"
+      },
+      {
+        "path": "tests/run_api36_career_reputation_e2e.py",
+        "exists": true,
+        "sha256": "ddf8913c8a6374040a915018df344f1ca8b49f4dbe6c9091ed87495891129f89"
       },
       {
         "path": "tests/run_api36_nested_collection_notes_e2e.py",
@@ -188,6 +198,16 @@
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
         "exists": true,
         "sha256": "aebca5d1b09a338a798afb45805fe0679c174c2f4f1687e53624990ce095ae25"
+      },
+      {
+        "path": "tests/fixtures/career-reputation-core-only-e2e.chum5",
+        "exists": true,
+        "sha256": "f67457d2240c883bd1b8dba8df7dcbe976d5581b360caf806035027a3226a1f9"
+      },
+      {
+        "path": "tests/fixtures/career-reputation-full-e2e.chum5",
+        "exists": true,
+        "sha256": "f912f84ead9523b001bde9277bea61d9af3bdb069906a104fd0149ea926609b2"
       },
       {
         "path": "tests/fixtures/creation-nested-notes-e2e.chum5",
@@ -275,6 +295,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-career-reputation/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-nested-collection-notes/receipt.json",
         "exists": false,
         "sha256": null
@@ -297,12 +322,17 @@
       {
         "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "9f121539c0c1bf3d7041a4c31d65b3d221876b1edc068390ae9f9ff54edfa759"
+        "sha256": "873e22287a923c65b776429d98f65462428d4880a1bc66e5fe10bf0ab8462d90"
       },
       {
         "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
         "exists": true,
         "sha256": "35fe5e3f251c43484efde07535b4c168d14ca9e37be71e101c121c363aaf82f8"
+      },
+      {
+        "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+        "exists": true,
+        "sha256": "83d042e7589e1125896e5b4007b3c95f177de537d98d9a79c0c7a36f2acba232"
       },
       {
         "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Infrastructure/Xml/CharacterFileService.cs",
@@ -312,7 +342,12 @@
       {
         "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "65a507684d4d3b6c39cc75bf79b80bdd311e7ef6f6fe55cff006ca2557629f28"
+        "sha256": "a8b6fb73fc58ba4d078c13ae2919916f19af61c3e3b48231d294569e5b6705d8"
+      },
+      {
+        "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+        "exists": true,
+        "sha256": "ebcdaae59693ec796038cc6f74fbd49eae1a40bec76aeb56ac2dbbf00b0b6341"
       },
       {
         "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -325,79 +360,84 @@
         "sha256": "fe8ff0a9746b3029ddf232d681000229dfc69790f2f5d3b0960fd9275324a110"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "e36097fadc11bf83e76f6c7a74a80859970a308ff9b67948e0f593520d557829"
+        "sha256": "b2223e9cb7d6aabfbbd963223aef1248cf5a21ec70e8246f0cba7a04d104a14e"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
+        "exists": true,
+        "sha256": "5b92472b62172705ea98700faf31d0029ce93bd2d43fea08f5877b6d848fc89f"
+      },
+      {
+        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
         "exists": true,
         "sha256": "5a37923234bfef0fdfa5a30118adfdcd66fd78cfd2d00f2c4830049db4edb13e"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
         "exists": true,
         "sha256": "aeb6d8082f6660647d992968253ea798aee8ab69b32170e6f058d9074860b10a"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
         "exists": true,
         "sha256": "8e4b80c97d8457e4a522ba15e7f310cbb10761aac2dc50e616b72ff344994c33"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
         "exists": true,
         "sha256": "45b0507a4b1b30a8a77bd59c72040ce2e262960667d724f274260b12f35b8e1b"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
         "exists": true,
         "sha256": "c95cdae34903ee982dcc8ed766fb2699d74205e4e1bfeb7a1d5cd72184e661d6"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
+        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
         "exists": true,
         "sha256": "758669c780238031334020ad7af44b5b17612a697cbeff172662788995967ba5"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
+        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
         "exists": true,
         "sha256": "bb87b7b58664e2ceb7c0d58c95fd694bcbdb8f043e3765be9ec0c5471c2f8a50"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
+        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
         "exists": true,
         "sha256": "220d165ea994832a58e437a32f16bd1dcc0b230759d87b86c4f13851d3745f04"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
         "sha256": "05ee0331331a5f7a14b8ac7499d363720865e482212d755f13166664380b226e"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
         "sha256": "6ae514666fcfb25b99f9cbf27bc2e4cc9888e7881beb0a0bd1ea1a13b05e68f5"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
         "exists": true,
         "sha256": "98a4b10cec3e0925b288c2bd1d70c4d48ed08b22665734b7550e35eead4e1517"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "b8fc1affd727e832d15e16ad8d861e6f211b00cdf6e414a4348ab30a5d34144e"
+        "sha256": "fc7d35f11fe6191beaa0c3d5897fb2695eb9caa5116153118057fabe77e609e3"
       },
       {
-        "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
+        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
         "exists": true,
         "sha256": "a5575ff98735e9685cdb7c97fad634fda18716c922c977c30592ee548311554f"
       }
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "769c632ccb1eb4a717bc63ab345370afe2d67bd3cec1de3b65ed7afd65f7f56e"
+      "sha256": "670cc6ca1db2605840b6fd089d62b31e2ee95c3bfa3142c97449e3078b39ef23"
     }
   },
   "coverageByFamily": {
@@ -593,7 +633,7 @@
     "karma_nuyen_and_reputation": {
       "rowCount": 18,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 17,
+      "phoneMissingCount": 12,
       "tabletMissingCount": 17,
       "completionProvenCount": 1
     },
@@ -24033,11 +24073,22 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Reputation",
+        "surface": "CareerReputationPage",
+        "automationId": "career-reputation-public-awareness",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerReputationPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -24045,12 +24096,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerReputationEditAsync(CareerReputationEditRequest)",
+      "persistenceAssertion": "career character/publicawareness equals the submitted 0..100 value after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_reputation_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -24085,11 +24136,22 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Reputation",
+        "surface": "CareerReputationPage",
+        "automationId": "career-reputation-notoriety",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerReputationPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -24097,12 +24159,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerReputationEditAsync(CareerReputationEditRequest)",
+      "persistenceAssertion": "career character/notoriety equals the submitted 0..100 value after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_reputation_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -24137,11 +24199,22 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Reputation",
+        "surface": "CareerReputationPage",
+        "automationId": "career-reputation-street-cred",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerReputationPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -24149,12 +24222,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerReputationEditAsync(CareerReputationEditRequest)",
+      "persistenceAssertion": "career character/streetcred equals the submitted 0..100 value after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_reputation_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -34709,11 +34782,22 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Reputation",
+        "surface": "CareerReputationPage",
+        "automationId": "career-reputation-astral",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerReputationPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -34721,12 +34805,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerReputationEditAsync(CareerReputationEditRequest)",
+      "persistenceAssertion": "career character/baseastralreputation equals the submitted 0..100 value after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_reputation_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -34761,11 +34845,22 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Reputation",
+        "surface": "CareerReputationPage",
+        "automationId": "career-reputation-wild",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerReputationPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -34773,12 +34868,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerReputationEditAsync(CareerReputationEditRequest)",
+      "persistenceAssertion": "career character/basewildreputation equals the submitted 0..100 value after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_reputation_e2e.py"
         },
         "tablet": {
           "status": "missing",

@@ -289,6 +289,26 @@ CHARACTER_NOTES_CONTROL_E2E_PROOF_KEYS = (
     "workspacePersisted",
     "processRestartUiReadback",
 )
+CAREER_REPUTATION_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-career-reputation"
+    / "receipt.json"
+)
+CAREER_REPUTATION_E2E_JOURNEYS = (
+    "coreOnlySourceVisibilityEnforced",
+    "fullSourceProfileImported",
+    "allCareerReputationEdited",
+    "careerWorkspaceXmlPersisted",
+    "careerUiReopenReadback",
+    "careerProcessRestartUiReadback",
+)
+CAREER_REPUTATION_CONTROL_E2E_PROOF_KEYS = (
+    "mutated",
+    "workspacePersisted",
+    "processRestartUiReadback",
+)
 NESTED_COLLECTION_NOTES_PHONE_E2E_RECEIPT = (
     REPO_ROOT
     / "docs"
@@ -493,6 +513,13 @@ ATTRIBUTE_FIELDS = {
     "nudKarma": ("karma", "attribute-karma-{attribute}"),
     "cmdImproveATT": ("improve", "attribute-improve-{attribute}"),
     "cmdBurnEdge": ("burn", "attribute-burn-edge"),
+}
+CAREER_REPUTATION_CONTROLS = {
+    "nudStreetCred": ("streetcred", "career-reputation-street-cred", "StreetCred"),
+    "nudNotoriety": ("notoriety", "career-reputation-notoriety", "Notoriety"),
+    "nudPublicAware": ("publicawareness", "career-reputation-public-awareness", "PublicAwareness"),
+    "nudAstralReputation": ("baseastralreputation", "career-reputation-astral", "AstralReputation"),
+    "nudWildReputation": ("basewildreputation", "career-reputation-wild", "WildReputation"),
 }
 CONTACT_TEXT_FIELDS = {
     "txtContactName": ("Name", "name", "name"),
@@ -1018,6 +1045,77 @@ def _validated_character_notes_phone_e2e_receipt(
         "status": "executed_api36",
         "ref": CHARACTER_NOTES_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(CHARACTER_NOTES_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_career_reputation_phone_e2e_receipt(
+    presentation_root: Path,
+    core_root: Path,
+) -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_career_reputation_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    core_fixture = REPO_ROOT / "tests" / "fixtures" / "career-reputation-core-only-e2e.chum5"
+    full_fixture = REPO_ROOT / "tests" / "fixtures" / "career-reputation-full-e2e.chum5"
+    source_digests = {
+        "reputationPageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerReputationPage.cs",
+        "buildPageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs",
+        "coordinatorSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+        "reputationContractSha256": presentation_root / "Chummer.Presentation" / "Overview" / "CareerReputationEditRequest.cs",
+        "mutationCatalogSha256": presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs",
+        "presenterMutationSha256": presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "progressContractSha256": core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+        "sectionServiceSha256": core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+        "sourceContractSha256": core_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs",
+        "sourceResolverSha256": core_root / "Chummer.Infrastructure" / "Xml" / "FileSystemCharacterSourceDataResolver.cs",
+    }
+    if not all(
+        path.is_file()
+        for path in (driver, shared_driver, core_fixture, full_fixture, *source_digests.values())
+    ):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(CAREER_REPUTATION_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    controls = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_controls = {
+        f"CharacterCareer.{control}" for control in CAREER_REPUTATION_CONTROLS
+    }
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "career-reputation"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("coreFixtureSha256") == _sha256_file(core_fixture)
+        and receipt.get("fullFixtureSha256") == _sha256_file(full_fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(journeys, dict)
+        and all(journeys.get(journey) == "pass" for journey in CAREER_REPUTATION_E2E_JOURNEYS)
+        and isinstance(controls, dict)
+        and set(controls) == expected_controls
+        and receipt.get("controlCount") == len(expected_controls)
+        and all(
+            isinstance(controls.get(control), dict)
+            and all(
+                controls[control].get(proof_key) == "pass"
+                for proof_key in CAREER_REPUTATION_CONTROL_E2E_PROOF_KEYS
+            )
+            for control in expected_controls
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": CAREER_REPUTATION_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(CAREER_REPUTATION_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
 
@@ -2198,6 +2296,7 @@ def _known_phone_mapping(
     new_character_karma_phone_e2e_receipt: dict[str, Any] | None,
     new_character_priority_phone_e2e_receipt: dict[str, Any] | None,
     character_notes_phone_e2e_receipt: dict[str, Any] | None,
+    career_reputation_phone_e2e_receipt: dict[str, Any] | None,
     nested_collection_notes_phone_e2e_receipt: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     legacy = row["legacy"]
@@ -4193,6 +4292,119 @@ def _known_phone_mapping(
                 "ref": "tests/run_api36_character_notes_e2e.py" if e2e_scripted else None,
             },
         }
+    if class_name == "CharacterCareer" and control in CAREER_REPUTATION_CONTROLS:
+        xml_element, automation_id, property_name = CAREER_REPUTATION_CONTROLS[control]
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerReputationPage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_career_reputation_e2e.py"
+        presentation_overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = presentation_overview / "CareerReputationEditRequest.cs"
+        mutation = presentation_overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = presentation_overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        core_contract = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        core_section = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        source_contract = character_notes_core_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs"
+        source_resolver = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "FileSystemCharacterSourceDataResolver.cs"
+        core_property_marker = (
+            f"public int {property_name}"
+            if control in {"nudAstralReputation", "nudWildReputation"}
+            else f"int {property_name},"
+        )
+        request_property_marker = (
+            f"int? {property_name}"
+            if control in {"nudAstralReputation", "nudWildReputation"}
+            else f"int {property_name}"
+        )
+        source_book_rule = (
+            True
+            if control not in {"nudAstralReputation", "nudWildReputation"}
+            else _contains(
+                request,
+                'IsBookEnabled(sourceData, "FA")',
+                'IsBookEnabled(sourceData, "SG")' if control == "nudAstralReputation" else 'WildReputationVisible: forbiddenArcana',
+            )
+            and _contains(source_contract, "TryIsBookEnabled")
+            and _contains(source_resolver, 'Element("books")', "_enabledSourcebooks")
+        )
+        implemented = (
+            _contains(page, f'"{automation_id}"', '"career-reputation-save"', "CareerReputationEditRequest")
+            and _contains(build_page, '"build-career-reputation"', "new CareerReputationPage")
+            and _contains(
+                coordinator,
+                "PrepareCareerReputationEditAsync",
+                "ApplyCareerReputationEditAsync",
+                "ExpectedContentRevision",
+                "SaveAsync",
+            )
+            and _contains(
+                request,
+                "CareerReputationEditorState",
+                "CareerReputationEditRequest",
+                "ExpectedContentRevision",
+                request_property_marker,
+            )
+            and _contains(
+                mutation,
+                "ApplyCareerReputationEdit",
+                'ParseBool(root.Element("created")?.Value)',
+                "MaximumCareerReputation = 100",
+                f'SetElementValue(root, "{xml_element}"',
+            )
+            and _contains(
+                presenter,
+                "PrepareCareerReputationEditAsync",
+                "ApplyCareerReputationEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(core_contract, core_property_marker)
+            and _contains(core_section, f'ReadValue(character, "{xml_element}")')
+            and source_book_rule
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"journey": "career-reputation"',
+            '"coreOnlySourceVisibilityEnforced": "pass"',
+            '"allCareerReputationEdited": "pass"',
+            '"careerWorkspaceXmlPersisted": "pass"',
+            '"careerUiReopenReadback": "pass"',
+            '"careerProcessRestartUiReadback": "pass"',
+            '"controls": controls',
+        )
+        phone_e2e = career_reputation_phone_e2e_receipt if implemented and e2e_scripted else None
+        return {
+            "status": "implemented_verified_api36" if phone_e2e else "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Reputation",
+            "surface": "CareerReputationPage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CareerReputationPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+                "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+            ],
+            "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerReputationEditAsync(CareerReputationEditRequest)",
+            "persistenceAssertion": (
+                f"career character/{xml_element} equals the submitted 0..100 value after save, reopen, and process restart"
+            ),
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": e2e_driver.relative_to(REPO_ROOT).as_posix() if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name in {"CharacterCreate", "CharacterCareer"} and control in ORIGIN_FIELDS:
         xml_element, automation_id = ORIGIN_FIELDS[control]
         field_id = automation_id.removeprefix("origin-")
@@ -4608,6 +4820,10 @@ def enrich_rows(
         presentation_root,
         core_engine_root,
     )
+    career_reputation_phone_e2e_receipt = _validated_career_reputation_phone_e2e_receipt(
+        presentation_root,
+        core_engine_root,
+    )
     nested_collection_notes_phone_e2e_receipt = _validated_nested_collection_notes_phone_e2e_receipt(
         presentation_root,
         core_engine_root,
@@ -4657,6 +4873,7 @@ def enrich_rows(
             new_character_karma_phone_e2e_receipt,
             new_character_priority_phone_e2e_receipt,
             character_notes_phone_e2e_receipt,
+            career_reputation_phone_e2e_receipt,
             nested_collection_notes_phone_e2e_receipt,
         )
         if known is not None:
@@ -4744,6 +4961,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "AttributeEditPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildFlowPages.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerReputationPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CharacterNotesPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ConditionMonitorEditPage.cs",
@@ -4755,6 +4973,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs",
         REPO_ROOT / "tests" / "run_api36_editing_e2e.py",
         REPO_ROOT / "tests" / "run_api36_character_notes_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_career_reputation_e2e.py",
         REPO_ROOT / "tests" / "run_api36_nested_collection_notes_e2e.py",
         REPO_ROOT / "tests" / "run_api36_attribute_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_attribute_e2e.py",
@@ -4766,6 +4985,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_new_character_karma_e2e.py",
         REPO_ROOT / "tests" / "run_api36_new_character_priority_e2e.py",
         REPO_ROOT / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-reputation-core-only-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-reputation-full-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-nested-notes-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-nested-notes-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-contact-pet-e2e.chum5",
@@ -4781,17 +5002,21 @@ def build_inventory(
         CHARACTER_SETTINGS_ACTIONS_PHONE_E2E_RECEIPT,
         ORIGIN_DOSSIER_PHONE_E2E_RECEIPT,
         CHARACTER_NOTES_PHONE_E2E_RECEIPT,
+        CAREER_REPUTATION_PHONE_E2E_RECEIPT,
         NESTED_COLLECTION_NOTES_PHONE_E2E_RECEIPT,
         LINKED_RUNNER_PHONE_E2E_RECEIPT,
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterContactEditSemantics.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterPetEditSemantics.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
         core_engine_root / "Chummer.Contracts" / "Workspaces" / "CharacterWorkspaceModels.cs",
+        core_engine_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterFileService.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+        core_engine_root / "Chummer.Infrastructure" / "Xml" / "FileSystemCharacterSourceDataResolver.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",
         core_engine_root / "Chummer.Rulesets.Hosting" / "Presentation" / "WorkspaceSurfaceActionCatalog.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CareerReputationEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.Persistence.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditorState.cs",

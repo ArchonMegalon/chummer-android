@@ -147,6 +147,29 @@ namespace Chummer.Sample
                 {"scripted_not_executed", "executed_api36"},
             )
             self.assertTrue(row["e2e"]["phone"]["ref"])
+
+        career_reputation = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] in inventory.CAREER_REPUTATION_CONTROLS
+        ]
+        self.assertEqual(5, len(career_reputation))
+        for row in career_reputation:
+            xml_element, automation_id, _property = inventory.CAREER_REPUTATION_CONTROLS[
+                row["legacy"]["controlName"]
+            ]
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("Build > Reputation", row["phone"]["route"])
+            self.assertEqual("CareerReputationPage", row["phone"]["surface"])
+            self.assertEqual(automation_id, row["phone"]["automationId"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_career_reputation_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertIn(xml_element, row["persistenceAssertion"])
+            self.assertFalse(row["completionProven"])
         for row in rows:
             self.assertTrue(set(payload["requiredRowFields"]).issubset(row))
             self.assertTrue(row["legacyReviewComplete"])
@@ -642,9 +665,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 312,
+                "implemented_pending_emulator": 317,
                 "implemented_verified_api36": 78,
-                "missing": 1126,
+                "missing": 1121,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 146,

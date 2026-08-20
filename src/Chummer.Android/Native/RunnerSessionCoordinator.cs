@@ -457,6 +457,32 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<CareerReputationEditorState?> PrepareCareerReputationEditAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCareerReputationEditAsync(cancellationToken);
+
+    public async Task ApplyCareerReputationEditAsync(
+        CareerReputationEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while reputation was open. Reopen Reputation before saving.");
+        }
+
+        await _presenter.ApplyCareerReputationEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Reputation saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public async Task ExecuteDialogActionAsync(string actionId, CancellationToken cancellationToken = default)
     {
         long contentRevision = State.ContentRevision;

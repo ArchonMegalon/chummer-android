@@ -75,6 +75,21 @@ public sealed class BuildPage : NativePageBase
             "Private notes stored in this runner",
             () => Navigation.PushAsync(new CharacterNotesPage(Coordinator)),
             automationId: "build-character-notes"));
+        if (Coordinator.State.Profile?.Created == true)
+        {
+            _body.Add(NativeTheme.NavigationRow(
+                "Reputation",
+                "Street Cred, notoriety and source-aware reputation",
+                async () =>
+                {
+                    CareerReputationEditorState? editor = await Coordinator.PrepareCareerReputationEditAsync();
+                    if (editor is not null)
+                    {
+                        await Navigation.PushAsync(new CareerReputationPage(Coordinator, editor));
+                    }
+                },
+                automationId: "build-career-reputation"));
+        }
     }
 
     private void AddWorkspacePicker()
