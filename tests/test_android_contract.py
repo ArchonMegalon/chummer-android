@@ -339,6 +339,27 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('save.AutomationId = $"origin-dossier-', dossier)
         self.assertNotIn("WebView", attributes + dossier)
 
+    def test_character_notes_have_revision_bound_phone_save_path(self) -> None:
+        build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
+        notes = (PROJECT / "Native" / "CharacterNotesPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+
+        self.assertIn('automationId: "build-character-notes"', build)
+        self.assertIn('"character-notes-editor"', notes)
+        self.assertIn('save.AutomationId = "character-notes-save"', notes)
+        self.assertIn("CharacterNotesEditRequest", notes + coordinator)
+        self.assertIn("ExpectedContentRevision", coordinator)
+        self.assertIn("State.WorkspaceId != request.WorkspaceId", coordinator)
+        self.assertIn("State.ContentRevision != request.ExpectedContentRevision", coordinator)
+        self.assertIn("_presenter.UpdateMetadataAsync", coordinator)
+        self.assertIn("new UpdateWorkspaceMetadata(profile.Name, profile.Alias, request.Notes)", coordinator)
+        self.assertIn("await _presenter.SaveAsync", coordinator)
+        self.assertIn("coordinator.CharacterNotes", notes)
+        self.assertIn("_characterNotes = request.Notes", coordinator)
+        self.assertIn("await Navigation.PopAsync", notes)
+        self.assertNotIn("XDocument", notes + coordinator)
+        self.assertNotIn("<notes>", notes + coordinator)
+
     def test_collection_items_have_typed_stable_id_phone_editing_paths(self) -> None:
         flow = (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8")
         editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")

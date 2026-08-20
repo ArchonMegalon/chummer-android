@@ -70,6 +70,11 @@ public sealed class BuildPage : NativePageBase
             "Identity, appearance and story",
             () => Navigation.PushAsync(new OriginDossierPage(Coordinator)),
             automationId: "build-origin-dossier"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Notes",
+            "Private notes stored in this runner",
+            () => Navigation.PushAsync(new CharacterNotesPage(Coordinator)),
+            automationId: "build-character-notes"));
     }
 
     private void AddWorkspacePicker()

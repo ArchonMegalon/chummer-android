@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Chummer.Android.Platform;
+using Chummer.Contracts.Characters;
 using Chummer.Contracts.Presentation;
 using Chummer.Contracts.Workspaces;
 using Chummer.Presentation.Overview;
@@ -23,6 +24,11 @@ public sealed record NativePlaySnapshot(
 public sealed record NativeAccountErasureResult(
     AndroidAccountErasureReceipt Receipt,
     bool LocalRunnersRemoved);
+
+public sealed record CharacterNotesEditRequest(
+    CharacterWorkspaceId WorkspaceId,
+    long ExpectedContentRevision,
+    string Notes);
 
 public sealed class RunnerSessionCoordinator : IDisposable
 {
@@ -52,6 +58,9 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private IReadOnlyList<AndroidChronicleProject> _chronicles = [];
     private NativePlaySnapshot _play = NativePlaySnapshot.Empty;
     private ShellSurfaceState _surface = ShellSurfaceState.Empty;
+    private CharacterWorkspaceId? _characterNotesWorkspaceId;
+    private long _characterNotesRevision;
+    private string _characterNotes = string.Empty;
 
     public RunnerSessionCoordinator(
         ICharacterOverviewPresenter presenter,
@@ -101,6 +110,12 @@ public sealed class RunnerSessionCoordinator : IDisposable
     }
 
     public NativePlaySnapshot Play => _play;
+
+    public string CharacterNotes
+        => State.WorkspaceId == _characterNotesWorkspaceId
+            && State.ContentRevision == _characterNotesRevision
+                ? _characterNotes
+                : State.Preferences.CharacterNotes;
 
     public string? Notice => _notice ?? State.Notice ?? Surface.Notice;
 
@@ -261,6 +276,40 @@ public sealed class RunnerSessionCoordinator : IDisposable
     {
         await _presenter.ApplyOriginDossierEditAsync(request, cancellationToken);
         _notice = State.Error is null ? "Dossier updated." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
+    public async Task ApplyCharacterNotesEditAsync(
+        CharacterNotesEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while its notes were open. Reopen Notes before saving.");
+        }
+
+        CharacterProfileSection profile = State.Profile
+            ?? throw new InvalidOperationException("Open a runner before editing Notes.");
+        await _presenter.UpdateMetadataAsync(
+            new UpdateWorkspaceMetadata(profile.Name, profile.Alias, request.Notes),
+            cancellationToken);
+        if (State.Error is not null)
+        {
+            return;
+        }
+
+        await _presenter.SaveAsync(cancellationToken);
+        if (State.Error is null)
+        {
+            _characterNotesWorkspaceId = State.WorkspaceId;
+            _characterNotesRevision = State.ContentRevision;
+            _characterNotes = request.Notes;
+        }
+        _notice = State.Error is null ? "Notes saved." : null;
         await SyncShellAsync(cancellationToken);
         NotifyChanged();
     }

@@ -117,6 +117,21 @@ namespace Chummer.Sample
             payload["summary"]["completionProvenCount"],
         )
         self.assertEqual(len(rows), len({row["id"] for row in rows}))
+
+        character_notes = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == "rtfNotes"
+        ]
+        self.assertEqual(2, len(character_notes))
+        self.assertTrue(all(
+            row["phone"]["status"] == "implemented_pending_emulator"
+            and row["phone"]["route"] == "Build > Notes"
+            and row["phone"]["automationId"] == "character-notes-editor"
+            and row["tablet"]["status"] == "missing"
+            and row["e2e"]["phone"]["status"] == "missing"
+            for row in character_notes
+        ))
         for row in rows:
             self.assertTrue(set(payload["requiredRowFields"]).issubset(row))
             self.assertTrue(row["legacyReviewComplete"])
@@ -529,9 +544,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 295,
+                "implemented_pending_emulator": 297,
                 "implemented_verified_api36": 78,
-                "missing": 1143,
+                "missing": 1141,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 146,

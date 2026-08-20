@@ -1627,6 +1627,8 @@ def _family(path: str, class_name: str, control: str, handlers: list[dict[str, s
     if path.startswith("ChummerDataViewer/"):
         return "data_tools"
     class_key = class_name.lower()
+    if class_name in {"CharacterCreate", "CharacterCareer"} and control == "rtfNotes":
+        return "notes"
     if class_name in {"CharacterCreate", "CharacterCareer"} and control in ORIGIN_FIELDS:
         return "origin_dossier"
     if class_name == "AttributeControl" and control in ATTRIBUTE_FIELDS:
@@ -2253,7 +2255,7 @@ def _known_phone_mapping(
             and _contains(
                 dialog_factory,
                 'NewCharacterKarmaWorkflowDialogId = "dialog.new_character.karma_workflow"',
-                'NewCharacterKarmaMetatypeSearchFieldId = "newCharacterMetatypeSearch"',
+                'NewCharacterMetatypeSearchFieldId = "newCharacterMetatypeSearch"',
                 '"newCharacterMetatypeCategory"',
                 '"newCharacterMetatype"',
                 "NewCharacterMetavariantFieldId",
@@ -2262,7 +2264,7 @@ def _known_phone_mapping(
                 "NewCharacterPossessionMethodFieldId",
                 '"complete_new_character_workflow"',
                 "BuildNewCharacterKarmaWorkflowDialog",
-                "FilterKarmaMetatypeOptions",
+                "ResolveKarmaWorkflowResolution",
                 "RebuildNewCharacterKarmaWorkflowDialog",
             )
             and _contains(
@@ -2275,7 +2277,7 @@ def _known_phone_mapping(
                 '"possessionmethod"',
                 '"critterpowers"',
                 "TryValidateNewCharacterSpiritSelection",
-                "ApplySpiritSelection",
+                "ApplyPrioritySpiritSelection",
                 "CompleteNewCharacterWorkflowAsync",
             )
         )
@@ -2546,7 +2548,7 @@ def _known_phone_mapping(
             and _contains(
                 projector,
                 "WorkspaceCollectionKind.Spirit",
-                "ProjectLinkedCharacter(schema.Kind, item)",
+                "ProjectLinkedCharacter(item)",
             )
             and _contains(core_models, "CharacterLinkedAssociationSummary? LinkedCharacter")
             and _contains(
@@ -3635,6 +3637,39 @@ def _known_phone_mapping(
             },
             "completionProven": contact_pet_e2e_complete,
         }
+    if class_name in {"CharacterCreate", "CharacterCareer"} and control == "rtfNotes":
+        phone_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CharacterNotesPage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.Persistence.cs"
+        implemented = (
+            _contains(phone_page, '"character-notes-editor"', '"character-notes-save"', "CharacterNotesEditRequest")
+            and _contains(build_page, '"build-character-notes"', "new CharacterNotesPage")
+            and _contains(
+                coordinator,
+                "ApplyCharacterNotesEditAsync",
+                "ExpectedContentRevision",
+                "UpdateMetadataAsync",
+                "UpdateWorkspaceMetadata",
+                "SaveAsync",
+            )
+            and _contains(presenter, "UpdateMetadataAsync", "expectedContentRevision")
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Notes",
+            "surface": "CharacterNotesPage",
+            "automationId": "character-notes-editor",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CharacterNotesPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+            ],
+            "presenterMutation": "ICharacterOverviewPresenter.UpdateMetadataAsync(UpdateWorkspaceMetadata)",
+            "persistenceAssertion": "character/notes equals the submitted value after save, reopen, and process restart",
+            "e2e": {"status": "missing", "ref": None},
+        }
     if class_name in {"CharacterCreate", "CharacterCareer"} and control in ORIGIN_FIELDS:
         xml_element, automation_id = ORIGIN_FIELDS[control]
         field_id = automation_id.removeprefix("origin-")
@@ -4174,6 +4209,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "AttributeEditPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildFlowPages.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CharacterNotesPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ConditionMonitorEditPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "OriginDossierPage.cs",

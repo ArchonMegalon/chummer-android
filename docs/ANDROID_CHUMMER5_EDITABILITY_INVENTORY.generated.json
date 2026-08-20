@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 295,
+      "implemented_pending_emulator": 297,
       "implemented_verified_api36": 78,
-      "missing": 1143,
+      "missing": 1141,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
@@ -77,7 +77,12 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "7a6b42e367ca0e07429ee300ec6fecd5864060a7be2899c1075171d1dff30677"
+        "sha256": "3fe94c62f261bb947f614236b14815ab79c16a835278e5fa0e796f87d3f09a78"
+      },
+      {
+        "path": "src/Chummer.Android/Native/CharacterNotesPage.cs",
+        "exists": true,
+        "sha256": "ee28c4208eb35d06ab8a79276b116af0023e936575933016bbae41b6236d77d1"
       },
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
@@ -107,7 +112,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "49e52ec4ccc7a07149ad44a9e1272d61a774f155a36b23b3a322c566de8bd0ff"
+        "sha256": "986d58fdb87c6a8203d56317608da4376dc06743e7e407e83a33a4a10e92eed9"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -250,99 +255,99 @@
         "sha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65"
       },
       {
-        "path": ".integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
         "exists": true,
         "sha256": "20531172c8984c8d572b17c95fe1d92caf0076509bc382ff6bd0179e686aebf3"
       },
       {
-        "path": ".integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
         "exists": true,
         "sha256": "c2fc2d67a03f3ebcbd0117ea66ab1f853d13d2539de36109462db6c57891b479"
       },
       {
-        "path": ".integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "e70c7c152a4a5b09fd9f9493db28e62a0107a1c6405b873af4a9d5a895210bae"
+        "sha256": "fef7c2ed02ae61ddf3573483b14c9e7c8473eaa05afc32fee95c233c68b9c39b"
       },
       {
-        "path": ".integration-worktrees/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+        "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "52783ea5fc1af6286a6397af0c2635691347d609561670a6aeb0534c32caa6d5"
+        "sha256": "95fcf8ccd467a17982a4e0dd3ddcf1fba7b38a885c855bc18ac6c7bcf7fa65a7"
       },
       {
-        "path": ".integration-worktrees/chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
+        "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
         "exists": true,
         "sha256": "1836a660b1c243e53756e9a35e1025663f9332100e3aca68394045f3480cc77c"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "6370f3432d1fe3df6623fbabf90d1257f4608777f2c92208f978085b77ad46e4"
+        "sha256": "e36097fadc11bf83e76f6c7a74a80859970a308ff9b67948e0f593520d557829"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+        "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
         "exists": true,
         "sha256": "aeb6d8082f6660647d992968253ea798aee8ab69b32170e6f058d9074860b10a"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+        "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
         "exists": true,
         "sha256": "8e4b80c97d8457e4a522ba15e7f310cbb10761aac2dc50e616b72ff344994c33"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/DialogCoordinator.cs",
+        "path": "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
         "exists": true,
-        "sha256": "27d967bf701f1cdfafc7eac314f0ef4d52d26e6631faec47abee4507ce179a38"
+        "sha256": "45b0507a4b1b30a8a77bd59c72040ce2e262960667d724f274260b12f35b8e1b"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+        "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
         "exists": true,
-        "sha256": "f7716c2f6370b92763600e08a4a762fb5cd747bbbd37d30a2b0c8b7842e6ede3"
+        "sha256": "c95cdae34903ee982dcc8ed766fb2699d74205e4e1bfeb7a1d5cd72184e661d6"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
+        "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
         "exists": true,
         "sha256": "758669c780238031334020ad7af44b5b17612a697cbeff172662788995967ba5"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
+        "path": "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
         "exists": true,
-        "sha256": "989158b6876e6ac1bbf70813bbe5e4a7f4d7055c8cd0cefa65531cae911eb575"
+        "sha256": "bb87b7b58664e2ceb7c0d58c95fd694bcbdb8f043e3765be9ec0c5471c2f8a50"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
+        "path": "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
         "exists": true,
-        "sha256": "9a418082fa297c94d6af83096717cfcd34fe507e649cf00b562a1373cbf8fc96"
+        "sha256": "220d165ea994832a58e437a32f16bd1dcc0b230759d87b86c4f13851d3745f04"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "f2f6f546cfdcef8208876838aeda00ce707c1409ddc7391736bce9e4d95286b1"
+        "sha256": "05ee0331331a5f7a14b8ac7499d363720865e482212d755f13166664380b226e"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "bcb0eb3964ebe03322101344715c37214f31a817fc33edac224ca46ce21eb3ed"
+        "sha256": "6ae514666fcfb25b99f9cbf27bc2e4cc9888e7881beb0a0bd1ea1a13b05e68f5"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
         "exists": true,
-        "sha256": "66198f194be80c7092a36c3ae359f05a4a6465829225a2452733e2de382b170f"
+        "sha256": "98a4b10cec3e0925b288c2bd1d70c4d48ed08b22665734b7550e35eead4e1517"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "cf827f887aa4a3244d144766e088a5338e0182e10b298877f5cda785f237dde0"
+        "sha256": "b8fc1affd727e832d15e16ad8d861e6f211b00cdf6e414a4348ab30a5d34144e"
       },
       {
-        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
+        "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
         "exists": true,
-        "sha256": "9753a446b1eddbbe3c45cddf4d19b297896c5052b77ccfb42e593c8d5590a16b"
+        "sha256": "a5575ff98735e9685cdb7c97fad634fda18716c922c977c30592ee548311554f"
       }
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "e463cb639114b64892f0ae8309d6fd760a8144aa27154f5a0467519420a0cbea"
+      "sha256": "12ac2f16d46777a44b61dfbd7c84d36ac7f2d66a1b18f1214e688e45baf3e675"
     }
   },
   "coverageByFamily": {
@@ -615,7 +620,7 @@
     "notes": {
       "rowCount": 26,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 25,
+      "phoneMissingCount": 23,
       "tabletMissingCount": 25,
       "completionProvenCount": 1
     },
@@ -34523,11 +34528,16 @@
       "mutationFamily": "notes",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Notes",
+        "surface": "CharacterNotesPage",
+        "automationId": "character-notes-editor",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CharacterNotesPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -34535,8 +34545,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.UpdateMetadataAsync(UpdateWorkspaceMetadata)",
+      "persistenceAssertion": "character/notes equals the submitted value after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -59508,11 +59518,16 @@
       "mutationFamily": "notes",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Notes",
+        "surface": "CharacterNotesPage",
+        "automationId": "character-notes-editor",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CharacterNotesPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -59520,8 +59535,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.UpdateMetadataAsync(UpdateWorkspaceMetadata)",
+      "persistenceAssertion": "character/notes equals the submitted value after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
