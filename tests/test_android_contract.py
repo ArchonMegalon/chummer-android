@@ -445,6 +445,49 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('"driverSha256": shared.sha256(driver)', driver)
         self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', driver)
 
+    def test_situational_modifiers_have_revision_bound_creation_and_career_save_path(self) -> None:
+        build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
+        page = (PROJECT / "Native" / "SituationalModifiersPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+
+        self.assertIn('automationId: "build-situational-modifiers"', build)
+        self.assertIn("PrepareSituationalModifiersEditAsync", build + coordinator)
+        self.assertIn("ApplySituationalModifiersEditAsync", page + coordinator)
+        self.assertIn("SituationalModifiersEditRequest", page)
+        self.assertIn("ExpectedContentRevision", coordinator)
+        self.assertIn("State.WorkspaceId != request.WorkspaceId", coordinator)
+        self.assertIn("State.ContentRevision != request.ExpectedContentRevision", coordinator)
+        self.assertIn("await _presenter.SaveAsync", coordinator)
+        self.assertIn('"situational-counterspelling-dice"', page)
+        self.assertIn('"situational-lift-carry-hits"', page)
+        self.assertIn('"situational-modifiers-save"', page)
+        self.assertIn("Enumerable.Range(0, 101)", page)
+        self.assertNotIn("XDocument", page + coordinator)
+
+    def test_situational_modifiers_have_digest_bound_api36_restart_proof_lane(self) -> None:
+        driver = (REPO / "tests" / "run_api36_situational_modifiers_e2e.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('"journey": "situational-modifiers"', driver)
+        for form in ("CharacterCreate", "CharacterCareer"):
+            self.assertIn(f'"{form}"', driver)
+        for control in ("nudCounterspellingDice", "nudLiftCarryHits"):
+            self.assertIn(f'"{control}"', driver)
+        self.assertIn('"allCreationSituationalModifiersEdited": "pass"', driver)
+        self.assertIn('"creationWorkspaceXmlPersisted": "pass"', driver)
+        self.assertIn('"creationUiReopenReadback": "pass"', driver)
+        self.assertIn('"creationProcessRestartUiReadback": "pass"', driver)
+        self.assertIn('"allCareerSituationalModifiersEdited": "pass"', driver)
+        self.assertIn('"careerWorkspaceXmlPersisted": "pass"', driver)
+        self.assertIn('"careerUiReopenReadback": "pass"', driver)
+        self.assertIn('"careerProcessRestartUiReadback": "pass"', driver)
+        self.assertIn('"controls": controls', driver)
+        self.assertIn('api != "36"', driver)
+        self.assertIn('"apkSha256": shared.sha256(args.apk.resolve())', driver)
+        self.assertIn('"driverSha256": shared.sha256(driver)', driver)
+        self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', driver)
+
     def test_nested_collection_notes_have_digest_bound_api36_restart_proof_lane(self) -> None:
         driver = (
             REPO / "tests" / "run_api36_nested_collection_notes_e2e.py"

@@ -75,6 +75,18 @@ public sealed class BuildPage : NativePageBase
             "Private notes stored in this runner",
             () => Navigation.PushAsync(new CharacterNotesPage(Coordinator)),
             automationId: "build-character-notes"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Situational modifiers",
+            "Counterspelling dice and active lift/carry hits",
+            async () =>
+            {
+                SituationalModifiersEditorState? editor = await Coordinator.PrepareSituationalModifiersEditAsync();
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new SituationalModifiersPage(Coordinator, editor));
+                }
+            },
+            automationId: "build-situational-modifiers"));
         if (Coordinator.State.Profile?.Created == true)
         {
             _body.Add(NativeTheme.NavigationRow(

@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 317,
+      "implemented_pending_emulator": 321,
       "implemented_verified_api36": 78,
-      "missing": 1121,
+      "missing": 1117,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
@@ -77,12 +77,17 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "49b343342e995ea0b8398f91d119d96c19c9e3d6ef66283f2fa76107d7d8e679"
+        "sha256": "958017c9cb77946dd579ff1466253e45c48def770fe5dd26475f9c37a95ac57b"
       },
       {
         "path": "src/Chummer.Android/Native/CareerReputationPage.cs",
         "exists": true,
         "sha256": "7b86253464f2d77687a8c3a59c666104c1def479a5cd60d3a82fa6dfaf516ac7"
+      },
+      {
+        "path": "src/Chummer.Android/Native/SituationalModifiersPage.cs",
+        "exists": true,
+        "sha256": "569a7d435269edf6da84192365b6f1330da86c0700f62479b853056d307af33d"
       },
       {
         "path": "src/Chummer.Android/Native/CharacterNotesPage.cs",
@@ -117,7 +122,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "4c23502f967497fe1e6d178528dc2707bfd9ea3252b4f563f036b8b387c4f8b6"
+        "sha256": "0e007e5492293d6204e44c34b1cc5fe5eeabb9c4bc1873d34256d2600fd94dee"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -143,6 +148,11 @@
         "path": "tests/run_api36_career_reputation_e2e.py",
         "exists": true,
         "sha256": "ddf8913c8a6374040a915018df344f1ca8b49f4dbe6c9091ed87495891129f89"
+      },
+      {
+        "path": "tests/run_api36_situational_modifiers_e2e.py",
+        "exists": true,
+        "sha256": "ce8cf51ee9f8d6c65923490cf876708d888052a9d84ba62e1ea03a85407711bb"
       },
       {
         "path": "tests/run_api36_nested_collection_notes_e2e.py",
@@ -208,6 +218,16 @@
         "path": "tests/fixtures/career-reputation-full-e2e.chum5",
         "exists": true,
         "sha256": "f912f84ead9523b001bde9277bea61d9af3bdb069906a104fd0149ea926609b2"
+      },
+      {
+        "path": "tests/fixtures/creation-situational-modifiers-e2e.chum5",
+        "exists": true,
+        "sha256": "d56c6b225e7d366ec5a4cc0a739f3ec93ee6d224c5df173cb8750795fb0e57fe"
+      },
+      {
+        "path": "tests/fixtures/career-situational-modifiers-e2e.chum5",
+        "exists": true,
+        "sha256": "1651265d07253ffe333cb5e1e889d01dff89500e6d73e65c0870e32825f75e94"
       },
       {
         "path": "tests/fixtures/creation-nested-notes-e2e.chum5",
@@ -300,6 +320,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-situational-modifiers/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-nested-collection-notes/receipt.json",
         "exists": false,
         "sha256": null
@@ -322,7 +347,7 @@
       {
         "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "873e22287a923c65b776429d98f65462428d4880a1bc66e5fe10bf0ab8462d90"
+        "sha256": "a874718d1e0ffa2bb39164f243a61b6c4b391a5257c85cbddfbd8fe546e65334"
       },
       {
         "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
@@ -342,7 +367,7 @@
       {
         "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "a8b6fb73fc58ba4d078c13ae2919916f19af61c3e3b48231d294569e5b6705d8"
+        "sha256": "61ecef715ed0bd47ca91db012e520639d3e9920fe4cd2b340abf14eede898cbc"
       },
       {
         "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
@@ -362,12 +387,17 @@
       {
         "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "b2223e9cb7d6aabfbbd963223aef1248cf5a21ec70e8246f0cba7a04d104a14e"
+        "sha256": "e8db47f183bf9bbe386ff8b891b11dff511a5674b549ea965cc4377ec30ab62b"
       },
       {
         "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
         "exists": true,
         "sha256": "5b92472b62172705ea98700faf31d0029ce93bd2d43fea08f5877b6d848fc89f"
+      },
+      {
+        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
+        "exists": true,
+        "sha256": "2c6bda77607d71c1d335c298048bcd87f2363fd15440d3db08c9c16252dabc83"
       },
       {
         "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
@@ -427,7 +457,7 @@
       {
         "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "fc7d35f11fe6191beaa0c3d5897fb2695eb9caa5116153118057fabe77e609e3"
+        "sha256": "b56967ef2ed4759a2d74c688c30f1eab58bb48fe7c813e32f3089bba21fe0178"
       },
       {
         "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -437,7 +467,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "670cc6ca1db2605840b6fd089d62b31e2ee95c3bfa3142c97449e3078b39ef23"
+      "sha256": "a931e01a6b7c4202e9f96a0352926398f2d53c329c29026d8de5c901a7979e8a"
     }
   },
   "coverageByFamily": {
@@ -654,7 +684,7 @@
     "limits_and_modifiers": {
       "rowCount": 20,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 15,
+      "phoneMissingCount": 13,
       "tabletMissingCount": 15,
       "completionProvenCount": 5
     },
@@ -773,7 +803,7 @@
     "spells": {
       "rowCount": 67,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 45,
+      "phoneMissingCount": 43,
       "tabletMissingCount": 56,
       "completionProvenCount": 11
     },
@@ -13676,11 +13706,20 @@
       "mutationFamily": "spells",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Situational modifiers",
+        "surface": "SituationalModifiersPage",
+        "automationId": "situational-counterspelling-dice",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/SituationalModifiersPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -13688,12 +13727,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplySituationalModifiersEditAsync(SituationalModifiersEditRequest)",
+      "persistenceAssertion": "character/currentcounterspellingdice equals the submitted inclusive 0-100 value after save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_situational_modifiers_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -49305,11 +49344,20 @@
       "mutationFamily": "limits_and_modifiers",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Situational modifiers",
+        "surface": "SituationalModifiersPage",
+        "automationId": "situational-lift-carry-hits",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/SituationalModifiersPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -49317,12 +49365,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplySituationalModifiersEditAsync(SituationalModifiersEditRequest)",
+      "persistenceAssertion": "character/currentliftcarryhits equals the submitted inclusive 0-100 value after save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_situational_modifiers_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -57205,11 +57253,20 @@
       "mutationFamily": "spells",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Situational modifiers",
+        "surface": "SituationalModifiersPage",
+        "automationId": "situational-counterspelling-dice",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/SituationalModifiersPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -57217,12 +57274,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplySituationalModifiersEditAsync(SituationalModifiersEditRequest)",
+      "persistenceAssertion": "character/currentcounterspellingdice equals the submitted inclusive 0-100 value after save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_situational_modifiers_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -68301,11 +68358,20 @@
       "mutationFamily": "limits_and_modifiers",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Situational modifiers",
+        "surface": "SituationalModifiersPage",
+        "automationId": "situational-lift-carry-hits",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/SituationalModifiersPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -68313,12 +68379,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplySituationalModifiersEditAsync(SituationalModifiersEditRequest)",
+      "persistenceAssertion": "character/currentliftcarryhits equals the submitted inclusive 0-100 value after save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_situational_modifiers_e2e.py"
         },
         "tablet": {
           "status": "missing",

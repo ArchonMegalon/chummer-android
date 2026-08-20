@@ -170,6 +170,29 @@ namespace Chummer.Sample
             )
             self.assertIn(xml_element, row["persistenceAssertion"])
             self.assertFalse(row["completionProven"])
+
+        situational_modifiers = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] in inventory.SITUATIONAL_MODIFIER_CONTROLS
+        ]
+        self.assertEqual(4, len(situational_modifiers))
+        for row in situational_modifiers:
+            xml_element, automation_id, _property = inventory.SITUATIONAL_MODIFIER_CONTROLS[
+                row["legacy"]["controlName"]
+            ]
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("Build > Situational modifiers", row["phone"]["route"])
+            self.assertEqual("SituationalModifiersPage", row["phone"]["surface"])
+            self.assertEqual(automation_id, row["phone"]["automationId"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_situational_modifiers_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertIn(xml_element, row["persistenceAssertion"])
+            self.assertFalse(row["completionProven"])
         for row in rows:
             self.assertTrue(set(payload["requiredRowFields"]).issubset(row))
             self.assertTrue(row["legacyReviewComplete"])
@@ -665,9 +688,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 317,
+                "implemented_pending_emulator": 321,
                 "implemented_verified_api36": 78,
-                "missing": 1121,
+                "missing": 1117,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 146,

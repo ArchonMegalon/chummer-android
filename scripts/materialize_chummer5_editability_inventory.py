@@ -309,6 +309,30 @@ CAREER_REPUTATION_CONTROL_E2E_PROOF_KEYS = (
     "workspacePersisted",
     "processRestartUiReadback",
 )
+SITUATIONAL_MODIFIERS_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-situational-modifiers"
+    / "receipt.json"
+)
+SITUATIONAL_MODIFIERS_E2E_JOURNEYS = (
+    "creationRunnerImported",
+    "allCreationSituationalModifiersEdited",
+    "creationWorkspaceXmlPersisted",
+    "creationUiReopenReadback",
+    "creationProcessRestartUiReadback",
+    "careerRunnerImported",
+    "allCareerSituationalModifiersEdited",
+    "careerWorkspaceXmlPersisted",
+    "careerUiReopenReadback",
+    "careerProcessRestartUiReadback",
+)
+SITUATIONAL_MODIFIERS_CONTROL_E2E_PROOF_KEYS = (
+    "mutated",
+    "workspacePersisted",
+    "processRestartUiReadback",
+)
 NESTED_COLLECTION_NOTES_PHONE_E2E_RECEIPT = (
     REPO_ROOT
     / "docs"
@@ -520,6 +544,18 @@ CAREER_REPUTATION_CONTROLS = {
     "nudPublicAware": ("publicawareness", "career-reputation-public-awareness", "PublicAwareness"),
     "nudAstralReputation": ("baseastralreputation", "career-reputation-astral", "AstralReputation"),
     "nudWildReputation": ("basewildreputation", "career-reputation-wild", "WildReputation"),
+}
+SITUATIONAL_MODIFIER_CONTROLS = {
+    "nudCounterspellingDice": (
+        "currentcounterspellingdice",
+        "situational-counterspelling-dice",
+        "CounterspellingDice",
+    ),
+    "nudLiftCarryHits": (
+        "currentliftcarryhits",
+        "situational-lift-carry-hits",
+        "LiftCarryHits",
+    ),
 }
 CONTACT_TEXT_FIELDS = {
     "txtContactName": ("Name", "name", "name"),
@@ -1116,6 +1152,78 @@ def _validated_career_reputation_phone_e2e_receipt(
         "status": "executed_api36",
         "ref": CAREER_REPUTATION_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(CAREER_REPUTATION_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_situational_modifiers_phone_e2e_receipt(
+    presentation_root: Path,
+    core_root: Path,
+) -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_situational_modifiers_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-situational-modifiers-e2e.chum5"
+    career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-situational-modifiers-e2e.chum5"
+    source_digests = {
+        "modifiersPageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SituationalModifiersPage.cs",
+        "buildPageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs",
+        "coordinatorSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+        "modifiersContractSha256": presentation_root / "Chummer.Presentation" / "Overview" / "SituationalModifiersEditRequest.cs",
+        "mutationCatalogSha256": presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs",
+        "presenterMutationSha256": presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "presenterInterfaceSha256": presentation_root / "Chummer.Presentation" / "Overview" / "ICharacterOverviewPresenter.cs",
+        "progressContractSha256": core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+        "sectionServiceSha256": core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+    }
+    if not all(
+        path.is_file()
+        for path in (driver, shared_driver, creation_fixture, career_fixture, *source_digests.values())
+    ):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(SITUATIONAL_MODIFIERS_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    controls = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_controls = {
+        f"{form}.{control}"
+        for form in ("CharacterCreate", "CharacterCareer")
+        for control in SITUATIONAL_MODIFIER_CONTROLS
+    }
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "situational-modifiers"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("creationFixtureSha256") == _sha256_file(creation_fixture)
+        and receipt.get("careerFixtureSha256") == _sha256_file(career_fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(journeys, dict)
+        and all(journeys.get(journey) == "pass" for journey in SITUATIONAL_MODIFIERS_E2E_JOURNEYS)
+        and isinstance(controls, dict)
+        and set(controls) == expected_controls
+        and receipt.get("controlCount") == len(expected_controls)
+        and all(
+            isinstance(controls.get(control), dict)
+            and all(
+                controls[control].get(proof_key) == "pass"
+                for proof_key in SITUATIONAL_MODIFIERS_CONTROL_E2E_PROOF_KEYS
+            )
+            for control in expected_controls
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": SITUATIONAL_MODIFIERS_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(SITUATIONAL_MODIFIERS_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
 
@@ -2297,6 +2405,7 @@ def _known_phone_mapping(
     new_character_priority_phone_e2e_receipt: dict[str, Any] | None,
     character_notes_phone_e2e_receipt: dict[str, Any] | None,
     career_reputation_phone_e2e_receipt: dict[str, Any] | None,
+    situational_modifiers_phone_e2e_receipt: dict[str, Any] | None,
     nested_collection_notes_phone_e2e_receipt: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     legacy = row["legacy"]
@@ -4292,6 +4401,96 @@ def _known_phone_mapping(
                 "ref": "tests/run_api36_character_notes_e2e.py" if e2e_scripted else None,
             },
         }
+    if class_name in {"CharacterCreate", "CharacterCareer"} and control in SITUATIONAL_MODIFIER_CONTROLS:
+        xml_element, automation_id, property_name = SITUATIONAL_MODIFIER_CONTROLS[control]
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SituationalModifiersPage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_situational_modifiers_e2e.py"
+        presentation_overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = presentation_overview / "SituationalModifiersEditRequest.cs"
+        mutation = presentation_overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = presentation_overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        core_contract = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        core_section = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        core_proof = (
+            _contains(core_contract, "int CurrentCounterspellingDice,")
+            and _contains(core_section, 'ReadValue(character, "currentcounterspellingdice")')
+            if control == "nudCounterspellingDice"
+            else _contains(core_contract, "public int CurrentLiftCarryHits")
+            and _contains(core_section, 'ReadValue(character, "currentliftcarryhits")')
+        )
+        implemented = (
+            _contains(page, f'"{automation_id}"', '"situational-modifiers-save"', "SituationalModifiersEditRequest")
+            and _contains(build_page, '"build-situational-modifiers"', "new SituationalModifiersPage")
+            and _contains(
+                coordinator,
+                "PrepareSituationalModifiersEditAsync",
+                "ApplySituationalModifiersEditAsync",
+                "ExpectedContentRevision",
+                "SaveAsync",
+            )
+            and _contains(
+                request,
+                "SituationalModifiersEditorState",
+                "SituationalModifiersEditRequest",
+                "ExpectedContentRevision",
+                f"int {property_name}",
+            )
+            and _contains(
+                mutation,
+                "ApplySituationalModifiersEdit",
+                "MaximumSituationalModifier = 100",
+                f'"{xml_element}"',
+            )
+            and _contains(
+                presenter,
+                "PrepareSituationalModifiersEditAsync",
+                "ApplySituationalModifiersEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and core_proof
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"journey": "situational-modifiers"',
+            '"allCreationSituationalModifiersEdited": "pass"',
+            '"creationWorkspaceXmlPersisted": "pass"',
+            '"creationProcessRestartUiReadback": "pass"',
+            '"allCareerSituationalModifiersEdited": "pass"',
+            '"careerWorkspaceXmlPersisted": "pass"',
+            '"careerProcessRestartUiReadback": "pass"',
+            '"controls": controls',
+        )
+        phone_e2e = situational_modifiers_phone_e2e_receipt if implemented and e2e_scripted else None
+        return {
+            "status": "implemented_verified_api36" if phone_e2e else "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Situational modifiers",
+            "surface": "SituationalModifiersPage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/SituationalModifiersPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplySituationalModifiersEditAsync"
+                "(SituationalModifiersEditRequest)"
+            ),
+            "persistenceAssertion": (
+                f"character/{xml_element} equals the submitted inclusive 0-100 value after save, "
+                "same-session reopen, and process restart"
+            ),
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_situational_modifiers_e2e.py" if e2e_scripted else None,
+            },
+        }
     if class_name == "CharacterCareer" and control in CAREER_REPUTATION_CONTROLS:
         xml_element, automation_id, property_name = CAREER_REPUTATION_CONTROLS[control]
         page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerReputationPage.cs"
@@ -4824,6 +5023,10 @@ def enrich_rows(
         presentation_root,
         core_engine_root,
     )
+    situational_modifiers_phone_e2e_receipt = _validated_situational_modifiers_phone_e2e_receipt(
+        presentation_root,
+        core_engine_root,
+    )
     nested_collection_notes_phone_e2e_receipt = _validated_nested_collection_notes_phone_e2e_receipt(
         presentation_root,
         core_engine_root,
@@ -4874,6 +5077,7 @@ def enrich_rows(
             new_character_priority_phone_e2e_receipt,
             character_notes_phone_e2e_receipt,
             career_reputation_phone_e2e_receipt,
+            situational_modifiers_phone_e2e_receipt,
             nested_collection_notes_phone_e2e_receipt,
         )
         if known is not None:
@@ -4962,6 +5166,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildFlowPages.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerReputationPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SituationalModifiersPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CharacterNotesPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ConditionMonitorEditPage.cs",
@@ -4974,6 +5179,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_editing_e2e.py",
         REPO_ROOT / "tests" / "run_api36_character_notes_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_reputation_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_situational_modifiers_e2e.py",
         REPO_ROOT / "tests" / "run_api36_nested_collection_notes_e2e.py",
         REPO_ROOT / "tests" / "run_api36_attribute_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_attribute_e2e.py",
@@ -4987,6 +5193,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-reputation-core-only-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-reputation-full-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-situational-modifiers-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-situational-modifiers-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-nested-notes-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-nested-notes-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-contact-pet-e2e.chum5",
@@ -5003,6 +5211,7 @@ def build_inventory(
         ORIGIN_DOSSIER_PHONE_E2E_RECEIPT,
         CHARACTER_NOTES_PHONE_E2E_RECEIPT,
         CAREER_REPUTATION_PHONE_E2E_RECEIPT,
+        SITUATIONAL_MODIFIERS_PHONE_E2E_RECEIPT,
         NESTED_COLLECTION_NOTES_PHONE_E2E_RECEIPT,
         LINKED_RUNNER_PHONE_E2E_RECEIPT,
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterContactEditSemantics.cs",
@@ -5017,6 +5226,7 @@ def build_inventory(
         core_engine_root / "Chummer.Rulesets.Hosting" / "Presentation" / "WorkspaceSurfaceActionCatalog.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerReputationEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "SituationalModifiersEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.Persistence.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditorState.cs",
