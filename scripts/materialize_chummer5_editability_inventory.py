@@ -455,6 +455,12 @@ INERT_LEGACY_DESIGNER_FIELDS = {
     ("SelectBuildMethod", "cboGamePlay"):
         "legacy designer remnant is never added to the SelectBuildMethod control tree and has no event wiring",
 }
+UNREACHABLE_LEGACY_FORMS = {
+    "SelectSetting": (
+        "orphaned legacy form has no reference outside its own partial class and designer sources, "
+        "so its controls cannot be reached in the product UI"
+    ),
+}
 
 SCHEMA = "chummer.android.chummer5-editability-inventory/v1"
 REQUIRED_SOURCE_ROOTS = (Path("Chummer/Forms"), Path("Chummer/Controls"))
@@ -2443,6 +2449,15 @@ def extract_legacy_rows(chummer5_root: Path) -> tuple[list[dict[str, Any]], dict
         identity: _property_map(texts)
         for identity, texts in class_texts.items()
     }
+    externally_referenced_legacy_forms = {
+        form_name
+        for form_name in UNREACHABLE_LEGACY_FORMS
+        if any(
+            identity[1] != form_name
+            and re.search(rf"\b{re.escape(form_name)}\b", text) is not None
+            for _, text, identity in units
+        )
+    }
     field_names_by_class: dict[tuple[str, str], set[str]] = defaultdict(set)
     for _, text, identity in units:
         field_names_by_class[identity].update(match.group("name") for match in FIELD_RE.finditer(text))
@@ -2473,6 +2488,13 @@ def extract_legacy_rows(chummer5_root: Path) -> tuple[list[dict[str, Any]], dict
             inert_evidence = INERT_LEGACY_DESIGNER_FIELDS.get((class_name, control))
             if inert_evidence is not None:
                 operation = "unreachable_designer_field"
+                confidence = "non_mutating"
+            elif (
+                class_name in UNREACHABLE_LEGACY_FORMS
+                and class_name not in externally_referenced_legacy_forms
+            ):
+                inert_evidence = UNREACHABLE_LEGACY_FORMS[class_name]
+                operation = "unreachable_legacy_form"
                 confidence = "non_mutating"
             if confidence == "review_required":
                 reviewed = _resolve_reviewed_interaction(

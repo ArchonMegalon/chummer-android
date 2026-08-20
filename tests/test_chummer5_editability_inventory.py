@@ -96,6 +96,71 @@ namespace Chummer.Sample
             self.assertEqual(3, summary["sourceFileCount"])
             self.assertEqual(1, summary["designerFileCount"])
 
+    def test_orphaned_legacy_form_reopens_fail_closed_when_a_caller_appears(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            forms = root / "Chummer" / "Forms"
+            controls = root / "Chummer" / "Controls"
+            forms.mkdir(parents=True)
+            controls.mkdir(parents=True)
+            (forms / "SelectSetting.Designer.cs").write_text(
+                """
+namespace Chummer
+{
+    partial class SelectSetting
+    {
+        private Chummer.ElasticComboBox cboSetting;
+        private System.Windows.Forms.Button cmdOK;
+        private void InitializeComponent()
+        {
+            this.cmdOK.Click += new System.EventHandler(this.cmdOK_Click);
+        }
+    }
+}
+""",
+                encoding="utf-8",
+            )
+            (forms / "SelectSetting.cs").write_text(
+                """
+namespace Chummer
+{
+    partial class SelectSetting
+    {
+        private void cmdOK_Click(object sender, System.EventArgs e) { }
+    }
+}
+""",
+                encoding="utf-8",
+            )
+
+            rows, _ = inventory.extract_legacy_rows(root)
+            by_name = {row["legacy"]["controlName"]: row for row in rows}
+            self.assertEqual("unreachable_legacy_form", by_name["cboSetting"]["operation"])
+            self.assertEqual("unreachable_legacy_form", by_name["cmdOK"]["operation"])
+            self.assertTrue(
+                all(row["legacy"]["mutationDisposition"] == "non_mutating" for row in rows)
+            )
+
+            (forms / "Caller.cs").write_text(
+                """
+namespace Chummer
+{
+    partial class Caller
+    {
+        private void Open() { _ = new SelectSetting(); }
+    }
+}
+""",
+                encoding="utf-8",
+            )
+            rows, _ = inventory.extract_legacy_rows(root)
+            by_name = {row["legacy"]["controlName"]: row for row in rows}
+            self.assertEqual("set_value", by_name["cboSetting"]["operation"])
+            self.assertEqual("commit", by_name["cmdOK"]["operation"])
+            self.assertTrue(
+                all(row["legacy"]["mutationDisposition"] == "mutating" for row in rows)
+            )
+
     def test_generated_inventory_is_row_complete_unique_and_honestly_incomplete(self) -> None:
         artifact_path = REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
         payload = json.loads(artifact_path.read_text(encoding="utf-8"))
@@ -781,8 +846,8 @@ namespace Chummer.Sample
             {
                 "implemented_pending_emulator": 328,
                 "implemented_verified_api36": 79,
-                "missing": 1109,
-                "not_applicable_non_mutating": 457,
+                "missing": 1107,
+                "not_applicable_non_mutating": 459,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 146,
             },
@@ -792,8 +857,8 @@ namespace Chummer.Sample
             {
                 "implemented_pending_emulator": 4,
                 "implemented_verified_api36": 75,
-                "missing": 1549,
-                "not_applicable_non_mutating": 457,
+                "missing": 1547,
+                "not_applicable_non_mutating": 459,
                 "partial_exact_saved_data": 144,
             },
             payload["summary"]["tabletStatusCounts"],
@@ -844,6 +909,27 @@ namespace Chummer.Sample
 
         self.assertEqual("missing", rows["cmdEditCharacterSetting"]["phone"]["status"])
         self.assertEqual("not_applicable_non_mutating", rows["cmdCancel"]["phone"]["status"])
+
+    def test_orphaned_select_setting_form_is_not_claimed_as_android_parity(self) -> None:
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = [
+            row for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == "SelectSetting"
+        ]
+
+        self.assertEqual({"cboSetting", "cmdCancel", "cmdOK"}, {
+            row["legacy"]["controlName"] for row in rows
+        })
+        for row in rows:
+            self.assertEqual("unreachable_legacy_form", row["operation"])
+            self.assertFalse(row["editParityRequired"])
+            self.assertEqual("not_applicable_non_mutating", row["phone"]["status"])
+            self.assertEqual("not_applicable_non_mutating", row["tablet"]["status"])
+            self.assertIn("no reference outside", row["legacy"]["dispositionEvidence"])
 
     def test_character_settings_phone_mapping_is_complete_and_exactly_scoped(self) -> None:
         payload = json.loads(

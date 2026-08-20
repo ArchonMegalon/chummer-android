@@ -6,26 +6,26 @@
     "rowCount": 2229,
     "sourceFileCount": 300,
     "designerFileCount": 137,
-    "definiteMutationCandidateCount": 1772,
+    "definiteMutationCandidateCount": 1770,
     "reviewRequiredCount": 0,
     "legacyReviewCompleteCount": 2229,
-    "reviewedNonMutatingCount": 457,
-    "editParityRequiredCount": 1772,
+    "reviewedNonMutatingCount": 459,
+    "editParityRequiredCount": 1770,
     "unclassifiedCount": 0,
-    "completionProvenCount": 532,
+    "completionProvenCount": 534,
     "phoneStatusCounts": {
       "implemented_pending_emulator": 328,
       "implemented_verified_api36": 79,
-      "missing": 1109,
-      "not_applicable_non_mutating": 457,
+      "missing": 1107,
+      "not_applicable_non_mutating": 459,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
       "implemented_verified_api36": 75,
-      "missing": 1549,
-      "not_applicable_non_mutating": 457,
+      "missing": 1547,
+      "not_applicable_non_mutating": 459,
       "partial_exact_saved_data": 144
     }
   },
@@ -527,7 +527,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "f7f58f3a79d81937adcb1a1d2a737850b5c444d667d03fe5ebe80e3eaa26ed5e"
+      "sha256": "0979acdb7e34b7e0dbc9011cc99b2e825c856f546b3280d0feb042943fce60b6"
     }
   },
   "coverageByFamily": {
@@ -849,9 +849,9 @@
     "sourcebook_selection": {
       "rowCount": 7,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 2,
-      "tabletMissingCount": 5,
-      "completionProvenCount": 2
+      "phoneMissingCount": 0,
+      "tabletMissingCount": 3,
+      "completionProvenCount": 4
     },
     "specializations": {
       "rowCount": 15,
@@ -113339,9 +113339,9 @@
         "controlName": "cboSetting",
         "controlType": "ElasticComboBox",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (no event handler)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "orphaned legacy form has no reference outside its own partial class and designer sources, so its controls cannot be reached in the product UI",
         "text": null,
         "tag": null,
         "readOnlyAtDesignTime": null,
@@ -113350,16 +113350,16 @@
         "events": []
       },
       "mutationFamily": "sourcebook_selection",
-      "operation": "set_value",
+      "operation": "unreachable_legacy_form",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -113368,18 +113368,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Selection Forms/SelectSetting.Designer.cs::Chummer.SelectSetting::cmdCancel",
@@ -113393,7 +113393,7 @@
         "candidateKind": "action",
         "mutationConfidence": "non_mutating",
         "mutationDisposition": "non_mutating",
-        "dispositionEvidence": "action source wiring is navigation/display/container behavior (cmdCancel_Click)",
+        "dispositionEvidence": "orphaned legacy form has no reference outside its own partial class and designer sources, so its controls cannot be reached in the product UI",
         "text": "Cancel",
         "tag": "String_Cancel",
         "readOnlyAtDesignTime": null,
@@ -113407,7 +113407,7 @@
         ]
       },
       "mutationFamily": "sourcebook_selection",
-      "operation": "invoke_non_mutating_action",
+      "operation": "unreachable_legacy_form",
       "phone": {
         "status": "not_applicable_non_mutating",
         "route": null,
@@ -113448,9 +113448,9 @@
         "controlName": "cmdOK",
         "controlType": "System.Windows.Forms.Button",
         "candidateKind": "action",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "action accepts a value or invokes mutation-capable source wiring (cmdOK_Click)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "orphaned legacy form has no reference outside its own partial class and designer sources, so its controls cannot be reached in the product UI",
         "text": "OK",
         "tag": "String_OK",
         "readOnlyAtDesignTime": null,
@@ -113464,16 +113464,16 @@
         ]
       },
       "mutationFamily": "sourcebook_selection",
-      "operation": "commit",
+      "operation": "unreachable_legacy_form",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -113482,18 +113482,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Selection Forms/SelectSide.Designer.cs::Chummer.SelectSide::cmdOK",
