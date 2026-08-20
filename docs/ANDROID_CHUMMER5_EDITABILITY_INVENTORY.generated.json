@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 297,
+      "implemented_pending_emulator": 304,
       "implemented_verified_api36": 78,
-      "missing": 1141,
+      "missing": 1134,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
@@ -347,7 +347,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "12ac2f16d46777a44b61dfbd7c84d36ac7f2d66a1b18f1214e688e45baf3e675"
+      "sha256": "74a610ddd4ba8a1e3667bb5007c72749ad990f79f07de684740f51c07990949a"
     }
   },
   "coverageByFamily": {
@@ -375,7 +375,7 @@
     "armor": {
       "rowCount": 97,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 46,
+      "phoneMissingCount": 44,
       "tabletMissingCount": 61,
       "completionProvenCount": 12
     },
@@ -501,7 +501,7 @@
     "gear": {
       "rowCount": 84,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 44,
+      "phoneMissingCount": 43,
       "tabletMissingCount": 58,
       "completionProvenCount": 2
     },
@@ -711,7 +711,7 @@
     "vehicles_and_drones": {
       "rowCount": 151,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 63,
+      "phoneMissingCount": 61,
       "tabletMissingCount": 102,
       "completionProvenCount": 25
     },
@@ -725,7 +725,7 @@
     "weapons": {
       "rowCount": 119,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 57,
+      "phoneMissingCount": 55,
       "tabletMissingCount": 73,
       "completionProvenCount": 22
     },
@@ -40770,11 +40770,18 @@
       "mutationFamily": "weapons",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Weapons > selected item > CustomName",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-customname-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -40782,8 +40789,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.CustomName on WorkspaceCollectionKind.Weapon",
+      "persistenceAssertion": "selected stable Weapon guid retains extra after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -41005,11 +41012,18 @@
       "mutationFamily": "armor",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Armor > selected item > CustomName",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-customname-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -41017,8 +41031,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.CustomName on WorkspaceCollectionKind.Armor",
+      "persistenceAssertion": "selected stable Armor guid retains extra after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -41292,11 +41306,18 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Vehicles > selected item > CustomName",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-customname-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -41304,8 +41325,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.CustomName on WorkspaceCollectionKind.Vehicle",
+      "persistenceAssertion": "selected stable Vehicle guid retains extra after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -63011,11 +63032,18 @@
       "mutationFamily": "weapons",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Weapons > selected item > CustomName",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-customname-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -63023,8 +63051,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.CustomName on WorkspaceCollectionKind.Weapon",
+      "persistenceAssertion": "selected stable Weapon guid retains extra after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -63635,11 +63663,18 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Vehicles > selected item > CustomName",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-customname-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -63647,8 +63682,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.CustomName on WorkspaceCollectionKind.Vehicle",
+      "persistenceAssertion": "selected stable Vehicle guid retains extra after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -65444,11 +65479,18 @@
       "mutationFamily": "gear",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -65456,8 +65498,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Gear",
+      "persistenceAssertion": "selected stable Gear guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -66187,11 +66229,18 @@
       "mutationFamily": "armor",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Armor > selected item > CustomName",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-customname-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -66199,8 +66248,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.CustomName on WorkspaceCollectionKind.Armor",
+      "persistenceAssertion": "selected stable Armor guid retains extra after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",

@@ -298,6 +298,47 @@ namespace Chummer.Sample
             self.assertIn(f"WorkspaceCollectionKind.{kind}", row["presenterMutation"])
             self.assertIn("after save, reopen, and process restart", row["persistenceAssertion"])
             self.assertFalse(row["completionProven"])
+        character_collection_text_rows = [
+            row for row in rows
+            if row["legacy"]["controlName"] in inventory.LEGACY_CHARACTER_COLLECTION_TEXT_CONTROLS
+            and row["legacy"]["formOrControl"]
+                in inventory.LEGACY_CHARACTER_COLLECTION_TEXT_CONTROLS[
+                    row["legacy"]["controlName"]
+                ][5]
+        ]
+        expected_collection_text = {
+            (form_name, control)
+            for control, (_, _, _, _, _, form_names)
+                in inventory.LEGACY_CHARACTER_COLLECTION_TEXT_CONTROLS.items()
+            for form_name in form_names
+        }
+        self.assertEqual(
+            expected_collection_text,
+            {
+                (row["legacy"]["formOrControl"], row["legacy"]["controlName"])
+                for row in character_collection_text_rows
+            },
+        )
+        self.assertEqual(7, len(character_collection_text_rows))
+        for row in character_collection_text_rows:
+            kind, section_label, field, xml_element, _, _ = (
+                inventory.LEGACY_CHARACTER_COLLECTION_TEXT_CONTROLS[
+                    row["legacy"]["controlName"]
+                ]
+            )
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("missing", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                f"collection-field-{field.lower()}-{{stable-target}}",
+                row["phone"]["automationId"],
+            )
+            self.assertIn(section_label, row["phone"]["route"])
+            self.assertIn(f"WorkspaceCollectionKind.{kind}", row["presenterMutation"])
+            self.assertIn(f"WorkspaceCollectionTextField.{field}", row["presenterMutation"])
+            self.assertIn(xml_element, row["persistenceAssertion"])
+            self.assertIn("process restart", row["persistenceAssertion"])
+            self.assertFalse(row["completionProven"])
         character_collection_toggle_rows = [
             row for row in rows
             if row["legacy"]["controlName"] in inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS
@@ -544,9 +585,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 297,
+                "implemented_pending_emulator": 304,
                 "implemented_verified_api36": 78,
-                "missing": 1141,
+                "missing": 1134,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 146,
