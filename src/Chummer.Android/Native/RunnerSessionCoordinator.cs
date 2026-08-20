@@ -28,7 +28,9 @@ public sealed record NativeAccountErasureResult(
 public sealed record CharacterNotesEditRequest(
     CharacterWorkspaceId WorkspaceId,
     long ExpectedContentRevision,
-    string Notes);
+    string CharacterNotes,
+    string GameNotes,
+    string GroupNotes);
 
 public sealed class RunnerSessionCoordinator : IDisposable
 {
@@ -61,6 +63,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private CharacterWorkspaceId? _characterNotesWorkspaceId;
     private long _characterNotesRevision;
     private string _characterNotes = string.Empty;
+    private string _gameNotes = string.Empty;
+    private string _groupNotes = string.Empty;
 
     public RunnerSessionCoordinator(
         ICharacterOverviewPresenter presenter,
@@ -115,7 +119,19 @@ public sealed class RunnerSessionCoordinator : IDisposable
         => State.WorkspaceId == _characterNotesWorkspaceId
             && State.ContentRevision == _characterNotesRevision
                 ? _characterNotes
-                : State.Preferences.CharacterNotes;
+                : State.Profile?.CharacterNotes ?? State.Preferences.CharacterNotes;
+
+    public string GameNotes
+        => State.WorkspaceId == _characterNotesWorkspaceId
+            && State.ContentRevision == _characterNotesRevision
+                ? _gameNotes
+                : State.Profile?.GameNotes ?? string.Empty;
+
+    public string GroupNotes
+        => State.WorkspaceId == _characterNotesWorkspaceId
+            && State.ContentRevision == _characterNotesRevision
+                ? _groupNotes
+                : State.Profile?.GroupNotes ?? string.Empty;
 
     public string? Notice => _notice ?? State.Notice ?? Surface.Notice;
 
@@ -295,7 +311,11 @@ public sealed class RunnerSessionCoordinator : IDisposable
         CharacterProfileSection profile = State.Profile
             ?? throw new InvalidOperationException("Open a runner before editing Notes.");
         await _presenter.UpdateMetadataAsync(
-            new UpdateWorkspaceMetadata(profile.Name, profile.Alias, request.Notes),
+            new UpdateWorkspaceMetadata(profile.Name, profile.Alias, request.CharacterNotes)
+            {
+                GameNotes = request.GameNotes,
+                GroupNotes = request.GroupNotes
+            },
             cancellationToken);
         if (State.Error is not null)
         {
@@ -307,7 +327,9 @@ public sealed class RunnerSessionCoordinator : IDisposable
         {
             _characterNotesWorkspaceId = State.WorkspaceId;
             _characterNotesRevision = State.ContentRevision;
-            _characterNotes = request.Notes;
+            _characterNotes = request.CharacterNotes;
+            _gameNotes = request.GameNotes;
+            _groupNotes = request.GroupNotes;
         }
         _notice = State.Error is null ? "Notes saved." : null;
         await SyncShellAsync(cancellationToken);

@@ -276,8 +276,18 @@ CHARACTER_NOTES_PHONE_E2E_RECEIPT = (
 CHARACTER_NOTES_E2E_JOURNEYS = (
     "newRunner",
     "characterNotesEditPersisted",
-    "characterNotesReopenReadback",
-    "processRestartCharacterNotesPersistence",
+    "allCreationNotesEdited",
+    "creationWorkspaceXmlPersisted",
+    "creationProcessRestartUiReadback",
+    "careerRunnerImported",
+    "allCareerNotesEdited",
+    "careerWorkspaceXmlPersisted",
+    "careerProcessRestartUiReadback",
+)
+CHARACTER_NOTES_CONTROL_E2E_PROOF_KEYS = (
+    "mutated",
+    "workspacePersisted",
+    "processRestartUiReadback",
 )
 LINKED_RUNNER_PHONE_E2E_RECEIPT = (
     REPO_ROOT
@@ -892,10 +902,28 @@ def _validated_attribute_phone_e2e_receipt() -> dict[str, Any] | None:
     }
 
 
-def _validated_character_notes_phone_e2e_receipt() -> dict[str, Any] | None:
+def _validated_character_notes_phone_e2e_receipt(
+    presentation_root: Path,
+    core_root: Path,
+) -> dict[str, Any] | None:
     driver = REPO_ROOT / "tests" / "run_api36_character_notes_e2e.py"
     shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
-    if not driver.is_file() or not shared_driver.is_file():
+    fixture = REPO_ROOT / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5"
+    source_digests = {
+        "notesPageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CharacterNotesPage.cs",
+        "coordinatorSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+        "updateWorkspaceMetadataContractSha256": core_root / "Chummer.Contracts" / "Workspaces" / "CharacterWorkspaceModels.cs",
+        "profileContractSha256": core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+        "characterFileServiceSha256": core_root / "Chummer.Infrastructure" / "Xml" / "CharacterFileService.cs",
+        "characterSectionServiceSha256": core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+        "presentationPersistenceSha256": presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.Persistence.cs",
+    }
+    if (
+        not driver.is_file()
+        or not shared_driver.is_file()
+        or not fixture.is_file()
+        or not all(path.is_file() for path in source_digests.values())
+    ):
         return None
 
     try:
@@ -903,7 +931,15 @@ def _validated_character_notes_phone_e2e_receipt() -> dict[str, Any] | None:
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         return None
     journeys = receipt.get("journeys")
+    controls = receipt.get("controls")
     apk_sha = str(receipt.get("apkSha256") or "")
+    expected_controls = {
+        "CharacterCreate.rtfNotes",
+        "CharacterCreate.txtGroupNotes",
+        "CharacterCareer.rtfNotes",
+        "CharacterCareer.rtfGameNotes",
+        "CharacterCareer.txtGroupNotes",
+    }
     if not (
         receipt.get("schema") == "chummer.android.editing-e2e/v1"
         and receipt.get("status") == "pass"
@@ -912,8 +948,21 @@ def _validated_character_notes_phone_e2e_receipt() -> dict[str, Any] | None:
         and receipt.get("apiLevel") == 36
         and receipt.get("driverSha256") == _sha256_file(driver)
         and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("careerFixtureSha256") == _sha256_file(fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
         and isinstance(journeys, dict)
         and all(journeys.get(journey) == "pass" for journey in CHARACTER_NOTES_E2E_JOURNEYS)
+        and isinstance(controls, dict)
+        and set(controls) == expected_controls
+        and receipt.get("controlCount") == len(expected_controls)
+        and all(
+            isinstance(controls.get(control), dict)
+            and all(
+                controls[control].get(proof_key) == "pass"
+                for proof_key in CHARACTER_NOTES_CONTROL_E2E_PROOF_KEYS
+            )
+            for control in expected_controls
+        )
         and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
     ):
         return None
@@ -2015,6 +2064,7 @@ def _android_token(value: str) -> str:
 def _known_phone_mapping(
     row: dict[str, Any],
     presentation_root: Path,
+    character_notes_core_root: Path,
     condition_e2e_receipts: dict[str, dict[str, Any]],
     contact_pet_e2e_receipts: dict[str, dict[str, Any]],
     attribute_phone_e2e_receipt: dict[str, Any] | None,
@@ -3776,13 +3826,33 @@ def _known_phone_mapping(
             },
             "completionProven": contact_pet_e2e_complete,
         }
-    if class_name in {"CharacterCreate", "CharacterCareer"} and control == "rtfNotes":
+    character_note_controls = {
+        "rtfNotes": ("notes", "character-notes-editor", "Notes", "CharacterNotes"),
+        "rtfGameNotes": ("gamenotes", "character-game-notes-editor", "GameNotes", "GameNotes"),
+        "txtGroupNotes": ("groupnotes", "character-group-notes-editor", "GroupNotes", "GroupNotes"),
+    }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
+        and control in character_note_controls
+        and not (class_name == "CharacterCreate" and control == "rtfGameNotes")
+    ):
+        xml_element, automation_id, command_property, profile_property = character_note_controls[control]
+        coordinator_command_marker = (
+            "request.CharacterNotes"
+            if command_property == "Notes"
+            else f"{command_property} = request.{command_property}"
+        )
         phone_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CharacterNotesPage.cs"
         build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
         coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
         presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.Persistence.cs"
+        core_root = character_notes_core_root
+        workspace_contract = core_root / "Chummer.Contracts" / "Workspaces" / "CharacterWorkspaceModels.cs"
+        profile_contract = core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        file_service = core_root / "Chummer.Infrastructure" / "Xml" / "CharacterFileService.cs"
+        section_service = core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
         implemented = (
-            _contains(phone_page, '"character-notes-editor"', '"character-notes-save"', "CharacterNotesEditRequest")
+            _contains(phone_page, f'"{automation_id}"', '"character-notes-save"', "CharacterNotesEditRequest")
             and _contains(build_page, '"build-character-notes"', "new CharacterNotesPage")
             and _contains(
                 coordinator,
@@ -3791,31 +3861,51 @@ def _known_phone_mapping(
                 "UpdateMetadataAsync",
                 "UpdateWorkspaceMetadata",
                 "SaveAsync",
+                coordinator_command_marker,
             )
             and _contains(presenter, "UpdateMetadataAsync", "expectedContentRevision")
+            and _contains(workspace_contract, f"string? {command_property}")
+            and _contains(profile_contract, f"public string {profile_property}")
+            and _contains(file_service, f'UpdateNode(character, "{xml_element}"')
+            and _contains(section_service, f'ReadValue(character, "{xml_element}")')
+            and (control != "rtfGameNotes" or _contains(phone_page, "if (profile.Created)"))
         )
         e2e_driver = REPO_ROOT / "tests" / "run_api36_character_notes_e2e.py"
         e2e_scripted = _contains(
             e2e_driver,
             '"journey": "character-notes"',
             '"characterNotesEditPersisted": "pass"',
-            '"characterNotesReopenReadback": "pass"',
-            '"processRestartCharacterNotesPersistence": "pass"',
+            '"allCreationNotesEdited": "pass"',
+            '"creationWorkspaceXmlPersisted": "pass"',
+            '"creationProcessRestartUiReadback": "pass"',
+            '"allCareerNotesEdited": "pass"',
+            '"careerWorkspaceXmlPersisted": "pass"',
+            '"careerProcessRestartUiReadback": "pass"',
+            '"controls": control_proofs',
         )
         phone_e2e = character_notes_phone_e2e_receipt if implemented and e2e_scripted else None
         return {
             "status": "implemented_verified_api36" if phone_e2e else "implemented_pending_emulator" if implemented else "missing",
             "route": "Build > Notes",
             "surface": "CharacterNotesPage",
-            "automationId": "character-notes-editor",
+            "automationId": automation_id,
             "sourceRefs": [
                 "src/Chummer.Android/Native/CharacterNotesPage.cs",
                 "src/Chummer.Android/Native/BuildPage.cs",
                 "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
                 "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
             ],
-            "presenterMutation": "ICharacterOverviewPresenter.UpdateMetadataAsync(UpdateWorkspaceMetadata)",
-            "persistenceAssertion": "character/notes equals the submitted value after save, reopen, and process restart",
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.UpdateMetadataAsync(UpdateWorkspaceMetadata."
+                f"{command_property})"
+            ),
+            "persistenceAssertion": (
+                f"character/{xml_element} equals the submitted value after save, reopen, and process restart"
+            ),
             "e2e": phone_e2e or {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_character_notes_e2e.py" if e2e_scripted else None,
@@ -4218,6 +4308,7 @@ def enrich_rows(
     rows: list[dict[str, Any]],
     registry: dict[str, Any],
     presentation_root: Path,
+    core_engine_root: Path,
 ) -> list[dict[str, Any]]:
     surfaces = registry.get("editing_parity", {}).get("surfaces", {})
     condition_e2e_receipts = _validated_condition_e2e_receipts()
@@ -4231,7 +4322,10 @@ def enrich_rows(
     new_character_settings_phone_e2e_receipt = _validated_new_character_settings_phone_e2e_receipt()
     new_character_karma_phone_e2e_receipt = _validated_new_character_karma_phone_e2e_receipt()
     new_character_priority_phone_e2e_receipt = _validated_new_character_priority_phone_e2e_receipt()
-    character_notes_phone_e2e_receipt = _validated_character_notes_phone_e2e_receipt()
+    character_notes_phone_e2e_receipt = _validated_character_notes_phone_e2e_receipt(
+        presentation_root,
+        core_engine_root,
+    )
     for row in rows:
         family = row["mutationFamily"]
         family_contract = surfaces.get(family, {})
@@ -4264,6 +4358,7 @@ def enrich_rows(
         known = _known_phone_mapping(
             row,
             presentation_root,
+            core_engine_root,
             condition_e2e_receipts,
             contact_pet_e2e_receipts,
             attribute_phone_e2e_receipt,
@@ -4339,13 +4434,13 @@ def build_inventory(
     chummer5_root: Path,
     registry_path: Path,
     presentation_root: Path,
+    core_engine_root: Path,
 ) -> dict[str, Any]:
     if not registry_path.is_file():
         raise FileNotFoundError(f"Missing Android parity registry: {registry_path}")
-    core_engine_root = presentation_root.parent / "chummer-core-engine"
     registry = json.loads(_read_text(registry_path))
     rows, source_summary = extract_legacy_rows(chummer5_root)
-    enrich_rows(rows, registry, presentation_root)
+    enrich_rows(rows, registry, presentation_root, core_engine_root)
 
     family_counts: dict[str, dict[str, int]] = {}
     for family in sorted({row["mutationFamily"] for row in rows}):
@@ -4400,9 +4495,12 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterContactEditSemantics.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterPetEditSemantics.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+        core_engine_root / "Chummer.Contracts" / "Workspaces" / "CharacterWorkspaceModels.cs",
+        core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterFileService.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.Persistence.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditorState.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "DialogCoordinator.cs",
@@ -4491,6 +4589,11 @@ def main() -> int:
         type=Path,
         default=WORKSPACE_ROOT / "chummer-presentation",
     )
+    parser.add_argument(
+        "--core-root",
+        type=Path,
+        default=WORKSPACE_ROOT / "chummer-core-engine",
+    )
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--check", action="store_true")
     arguments = parser.parse_args()
@@ -4500,6 +4603,7 @@ def main() -> int:
             arguments.chummer5_root.resolve(),
             arguments.registry.resolve(),
             arguments.presentation_root.resolve(),
+            arguments.core_root.resolve(),
         )
     except (FileNotFoundError, json.JSONDecodeError, OSError) as error:
         print(f"editability inventory failed: {error}", file=sys.stderr)

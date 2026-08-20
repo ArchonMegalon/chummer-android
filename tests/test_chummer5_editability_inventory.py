@@ -118,21 +118,35 @@ namespace Chummer.Sample
         )
         self.assertEqual(len(rows), len({row["id"] for row in rows}))
 
+        expected_note_controls = {
+            ("CharacterCreate", "rtfNotes"): "character-notes-editor",
+            ("CharacterCreate", "txtGroupNotes"): "character-group-notes-editor",
+            ("CharacterCareer", "rtfNotes"): "character-notes-editor",
+            ("CharacterCareer", "rtfGameNotes"): "character-game-notes-editor",
+            ("CharacterCareer", "txtGroupNotes"): "character-group-notes-editor",
+        }
         character_notes = [
             row for row in rows
-            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
-            and row["legacy"]["controlName"] == "rtfNotes"
+            if (
+                row["legacy"]["formOrControl"],
+                row["legacy"]["controlName"],
+            ) in expected_note_controls
         ]
-        self.assertEqual(2, len(character_notes))
-        self.assertTrue(all(
-            row["phone"]["status"] == "implemented_pending_emulator"
-            and row["phone"]["route"] == "Build > Notes"
-            and row["phone"]["automationId"] == "character-notes-editor"
-            and row["tablet"]["status"] == "missing"
-            and row["e2e"]["phone"]["status"] in {"scripted_not_executed", "executed_api36"}
-            and row["e2e"]["phone"]["ref"]
-            for row in character_notes
-        ))
+        self.assertEqual(5, len(character_notes))
+        for row in character_notes:
+            key = (
+                row["legacy"]["formOrControl"],
+                row["legacy"]["controlName"],
+            )
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("Build > Notes", row["phone"]["route"])
+            self.assertEqual(expected_note_controls[key], row["phone"]["automationId"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertIn(
+                row["e2e"]["phone"]["status"],
+                {"scripted_not_executed", "executed_api36"},
+            )
+            self.assertTrue(row["e2e"]["phone"]["ref"])
         for row in rows:
             self.assertTrue(set(payload["requiredRowFields"]).issubset(row))
             self.assertTrue(row["legacyReviewComplete"])
@@ -586,9 +600,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 304,
+                "implemented_pending_emulator": 307,
                 "implemented_verified_api36": 78,
-                "missing": 1134,
+                "missing": 1131,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 146,

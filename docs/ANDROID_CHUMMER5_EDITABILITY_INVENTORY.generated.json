@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 304,
+      "implemented_pending_emulator": 307,
       "implemented_verified_api36": 78,
-      "missing": 1134,
+      "missing": 1131,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
@@ -82,7 +82,7 @@
       {
         "path": "src/Chummer.Android/Native/CharacterNotesPage.cs",
         "exists": true,
-        "sha256": "ee28c4208eb35d06ab8a79276b116af0023e936575933016bbae41b6236d77d1"
+        "sha256": "d60453bad0842d436d7ab31e3c6395a3f5f3bb6196207a0296a20b6a9fd2c810"
       },
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
@@ -112,7 +112,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "986d58fdb87c6a8203d56317608da4376dc06743e7e407e83a33a4a10e92eed9"
+        "sha256": "f45b2edb029f82f6ba96bb25f683f34e59db543ffc60a95de46c049428aff88b"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -132,7 +132,7 @@
       {
         "path": "tests/run_api36_character_notes_e2e.py",
         "exists": true,
-        "sha256": "62e3deb176b83ff46de92419c483d483564544afdf0792f033d41ed4781cd0eb"
+        "sha256": "0777732f792516a1230e2237ef96a51d6ba1571f0def6ee60422f9ed9c5ac2b4"
       },
       {
         "path": "tests/run_api36_attribute_e2e.py",
@@ -265,27 +265,37 @@
         "sha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65"
       },
       {
-        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
+        "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
         "exists": true,
         "sha256": "20531172c8984c8d572b17c95fe1d92caf0076509bc382ff6bd0179e686aebf3"
       },
       {
-        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
+        "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
         "exists": true,
         "sha256": "c2fc2d67a03f3ebcbd0117ea66ab1f853d13d2539de36109462db6c57891b479"
       },
       {
-        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+        "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "fef7c2ed02ae61ddf3573483b14c9e7c8473eaa05afc32fee95c233c68b9c39b"
+        "sha256": "9f121539c0c1bf3d7041a4c31d65b3d221876b1edc068390ae9f9ff54edfa759"
       },
       {
-        "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+        "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
         "exists": true,
-        "sha256": "95fcf8ccd467a17982a4e0dd3ddcf1fba7b38a885c855bc18ac6c7bcf7fa65a7"
+        "sha256": "35fe5e3f251c43484efde07535b4c168d14ca9e37be71e101c121c363aaf82f8"
       },
       {
-        "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
+        "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Infrastructure/Xml/CharacterFileService.cs",
+        "exists": true,
+        "sha256": "11e9624d8cc65578e0d38c7d8091b615945f566a99cb281b7233796ba4199768"
+      },
+      {
+        "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+        "exists": true,
+        "sha256": "65a507684d4d3b6c39cc75bf79b80bdd311e7ef6f6fe55cff006ca2557629f28"
+      },
+      {
+        "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
         "exists": true,
         "sha256": "1836a660b1c243e53756e9a35e1025663f9332100e3aca68394045f3480cc77c"
       },
@@ -293,6 +303,11 @@
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
         "sha256": "e36097fadc11bf83e76f6c7a74a80859970a308ff9b67948e0f593520d557829"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+        "exists": true,
+        "sha256": "5a37923234bfef0fdfa5a30118adfdcd66fd78cfd2d00f2c4830049db4edb13e"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -357,7 +372,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "1aa4e9fe353e443a761503761abcea3e6618d1031b3962206aa7ca20b7851655"
+      "sha256": "243c8b0b9d7c36cf9e1deeb4b051e43bb627bb381fc86cbb7f0dd5d9f2217275"
     }
   },
   "coverageByFamily": {
@@ -630,7 +645,7 @@
     "notes": {
       "rowCount": 26,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 23,
+      "phoneMissingCount": 20,
       "tabletMissingCount": 25,
       "completionProvenCount": 1
     },
@@ -16405,11 +16420,20 @@
       "mutationFamily": "notes",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Notes",
+        "surface": "CharacterNotesPage",
+        "automationId": "character-group-notes-editor",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CharacterNotesPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -16417,12 +16441,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.UpdateMetadataAsync(UpdateWorkspaceMetadata.GroupNotes)",
+      "persistenceAssertion": "character/groupnotes equals the submitted value after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_character_notes_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -34546,6 +34570,10 @@
           "src/Chummer.Android/Native/CharacterNotesPage.cs",
           "src/Chummer.Android/Native/BuildPage.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
           "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
@@ -34555,7 +34583,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterOverviewPresenter.UpdateMetadataAsync(UpdateWorkspaceMetadata)",
+      "presenterMutation": "ICharacterOverviewPresenter.UpdateMetadataAsync(UpdateWorkspaceMetadata.Notes)",
       "persistenceAssertion": "character/notes equals the submitted value after save, reopen, and process restart",
       "e2e": {
         "phone": {
@@ -34595,11 +34623,20 @@
       "mutationFamily": "notes",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Notes",
+        "surface": "CharacterNotesPage",
+        "automationId": "character-game-notes-editor",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CharacterNotesPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -34607,12 +34644,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.UpdateMetadataAsync(UpdateWorkspaceMetadata.GameNotes)",
+      "persistenceAssertion": "character/gamenotes equals the submitted value after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_character_notes_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -58876,11 +58913,20 @@
       "mutationFamily": "notes",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Notes",
+        "surface": "CharacterNotesPage",
+        "automationId": "character-group-notes-editor",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CharacterNotesPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -58888,12 +58934,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.UpdateMetadataAsync(UpdateWorkspaceMetadata.GroupNotes)",
+      "persistenceAssertion": "character/groupnotes equals the submitted value after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_character_notes_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -59557,6 +59603,10 @@
           "src/Chummer.Android/Native/CharacterNotesPage.cs",
           "src/Chummer.Android/Native/BuildPage.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
           "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs"
         ]
       },
@@ -59566,7 +59616,7 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterOverviewPresenter.UpdateMetadataAsync(UpdateWorkspaceMetadata)",
+      "presenterMutation": "ICharacterOverviewPresenter.UpdateMetadataAsync(UpdateWorkspaceMetadata.Notes)",
       "persistenceAssertion": "character/notes equals the submitted value after save, reopen, and process restart",
       "e2e": {
         "phone": {
