@@ -113,7 +113,7 @@ namespace Chummer.Sample
         self.assertGreater(payload["summary"]["reviewedNonMutatingCount"], 0)
         self.assertEqual(0, payload["summary"]["unclassifiedCount"])
         self.assertEqual(
-            payload["summary"]["reviewedNonMutatingCount"] + 74,
+            payload["summary"]["reviewedNonMutatingCount"] + 75,
             payload["summary"]["completionProvenCount"],
         )
         self.assertEqual(len(rows), len({row["id"] for row in rows}))
@@ -296,6 +296,12 @@ namespace Chummer.Sample
             if row["legacy"]["formOrControl"] == "CharacterCareer"
             and inventory.CHARACTER_CONDITION_CONTROL_RE.fullmatch(row["legacy"]["controlName"])
         ]
+        dynamic_character_condition_rows = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"]
+            == inventory.DYNAMIC_CHARACTER_CONDITION_CONTROL
+        ]
         dashboard_condition_rows = [
             row for row in rows
             if row["legacy"]["formOrControl"] == "ConditionMonitorUserControl"
@@ -329,10 +335,35 @@ namespace Chummer.Sample
         self.assertEqual(4, len(attribute_rows))
         self.assertEqual(120, len(matrix_rows))
         self.assertEqual(48, len(character_condition_rows))
+        self.assertEqual(1, len(dynamic_character_condition_rows))
         self.assertEqual(4, len(dashboard_condition_rows))
         self.assertEqual(24, len(vehicle_physical_rows))
         self.assertEqual(18, len(contact_rows))
         self.assertEqual(4, len(pet_rows))
+        dynamic_condition = dynamic_character_condition_rows[0]
+        self.assertEqual(
+            "implemented_verified_api36",
+            dynamic_condition["phone"]["status"],
+        )
+        self.assertEqual(
+            "implemented_verified_api36",
+            dynamic_condition["tablet"]["status"],
+        )
+        self.assertEqual(
+            "condition-monitor-filled-{physical|stun}",
+            dynamic_condition["phone"]["automationId"],
+        )
+        self.assertEqual(
+            "tablet-condition-filled-{physical|stun}",
+            dynamic_condition["tablet"]["automationId"],
+        )
+        self.assertEqual("executed_api36", dynamic_condition["e2e"]["phone"]["status"])
+        self.assertEqual("executed_api36", dynamic_condition["e2e"]["tablet"]["status"])
+        self.assertIn("Physical / Stun", dynamic_condition["phone"]["route"])
+        self.assertIn("physicalcmfilled", dynamic_condition["persistenceAssertion"])
+        self.assertIn("stuncmfilled", dynamic_condition["persistenceAssertion"])
+        self.assertIn("single synthetic Chummer5 runtime row", dynamic_condition["phone"]["coverageLimit"])
+        self.assertTrue(dynamic_condition["completionProven"])
         linked_character_rows = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"ContactControl", "PetControl"}
@@ -624,7 +655,12 @@ namespace Chummer.Sample
             self.assertEqual("missing", row["e2e"]["tablet"]["status"])
             self.assertFalse(row["completionProven"])
         self.assertTrue(all(row["presenterMutation"] for row in matrix_rows))
-        condition_rows = character_condition_rows + dashboard_condition_rows + vehicle_physical_rows
+        condition_rows = (
+            character_condition_rows
+            + dynamic_character_condition_rows
+            + dashboard_condition_rows
+            + vehicle_physical_rows
+        )
         self.assertTrue(all(row["presenterMutation"] for row in condition_rows))
         self.assertTrue(
             all(row["phone"]["status"] == "partial_exact_saved_data" for row in matrix_rows)
@@ -668,7 +704,11 @@ namespace Chummer.Sample
         self.assertTrue(all(row["persistenceAssertion"] for row in matrix_rows))
         self.assertTrue(all(row["e2e"]["phone"]["status"] == "missing" for row in matrix_rows))
         self.assertTrue(all(row["e2e"]["tablet"]["status"] == "missing" for row in matrix_rows))
-        scripted_condition_rows = character_condition_rows + dashboard_condition_rows
+        scripted_condition_rows = (
+            character_condition_rows
+            + dynamic_character_condition_rows
+            + dashboard_condition_rows
+        )
         self.assertTrue(
             all(row["e2e"]["phone"]["status"] == "executed_api36" for row in scripted_condition_rows)
         )
@@ -740,8 +780,8 @@ namespace Chummer.Sample
         self.assertEqual(
             {
                 "implemented_pending_emulator": 328,
-                "implemented_verified_api36": 78,
-                "missing": 1110,
+                "implemented_verified_api36": 79,
+                "missing": 1109,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 146,
@@ -751,8 +791,8 @@ namespace Chummer.Sample
         self.assertEqual(
             {
                 "implemented_pending_emulator": 4,
-                "implemented_verified_api36": 74,
-                "missing": 1550,
+                "implemented_verified_api36": 75,
+                "missing": 1549,
                 "not_applicable_non_mutating": 457,
                 "partial_exact_saved_data": 144,
             },

@@ -812,6 +812,8 @@ CHARACTER_CONDITION_HANDLERS = {
     "Physical": "chkPhysicalCM_CheckedChanged",
     "Stun": "chkStunCM_CheckedChanged",
 }
+DYNAMIC_CHARACTER_CONDITION_CONTROL = "cb"
+DYNAMIC_CHARACTER_CONDITION_HANDLER = "evtButtonClickEvent"
 DASHBOARD_CONDITION_CONTROLS = {
     "_btnPhysical": ("Physical", "_btnPhysical_Click"),
     "_nudPhysical": ("Physical", "_btnPhysical_Click"),
@@ -5122,16 +5124,22 @@ def _known_phone_mapping(
             },
         }
     character_condition_match = CHARACTER_CONDITION_CONTROL_RE.fullmatch(control)
+    dynamic_character_condition = (
+        class_name == "CharacterCareer"
+        and control == DYNAMIC_CHARACTER_CONDITION_CONTROL
+    )
     dashboard_condition = (
         DASHBOARD_CONDITION_CONTROLS.get(control)
         if class_name == "ConditionMonitorUserControl"
         else None
     )
     if (
-        class_name == "CharacterCareer" and character_condition_match is not None
+        class_name == "CharacterCareer"
+        and (character_condition_match is not None or dynamic_character_condition)
     ) or dashboard_condition is not None:
         if dashboard_condition is not None:
             track, expected_handler = dashboard_condition
+            tracks = (track,)
             legacy_dashboard = (
                 presentation_root
                 / "Chummer"
@@ -5147,14 +5155,41 @@ def _known_phone_mapping(
             expected_counter = "_nudPhysical" if track == "Physical" else "nudStun"
             if not _contains(legacy_dashboard, expected_handler, expected_counter):
                 return None
+        elif dynamic_character_condition:
+            if not any(
+                event.get("event") == "Click"
+                and event.get("handler") == DYNAMIC_CHARACTER_CONDITION_HANDLER
+                for event in legacy.get("events", [])
+            ):
+                return None
+            legacy_character = (
+                presentation_root
+                / "Chummer"
+                / "Forms"
+                / "Character Forms"
+                / "CharacterCareer.cs"
+            )
+            if not _contains(
+                legacy_character,
+                "ProcessCharacterConditionMonitorBoxDisplays(",
+                "DpiFriendlyCheckBoxDisguisedAsButton cb",
+                "cb.Click += evtButtonClickEvent;",
+                "chkPhysicalCM_CheckedChanged",
+                "chkStunCM_CheckedChanged",
+                "SetPhysicalCMFilledAsync",
+                "SetStunCMFilledAsync",
+            ):
+                return None
+            tracks = ("Physical", "Stun")
         else:
             track = character_condition_match.group("track")
             expected_handler = CHARACTER_CONDITION_HANDLERS[track]
             if not any(event.get("handler") == expected_handler for event in legacy.get("events", [])):
                 return None
+            tracks = (track,)
 
-        token = track.lower()
-        xml_element = f"{token}cmfilled"
+        tokens = tuple(track_name.lower() for track_name in tracks)
+        xml_elements = tuple(f"{token}cmfilled" for token in tokens)
         phone_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ConditionMonitorEditPage.cs"
         phone_route = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildFlowPages.cs"
         tablet_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TabletBuildPage.cs"
@@ -5165,9 +5200,12 @@ def _known_phone_mapping(
         presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs"
         e2e_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
         shared = (
-            _contains(request, "ConditionMonitorEditRequest", track)
-            and _contains(state, "ConditionMonitorEditorProjector", track)
-            and _contains(mutation, "ApplyConditionMonitorEdit", xml_element)
+            all(
+                _contains(request, "ConditionMonitorEditRequest", track_name)
+                and _contains(state, "ConditionMonitorEditorProjector", track_name)
+                and _contains(mutation, "ApplyConditionMonitorEdit", xml_element)
+                for track_name, xml_element in zip(tracks, xml_elements, strict=True)
+            )
             and _contains(coordinator, "ApplyConditionMonitorEditAsync")
             and _contains(presenter, "ApplyConditionMonitorEditAsync", "ApplyWorkspaceXmlMutationAsync")
         )
@@ -5185,7 +5223,7 @@ def _known_phone_mapping(
             e2e_driver,
             "edit_condition_damage",
             "assert_condition_damage",
-            f'"{token}ConditionDamageEditPersisted": "pass"',
+            *(f'"{token}ConditionDamageEditPersisted": "pass"' for token in tokens),
             '"processRestartConditionDamagePersistence": "pass"',
         )
         phone_e2e = condition_e2e_receipts.get("phone") if e2e_scripted else None
@@ -5193,15 +5231,32 @@ def _known_phone_mapping(
         condition_e2e_complete = bool(
             phone_implemented and tablet_implemented and phone_e2e and tablet_e2e
         )
-        return {
+        track_label = " / ".join(tracks)
+        phone_automation_id = (
+            "condition-monitor-filled-{physical|stun}"
+            if dynamic_character_condition
+            else f"condition-monitor-filled-{tokens[0]}"
+        )
+        tablet_automation_id = (
+            "tablet-condition-filled-{physical|stun}"
+            if dynamic_character_condition
+            else f"tablet-condition-filled-{tokens[0]}"
+        )
+        persistence_assertion = (
+            "character/physicalcmfilled and character/stuncmfilled each equal the corresponding "
+            "chosen box count after reopen and process restart"
+            if dynamic_character_condition
+            else f"character/{xml_elements[0]} equals the chosen box count after reopen and process restart"
+        )
+        mapping = {
             "status": (
                 "implemented_verified_api36"
                 if phone_implemented and condition_e2e_complete
                 else "implemented_pending_emulator" if phone_implemented else "missing"
             ),
-            "route": f"Build > Combat > Damage tracks > {track}",
+            "route": f"Build > Combat > Damage tracks > {track_label}",
             "surface": "ConditionMonitorEditPage",
-            "automationId": f"condition-monitor-filled-{token}",
+            "automationId": phone_automation_id,
             "sourceRefs": [
                 "src/Chummer.Android/Native/BuildFlowPages.cs",
                 "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -5211,9 +5266,7 @@ def _known_phone_mapping(
                 "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
             ],
             "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
-            "persistenceAssertion": (
-                f"character/{xml_element} equals the chosen box count after reopen and process restart"
-            ),
+            "persistenceAssertion": persistence_assertion,
             "e2e": dict(phone_e2e) if phone_e2e is not None else {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_editing_e2e.py" if e2e_scripted else None,
@@ -5225,7 +5278,7 @@ def _known_phone_mapping(
                     else "implemented_pending_emulator" if tablet_implemented else "missing"
                 ),
                 "surface": "TabletBuildPage persistent damage inspector",
-                "automationId": f"tablet-condition-filled-{token}",
+                "automationId": tablet_automation_id,
                 "sourceRefs": [
                     "src/Chummer.Android/Native/TabletBuildPage.cs",
                     "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
@@ -5240,6 +5293,13 @@ def _known_phone_mapping(
             },
             "completionProven": condition_e2e_complete,
         }
+        if dynamic_character_condition:
+            mapping["coverageLimit"] = (
+                "The single synthetic Chummer5 runtime row represents every additional Physical "
+                "and Stun checkbox created beyond the designer controls; parity is the exact "
+                "filled-count effect for both tracks, not a one-widget-per-generated-box layout."
+            )
+        return mapping
     vehicle_physical_match = VEHICLE_PHYSICAL_CONDITION_CONTROL_RE.fullmatch(control)
     if class_name == "CharacterCareer" and vehicle_physical_match is not None:
         if not any(

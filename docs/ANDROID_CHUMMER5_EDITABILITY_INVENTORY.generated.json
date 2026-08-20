@@ -12,19 +12,19 @@
     "reviewedNonMutatingCount": 457,
     "editParityRequiredCount": 1772,
     "unclassifiedCount": 0,
-    "completionProvenCount": 531,
+    "completionProvenCount": 532,
     "phoneStatusCounts": {
       "implemented_pending_emulator": 328,
-      "implemented_verified_api36": 78,
-      "missing": 1110,
+      "implemented_verified_api36": 79,
+      "missing": 1109,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
-      "implemented_verified_api36": 74,
-      "missing": 1550,
+      "implemented_verified_api36": 75,
+      "missing": 1549,
       "not_applicable_non_mutating": 457,
       "partial_exact_saved_data": 144
     }
@@ -527,7 +527,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "54e246217db8c4c569a95e4743dbee883c2aea9d86dd5b5ae975cc40bb5b7e3b"
+      "sha256": "f7f58f3a79d81937adcb1a1d2a737850b5c444d667d03fe5ebe80e3eaa26ed5e"
     }
   },
   "coverageByFamily": {
@@ -611,9 +611,9 @@
     "condition_monitors_and_damage": {
       "rowCount": 77,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 1,
-      "tabletMissingCount": 1,
-      "completionProvenCount": 52
+      "phoneMissingCount": 0,
+      "tabletMissingCount": 0,
+      "completionProvenCount": 53
     },
     "contacts": {
       "rowCount": 64,
@@ -50854,34 +50854,52 @@
       "mutationFamily": "condition_monitors_and_damage",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Build > Combat > Damage tracks > Physical / Stun",
+        "surface": "ConditionMonitorEditPage",
+        "automationId": "condition-monitor-filled-{physical|stun}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ],
+        "coverageLimit": "The single synthetic Chummer5 runtime row represents every additional Physical and Stun checkbox created beyond the designer controls; parity is the exact filled-count effect for both tracks, not a one-widget-per-generated-box layout."
       },
       "tablet": {
-        "status": "missing",
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "surface": "TabletBuildPage persistent damage inspector",
+        "automationId": "tablet-condition-filled-{physical|stun}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/TabletBuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyConditionMonitorEditAsync",
+      "persistenceAssertion": "character/physicalcmfilled and character/stuncmfilled each equal the corresponding chosen box count after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-condition-monitor/receipt.json",
+          "receiptSha256": "0c03c9eb48577e58a61d8c84c414dcb9cec07da2b6a05d1da4ef612f5807826c",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         },
         "tablet": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-tablet-condition-monitor/receipt.json",
+          "receiptSha256": "0ecc4a180e4576c659180c89cbf322a5d8d97b37b115217a31fd8d47d0a68d62",
+          "apkSha256": "02945fda284459e9d4444835381db67e6554366ff283b9016b0af0db34b34d8c"
         }
       },
       "editParityRequired": true,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "complete",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCreate.Designer.cs::Chummer.CharacterCreate::tabCharacterTabs",
