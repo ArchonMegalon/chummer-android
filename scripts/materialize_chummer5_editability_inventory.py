@@ -489,6 +489,20 @@ LEGACY_CHARACTER_COLLECTION_DELETE_CONTROLS = {
     "cmdDeleteCritterPower": ("CritterPower", "Critter powers"),
     "cmdDeleteQuality": ("Quality", "Qualities"),
 }
+LEGACY_CHARACTER_COLLECTION_NOTES_CONTROLS = {
+    "tsGearNotes": ("Gear", "Gear", "tsGearNotes_Click"),
+    "tsWeaponNotes": ("Weapon", "Weapons", "tsWeaponNotes_Click"),
+    "tsArmorNotes": ("Armor", "Armor", "tsArmorNotes_Click"),
+    "tsVehicleNotes": ("Vehicle", "Vehicles", "tsVehicleNotes_Click"),
+    "tsCyberwareNotes": ("Cyberware", "Cyberware", "tsCyberwareNotes_Click"),
+    "tsBiowareNotes": ("Cyberware", "Cyberware", "tsCyberwareNotes_Click"),
+    "tsSpellNotes": ("Spell", "Spells", "tsSpellNotes_Click"),
+    "tsComplexFormNotes": ("ComplexForm", "Complex forms", "tsComplexFormNotes_Click"),
+    "tsAIProgramNotes": ("MatrixProgram", "AI programs", "tsAIProgramNotes_Click"),
+    "tsCritterPowersNotes": ("CritterPower", "Critter powers", "tsCritterPowersNotes_Click"),
+    "tsQualityNotes": ("Quality", "Qualities", "tsQualityNotes_Click"),
+    "tsInitiationNotes": ("InitiationGrade", "Initiation grades", "tsInitiationNotes_Click"),
+}
 SPIRIT_GENERIC_EDITOR_CONTROLS = {
     "cmdNotes": ("text", "Notes", "notes"),
     "txtCritterName": ("critter", "CritterName", "crittername"),
@@ -2728,6 +2742,75 @@ def _known_phone_mapping(
                 "status": "scripted_not_executed" if tablet_e2e_scripted else "missing",
                 "ref": tablet_e2e_driver.relative_to(REPO_ROOT).as_posix() if tablet_e2e_scripted else None,
             },
+        }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
+        and control in LEGACY_CHARACTER_COLLECTION_NOTES_CONTROLS
+    ):
+        kind, section_label, expected_handler = LEGACY_CHARACTER_COLLECTION_NOTES_CONTROLS[control]
+        if not any(event.get("handler") == expected_handler for event in legacy.get("events", [])):
+            return None
+
+        phone_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        phone_route = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildFlowPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        request = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionMutationRequest.cs"
+        mutation = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs"
+        projector = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorProjector.cs"
+        presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        shared = (
+            _contains(
+                request,
+                "WorkspaceCollectionItemTarget",
+                "WorkspacePatchCollectionItemRequest",
+                "WorkspaceCollectionTextField",
+                "    Notes,",
+            )
+            and _contains(projector, f"WorkspaceCollectionKind.{kind}", "WorkspaceCollectionTextField.Notes")
+            and _contains(mutation, "ApplyTextMutation", 'WorkspaceCollectionTextField.Notes => "notes"')
+            and _contains(coordinator, "ApplyCollectionMutationAsync")
+            and _contains(presenter, "ApplyCollectionMutationAsync", "ApplyWorkspaceXmlMutationAsync")
+        )
+        phone_implemented = shared and _contains(
+            phone_route,
+            "AddCollectionRows",
+            "CollectionItemEditorPage",
+        ) and _contains(
+            phone_page,
+            "collection-field-",
+            "WorkspaceCollectionTextField.Notes",
+            "NativeTheme.TextArea",
+            "value.MaximumLength",
+            "WorkspacePatchCollectionItemRequest",
+        )
+        return {
+            "status": "implemented_pending_emulator" if phone_implemented else "missing",
+            "route": f"Build > {section_label} > selected item > Notes",
+            "surface": "CollectionItemEditorPage",
+            "automationId": "collection-field-notes-{stable-target}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/BuildFlowPages.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / "
+                f"WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.{kind}"
+            ),
+            "persistenceAssertion": (
+                f"selected stable {kind} guid retains notes after save, reopen, and process restart"
+            ),
+            "e2e": {"status": "missing", "ref": None},
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
         }
     if (
         class_name in {"CharacterCreate", "CharacterCareer"}

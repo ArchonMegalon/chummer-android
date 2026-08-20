@@ -255,6 +255,34 @@ namespace Chummer.Sample
             self.assertIn(f"WorkspaceCollectionKind.{kind}", row["presenterMutation"])
             self.assertIn(kind, row["persistenceAssertion"])
             self.assertFalse(row["completionProven"])
+        character_collection_notes_rows = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] in inventory.LEGACY_CHARACTER_COLLECTION_NOTES_CONTROLS
+        ]
+        self.assertEqual(
+            {
+                (form_name, control)
+                for form_name in ("CharacterCreate", "CharacterCareer")
+                for control in inventory.LEGACY_CHARACTER_COLLECTION_NOTES_CONTROLS
+            },
+            {
+                (row["legacy"]["formOrControl"], row["legacy"]["controlName"])
+                for row in character_collection_notes_rows
+            },
+        )
+        for row in character_collection_notes_rows:
+            kind, section_label, _ = inventory.LEGACY_CHARACTER_COLLECTION_NOTES_CONTROLS[
+                row["legacy"]["controlName"]
+            ]
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("missing", row["e2e"]["phone"]["status"])
+            self.assertEqual("collection-field-notes-{stable-target}", row["phone"]["automationId"])
+            self.assertIn(section_label, row["phone"]["route"])
+            self.assertIn(f"WorkspaceCollectionKind.{kind}", row["presenterMutation"])
+            self.assertIn("after save, reopen, and process restart", row["persistenceAssertion"])
+            self.assertFalse(row["completionProven"])
         spirit_rows = {
             row["legacy"]["controlName"]: row
             for row in rows
@@ -435,9 +463,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 246,
+                "implemented_pending_emulator": 270,
                 "implemented_verified_api36": 78,
-                "missing": 1192,
+                "missing": 1168,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 146,

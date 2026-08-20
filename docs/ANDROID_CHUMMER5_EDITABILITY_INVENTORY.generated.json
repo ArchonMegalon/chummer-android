@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 246,
+      "implemented_pending_emulator": 270,
       "implemented_verified_api36": 78,
-      "missing": 1192,
+      "missing": 1168,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
@@ -342,7 +342,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "b8fa1b69b065707aaa9917eff6e14a9bdd281ec6f7db71732da929a490fadae9"
+      "sha256": "9fb89ae3e8b0f4f487ed787666ab9cdedc0e5575b317b4847e0b413327c5e96b"
     }
   },
   "coverageByFamily": {
@@ -370,7 +370,7 @@
     "armor": {
       "rowCount": 97,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 52,
+      "phoneMissingCount": 50,
       "tabletMissingCount": 61,
       "completionProvenCount": 12
     },
@@ -419,7 +419,7 @@
     "complex_forms": {
       "rowCount": 15,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 7,
+      "phoneMissingCount": 5,
       "tabletMissingCount": 12,
       "completionProvenCount": 3
     },
@@ -447,14 +447,14 @@
     "critter_powers": {
       "rowCount": 22,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 13,
+      "phoneMissingCount": 11,
       "tabletMissingCount": 19,
       "completionProvenCount": 3
     },
     "cyberware": {
       "rowCount": 93,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 57,
+      "phoneMissingCount": 53,
       "tabletMissingCount": 65,
       "completionProvenCount": 4
     },
@@ -496,7 +496,7 @@
     "gear": {
       "rowCount": 84,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 53,
+      "phoneMissingCount": 51,
       "tabletMissingCount": 58,
       "completionProvenCount": 2
     },
@@ -524,7 +524,7 @@
     "initiation_and_submersion": {
       "rowCount": 8,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 8,
+      "phoneMissingCount": 6,
       "tabletMissingCount": 8,
       "completionProvenCount": 0
     },
@@ -580,7 +580,7 @@
     "matrix_programs": {
       "rowCount": 23,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 11,
+      "phoneMissingCount": 9,
       "tabletMissingCount": 19,
       "completionProvenCount": 4
     },
@@ -643,7 +643,7 @@
     "qualities": {
       "rowCount": 57,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 37,
+      "phoneMissingCount": 35,
       "tabletMissingCount": 49,
       "completionProvenCount": 8
     },
@@ -678,7 +678,7 @@
     "spells": {
       "rowCount": 67,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 47,
+      "phoneMissingCount": 45,
       "tabletMissingCount": 56,
       "completionProvenCount": 11
     },
@@ -706,7 +706,7 @@
     "vehicles_and_drones": {
       "rowCount": 151,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 65,
+      "phoneMissingCount": 63,
       "tabletMissingCount": 102,
       "completionProvenCount": 25
     },
@@ -720,7 +720,7 @@
     "weapons": {
       "rowCount": 119,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 62,
+      "phoneMissingCount": 60,
       "tabletMissingCount": 73,
       "completionProvenCount": 22
     },
@@ -40441,11 +40441,18 @@
       "mutationFamily": "cyberware",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Cyberware > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -40453,8 +40460,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Cyberware",
+      "persistenceAssertion": "selected stable Cyberware guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -40726,11 +40733,18 @@
       "mutationFamily": "weapons",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Weapons > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -40738,8 +40752,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Weapon",
+      "persistenceAssertion": "selected stable Weapon guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -40954,11 +40968,18 @@
       "mutationFamily": "armor",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Armor > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -40966,8 +40987,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Armor",
+      "persistenceAssertion": "selected stable Armor guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -41234,11 +41255,18 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Vehicles > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -41246,8 +41274,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Vehicle",
+      "persistenceAssertion": "selected stable Vehicle guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -41405,11 +41433,18 @@
       "mutationFamily": "gear",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -41417,8 +41452,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Gear",
+      "persistenceAssertion": "selected stable Gear guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -42654,11 +42689,18 @@
       "mutationFamily": "complex_forms",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Complex forms > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -42666,8 +42708,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.ComplexForm",
+      "persistenceAssertion": "selected stable ComplexForm guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -43281,11 +43323,18 @@
       "mutationFamily": "qualities",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Qualities > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -43293,8 +43342,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Quality",
+      "persistenceAssertion": "selected stable Quality guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -43338,11 +43387,18 @@
       "mutationFamily": "spells",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Spells > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -43350,8 +43406,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Spell",
+      "persistenceAssertion": "selected stable Spell guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -43395,11 +43451,18 @@
       "mutationFamily": "critter_powers",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Critter powers > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -43407,8 +43470,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.CritterPower",
+      "persistenceAssertion": "selected stable CritterPower guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -43965,11 +44028,18 @@
       "mutationFamily": "initiation_and_submersion",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Initiation grades > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -43977,8 +44047,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.InitiationGrade",
+      "persistenceAssertion": "selected stable InitiationGrade guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -44022,11 +44092,18 @@
       "mutationFamily": "cyberware",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Cyberware > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -44034,8 +44111,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Cyberware",
+      "persistenceAssertion": "selected stable Cyberware guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -46012,11 +46089,18 @@
       "mutationFamily": "matrix_programs",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > AI programs > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -46024,8 +46108,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.MatrixProgram",
+      "persistenceAssertion": "selected stable MatrixProgram guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -62502,11 +62586,18 @@
       "mutationFamily": "cyberware",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Cyberware > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -62514,8 +62605,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Cyberware",
+      "persistenceAssertion": "selected stable Cyberware guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -62787,11 +62878,18 @@
       "mutationFamily": "weapons",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Weapons > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -62799,8 +62897,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Weapon",
+      "persistenceAssertion": "selected stable Weapon guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -63404,11 +63502,18 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Vehicles > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -63416,8 +63521,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Vehicle",
+      "persistenceAssertion": "selected stable Vehicle guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -63803,11 +63908,18 @@
       "mutationFamily": "complex_forms",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Complex forms > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -63815,8 +63927,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.ComplexForm",
+      "persistenceAssertion": "selected stable ComplexForm guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -64259,11 +64371,18 @@
       "mutationFamily": "qualities",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Qualities > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -64271,8 +64390,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Quality",
+      "persistenceAssertion": "selected stable Quality guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -64316,11 +64435,18 @@
       "mutationFamily": "spells",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Spells > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -64328,8 +64454,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Spell",
+      "persistenceAssertion": "selected stable Spell guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -64373,11 +64499,18 @@
       "mutationFamily": "critter_powers",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Critter powers > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -64385,8 +64518,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.CritterPower",
+      "persistenceAssertion": "selected stable CritterPower guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -64715,11 +64848,18 @@
       "mutationFamily": "cyberware",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Cyberware > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -64727,8 +64867,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Cyberware",
+      "persistenceAssertion": "selected stable Cyberware guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -65280,11 +65420,18 @@
       "mutationFamily": "matrix_programs",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > AI programs > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -65292,8 +65439,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.MatrixProgram",
+      "persistenceAssertion": "selected stable MatrixProgram guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -65907,11 +66054,18 @@
       "mutationFamily": "armor",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Armor > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -65919,8 +66073,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Armor",
+      "persistenceAssertion": "selected stable Armor guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -66078,11 +66232,18 @@
       "mutationFamily": "gear",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -66090,8 +66251,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Gear",
+      "persistenceAssertion": "selected stable Gear guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -66876,11 +67037,18 @@
       "mutationFamily": "initiation_and_submersion",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Initiation grades > selected item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -66888,8 +67056,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.InitiationGrade",
+      "persistenceAssertion": "selected stable InitiationGrade guid retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
