@@ -477,7 +477,7 @@ PET_TEXT_FIELDS = {
     "cboMetatype": ("Metatype", "metatype", "metatype"),
     "cmdNotes": ("Notes", "notes", "notes"),
 }
-LEGACY_CAREER_COLLECTION_DELETE_CONTROLS = {
+LEGACY_CHARACTER_COLLECTION_DELETE_CONTROLS = {
     "cmdDeleteGear": ("Gear", "Gear"),
     "cmdDeleteWeapon": ("Weapon", "Weapons"),
     "cmdDeleteArmor": ("Armor", "Armor"),
@@ -2730,10 +2730,10 @@ def _known_phone_mapping(
             },
         }
     if (
-        class_name == "CharacterCareer"
-        and control in LEGACY_CAREER_COLLECTION_DELETE_CONTROLS
+        class_name in {"CharacterCreate", "CharacterCareer"}
+        and control in LEGACY_CHARACTER_COLLECTION_DELETE_CONTROLS
     ):
-        kind, section_label = LEGACY_CAREER_COLLECTION_DELETE_CONTROLS[control]
+        kind, section_label = LEGACY_CHARACTER_COLLECTION_DELETE_CONTROLS[control]
         expected_handler = f"{control}_Click"
         if not any(event.get("handler") == expected_handler for event in legacy.get("events", [])):
             return None

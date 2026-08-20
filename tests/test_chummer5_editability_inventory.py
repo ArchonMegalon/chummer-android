@@ -228,17 +228,24 @@ namespace Chummer.Sample
             self.assertIn("Spirits and sprites", row["phone"]["route"])
             self.assertIn("WorkspaceCollectionKind.Spirit", row["presenterMutation"])
             self.assertIn("stable Spirit or Sprite guid", row["persistenceAssertion"])
-        career_collection_delete_rows = [
+        character_collection_delete_rows = [
             row for row in rows
-            if row["legacy"]["formOrControl"] == "CharacterCareer"
-            and row["legacy"]["controlName"] in inventory.LEGACY_CAREER_COLLECTION_DELETE_CONTROLS
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] in inventory.LEGACY_CHARACTER_COLLECTION_DELETE_CONTROLS
         ]
         self.assertEqual(
-            set(inventory.LEGACY_CAREER_COLLECTION_DELETE_CONTROLS),
-            {row["legacy"]["controlName"] for row in career_collection_delete_rows},
+            {
+                (form_name, control)
+                for form_name in ("CharacterCreate", "CharacterCareer")
+                for control in inventory.LEGACY_CHARACTER_COLLECTION_DELETE_CONTROLS
+            },
+            {
+                (row["legacy"]["formOrControl"], row["legacy"]["controlName"])
+                for row in character_collection_delete_rows
+            },
         )
-        for row in career_collection_delete_rows:
-            kind, section_label = inventory.LEGACY_CAREER_COLLECTION_DELETE_CONTROLS[
+        for row in character_collection_delete_rows:
+            kind, section_label = inventory.LEGACY_CHARACTER_COLLECTION_DELETE_CONTROLS[
                 row["legacy"]["controlName"]
             ]
             self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
@@ -288,14 +295,11 @@ namespace Chummer.Sample
                 self.assertEqual("collection-delete-{stable-target}", row["phone"]["automationId"])
         self.assertTrue(all(row["presenterMutation"] for row in origin_rows + attribute_rows))
         for row in origin_rows:
-            self.assertEqual("implemented_verified_api36", row["phone"]["status"])
-            self.assertEqual("executed_api36", row["e2e"]["phone"]["status"])
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
             self.assertEqual(
-                {
-                    key: "pass"
-                    for key in inventory.ORIGIN_DOSSIER_CONTROL_E2E_PROOF_KEYS
-                },
-                row["e2e"]["phone"]["controlProof"],
+                "tests/run_api36_origin_dossier_e2e.py",
+                row["e2e"]["phone"]["ref"],
             )
             self.assertEqual("missing", row["tablet"]["status"])
             self.assertEqual("missing", row["e2e"]["tablet"]["status"])
@@ -431,9 +435,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 210,
-                "implemented_verified_api36": 104,
-                "missing": 1202,
+                "implemented_pending_emulator": 246,
+                "implemented_verified_api36": 78,
+                "missing": 1192,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 146,

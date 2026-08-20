@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 210,
-      "implemented_verified_api36": 104,
-      "missing": 1202,
+      "implemented_pending_emulator": 246,
+      "implemented_verified_api36": 78,
+      "missing": 1192,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
@@ -250,99 +250,99 @@
         "sha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
+        "path": ".integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
         "exists": true,
         "sha256": "20531172c8984c8d572b17c95fe1d92caf0076509bc382ff6bd0179e686aebf3"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
+        "path": ".integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
         "exists": true,
         "sha256": "c2fc2d67a03f3ebcbd0117ea66ab1f853d13d2539de36109462db6c57891b479"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+        "path": ".integration-worktrees/chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
         "sha256": "e70c7c152a4a5b09fd9f9493db28e62a0107a1c6405b873af4a9d5a895210bae"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+        "path": ".integration-worktrees/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
         "sha256": "52783ea5fc1af6286a6397af0c2635691347d609561670a6aeb0534c32caa6d5"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
+        "path": ".integration-worktrees/chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
         "exists": true,
         "sha256": "1836a660b1c243e53756e9a35e1025663f9332100e3aca68394045f3480cc77c"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
         "sha256": "6370f3432d1fe3df6623fbabf90d1257f4608777f2c92208f978085b77ad46e4"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
         "exists": true,
         "sha256": "aeb6d8082f6660647d992968253ea798aee8ab69b32170e6f058d9074860b10a"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
         "exists": true,
         "sha256": "8e4b80c97d8457e4a522ba15e7f310cbb10761aac2dc50e616b72ff344994c33"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/DialogCoordinator.cs",
+        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/DialogCoordinator.cs",
         "exists": true,
         "sha256": "27d967bf701f1cdfafc7eac314f0ef4d52d26e6631faec47abee4507ce179a38"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
         "exists": true,
         "sha256": "f7716c2f6370b92763600e08a4a762fb5cd747bbbd37d30a2b0c8b7842e6ede3"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
+        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
         "exists": true,
         "sha256": "758669c780238031334020ad7af44b5b17612a697cbeff172662788995967ba5"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
+        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
         "exists": true,
         "sha256": "989158b6876e6ac1bbf70813bbe5e4a7f4d7055c8cd0cefa65531cae911eb575"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
+        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
         "exists": true,
         "sha256": "9a418082fa297c94d6af83096717cfcd34fe507e649cf00b562a1373cbf8fc96"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
         "sha256": "f2f6f546cfdcef8208876838aeda00ce707c1409ddc7391736bce9e4d95286b1"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
         "sha256": "bcb0eb3964ebe03322101344715c37214f31a817fc33edac224ca46ce21eb3ed"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
         "exists": true,
         "sha256": "66198f194be80c7092a36c3ae359f05a4a6465829225a2452733e2de382b170f"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
         "sha256": "cf827f887aa4a3244d144766e088a5338e0182e10b298877f5cda785f237dde0"
       },
       {
-        "path": "/docker/chummercomplete/.integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
+        "path": ".integration-worktrees/chummer-presentation-phone-parity-20260816/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
         "exists": true,
         "sha256": "9753a446b1eddbbe3c45cddf4d19b297896c5052b77ccfb42e593c8d5590a16b"
       }
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "72a7c2ec4f1c8347dc2c7a4926975f76b93281057abd94036a720ff853581efb"
+      "sha256": "b8fa1b69b065707aaa9917eff6e14a9bdd281ec6f7db71732da929a490fadae9"
     }
   },
   "coverageByFamily": {
@@ -370,7 +370,7 @@
     "armor": {
       "rowCount": 97,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 53,
+      "phoneMissingCount": 52,
       "tabletMissingCount": 61,
       "completionProvenCount": 12
     },
@@ -419,7 +419,7 @@
     "complex_forms": {
       "rowCount": 15,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 8,
+      "phoneMissingCount": 7,
       "tabletMissingCount": 12,
       "completionProvenCount": 3
     },
@@ -447,14 +447,14 @@
     "critter_powers": {
       "rowCount": 22,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 14,
+      "phoneMissingCount": 13,
       "tabletMissingCount": 19,
       "completionProvenCount": 3
     },
     "cyberware": {
       "rowCount": 93,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 58,
+      "phoneMissingCount": 57,
       "tabletMissingCount": 65,
       "completionProvenCount": 4
     },
@@ -496,7 +496,7 @@
     "gear": {
       "rowCount": 84,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 54,
+      "phoneMissingCount": 53,
       "tabletMissingCount": 58,
       "completionProvenCount": 2
     },
@@ -580,7 +580,7 @@
     "matrix_programs": {
       "rowCount": 23,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 12,
+      "phoneMissingCount": 11,
       "tabletMissingCount": 19,
       "completionProvenCount": 4
     },
@@ -643,7 +643,7 @@
     "qualities": {
       "rowCount": 57,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 38,
+      "phoneMissingCount": 37,
       "tabletMissingCount": 49,
       "completionProvenCount": 8
     },
@@ -678,7 +678,7 @@
     "spells": {
       "rowCount": 67,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 48,
+      "phoneMissingCount": 47,
       "tabletMissingCount": 56,
       "completionProvenCount": 11
     },
@@ -706,7 +706,7 @@
     "vehicles_and_drones": {
       "rowCount": 151,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 66,
+      "phoneMissingCount": 65,
       "tabletMissingCount": 102,
       "completionProvenCount": 25
     },
@@ -720,7 +720,7 @@
     "weapons": {
       "rowCount": 119,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 63,
+      "phoneMissingCount": 62,
       "tabletMissingCount": 73,
       "completionProvenCount": 22
     },
@@ -13991,7 +13991,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-alias",
@@ -14011,15 +14011,8 @@
       "persistenceAssertion": "character/alias equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -23451,7 +23444,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-name",
@@ -23471,15 +23464,8 @@
       "persistenceAssertion": "character/name equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -23514,7 +23500,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-player-name",
@@ -23534,15 +23520,8 @@
       "persistenceAssertion": "character/playername equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -23577,7 +23556,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-skin",
@@ -23597,15 +23576,8 @@
       "persistenceAssertion": "character/skin equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -23640,7 +23612,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-weight",
@@ -23660,15 +23632,8 @@
       "persistenceAssertion": "character/weight equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -23703,7 +23668,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-height",
@@ -23723,15 +23688,8 @@
       "persistenceAssertion": "character/height equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -23766,7 +23724,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-hair",
@@ -23786,15 +23744,8 @@
       "persistenceAssertion": "character/hair equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -23829,7 +23780,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-eyes",
@@ -23849,15 +23800,8 @@
       "persistenceAssertion": "character/eyes equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -23892,7 +23836,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-age",
@@ -23912,15 +23856,8 @@
       "persistenceAssertion": "character/age equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -23955,7 +23892,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-sex",
@@ -23975,15 +23912,8 @@
       "persistenceAssertion": "character/sex equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -34404,7 +34334,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-description",
@@ -34424,15 +34354,8 @@
       "persistenceAssertion": "character/description equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -34467,7 +34390,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-background",
@@ -34487,15 +34410,8 @@
       "persistenceAssertion": "character/background equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -34530,7 +34446,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-concept",
@@ -34550,15 +34466,8 @@
       "persistenceAssertion": "character/concept equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -50899,11 +50808,18 @@
       "mutationFamily": "cyberware",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Cyberware > selected item > Delete item",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-delete-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -50911,8 +50827,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceDeleteCollectionItemRequest on WorkspaceCollectionKind.Cyberware",
+      "persistenceAssertion": "selected stable Cyberware guid is absent from the saved runner after reopen and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -51070,11 +50986,18 @@
       "mutationFamily": "weapons",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Weapons > selected item > Delete item",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-delete-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -51082,8 +51005,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceDeleteCollectionItemRequest on WorkspaceCollectionKind.Weapon",
+      "persistenceAssertion": "selected stable Weapon guid is absent from the saved runner after reopen and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -51208,11 +51131,18 @@
       "mutationFamily": "armor",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Armor > selected item > Delete item",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-delete-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -51220,8 +51150,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceDeleteCollectionItemRequest on WorkspaceCollectionKind.Armor",
+      "persistenceAssertion": "selected stable Armor guid is absent from the saved runner after reopen and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -51723,11 +51653,18 @@
       "mutationFamily": "gear",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > selected item > Delete item",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-delete-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -51735,8 +51672,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceDeleteCollectionItemRequest on WorkspaceCollectionKind.Gear",
+      "persistenceAssertion": "selected stable Gear guid is absent from the saved runner after reopen and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -51894,11 +51831,18 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Vehicles > selected item > Delete item",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-delete-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -51906,8 +51850,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceDeleteCollectionItemRequest on WorkspaceCollectionKind.Vehicle",
+      "persistenceAssertion": "selected stable Vehicle guid is absent from the saved runner after reopen and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -52125,7 +52069,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-skin",
@@ -52145,15 +52089,8 @@
       "persistenceAssertion": "character/skin equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -52188,7 +52125,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-weight",
@@ -52208,15 +52145,8 @@
       "persistenceAssertion": "character/weight equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -52251,7 +52181,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-height",
@@ -52271,15 +52201,8 @@
       "persistenceAssertion": "character/height equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -52314,7 +52237,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-hair",
@@ -52334,15 +52257,8 @@
       "persistenceAssertion": "character/hair equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -52377,7 +52293,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-eyes",
@@ -52397,15 +52313,8 @@
       "persistenceAssertion": "character/eyes equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -52440,7 +52349,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-age",
@@ -52460,15 +52369,8 @@
       "persistenceAssertion": "character/age equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -52503,7 +52405,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-sex",
@@ -52523,15 +52425,8 @@
       "persistenceAssertion": "character/sex equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -53297,7 +53192,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-player-name",
@@ -53317,15 +53212,8 @@
       "persistenceAssertion": "character/playername equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -53536,11 +53424,18 @@
       "mutationFamily": "critter_powers",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Critter powers > selected item > Delete item",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-delete-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -53548,8 +53443,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceDeleteCollectionItemRequest on WorkspaceCollectionKind.CritterPower",
+      "persistenceAssertion": "selected stable CritterPower guid is absent from the saved runner after reopen and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -53650,11 +53545,18 @@
       "mutationFamily": "complex_forms",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Complex forms > selected item > Delete item",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-delete-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -53662,8 +53564,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceDeleteCollectionItemRequest on WorkspaceCollectionKind.ComplexForm",
+      "persistenceAssertion": "selected stable ComplexForm guid is absent from the saved runner after reopen and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -53886,11 +53788,18 @@
       "mutationFamily": "qualities",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Qualities > selected item > Delete item",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-delete-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -53898,8 +53807,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceDeleteCollectionItemRequest on WorkspaceCollectionKind.Quality",
+      "persistenceAssertion": "selected stable Quality guid is absent from the saved runner after reopen and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -54218,7 +54127,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-name",
@@ -54238,15 +54147,8 @@
       "persistenceAssertion": "character/name equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -55652,11 +55554,18 @@
       "mutationFamily": "spells",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Spells > selected item > Delete item",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-delete-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -55664,8 +55573,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceDeleteCollectionItemRequest on WorkspaceCollectionKind.Spell",
+      "persistenceAssertion": "selected stable Spell guid is absent from the saved runner after reopen and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -57240,11 +57149,18 @@
       "mutationFamily": "matrix_programs",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > AI programs > selected item > Delete item",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-delete-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -57252,8 +57168,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceDeleteCollectionItemRequest on WorkspaceCollectionKind.MatrixProgram",
+      "persistenceAssertion": "selected stable MatrixProgram guid is absent from the saved runner after reopen and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -58085,7 +58001,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-alias",
@@ -58105,15 +58021,8 @@
       "persistenceAssertion": "character/alias equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -59172,7 +59081,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-description",
@@ -59192,15 +59101,8 @@
       "persistenceAssertion": "character/description equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -59235,7 +59137,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-background",
@@ -59255,15 +59157,8 @@
       "persistenceAssertion": "character/background equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -59298,7 +59193,7 @@
       "mutationFamily": "origin_dossier",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_verified_api36",
+        "status": "implemented_pending_emulator",
         "route": "Build > Origin dossier",
         "surface": "OriginDossierPage",
         "automationId": "origin-concept",
@@ -59318,15 +59213,8 @@
       "persistenceAssertion": "character/concept equals the submitted value after reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "executed_api36",
-          "ref": "docs/editability-evidence/api36-phone-origin-dossier/receipt.json",
-          "receiptSha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358",
-          "apkSha256": "99d0e60439586dc74875953bdaf289090be93ea2cd29b9f336bd813fec54e0d1",
-          "controlProof": {
-            "mutated": "pass",
-            "workspacePersisted": "pass",
-            "processRestartUiReadback": "pass"
-          }
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_origin_dossier_e2e.py"
         },
         "tablet": {
           "status": "missing",
