@@ -868,34 +868,93 @@ namespace Chummer.Sample
                 self.assertIsNone(inventory._validated_attribute_career_phone_e2e_receipt())
 
     def test_new_character_settings_receipt_is_source_hash_bound(self) -> None:
-        validated = inventory._validated_new_character_settings_phone_e2e_receipt()
-        self.assertIsNotNone(validated)
+        self.assertIsNone(
+            inventory._validated_new_character_settings_phone_e2e_receipt(),
+            "The checked-in API-36 receipt must fail closed after source drift.",
+        )
 
         source = inventory.NEW_CHARACTER_SETTINGS_PHONE_E2E_RECEIPT
         receipt = json.loads(source.read_text(encoding="utf-8"))
-        receipt["dialogFactorySha256"] = "0" * 64
+        native_root = REPO / "src" / "Chummer.Android" / "Native"
+        overview = (
+            inventory.WORKSPACE_ROOT
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+        )
+        source_paths = {
+            "driverSha256": REPO / "tests" / "run_api36_new_character_settings_e2e.py",
+            "sharedDriverSha256": REPO / "tests" / "run_api36_editing_e2e.py",
+            "nativeDialogPageSha256": native_root / "NativeDialogPage.cs",
+            "buildPageSha256": native_root / "BuildPage.cs",
+            "dialogFactorySha256": overview / "DesktopDialogFactory.cs",
+            "dialogCoordinatorSha256": overview / "DialogCoordinator.cs",
+        }
+        receipt.update(
+            {
+                key: inventory._sha256_file(path)
+                for key, path in source_paths.items()
+            }
+        )
         with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
             receipt_path = Path(temporary) / "receipt.json"
             receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
             with patch.object(inventory, "NEW_CHARACTER_SETTINGS_PHONE_E2E_RECEIPT", receipt_path):
+                self.assertIsNotNone(
+                    inventory._validated_new_character_settings_phone_e2e_receipt()
+                )
+                receipt["dialogFactorySha256"] = "0" * 64
+                receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
                 self.assertIsNone(inventory._validated_new_character_settings_phone_e2e_receipt())
 
     def test_character_settings_receipt_is_full_source_graph_hash_bound(self) -> None:
-        validated = inventory._validated_character_settings_phone_e2e_receipt()
-        self.assertIsNotNone(validated)
+        self.assertIsNone(
+            inventory._validated_character_settings_phone_e2e_receipt(),
+            "The checked-in API-36 receipt must fail closed after source drift.",
+        )
 
         source = inventory.CHARACTER_SETTINGS_PHONE_E2E_RECEIPT
         receipt = json.loads(source.read_text(encoding="utf-8"))
-        receipt["characterSettingsContractSha256"] = "0" * 64
+        native_root = REPO / "src" / "Chummer.Android" / "Native"
+        overview = (
+            inventory.WORKSPACE_ROOT
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+        )
+        source_paths = {
+            "driverSha256": REPO / "tests" / "run_api36_character_settings_e2e.py",
+            "sharedDriverSha256": REPO / "tests" / "run_api36_editing_e2e.py",
+            "nativeCommandPageSha256": native_root / "NativeCommandPage.cs",
+            "nativeDialogPageSha256": native_root / "NativeDialogPage.cs",
+            "runnerSessionCoordinatorSha256": native_root / "RunnerSessionCoordinator.cs",
+            "dialogFactorySha256": overview / "DesktopDialogFactory.cs",
+            "characterSettingsDialogSha256": overview / "DesktopDialogFactory.CharacterSettings.cs",
+            "characterSettingsProfilesSha256": overview / "Chummer5CharacterSettingsProfiles.cs",
+            "characterSettingsContractSha256": overview / "Chummer5CharacterSettingsRuntimeContract.Generated.cs",
+            "dialogCoordinatorSha256": overview / "DialogCoordinator.cs",
+        }
+        receipt.update(
+            {
+                key: inventory._sha256_file(path)
+                for key, path in source_paths.items()
+            }
+        )
         with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
             receipt_path = Path(temporary) / "receipt.json"
             receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
             with patch.object(inventory, "CHARACTER_SETTINGS_PHONE_E2E_RECEIPT", receipt_path):
+                self.assertIsNotNone(
+                    inventory._validated_character_settings_phone_e2e_receipt()
+                )
+                receipt["characterSettingsContractSha256"] = "0" * 64
+                receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
                 self.assertIsNone(inventory._validated_character_settings_phone_e2e_receipt())
 
     def test_character_settings_action_receipt_is_control_and_source_graph_hash_bound(self) -> None:
-        self.assertIsNotNone(
-            inventory._validated_character_settings_actions_phone_e2e_receipt()
+        self.assertIsNone(
+            inventory._validated_character_settings_actions_phone_e2e_receipt(),
+            "The checked-in API-36 receipt must fail closed after source drift.",
         )
 
         native_root = REPO / "src" / "Chummer.Android" / "Native"
@@ -1034,7 +1093,10 @@ namespace Chummer.Sample
                     )
 
     def test_linked_runner_receipt_is_control_and_source_graph_hash_bound(self) -> None:
-        self.assertIsNotNone(inventory._validated_linked_runner_phone_e2e_receipt())
+        self.assertIsNone(
+            inventory._validated_linked_runner_phone_e2e_receipt(),
+            "The checked-in API-36 receipt must fail closed after source drift.",
+        )
 
         native_root = REPO / "src" / "Chummer.Android"
         overview = (
@@ -1108,29 +1170,84 @@ namespace Chummer.Sample
                     )
 
     def test_new_character_priority_receipt_is_source_hash_bound(self) -> None:
-        validated = inventory._validated_new_character_priority_phone_e2e_receipt()
-        self.assertIsNotNone(validated)
+        self.assertIsNone(
+            inventory._validated_new_character_priority_phone_e2e_receipt(),
+            "The checked-in API-36 receipt must fail closed after source drift.",
+        )
 
         source = inventory.NEW_CHARACTER_PRIORITY_PHONE_E2E_RECEIPT
         receipt = json.loads(source.read_text(encoding="utf-8"))
-        receipt["driverSha256"] = "0" * 64
+        native_root = REPO / "src" / "Chummer.Android" / "Native"
+        overview = (
+            inventory.WORKSPACE_ROOT
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+        )
+        source_paths = {
+            "driverSha256": REPO / "tests" / "run_api36_new_character_priority_e2e.py",
+            "sharedDriverSha256": REPO / "tests" / "run_api36_editing_e2e.py",
+            "nativeDialogPageSha256": native_root / "NativeDialogPage.cs",
+            "buildPageSha256": native_root / "BuildPage.cs",
+            "dialogFactorySha256": overview / "DesktopDialogFactory.cs",
+            "dialogCoordinatorSha256": overview / "DialogCoordinator.cs",
+        }
+        receipt.update(
+            {
+                key: inventory._sha256_file(path)
+                for key, path in source_paths.items()
+            }
+        )
         with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
             receipt_path = Path(temporary) / "receipt.json"
             receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
             with patch.object(inventory, "NEW_CHARACTER_PRIORITY_PHONE_E2E_RECEIPT", receipt_path):
+                self.assertIsNotNone(
+                    inventory._validated_new_character_priority_phone_e2e_receipt()
+                )
+                receipt["driverSha256"] = "0" * 64
+                receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
                 self.assertIsNone(inventory._validated_new_character_priority_phone_e2e_receipt())
 
     def test_new_character_karma_receipt_is_source_hash_bound(self) -> None:
-        validated = inventory._validated_new_character_karma_phone_e2e_receipt()
-        self.assertIsNotNone(validated)
+        self.assertIsNone(
+            inventory._validated_new_character_karma_phone_e2e_receipt(),
+            "The checked-in API-36 receipt must fail closed after source drift.",
+        )
 
         source = inventory.NEW_CHARACTER_KARMA_PHONE_E2E_RECEIPT
         receipt = json.loads(source.read_text(encoding="utf-8"))
-        receipt["dialogFactorySha256"] = "0" * 64
+        native_root = REPO / "src" / "Chummer.Android" / "Native"
+        overview = (
+            inventory.WORKSPACE_ROOT
+            / "chummer-presentation"
+            / "Chummer.Presentation"
+            / "Overview"
+        )
+        source_paths = {
+            "driverSha256": REPO / "tests" / "run_api36_new_character_karma_e2e.py",
+            "sharedDriverSha256": REPO / "tests" / "run_api36_editing_e2e.py",
+            "helperDriverSha256": REPO / "tests" / "run_api36_new_character_priority_e2e.py",
+            "nativeDialogPageSha256": native_root / "NativeDialogPage.cs",
+            "buildPageSha256": native_root / "BuildPage.cs",
+            "dialogFactorySha256": overview / "DesktopDialogFactory.cs",
+            "dialogCoordinatorSha256": overview / "DialogCoordinator.cs",
+        }
+        receipt.update(
+            {
+                key: inventory._sha256_file(path)
+                for key, path in source_paths.items()
+            }
+        )
         with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
             receipt_path = Path(temporary) / "receipt.json"
             receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
             with patch.object(inventory, "NEW_CHARACTER_KARMA_PHONE_E2E_RECEIPT", receipt_path):
+                self.assertIsNotNone(
+                    inventory._validated_new_character_karma_phone_e2e_receipt()
+                )
+                receipt["dialogFactorySha256"] = "0" * 64
+                receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
                 self.assertIsNone(inventory._validated_new_character_karma_phone_e2e_receipt())
 
 
