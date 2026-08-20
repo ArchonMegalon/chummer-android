@@ -130,6 +130,11 @@
         "sha256": "38ad82e00c5f8ea66d667123222ea916006e690620b6fb4f9314f46716eec2f5"
       },
       {
+        "path": "tests/run_api36_character_notes_e2e.py",
+        "exists": true,
+        "sha256": "62e3deb176b83ff46de92419c483d483564544afdf0792f033d41ed4781cd0eb"
+      },
+      {
         "path": "tests/run_api36_attribute_e2e.py",
         "exists": true,
         "sha256": "7dedbbf4921d5db8f08c753199bc2500c7ea7aaf6affe1118beec0203ccdff57"
@@ -250,6 +255,11 @@
         "sha256": "067271a1d49bd70e9df059de748c005aa5c6d0786dd99e35fa158c2a3b4f8358"
       },
       {
+        "path": "docs/editability-evidence/api36-phone-character-notes/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-linked-runner/receipt.json",
         "exists": true,
         "sha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65"
@@ -347,7 +357,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "74a610ddd4ba8a1e3667bb5007c72749ad990f79f07de684740f51c07990949a"
+      "sha256": "1aa4e9fe353e443a761503761abcea3e6618d1031b3962206aa7ca20b7851655"
     }
   },
   "coverageByFamily": {
@@ -34549,8 +34559,8 @@
       "persistenceAssertion": "character/notes equals the submitted value after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_character_notes_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -59560,8 +59570,8 @@
       "persistenceAssertion": "character/notes equals the submitted value after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_character_notes_e2e.py"
         },
         "tablet": {
           "status": "missing",

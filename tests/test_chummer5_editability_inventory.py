@@ -129,7 +129,8 @@ namespace Chummer.Sample
             and row["phone"]["route"] == "Build > Notes"
             and row["phone"]["automationId"] == "character-notes-editor"
             and row["tablet"]["status"] == "missing"
-            and row["e2e"]["phone"]["status"] == "missing"
+            and row["e2e"]["phone"]["status"] in {"scripted_not_executed", "executed_api36"}
+            and row["e2e"]["phone"]["ref"]
             for row in character_notes
         ))
         for row in rows:

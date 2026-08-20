@@ -266,6 +266,19 @@ ORIGIN_DOSSIER_CONTROL_E2E_PROOF_KEYS = (
     "workspacePersisted",
     "processRestartUiReadback",
 )
+CHARACTER_NOTES_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-character-notes"
+    / "receipt.json"
+)
+CHARACTER_NOTES_E2E_JOURNEYS = (
+    "newRunner",
+    "characterNotesEditPersisted",
+    "characterNotesReopenReadback",
+    "processRestartCharacterNotesPersistence",
+)
 LINKED_RUNNER_PHONE_E2E_RECEIPT = (
     REPO_ROOT
     / "docs"
@@ -875,6 +888,39 @@ def _validated_attribute_phone_e2e_receipt() -> dict[str, Any] | None:
         "status": "executed_api36",
         "ref": ATTRIBUTE_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(ATTRIBUTE_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_character_notes_phone_e2e_receipt() -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_character_notes_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    if not driver.is_file() or not shared_driver.is_file():
+        return None
+
+    try:
+        receipt = json.loads(_read_text(CHARACTER_NOTES_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "character-notes"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and isinstance(journeys, dict)
+        and all(journeys.get(journey) == "pass" for journey in CHARACTER_NOTES_E2E_JOURNEYS)
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": CHARACTER_NOTES_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(CHARACTER_NOTES_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
 
@@ -1980,6 +2026,7 @@ def _known_phone_mapping(
     new_character_settings_phone_e2e_receipt: dict[str, Any] | None,
     new_character_karma_phone_e2e_receipt: dict[str, Any] | None,
     new_character_priority_phone_e2e_receipt: dict[str, Any] | None,
+    character_notes_phone_e2e_receipt: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     legacy = row["legacy"]
     class_name = legacy["formOrControl"]
@@ -3747,8 +3794,17 @@ def _known_phone_mapping(
             )
             and _contains(presenter, "UpdateMetadataAsync", "expectedContentRevision")
         )
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_character_notes_e2e.py"
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"journey": "character-notes"',
+            '"characterNotesEditPersisted": "pass"',
+            '"characterNotesReopenReadback": "pass"',
+            '"processRestartCharacterNotesPersistence": "pass"',
+        )
+        phone_e2e = character_notes_phone_e2e_receipt if implemented and e2e_scripted else None
         return {
-            "status": "implemented_pending_emulator" if implemented else "missing",
+            "status": "implemented_verified_api36" if phone_e2e else "implemented_pending_emulator" if implemented else "missing",
             "route": "Build > Notes",
             "surface": "CharacterNotesPage",
             "automationId": "character-notes-editor",
@@ -3760,7 +3816,10 @@ def _known_phone_mapping(
             ],
             "presenterMutation": "ICharacterOverviewPresenter.UpdateMetadataAsync(UpdateWorkspaceMetadata)",
             "persistenceAssertion": "character/notes equals the submitted value after save, reopen, and process restart",
-            "e2e": {"status": "missing", "ref": None},
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_character_notes_e2e.py" if e2e_scripted else None,
+            },
         }
     if class_name in {"CharacterCreate", "CharacterCareer"} and control in ORIGIN_FIELDS:
         xml_element, automation_id = ORIGIN_FIELDS[control]
@@ -4172,6 +4231,7 @@ def enrich_rows(
     new_character_settings_phone_e2e_receipt = _validated_new_character_settings_phone_e2e_receipt()
     new_character_karma_phone_e2e_receipt = _validated_new_character_karma_phone_e2e_receipt()
     new_character_priority_phone_e2e_receipt = _validated_new_character_priority_phone_e2e_receipt()
+    character_notes_phone_e2e_receipt = _validated_character_notes_phone_e2e_receipt()
     for row in rows:
         family = row["mutationFamily"]
         family_contract = surfaces.get(family, {})
@@ -4215,6 +4275,7 @@ def enrich_rows(
             new_character_settings_phone_e2e_receipt,
             new_character_karma_phone_e2e_receipt,
             new_character_priority_phone_e2e_receipt,
+            character_notes_phone_e2e_receipt,
         )
         if known is not None:
             phone = {
@@ -4311,6 +4372,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TabletBuildPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs",
         REPO_ROOT / "tests" / "run_api36_editing_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_character_notes_e2e.py",
         REPO_ROOT / "tests" / "run_api36_attribute_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_attribute_e2e.py",
         REPO_ROOT / "tests" / "run_api36_character_settings_e2e.py",
@@ -4333,6 +4395,7 @@ def build_inventory(
         CHARACTER_SETTINGS_PHONE_E2E_RECEIPT,
         CHARACTER_SETTINGS_ACTIONS_PHONE_E2E_RECEIPT,
         ORIGIN_DOSSIER_PHONE_E2E_RECEIPT,
+        CHARACTER_NOTES_PHONE_E2E_RECEIPT,
         LINKED_RUNNER_PHONE_E2E_RECEIPT,
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterContactEditSemantics.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterPetEditSemantics.cs",

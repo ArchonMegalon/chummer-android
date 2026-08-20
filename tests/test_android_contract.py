@@ -360,6 +360,21 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("XDocument", notes + coordinator)
         self.assertNotIn("<notes>", notes + coordinator)
 
+    def test_character_notes_have_digest_bound_api36_restart_proof_lane(self) -> None:
+        driver = (REPO / "tests" / "run_api36_character_notes_e2e.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('"character-notes"', driver)
+        self.assertIn('"characterNotesEditPersisted": "pass"', driver)
+        self.assertIn('"characterNotesReopenReadback": "pass"', driver)
+        self.assertIn('"processRestartCharacterNotesPersistence": "pass"', driver)
+        self.assertIn('api != "36"', driver)
+        self.assertIn('"apkSha256": sha256(args.apk.resolve())', driver)
+        self.assertIn('"driverSha256": sha256(driver)', driver)
+        self.assertIn('"sharedDriverSha256": sha256(shared_driver)', driver)
+        self.assertIn('device.shell("am", "force-stop", PACKAGE)', driver)
+
     def test_collection_items_have_typed_stable_id_phone_editing_paths(self) -> None:
         flow = (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8")
         editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
