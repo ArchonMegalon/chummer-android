@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 270,
+      "implemented_pending_emulator": 284,
       "implemented_verified_api36": 78,
-      "missing": 1168,
+      "missing": 1154,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
@@ -342,7 +342,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "9fb89ae3e8b0f4f487ed787666ab9cdedc0e5575b317b4847e0b413327c5e96b"
+      "sha256": "80e96d9714ca2491033d160b9eb74959c97b5a621a75595783e4168b02df0a64"
     }
   },
   "coverageByFamily": {
@@ -370,7 +370,7 @@
     "armor": {
       "rowCount": 97,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 50,
+      "phoneMissingCount": 47,
       "tabletMissingCount": 61,
       "completionProvenCount": 12
     },
@@ -454,7 +454,7 @@
     "cyberware": {
       "rowCount": 93,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 53,
+      "phoneMissingCount": 50,
       "tabletMissingCount": 65,
       "completionProvenCount": 4
     },
@@ -496,7 +496,7 @@
     "gear": {
       "rowCount": 84,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 51,
+      "phoneMissingCount": 46,
       "tabletMissingCount": 58,
       "completionProvenCount": 2
     },
@@ -720,7 +720,7 @@
     "weapons": {
       "rowCount": 119,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 60,
+      "phoneMissingCount": 57,
       "tabletMissingCount": 73,
       "completionProvenCount": 22
     },
@@ -37335,11 +37335,18 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Cyberware > selected item > HomeNode",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-homenode-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -37347,8 +37354,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.HomeNode on WorkspaceCollectionKind.Cyberware",
+      "persistenceAssertion": "selected stable Cyberware guid retains homenode after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -37501,11 +37508,18 @@
       "mutationFamily": "armor",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Armor > selected item > Equipped",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-equipped-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -37513,8 +37527,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Equipped on WorkspaceCollectionKind.Armor",
+      "persistenceAssertion": "selected stable Armor guid retains equipped after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -37615,11 +37629,18 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Weapons > selected item > Equipped",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-equipped-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -37627,8 +37648,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Equipped on WorkspaceCollectionKind.Weapon",
+      "persistenceAssertion": "selected stable Weapon guid retains equipped after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -37672,11 +37693,18 @@
       "mutationFamily": "armor",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Armor > selected item > WirelessEnabled",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-wirelessenabled-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -37684,8 +37712,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.WirelessEnabled on WorkspaceCollectionKind.Armor",
+      "persistenceAssertion": "selected stable Armor guid retains wirelesson after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -37729,11 +37757,18 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Weapons > selected item > WirelessEnabled",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-wirelessenabled-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -37741,8 +37776,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.WirelessEnabled on WorkspaceCollectionKind.Weapon",
+      "persistenceAssertion": "selected stable Weapon guid retains wirelesson after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -37786,11 +37821,18 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Cyberware > selected item > WirelessEnabled",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-wirelessenabled-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -37798,8 +37840,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.WirelessEnabled on WorkspaceCollectionKind.Cyberware",
+      "persistenceAssertion": "selected stable Cyberware guid retains wirelesson after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -37843,11 +37885,18 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > selected item > Equipped",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-equipped-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -37855,8 +37904,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Equipped on WorkspaceCollectionKind.Gear",
+      "persistenceAssertion": "selected stable Gear guid retains equipped after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -37900,11 +37949,18 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > selected item > HomeNode",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-homenode-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -37912,8 +37968,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.HomeNode on WorkspaceCollectionKind.Gear",
+      "persistenceAssertion": "selected stable Gear guid retains homenode after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -38014,11 +38070,18 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > selected item > WirelessEnabled",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-wirelessenabled-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -38026,8 +38089,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.WirelessEnabled on WorkspaceCollectionKind.Gear",
+      "persistenceAssertion": "selected stable Gear guid retains wirelesson after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -51979,11 +52042,18 @@
       "mutationFamily": "armor",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Armor > selected item > Equipped",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-equipped-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -51991,8 +52061,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Equipped on WorkspaceCollectionKind.Armor",
+      "persistenceAssertion": "selected stable Armor guid retains equipped after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -53337,11 +53407,18 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Weapons > selected item > Equipped",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-equipped-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -53349,8 +53426,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Equipped on WorkspaceCollectionKind.Weapon",
+      "persistenceAssertion": "selected stable Weapon guid retains equipped after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -54102,11 +54179,18 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > selected item > Equipped",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-equipped-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -54114,8 +54198,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Equipped on WorkspaceCollectionKind.Gear",
+      "persistenceAssertion": "selected stable Gear guid retains equipped after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -54272,11 +54356,18 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > selected item > HomeNode",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-homenode-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -54284,8 +54375,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.HomeNode on WorkspaceCollectionKind.Gear",
+      "persistenceAssertion": "selected stable Gear guid retains homenode after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -58203,11 +58294,18 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Cyberware > selected item > HomeNode",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-homenode-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -58215,8 +58313,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.HomeNode on WorkspaceCollectionKind.Cyberware",
+      "persistenceAssertion": "selected stable Cyberware guid retains homenode after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",

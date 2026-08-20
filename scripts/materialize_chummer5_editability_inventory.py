@@ -503,6 +503,17 @@ LEGACY_CHARACTER_COLLECTION_NOTES_CONTROLS = {
     "tsQualityNotes": ("Quality", "Qualities", "tsQualityNotes_Click"),
     "tsInitiationNotes": ("InitiationGrade", "Initiation grades", "tsInitiationNotes_Click"),
 }
+LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS = {
+    "chkGearEquipped": ("Gear", "Gear", "Equipped", "equipped", {"CharacterCreate", "CharacterCareer"}),
+    "chkGearWireless": ("Gear", "Gear", "WirelessEnabled", "wirelesson", {"CharacterCareer"}),
+    "chkGearHomeNode": ("Gear", "Gear", "HomeNode", "homenode", {"CharacterCreate", "CharacterCareer"}),
+    "chkCyberwareWireless": ("Cyberware", "Cyberware", "WirelessEnabled", "wirelesson", {"CharacterCareer"}),
+    "chkCyberwareHomeNode": ("Cyberware", "Cyberware", "HomeNode", "homenode", {"CharacterCreate", "CharacterCareer"}),
+    "chkArmorEquipped": ("Armor", "Armor", "Equipped", "equipped", {"CharacterCreate", "CharacterCareer"}),
+    "chkArmorWireless": ("Armor", "Armor", "WirelessEnabled", "wirelesson", {"CharacterCareer"}),
+    "chkWeaponEquipped": ("Weapon", "Weapons", "Equipped", "equipped", {"CharacterCreate", "CharacterCareer"}),
+    "chkWeaponWireless": ("Weapon", "Weapons", "WirelessEnabled", "wirelesson", {"CharacterCareer"}),
+}
 SPIRIT_GENERIC_EDITOR_CONTROLS = {
     "cmdNotes": ("text", "Notes", "notes"),
     "txtCritterName": ("critter", "CritterName", "crittername"),
@@ -2742,6 +2753,78 @@ def _known_phone_mapping(
                 "status": "scripted_not_executed" if tablet_e2e_scripted else "missing",
                 "ref": tablet_e2e_driver.relative_to(REPO_ROOT).as_posix() if tablet_e2e_scripted else None,
             },
+        }
+    if control in LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS:
+        kind, section_label, field, xml_element, supported_forms = (
+            LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS[control]
+        )
+        if class_name not in supported_forms:
+            return None
+
+        phone_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        phone_route = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildFlowPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        request = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionMutationRequest.cs"
+        mutation = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs"
+        projector = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorProjector.cs"
+        presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        shared = (
+            _contains(
+                request,
+                "WorkspaceCollectionItemTarget",
+                "WorkspacePatchCollectionItemRequest",
+                "WorkspaceCollectionToggleField",
+                f"    {field},",
+            )
+            and _contains(projector, f"WorkspaceCollectionKind.{kind}", f"WorkspaceCollectionToggleField.{field}")
+            and _contains(
+                mutation,
+                "ResolveToggleElementName",
+                f"WorkspaceCollectionToggleField.{field}",
+                f'=> "{xml_element}"',
+            )
+            and _contains(coordinator, "ApplyCollectionMutationAsync")
+            and _contains(presenter, "ApplyCollectionMutationAsync", "ApplyWorkspaceXmlMutationAsync")
+        )
+        phone_implemented = shared and _contains(
+            phone_route,
+            "AddCollectionRows",
+            "CollectionItemEditorPage",
+        ) and _contains(
+            phone_page,
+            "AddToggle",
+            "collection-toggle-",
+            "value.IsEnabled",
+            "WorkspacePatchCollectionItemRequest",
+        )
+        return {
+            "status": "implemented_pending_emulator" if phone_implemented else "missing",
+            "route": f"Build > {section_label} > selected item > {field}",
+            "surface": "CollectionItemEditorPage",
+            "automationId": f"collection-toggle-{field.lower()}-{{stable-target}}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/BuildFlowPages.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / "
+                f"WorkspaceCollectionToggleField.{field} on WorkspaceCollectionKind.{kind}"
+            ),
+            "persistenceAssertion": (
+                f"selected stable {kind} guid retains {xml_element} after save, reopen, and process restart"
+            ),
+            "e2e": {"status": "missing", "ref": None},
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
         }
     if (
         class_name in {"CharacterCreate", "CharacterCareer"}

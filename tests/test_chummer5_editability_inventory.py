@@ -283,6 +283,45 @@ namespace Chummer.Sample
             self.assertIn(f"WorkspaceCollectionKind.{kind}", row["presenterMutation"])
             self.assertIn("after save, reopen, and process restart", row["persistenceAssertion"])
             self.assertFalse(row["completionProven"])
+        character_collection_toggle_rows = [
+            row for row in rows
+            if row["legacy"]["controlName"] in inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS
+            and row["legacy"]["formOrControl"]
+                in inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS[
+                    row["legacy"]["controlName"]
+                ][4]
+        ]
+        expected_collection_toggles = {
+            (form_name, control)
+            for control, (_, _, _, _, form_names)
+                in inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS.items()
+            for form_name in form_names
+        }
+        self.assertEqual(
+            expected_collection_toggles,
+            {
+                (row["legacy"]["formOrControl"], row["legacy"]["controlName"])
+                for row in character_collection_toggle_rows
+            },
+        )
+        self.assertEqual(14, len(character_collection_toggle_rows))
+        for row in character_collection_toggle_rows:
+            kind, section_label, field, xml_element, _ = (
+                inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS[
+                    row["legacy"]["controlName"]
+                ]
+            )
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("missing", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                f"collection-toggle-{field.lower()}-{{stable-target}}",
+                row["phone"]["automationId"],
+            )
+            self.assertIn(section_label, row["phone"]["route"])
+            self.assertIn(f"WorkspaceCollectionKind.{kind}", row["presenterMutation"])
+            self.assertIn(xml_element, row["persistenceAssertion"])
+            self.assertFalse(row["completionProven"])
         spirit_rows = {
             row["legacy"]["controlName"]: row
             for row in rows
@@ -463,9 +502,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 270,
+                "implemented_pending_emulator": 284,
                 "implemented_verified_api36": 78,
-                "missing": 1168,
+                "missing": 1154,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 146,
