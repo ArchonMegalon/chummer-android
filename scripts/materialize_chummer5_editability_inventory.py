@@ -513,6 +513,9 @@ LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS = {
     "chkArmorWireless": ("Armor", "Armor", "WirelessEnabled", "wirelesson", {"CharacterCareer"}),
     "chkWeaponEquipped": ("Weapon", "Weapons", "Equipped", "equipped", {"CharacterCreate", "CharacterCareer"}),
     "chkWeaponWireless": ("Weapon", "Weapons", "WirelessEnabled", "wirelesson", {"CharacterCareer"}),
+    "chkInitiationGroup": ("InitiationGrade", "Initiation grades", "Group", "group", {"CharacterCreate", "CharacterCareer"}),
+    "chkInitiationOrdeal": ("InitiationGrade", "Initiation grades", "Ordeal", "ordeal", {"CharacterCreate", "CharacterCareer"}),
+    "chkInitiationSchooling": ("InitiationGrade", "Initiation grades", "Schooling", "schooling", {"CharacterCreate", "CharacterCareer"}),
 }
 LEGACY_CREATION_COLLECTION_NUMERIC_CONTROLS = {
     "nudGearRating": ("Gear", "Gear", "Rating", "rating"),

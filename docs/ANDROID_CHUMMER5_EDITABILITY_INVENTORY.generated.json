@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 289,
+      "implemented_pending_emulator": 295,
       "implemented_verified_api36": 78,
-      "missing": 1149,
+      "missing": 1143,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
@@ -342,7 +342,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "c0eeb31de07285f3a429e49b78873af052ae3fc11e08f160ede95d926f212e38"
+      "sha256": "e463cb639114b64892f0ae8309d6fd760a8144aa27154f5a0467519420a0cbea"
     }
   },
   "coverageByFamily": {
@@ -524,7 +524,7 @@
     "initiation_and_submersion": {
       "rowCount": 8,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 6,
+      "phoneMissingCount": 0,
       "tabletMissingCount": 8,
       "completionProvenCount": 0
     },
@@ -16137,11 +16137,18 @@
       "mutationFamily": "initiation_and_submersion",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Initiation grades > selected item > Schooling",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-schooling-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -16149,8 +16156,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Schooling on WorkspaceCollectionKind.InitiationGrade",
+      "persistenceAssertion": "selected stable InitiationGrade guid retains schooling after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -16194,11 +16201,18 @@
       "mutationFamily": "initiation_and_submersion",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Initiation grades > selected item > Ordeal",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-ordeal-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -16206,8 +16220,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Ordeal on WorkspaceCollectionKind.InitiationGrade",
+      "persistenceAssertion": "selected stable InitiationGrade guid retains ordeal after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -16255,11 +16269,18 @@
       "mutationFamily": "initiation_and_submersion",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Initiation grades > selected item > Group",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-group-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -16267,8 +16288,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Group on WorkspaceCollectionKind.InitiationGrade",
+      "persistenceAssertion": "selected stable InitiationGrade guid retains group after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -54150,11 +54171,18 @@
       "mutationFamily": "initiation_and_submersion",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Initiation grades > selected item > Ordeal",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-ordeal-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -54162,8 +54190,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Ordeal on WorkspaceCollectionKind.InitiationGrade",
+      "persistenceAssertion": "selected stable InitiationGrade guid retains ordeal after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -56486,11 +56514,18 @@
       "mutationFamily": "initiation_and_submersion",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Initiation grades > selected item > Schooling",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-schooling-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -56498,8 +56533,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Schooling on WorkspaceCollectionKind.InitiationGrade",
+      "persistenceAssertion": "selected stable InitiationGrade guid retains schooling after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -58857,11 +58892,18 @@
       "mutationFamily": "initiation_and_submersion",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Initiation grades > selected item > Group",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-toggle-group-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -58869,8 +58911,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Group on WorkspaceCollectionKind.InitiationGrade",
+      "persistenceAssertion": "selected stable InitiationGrade guid retains group after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",

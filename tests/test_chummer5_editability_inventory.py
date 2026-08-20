@@ -304,7 +304,7 @@ namespace Chummer.Sample
                 for row in character_collection_toggle_rows
             },
         )
-        self.assertEqual(14, len(character_collection_toggle_rows))
+        self.assertEqual(20, len(character_collection_toggle_rows))
         for row in character_collection_toggle_rows:
             kind, section_label, field, xml_element, _ = (
                 inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS[
@@ -529,9 +529,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 289,
+                "implemented_pending_emulator": 295,
                 "implemented_verified_api36": 78,
-                "missing": 1149,
+                "missing": 1143,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 146,
