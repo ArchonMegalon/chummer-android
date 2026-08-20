@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 284,
+      "implemented_pending_emulator": 289,
       "implemented_verified_api36": 78,
-      "missing": 1154,
+      "missing": 1149,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
@@ -342,7 +342,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "80e96d9714ca2491033d160b9eb74959c97b5a621a75595783e4168b02df0a64"
+      "sha256": "c0eeb31de07285f3a429e49b78873af052ae3fc11e08f160ede95d926f212e38"
     }
   },
   "coverageByFamily": {
@@ -370,7 +370,7 @@
     "armor": {
       "rowCount": 97,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 47,
+      "phoneMissingCount": 46,
       "tabletMissingCount": 61,
       "completionProvenCount": 12
     },
@@ -454,7 +454,7 @@
     "cyberware": {
       "rowCount": 93,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 50,
+      "phoneMissingCount": 49,
       "tabletMissingCount": 65,
       "completionProvenCount": 4
     },
@@ -475,7 +475,7 @@
     "drugs": {
       "rowCount": 32,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 21,
+      "phoneMissingCount": 20,
       "tabletMissingCount": 26,
       "completionProvenCount": 6
     },
@@ -496,7 +496,7 @@
     "gear": {
       "rowCount": 84,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 46,
+      "phoneMissingCount": 44,
       "tabletMissingCount": 58,
       "completionProvenCount": 2
     },
@@ -50898,11 +50898,18 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Cyberware > selected item > Rating",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-rating-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -50910,8 +50917,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceSetCollectionRatingRequest on WorkspaceCollectionKind.Cyberware",
+      "persistenceAssertion": "selected stable Cyberware guid retains rating after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -51864,11 +51871,18 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > selected item > Rating",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-rating-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -51876,8 +51890,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceSetCollectionRatingRequest on WorkspaceCollectionKind.Gear",
+      "persistenceAssertion": "selected stable Gear guid retains rating after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -51921,11 +51935,18 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > selected item > Quantity",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-quantity-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -51933,8 +51954,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceSetCollectionQuantityRequest on WorkspaceCollectionKind.Gear",
+      "persistenceAssertion": "selected stable Gear guid retains qty after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -53242,11 +53263,18 @@
       "mutationFamily": "armor",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Armor > selected item > Rating",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-rating-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -53254,8 +53282,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceSetCollectionRatingRequest on WorkspaceCollectionKind.Armor",
+      "persistenceAssertion": "selected stable Armor guid retains rating and armor after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -58124,11 +58152,18 @@
       "mutationFamily": "drugs",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Drugs > selected item > Quantity",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-quantity-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -58136,8 +58171,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceSetCollectionQuantityRequest on WorkspaceCollectionKind.Drug",
+      "persistenceAssertion": "selected stable Drug guid retains qty after save, reopen, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",

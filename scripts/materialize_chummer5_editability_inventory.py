@@ -514,6 +514,13 @@ LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS = {
     "chkWeaponEquipped": ("Weapon", "Weapons", "Equipped", "equipped", {"CharacterCreate", "CharacterCareer"}),
     "chkWeaponWireless": ("Weapon", "Weapons", "WirelessEnabled", "wirelesson", {"CharacterCareer"}),
 }
+LEGACY_CREATION_COLLECTION_NUMERIC_CONTROLS = {
+    "nudGearRating": ("Gear", "Gear", "Rating", "rating"),
+    "nudGearQty": ("Gear", "Gear", "Quantity", "qty"),
+    "nudArmorRating": ("Armor", "Armor", "Rating", "rating and armor"),
+    "nudCyberwareRating": ("Cyberware", "Cyberware", "Rating", "rating"),
+    "nudDrugQty": ("Drug", "Drugs", "Quantity", "qty"),
+}
 SPIRIT_GENERIC_EDITOR_CONTROLS = {
     "cmdNotes": ("text", "Notes", "notes"),
     "txtCritterName": ("critter", "CritterName", "crittername"),
@@ -2753,6 +2760,76 @@ def _known_phone_mapping(
                 "status": "scripted_not_executed" if tablet_e2e_scripted else "missing",
                 "ref": tablet_e2e_driver.relative_to(REPO_ROOT).as_posix() if tablet_e2e_scripted else None,
             },
+        }
+    if class_name == "CharacterCreate" and control in LEGACY_CREATION_COLLECTION_NUMERIC_CONTROLS:
+        kind, section_label, numeric_kind, xml_element = LEGACY_CREATION_COLLECTION_NUMERIC_CONTROLS[control]
+        expected_handler = f"{control}_ValueChanged"
+        if not any(event.get("handler") == expected_handler for event in legacy.get("events", [])):
+            return None
+
+        phone_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        phone_route = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildFlowPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        request = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionMutationRequest.cs"
+        mutation = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs"
+        projector = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorProjector.cs"
+        presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        request_type = f"WorkspaceSetCollection{numeric_kind}Request"
+        support_method = f"Supports{numeric_kind}"
+        mutation_method = f"Apply{numeric_kind}Mutation"
+        shared = (
+            _contains(request, "WorkspaceCollectionItemTarget", request_type, "WorkspacePatchCollectionItemRequest")
+            and _contains(projector, support_method, f"WorkspaceCollectionKind.{kind}")
+            and _contains(mutation, mutation_method, f"WorkspaceCollectionKind.{kind}")
+            and _contains(coordinator, "ApplyCollectionMutationAsync")
+            and _contains(presenter, "ApplyCollectionMutationAsync", "ApplyWorkspaceXmlMutationAsync")
+        )
+        automation_token = numeric_kind.lower()
+        validation_markers = (
+            "rating.Minimum",
+            "rating.Maximum",
+        ) if numeric_kind == "Rating" else (
+            "quantity.MinimumExclusive",
+            "quantity.Maximum",
+        )
+        phone_implemented = shared and _contains(
+            phone_route,
+            "AddCollectionRows",
+            "CollectionItemEditorPage",
+        ) and _contains(
+            phone_page,
+            f'"collection-{automation_token}-',
+            "WorkspacePatchCollectionItemRequest",
+            *validation_markers,
+        )
+        return {
+            "status": "implemented_pending_emulator" if phone_implemented else "missing",
+            "route": f"Build > {section_label} > selected item > {numeric_kind}",
+            "surface": "CollectionItemEditorPage",
+            "automationId": f"collection-{automation_token}-{{stable-target}}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/BuildFlowPages.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / "
+                f"{request_type} on WorkspaceCollectionKind.{kind}"
+            ),
+            "persistenceAssertion": (
+                f"selected stable {kind} guid retains {xml_element} after save, reopen, and process restart"
+            ),
+            "e2e": {"status": "missing", "ref": None},
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
         }
     if control in LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS:
         kind, section_label, field, xml_element, supported_forms = (

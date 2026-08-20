@@ -322,6 +322,33 @@ namespace Chummer.Sample
             self.assertIn(f"WorkspaceCollectionKind.{kind}", row["presenterMutation"])
             self.assertIn(xml_element, row["persistenceAssertion"])
             self.assertFalse(row["completionProven"])
+        creation_collection_numeric_rows = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "CharacterCreate"
+            and row["legacy"]["controlName"] in inventory.LEGACY_CREATION_COLLECTION_NUMERIC_CONTROLS
+        ]
+        self.assertEqual(
+            set(inventory.LEGACY_CREATION_COLLECTION_NUMERIC_CONTROLS),
+            {row["legacy"]["controlName"] for row in creation_collection_numeric_rows},
+        )
+        self.assertEqual(5, len(creation_collection_numeric_rows))
+        for row in creation_collection_numeric_rows:
+            kind, section_label, numeric_kind, xml_element = (
+                inventory.LEGACY_CREATION_COLLECTION_NUMERIC_CONTROLS[
+                    row["legacy"]["controlName"]
+                ]
+            )
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("missing", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                f"collection-{numeric_kind.lower()}-{{stable-target}}",
+                row["phone"]["automationId"],
+            )
+            self.assertIn(section_label, row["phone"]["route"])
+            self.assertIn(f"WorkspaceCollectionKind.{kind}", row["presenterMutation"])
+            self.assertIn(xml_element, row["persistenceAssertion"])
+            self.assertFalse(row["completionProven"])
         spirit_rows = {
             row["legacy"]["controlName"]: row
             for row in rows
@@ -502,9 +529,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 284,
+                "implemented_pending_emulator": 289,
                 "implemented_verified_api36": 78,
-                "missing": 1154,
+                "missing": 1149,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 146,
