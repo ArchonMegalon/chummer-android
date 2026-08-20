@@ -289,6 +289,28 @@ CHARACTER_NOTES_CONTROL_E2E_PROOF_KEYS = (
     "workspacePersisted",
     "processRestartUiReadback",
 )
+NESTED_COLLECTION_NOTES_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-nested-collection-notes"
+    / "receipt.json"
+)
+NESTED_COLLECTION_NOTES_E2E_JOURNEYS = (
+    "creationRunnerImported",
+    "allCreationNestedNotesEdited",
+    "creationWorkspaceXmlPersisted",
+    "creationProcessRestartUiReadback",
+    "careerRunnerImported",
+    "allCareerNestedNotesEdited",
+    "careerWorkspaceXmlPersisted",
+    "careerProcessRestartUiReadback",
+)
+NESTED_COLLECTION_NOTES_CONTROL_E2E_PROOF_KEYS = (
+    "mutated",
+    "workspacePersisted",
+    "processRestartUiReadback",
+)
 LINKED_RUNNER_PHONE_E2E_RECEIPT = (
     REPO_ROOT
     / "docs"
@@ -525,6 +547,32 @@ LEGACY_CHARACTER_COLLECTION_NOTES_CONTROLS = {
     "tsCritterPowersNotes": ("CritterPower", "Critter powers", "tsCritterPowersNotes_Click"),
     "tsQualityNotes": ("Quality", "Qualities", "tsQualityNotes_Click"),
     "tsInitiationNotes": ("InitiationGrade", "Initiation grades", "tsInitiationNotes_Click"),
+}
+LEGACY_NESTED_COLLECTION_NOTES_CONTROLS = {
+    "tsWeaponAccessoryNotes": (
+        "Weapon",
+        "WeaponAccessory",
+        "Gear > Weapon Accessories",
+        "weaponaccessories",
+        "tsWeaponNotes_Click",
+        {"CharacterCreate", "CharacterCareer"},
+    ),
+    "tsArmorModNotes": (
+        "Armor",
+        "ArmorMod",
+        "Gear > Armor Mods",
+        "armormods",
+        "tsArmorNotes_Click",
+        {"CharacterCreate", "CharacterCareer"},
+    ),
+    "tsGearPluginNotes": (
+        "Gear",
+        "Gear",
+        "Gear",
+        "gear",
+        "tsGearNotes_Click",
+        {"CharacterCareer"},
+    ),
 }
 LEGACY_CHARACTER_COLLECTION_TEXT_CONTROLS = {
     "tsWeaponName": (
@@ -970,6 +1018,79 @@ def _validated_character_notes_phone_e2e_receipt(
         "status": "executed_api36",
         "ref": CHARACTER_NOTES_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(CHARACTER_NOTES_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_nested_collection_notes_phone_e2e_receipt(
+    presentation_root: Path,
+    core_root: Path,
+) -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_nested_collection_notes_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-nested-notes-e2e.chum5"
+    career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-nested-notes-e2e.chum5"
+    source_digests = {
+        "collectionPageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
+        "coordinatorSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+        "sectionServiceSha256": core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+        "shellCatalogSha256": core_root / "Chummer.Rulesets.Hosting" / "Presentation" / "WorkspaceSurfaceActionCatalog.cs",
+        "projectorSha256": presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorProjector.cs",
+        "collectionMutationRequestSha256": presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionMutationRequest.cs",
+        "mutationCatalogSha256": presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs",
+        "presenterMutationSha256": presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+    }
+    if not all(
+        path.is_file()
+        for path in (driver, shared_driver, creation_fixture, career_fixture, *source_digests.values())
+    ):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(NESTED_COLLECTION_NOTES_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    controls = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_controls = {
+        "CharacterCreate.tsWeaponAccessoryNotes",
+        "CharacterCreate.tsArmorModNotes",
+        "CharacterCareer.tsWeaponAccessoryNotes",
+        "CharacterCareer.tsArmorModNotes",
+        "CharacterCareer.tsGearPluginNotes",
+    }
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "nested-collection-notes"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("creationFixtureSha256") == _sha256_file(creation_fixture)
+        and receipt.get("careerFixtureSha256") == _sha256_file(career_fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(journeys, dict)
+        and all(journeys.get(journey) == "pass" for journey in NESTED_COLLECTION_NOTES_E2E_JOURNEYS)
+        and isinstance(controls, dict)
+        and set(controls) == expected_controls
+        and receipt.get("controlCount") == len(expected_controls)
+        and all(
+            isinstance(controls.get(control), dict)
+            and all(
+                controls[control].get(proof_key) == "pass"
+                for proof_key in NESTED_COLLECTION_NOTES_CONTROL_E2E_PROOF_KEYS
+            )
+            for control in expected_controls
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": NESTED_COLLECTION_NOTES_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(NESTED_COLLECTION_NOTES_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
 
@@ -2077,6 +2198,7 @@ def _known_phone_mapping(
     new_character_karma_phone_e2e_receipt: dict[str, Any] | None,
     new_character_priority_phone_e2e_receipt: dict[str, Any] | None,
     character_notes_phone_e2e_receipt: dict[str, Any] | None,
+    nested_collection_notes_phone_e2e_receipt: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     legacy = row["legacy"]
     class_name = legacy["formOrControl"]
@@ -3089,6 +3211,166 @@ def _known_phone_mapping(
                 f"selected stable {kind} guid retains {xml_element} after save, reopen, and process restart"
             ),
             "e2e": {"status": "missing", "ref": None},
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
+        and control in LEGACY_NESTED_COLLECTION_NOTES_CONTROLS
+    ):
+        (
+            kind,
+            nested_kind,
+            section_label,
+            section_id,
+            expected_handler,
+            form_names,
+        ) = LEGACY_NESTED_COLLECTION_NOTES_CONTROLS[control]
+        if class_name not in form_names or not any(
+            event.get("handler") == expected_handler for event in legacy.get("events", [])
+        ):
+            return None
+
+        phone_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        phone_route = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildFlowPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_nested_collection_notes_e2e.py"
+        request = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionMutationRequest.cs"
+        mutation = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs"
+        projector = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorProjector.cs"
+        presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        core_sections = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        core_actions = (
+            character_notes_core_root
+            / "Chummer.Rulesets.Hosting"
+            / "Presentation"
+            / "WorkspaceSurfaceActionCatalog.cs"
+        )
+        projector_target = (
+            _contains(
+                projector,
+                "schema.Kind == WorkspaceCollectionKind.Gear",
+                "WorkspaceNestedCollectionKind.Gear",
+                'ReadText(item, "parentGuid")',
+            )
+            if nested_kind == "Gear"
+            else _contains(
+                projector,
+                f'"{section_id}" => new(',
+                f"WorkspaceCollectionKind.{kind}",
+                f"WorkspaceNestedCollectionKind.{nested_kind}",
+            )
+        )
+        core_projection = {
+            "Gear": _contains(
+                core_sections,
+                "CharacterGearSection ParseGear",
+                "FlattenGearSummary",
+                "ParentGuid: parentGuid",
+                "Notes: ReadValue(item, \"notes\")",
+            ),
+            "WeaponAccessory": _contains(
+                core_sections,
+                "CharacterWeaponAccessoriesSection ParseWeaponAccessories",
+                "AccessoryGuid: ReadValue(accessory, \"guid\")",
+                "Notes: ReadValue(accessory, \"notes\")",
+            ),
+            "ArmorMod": _contains(
+                core_sections,
+                "CharacterArmorModsSection ParseArmorMods",
+                "ModGuid: ReadValue(mod, \"guid\")",
+                "Notes: ReadValue(mod, \"notes\")",
+            ),
+        }.get(nested_kind, False)
+        shared = (
+            _contains(
+                request,
+                "WorkspaceCollectionItemTarget",
+                "WorkspacePatchCollectionItemRequest",
+                "WorkspaceNestedCollectionKind",
+                f"    {nested_kind}",
+                "WorkspaceCollectionTextField",
+                "    Notes,",
+            )
+            and projector_target
+            and _contains(
+                projector,
+                "if (schema.NestedKind is not null)",
+                "WorkspaceCollectionTextField.Notes",
+            )
+            and _contains(
+                mutation,
+                f"(WorkspaceCollectionKind.{kind}, WorkspaceNestedCollectionKind.{nested_kind})",
+                'WorkspaceCollectionTextField.Notes => "notes"',
+                "FindUniqueItemById",
+            )
+            and core_projection
+            and _contains(
+                core_actions,
+                '"tab-gear"',
+                f'"{section_id}"',
+                "WorkspaceSurfaceActionKind.Section",
+            )
+            and _contains(coordinator, "ApplyCollectionMutationAsync")
+            and _contains(presenter, "ApplyCollectionMutationAsync", "ApplyWorkspaceXmlMutationAsync")
+        )
+        phone_implemented = shared and _contains(
+            phone_route,
+            "AddCollectionRows",
+            "CollectionItemEditorPage",
+        ) and _contains(
+            phone_page,
+            "collection-field-",
+            "WorkspaceCollectionTextField.Notes",
+            "NativeTheme.TextArea",
+            "value.MaximumLength",
+            "WorkspacePatchCollectionItemRequest",
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"journey": "nested-collection-notes"',
+            '"allCreationNestedNotesEdited": "pass"',
+            '"creationWorkspaceXmlPersisted": "pass"',
+            '"creationProcessRestartUiReadback": "pass"',
+            '"allCareerNestedNotesEdited": "pass"',
+            '"careerWorkspaceXmlPersisted": "pass"',
+            '"careerProcessRestartUiReadback": "pass"',
+            '"controls": control_proofs',
+        )
+        phone_e2e = nested_collection_notes_phone_e2e_receipt if phone_implemented and e2e_scripted else None
+        return {
+            "status": "implemented_verified_api36" if phone_e2e else "implemented_pending_emulator" if phone_implemented else "missing",
+            "route": f"Build > {section_label} > selected nested item > Notes",
+            "surface": "CollectionItemEditorPage",
+            "automationId": "collection-field-notes-{stable-nested-target}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/BuildFlowPages.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+                "chummer-core-engine/Chummer.Rulesets.Hosting/Presentation/WorkspaceSurfaceActionCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / "
+                f"WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.{kind} / "
+                f"WorkspaceNestedCollectionKind.{nested_kind}"
+            ),
+            "persistenceAssertion": (
+                f"selected stable {kind}/{nested_kind} parent+child guid pair retains notes "
+                "after save, reopen, and process restart"
+            ),
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_nested_collection_notes_e2e.py" if e2e_scripted else None,
+            },
             "tablet": {
                 "status": "missing",
                 "surface": None,
@@ -4326,6 +4608,10 @@ def enrich_rows(
         presentation_root,
         core_engine_root,
     )
+    nested_collection_notes_phone_e2e_receipt = _validated_nested_collection_notes_phone_e2e_receipt(
+        presentation_root,
+        core_engine_root,
+    )
     for row in rows:
         family = row["mutationFamily"]
         family_contract = surfaces.get(family, {})
@@ -4371,6 +4657,7 @@ def enrich_rows(
             new_character_karma_phone_e2e_receipt,
             new_character_priority_phone_e2e_receipt,
             character_notes_phone_e2e_receipt,
+            nested_collection_notes_phone_e2e_receipt,
         )
         if known is not None:
             phone = {
@@ -4468,6 +4755,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs",
         REPO_ROOT / "tests" / "run_api36_editing_e2e.py",
         REPO_ROOT / "tests" / "run_api36_character_notes_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_nested_collection_notes_e2e.py",
         REPO_ROOT / "tests" / "run_api36_attribute_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_attribute_e2e.py",
         REPO_ROOT / "tests" / "run_api36_character_settings_e2e.py",
@@ -4478,6 +4766,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_new_character_karma_e2e.py",
         REPO_ROOT / "tests" / "run_api36_new_character_priority_e2e.py",
         REPO_ROOT / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-nested-notes-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-nested-notes-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-contact-pet-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-attribute-e2e.chum5",
         *CONDITION_E2E_RECEIPTS.values(),
@@ -4491,6 +4781,7 @@ def build_inventory(
         CHARACTER_SETTINGS_ACTIONS_PHONE_E2E_RECEIPT,
         ORIGIN_DOSSIER_PHONE_E2E_RECEIPT,
         CHARACTER_NOTES_PHONE_E2E_RECEIPT,
+        NESTED_COLLECTION_NOTES_PHONE_E2E_RECEIPT,
         LINKED_RUNNER_PHONE_E2E_RECEIPT,
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterContactEditSemantics.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterPetEditSemantics.cs",
@@ -4499,6 +4790,7 @@ def build_inventory(
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterFileService.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",
+        core_engine_root / "Chummer.Rulesets.Hosting" / "Presentation" / "WorkspaceSurfaceActionCatalog.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.Persistence.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditRequest.cs",

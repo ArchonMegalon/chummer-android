@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Nested Notes E2E</name>
+  <alias>CreationNestedNotesE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <gears>
+    <gear>
+      <guid>gear-parent</guid>
+      <name>Creation Parent Gear</name>
+      <notes>Parent notes</notes>
+      <children>
+        <gear>
+          <guid>gear-plugin</guid>
+          <name>Creation Gear Plugin</name>
+          <notes>Creation plugin initial notes</notes>
+          <children />
+        </gear>
+      </children>
+    </gear>
+  </gears>
+  <weapons>
+    <weapon>
+      <guid>weapon-parent</guid>
+      <name>Creation Parent Weapon</name>
+      <accessories>
+        <accessory>
+          <guid>weapon-accessory</guid>
+          <name>Creation Weapon Accessory</name>
+          <notes>Creation accessory initial notes</notes>
+        </accessory>
+      </accessories>
+    </weapon>
+  </weapons>
+  <armors>
+    <armor>
+      <guid>armor-parent</guid>
+      <name>Creation Parent Armor</name>
+      <armormods>
+        <armormod>
+          <guid>armor-mod</guid>
+          <name>Creation Armor Mod</name>
+          <notes>Creation armor mod initial notes</notes>
+        </armormod>
+      </armormods>
+    </armor>
+  </armors>
+</character>

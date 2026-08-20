@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 531,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 307,
+      "implemented_pending_emulator": 312,
       "implemented_verified_api36": 78,
-      "missing": 1131,
+      "missing": 1126,
       "not_applicable_non_mutating": 457,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
@@ -135,6 +135,11 @@
         "sha256": "0777732f792516a1230e2237ef96a51d6ba1571f0def6ee60422f9ed9c5ac2b4"
       },
       {
+        "path": "tests/run_api36_nested_collection_notes_e2e.py",
+        "exists": true,
+        "sha256": "ca36b18a9b13b10e9449a7462c24e5c58a645bc79a26b218404f5c730f3d3f19"
+      },
+      {
         "path": "tests/run_api36_attribute_e2e.py",
         "exists": true,
         "sha256": "7dedbbf4921d5db8f08c753199bc2500c7ea7aaf6affe1118beec0203ccdff57"
@@ -183,6 +188,16 @@
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
         "exists": true,
         "sha256": "aebca5d1b09a338a798afb45805fe0679c174c2f4f1687e53624990ce095ae25"
+      },
+      {
+        "path": "tests/fixtures/creation-nested-notes-e2e.chum5",
+        "exists": true,
+        "sha256": "605939b87f85631c9c6bdc24367d778f841923aa5e8b1fbad95deea5ebcd74e8"
+      },
+      {
+        "path": "tests/fixtures/career-nested-notes-e2e.chum5",
+        "exists": true,
+        "sha256": "4d06cd7917b14fd6d24fbe008c4dc19d3a0086c208885709426bc0b5d20fb83f"
       },
       {
         "path": "tests/fixtures/creation-contact-pet-e2e.chum5",
@@ -260,6 +275,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-nested-collection-notes/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-linked-runner/receipt.json",
         "exists": true,
         "sha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65"
@@ -298,6 +318,11 @@
         "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
         "exists": true,
         "sha256": "1836a660b1c243e53756e9a35e1025663f9332100e3aca68394045f3480cc77c"
+      },
+      {
+        "path": ".integration-worktrees/android-long-notes-core-20260820/Chummer.Rulesets.Hosting/Presentation/WorkspaceSurfaceActionCatalog.cs",
+        "exists": true,
+        "sha256": "fe8ff0a9746b3029ddf232d681000229dfc69790f2f5d3b0960fd9275324a110"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
@@ -372,7 +397,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "243c8b0b9d7c36cf9e1deeb4b051e43bb627bb381fc86cbb7f0dd5d9f2217275"
+      "sha256": "769c632ccb1eb4a717bc63ab345370afe2d67bd3cec1de3b65ed7afd65f7f56e"
     }
   },
   "coverageByFamily": {
@@ -407,7 +432,7 @@
     "armor_mods": {
       "rowCount": 27,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 25,
+      "phoneMissingCount": 23,
       "tabletMissingCount": 25,
       "completionProvenCount": 2
     },
@@ -638,7 +663,7 @@
     "nested_plugins": {
       "rowCount": 14,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 14,
+      "phoneMissingCount": 13,
       "tabletMissingCount": 14,
       "completionProvenCount": 0
     },
@@ -743,7 +768,7 @@
     "weapon_accessories": {
       "rowCount": 31,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 29,
+      "phoneMissingCount": 27,
       "tabletMissingCount": 29,
       "completionProvenCount": 2
     },
@@ -43428,11 +43453,20 @@
       "mutationFamily": "armor_mods",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Armor Mods > selected nested item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-nested-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Rulesets.Hosting/Presentation/WorkspaceSurfaceActionCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -43440,12 +43474,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Armor / WorkspaceNestedCollectionKind.ArmorMod",
+      "persistenceAssertion": "selected stable Armor/ArmorMod parent+child guid pair retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_nested_collection_notes_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -43734,11 +43768,20 @@
       "mutationFamily": "weapon_accessories",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Weapon Accessories > selected nested item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-nested-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Rulesets.Hosting/Presentation/WorkspaceSurfaceActionCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -43746,12 +43789,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Weapon / WorkspaceNestedCollectionKind.WeaponAccessory",
+      "persistenceAssertion": "selected stable Weapon/WeaponAccessory parent+child guid pair retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_nested_collection_notes_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -43791,11 +43834,20 @@
       "mutationFamily": "nested_plugins",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > selected nested item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-nested-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Rulesets.Hosting/Presentation/WorkspaceSurfaceActionCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -43803,12 +43855,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Gear / WorkspaceNestedCollectionKind.Gear",
+      "persistenceAssertion": "selected stable Gear/Gear parent+child guid pair retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_nested_collection_notes_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -64599,11 +64651,20 @@
       "mutationFamily": "armor_mods",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Armor Mods > selected nested item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-nested-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Rulesets.Hosting/Presentation/WorkspaceSurfaceActionCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -64611,12 +64672,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Armor / WorkspaceNestedCollectionKind.ArmorMod",
+      "persistenceAssertion": "selected stable Armor/ArmorMod parent+child guid pair retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_nested_collection_notes_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -65076,11 +65137,20 @@
       "mutationFamily": "weapon_accessories",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Weapon Accessories > selected nested item > Notes",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-nested-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Rulesets.Hosting/Presentation/WorkspaceSurfaceActionCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+        ]
       },
       "tablet": {
         "status": "missing",
@@ -65088,12 +65158,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionTextField.Notes on WorkspaceCollectionKind.Weapon / WorkspaceNestedCollectionKind.WeaponAccessory",
+      "persistenceAssertion": "selected stable Weapon/WeaponAccessory parent+child guid pair retains notes after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_nested_collection_notes_e2e.py"
         },
         "tablet": {
           "status": "missing",

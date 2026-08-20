@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Nested Notes E2E</name>
+  <alias>CareerNestedNotesE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <karma>35</karma>
+  <nuyen>8500</nuyen>
+  <gears>
+    <gear>
+      <guid>gear-parent</guid>
+      <name>Career Parent Gear</name>
+      <notes>Parent notes</notes>
+      <children>
+        <gear>
+          <guid>gear-plugin</guid>
+          <name>Career Gear Plugin</name>
+          <notes>Career plugin initial notes</notes>
+          <children />
+        </gear>
+      </children>
+    </gear>
+  </gears>
+  <weapons>
+    <weapon>
+      <guid>weapon-parent</guid>
+      <name>Career Parent Weapon</name>
+      <accessories>
+        <accessory>
+          <guid>weapon-accessory</guid>
+          <name>Career Weapon Accessory</name>
+          <notes>Career accessory initial notes</notes>
+        </accessory>
+      </accessories>
+    </weapon>
+  </weapons>
+  <armors>
+    <armor>
+      <guid>armor-parent</guid>
+      <name>Career Parent Armor</name>
+      <armormods>
+        <armormod>
+          <guid>armor-mod</guid>
+          <name>Career Armor Mod</name>
+          <notes>Career armor mod initial notes</notes>
+        </armormod>
+      </armormods>
+    </armor>
+  </armors>
+</character>

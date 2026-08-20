@@ -392,6 +392,30 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('"sharedDriverSha256": Path(shared.__file__).resolve()', driver)
         self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', driver)
 
+    def test_nested_collection_notes_have_digest_bound_api36_restart_proof_lane(self) -> None:
+        driver = (
+            REPO / "tests" / "run_api36_nested_collection_notes_e2e.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('"nested-collection-notes"', driver)
+        self.assertIn('"CharacterCreate"', driver)
+        self.assertIn('"CharacterCareer"', driver)
+        self.assertIn('"tsWeaponAccessoryNotes"', driver)
+        self.assertIn('"tsArmorModNotes"', driver)
+        self.assertIn('"tsGearPluginNotes"', driver)
+        self.assertIn('"allCreationNestedNotesEdited": "pass"', driver)
+        self.assertIn('"creationWorkspaceXmlPersisted": "pass"', driver)
+        self.assertIn('"creationProcessRestartUiReadback": "pass"', driver)
+        self.assertIn('"allCareerNestedNotesEdited": "pass"', driver)
+        self.assertIn('"careerWorkspaceXmlPersisted": "pass"', driver)
+        self.assertIn('"careerProcessRestartUiReadback": "pass"', driver)
+        self.assertIn('"controls": control_proofs', driver)
+        self.assertIn('api != "36"', driver)
+        self.assertIn('"apkSha256": shared.sha256(args.apk.resolve())', driver)
+        self.assertIn('"driverSha256": shared.sha256(driver)', driver)
+        self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', driver)
+        self.assertIn('read_nested_note(character, target)', driver)
+
     def test_collection_items_have_typed_stable_id_phone_editing_paths(self) -> None:
         flow = (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8")
         editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")

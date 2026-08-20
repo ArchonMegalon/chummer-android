@@ -313,6 +313,48 @@ namespace Chummer.Sample
             self.assertIn(f"WorkspaceCollectionKind.{kind}", row["presenterMutation"])
             self.assertIn("after save, reopen, and process restart", row["persistenceAssertion"])
             self.assertFalse(row["completionProven"])
+        nested_collection_notes_rows = [
+            row for row in rows
+            if row["legacy"]["controlName"] in inventory.LEGACY_NESTED_COLLECTION_NOTES_CONTROLS
+            and row["legacy"]["formOrControl"]
+                in inventory.LEGACY_NESTED_COLLECTION_NOTES_CONTROLS[
+                    row["legacy"]["controlName"]
+                ][5]
+        ]
+        expected_nested_notes = {
+            (form_name, control)
+            for control, values in inventory.LEGACY_NESTED_COLLECTION_NOTES_CONTROLS.items()
+            for form_name in values[5]
+        }
+        self.assertEqual(
+            expected_nested_notes,
+            {
+                (row["legacy"]["formOrControl"], row["legacy"]["controlName"])
+                for row in nested_collection_notes_rows
+            },
+        )
+        self.assertEqual(5, len(nested_collection_notes_rows))
+        for row in nested_collection_notes_rows:
+            kind, nested_kind, section_label, *_ = (
+                inventory.LEGACY_NESTED_COLLECTION_NOTES_CONTROLS[
+                    row["legacy"]["controlName"]
+                ]
+            )
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "collection-field-notes-{stable-nested-target}",
+                row["phone"]["automationId"],
+            )
+            self.assertIn(section_label, row["phone"]["route"])
+            self.assertIn(f"WorkspaceCollectionKind.{kind}", row["presenterMutation"])
+            self.assertIn(
+                f"WorkspaceNestedCollectionKind.{nested_kind}",
+                row["presenterMutation"],
+            )
+            self.assertIn("parent+child guid pair", row["persistenceAssertion"])
+            self.assertFalse(row["completionProven"])
         character_collection_text_rows = [
             row for row in rows
             if row["legacy"]["controlName"] in inventory.LEGACY_CHARACTER_COLLECTION_TEXT_CONTROLS
@@ -600,9 +642,9 @@ namespace Chummer.Sample
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 307,
+                "implemented_pending_emulator": 312,
                 "implemented_verified_api36": 78,
-                "missing": 1131,
+                "missing": 1126,
                 "not_applicable_non_mutating": 457,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 146,
