@@ -1,6 +1,8 @@
 using Chummer.Android.Platform;
 using Chummer.Android.Native;
+using Chummer.Application.Tools;
 using Chummer.Desktop.Runtime;
+using Chummer.Infrastructure.Files;
 using Chummer.Presentation.Overview;
 using Chummer.Presentation.Shell;
 using Microsoft.Extensions.Logging;
@@ -23,6 +25,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<IAndroidLinkedCharacterFileService, AndroidLinkedCharacterFileService>();
         builder.Services.AddSingleton<IAndroidSystemService, AndroidSystemService>();
         builder.Services.AddSingleton<IAndroidAccountLinkService, AndroidAccountLinkService>();
+        builder.Services.AddSingleton<ICharacterRosterFavoriteStore>(
+            new FileCharacterRosterFavoriteStore(statePath));
+        builder.Services.AddSingleton<CharacterRosterFavoritePresenter>();
         builder.Services.AddChummerLocalRuntimeClient(
             AppContext.BaseDirectory,
             FileSystem.AppDataDirectory,
@@ -39,6 +44,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IShellSurfaceResolver, ShellSurfaceResolver>();
         builder.Services.AddSingleton<RunnerSessionCoordinator>();
         builder.Services.AddTransient<HomePage>();
+        builder.Services.AddTransient<RosterFavoritesPage>();
         builder.Services.AddTransient<BuildPage>();
         builder.Services.AddTransient<TabletBuildPage>();
         builder.Services.AddTransient<PlayPage>();

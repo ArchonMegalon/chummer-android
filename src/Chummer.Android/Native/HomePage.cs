@@ -66,6 +66,14 @@ public sealed class HomePage : NativePageBase
         quick.Add(create, 1);
         _body.Add(quick);
 
+        if (Coordinator.State.WorkspaceId is not null)
+        {
+            Button favorites = NativeTheme.SecondaryButton("Roster favorite");
+            favorites.AutomationId = "home-roster-favorites";
+            favorites.Clicked += async (_, _) => await Navigation.PushAsync(new RosterFavoritesPage(Coordinator));
+            _body.Add(favorites);
+        }
+
         if (Coordinator.State.OpenWorkspaces.Count > 1)
         {
             _body.Add(NativeTheme.Eyebrow("Open now"));

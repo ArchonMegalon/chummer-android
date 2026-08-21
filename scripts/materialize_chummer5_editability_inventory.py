@@ -414,6 +414,25 @@ CAPTURE_ONLY_PHONE_E2E_SOURCE_PATHS: dict[str, tuple[str, str]] = {
         "Chummer.Presentation/Overview/GroupMembershipEditRequest.cs",
     ),
     "groupMembershipRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterGroupMembershipRules.cs"),
+    "rosterFavoritesPageSha256": ("android", "src/Chummer.Android/Native/RosterFavoritesPage.cs"),
+    "homePageSha256": ("android", "src/Chummer.Android/Native/HomePage.cs"),
+    "mauiProgramSha256": ("android", "src/Chummer.Android/MauiProgram.cs"),
+    "rosterFavoritePresenterSha256": (
+        "presentation",
+        "Chummer.Presentation/Overview/CharacterRosterFavoritePresenter.cs",
+    ),
+    "rosterFavoriteContractSha256": (
+        "core",
+        "Chummer.Contracts/Api/CharacterRosterFavoriteContracts.cs",
+    ),
+    "rosterFavoriteRulesSha256": (
+        "core",
+        "Chummer.Application/Tools/CharacterRosterFavoriteRules.cs",
+    ),
+    "rosterFavoriteStoreSha256": (
+        "core",
+        "Chummer.Infrastructure/Files/FileCharacterRosterFavoriteStore.cs",
+    ),
     "groupNamePageSha256": ("android", "src/Chummer.Android/Native/GroupNamePage.cs"),
     "groupNameContractSha256": ("presentation", "Chummer.Presentation/Overview/GroupNameEditRequest.cs"),
     "groupNameRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterGroupNameRules.cs"),
@@ -591,6 +610,25 @@ CAPTURE_ONLY_PHONE_E2E_DEFINITIONS: dict[str, dict[str, Any]] = {
             "creationMembershipEdited", "creationProcessRestartUiReadback",
             "careerJoinKarmaAndUndoPersisted", "careerLeaveKarmaAndUndoPersisted",
             "careerProcessRestartUiReadback",
+        ),
+    },
+    "roster-favorite": {
+        "driver": "tests/run_api36_roster_favorite_e2e.py",
+        "fixtures": (("runnerFixtureSha256", "tests/fixtures/roster-favorite-e2e.chum5"),),
+        "sourceKeys": (
+            "rosterFavoritesPageSha256", "homePageSha256", "coordinatorSha256", "mauiProgramSha256",
+            "rosterFavoritePresenterSha256", "rosterFavoriteContractSha256",
+            "rosterFavoriteRulesSha256", "rosterFavoriteStoreSha256",
+        ),
+        "controls": ("CharacterRoster.tsToggleFav",),
+        "proofKeys": (
+            "stableDocumentIdentity", "favoriteSorted", "recentPreservedOnFavorite", "unfavoriteMovedToRecentFront",
+            "expectedRevisionAtomicSave", "sameSessionReopened", "processRestartReadback",
+            "backupRecoveryReadback",
+        ),
+        "journeys": (
+            "runnerImported", "favoritePersisted", "favoriteProcessRestartReadback",
+            "unfavoritePersisted", "unfavoriteProcessRestartReadback", "backupRecovery",
         ),
     },
     "group-name": {
@@ -1532,6 +1570,7 @@ PRIMARY_ARM_CONTROLS = {
     "cboPrimaryArm": ("primaryarm", "primary-arm-choice", "PrimaryArm"),
 }
 GROUP_MEMBERSHIP_CONTROL = "chkJoinGroup"
+ROSTER_FAVORITE_CONTROL = "tsToggleFav"
 GROUP_NAME_CONTROL = "txtGroupName"
 TRADITION_NAME_CONTROL = "txtTraditionName"
 TRADITION_DRAIN_CONTROL = "cboDrain"
@@ -12370,6 +12409,125 @@ def _known_phone_mapping(
                 "ref": "tests/run_api36_primary_arm_e2e.py" if e2e_scripted else None,
             },
         }
+    if class_name == "CharacterRoster" and control == ROSTER_FAVORITE_CONTROL:
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RosterFavoritesPage.cs"
+        home_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "HomePage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        maui_program = REPO_ROOT / "src" / "Chummer.Android" / "MauiProgram.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_roster_favorite_e2e.py"
+        fixture = REPO_ROOT / "tests" / "fixtures" / "roster-favorite-e2e.chum5"
+        presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterRosterFavoritePresenter.cs"
+        contract = character_notes_core_root / "Chummer.Contracts" / "Api" / "CharacterRosterFavoriteContracts.cs"
+        rules = character_notes_core_root / "Chummer.Application" / "Tools" / "CharacterRosterFavoriteRules.cs"
+        store_contract = character_notes_core_root / "Chummer.Application" / "Tools" / "ICharacterRosterFavoriteStore.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure" / "Files" / "FileCharacterRosterFavoriteStore.cs"
+        implemented = (
+            _contains(
+                page,
+                "class RosterFavoritesPage",
+                'AutomationId = "roster-favorites-page"',
+                'AutomationId = "roster-favorite-toggle"',
+                "Coordinator.RosterFavorites.Revision",
+                "ToggleRosterFavoriteAsync",
+            )
+            and _contains(home_page, 'AutomationId = "home-roster-favorites"', "new RosterFavoritesPage")
+            and _contains(
+                coordinator,
+                "CharacterRosterDocumentIdentity",
+                "ResolveRosterIdentity",
+                "CharacterRosterFavoriteMutation",
+                "expectedRevision",
+                "_rosterFavoritePresenter.Apply",
+            )
+            and _contains(
+                maui_program,
+                "ICharacterRosterFavoriteStore",
+                "FileCharacterRosterFavoriteStore",
+                "CharacterRosterFavoritePresenter",
+            )
+            and _contains(
+                presenter,
+                "CharacterRosterFavoritePresenter",
+                "CharacterRosterFavoriteRules.Apply",
+                "_store.Save(mutation.ExpectedRevision, updated)",
+            )
+            and _contains(
+                contract,
+                "CharacterRosterDocumentIdentity",
+                "CharacterRosterFavoriteState",
+                "CharacterRosterFavoriteMutation",
+                "ExpectedRevision",
+            )
+            and _contains(
+                rules,
+                "MaximumEntries = 10",
+                "favorites.Sort",
+                "recent.Insert(0, character)",
+                "mutation.ExpectedRevision != current.Revision",
+            )
+            and _contains(store_contract, "ICharacterRosterFavoriteStore", "expectedRevision")
+            and _contains(
+                store,
+                "roster-favorites.json",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                'path + ".bak"',
+                "current.Revision != expectedRevision",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                'CONTROL = "tsToggleFav"',
+                'api != "36"',
+                'abi != "arm64-v8a"',
+                '"profile": "phone"',
+                '"journey": "roster-favorite"',
+                '"rosterFavoriteStoreSha256"',
+                '"runnerFixtureSha256"',
+            )
+            and fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Home > Roster favorite > current runner",
+            "surface": "RosterFavoritesPage",
+            "automationId": "roster-favorite-toggle",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/RosterFavoritesPage.cs",
+                "src/Chummer.Android/Native/HomePage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "src/Chummer.Android/MauiProgram.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterRosterFavoritePresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Api/CharacterRosterFavoriteContracts.cs",
+                "chummer-core-engine/Chummer.Application/Tools/CharacterRosterFavoriteRules.cs",
+                "chummer-core-engine/Chummer.Application/Tools/ICharacterRosterFavoriteStore.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Files/FileCharacterRosterFavoriteStore.cs",
+            ],
+            "presenterMutation": (
+                "CharacterRosterFavoritePresenter.Apply(CharacterRosterFavoriteMutation)"
+            ),
+            "persistenceAssertion": (
+                "the stable character document locator is sorted into the 10-item favorite collection or moved "
+                "to recent index zero after revision-checked atomic persistence, same-session reopen, process "
+                "restart, and backup recovery; character XML remains byte-independent"
+            ),
+            "coverageLimit": (
+                "Phone current/open dossiers only; tablet intentionally remains missing and the API 36 driver is "
+                f"{'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_roster_favorite_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if (
         class_name in {"CharacterCreate", "CharacterCareer"}
         and control == GROUP_MEMBERSHIP_CONTROL
@@ -15544,6 +15702,14 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SituationalModifiersPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "PrimaryArmPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GroupMembershipPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RosterFavoritesPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "HomePage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "MauiProgram.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CharacterRosterFavoritePresenter.cs",
+        core_engine_root / "Chummer.Contracts" / "Api" / "CharacterRosterFavoriteContracts.cs",
+        core_engine_root / "Chummer.Application" / "Tools" / "CharacterRosterFavoriteRules.cs",
+        core_engine_root / "Chummer.Application" / "Tools" / "ICharacterRosterFavoriteStore.cs",
+        core_engine_root / "Chummer.Infrastructure" / "Files" / "FileCharacterRosterFavoriteStore.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GroupNamePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TraditionNamePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TraditionDrainPage.cs",

@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using Chummer.Android.Platform;
+using Chummer.Application.Tools;
+using Chummer.Contracts.Api;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Presentation;
 using Chummer.Contracts.Workspaces;
@@ -37,6 +39,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private const string SelectedGroupPreferenceKey = "chummer.android.selected-group.v1";
     private const string SelectedWorkspacePreferenceKey = "chummer.android.selected-workspace.v1";
     private const string CharacterSettingsCatalogPreferenceKey = "chummer.android.character-settings-catalog.v1";
+    private const string RosterLocatorPreferencePrefix = "chummer.android.roster-locator.v1.";
     private readonly ICharacterOverviewPresenter _presenter;
     private readonly IShellPresenter _shellPresenter;
     private readonly IShellSurfaceResolver _surfaceResolver;
@@ -45,6 +48,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly IAndroidLinkedCharacterFileService _linkedCharacters;
     private readonly IAndroidSystemService _system;
     private readonly IAndroidAccountLinkService _account;
+    private readonly CharacterRosterFavoritePresenter _rosterFavoritePresenter;
     private readonly SemaphoreSlim _initializeGate = new(1, 1);
     private readonly SemaphoreSlim _outputGate = new(1, 1);
     private readonly SemaphoreSlim _shellSyncGate = new(1, 1);
@@ -65,6 +69,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private string _characterNotes = string.Empty;
     private string _gameNotes = string.Empty;
     private string _groupNotes = string.Empty;
+    private CharacterRosterFavoriteState _rosterFavorites = CharacterRosterFavoriteState.Empty;
 
     public RunnerSessionCoordinator(
         ICharacterOverviewPresenter presenter,
@@ -74,7 +79,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         IAndroidDocumentService documents,
         IAndroidLinkedCharacterFileService linkedCharacters,
         IAndroidSystemService system,
-        IAndroidAccountLinkService account)
+        IAndroidAccountLinkService account,
+        CharacterRosterFavoritePresenter rosterFavoritePresenter)
     {
         _presenter = presenter;
         _shellPresenter = shellPresenter;
@@ -84,6 +90,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _linkedCharacters = linkedCharacters;
         _system = system;
         _account = account;
+        _rosterFavoritePresenter = rosterFavoritePresenter;
         _presenter.StateChanged += OnPresenterStateChanged;
         _shellPresenter.StateChanged += OnShellStateChanged;
         _account.Changed += OnAccountChanged;
@@ -114,6 +121,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
     }
 
     public NativePlaySnapshot Play => _play;
+
+    public CharacterRosterFavoriteState RosterFavorites => _rosterFavorites;
 
     public string CharacterNotes
         => State.WorkspaceId == _characterNotesWorkspaceId
@@ -153,6 +162,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
             }
 
             RestoreCharacterSettingsCatalog();
+            _rosterFavorites = _rosterFavoritePresenter.Load();
             await _shellPresenter.InitializeAsync(cancellationToken);
             await _presenter.InitializeAsync(cancellationToken);
             await RestoreSelectedWorkspaceAsync(cancellationToken);
@@ -183,6 +193,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
             await _presenter.ImportAsync(
                 WorkspaceImportDocument.FromUtf8Bytes(document.Content, string.Empty, WorkspaceDocumentFormat.NativeXml),
                 cancellationToken);
+            RememberRosterLocator(State.WorkspaceId, document.ContentUri);
             _notice = $"Opened {document.DisplayName}.";
             await SyncShellAsync(cancellationToken);
             RestorePlayState();
@@ -204,6 +215,9 @@ public sealed class RunnerSessionCoordinator : IDisposable
             await _presenter.ImportAsync(
                 WorkspaceImportDocument.FromUtf8Bytes(payload, character.RulesetId, ParseFormat(character.Format)),
                 cancellationToken);
+            RememberRosterLocator(
+                State.WorkspaceId,
+                $"chummer-run://workspace/{Uri.EscapeDataString(character.WorkspaceId)}");
             _notice = $"Opened {DisplayName(character.Name, character.Alias)}.";
             await SyncShellAsync(cancellationToken);
             RestorePlayState();
@@ -231,6 +245,53 @@ public sealed class RunnerSessionCoordinator : IDisposable
         await _presenter.CloseWorkspaceAsync(workspace.Id, cancellationToken);
         await SyncShellAsync(cancellationToken);
         RestorePlayState();
+    }
+
+    public bool IsRosterFavorite(OpenWorkspaceState workspace)
+    {
+        CharacterRosterDocumentIdentity identity = ResolveRosterIdentity(workspace);
+        return CharacterRosterFavoriteRules.IsFavorite(_rosterFavorites, identity);
+    }
+
+    public Task ToggleRosterFavoriteAsync(
+        OpenWorkspaceState workspace,
+        bool isFavorite,
+        long expectedRevision,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        CharacterRosterDocumentIdentity identity = ResolveRosterIdentity(workspace);
+        _rosterFavorites = _rosterFavoritePresenter.Apply(new CharacterRosterFavoriteMutation(
+            identity,
+            isFavorite,
+            expectedRevision));
+        _notice = isFavorite
+            ? $"{identity.DisplayName} added to favorites."
+            : $"{identity.DisplayName} moved to recent runners.";
+        NotifyChanged();
+        return Task.CompletedTask;
+    }
+
+    private CharacterRosterDocumentIdentity ResolveRosterIdentity(OpenWorkspaceState workspace)
+    {
+        string locator = Preferences.Default.Get(
+            RosterLocatorPreferencePrefix + workspace.Id.Value,
+            string.Empty);
+        if (string.IsNullOrWhiteSpace(locator))
+        {
+            locator = $"chummer-workspace://local/{Uri.EscapeDataString(workspace.Id.Value)}";
+        }
+        string displayName = !string.IsNullOrWhiteSpace(workspace.Alias)
+            ? workspace.Alias
+            : !string.IsNullOrWhiteSpace(workspace.Name) ? workspace.Name : "Runner";
+        return new CharacterRosterDocumentIdentity(locator, displayName);
+    }
+
+    private static void RememberRosterLocator(CharacterWorkspaceId? workspaceId, string locator)
+    {
+        if (workspaceId is null || string.IsNullOrWhiteSpace(locator))
+            return;
+        Preferences.Default.Set(RosterLocatorPreferencePrefix + workspaceId.Value.Value, locator.Trim());
     }
 
     public async Task SelectTabAsync(string tabId, CancellationToken cancellationToken = default)
