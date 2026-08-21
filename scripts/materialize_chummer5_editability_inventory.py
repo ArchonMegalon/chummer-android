@@ -1062,6 +1062,18 @@ CAREER_MANUAL_KARMA_CONTROLS = {
         "career-manual-karma-spend",
     ),
 }
+CAREER_MANUAL_NUYEN_CONTROLS = {
+    "cmdNuyenGained": (
+        "cmdNuyenGained_Click",
+        "gain",
+        "career-manual-nuyen-gain",
+    ),
+    "cmdNuyenSpent": (
+        "cmdNuyenSpent_Click",
+        "spend",
+        "career-manual-nuyen-spend",
+    ),
+}
 GEAR_LOCATION_ADD_CONTROL = "cmdAddLocation"
 WEAPON_LOCATION_ADD_CONTROL = "cmdAddWeaponLocation"
 VEHICLE_LOCATION_ADD_CONTROL = "cmdAddVehicleLocation"
@@ -5415,6 +5427,187 @@ def _known_phone_mapping(
             "e2e": {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_career_manual_karma_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "CharacterCareer" and control in CAREER_MANUAL_NUYEN_CONTROLS:
+        handler, action, automation_id = CAREER_MANUAL_NUYEN_CONTROLS[control]
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerManualNuyenPage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_career_manual_nuyen_e2e.py"
+        fixture = REPO_ROOT / "tests" / "fixtures" / "career-manual-nuyen-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "CareerManualNuyenEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualNuyenRules.cs"
+        source_resolver_contract = character_notes_core_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs"
+        source_resolver = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "FileSystemCharacterSourceDataResolver.cs"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        legacy_handler_exact = any(
+            event.get("handler") == handler
+            for event in legacy.get("events", [])
+            if isinstance(event, dict)
+        )
+        action_marker = (
+            "CharacterCareerManualNuyenAction.Gain"
+            if action == "gain"
+            else "CharacterCareerManualNuyenAction.Spend"
+        )
+        implemented = (
+            legacy_handler_exact
+            and _contains(
+                page,
+                "class CareerManualNuyenPage",
+                'AutomationId = "career-manual-nuyen-page"',
+                f'AutomationId = "{automation_id}"',
+                'AutomationId = "career-manual-nuyen-amount"',
+                'AutomationId = "career-manual-nuyen-percent"',
+                '"career-manual-nuyen-reason"',
+                '"career-manual-nuyen-refund"',
+                '"career-manual-nuyen-exchange"',
+                '"career-manual-nuyen-force-career-visible"',
+                action_marker,
+                "_editor.ContentRevision",
+            )
+            and _contains(build_page, '"build-career-manual-nuyen"', "new CareerManualNuyenPage")
+            and _contains(
+                coordinator,
+                "PrepareCareerManualNuyenEditAsync",
+                "ApplyCareerManualNuyenEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CareerManualNuyenEditorState",
+                "CareerManualNuyenEditRequest",
+                "CharacterCareerManualNuyenState ExpectedState",
+                'ReadRequiredBool(root, "created")',
+                'ReadOptionalInt(root, "karma")',
+                'ReadOptionalDecimal(root, "nuyen")',
+                "TryResolveKarmaNuyenExchangeRates",
+            )
+            and _contains(
+                mutation,
+                "ApplyCareerManualNuyenEdit",
+                "CharacterCareerManualNuyenRules.TryQuote",
+                'EnsureElement(root, "nuyen")',
+                'EnsureElement(root, "karma")',
+                "InsertManualKarmaExpenseSorted",
+                'new XElement("forcecareervisible"',
+                'nuyenType: request.Action == CharacterCareerManualNuyenAction.Gain',
+                'karmaType: "ManualSubtract"',
+            )
+            and _contains(
+                presenter,
+                "PrepareCareerManualNuyenEditAsync",
+                "ApplyCareerManualNuyenEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareCareerManualNuyenEditAsync",
+                "ApplyCareerManualNuyenEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterCareerManualNuyenState",
+                "CharacterCareerManualNuyenQuote",
+                "NuyenPerKarmaWorkingForPeople",
+                "NuyenPerKarmaWorkingForMan",
+                "enteredAmount * percent / 100m",
+                "decimal.ToInt32(nuyenAmount / conversionRate)",
+            )
+            and _contains(
+                source_resolver_contract,
+                "TryResolveKarmaNuyenExchangeRates",
+                "workingForPeopleRate",
+                "workingForManRate",
+            )
+            and _contains(
+                source_resolver,
+                '"nuyenperbpwftp"',
+                '"nuyenperbpwftm"',
+                "TryReadPositiveDecimal",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                'CONTROLS = ("cmdNuyenGained", "cmdNuyenSpent")',
+                'api != "36"',
+                '"profile": "phone"',
+                '"journey": "career-manual-nuyen"',
+                '"careerManualNuyenRulesSha256"',
+                '"sourceResolverSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"careerFixtureSha256"',
+            )
+            and fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Runner > Manual Nuyen",
+            "surface": "CareerManualNuyenPage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CareerManualNuyenPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CareerManualNuyenEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerManualNuyenRules.cs",
+                "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCareerManualNuyenEditAsync / "
+                f"CareerManualNuyenEditRequest({action}) on character/nuyen, optional character/karma, and character/expenses"
+            ),
+            "persistenceAssertion": (
+                "character/nuyen, optional exchange-driven character/karma, exact percentage, sorted Nuyen/Karma "
+                "expenses, refund/visibility asymmetry, and legacy undo metadata persist after revision-bound atomic "
+                "save, same-session reopen, and two process restarts; unrelated nested Nuyen XML survives"
+            ),
+            "coverageLimit": (
+                "Career only, matching the cmdNuyenGained/cmdNuyenSpent transaction handlers; exact saved settings "
+                "must prove both NuyenPerBPWftP and NuyenPerBPWftM. The phone preserves CreateExpense's People-rate "
+                "divisibility gate and the gained-Nuyen Man-rate conversion while providing a working commit path "
+                "for the legacy dialog's otherwise non-closing exchange branch; the API 36 phone driver is "
+                f"{'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_career_manual_nuyen_e2e.py" if e2e_scripted else None,
             },
             "tablet": {
                 "status": "missing",
@@ -12213,6 +12406,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TraditionDrainPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerEdgeUsePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerManualKarmaPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerManualNuyenPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearLocationAddPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponLocationAddPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "VehicleLocationAddPage.cs",
@@ -12393,6 +12587,7 @@ def build_inventory(
         core_engine_root / "Chummer" / "data" / "traditions.xml",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerEdgeUseRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualKarmaRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualNuyenRules.cs",
         core_engine_root / "Chummer.Contracts" / "Workspaces" / "CharacterWorkspaceModels.cs",
         core_engine_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterFileService.cs",
@@ -12412,6 +12607,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "TraditionDrainEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerEdgeUseEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerManualKarmaEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CareerManualNuyenEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GearLocationAddRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponLocationAddRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "VehicleLocationAddRequest.cs",

@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 400,
+      "implemented_pending_emulator": 402,
       "implemented_verified_api36": 79,
-      "missing": 1029,
+      "missing": 1027,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 147
@@ -77,7 +77,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "ca30021a743bf63164e45036d024093c9b3cb51f57a03cb2b2884ec7aea2c354"
+        "sha256": "23b4540913916be49755d5864f28598ade4bcdbeeb18c4350a75e1b360a2881b"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -128,6 +128,11 @@
         "path": "src/Chummer.Android/Native/CareerManualKarmaPage.cs",
         "exists": true,
         "sha256": "f0f17cca1fdc6e5dd5c19c05f72dad1858dc32e804ba7105ede1a0dac374dd6d"
+      },
+      {
+        "path": "src/Chummer.Android/Native/CareerManualNuyenPage.cs",
+        "exists": true,
+        "sha256": "7d16eec58e05e3fcbf6dbbe786bf1ceba94fec3a8f02c49338a5dcb1cae68ce1"
       },
       {
         "path": "src/Chummer.Android/Native/GearLocationAddPage.cs",
@@ -252,7 +257,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "74d48e2ae3dfbc37562fde00c25252d448baa82b0db3e01c34ade289c4497716"
+        "sha256": "fe1705e3d0d9ecad5fa31363593bc40c1b7f107a8bb709ba99d566d0946bc60c"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1040,6 +1045,11 @@
         "sha256": "9bce1e3aab47a6fdd08499376f9ee8e95f2bc32ea21ffcac6860d76d35a5002b"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerManualNuyenRules.cs",
+        "exists": true,
+        "sha256": "7d0a46446658b2f5ddf22ca55e7fbeb9c422b897d45fcb782f9ba5e9704ad207"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
         "exists": true,
         "sha256": "35fe5e3f251c43484efde07535b4c168d14ca9e37be71e101c121c363aaf82f8"
@@ -1087,7 +1097,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "30747eeaec46908cf27785b6918ef7676781fd9ab0337923dff20d8d12505aab"
+        "sha256": "8dd3197aea146d5adb97f97e6026c25509f53335c0549e65c86ba12452d38dca"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1133,6 +1143,11 @@
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerManualKarmaEditRequest.cs",
         "exists": true,
         "sha256": "98ce4560327e4ab2a6c1b2ec678162517af16c0613b66acdcd3524e17876b095"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/CareerManualNuyenEditRequest.cs",
+        "exists": true,
+        "sha256": "c6783b6fd4595aa4117bdc52ba3b512a77d49e7467dd225f45ad86251aa6d8b0"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
@@ -1232,7 +1247,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "bc13477b7debe8ff2a2af22e6eb316374ea49bca597f24bac98673c73126f21c"
+        "sha256": "542886d99b80b0a1fe62917e6340b8cf6b02a9ae797fec68256b8311f23fa4bb"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1287,7 +1302,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "3b338bb381a6e0c6b4862a68a85a96563ae2d28f968c8819d55c9067f7eff411"
+        "sha256": "dbbdf897c9eb0e1401869ca03bcb7b2572e2938b79b681a6f6f18c1ceecc1285"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1297,7 +1312,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "69535bf9511e93fe6b5bce6f1d77cb34405581227ba907f85af998f8573fa787"
+      "sha256": "6d44054aba9f7010290fadaa0e7a6519987967d6f113c2f56a85a53a608b8151"
     }
   },
   "coverageByFamily": {
@@ -1437,7 +1452,7 @@
     "expenses": {
       "rowCount": 19,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 17,
+      "phoneMissingCount": 15,
       "tabletMissingCount": 17,
       "completionProvenCount": 2
     },
@@ -25947,11 +25962,25 @@
       "mutationFamily": "expenses",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Manual Nuyen",
+        "surface": "CareerManualNuyenPage",
+        "automationId": "career-manual-nuyen-spend",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerManualNuyenPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerManualNuyenEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerManualNuyenRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Career only, matching the cmdNuyenGained/cmdNuyenSpent transaction handlers; exact saved settings must prove both NuyenPerBPWftP and NuyenPerBPWftM. The phone preserves CreateExpense's People-rate divisibility gate and the gained-Nuyen Man-rate conversion while providing a working commit path for the legacy dialog's otherwise non-closing exchange branch; the API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -25959,12 +25988,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerManualNuyenEditAsync / CareerManualNuyenEditRequest(spend) on character/nuyen, optional character/karma, and character/expenses",
+      "persistenceAssertion": "character/nuyen, optional exchange-driven character/karma, exact percentage, sorted Nuyen/Karma expenses, refund/visibility asymmetry, and legacy undo metadata persist after revision-bound atomic save, same-session reopen, and two process restarts; unrelated nested Nuyen XML survives",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_manual_nuyen_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -26004,11 +26033,25 @@
       "mutationFamily": "expenses",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Manual Nuyen",
+        "surface": "CareerManualNuyenPage",
+        "automationId": "career-manual-nuyen-gain",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerManualNuyenPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerManualNuyenEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerManualNuyenRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Career only, matching the cmdNuyenGained/cmdNuyenSpent transaction handlers; exact saved settings must prove both NuyenPerBPWftP and NuyenPerBPWftM. The phone preserves CreateExpense's People-rate divisibility gate and the gained-Nuyen Man-rate conversion while providing a working commit path for the legacy dialog's otherwise non-closing exchange branch; the API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -26016,12 +26059,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerManualNuyenEditAsync / CareerManualNuyenEditRequest(gain) on character/nuyen, optional character/karma, and character/expenses",
+      "persistenceAssertion": "character/nuyen, optional exchange-driven character/karma, exact percentage, sorted Nuyen/Karma expenses, refund/visibility asymmetry, and legacy undo metadata persist after revision-bound atomic save, same-session reopen, and two process restarts; unrelated nested Nuyen XML survives",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_manual_nuyen_e2e.py"
         },
         "tablet": {
           "status": "missing",

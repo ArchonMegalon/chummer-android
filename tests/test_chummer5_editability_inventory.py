@@ -1713,9 +1713,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 400,
+                "implemented_pending_emulator": 402,
                 "implemented_verified_api36": 79,
-                "missing": 1029,
+                "missing": 1027,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 147,
@@ -1798,6 +1798,40 @@ namespace Chummer
             self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
             self.assertEqual(
                 "tests/run_api36_career_manual_karma_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertIn("NuyenPerBPWftP", row["phone"]["coverageLimit"])
+            self.assertIn("NuyenPerBPWftM", row["phone"]["coverageLimit"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("missing", row["e2e"]["tablet"]["status"])
+            self.assertFalse(row["completionProven"])
+
+    def test_career_manual_nuyen_phone_mapping_is_exact_phone_only_and_scripted(self) -> None:
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = {
+            row["legacy"]["controlName"]: row
+            for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] in {"cmdNuyenGained", "cmdNuyenSpent"}
+        }
+        self.assertEqual({"cmdNuyenGained", "cmdNuyenSpent"}, set(rows))
+        expected_ids = {
+            "cmdNuyenGained": "career-manual-nuyen-gain",
+            "cmdNuyenSpent": "career-manual-nuyen-spend",
+        }
+        for control, automation_id in expected_ids.items():
+            row = rows[control]
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("Build > Runner > Manual Nuyen", row["phone"]["route"])
+            self.assertEqual("CareerManualNuyenPage", row["phone"]["surface"])
+            self.assertEqual(automation_id, row["phone"]["automationId"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_career_manual_nuyen_e2e.py",
                 row["e2e"]["phone"]["ref"],
             )
             self.assertIn("NuyenPerBPWftP", row["phone"]["coverageLimit"])

@@ -1911,6 +1911,48 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("TryCaptureRecoveryPayloadAsync", persistence)
         self.assertIn("WriteRecordAtomically", store)
 
+    def test_phone_manual_nuyen_is_revision_bound_source_exact_and_atomically_saved(self) -> None:
+        page = (PROJECT / "Native" / "CareerManualNuyenPage.cs").read_text(encoding="utf-8")
+        build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        presentation = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+        core = WORKSPACE / "chummer-core-engine"
+        request = (presentation / "CareerManualNuyenEditRequest.cs").read_text(encoding="utf-8")
+        mutation = (presentation / "WorkspaceXmlMutationCatalog.cs").read_text(encoding="utf-8")
+        presenter = (presentation / "CharacterOverviewPresenter.WorkspaceMutations.cs").read_text(encoding="utf-8")
+        persistence = (presentation / "CharacterOverviewPresenter.Persistence.cs").read_text(encoding="utf-8")
+        rules = (core / "Chummer.Contracts" / "Characters" / "CharacterCareerManualNuyenRules.cs").read_text(encoding="utf-8")
+        store = (core / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs").read_text(encoding="utf-8")
+
+        for token in (
+            'AutomationId = "career-manual-nuyen-page"',
+            'AutomationId = "career-manual-nuyen-amount"',
+            'AutomationId = "career-manual-nuyen-percent"',
+            '"career-manual-nuyen-refund"',
+            '"career-manual-nuyen-exchange"',
+            '"career-manual-nuyen-force-career-visible"',
+            'AutomationId = "career-manual-nuyen-gain"',
+            'AutomationId = "career-manual-nuyen-spend"',
+        ):
+            self.assertIn(token, page)
+        self.assertIn('automationId: "build-career-manual-nuyen"', build)
+        self.assertIn("new CareerManualNuyenPage", build)
+        self.assertIn("PrepareCareerManualNuyenEditAsync", coordinator + presenter)
+        self.assertIn("ApplyCareerManualNuyenEditAsync", coordinator + presenter)
+        self.assertIn("_presenter.SaveAsync", coordinator)
+        self.assertIn("ExpectedContentRevision", request + presenter)
+        self.assertIn("CharacterCareerManualNuyenState ExpectedState", request)
+        self.assertIn("TryResolveKarmaNuyenExchangeRates", request)
+        self.assertIn("ApplyCareerManualNuyenEdit", mutation)
+        self.assertIn("CharacterCareerManualNuyenRules.TryQuote", mutation)
+        self.assertIn('EnsureElement(root, "nuyen")', mutation)
+        self.assertIn('EnsureElement(root, "karma")', mutation)
+        self.assertIn("InsertManualKarmaExpenseSorted", mutation)
+        self.assertIn("TryBeginCaptureIntent", persistence)
+        self.assertIn("WriteRecordAtomically", store)
+        self.assertIn("enteredAmount * percent / 100m", rules)
+        self.assertIn("decimal.ToInt32(nuyenAmount / conversionRate)", rules)
+
     def test_phone_cyberware_commerce_is_stable_revision_bound_and_source_exact(self) -> None:
         page = (PROJECT / "Native" / "CyberwareCommercePage.cs").read_text(encoding="utf-8")
         editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
