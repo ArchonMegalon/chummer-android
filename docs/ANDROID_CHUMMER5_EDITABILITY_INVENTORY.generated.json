@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 534,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 373,
+      "implemented_pending_emulator": 375,
       "implemented_verified_api36": 79,
-      "missing": 1065,
+      "missing": 1063,
       "not_applicable_non_mutating": 459,
       "partial_create_only": 106,
       "partial_exact_saved_data": 147
@@ -77,7 +77,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "7236111c4d23b000bb02590cb896870c4abc4761fbac7bcaba40fb6dcf481ab9"
+        "sha256": "268e5efcb3bd0c51831add53e727b2280e9e2d8f236228cb1ad4240b7c4c9948"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -103,6 +103,11 @@
         "path": "src/Chummer.Android/Native/GroupMembershipPage.cs",
         "exists": true,
         "sha256": "4daca5c5a162f0290340af6df1927e0a12f4824277c82e0e1a633bc8417ac66b"
+      },
+      {
+        "path": "src/Chummer.Android/Native/CareerEdgeUsePage.cs",
+        "exists": true,
+        "sha256": "7924f8aa41a3ab9bc74e0f78816b05c2b8b9ee1ebc36ea7ea9ea4b52e2ba4f52"
       },
       {
         "path": "src/Chummer.Android/Native/GearLocationAddPage.cs",
@@ -222,7 +227,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "45ba234573805789498e0fe699090855740195d90bdbfa71340da73d0a502d43"
+        "sha256": "2ed8d4b424cd081d93826aae01d189a8965652b9a287512868cbdb7d9ef0c289"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -263,6 +268,11 @@
         "path": "tests/run_api36_group_membership_e2e.py",
         "exists": true,
         "sha256": "25a31e75174bc388bc91b84d4227823289bfac86ea36d1c1ade02c5573ea2994"
+      },
+      {
+        "path": "tests/run_api36_career_edge_use_e2e.py",
+        "exists": true,
+        "sha256": "70d91ae22ebca39df89c8c45c1659014286fd24b7113b47fce72272084194fbd"
       },
       {
         "path": "tests/run_api36_gear_location_e2e.py",
@@ -453,6 +463,11 @@
         "path": "tests/fixtures/career-group-membership-e2e.chum5",
         "exists": true,
         "sha256": "e71edead1bdff3c5619d3576cd485fd29022a1a929ed44708515a7decc8a46dc"
+      },
+      {
+        "path": "tests/fixtures/career-edge-use-e2e.chum5",
+        "exists": true,
+        "sha256": "8e87e5db54e23ace1bbd646d31e2cfb4fe5ccf760a16b3ec6492b8915e01f854"
       },
       {
         "path": "tests/fixtures/creation-gear-location-e2e.chum5",
@@ -860,6 +875,11 @@
         "sha256": "ee5448d8192850627d5a789f20dd63d85fde309561a2c45699181b33a351a18e"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerEdgeUseRules.cs",
+        "exists": true,
+        "sha256": "d59db7c77f2a62d6a1d2541ae61eeb69f226066a0c4242a6089981269e00e610"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
         "exists": true,
         "sha256": "35fe5e3f251c43484efde07535b4c168d14ca9e37be71e101c121c363aaf82f8"
@@ -907,7 +927,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "a51cdd10a621bcb4e57289034ee433a885000e2329dfc35405ee1776a52cfd1a"
+        "sha256": "bd00a05e5f50c43d7eac46101202a0cc244e9abd981181cab766ba5512d08e9e"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -928,6 +948,11 @@
         "path": "chummer-presentation/Chummer.Presentation/Overview/GroupMembershipEditRequest.cs",
         "exists": true,
         "sha256": "5d96b536fc27d1c56cbf94c5e4bc8695d48f0992f2ad60ed45dae33ef8371275"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/CareerEdgeUseEditRequest.cs",
+        "exists": true,
+        "sha256": "114badd36a786fa11a201ebeac60b41acc3bfb50c59f6b0d5c5989da46767422"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
@@ -1022,7 +1047,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "251ca18fe9a32cc4cc499ffe0adec3307b1c5e457bc2110f4627e226097e2ff3"
+        "sha256": "50cd5553c6e20e7f0ce0fe4af281618fd8167e0df6252a98837630dfeba278d9"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1077,7 +1102,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "07749b427c380fabab8f67de5ac3dd2d5c30f0d6aec44005562a8905e70abfc4"
+        "sha256": "ff650081ca3df537576d3959bc1af37dd40685aab6cad869510c3f276589fe01"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1087,7 +1112,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "607c28a1372cc4f0910f44a77ed9c4b6004ec183fe4d861bf954dd365474ec90"
+      "sha256": "cdeb354dd4652c3124e17410e2e5085057208c32d02b1487d9f90752505ef8b6"
     }
   },
   "coverageByFamily": {
@@ -1283,7 +1308,7 @@
     "karma_nuyen_and_reputation": {
       "rowCount": 18,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 11,
+      "phoneMissingCount": 9,
       "tabletMissingCount": 17,
       "completionProvenCount": 1
     },
@@ -14132,11 +14157,23 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Edge use",
+        "surface": "CareerEdgeUsePage",
+        "automationId": "career-edge-use-regain",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerEdgeUsePage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerEdgeUseEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerEdgeUseRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Career only, matching Chummer5; the API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -14144,12 +14181,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerEdgeUseEditAsync / CareerEdgeUseEditRequest(regain) on character/edgeused",
+      "persistenceAssertion": "character/edgeused changes by exactly one within the exact saved EDG total bound after revision-bound atomic save, same-session reopen, and two process restarts; unrelated nested edgeused XML survives",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_edge_use_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -14189,11 +14226,23 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Edge use",
+        "surface": "CareerEdgeUsePage",
+        "automationId": "career-edge-use-spend",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerEdgeUsePage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerEdgeUseEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerEdgeUseRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Career only, matching Chummer5; the API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -14201,12 +14250,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerEdgeUseEditAsync / CareerEdgeUseEditRequest(spend) on character/edgeused",
+      "persistenceAssertion": "character/edgeused changes by exactly one within the exact saved EDG total bound after revision-bound atomic save, same-session reopen, and two process restarts; unrelated nested edgeused XML survives",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_edge_use_e2e.py"
         },
         "tablet": {
           "status": "missing",

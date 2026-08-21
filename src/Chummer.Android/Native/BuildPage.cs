@@ -115,6 +115,18 @@ public sealed class BuildPage : NativePageBase
         if (Coordinator.State.Profile?.Created == true)
         {
             _body.Add(NativeTheme.NavigationRow(
+                "Edge use",
+                "Spend or regain one point of current Edge",
+                async () =>
+                {
+                    CareerEdgeUseEditorState? editor = await Coordinator.PrepareCareerEdgeUseEditAsync();
+                    if (editor is not null)
+                    {
+                        await Navigation.PushAsync(new CareerEdgeUsePage(Coordinator, editor));
+                    }
+                },
+                automationId: "build-career-edge-use"));
+            _body.Add(NativeTheme.NavigationRow(
                 "Reputation",
                 "Street Cred, notoriety and source-aware reputation",
                 async () =>

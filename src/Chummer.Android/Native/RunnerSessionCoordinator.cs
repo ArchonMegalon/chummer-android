@@ -583,6 +583,32 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<CareerEdgeUseEditorState?> PrepareCareerEdgeUseEditAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCareerEdgeUseEditAsync(cancellationToken);
+
+    public async Task ApplyCareerEdgeUseEditAsync(
+        CareerEdgeUseEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Edge use was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyCareerEdgeUseEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Edge use saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public async Task ApplyGearLocationAddAsync(
         GearLocationAddRequest request,
         CancellationToken cancellationToken = default)

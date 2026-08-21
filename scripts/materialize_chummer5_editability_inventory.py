@@ -989,6 +989,18 @@ PRIMARY_ARM_CONTROLS = {
     "cboPrimaryArm": ("primaryarm", "primary-arm-choice", "PrimaryArm"),
 }
 GROUP_MEMBERSHIP_CONTROL = "chkJoinGroup"
+CAREER_EDGE_USE_CONTROLS = {
+    "cmdEdgeSpent": (
+        "cmdEdgeSpent_Click",
+        "spend",
+        "career-edge-use-spend",
+    ),
+    "cmdEdgeGained": (
+        "cmdEdgeGained_Click",
+        "regain",
+        "career-edge-use-regain",
+    ),
+}
 GEAR_LOCATION_ADD_CONTROL = "cmdAddLocation"
 WEAPON_LOCATION_ADD_CONTROL = "cmdAddWeaponLocation"
 VEHICLE_LOCATION_ADD_CONTROL = "cmdAddVehicleLocation"
@@ -8685,6 +8697,154 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name == "CharacterCareer" and control in CAREER_EDGE_USE_CONTROLS:
+        handler, action, automation_id = CAREER_EDGE_USE_CONTROLS[control]
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerEdgeUsePage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_career_edge_use_e2e.py"
+        fixture = REPO_ROOT / "tests" / "fixtures" / "career-edge-use-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "CareerEdgeUseEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterCareerEdgeUseRules.cs"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        legacy_handler_exact = any(
+            event.get("handler") == handler
+            for event in legacy.get("events", [])
+            if isinstance(event, dict)
+        )
+        action_marker = (
+            "CharacterCareerEdgeUseAction.Spend"
+            if action == "spend"
+            else "CharacterCareerEdgeUseAction.Regain"
+        )
+        implemented = (
+            legacy_handler_exact
+            and _contains(
+                page,
+                "class CareerEdgeUsePage",
+                'AutomationId = "career-edge-use-page"',
+                f'AutomationId = "{automation_id}"',
+                action_marker,
+                "_editor.ContentRevision",
+            )
+            and _contains(build_page, '"build-career-edge-use"', "new CareerEdgeUsePage")
+            and _contains(
+                coordinator,
+                "PrepareCareerEdgeUseEditAsync",
+                "ApplyCareerEdgeUseEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CareerEdgeUseEditorState",
+                "CareerEdgeUseEditRequest",
+                "CharacterCareerEdgeUseState ExpectedState",
+                'ReadRequiredBool(root, "created")',
+                'ReadOptionalNonNegativeInt(root, "edgeused")',
+                '"EDG"',
+            )
+            and _contains(
+                mutation,
+                "ApplyCareerEdgeUseEdit",
+                "CharacterCareerEdgeUseRules.Apply",
+                'root.Elements("edgeused").SingleOrDefault()',
+            )
+            and _contains(
+                presenter,
+                "PrepareCareerEdgeUseEditAsync",
+                "ApplyCareerEdgeUseEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareCareerEdgeUseEditAsync",
+                "ApplyCareerEdgeUseEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterCareerEdgeUseState",
+                "edgeUsed < totalEdge",
+                "edgeUsed > 0",
+                "checked(state.EdgeUsed + 1)",
+                "checked(state.EdgeUsed - 1)",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                'CONTROLS = ("cmdEdgeSpent", "cmdEdgeGained")',
+                'api != "36"',
+                '"profile": "phone"',
+                '"journey": "career-edge-use"',
+                '"careerEdgeUseRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"careerFixtureSha256"',
+            )
+            and fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Runner > Edge use",
+            "surface": "CareerEdgeUsePage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CareerEdgeUsePage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CareerEdgeUseEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerEdgeUseRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCareerEdgeUseEditAsync / "
+                f"CareerEdgeUseEditRequest({action}) on character/edgeused"
+            ),
+            "persistenceAssertion": (
+                "character/edgeused changes by exactly one within the exact saved EDG total bound after "
+                "revision-bound atomic save, same-session reopen, and two process restarts; unrelated nested "
+                "edgeused XML survives"
+            ),
+            "coverageLimit": (
+                "Career only, matching Chummer5; the API 36 phone driver is "
+                f"{'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_career_edge_use_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if (
         class_name in {"CharacterCreate", "CharacterCareer"}
         and control == GEAR_LOCATION_ADD_CONTROL
@@ -10248,6 +10408,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SituationalModifiersPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "PrimaryArmPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GroupMembershipPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerEdgeUsePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearLocationAddPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponLocationAddPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "VehicleLocationAddPage.cs",
@@ -10280,6 +10441,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_situational_modifiers_e2e.py",
         REPO_ROOT / "tests" / "run_api36_primary_arm_e2e.py",
         REPO_ROOT / "tests" / "run_api36_group_membership_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_career_edge_use_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_location_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_location_e2e.py",
         REPO_ROOT / "tests" / "run_api36_vehicle_location_e2e.py",
@@ -10318,6 +10480,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "ambidextrous-primary-arm-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-group-membership-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-group-membership-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-edge-use-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-gear-location-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-location-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-weapon-location-e2e.chum5",
@@ -10397,6 +10560,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCritterPowerCountRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSpiritFetteringRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGroupMembershipRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerEdgeUseRules.cs",
         core_engine_root / "Chummer.Contracts" / "Workspaces" / "CharacterWorkspaceModels.cs",
         core_engine_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterFileService.cs",
@@ -10411,6 +10575,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "SituationalModifiersEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "PrimaryArmEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GroupMembershipEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CareerEdgeUseEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GearLocationAddRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponLocationAddRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "VehicleLocationAddRequest.cs",
