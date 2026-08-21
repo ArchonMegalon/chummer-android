@@ -14,12 +14,12 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 534,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 342,
+      "implemented_pending_emulator": 344,
       "implemented_verified_api36": 79,
-      "missing": 1099,
+      "missing": 1095,
       "not_applicable_non_mutating": 459,
       "partial_create_only": 106,
-      "partial_exact_saved_data": 144
+      "partial_exact_saved_data": 146
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
@@ -667,22 +667,22 @@
       {
         "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "e9d0bc324c6d6456f09f907f3511456631b1d901c8d96fb7ef076ae70e9d59d6"
+        "sha256": "2616b70eb438262eff7abfa19559585a2465c8a84cc6bfc14e5ef6aac0051684"
       },
       {
         "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "7610bd7bcf4d4933eacd207ac610ce07ccca2496521248f6ed7ef053ba00da58"
+        "sha256": "ef7929b7922e932477652958d3485b23ff79bc06491363ae963aa296ffbe9e6e"
       },
       {
         "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
         "exists": true,
-        "sha256": "287d4ddc4a432d7f9977edffaa5797d94f9af5e2482eb8771d85d8c004c54c32"
+        "sha256": "66198f194be80c7092a36c3ae359f05a4a6465829225a2452733e2de382b170f"
       },
       {
         "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "ccb855b6a802c0e03243d07b67baa614740427f4a781837666b9faab709aabed"
+        "sha256": "3a63413b84c0759d4de77b24a9d5baf6ccb05e04e876a917d744a6d855dc628b"
       },
       {
         "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1035,7 +1035,7 @@
     "spirits_and_sprites": {
       "rowCount": 32,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 18,
+      "phoneMissingCount": 14,
       "tabletMissingCount": 28,
       "completionProvenCount": 4
     },
@@ -3632,7 +3632,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-integer-services-{stable-target}",
@@ -3693,7 +3693,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "partial_exact_saved_data",
         "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-integer-force-{stable-target}",
@@ -3754,7 +3754,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "implemented_pending_emulator",
         "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-toggle-bound-{stable-target}",
@@ -3867,7 +3867,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
+        "status": "partial_exact_saved_data",
         "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-crittername-{stable-target}",
