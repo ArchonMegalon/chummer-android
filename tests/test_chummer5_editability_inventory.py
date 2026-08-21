@@ -533,6 +533,40 @@ namespace Chummer
             )
             self.assertFalse(row["completionProven"])
 
+        quality_levels = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.QUALITY_LEVEL_CONTROL
+        ]
+        self.assertEqual(2, len(quality_levels))
+        for row in quality_levels:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Qualities > selected stable exact Quality > Quality Level",
+                row["phone"]["route"],
+            )
+            self.assertEqual("QualityLevelPage", row["phone"]["surface"])
+            self.assertEqual(
+                "quality-level-value-{stable-quality-guid}",
+                row["phone"]["automationId"],
+            )
+            self.assertIn("SourceID+Extra+SourceName+Type", row["presenterMutation"])
+            self.assertIn("expected content revision", row["presenterMutation"])
+            self.assertIn("fresh-Guid duplicate saved qualities", row["persistenceAssertion"])
+            self.assertIn("zero-Karma AddQuality or negative RemoveQuality undo expenses", row["persistenceAssertion"])
+            self.assertIn("atomic save", row["persistenceAssertion"])
+            self.assertIn("saved BP 0", row["phone"]["coverageLimit"])
+            self.assertIn("requirements", row["phone"]["coverageLimit"])
+            self.assertIn("paid Career levels", row["phone"]["coverageLimit"])
+            self.assertIn("fail closed", row["phone"]["coverageLimit"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_quality_level_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
         armor_damage = [
             row for row in rows
             if row["legacy"]["formOrControl"] == "CharacterCareer"
@@ -1296,9 +1330,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 367,
+                "implemented_pending_emulator": 369,
                 "implemented_verified_api36": 79,
-                "missing": 1072,
+                "missing": 1070,
                 "not_applicable_non_mutating": 459,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 146,

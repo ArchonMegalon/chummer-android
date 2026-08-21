@@ -1576,6 +1576,37 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("ApplyWorkspaceXmlMutationAsync", presenter)
         self.assertNotIn("WeaponAccessory", page)
 
+    def test_phone_quality_level_is_stable_revision_bound_and_create_career_exact(self) -> None:
+        page = (PROJECT / "Native" / "QualityLevelPage.cs").read_text(encoding="utf-8")
+        editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        presentation = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+        request = (presentation / "QualityLevelEditRequest.cs").read_text(encoding="utf-8")
+        mutation = (presentation / "WorkspaceXmlMutationCatalog.cs").read_text(encoding="utf-8")
+        presenter = (presentation / "CharacterOverviewPresenter.WorkspaceMutations.cs").read_text(encoding="utf-8")
+
+        for token in (
+            'AutomationId = $"quality-level-page-{token}"',
+            '$"quality-level-current-{token}"',
+            '$"quality-level-value-{token}"',
+            '$"quality-level-save-{token}"',
+            '"Confirm Quality Level increase"',
+        ):
+            self.assertIn(token, page)
+        self.assertIn('automationId: $"quality-level-open-{qualityId:N}"', editor)
+        self.assertIn("item.QualityLevel is not { } qualityLevel", editor)
+        self.assertIn("ApplyQualityLevelEditAsync", coordinator)
+        self.assertIn("_presenter.SaveAsync", coordinator)
+        self.assertIn("ExpectedContentRevision", request)
+        self.assertIn("Guid QualityId", request)
+        self.assertIn("ExpectedLevel", request)
+        self.assertIn("ApplyQualityLevelEdit", mutation)
+        self.assertIn("CharacterSectionService(sourceDataResolver)", mutation)
+        self.assertIn("AppendFreeCareerQualityExpense", mutation)
+        self.assertIn("AppendFreeCareerNegativeQualityRemovalExpense", mutation)
+        self.assertIn("ApplyWorkspaceXmlMutationAsync", presenter)
+        self.assertNotIn("GearQuantity", page)
+
     def test_phone_cyberware_commerce_is_stable_revision_bound_and_source_exact(self) -> None:
         page = (PROJECT / "Native" / "CyberwareCommercePage.cs").read_text(encoding="utf-8")
         editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")

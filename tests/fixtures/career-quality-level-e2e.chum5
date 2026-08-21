@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Quality Level E2E</name>
+  <alias>CareerQualityLevelE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>67e25032-2a4e-42ca-97fa-69f7f608236c</settings>
+  <customdatadirectorynames />
+  <karma>25</karma>
+  <customstate>Career quality level unrelated state</customstate>
+  <qualities>
+    <quality>
+      <sourceid>d537536d-893d-4bd6-89c6-03b7dd5bd24c</sourceid>
+      <guid>72222222-2222-2222-2222-222222222222</guid>
+      <name>Illness</name><extra /><bp>0</bp><implemented>True</implemented>
+      <contributetobp>True</contributetobp><contributetolimit>True</contributetolimit>
+      <stagedpurchase>False</stagedpurchase><doublecareer>True</doublecareer>
+      <canbuywithspellpoints>False</canbuywithspellpoints><metagenic>False</metagenic>
+      <print>True</print><qualitytype>Negative</qualitytype><qualitysource>Selected</qualitysource>
+      <mutant>False</mutant><source>BB</source><page>12</page><sourcename />
+      <bonus /><firstlevelbonus /><naturalweapons /><notes /><notesColor>#000000</notesColor>
+    </quality>
+  </qualities>
+  <expenses />
+</character>

@@ -119,6 +119,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddArmorEquipmentAction(item);
         AddWeaponAccessoryIncludedAction(item);
         AddGearQuantityLifecycleAction(item);
+        AddQualityLevelAction(item);
         AddCyberwareCommerceAction(item);
         AddVehicleLocationActions(item);
 
@@ -963,6 +964,33 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 lifecycle)),
             automationId: $"gear-quantity-open-{lifecycle.GearId:N}"));
+    }
+
+    private void AddQualityLevelAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Quality
+            || _target.NestedKind is not null
+            || item.QualityLevel is not { } qualityLevel
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid qualityId)
+            || qualityId == Guid.Empty
+            || qualityId != qualityLevel.QualityId)
+        {
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        _body.Add(NativeTheme.Eyebrow(qualityLevel.CareerMode ? "Career quality" : "Creation quality"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Quality Level",
+            $"Level {qualityLevel.Level.ToString(CultureInfo.InvariantCulture)} of {qualityLevel.MaximumLevel.ToString(CultureInfo.InvariantCulture)}",
+            () => Navigation.PushAsync(new QualityLevelPage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                item.Label,
+                qualityLevel)),
+            automationId: $"quality-level-open-{qualityId:N}"));
     }
 
     private void AddCyberwareCommerceAction(WorkspaceCollectionItemEditorState item)

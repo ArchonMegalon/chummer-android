@@ -969,6 +969,7 @@ WEAPON_HOME_NODE_CONTROL = "chkWeaponHomeNode"
 WEAPON_ACTIVE_COMMLINK_CONTROL = "chkWeaponActiveCommlink"
 ARMOR_ACTIVE_COMMLINK_CONTROL = "chkArmorActiveCommlink"
 WEAPON_ACCESSORY_INCLUDED_CONTROL = "chkIncludedInWeapon"
+QUALITY_LEVEL_CONTROL = "nudQualityLevel"
 ARMOR_DAMAGE_CONTROLS = {
     "cmdArmorIncrease": (
         "cmdArmorIncrease_Click",
@@ -3943,6 +3944,7 @@ def _android_token(value: str) -> str:
 
 def _known_phone_mapping(
     row: dict[str, Any],
+    chummer5_root: Path,
     presentation_root: Path,
     character_notes_core_root: Path,
     condition_e2e_receipts: dict[str, dict[str, Any]],
@@ -5941,6 +5943,204 @@ def _known_phone_mapping(
             "coverageLimit": (
                 "Exact Chummer5 selected top-level persona-capable armor Active Commlink checkbox only; "
                 "other device kinds remain separately inventoried."
+            ),
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name in {"CharacterCreate", "CharacterCareer"} and control == QUALITY_LEVEL_CONTROL:
+        legacy_source = (
+            chummer5_root / "Chummer" / "Forms" / "Character Forms" / f"{class_name}.cs"
+        )
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "QualityLevelPage.cs"
+        editor = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_quality_level_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-quality-level-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-quality-level-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "QualityLevelEditRequest.cs"
+        state = overview / "WorkspaceCollectionEditorState.cs"
+        projector = overview / "WorkspaceCollectionEditorProjector.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        source_contract = character_notes_core_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs"
+        core_models = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        core_service = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        file_resolver = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "FileSystemCharacterSourceDataResolver.cs"
+        legacy_exact = (
+            any(event.get("handler") == "nudQualityLevel_ValueChanged" for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                "nudQualityLevel_ValueChanged",
+                "GetLevelsAsync",
+                "intSelectedLevels",
+                "SourceID",
+                "GetExtraAsync",
+                "GetSourceNameAsync",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "QualityLevelEditRequest",
+                'AutomationId = $"quality-level-page-{token}"',
+                '$"quality-level-value-{token}"',
+                '$"quality-level-save-{token}"',
+                '"Confirm Quality Level increase"',
+                "Coordinator.ApplyQualityLevelEditAsync",
+            )
+            and _contains(
+                editor,
+                "item.QualityLevel is not { } qualityLevel",
+                'Guid.TryParseExact(_target.ItemId, "D"',
+                'automationId: $"quality-level-open-{qualityId:N}"',
+                "new QualityLevelPage",
+            )
+            and _contains(
+                coordinator,
+                "ApplyQualityLevelEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.ApplyQualityLevelEditAsync",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "QualityLevelEditRequest",
+                "ExpectedContentRevision",
+                "Guid QualityId",
+                "ExpectedLevel",
+                "MaximumLevel",
+                "NewLevel",
+            )
+            and _contains(
+                state,
+                "WorkspaceQualityLevelState",
+                "Guid QualityId",
+                "int Level",
+                "int MaximumLevel",
+                "bool CareerMode",
+            )
+            and _contains(
+                projector,
+                'TryGetPropertyValueIgnoreCase(item, "levelSemantics"',
+                "ProjectQualityLevel",
+                "QualityLevel = qualityLevel",
+            )
+            and _contains(
+                mutation,
+                "ApplyQualityLevelEdit",
+                "CharacterSectionService(sourceDataResolver)",
+                "FindUniqueItemById",
+                "AppendFreeCareerQualityExpense",
+                "AppendFreeCareerNegativeQualityRemovalExpense",
+                'new XElement("karmatype", "AddQuality")',
+                'new XElement("karmatype", "RemoveQuality")',
+            )
+            and _contains(
+                presenter,
+                "ApplyQualityLevelEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+                "ExpectedContentRevision",
+            )
+            and _contains(
+                presenter_interface,
+                "ApplyQualityLevelEditAsync",
+                "QualityLevelEditRequest",
+            )
+            and _contains(
+                source_contract,
+                "CharacterQualityLevelSource",
+                "TryResolveQualityLevelSource",
+                "UsesUnsupportedSemantics",
+            )
+            and _contains(
+                core_models,
+                "CharacterQualityLevelSemantics",
+                "AnchorQualityId",
+                "LevelSemantics",
+            )
+            and _contains(
+                core_service,
+                "TryBuildQualityLevelSemantics",
+                'ReadValue(item, "sourceid")',
+                'ReadValue(item, "extra")',
+                'ReadValue(item, "sourcename")',
+                'ReadValue(item, "qualitytype")',
+                "HasUnsafeSavedQualityLevelSemantics",
+            )
+            and _contains(
+                file_resolver,
+                "TryResolveQualityLevelSource",
+                '"qualities.xml"',
+                "safeFields",
+                "!safeFields.Contains(element.Name.LocalName)",
+            )
+        )
+        e2e_scripted = (
+            creation_fixture.is_file()
+            and career_fixture.is_file()
+            and _contains(
+                e2e_driver,
+                '"journey": "quality-level"',
+                '"creationIncrease": "pass"',
+                '"creationDecrease": "pass"',
+                '"careerIncreaseConfirmed": "pass"',
+                '"careerDecrease": "pass"',
+                '"processRestart": "pass"',
+                '"qualityLevelContractSha256"',
+                '"sourceResolverContractSha256"',
+                '"fileSourceResolverSha256"',
+                '"controls": controls',
+            )
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Qualities > selected stable exact Quality > Quality Level",
+            "surface": "QualityLevelPage",
+            "automationId": "quality-level-value-{stable-quality-guid}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/QualityLevelPage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/QualityLevelEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyQualityLevelEditAsync(QualityLevelEditRequest) with stable "
+                "anchor Quality Guid, exact SourceID+Extra+SourceName+Type duplicate identity, source-backed "
+                "maximum, expected level, and expected content revision"
+            ),
+            "persistenceAssertion": (
+                "selected side-effect-free free quality level adds fresh-Guid duplicate saved qualities or removes "
+                "only non-anchor matching levels; Career changes append exact zero-Karma AddQuality or negative "
+                "RemoveQuality undo expenses; "
+                "sibling qualities and unrelated XML remain exact after revision-checked atomic save, same-session "
+                "reopen, and process restart"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_quality_level_e2e.py" if e2e_scripted else None,
+            },
+            "coverageLimit": (
+                "Exact Chummer5 Create/Career nudQualityLevel only for Selected, free (saved BP 0), stable-Guid "
+                "quality groups whose active qualities.xml profile proves an integer limit and no requirements, "
+                "bonus, first-level bonus, natural-weapon, weapon, or selection side effects. Customized notes, "
+                "ambiguous identities, paid Career levels, unsupported source semantics, and tablet fail closed."
             ),
             "tablet": {
                 "status": "missing",
@@ -9191,6 +9391,7 @@ def _known_phone_mapping(
 def enrich_rows(
     rows: list[dict[str, Any]],
     registry: dict[str, Any],
+    chummer5_root: Path,
     presentation_root: Path,
     core_engine_root: Path,
 ) -> list[dict[str, Any]]:
@@ -9305,6 +9506,7 @@ def enrich_rows(
             continue
         known = _known_phone_mapping(
             row,
+            chummer5_root,
             presentation_root,
             core_engine_root,
             condition_e2e_receipts,
@@ -9405,7 +9607,7 @@ def build_inventory(
         raise FileNotFoundError(f"Missing Android parity registry: {registry_path}")
     registry = json.loads(_read_text(registry_path))
     rows, source_summary = extract_legacy_rows(chummer5_root)
-    enrich_rows(rows, registry, presentation_root, core_engine_root)
+    enrich_rows(rows, registry, chummer5_root, presentation_root, core_engine_root)
 
     family_counts: dict[str, dict[str, int]] = {}
     for family in sorted({row["mutationFamily"] for row in rows}):
@@ -9438,6 +9640,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorEquipmentPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearQuantityPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "QualityLevelPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CyberwareCommercePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "LocationRenamePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CharacterNotesPage.cs",
@@ -9466,6 +9669,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_armor_equipment_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_quantity_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_quality_level_e2e.py",
         REPO_ROOT / "tests" / "run_api36_cyberware_commerce_e2e.py",
         REPO_ROOT / "tests" / "run_api36_location_rename_e2e.py",
         REPO_ROOT / "tests" / "run_api36_explicit_save_e2e.py",
@@ -9509,6 +9713,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "creation-weapon-accessory-included-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-weapon-accessory-included-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-quantity-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-quality-level-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-quality-level-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-cyberware-commerce-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-location-rename-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-location-rename-e2e.chum5",
@@ -9643,6 +9849,10 @@ def build_inventory(
                     "path": (
                         path.relative_to(REPO_ROOT).as_posix()
                         if path.is_relative_to(REPO_ROOT)
+                        else (Path("chummer-presentation") / path.relative_to(presentation_root)).as_posix()
+                        if path.is_relative_to(presentation_root)
+                        else (Path("chummer-core-engine") / path.relative_to(core_engine_root)).as_posix()
+                        if path.is_relative_to(core_engine_root)
                         else path.relative_to(WORKSPACE_ROOT).as_posix()
                         if path.is_relative_to(WORKSPACE_ROOT)
                         else str(path)
