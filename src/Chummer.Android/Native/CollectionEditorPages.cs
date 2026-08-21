@@ -111,6 +111,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddNestedActions(item);
         AddVehicleHomeNodeAction(item);
         AddArmorHomeNodeAction(item);
+        AddArmorActiveCommlinkAction(item);
         AddVehicleLocationActions(item);
 
         if (!string.IsNullOrWhiteSpace(Coordinator.State.Error))
@@ -752,6 +753,35 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 homeNode)),
             automationId: $"armor-home-node-open-{armorId:N}"));
+    }
+
+    private void AddArmorActiveCommlinkAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Armor
+            || _target.NestedKind is not null
+            || item.ArmorActiveCommlink is not { } activeCommlink
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid armorId)
+            || armorId == Guid.Empty)
+        {
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        _body.Add(NativeTheme.Eyebrow("Matrix identity"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Armor Active Commlink",
+            activeCommlink
+                ? "This armor is the runner's active commlink"
+                : "This armor is not the runner's active commlink",
+            () => Navigation.PushAsync(new ArmorActiveCommlinkPage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                armorId,
+                item.Label,
+                activeCommlink)),
+            automationId: $"armor-active-commlink-open-{armorId:N}"));
     }
 
     private string TargetToken() => Token(_target.NestedItemId ?? _target.ItemId);

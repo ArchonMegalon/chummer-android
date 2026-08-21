@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Armor Active Commlink E2E</name>
+  <alias>CareerArmorActiveCommlinkE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <customstate><active>Career unrelated active text</active></customstate>
+  <gears>
+    <gear>
+      <guid>56111111-5611-5611-5611-561111111111</guid>
+      <name>Career Prior Active Commlink E2E</name>
+      <active>True</active>
+      <canformpersona>Self</canformpersona>
+      <notes>Career gear must remain intact</notes>
+      <children />
+    </gear>
+  </gears>
+  <armors>
+    <armor>
+      <guid>56222222-5622-5622-5622-562222222222</guid>
+      <name>Career Persona Armor E2E</name>
+      <category>Armor</category>
+      <armor>12</armor>
+      <rating>1</rating>
+      <equipped>True</equipped>
+      <active>False</active>
+      <homenode>False</homenode>
+      <canformpersona>Self</canformpersona>
+      <notes>Career target notes must remain intact</notes>
+      <armormods />
+      <gears />
+    </armor>
+    <armor>
+      <guid>56333333-5633-5633-5633-563333333333</guid>
+      <name>Career Untouched Armor E2E</name>
+      <category>Armor</category>
+      <armor>9</armor>
+      <rating>1</rating>
+      <equipped>False</equipped>
+      <active>False</active>
+      <homenode>False</homenode>
+      <canformpersona />
+      <notes>Career untouched notes</notes>
+      <armormods />
+      <gears />
+    </armor>
+  </armors>
+</character>
