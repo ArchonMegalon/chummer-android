@@ -427,6 +427,32 @@ namespace Chummer
             self.assertIn("KarmaJoinGroup", row["phone"]["coverageLimit"])
             self.assertFalse(row["completionProven"])
 
+        group_name = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.GROUP_NAME_CONTROL
+        ]
+        self.assertEqual(2, len(group_name))
+        for row in group_name:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("Build > Runner > Group name", row["phone"]["route"])
+            self.assertEqual("GroupNamePage", row["phone"]["surface"])
+            self.assertEqual("group-name-value", row["phone"]["automationId"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual("tests/run_api36_group_name_e2e.py", row["e2e"]["phone"]["ref"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertIn("groupname", row["persistenceAssertion"])
+            self.assertIn("SelectContactConnection.txtGroupName", row["phone"]["coverageLimit"])
+            self.assertFalse(row["completionProven"])
+
+        contact_group_name = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "SelectContactConnection"
+            and row["legacy"]["controlName"] == inventory.GROUP_NAME_CONTROL
+        ]
+        self.assertEqual(1, len(contact_group_name))
+        self.assertEqual("missing", contact_group_name[0]["phone"]["status"])
+
         gear_locations = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -1530,9 +1556,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 381,
+                "implemented_pending_emulator": 383,
                 "implemented_verified_api36": 79,
-                "missing": 1048,
+                "missing": 1046,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 147,

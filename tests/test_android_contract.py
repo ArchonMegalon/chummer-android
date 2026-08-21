@@ -1643,6 +1643,42 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("savedValues.Count > 1", rules)
         self.assertNotIn("nudQualityLevel", page)
 
+    def test_phone_group_name_is_revision_bound_and_distinct_from_contact_groups(self) -> None:
+        page = (PROJECT / "Native" / "GroupNamePage.cs").read_text(encoding="utf-8")
+        build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        presentation = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+        core = WORKSPACE / "chummer-core-engine"
+        request = (presentation / "GroupNameEditRequest.cs").read_text(encoding="utf-8")
+        mutation = (presentation / "WorkspaceXmlMutationCatalog.cs").read_text(encoding="utf-8")
+        presenter = (presentation / "CharacterOverviewPresenter.WorkspaceMutations.cs").read_text(encoding="utf-8")
+        persistence = (presentation / "CharacterOverviewPresenter.Persistence.cs").read_text(encoding="utf-8")
+        rules = (core / "Chummer.Contracts" / "Characters" / "CharacterGroupNameRules.cs").read_text(encoding="utf-8")
+        store = (core / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs").read_text(encoding="utf-8")
+
+        for token in (
+            'AutomationId = "group-name-page"',
+            'AutomationId = "group-name-value"',
+            'AutomationId = "group-name-save"',
+            "MaxLength = CharacterGroupNameRules.MaximumLength",
+        ):
+            self.assertIn(token, page)
+        self.assertIn('automationId: "build-group-name"', build)
+        self.assertIn("new GroupNamePage", build)
+        self.assertIn("ApplyGroupNameEditAsync", coordinator)
+        self.assertIn("_presenter.SaveAsync", coordinator)
+        self.assertIn("ExpectedContentRevision", request)
+        self.assertIn("ExpectedGroupName", request)
+        self.assertIn('root.Elements("groupname").Take(2)', request)
+        self.assertIn("ApplyGroupNameEdit", mutation)
+        self.assertIn("CharacterGroupNameRules.TryValidate", mutation)
+        self.assertIn("ApplyWorkspaceXmlMutationAsync", presenter)
+        self.assertIn("TryCaptureRecoveryPayloadAsync", persistence)
+        self.assertIn("WriteRecordAtomically", store)
+        self.assertIn("MaximumLength = 32_767", rules)
+        self.assertNotIn("Contact", request)
+        self.assertNotIn("GroupMembershipEditRequest", page)
+
     def test_phone_cyberware_commerce_is_stable_revision_bound_and_source_exact(self) -> None:
         page = (PROJECT / "Native" / "CyberwareCommercePage.cs").read_text(encoding="utf-8")
         editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")

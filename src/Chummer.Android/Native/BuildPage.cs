@@ -124,6 +124,18 @@ public sealed class BuildPage : NativePageBase
                 }
             },
             automationId: "build-group-membership"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Group name",
+            "Edit the saved initiation group name",
+            async () =>
+            {
+                GroupNameEditorState? editor = await Coordinator.PrepareGroupNameEditAsync();
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new GroupNamePage(Coordinator, editor));
+                }
+            },
+            automationId: "build-group-name"));
         if (Coordinator.State.Profile?.Created == true)
         {
             _body.Add(NativeTheme.NavigationRow(
