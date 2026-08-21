@@ -1021,6 +1021,7 @@ GROUP_MEMBERSHIP_CONTROL = "chkJoinGroup"
 GROUP_NAME_CONTROL = "txtGroupName"
 TRADITION_NAME_CONTROL = "txtTraditionName"
 TRADITION_DRAIN_CONTROL = "cboDrain"
+GEAR_NAME_CONTROL = "tsGearName"
 CAREER_EDGE_USE_CONTROLS = {
     "cmdEdgeSpent": (
         "cmdEdgeSpent_Click",
@@ -9704,6 +9705,142 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
+        and control == GEAR_NAME_CONTROL
+    ):
+        collection_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_gear_name_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-gear-name-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-gear-name-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "WorkspaceCollectionMutationRequest.cs"
+        projector = overview / "WorkspaceCollectionEditorProjector.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_models = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        core_sections = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        implemented = (
+            _contains(
+                collection_page,
+                "class CollectionItemEditorPage",
+                "WorkspaceCollectionTextField.GearName",
+                '=> "gearname"',
+                "WorkspacePatchCollectionItemRequest",
+                "ApplyCollectionMutationAsync",
+            )
+            and _contains(
+                request,
+                "WorkspaceCollectionTextField",
+                "GearName",
+                "WorkspaceSetCollectionTextRequest",
+                "WorkspacePatchCollectionItemRequest",
+            )
+            and _contains(
+                projector,
+                "WorkspaceCollectionTextField.GearName",
+                '=> "gearName"',
+                "MaximumSelectTextLength = 32_767",
+                "WorkspaceNestedCollectionKind.Gear",
+            )
+            and _contains(
+                mutation,
+                "WorkspaceCollectionTextField.GearName",
+                '=> "gearname"',
+                "MaximumSelectTextLength = 32_767",
+                "ResolveCollectionItem",
+                "SetElementValue",
+            )
+            and _contains(
+                presenter,
+                "ApplyCollectionMutationAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(core_models, "CharacterGearSummary", "string GearName = \"\"")
+            and _contains(core_sections, 'GearName: ReadValue(item, "gearname")', "FlattenGearSummary")
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCreate.tsGearName"',
+                '"CharacterCareer.tsGearName"',
+                'api != "36"',
+                '"profile": "phone"',
+                '"journey": "gear-name"',
+                '"collectionRequestSha256"',
+                '"collectionProjectorSha256"',
+                '"mutationCatalogSha256"',
+                '"presenterPersistenceSha256"',
+                '"sectionModelsSha256"',
+                '"sectionServiceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+                '"careerFixtureSha256"',
+                '"careerNestedGearNameEdited": "pass"',
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Gear > selected stable Gear > Gear Name",
+            "surface": "CollectionItemEditorPage",
+            "automationId": "collection-field-gearname-{stable-gear-guid}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCollectionMutationAsync(WorkspacePatchCollectionItemRequest: "
+                "WorkspaceCollectionTextField.GearName)"
+            ),
+            "persistenceAssertion": (
+                "the stable selected top-level or nested character/gears//gear/gearname equals the submitted "
+                "Create/Career text after revision-bound atomic save, same-session reopen, and process restart; "
+                "guid, base name, extra/custom name, notes, parent structure, and unrelated character state remain unchanged"
+            ),
+            "coverageLimit": (
+                "Covers CharacterCreate/CharacterCareer tsGearName for top-level and nested Gear with unique stable "
+                "GUID identity. It reproduces Chummer5 SelectText semantics: blank is allowed and input is bounded by "
+                "the legacy 32767-character textbox limit; missing/duplicate identities fail closed. The API 36 driver is "
+                f"{'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_gear_name_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCareer" and control in CAREER_EDGE_USE_CONTROLS:
         handler, action, automation_id = CAREER_EDGE_USE_CONTROLS[control]
         page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerEdgeUsePage.cs"
@@ -11456,6 +11593,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_group_name_e2e.py",
         REPO_ROOT / "tests" / "run_api36_tradition_name_e2e.py",
         REPO_ROOT / "tests" / "run_api36_tradition_drain_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_gear_name_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_edge_use_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_manual_karma_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_location_e2e.py",
@@ -11503,6 +11641,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-tradition-name-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-tradition-drain-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-tradition-drain-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-gear-name-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-gear-name-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-edge-use-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-manual-karma-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-gear-location-e2e.chum5",

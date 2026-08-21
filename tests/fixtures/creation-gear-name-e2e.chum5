@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Gear Name E2E</name>
+  <alias>CreationGearNameE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <gears>
+    <gear>
+      <guid>71111111-1111-1111-1111-111111111111</guid>
+      <name>Creation Commlink</name><gearname>Old creation label</gearname>
+      <extra>Creation custom name preserved</extra><notes>Creation notes preserved</notes>
+      <rating>1</rating><qty>1</qty><children />
+    </gear>
+  </gears>
+  <customstate>Creation unrelated state</customstate>
+</character>

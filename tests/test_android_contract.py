@@ -1762,6 +1762,40 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("adeptEnabled && !magicianEnabled", rules)
         self.assertNotIn("Entry", page)
 
+    def test_phone_gear_name_is_stable_guid_revision_and_exact_element_bound(self) -> None:
+        page = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        overview = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+        request = (overview / "WorkspaceCollectionMutationRequest.cs").read_text(encoding="utf-8")
+        projector = (overview / "WorkspaceCollectionEditorProjector.cs").read_text(encoding="utf-8")
+        mutation = (overview / "WorkspaceXmlMutationCatalog.cs").read_text(encoding="utf-8")
+        workspace_mutations = (overview / "CharacterOverviewPresenter.WorkspaceMutations.cs").read_text(
+            encoding="utf-8"
+        )
+        persistence = (overview / "CharacterOverviewPresenter.Persistence.cs").read_text(encoding="utf-8")
+        core = WORKSPACE / "chummer-core-engine"
+        models = (core / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs").read_text(encoding="utf-8")
+        sections = (core / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs").read_text(encoding="utf-8")
+        store = (core / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs").read_text(encoding="utf-8")
+
+        self.assertIn("WorkspaceCollectionTextField.GearName", page)
+        self.assertIn('=> "gearname"', page)
+        self.assertIn("WorkspacePatchCollectionItemRequest", page)
+        self.assertIn("ApplyCollectionMutationAsync", coordinator)
+        self.assertIn("GearName", request)
+        self.assertIn("WorkspaceSetCollectionTextRequest", request)
+        self.assertIn("MaximumSelectTextLength = 32_767", projector)
+        self.assertIn('WorkspaceCollectionTextField.GearName => "gearName"', projector)
+        self.assertIn("WorkspaceNestedCollectionKind.Gear", projector)
+        self.assertIn("MaximumSelectTextLength = 32_767", mutation)
+        self.assertIn("WorkspaceCollectionTextField.GearName", mutation)
+        self.assertIn('return "gearname"', mutation)
+        self.assertIn("ApplyWorkspaceXmlMutationAsync", workspace_mutations)
+        self.assertIn("TryCaptureRecoveryPayloadAsync", persistence)
+        self.assertIn('string GearName = ""', models)
+        self.assertIn('GearName: ReadValue(item, "gearname")', sections)
+        self.assertIn("WriteRecordAtomically", store)
+
     def test_phone_cyberware_commerce_is_stable_revision_bound_and_source_exact(self) -> None:
         page = (PROJECT / "Native" / "CyberwareCommercePage.cs").read_text(encoding="utf-8")
         editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")

@@ -143,7 +143,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         string label = RunnerSessionCoordinator.HumanizeId(value.Field.ToString());
         VerticalStackLayout field = new() { Spacing = 5 };
         field.Add(NativeTheme.FieldLabel(value.IsRequired ? $"{label} · required" : label));
-        string automationId = $"collection-field-{Token(value.Field.ToString())}-{TargetToken()}";
+        string automationId = $"collection-field-{TextFieldToken(value.Field)}-{TargetToken()}";
         InputView input;
         if (value.Field == WorkspaceCollectionTextField.Notes)
         {
@@ -1088,6 +1088,13 @@ public sealed class CollectionItemEditorPage : NativePageBase
     }
 
     private string TargetToken() => Token(_target.NestedItemId ?? _target.ItemId);
+
+    private static string TextFieldToken(WorkspaceCollectionTextField field)
+        => field switch
+        {
+            WorkspaceCollectionTextField.GearName => "gearname",
+            _ => Token(field.ToString())
+        };
 
     internal static bool TargetsMatch(WorkspaceCollectionItemTarget left, WorkspaceCollectionItemTarget right)
         => left.Kind == right.Kind

@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 387,
+      "implemented_pending_emulator": 389,
       "implemented_verified_api36": 79,
-      "missing": 1042,
+      "missing": 1040,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 147
@@ -227,7 +227,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "3e0f70c2621a639f642f4c591115eaddbb1d7059d8df34c5624248ca5530a2b4"
+        "sha256": "5c925cdb45510de8a0497c076f10b2a5d5ab4918e0c7ba7cd5629de61a435bfa"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -308,6 +308,11 @@
         "path": "tests/run_api36_tradition_drain_e2e.py",
         "exists": true,
         "sha256": "404ece49459ea8c1080eb528f07c570163be0fec13674ad4c84aea642b3e8d1d"
+      },
+      {
+        "path": "tests/run_api36_gear_name_e2e.py",
+        "exists": true,
+        "sha256": "c15124202723bd6d219e1d4e83ed05d08894049f7f17fec282ec6052698ac435"
       },
       {
         "path": "tests/run_api36_career_edge_use_e2e.py",
@@ -543,6 +548,16 @@
         "path": "tests/fixtures/career-tradition-drain-e2e.chum5",
         "exists": true,
         "sha256": "c73d5c6a73070c994d14547b59c1dabb8fd42398ce90f5e01df3bdfb26c30183"
+      },
+      {
+        "path": "tests/fixtures/creation-gear-name-e2e.chum5",
+        "exists": true,
+        "sha256": "ff1a4427dd4b6be32dfa55f583f01c69a0aa9233900ffcfed3b61b6632d8690b"
+      },
+      {
+        "path": "tests/fixtures/career-gear-name-e2e.chum5",
+        "exists": true,
+        "sha256": "368f8240d13266c6779933ecf1eb60bd00330b9c9ba6d8928558382132e1e4d8"
       },
       {
         "path": "tests/fixtures/career-edge-use-e2e.chum5",
@@ -927,7 +942,7 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "520eea63e3322535b066438ab0239adae5478d06ff792fe47b9a9b3b27ac78b7"
+        "sha256": "db0f61f4ba03ba65846c2b15cdb714ecdad559a2dc66e0a879b6885b951a204e"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponHomeNodeRules.cs",
@@ -1027,7 +1042,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "b749c6379f4e46ab747ea460a0fb1f6cb5eabb9bc528b8cef72aae4158b59f23"
+        "sha256": "e3a5541958fbac6bb8b0f8aa2c8ea1f26740166f4bb5273e7e8ae00e7386c46b"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
@@ -1242,7 +1257,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "96ae4dc5fd1f8670bf4ba959c7074469a53131e49452d9f126f85fa782b0fee1"
+        "sha256": "abb017c758ea669d732e06cb515abebce4ebcdcaa61ae29865d96e4bd7665454"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
@@ -1252,12 +1267,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
         "exists": true,
-        "sha256": "66198f194be80c7092a36c3ae359f05a4a6465829225a2452733e2de382b170f"
+        "sha256": "1204f2bf5a924acf61469ea4e3a8a201322438b372a8881939c0d803108f23f6"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "72ccf9446f48ca40d16c8f5d7c0fe64898b997780f9ae79ab75fdc7ae025721c"
+        "sha256": "d61e9e66c0e60306ae7beac81e4646999f1913cf317c540a4eb3178444331d65"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1267,7 +1282,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "188bfee10247ed615297d2668e8fcce0963b982d566bc23213a47b36135be4ef"
+      "sha256": "e8cddada4132e8f16a798aac7eb36a53aa2ba382f214b345e07bdc456ed3aadd"
     }
   },
   "coverageByFamily": {
@@ -1421,7 +1436,7 @@
     "gear": {
       "rowCount": 84,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 35,
+      "phoneMissingCount": 33,
       "tabletMissingCount": 56,
       "completionProvenCount": 4
     },
@@ -42924,11 +42939,23 @@
       "mutationFamily": "gear",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > selected stable Gear > Gear Name",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-gearname-{stable-gear-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers CharacterCreate/CharacterCareer tsGearName for top-level and nested Gear with unique stable GUID identity. It reproduces Chummer5 SelectText semantics: blank is allowed and input is bounded by the legacy 32767-character textbox limit; missing/duplicate identities fail closed. The API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -42936,12 +42963,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync(WorkspacePatchCollectionItemRequest: WorkspaceCollectionTextField.GearName)",
+      "persistenceAssertion": "the stable selected top-level or nested character/gears//gear/gearname equals the submitted Create/Career text after revision-bound atomic save, same-session reopen, and process restart; guid, base name, extra/custom name, notes, parent structure, and unrelated character state remain unchanged",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_gear_name_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -68304,11 +68331,23 @@
       "mutationFamily": "gear",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > selected stable Gear > Gear Name",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-gearname-{stable-gear-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers CharacterCreate/CharacterCareer tsGearName for top-level and nested Gear with unique stable GUID identity. It reproduces Chummer5 SelectText semantics: blank is allowed and input is bounded by the legacy 32767-character textbox limit; missing/duplicate identities fail closed. The API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -68316,12 +68355,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync(WorkspacePatchCollectionItemRequest: WorkspaceCollectionTextField.GearName)",
+      "persistenceAssertion": "the stable selected top-level or nested character/gears//gear/gearname equals the submitted Create/Career text after revision-bound atomic save, same-session reopen, and process restart; guid, base name, extra/custom name, notes, parent structure, and unrelated character state remain unchanged",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_gear_name_e2e.py"
         },
         "tablet": {
           "status": "missing",
