@@ -431,6 +431,37 @@ VEHICLE_LOCATION_CONTROL_E2E_PROOF_KEYS = (
     "bothSurfacesReopened",
     "processRestartWorkspacePersisted",
 )
+VEHICLE_HOME_NODE_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-vehicle-home-node"
+    / "receipt.json"
+)
+VEHICLE_HOME_NODE_E2E_JOURNEYS = (
+    "creationRunnerImported",
+    "creationVehicleEnabledExclusive",
+    "creationVehicleEnabledReopened",
+    "creationVehicleEnabledProcessRestart",
+    "creationVehicleDisabled",
+    "creationVehicleDisabledReopened",
+    "creationVehicleDisabledProcessRestart",
+    "careerRunnerImported",
+    "careerVehicleEnabledExclusive",
+    "careerVehicleEnabledReopened",
+    "careerVehicleEnabledProcessRestart",
+    "careerVehicleDisabled",
+    "careerVehicleDisabledReopened",
+    "careerVehicleDisabledProcessRestart",
+)
+VEHICLE_HOME_NODE_CONTROL_E2E_PROOF_KEYS = (
+    "enabledAsExclusiveHomeNode",
+    "disabledFromHomeNode",
+    "workspacePersisted",
+    "surfaceReopened",
+    "processRestartWorkspacePersisted",
+    "processRestartUiReadback",
+)
 LOCATION_RENAME_PHONE_E2E_RECEIPT = (
     REPO_ROOT
     / "docs"
@@ -717,6 +748,7 @@ PRIMARY_ARM_CONTROLS = {
 GEAR_LOCATION_ADD_CONTROL = "cmdAddLocation"
 WEAPON_LOCATION_ADD_CONTROL = "cmdAddWeaponLocation"
 VEHICLE_LOCATION_ADD_CONTROL = "cmdAddVehicleLocation"
+VEHICLE_HOME_NODE_CONTROL = "chkVehicleHomeNode"
 LOCATION_RENAME_CONTROLS = {
     "tsGearRenameLocation": ("Gear", "gearlocations"),
     "tsWeaponRenameLocation": ("Weapon", "weaponlocations"),
@@ -1728,6 +1760,80 @@ def _validated_vehicle_location_phone_e2e_receipt(
         "status": "executed_api36",
         "ref": VEHICLE_LOCATION_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(VEHICLE_LOCATION_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_vehicle_home_node_phone_e2e_receipt(
+    presentation_root: Path,
+    core_engine_root: Path,
+) -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_vehicle_home_node_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-vehicle-home-node-e2e.chum5"
+    career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-vehicle-home-node-e2e.chum5"
+    overview = presentation_root / "Chummer.Presentation" / "Overview"
+    source_digests = {
+        "vehicleHomeNodePageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "VehicleHomeNodePage.cs",
+        "collectionEditorPagesSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
+        "coordinatorSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+        "vehicleHomeNodeContractSha256": overview / "VehicleHomeNodeEditRequest.cs",
+        "collectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
+        "collectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
+        "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+        "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+        "characterSectionModelsSha256": core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+        "characterSectionServiceSha256": core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+    }
+    if not all(
+        path.is_file()
+        for path in (driver, shared_driver, creation_fixture, career_fixture, *source_digests.values())
+    ):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(VEHICLE_HOME_NODE_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    controls = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_controls = {
+        f"{form}.{VEHICLE_HOME_NODE_CONTROL}"
+        for form in ("CharacterCreate", "CharacterCareer")
+    }
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "vehicle-home-node"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("creationFixtureSha256") == _sha256_file(creation_fixture)
+        and receipt.get("careerFixtureSha256") == _sha256_file(career_fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(journeys, dict)
+        and all(journeys.get(journey) == "pass" for journey in VEHICLE_HOME_NODE_E2E_JOURNEYS)
+        and isinstance(controls, dict)
+        and set(controls) == expected_controls
+        and receipt.get("controlCount") == len(expected_controls)
+        and all(
+            isinstance(controls.get(control), dict)
+            and all(
+                controls[control].get(proof_key) == "pass"
+                for proof_key in VEHICLE_HOME_NODE_CONTROL_E2E_PROOF_KEYS
+            )
+            for control in expected_controls
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": VEHICLE_HOME_NODE_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(VEHICLE_HOME_NODE_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
 
@@ -3074,6 +3180,7 @@ def _known_phone_mapping(
     gear_location_phone_e2e_receipt: dict[str, Any] | None,
     weapon_location_phone_e2e_receipt: dict[str, Any] | None,
     vehicle_location_phone_e2e_receipt: dict[str, Any] | None,
+    vehicle_home_node_phone_e2e_receipt: dict[str, Any] | None,
     location_rename_phone_e2e_receipt: dict[str, Any] | None,
     explicit_save_phone_e2e_receipt: dict[str, Any] | None,
     nested_collection_notes_phone_e2e_receipt: dict[str, Any] | None,
@@ -4016,6 +4123,155 @@ def _known_phone_mapping(
                 f"selected stable {kind} guid retains {xml_element} after save, reopen, and process restart"
             ),
             "e2e": {"status": "missing", "ref": None},
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
+        and control == VEHICLE_HOME_NODE_CONTROL
+    ):
+        expected_handler = "chkVehicleHomeNode_CheckedChanged"
+        legacy_source = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / f"{class_name}.cs"
+        )
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "VehicleHomeNodePage.cs"
+        editor = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_vehicle_home_node_e2e.py"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "VehicleHomeNodeEditRequest.cs"
+        state = overview / "WorkspaceCollectionEditorState.cs"
+        projector = overview / "WorkspaceCollectionEditorProjector.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        core_models = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        core_service = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        legacy_exact = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                expected_handler,
+                "IHasMatrixAttributes objCommlink",
+                "objCommlink.SetHomeNodeAsync(CharacterObject",
+                "chkVehicleHomeNode.DoThreadSafeFuncAsync(x => x.Checked",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "VehicleHomeNodeEditRequest",
+                'AutomationId = $"vehicle-home-node-page-{targetToken}"',
+                'AutomationId = $"vehicle-home-node-toggle-{targetToken}"',
+                'AutomationId = $"vehicle-home-node-save-{targetToken}"',
+                "_contentRevision",
+                "Coordinator.ApplyVehicleHomeNodeEditAsync",
+            )
+            and _contains(
+                editor,
+                "item.VehicleHomeNode is not { } homeNode",
+                'Guid.TryParseExact(_target.ItemId, "D"',
+                'automationId: $"vehicle-home-node-open-{vehicleId:N}"',
+                "new VehicleHomeNodePage",
+            )
+            and _contains(
+                coordinator,
+                "ApplyVehicleHomeNodeEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.ApplyVehicleHomeNodeEditAsync",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "VehicleHomeNodeEditRequest",
+                "ExpectedContentRevision",
+                "Guid VehicleId",
+                "bool HomeNode",
+            )
+            and _contains(state, "bool? VehicleHomeNode")
+            and _contains(
+                projector,
+                "TryReadStrictBool",
+                'TryReadStrictBool(item, "homeNode"',
+                "VehicleHomeNode = vehicleHomeNode",
+            )
+            and _contains(core_models, "CharacterVehicleSummary", "bool HomeNode = false")
+            and _contains(core_service, 'HomeNode: ParseBool(ReadValue(item, "homenode"))')
+            and _contains(
+                mutation,
+                "ApplyVehicleHomeNodeEdit",
+                'root.Descendants("homenode")',
+                'homeNode.Value = "False"',
+                'target.Value = "True"',
+                "FindUniqueItemById",
+            )
+            and _contains(
+                presenter,
+                "ApplyVehicleHomeNodeEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+                "ExpectedContentRevision",
+            )
+            and _contains(
+                presenter_interface,
+                "ApplyVehicleHomeNodeEditAsync",
+                "VehicleHomeNodeEditRequest",
+            )
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"journey": "vehicle-home-node"',
+            '"creationVehicleEnabledExclusive": "pass"',
+            '"creationVehicleDisabledProcessRestart": "pass"',
+            '"careerVehicleEnabledExclusive": "pass"',
+            '"careerVehicleDisabledProcessRestart": "pass"',
+            '"controls": controls',
+        )
+        phone_e2e = vehicle_home_node_phone_e2e_receipt if implemented and e2e_scripted else None
+        return {
+            "status": (
+                "implemented_verified_api36"
+                if phone_e2e
+                else "implemented_pending_emulator" if implemented else "missing"
+            ),
+            "route": "Build > Gear > Vehicles > selected stable vehicle > Vehicle Home Node",
+            "surface": "VehicleHomeNodePage",
+            "automationId": "vehicle-home-node-toggle-{stable-vehicle-guid}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/VehicleHomeNodePage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/VehicleHomeNodeEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyVehicleHomeNodeEditAsync("
+                "VehicleHomeNodeEditRequest) with stable vehicle Guid and expected content revision"
+            ),
+            "persistenceAssertion": (
+                "enabling selected character/vehicles/vehicle[stable Guid]/homenode sets it True and "
+                "normalizes every other saved homenode False; disabling sets only the selected vehicle "
+                "False; unrelated XML remains exact after save, same-session reopen, and process restart"
+            ),
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_vehicle_home_node_e2e.py" if e2e_scripted else None,
+            },
+            "coverageLimit": (
+                "Exact Chummer5 selected top-level vehicle Home Node checkbox only; other device kinds "
+                "and Active Commlink remain separately inventoried."
+            ),
             "tablet": {
                 "status": "missing",
                 "surface": None,
@@ -6514,6 +6770,10 @@ def enrich_rows(
         presentation_root,
         core_engine_root,
     )
+    vehicle_home_node_phone_e2e_receipt = _validated_vehicle_home_node_phone_e2e_receipt(
+        presentation_root,
+        core_engine_root,
+    )
     location_rename_phone_e2e_receipt = _validated_location_rename_phone_e2e_receipt(
         presentation_root,
     )
@@ -6575,6 +6835,7 @@ def enrich_rows(
             gear_location_phone_e2e_receipt,
             weapon_location_phone_e2e_receipt,
             vehicle_location_phone_e2e_receipt,
+            vehicle_home_node_phone_e2e_receipt,
             location_rename_phone_e2e_receipt,
             explicit_save_phone_e2e_receipt,
             nested_collection_notes_phone_e2e_receipt,
@@ -6671,6 +6932,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearLocationAddPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponLocationAddPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "VehicleLocationAddPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "VehicleHomeNodePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "LocationRenamePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CharacterNotesPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
@@ -6689,6 +6951,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_gear_location_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_location_e2e.py",
         REPO_ROOT / "tests" / "run_api36_vehicle_location_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_vehicle_home_node_e2e.py",
         REPO_ROOT / "tests" / "run_api36_location_rename_e2e.py",
         REPO_ROOT / "tests" / "run_api36_explicit_save_e2e.py",
         REPO_ROOT / "tests" / "run_api36_nested_collection_notes_e2e.py",
@@ -6715,6 +6978,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-weapon-location-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-vehicle-location-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-vehicle-location-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-vehicle-home-node-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-vehicle-home-node-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-location-rename-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-location-rename-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-explicit-save-e2e.chum5",
@@ -6740,6 +7005,7 @@ def build_inventory(
         GEAR_LOCATION_PHONE_E2E_RECEIPT,
         WEAPON_LOCATION_PHONE_E2E_RECEIPT,
         VEHICLE_LOCATION_PHONE_E2E_RECEIPT,
+        VEHICLE_HOME_NODE_PHONE_E2E_RECEIPT,
         LOCATION_RENAME_PHONE_E2E_RECEIPT,
         EXPLICIT_SAVE_PHONE_E2E_RECEIPT,
         NESTED_COLLECTION_NOTES_PHONE_E2E_RECEIPT,
@@ -6761,6 +7027,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "GearLocationAddRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponLocationAddRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "VehicleLocationAddRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "VehicleHomeNodeEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceLocationEditorState.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "LocationRenameRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceSectionRenderer.cs",

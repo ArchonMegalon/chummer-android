@@ -601,6 +601,28 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public async Task ApplyVehicleHomeNodeEditAsync(
+        VehicleHomeNodeEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Vehicle Home Node was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyVehicleHomeNodeEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Vehicle Home Node saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public async Task ApplyLocationRenameAsync(
         LocationRenameRequest request,
         CancellationToken cancellationToken = default)

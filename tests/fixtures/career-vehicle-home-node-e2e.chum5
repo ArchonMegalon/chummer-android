@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Vehicle Home Node E2E</name>
+  <alias>CareerVehicleHomeNodeE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <gears>
+    <gear>
+      <guid>52111111-5211-5211-5211-521111111111</guid>
+      <name>Career Prior Home Node E2E</name>
+      <homenode>True</homenode>
+      <notes>Career gear must remain intact</notes>
+      <children />
+    </gear>
+  </gears>
+  <vehicles>
+    <vehicle>
+      <guid>52222222-5222-5222-5222-522222222222</guid>
+      <name>Career Roadmaster Home Node E2E</name>
+      <category>Groundcraft</category>
+      <body>8</body>
+      <homenode>False</homenode>
+      <notes>Career target notes must remain intact</notes>
+      <locations />
+      <mods />
+      <weapons />
+    </vehicle>
+    <vehicle>
+      <guid>52333333-5233-5233-5233-523333333333</guid>
+      <name>Career Untouched Vehicle E2E</name>
+      <category>Groundcraft</category>
+      <body>2</body>
+      <homenode>False</homenode>
+      <notes>Career untouched notes</notes>
+      <locations />
+      <mods />
+      <weapons />
+    </vehicle>
+  </vehicles>
+</character>

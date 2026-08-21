@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Vehicle Home Node E2E</name>
+  <alias>CreationVehicleHomeNodeE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <gears>
+    <gear>
+      <guid>51111111-5111-5111-5111-511111111111</guid>
+      <name>Creation Prior Home Node E2E</name>
+      <homenode>True</homenode>
+      <notes>Creation gear must remain intact</notes>
+      <children />
+    </gear>
+  </gears>
+  <vehicles>
+    <vehicle>
+      <guid>51222222-5122-5122-5122-512222222222</guid>
+      <name>Creation Roadmaster Home Node E2E</name>
+      <category>Groundcraft</category>
+      <body>8</body>
+      <homenode>False</homenode>
+      <notes>Creation target notes must remain intact</notes>
+      <locations />
+      <mods />
+      <weapons />
+    </vehicle>
+    <vehicle>
+      <guid>51333333-5133-5133-5133-513333333333</guid>
+      <name>Creation Untouched Vehicle E2E</name>
+      <category>Groundcraft</category>
+      <body>2</body>
+      <homenode>False</homenode>
+      <notes>Creation untouched notes</notes>
+      <locations />
+      <mods />
+      <weapons />
+    </vehicle>
+  </vehicles>
+</character>

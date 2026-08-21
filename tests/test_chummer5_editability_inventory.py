@@ -365,6 +365,33 @@ namespace Chummer
             )
             self.assertFalse(row["completionProven"])
 
+        vehicle_home_nodes = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.VEHICLE_HOME_NODE_CONTROL
+        ]
+        self.assertEqual(2, len(vehicle_home_nodes))
+        for row in vehicle_home_nodes:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Gear > Vehicles > selected stable vehicle > Vehicle Home Node",
+                row["phone"]["route"],
+            )
+            self.assertEqual("VehicleHomeNodePage", row["phone"]["surface"])
+            self.assertEqual(
+                "vehicle-home-node-toggle-{stable-vehicle-guid}",
+                row["phone"]["automationId"],
+            )
+            self.assertIn("expected content revision", row["presenterMutation"])
+            self.assertIn("every other saved homenode False", row["persistenceAssertion"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_vehicle_home_node_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
         location_renames = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -966,9 +993,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 342,
+                "implemented_pending_emulator": 344,
                 "implemented_verified_api36": 79,
-                "missing": 1097,
+                "missing": 1095,
                 "not_applicable_non_mutating": 459,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 146,

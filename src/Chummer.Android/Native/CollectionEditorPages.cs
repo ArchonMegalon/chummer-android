@@ -109,6 +109,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddLinkedCharacterActions(item);
         AddMoveAndDeleteActions(item);
         AddNestedActions(item);
+        AddVehicleHomeNodeAction(item);
         AddVehicleLocationActions(item);
 
         if (!string.IsNullOrWhiteSpace(Coordinator.State.Error))
@@ -696,6 +697,33 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 vehicleId,
                 item.Label)),
             automationId: $"vehicle-location-open-add-{vehicleId:N}"));
+    }
+
+    private void AddVehicleHomeNodeAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Vehicle
+            || _target.NestedKind is not null
+            || item.VehicleHomeNode is not { } homeNode
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid vehicleId)
+            || vehicleId == Guid.Empty)
+        {
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        _body.Add(NativeTheme.Eyebrow("Matrix identity"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Vehicle Home Node",
+            homeNode ? "This vehicle is the runner's Home Node" : "This vehicle is not the runner's Home Node",
+            () => Navigation.PushAsync(new VehicleHomeNodePage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                vehicleId,
+                item.Label,
+                homeNode)),
+            automationId: $"vehicle-home-node-open-{vehicleId:N}"));
     }
 
     private string TargetToken() => Token(_target.NestedItemId ?? _target.ItemId);
