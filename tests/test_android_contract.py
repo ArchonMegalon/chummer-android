@@ -1953,6 +1953,50 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("enteredAmount * percent / 100m", rules)
         self.assertIn("decimal.ToInt32(nuyenAmount / conversionRate)", rules)
 
+    def test_phone_nuyen_expense_edit_is_guid_revision_and_atomic_persistence_bound(self) -> None:
+        page = (PROJECT / "Native" / "CareerNuyenExpensePage.cs").read_text(encoding="utf-8")
+        build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        presentation = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+        core = WORKSPACE / "chummer-core-engine"
+        request = (presentation / "CareerNuyenExpenseEditRequest.cs").read_text(encoding="utf-8")
+        mutation = (presentation / "WorkspaceXmlMutationCatalog.cs").read_text(encoding="utf-8")
+        presenter = (presentation / "CharacterOverviewPresenter.WorkspaceMutations.cs").read_text(encoding="utf-8")
+        persistence = (presentation / "CharacterOverviewPresenter.Persistence.cs").read_text(encoding="utf-8")
+        rules = (core / "Chummer.Contracts" / "Characters" / "CharacterCareerNuyenExpenseEditRules.cs").read_text(encoding="utf-8")
+        store = (core / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs").read_text(encoding="utf-8")
+
+        for token in (
+            'AutomationId = "career-nuyen-expense-page"',
+            'AutomationId = "career-nuyen-expense-picker"',
+            'AutomationId = "career-nuyen-expense-amount"',
+            '"career-nuyen-expense-reason"',
+            'AutomationId = "career-nuyen-expense-date"',
+            'AutomationId = "career-nuyen-expense-time"',
+            'AutomationId = "career-nuyen-expense-save"',
+            "_selected.AmountEditable",
+        ):
+            self.assertIn(token, page)
+        self.assertIn('automationId: "build-career-nuyen-expenses"', build)
+        self.assertIn("new CareerNuyenExpensePage", build)
+        self.assertIn("PrepareCareerNuyenExpenseEditAsync", coordinator + presenter)
+        self.assertIn("ApplyCareerNuyenExpenseEditAsync", coordinator + presenter)
+        self.assertIn("_presenter.SaveAsync", coordinator)
+        self.assertIn("ExpectedContentRevision", request + presenter)
+        self.assertIn("CharacterCareerNuyenExpenseEntry ExpectedExpense", request)
+        self.assertIn('ReadRequiredGuid(expense, "guid")', request)
+        self.assertIn('ReadNuyenUndoType(expense)', request)
+        self.assertIn("ApplyCareerNuyenExpenseEdit", mutation)
+        self.assertIn("request.ExpectedAvailableNuyen", mutation)
+        self.assertIn("request.ExpectedExpense.ExpenseId", mutation)
+        self.assertIn("CharacterCareerNuyenExpenseEditRules.TryEdit", mutation)
+        self.assertIn("IsAmountEditable", rules)
+        self.assertIn("ManualAdd", rules)
+        self.assertIn("ManualSubtract", rules)
+        self.assertIn("amount - current.Amount", rules)
+        self.assertIn("TryBeginCaptureIntent", persistence)
+        self.assertIn("WriteRecordAtomically", store)
+
     def test_phone_cyberware_commerce_is_stable_revision_bound_and_source_exact(self) -> None:
         page = (PROJECT / "Native" / "CyberwareCommercePage.cs").read_text(encoding="utf-8")
         editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")

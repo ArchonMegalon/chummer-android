@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Nuyen Expense Edit E2E</name>
+  <alias>CareerNuyenExpenseEditE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <karma>5</karma>
+  <nuyen>1000</nuyen>
+  <expenses>
+    <expense>
+      <guid>65da27db-24a8-4b6e-b42c-30f4bb13a4f8</guid>
+      <date>2081-05-12T14:30:00</date>
+      <amount>-250</amount>
+      <reason>Ammo</reason>
+      <type>Nuyen</type>
+      <refund>True</refund>
+      <forcecareervisible>True</forcecareervisible>
+      <undo>
+        <karmatype>ImproveAttribute</karmatype>
+        <nuyentype>ManualSubtract</nuyentype>
+        <objectid />
+        <qty>0</qty>
+        <extra>keep</extra>
+      </undo>
+      <custom>keep-manual</custom>
+    </expense>
+    <expense>
+      <guid>a47497a9-0893-43e1-89cb-fb2dfa803b5d</guid>
+      <date>2081-05-10T10:00:00</date>
+      <amount>-500</amount>
+      <reason>Armor</reason>
+      <type>Nuyen</type>
+      <refund>False</refund>
+      <forcecareervisible>False</forcecareervisible>
+      <undo>
+        <karmatype>ImproveAttribute</karmatype>
+        <nuyentype>AddArmor</nuyentype>
+        <objectid>armor-id</objectid>
+        <qty>0</qty>
+        <extra />
+      </undo>
+    </expense>
+  </expenses>
+  <customstate><nuyen>Unrelated nested Nuyen must survive</nuyen></customstate>
+</character>

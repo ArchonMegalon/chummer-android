@@ -1074,6 +1074,11 @@ CAREER_MANUAL_NUYEN_CONTROLS = {
         "career-manual-nuyen-spend",
     ),
 }
+CAREER_NUYEN_EXPENSE_EDIT_CONTROLS = {
+    "cmdNuyenEdit": "career-nuyen-expense-save",
+    "lstNuyen": "career-nuyen-expense-picker",
+    "tsEditNuyenExpense": "career-nuyen-expense-save",
+}
 GEAR_LOCATION_ADD_CONTROL = "cmdAddLocation"
 WEAPON_LOCATION_ADD_CONTROL = "cmdAddWeaponLocation"
 VEHICLE_LOCATION_ADD_CONTROL = "cmdAddVehicleLocation"
@@ -5608,6 +5613,164 @@ def _known_phone_mapping(
             "e2e": {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_career_manual_nuyen_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "CharacterCareer" and control in CAREER_NUYEN_EXPENSE_EDIT_CONTROLS:
+        automation_id = CAREER_NUYEN_EXPENSE_EDIT_CONTROLS[control]
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerNuyenExpensePage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_career_nuyen_expense_edit_e2e.py"
+        fixture = REPO_ROOT / "tests" / "fixtures" / "career-nuyen-expense-edit-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "CareerNuyenExpenseEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterCareerNuyenExpenseEditRules.cs"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        legacy_handler_exact = any(
+            event.get("handler") == "lstNuyen_DoubleClick"
+            for event in legacy.get("events", [])
+            if isinstance(event, dict)
+        )
+        implemented = (
+            legacy_handler_exact
+            and _contains(
+                page,
+                "class CareerNuyenExpensePage",
+                'AutomationId = "career-nuyen-expense-page"',
+                f'AutomationId = "{automation_id}"',
+                'AutomationId = "career-nuyen-expense-amount"',
+                '"career-nuyen-expense-reason"',
+                'AutomationId = "career-nuyen-expense-date"',
+                'AutomationId = "career-nuyen-expense-time"',
+                "_selected.AmountEditable",
+                "CharacterCareerNuyenExpenseEditRules.TryEdit",
+                "_editor.ContentRevision",
+            )
+            and _contains(build_page, '"build-career-nuyen-expenses"', "new CareerNuyenExpensePage")
+            and _contains(
+                coordinator,
+                "PrepareCareerNuyenExpenseEditAsync",
+                "ApplyCareerNuyenExpenseEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CareerNuyenExpenseEditorState",
+                "CareerNuyenExpenseEditRequest",
+                "CharacterCareerNuyenExpenseEntry ExpectedExpense",
+                'ReadRequiredBool(root, "created")',
+                'ReadOptionalDecimal(root, "nuyen")',
+                'Elements("expense")',
+                'ReadRequiredGuid(expense, "guid")',
+                'ReadNuyenUndoType(expense)',
+            )
+            and _contains(
+                mutation,
+                "ApplyCareerNuyenExpenseEdit",
+                "CharacterCareerNuyenExpenseEditRules.TryEdit",
+                "request.ExpectedAvailableNuyen",
+                "request.ExpectedExpense.ExpenseId",
+                'target.Elements("date").Single()',
+                'target.Elements("amount").Single()',
+                'EnsureElement(root, "nuyen")',
+            )
+            and _contains(
+                presenter,
+                "PrepareCareerNuyenExpenseEditAsync",
+                "ApplyCareerNuyenExpenseEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareCareerNuyenExpenseEditAsync",
+                "ApplyCareerNuyenExpenseEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterCareerNuyenExpenseEntry",
+                "Guid ExpenseId",
+                "NuyenUndoType",
+                "IsAmountEditable",
+                "ManualAdd",
+                "ManualSubtract",
+                "amount - current.Amount",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                'CONTROLS = ("cmdNuyenEdit", "lstNuyen", "tsEditNuyenExpense")',
+                'api != "36"',
+                '"profile": "phone"',
+                '"journey": "career-nuyen-expense-edit"',
+                '"careerNuyenExpenseRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"careerFixtureSha256"',
+            )
+            and fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Runner > Nuyen expenses",
+            "surface": "CareerNuyenExpensePage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CareerNuyenExpensePage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CareerNuyenExpenseEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerNuyenExpenseEditRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCareerNuyenExpenseEditAsync / CareerNuyenExpenseEditRequest "
+                "on the stable saved expense GUID, optional character/nuyen delta, expense/date, and expense/reason"
+            ),
+            "persistenceAssertion": (
+                "the exact saved Nuyen expense GUID retains refund/force-visible/undo/custom metadata while date and "
+                "reason change; ManualAdd/ManualSubtract alone may change amount and adjust character/nuyen by the "
+                "exact delta; same-session reopen and two process restarts preserve the atomic revision-bound edit"
+            ),
+            "coverageLimit": (
+                "Career only. Covers the shared lstNuyen_DoubleClick handler reached by cmdNuyenEdit, lstNuyen "
+                "double-click, and tsEditNuyenExpense. Amount is locked unless the saved undo NuyenType is ManualAdd "
+                "or ManualSubtract; refund and force-career-visible remain immutable exactly as in Chummer5. The "
+                f"API 36 phone driver is {'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_career_nuyen_expense_edit_e2e.py" if e2e_scripted else None,
             },
             "tablet": {
                 "status": "missing",
@@ -12407,6 +12570,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerEdgeUsePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerManualKarmaPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerManualNuyenPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerNuyenExpensePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearLocationAddPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponLocationAddPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "VehicleLocationAddPage.cs",
@@ -12447,6 +12611,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_lifestyle_name_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_edge_use_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_manual_karma_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_career_nuyen_expense_edit_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_location_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_location_e2e.py",
         REPO_ROOT / "tests" / "run_api36_vehicle_location_e2e.py",
@@ -12498,6 +12663,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-lifestyle-name-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-edge-use-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-manual-karma-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-nuyen-expense-edit-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-gear-location-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-location-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-weapon-location-e2e.chum5",
@@ -12588,6 +12754,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerEdgeUseRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualKarmaRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualNuyenRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerNuyenExpenseEditRules.cs",
         core_engine_root / "Chummer.Contracts" / "Workspaces" / "CharacterWorkspaceModels.cs",
         core_engine_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterFileService.cs",
@@ -12608,6 +12775,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerEdgeUseEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerManualKarmaEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerManualNuyenEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CareerNuyenExpenseEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GearLocationAddRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponLocationAddRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "VehicleLocationAddRequest.cs",

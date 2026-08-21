@@ -1713,9 +1713,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 402,
+                "implemented_pending_emulator": 405,
                 "implemented_verified_api36": 79,
-                "missing": 1027,
+                "missing": 1024,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 147,
@@ -1836,6 +1836,42 @@ namespace Chummer
             )
             self.assertIn("NuyenPerBPWftP", row["phone"]["coverageLimit"])
             self.assertIn("NuyenPerBPWftM", row["phone"]["coverageLimit"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("missing", row["e2e"]["tablet"]["status"])
+            self.assertFalse(row["completionProven"])
+
+    def test_career_nuyen_expense_edit_phone_mapping_covers_all_shared_handler_controls(self) -> None:
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        controls = {"cmdNuyenEdit", "lstNuyen", "tsEditNuyenExpense"}
+        rows = {
+            row["legacy"]["controlName"]: row
+            for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] in controls
+        }
+        self.assertEqual(controls, set(rows))
+        expected_ids = {
+            "cmdNuyenEdit": "career-nuyen-expense-save",
+            "lstNuyen": "career-nuyen-expense-picker",
+            "tsEditNuyenExpense": "career-nuyen-expense-save",
+        }
+        for control, automation_id in expected_ids.items():
+            row = rows[control]
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("Build > Runner > Nuyen expenses", row["phone"]["route"])
+            self.assertEqual("CareerNuyenExpensePage", row["phone"]["surface"])
+            self.assertEqual(automation_id, row["phone"]["automationId"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_career_nuyen_expense_edit_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertIn("ManualAdd", row["phone"]["coverageLimit"])
+            self.assertIn("ManualSubtract", row["phone"]["coverageLimit"])
             self.assertEqual("missing", row["tablet"]["status"])
             self.assertEqual("missing", row["e2e"]["tablet"]["status"])
             self.assertFalse(row["completionProven"])

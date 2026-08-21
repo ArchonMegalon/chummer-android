@@ -199,6 +199,18 @@ public sealed class BuildPage : NativePageBase
                 },
                 automationId: "build-career-manual-nuyen"));
             _body.Add(NativeTheme.NavigationRow(
+                "Nuyen expenses",
+                "Select a saved Nuyen expense; edit date and reason, and manual-entry amounts",
+                async () =>
+                {
+                    CareerNuyenExpenseEditorState? editor = await Coordinator.PrepareCareerNuyenExpenseEditAsync();
+                    if (editor is not null)
+                    {
+                        await Navigation.PushAsync(new CareerNuyenExpensePage(Coordinator, editor));
+                    }
+                },
+                automationId: "build-career-nuyen-expenses"));
+            _body.Add(NativeTheme.NavigationRow(
                 "Reputation",
                 "Street Cred, notoriety and source-aware reputation",
                 async () =>

@@ -739,6 +739,32 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<CareerNuyenExpenseEditorState?> PrepareCareerNuyenExpenseEditAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCareerNuyenExpenseEditAsync(cancellationToken);
+
+    public async Task ApplyCareerNuyenExpenseEditAsync(
+        CareerNuyenExpenseEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while a Nuyen expense was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyCareerNuyenExpenseEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Nuyen expense saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<SustainedObjectsEditorState?> PrepareSustainedObjectsEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareSustainedObjectsEditAsync(cancellationToken);
