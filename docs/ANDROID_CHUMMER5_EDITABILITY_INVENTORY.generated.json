@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 424,
+      "implemented_pending_emulator": 426,
       "implemented_verified_api36": 79,
-      "missing": 1004,
+      "missing": 1002,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 148
@@ -77,7 +77,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "5255b1d49dbc2ccf41fd8219160c3e87ea7b72b52a4930c0b2ddb2ac0cee7b52"
+        "sha256": "8d3e3b8627eb5e63c889ef29c0f1bb5a202c6d77fa8c2a5970d54eaec7a57179"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -225,6 +225,11 @@
         "sha256": "e3ff46925801dbf8b6595378ef06bafa79bdee847f02af29c0843e3c066dd641"
       },
       {
+        "path": "src/Chummer.Android/Native/ImprovementGroupActivePage.cs",
+        "exists": true,
+        "sha256": "be2df4a3f71c121d31d677fe23b59a1ef8251b3eb51d898ff76bec2d52f4fe19"
+      },
+      {
         "path": "src/Chummer.Android/Native/WeaponAccessoryIncludedPage.cs",
         "exists": true,
         "sha256": "740b3cd362a69405240b7e0acb7fc9541efbb0dded113f3a8942198a7cfb142e"
@@ -302,7 +307,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "3b3418eaca4644a42eb606060302a89d6a5144954bfc9de910815841744a6c13"
+        "sha256": "10b4b4fc42e6074fcbc656cf8cf28d87fd336daabcf3f0dab09e3a7b5b35b035"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -468,6 +473,11 @@
         "path": "tests/run_api36_improvement_active_e2e.py",
         "exists": true,
         "sha256": "4af8a6b701eb66f5ba6bfa4837a555205e8282653f999923f2426bb80b07142e"
+      },
+      {
+        "path": "tests/run_api36_improvement_group_active_e2e.py",
+        "exists": true,
+        "sha256": "c2945aefaa7e10c381d8c351a1775256aefa11efae027e3e59d74c23d83aad86"
       },
       {
         "path": "tests/run_api36_weapon_accessory_included_e2e.py",
@@ -848,6 +858,16 @@
         "path": "tests/fixtures/creation-improvement-active-negative-e2e.chum5",
         "exists": true,
         "sha256": "3aa9e79ada7aa0f3eee1073b80ea9196cd05bb95d60331adc59f094b662840bd"
+      },
+      {
+        "path": "tests/fixtures/career-improvement-group-active-e2e.chum5",
+        "exists": true,
+        "sha256": "72517eaf8b95c6f1888d3899b3fb2a3183e3df61dc8377ab80ca833b5240e2d8"
+      },
+      {
+        "path": "tests/fixtures/creation-improvement-group-active-negative-e2e.chum5",
+        "exists": true,
+        "sha256": "e3e955e0ba4508a0f38824fab40009b081d5b941d611d6232bf52915bf53ed76"
       },
       {
         "path": "tests/fixtures/creation-weapon-accessory-included-e2e.chum5",
@@ -1285,6 +1305,11 @@
         "sha256": "ee6256aa3e03b184ce068e873830167d81c7a6b8c3619792815725be169b4705"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementGroupActiveRules.cs",
+        "exists": true,
+        "sha256": "23dc170aeb3aa7eb7d7c42da54962b05a404273051ddf7f01b6a875e3c8bdf7a"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCritterPowerCountRules.cs",
         "exists": true,
         "sha256": "05494abd2ada41aeec925c3fa3d0b4086c3df93bdfce9de1f3572b83372efb91"
@@ -1412,7 +1437,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "60f562cd524696377d9f19aa6a2a88f0ceadf8a51fb57a97d177b44d85e3c5b0"
+        "sha256": "6edbf712be6482f95aa507a4da68a7e59c9ee8205676baefc915a05add26ba3f"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1550,6 +1575,11 @@
         "sha256": "297c9b2ae8af2d39e5ae35e93ace8acc21dc0391a65e7b05221d6e041c7c0679"
       },
       {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/ImprovementGroupActiveEditRequest.cs",
+        "exists": true,
+        "sha256": "5fe6dd5e4e82de15030825d4e6d6f5149744728bfe5a9b83b060adc40cb834c6"
+      },
+      {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WeaponAccessoryIncludedEditRequest.cs",
         "exists": true,
         "sha256": "3d665cc28f5457039132d0ac07a5449895986f5a9d59c2c0547d0eadf25dbd2d"
@@ -1607,7 +1637,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "96478fa2bb952582c122734660f597a10f2e32558df6fbdbb04baaeb257da5bc"
+        "sha256": "3e4fd469102c2df1b7721be22c0e5796af38d683bb1285c0423f74b192d3d253"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1662,7 +1692,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "284f26a1348b88cb2e863a320d962bdbafdc7e10c208082b4ee28558b03cb624"
+        "sha256": "baeaa763ffd2f3b2e4b1b1be3b9bc65ac7e83816517eeba2ef7ab932e7ccd480"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1672,7 +1702,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "bc1e9a5de1490e9951ed2a89fb288ae87ed082cccd5e203727d3183f6c92758e"
+      "sha256": "bd0cc2e02f3a1c8494c083648ff482b4b50de633ee7f8980a329cab655a0d7ed"
     }
   },
   "coverageByFamily": {
@@ -1847,7 +1877,7 @@
     "improvements": {
       "rowCount": 64,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 59,
+      "phoneMissingCount": 57,
       "tabletMissingCount": 60,
       "completionProvenCount": 4
     },
@@ -40771,11 +40801,23 @@
       "mutationFamily": "improvements",
       "operation": "adjust",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Improvement groups > selected saved custom group",
+        "surface": "ImprovementGroupActivePage",
+        "automationId": "improvement-group-disable-all",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ImprovementGroupActivePage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ImprovementGroupActiveEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementGroupActiveRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer level-zero treImprovements string-tag root semantics only: Node_SelectedImprovements selects custom Improvements with empty CustomGroup; an exact saved named tag selects custom Improvements with that CustomGroup. Empty matches are a no-op; CharacterCreate, direct child selection, invalid group topology, and tablet are unavailable."
       },
       "tablet": {
         "status": "missing",
@@ -40783,12 +40825,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyImprovementGroupActiveEditAsync with typed ungrouped/named saved group identity, stable semantic member identities, duplicate/reserved/orphan rejection, group-local revision, and expected workspace content revision",
+      "persistenceAssertion": "only opposite-state custom improvements in the exact selected group receive numeric 1 or 0 in character/improvements/improvement/enabled; non-custom, other groups, and unrelated runner XML remain exact after revision-bound atomic save/recovery, same-session reopen, and restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_improvement_group_active_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -40828,11 +40870,23 @@
       "mutationFamily": "improvements",
       "operation": "adjust",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Improvement groups > selected saved custom group",
+        "surface": "ImprovementGroupActivePage",
+        "automationId": "improvement-group-enable-all",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ImprovementGroupActivePage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ImprovementGroupActiveEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementGroupActiveRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer level-zero treImprovements string-tag root semantics only: Node_SelectedImprovements selects custom Improvements with empty CustomGroup; an exact saved named tag selects custom Improvements with that CustomGroup. Empty matches are a no-op; CharacterCreate, direct child selection, invalid group topology, and tablet are unavailable."
       },
       "tablet": {
         "status": "missing",
@@ -40840,12 +40894,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyImprovementGroupActiveEditAsync with typed ungrouped/named saved group identity, stable semantic member identities, duplicate/reserved/orphan rejection, group-local revision, and expected workspace content revision",
+      "persistenceAssertion": "only opposite-state custom improvements in the exact selected group receive numeric 1 or 0 in character/improvements/improvement/enabled; non-custom, other groups, and unrelated runner XML remain exact after revision-bound atomic save/recovery, same-session reopen, and restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_improvement_group_active_e2e.py"
         },
         "tablet": {
           "status": "missing",

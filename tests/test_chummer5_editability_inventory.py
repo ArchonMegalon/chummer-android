@@ -1108,6 +1108,36 @@ namespace Chummer
         )
         self.assertFalse(row["completionProven"])
 
+        improvement_group_active = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] in inventory.IMPROVEMENT_GROUP_ACTIVE_CONTROLS
+        ]
+        self.assertEqual(2, len(improvement_group_active))
+        for row in improvement_group_active:
+            _, automation_id = inventory.IMPROVEMENT_GROUP_ACTIVE_CONTROLS[
+                row["legacy"]["controlName"]
+            ]
+            self.assertEqual("improvements", row["mutationFamily"])
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Improvement groups > selected saved custom group",
+                row["phone"]["route"],
+            )
+            self.assertEqual("ImprovementGroupActivePage", row["phone"]["surface"])
+            self.assertEqual(automation_id, row["phone"]["automationId"])
+            self.assertIn("typed ungrouped/named", row["presenterMutation"])
+            self.assertIn("only opposite-state custom improvements", row["persistenceAssertion"])
+            self.assertIn("Node_SelectedImprovements", row["phone"]["coverageLimit"])
+            self.assertIn("CharacterCreate", row["phone"]["coverageLimit"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_improvement_group_active_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
         weapon_accessory_included = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -1937,9 +1967,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 424,
+                "implemented_pending_emulator": 426,
                 "implemented_verified_api36": 79,
-                "missing": 1004,
+                "missing": 1002,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 148,

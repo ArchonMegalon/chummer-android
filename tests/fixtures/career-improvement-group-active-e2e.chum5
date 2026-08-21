@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Improvement Group Active E2E</name>
+  <alias>CareerImprovementGroupActiveE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <improvementgroups>
+    <improvementgroup>Alpha</improvementgroup>
+    <improvementgroup>Beta</improvementgroup>
+  </improvementgroups>
+  <improvements>
+    <improvement>
+      <improvedname>BOD</improvedname><sourcename>a6111111-6111-6111-6111-611111111111</sourcename>
+      <improvementttype>Attribute</improvementttype><improvementsource>Custom</improvementsource>
+      <custom>True</custom><customgroup>Alpha</customgroup><enabled>1</enabled><notes>Alpha enabled sentinel</notes>
+    </improvement>
+    <improvement>
+      <improvedname>AGI</improvedname><sourcename>a6111111-6111-6111-6111-611111111111</sourcename>
+      <improvementttype>Attribute</improvementttype><improvementsource>Custom</improvementsource>
+      <custom>True</custom><customgroup>Alpha</customgroup><enabled>0</enabled><notes>Alpha disabled sentinel</notes>
+    </improvement>
+    <improvement>
+      <improvedname>LOG</improvedname><sourcename>n6111111-6111-6111-6111-611111111111</sourcename>
+      <improvementttype>Attribute</improvementttype><improvementsource>Quality</improvementsource>
+      <custom>False</custom><customgroup>Alpha</customgroup><enabled>True</enabled><notes>Non-custom Alpha sentinel</notes>
+    </improvement>
+    <improvement>
+      <improvedname>REA</improvedname><sourcename>b6111111-6111-6111-6111-611111111111</sourcename>
+      <improvementttype>Attribute</improvementttype><improvementsource>Custom</improvementsource>
+      <custom>True</custom><customgroup>Beta</customgroup><enabled>1</enabled><notes>Beta sentinel</notes>
+    </improvement>
+    <improvement>
+      <improvedname>WIL</improvedname><sourcename>c6111111-6111-6111-6111-611111111111</sourcename>
+      <improvementttype>Attribute</improvementttype><improvementsource>Custom</improvementsource>
+      <custom>True</custom><customgroup></customgroup><enabled>0</enabled><notes>Ungrouped sentinel</notes>
+    </improvement>
+  </improvements>
+  <customstate>Career Improvement group runner sentinel</customstate>
+</character>
