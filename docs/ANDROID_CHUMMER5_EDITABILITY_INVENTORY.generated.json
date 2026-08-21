@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 534,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 345,
+      "implemented_pending_emulator": 347,
       "implemented_verified_api36": 79,
-      "missing": 1094,
+      "missing": 1092,
       "not_applicable_non_mutating": 459,
       "partial_create_only": 106,
       "partial_exact_saved_data": 146
@@ -120,6 +120,11 @@
         "sha256": "7573a6614470bc420b3e1f39e0f2d877bd714339b24625903b83eec2e943f372"
       },
       {
+        "path": "src/Chummer.Android/Native/ArmorHomeNodePage.cs",
+        "exists": true,
+        "sha256": "b45923df0047c8ea50ac546b3f049abd43c386d5fb13c13201b5f3a448e8d009"
+      },
+      {
         "path": "src/Chummer.Android/Native/LocationRenamePage.cs",
         "exists": true,
         "sha256": "3e3dda90edd6e211c84812084c05cdcc4923d4687aa739cdb90197b227150685"
@@ -132,7 +137,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "2fa54ed329b463b3590bec8c106ef45f85d85b489645f286c7f610bac96b1a84"
+        "sha256": "6b6f9b43e9eb1b224dc16d594b7e11da08d555258dea28cc085f118d63a46fdb"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -157,7 +162,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "716cf4ac58edf365d8dc30669c4d38256af082f1b5d77dde53c996a7403581c9"
+        "sha256": "e31ecc62601e67e3c1f09449a6095c507d8d07fd3731aa7c50bb91b0e5dedd23"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -213,6 +218,11 @@
         "path": "tests/run_api36_vehicle_home_node_e2e.py",
         "exists": true,
         "sha256": "9eabbfdb80ec4279129b203a979848bf3db449d43dbba2c4260f813379cf6fb7"
+      },
+      {
+        "path": "tests/run_api36_armor_home_node_e2e.py",
+        "exists": true,
+        "sha256": "af8ed551995f5b632cb77456d557c18ea3791d79aa9e3cdebac3ea9923661aa3"
       },
       {
         "path": "tests/run_api36_location_rename_e2e.py",
@@ -355,6 +365,16 @@
         "sha256": "370c0c21a41d46d481322a46850e0922f421841d68a8b022b9c1647cb9e7b624"
       },
       {
+        "path": "tests/fixtures/creation-armor-home-node-e2e.chum5",
+        "exists": true,
+        "sha256": "1c59acede51f5048d194c904631d3b311a8bb2d008ae3af1d8d1cbf8bdd5f689"
+      },
+      {
+        "path": "tests/fixtures/career-armor-home-node-e2e.chum5",
+        "exists": true,
+        "sha256": "4a08fd48fd7b347eef34f762e3c05ed871dbbb45f70cd6e7b8199c01ffc9ae69"
+      },
+      {
         "path": "tests/fixtures/creation-location-rename-e2e.chum5",
         "exists": true,
         "sha256": "2e05323b1aaaa7fee5542ca3725ecd619400f28f25356954e63d9ebf830821ab"
@@ -495,6 +515,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-armor-home-node/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-location-rename/receipt.json",
         "exists": false,
         "sha256": null
@@ -515,184 +540,189 @@
         "sha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
         "exists": true,
         "sha256": "20531172c8984c8d572b17c95fe1d92caf0076509bc382ff6bd0179e686aebf3"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
         "exists": true,
         "sha256": "c2fc2d67a03f3ebcbd0117ea66ab1f853d13d2539de36109462db6c57891b479"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "61e5a08f295b327980ea2577f651f95e189fa368e58323f8ef8c634cc2e9cbf4"
+        "sha256": "ad29f4f610d7f524c24eaa4f315143c92ec391ff7b8d8c7a7b559d1e340cd6ae"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
         "exists": true,
         "sha256": "35fe5e3f251c43484efde07535b4c168d14ca9e37be71e101c121c363aaf82f8"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
         "sha256": "83d042e7589e1125896e5b4007b3c95f177de537d98d9a79c0c7a36f2acba232"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
         "exists": true,
         "sha256": "11e9624d8cc65578e0d38c7d8091b615945f566a99cb281b7233796ba4199768"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "f04a06d1345db0ec380a72c779dfed404b6d0ef373b3fb7ed307f39c1863244d"
+        "sha256": "b3d30763c2bf0908d889f7c7aa8194fa7b18ea13314b60cd34f16a32d902f17d"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
         "sha256": "ebcdaae59693ec796038cc6f74fbd49eae1a40bec76aeb56ac2dbbf00b0b6341"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
         "exists": true,
         "sha256": "1836a660b1c243e53756e9a35e1025663f9332100e3aca68394045f3480cc77c"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-core-engine/Chummer.Rulesets.Hosting/Presentation/WorkspaceSurfaceActionCatalog.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-core-engine/Chummer.Rulesets.Hosting/Presentation/WorkspaceSurfaceActionCatalog.cs",
         "exists": true,
         "sha256": "fe8ff0a9746b3029ddf232d681000229dfc69790f2f5d3b0960fd9275324a110"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "f8a402a9f137d228e1f422c86704ede260f08532420e645f2577b907ae4aa884"
+        "sha256": "8b8c75a85097bd393766bff683b7c932d77cfe5be998f530337815e72c22182c"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
         "exists": true,
         "sha256": "022fa5d15ad2be86a4eb0aea45385befb163cc430dd1b8e5c6a4c2fb74aa2b6a"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
         "exists": true,
         "sha256": "2c6bda77607d71c1d335c298048bcd87f2363fd15440d3db08c9c16252dabc83"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
         "exists": true,
         "sha256": "ab174728493660115b62887154ec2990c64945d209a762023d941b847a06e0cb"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
         "exists": true,
         "sha256": "f889362153034f6f8e61367c31d995720a04982ba264914db59f7095cd1eba65"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/WeaponLocationAddRequest.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WeaponLocationAddRequest.cs",
         "exists": true,
         "sha256": "cd793ac4258beb2a98c1759c727d047ced979e82c625868fc5f3a3bf84046ca1"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/VehicleLocationAddRequest.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/VehicleLocationAddRequest.cs",
         "exists": true,
         "sha256": "2b74f6551e962facd2b2d572bd68c09c6b4b2af23a203180325566fceb2b4995"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/VehicleHomeNodeEditRequest.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/VehicleHomeNodeEditRequest.cs",
         "exists": true,
         "sha256": "e4a5d725e080a481343dffa5b635848776a6cfc0f36681aecb62a2f651da9197"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/ArmorHomeNodeEditRequest.cs",
+        "exists": true,
+        "sha256": "457da5b2de65f85a113726cf00c70e234b77ef4ef965171deec441370d40d1fe"
+      },
+      {
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
         "exists": true,
         "sha256": "b5ee911ed027d4a9b56794ea6ded98f00c66d0528a14f0a7f463fd254a4bb14a"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
         "exists": true,
         "sha256": "d43270b3751723043bae901b7ae571af4ac13c35f8ef69e162764010554c8d6c"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
         "exists": true,
         "sha256": "6ac500b49e29bf369fca9b4b51de88fd2b813c34029e23f225f205910f814f56"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewState.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewState.cs",
         "exists": true,
         "sha256": "64fae58c8d580266041f407c49cb75d60f77521a33b64a759c1e7275aedc7caa"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
         "exists": true,
         "sha256": "5a37923234bfef0fdfa5a30118adfdcd66fd78cfd2d00f2c4830049db4edb13e"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
         "exists": true,
         "sha256": "aeb6d8082f6660647d992968253ea798aee8ab69b32170e6f058d9074860b10a"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
         "exists": true,
         "sha256": "8e4b80c97d8457e4a522ba15e7f310cbb10761aac2dc50e616b72ff344994c33"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
         "exists": true,
         "sha256": "45b0507a4b1b30a8a77bd59c72040ce2e262960667d724f274260b12f35b8e1b"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
         "exists": true,
         "sha256": "c95cdae34903ee982dcc8ed766fb2699d74205e4e1bfeb7a1d5cd72184e661d6"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
         "exists": true,
         "sha256": "758669c780238031334020ad7af44b5b17612a697cbeff172662788995967ba5"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
         "exists": true,
         "sha256": "989158b6876e6ac1bbf70813bbe5e4a7f4d7055c8cd0cefa65531cae911eb575"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
         "exists": true,
         "sha256": "9a418082fa297c94d6af83096717cfcd34fe507e649cf00b562a1373cbf8fc96"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "2616b70eb438262eff7abfa19559585a2465c8a84cc6bfc14e5ef6aac0051684"
+        "sha256": "49ebde1f1fb7158acb7794eb78b3ff56208e99cc7833cd31b65202da738dde7d"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "ef7929b7922e932477652958d3485b23ff79bc06491363ae963aa296ffbe9e6e"
+        "sha256": "9a1c18cbad7e20a35848daf71e6c28648d69bb037c161b6841d7ddf3e249898c"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
         "exists": true,
         "sha256": "66198f194be80c7092a36c3ae359f05a4a6465829225a2452733e2de382b170f"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "aa0186a0a7f763e57c40a07389e8883e3c58783ad4afeca6843619615b4dec1c"
+        "sha256": "2f27d5375b2a28c172dcd49462d823ca83e32fd290c0b3e866b94bd497e2a60e"
       },
       {
-        "path": ".integration-worktrees/android-burn-street-cred-20260821/chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
+        "path": ".integration-worktrees/android-burn-armor-coherent-20260821/chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
         "exists": true,
         "sha256": "9753a446b1eddbbe3c45cddf4d19b297896c5052b77ccfb42e593c8d5590a16b"
       }
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "be97e36a40b56e5547d98c3097fe51b6bbee050fa64396d10e678af924fca323"
+      "sha256": "936722b013e5fc78a2776e6b470f4f94f2e438042be80afbad5db6dcef227d6b"
     }
   },
   "coverageByFamily": {
@@ -720,7 +750,7 @@
     "armor": {
       "rowCount": 97,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 42,
+      "phoneMissingCount": 40,
       "tabletMissingCount": 61,
       "completionProvenCount": 12
     },
@@ -47346,11 +47376,24 @@
       "mutationFamily": "armor",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Armor > selected stable armor > Armor Home Node",
+        "surface": "ArmorHomeNodePage",
+        "automationId": "armor-home-node-toggle-{stable-armor-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ArmorHomeNodePage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ArmorHomeNodeEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 selected top-level armor Home Node checkbox only; other device kinds and Active Commlink remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -47358,12 +47401,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyArmorHomeNodeEditAsync(ArmorHomeNodeEditRequest) with stable armor Guid and expected content revision",
+      "persistenceAssertion": "enabling selected character/armors/armor[stable Guid]/homenode sets it True and normalizes every other saved homenode False; disabling sets only the selected armor False; unrelated XML remains exact after atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_armor_home_node_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -68149,11 +68192,24 @@
       "mutationFamily": "armor",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Armor > selected stable armor > Armor Home Node",
+        "surface": "ArmorHomeNodePage",
+        "automationId": "armor-home-node-toggle-{stable-armor-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ArmorHomeNodePage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ArmorHomeNodeEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 selected top-level armor Home Node checkbox only; other device kinds and Active Commlink remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -68161,12 +68217,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyArmorHomeNodeEditAsync(ArmorHomeNodeEditRequest) with stable armor Guid and expected content revision",
+      "persistenceAssertion": "enabling selected character/armors/armor[stable Guid]/homenode sets it True and normalizes every other saved homenode False; disabling sets only the selected armor False; unrelated XML remains exact after atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_armor_home_node_e2e.py"
         },
         "tablet": {
           "status": "missing",

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Armor Home Node E2E</name>
+  <alias>CareerArmorHomeNodeE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <gears>
+    <gear>
+      <guid>54111111-5411-5411-5411-541111111111</guid>
+      <name>Career Prior Home Node E2E</name>
+      <homenode>True</homenode>
+      <notes>Career gear must remain intact</notes>
+      <children />
+    </gear>
+  </gears>
+  <armors>
+    <armor>
+      <guid>54222222-5422-5422-5422-542222222222</guid>
+      <name>Career Armor Jacket Home Node E2E</name>
+      <category>Armor</category>
+      <armor>12</armor>
+      <rating>1</rating>
+      <equipped>True</equipped>
+      <homenode>False</homenode>
+      <notes>Career target notes must remain intact</notes>
+      <armormods />
+      <gears />
+    </armor>
+    <armor>
+      <guid>54333333-5433-5433-5433-543333333333</guid>
+      <name>Career Untouched Armor E2E</name>
+      <category>Armor</category>
+      <armor>9</armor>
+      <rating>1</rating>
+      <equipped>False</equipped>
+      <homenode>False</homenode>
+      <notes>Career untouched notes</notes>
+      <armormods />
+      <gears />
+    </armor>
+  </armors>
+</character>

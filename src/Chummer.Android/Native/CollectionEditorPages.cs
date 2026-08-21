@@ -110,6 +110,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddMoveAndDeleteActions(item);
         AddNestedActions(item);
         AddVehicleHomeNodeAction(item);
+        AddArmorHomeNodeAction(item);
         AddVehicleLocationActions(item);
 
         if (!string.IsNullOrWhiteSpace(Coordinator.State.Error))
@@ -724,6 +725,33 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 homeNode)),
             automationId: $"vehicle-home-node-open-{vehicleId:N}"));
+    }
+
+    private void AddArmorHomeNodeAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Armor
+            || _target.NestedKind is not null
+            || item.ArmorHomeNode is not { } homeNode
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid armorId)
+            || armorId == Guid.Empty)
+        {
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        _body.Add(NativeTheme.Eyebrow("Matrix identity"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Armor Home Node",
+            homeNode ? "This armor is the runner's Home Node" : "This armor is not the runner's Home Node",
+            () => Navigation.PushAsync(new ArmorHomeNodePage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                armorId,
+                item.Label,
+                homeNode)),
+            automationId: $"armor-home-node-open-{armorId:N}"));
     }
 
     private string TargetToken() => Token(_target.NestedItemId ?? _target.ItemId);
