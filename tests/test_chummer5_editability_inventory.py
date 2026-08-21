@@ -508,6 +508,32 @@ namespace Chummer
             )
             self.assertFalse(row["completionProven"])
 
+        armor_equipment = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] in inventory.ARMOR_EQUIPMENT_CONTROLS
+        ]
+        self.assertEqual(6, len(armor_equipment))
+        for row in armor_equipment:
+            _, action, automation_id = inventory.ARMOR_EQUIPMENT_CONTROLS[
+                row["legacy"]["controlName"]
+            ]
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Gear > Armor > selected stable armor > Armor Equipment",
+                row["phone"]["route"],
+            )
+            self.assertEqual("ArmorEquipmentPage", row["phone"]["surface"])
+            self.assertEqual(automation_id, row["phone"]["automationId"])
+            self.assertIn(action, row["presenterMutation"])
+            self.assertIn("stable top-level armor Guid", row["presenterMutation"])
+            self.assertIn("nested armor-mod/gear equipped flags", row["persistenceAssertion"])
+            self.assertIn("atomic save", row["persistenceAssertion"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual("tests/run_api36_armor_equipment_e2e.py", row["e2e"]["phone"]["ref"])
+            self.assertFalse(row["completionProven"])
+
         weapon_accessory_included = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -920,6 +946,7 @@ namespace Chummer
         character_collection_toggle_rows = [
             row for row in rows
             if row["legacy"]["controlName"] in inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS
+            and row["legacy"]["controlName"] != "chkArmorEquipped"
             and row["legacy"]["formOrControl"]
                 in inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS[
                     row["legacy"]["controlName"]
@@ -929,6 +956,7 @@ namespace Chummer
             (form_name, control)
             for control, (_, _, _, _, form_names)
                 in inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS.items()
+            if control != "chkArmorEquipped"
             for form_name in form_names
         }
         self.assertEqual(
@@ -938,7 +966,7 @@ namespace Chummer
                 for row in character_collection_toggle_rows
             },
         )
-        self.assertEqual(20, len(character_collection_toggle_rows))
+        self.assertEqual(18, len(character_collection_toggle_rows))
         for row in character_collection_toggle_rows:
             kind, section_label, field, xml_element, _ = (
                 inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS[
@@ -1172,9 +1200,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 357,
+                "implemented_pending_emulator": 361,
                 "implemented_verified_api36": 79,
-                "missing": 1082,
+                "missing": 1078,
                 "not_applicable_non_mutating": 459,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 146,
@@ -2079,6 +2107,71 @@ namespace Chummer
                 receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
                 self.assertIsNone(
                     inventory._validated_armor_damage_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
+
+    def test_armor_equipment_receipt_is_full_source_graph_and_fixture_hash_bound(self) -> None:
+        presentation_root = REPO.parent / "chummer-presentation"
+        core_root = REPO.parent / "chummer-core-engine"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        contracts = core_root / "Chummer.Contracts" / "Characters"
+        driver = REPO / "tests" / "run_api36_armor_equipment_e2e.py"
+        shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
+        creation_fixture = REPO / "tests" / "fixtures" / "creation-armor-equipment-e2e.chum5"
+        career_fixture = REPO / "tests" / "fixtures" / "career-armor-equipment-e2e.chum5"
+        source_paths = {
+            "armorEquipmentPageSha256": REPO / "src" / "Chummer.Android" / "Native" / "ArmorEquipmentPage.cs",
+            "collectionEditorPagesSha256": REPO / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
+            "coordinatorSha256": REPO / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+            "armorEquipmentContractSha256": overview / "ArmorEquipmentEditRequest.cs",
+            "collectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
+            "collectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
+            "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+            "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+            "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+            "armorEquipmentRulesSha256": contracts / "CharacterArmorEquipmentRules.cs",
+            "characterSectionModelsSha256": contracts / "CharacterSectionModels.cs",
+            "characterSectionServiceSha256": core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+        }
+        controls = {
+            f"{form}.{control}": {
+                key: "pass" for key in inventory.ARMOR_EQUIPMENT_CONTROL_E2E_PROOF_KEYS
+            }
+            for form in ("CharacterCreate", "CharacterCareer")
+            for control in inventory.ARMOR_EQUIPMENT_CONTROLS
+        }
+        receipt = {
+            "schema": "chummer.android.editing-e2e/v1",
+            "status": "pass",
+            "profile": "phone",
+            "journey": "armor-equipment",
+            "apiLevel": 36,
+            "apkSha256": "a" * 64,
+            "driverSha256": inventory._sha256_file(driver),
+            "sharedDriverSha256": inventory._sha256_file(shared_driver),
+            "creationFixtureSha256": inventory._sha256_file(creation_fixture),
+            "careerFixtureSha256": inventory._sha256_file(career_fixture),
+            "controlCount": len(controls),
+            "controls": controls,
+            "journeys": {key: "pass" for key in inventory.ARMOR_EQUIPMENT_E2E_JOURNEYS},
+            **{key: inventory._sha256_file(path) for key, path in source_paths.items()},
+        }
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            receipt_path = Path(temporary) / "receipt.json"
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+            with patch.object(inventory, "ARMOR_EQUIPMENT_PHONE_E2E_RECEIPT", receipt_path):
+                self.assertIsNotNone(
+                    inventory._validated_armor_equipment_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
+                receipt["armorEquipmentRulesSha256"] = "0" * 64
+                receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+                self.assertIsNone(
+                    inventory._validated_armor_equipment_phone_e2e_receipt(
                         presentation_root,
                         core_root,
                     )

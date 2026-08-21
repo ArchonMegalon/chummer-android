@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 534,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 357,
+      "implemented_pending_emulator": 361,
       "implemented_verified_api36": 79,
-      "missing": 1082,
+      "missing": 1078,
       "not_applicable_non_mutating": 459,
       "partial_create_only": 106,
       "partial_exact_saved_data": 146
@@ -135,6 +135,11 @@
         "sha256": "1e365406ba8ec41751f25cd26ccbe7020ab8979cb061a3a9487f1d5abf4bf116"
       },
       {
+        "path": "src/Chummer.Android/Native/ArmorEquipmentPage.cs",
+        "exists": true,
+        "sha256": "a7902f6bc4262d741724834691e4037f808e4cca47e22a1c9ca6b3f1a706b67c"
+      },
+      {
         "path": "src/Chummer.Android/Native/WeaponAccessoryIncludedPage.cs",
         "exists": true,
         "sha256": "740b3cd362a69405240b7e0acb7fc9541efbb0dded113f3a8942198a7cfb142e"
@@ -157,7 +162,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "fc07fff39ed77719dd73147cfd095522ef944579dbee7f74bcd2a722c2a8a5ef"
+        "sha256": "3f99d3e3d3179bfc8c8b0264b54749cb24cb9198ad388fee97380e5d67838b98"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -182,7 +187,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "d35c94071274f4b568e6a9b89b0d32099c73984db4de63b9c7520fdf3d919a6f"
+        "sha256": "17da5b50492c9e646df66f6634f0156b1f20c67080b67f6c2111033769110032"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -253,6 +258,11 @@
         "path": "tests/run_api36_armor_damage_e2e.py",
         "exists": true,
         "sha256": "7fe2a8bc2d34d4946e346d8ec07f590eb269bf15af9a9dc5ed514dcde1e78f80"
+      },
+      {
+        "path": "tests/run_api36_armor_equipment_e2e.py",
+        "exists": true,
+        "sha256": "10d3510fd823e5df31f1be47d5a0b2e09c094ecee205afc40b2e0edae22ac7c3"
       },
       {
         "path": "tests/run_api36_weapon_accessory_included_e2e.py",
@@ -430,6 +440,16 @@
         "sha256": "065554699b67e8a07c1e1c67dde9b0a627174cfff158498801d90877b34369b1"
       },
       {
+        "path": "tests/fixtures/creation-armor-equipment-e2e.chum5",
+        "exists": true,
+        "sha256": "f4cb9918074b16697fb164d2a930be469f828791428f569a32733578b5f198dc"
+      },
+      {
+        "path": "tests/fixtures/career-armor-equipment-e2e.chum5",
+        "exists": true,
+        "sha256": "f3924f176bdc58397a6b6711ddae95a551b98603982f94ef4e1c02038998b8bf"
+      },
+      {
         "path": "tests/fixtures/creation-weapon-accessory-included-e2e.chum5",
         "exists": true,
         "sha256": "638184c79eca1e62b7147fa7d3c74b5181326ccd93142ceda068783c9179c81d"
@@ -600,6 +620,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-armor-equipment/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-weapon-accessory-included/receipt.json",
         "exists": false,
         "sha256": null
@@ -625,209 +650,219 @@
         "sha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65"
       },
       {
-        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
         "exists": true,
         "sha256": "20531172c8984c8d572b17c95fe1d92caf0076509bc382ff6bd0179e686aebf3"
       },
       {
-        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
         "exists": true,
         "sha256": "c2fc2d67a03f3ebcbd0117ea66ab1f853d13d2539de36109462db6c57891b479"
       },
       {
-        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "c8dcde7c62cf83333e2ff3097222be87336076c80775e00aa64e964d00c14d30"
+        "sha256": "810b8e3561cbf595e70c78b7b9c81880dd825b3b57d5f024a6151220bc7db022"
       },
       {
-        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorDamageRules.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorDamageRules.cs",
         "exists": true,
         "sha256": "103cceca02d2ed779fb0b568b75d95effcc711e4a067a5c8699ce78a2e32a754"
       },
       {
-        "path": "chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorEquipmentRules.cs",
+        "exists": true,
+        "sha256": "4a6a4641057afaf7e1bfcd39df9862a0d75193f213be1999e97902f4f4cc3d55"
+      },
+      {
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
         "exists": true,
         "sha256": "35fe5e3f251c43484efde07535b4c168d14ca9e37be71e101c121c363aaf82f8"
       },
       {
-        "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
         "sha256": "71c33f8a1a4232af63ab681192e31d3e2b7da2f35caf9048801e9a90a534eb5f"
       },
       {
-        "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
         "exists": true,
         "sha256": "11e9624d8cc65578e0d38c7d8091b615945f566a99cb281b7233796ba4199768"
       },
       {
-        "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "150d378574cb4844bd64b8dcc29d12d98f3cc7fecc78c16caf8126766b01db78"
+        "sha256": "d49f09fbce19ec9cdaa23b99370a34732be273d11a3f84d3e9b37ecb24ec7a2a"
       },
       {
-        "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
         "sha256": "aa8663e2aab22d2081d06b00fee85c6fee28170e90d3615d078493120f20e195"
       },
       {
-        "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
         "exists": true,
         "sha256": "1836a660b1c243e53756e9a35e1025663f9332100e3aca68394045f3480cc77c"
       },
       {
-        "path": "chummer-core-engine/Chummer.Rulesets.Hosting/Presentation/WorkspaceSurfaceActionCatalog.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-core-engine/Chummer.Rulesets.Hosting/Presentation/WorkspaceSurfaceActionCatalog.cs",
         "exists": true,
         "sha256": "fe8ff0a9746b3029ddf232d681000229dfc69790f2f5d3b0960fd9275324a110"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "1afacf04e302e83e82f868fab9ca77b7c8fc505fac1fee8674273696f13a8f38"
+        "sha256": "135cbe3f315d24a2b289cbb62913c505ffe2aab708fe805f21fe32699bc832db"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
         "exists": true,
         "sha256": "022fa5d15ad2be86a4eb0aea45385befb163cc430dd1b8e5c6a4c2fb74aa2b6a"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
         "exists": true,
         "sha256": "2c6bda77607d71c1d335c298048bcd87f2363fd15440d3db08c9c16252dabc83"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
         "exists": true,
         "sha256": "ab174728493660115b62887154ec2990c64945d209a762023d941b847a06e0cb"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
         "exists": true,
         "sha256": "f889362153034f6f8e61367c31d995720a04982ba264914db59f7095cd1eba65"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WeaponLocationAddRequest.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/WeaponLocationAddRequest.cs",
         "exists": true,
         "sha256": "cd793ac4258beb2a98c1759c727d047ced979e82c625868fc5f3a3bf84046ca1"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/VehicleLocationAddRequest.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/VehicleLocationAddRequest.cs",
         "exists": true,
         "sha256": "2b74f6551e962facd2b2d572bd68c09c6b4b2af23a203180325566fceb2b4995"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/VehicleHomeNodeEditRequest.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/VehicleHomeNodeEditRequest.cs",
         "exists": true,
         "sha256": "e4a5d725e080a481343dffa5b635848776a6cfc0f36681aecb62a2f651da9197"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/ArmorHomeNodeEditRequest.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/ArmorHomeNodeEditRequest.cs",
         "exists": true,
         "sha256": "457da5b2de65f85a113726cf00c70e234b77ef4ef965171deec441370d40d1fe"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/ArmorActiveCommlinkEditRequest.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/ArmorActiveCommlinkEditRequest.cs",
         "exists": true,
         "sha256": "bf45b488209cc8f7b14a1855d84199d0930f0980dd53a261ca5a1e2fe9c0f894"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/ArmorDamageAdjustmentRequest.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/ArmorDamageAdjustmentRequest.cs",
         "exists": true,
         "sha256": "1c7a286ada3a140c597fe2ede8420657fb05d31e3564cd807233a95128f8302c"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WeaponAccessoryIncludedEditRequest.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/ArmorEquipmentEditRequest.cs",
+        "exists": true,
+        "sha256": "434c75c44b7c5e55122212c15a665a9ddbf3481975fe28eae5dcfb1b9cf73f9d"
+      },
+      {
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/WeaponAccessoryIncludedEditRequest.cs",
         "exists": true,
         "sha256": "3d665cc28f5457039132d0ac07a5449895986f5a9d59c2c0547d0eadf25dbd2d"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
         "exists": true,
         "sha256": "b5ee911ed027d4a9b56794ea6ded98f00c66d0528a14f0a7f463fd254a4bb14a"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
         "exists": true,
         "sha256": "d43270b3751723043bae901b7ae571af4ac13c35f8ef69e162764010554c8d6c"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
         "exists": true,
         "sha256": "6ac500b49e29bf369fca9b4b51de88fd2b813c34029e23f225f205910f814f56"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewState.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewState.cs",
         "exists": true,
         "sha256": "64fae58c8d580266041f407c49cb75d60f77521a33b64a759c1e7275aedc7caa"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
         "exists": true,
         "sha256": "5a37923234bfef0fdfa5a30118adfdcd66fd78cfd2d00f2c4830049db4edb13e"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
         "exists": true,
         "sha256": "aeb6d8082f6660647d992968253ea798aee8ab69b32170e6f058d9074860b10a"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
         "exists": true,
         "sha256": "8e4b80c97d8457e4a522ba15e7f310cbb10761aac2dc50e616b72ff344994c33"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
         "exists": true,
         "sha256": "45b0507a4b1b30a8a77bd59c72040ce2e262960667d724f274260b12f35b8e1b"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
         "exists": true,
         "sha256": "c95cdae34903ee982dcc8ed766fb2699d74205e4e1bfeb7a1d5cd72184e661d6"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
         "exists": true,
         "sha256": "758669c780238031334020ad7af44b5b17612a697cbeff172662788995967ba5"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
         "exists": true,
         "sha256": "989158b6876e6ac1bbf70813bbe5e4a7f4d7055c8cd0cefa65531cae911eb575"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
         "exists": true,
         "sha256": "9a418082fa297c94d6af83096717cfcd34fe507e649cf00b562a1373cbf8fc96"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "dcdd426e3c810d4a559cdc9bff44612c7777fa7bf4c7e9abe0b741bf29c1a0a5"
+        "sha256": "a7762490aa03a578601787f63e2efe6baf40951d87de8fb65d97018d086c5c0c"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "eb55f7aa35ee1289c4f1e8918d3dbeb0f7bd79c02a20d6e56537153d7fdc82ae"
+        "sha256": "77787dbb63014c226154c63d6fc839778abe5021351c022cc44cd0bfaab87ee0"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
         "exists": true,
         "sha256": "66198f194be80c7092a36c3ae359f05a4a6465829225a2452733e2de382b170f"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "6c8852361710e00792c3ce7e19035b42aa5b520df910595a567488947284b292"
+        "sha256": "5f7228d7979da465bbc5a9b1956f2566e12019571ffbd5bb8051605c4d1efe3d"
       },
       {
-        "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
+        "path": ".integration-worktrees/android-phone-armor-equipped-20260821/chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
         "exists": true,
         "sha256": "9753a446b1eddbbe3c45cddf4d19b297896c5052b77ccfb42e593c8d5590a16b"
       }
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "3fd4f33c3b573b4927f98bdfd33f5b8862a28f3b23b8d4313fecf4433d7e9f6c"
+      "sha256": "68450044ec8b975083ad6cb0043c65ec4951d7f302717b39835e5ee0d6b78e9f"
     }
   },
   "coverageByFamily": {
@@ -855,7 +890,7 @@
     "armor": {
       "rowCount": 97,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 36,
+      "phoneMissingCount": 32,
       "tabletMissingCount": 61,
       "completionProvenCount": 12
     },
@@ -26922,11 +26957,25 @@
       "mutationFamily": "armor",
       "operation": "toggle_equipped",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Armor > selected stable armor > Armor Equipment",
+        "surface": "ArmorEquipmentPage",
+        "automationId": "armor-equipment-unequip-all-{stable-armor-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ArmorEquipmentPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ArmorEquipmentEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorEquipmentRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ],
+        "coverageLimit": "Exact top-level Armor equipped checkbox and the equip-all/unequip-all handler's all-armors branch reached from selected Armor in both modes. Legacy Create bulk controls are Designer-hidden; legacy location/root selection scopes and ArmorMod/Gear branches remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -26934,12 +26983,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyArmorEquipmentEditAsync(unequip-all) with stable top-level armor Guid, exact expected selected/count aggregate, and expected content revision",
+      "persistenceAssertion": "selected or all top-level character/armors/armor/equipped values change exactly while nested armor-mod/gear equipped flags, sibling fields, and unrelated XML remain exact after revision-checked atomic save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_armor_equipment_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -26979,11 +27028,25 @@
       "mutationFamily": "armor",
       "operation": "toggle_equipped",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Armor > selected stable armor > Armor Equipment",
+        "surface": "ArmorEquipmentPage",
+        "automationId": "armor-equipment-equip-all-{stable-armor-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ArmorEquipmentPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ArmorEquipmentEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorEquipmentRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ],
+        "coverageLimit": "Exact top-level Armor equipped checkbox and the equip-all/unequip-all handler's all-armors branch reached from selected Armor in both modes. Legacy Create bulk controls are Designer-hidden; legacy location/root selection scopes and ArmorMod/Gear branches remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -26991,12 +27054,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyArmorEquipmentEditAsync(equip-all) with stable top-level armor Guid, exact expected selected/count aggregate, and expected content revision",
+      "persistenceAssertion": "selected or all top-level character/armors/armor/equipped values change exactly while nested armor-mod/gear equipped flags, sibling fields, and unrelated XML remain exact after revision-checked atomic save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_armor_equipment_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -38259,17 +38322,24 @@
       "operation": "set_value",
       "phone": {
         "status": "implemented_pending_emulator",
-        "route": "Build > Armor > selected item > Equipped",
-        "surface": "CollectionItemEditorPage",
-        "automationId": "collection-toggle-equipped-{stable-target}",
+        "route": "Build > Gear > Armor > selected stable armor > Armor Equipment",
+        "surface": "ArmorEquipmentPage",
+        "automationId": "armor-equipment-toggle-{stable-armor-guid}",
         "sourceRefs": [
-          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/ArmorEquipmentPage.cs",
           "src/Chummer.Android/Native/CollectionEditorPages.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ArmorEquipmentEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
-        ]
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorEquipmentRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ],
+        "coverageLimit": "Exact top-level Armor equipped checkbox and the equip-all/unequip-all handler's all-armors branch reached from selected Armor in both modes. Legacy Create bulk controls are Designer-hidden; legacy location/root selection scopes and ArmorMod/Gear branches remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -38277,12 +38347,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Equipped on WorkspaceCollectionKind.Armor",
-      "persistenceAssertion": "selected stable Armor guid retains equipped after save, reopen, and process restart",
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyArmorEquipmentEditAsync(selected) with stable top-level armor Guid, exact expected selected/count aggregate, and expected content revision",
+      "persistenceAssertion": "selected or all top-level character/armors/armor/equipped values change exactly while nested armor-mod/gear equipped flags, sibling fields, and unrelated XML remain exact after revision-checked atomic save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_armor_equipment_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -52984,17 +53054,24 @@
       "operation": "set_value",
       "phone": {
         "status": "implemented_pending_emulator",
-        "route": "Build > Armor > selected item > Equipped",
-        "surface": "CollectionItemEditorPage",
-        "automationId": "collection-toggle-equipped-{stable-target}",
+        "route": "Build > Gear > Armor > selected stable armor > Armor Equipment",
+        "surface": "ArmorEquipmentPage",
+        "automationId": "armor-equipment-toggle-{stable-armor-guid}",
         "sourceRefs": [
-          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/ArmorEquipmentPage.cs",
           "src/Chummer.Android/Native/CollectionEditorPages.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ArmorEquipmentEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
           "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
-        ]
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorEquipmentRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ],
+        "coverageLimit": "Exact top-level Armor equipped checkbox and the equip-all/unequip-all handler's all-armors branch reached from selected Armor in both modes. Legacy Create bulk controls are Designer-hidden; legacy location/root selection scopes and ArmorMod/Gear branches remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -53002,12 +53079,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Equipped on WorkspaceCollectionKind.Armor",
-      "persistenceAssertion": "selected stable Armor guid retains equipped after save, reopen, and process restart",
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyArmorEquipmentEditAsync(selected) with stable top-level armor Guid, exact expected selected/count aggregate, and expected content revision",
+      "persistenceAssertion": "selected or all top-level character/armors/armor/equipped values change exactly while nested armor-mod/gear equipped flags, sibling fields, and unrelated XML remain exact after revision-checked atomic save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_armor_equipment_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -55454,11 +55531,25 @@
       "mutationFamily": "armor",
       "operation": "toggle_equipped",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Armor > selected stable armor > Armor Equipment",
+        "surface": "ArmorEquipmentPage",
+        "automationId": "armor-equipment-unequip-all-{stable-armor-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ArmorEquipmentPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ArmorEquipmentEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorEquipmentRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ],
+        "coverageLimit": "Exact top-level Armor equipped checkbox and the equip-all/unequip-all handler's all-armors branch reached from selected Armor in both modes. Legacy Create bulk controls are Designer-hidden; legacy location/root selection scopes and ArmorMod/Gear branches remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -55466,12 +55557,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyArmorEquipmentEditAsync(unequip-all) with stable top-level armor Guid, exact expected selected/count aggregate, and expected content revision",
+      "persistenceAssertion": "selected or all top-level character/armors/armor/equipped values change exactly while nested armor-mod/gear equipped flags, sibling fields, and unrelated XML remain exact after revision-checked atomic save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_armor_equipment_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -55511,11 +55602,25 @@
       "mutationFamily": "armor",
       "operation": "toggle_equipped",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Armor > selected stable armor > Armor Equipment",
+        "surface": "ArmorEquipmentPage",
+        "automationId": "armor-equipment-equip-all-{stable-armor-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ArmorEquipmentPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ArmorEquipmentEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorEquipmentRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ],
+        "coverageLimit": "Exact top-level Armor equipped checkbox and the equip-all/unequip-all handler's all-armors branch reached from selected Armor in both modes. Legacy Create bulk controls are Designer-hidden; legacy location/root selection scopes and ArmorMod/Gear branches remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -55523,12 +55628,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyArmorEquipmentEditAsync(equip-all) with stable top-level armor Guid, exact expected selected/count aggregate, and expected content revision",
+      "persistenceAssertion": "selected or all top-level character/armors/armor/equipped values change exactly while nested armor-mod/gear equipped flags, sibling fields, and unrelated XML remain exact after revision-checked atomic save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_armor_equipment_e2e.py"
         },
         "tablet": {
           "status": "missing",

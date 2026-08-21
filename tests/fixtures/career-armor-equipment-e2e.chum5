@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <created>True</created>
+  <alias>Career Armor Equipment</alias>
+  <armors>
+    <armor>
+      <guid>5b111111-5b11-5b11-5b11-5b1111111111</guid>
+      <name>Career Selected Armor</name>
+      <equipped>False</equipped>
+      <armormods><armormod><guid>5b131313-5b13-5b13-5b13-5b1313131313</guid><equipped>True</equipped><notes>Career mod preserved</notes></armormod></armormods>
+      <gears><gear><guid>5b141414-5b14-5b14-5b14-5b1414141414</guid><equipped>False</equipped><notes>Career gear preserved</notes></gear></gears>
+      <notes>Career selected notes preserved</notes>
+    </armor>
+    <armor>
+      <guid>5b222222-5b22-5b22-5b22-5b2222222222</guid>
+      <name>Career Other Armor</name>
+      <equipped>True</equipped>
+      <notes>Career other notes preserved</notes>
+    </armor>
+  </armors>
+  <customstate><equipped>Career unrelated equipped text</equipped></customstate>
+</character>

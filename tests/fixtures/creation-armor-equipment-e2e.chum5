@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <created>False</created>
+  <alias>Creation Armor Equipment</alias>
+  <armors>
+    <armor>
+      <guid>5a111111-5a11-5a11-5a11-5a1111111111</guid>
+      <name>Creation Selected Armor</name>
+      <equipped>False</equipped>
+      <armormods><armormod><guid>5a131313-5a13-5a13-5a13-5a1313131313</guid><equipped>True</equipped><notes>Creation mod preserved</notes></armormod></armormods>
+      <gears><gear><guid>5a141414-5a14-5a14-5a14-5a1414141414</guid><equipped>False</equipped><notes>Creation gear preserved</notes></gear></gears>
+      <notes>Creation selected notes preserved</notes>
+    </armor>
+    <armor>
+      <guid>5a222222-5a22-5a22-5a22-5a2222222222</guid>
+      <name>Creation Other Armor</name>
+      <equipped>True</equipped>
+      <notes>Creation other notes preserved</notes>
+    </armor>
+  </armors>
+  <customstate><equipped>Creation unrelated equipped text</equipped></customstate>
+</character>

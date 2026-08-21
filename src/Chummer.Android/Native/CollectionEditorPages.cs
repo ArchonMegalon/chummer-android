@@ -114,6 +114,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddArmorHomeNodeAction(item);
         AddArmorActiveCommlinkAction(item);
         AddArmorDamageAction(item);
+        AddArmorEquipmentAction(item);
         AddWeaponAccessoryIncludedAction(item);
         AddGearQuantityLifecycleAction(item);
         AddVehicleLocationActions(item);
@@ -813,6 +814,33 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 armorDamage)),
             automationId: $"armor-damage-open-{armorId:N}"));
+    }
+
+    private void AddArmorEquipmentAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Armor
+            || _target.NestedKind is not null
+            || item.ArmorEquipment is not { } equipment
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid armorId)
+            || armorId == Guid.Empty
+            || armorId != equipment.ArmorId)
+        {
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        _body.Add(NativeTheme.Eyebrow("Armor loadout"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Armor Equipment",
+            equipment.Equipped ? "This armor is equipped" : "This armor is unequipped",
+            () => Navigation.PushAsync(new ArmorEquipmentPage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                item.Label,
+                equipment)),
+            automationId: $"armor-equipment-open-{armorId:N}"));
     }
 
     private void AddWeaponAccessoryIncludedAction(WorkspaceCollectionItemEditorState item)
