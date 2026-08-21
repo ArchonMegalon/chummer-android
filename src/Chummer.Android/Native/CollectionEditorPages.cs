@@ -112,6 +112,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddNestedActions(item);
         AddVehicleHomeNodeAction(item);
         AddArmorHomeNodeAction(item);
+        AddWeaponHomeNodeAction(item);
         AddArmorActiveCommlinkAction(item);
         AddArmorDamageAction(item);
         AddArmorEquipmentAction(item);
@@ -759,6 +760,38 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 homeNode)),
             automationId: $"armor-home-node-open-{armorId:N}"));
+    }
+
+    private void AddWeaponHomeNodeAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Weapon
+            || _target.NestedKind is not null
+            || item.WeaponHomeNode is not { Visible: true } semantics
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid weaponId)
+            || weaponId == Guid.Empty
+            || semantics.WeaponId != weaponId)
+        {
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        _body.Add(NativeTheme.Eyebrow("Matrix identity"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Weapon Home Node",
+            semantics.HomeNode
+                ? "This weapon is the runner's Home Node"
+                : semantics.Enabled
+                    ? "Eligible AI Matrix owner; this weapon is not the Home Node"
+                    : "Visible for this AI, but Chummer5 currently disables the control",
+            () => Navigation.PushAsync(new WeaponHomeNodePage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                weaponId,
+                item.Label,
+                semantics)),
+            automationId: $"weapon-home-node-open-{weaponId:N}"));
     }
 
     private void AddArmorActiveCommlinkAction(WorkspaceCollectionItemEditorState item)

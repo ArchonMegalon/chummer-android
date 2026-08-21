@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Weapon Home Node E2E</name>
+  <alias>CreationWeaponHomeNodeE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>AI</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <depenabled>True</depenabled>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <attributes>
+    <attribute><name>BOD</name><metatypemax>0</metatypemax><totalvalue>0</totalvalue></attribute>
+    <attribute><name>DEP</name><metatypemax>6</metatypemax><totalvalue>4</totalvalue></attribute>
+  </attributes>
+  <gears>
+    <gear>
+      <guid>63111111-6311-6311-6311-631111111111</guid>
+      <name>Creation Weapon Persona Module E2E</name>
+      <rating>1</rating>
+      <canformpersona>Self</canformpersona>
+      <devicerating>3</devicerating>
+      <programlimit>2</programlimit>
+      <homenode>True</homenode>
+      <notes>Creation owner notes must remain intact</notes>
+      <children />
+    </gear>
+  </gears>
+  <weapons>
+    <weapon>
+      <guid>63222222-6322-6322-6322-632222222222</guid>
+      <name>Creation Persona-linked Weapon E2E</name>
+      <category>Blades</category>
+      <parentid>63111111-6311-6311-6311-631111111111</parentid>
+      <homenode>False</homenode>
+      <notes>Creation target notes must remain intact</notes>
+    </weapon>
+    <weapon>
+      <guid>63333333-6333-6333-6333-633333333333</guid>
+      <name>Creation Untouched Weapon E2E</name>
+      <category>Blades</category>
+      <homenode>False</homenode>
+      <notes>Creation untouched notes</notes>
+    </weapon>
+  </weapons>
+</character>
