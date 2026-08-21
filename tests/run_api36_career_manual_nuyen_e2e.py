@@ -209,6 +209,9 @@ def main() -> int:
     api = device.shell("getprop", "ro.build.version.sdk")
     if api != "36":
         raise RuntimeError(f"Manual Nuyen E2E requires API 36, got {api!r}")
+    abi = device.shell("getprop", "ro.product.cpu.abi")
+    if abi != "arm64-v8a":
+        raise RuntimeError(f"Manual Nuyen E2E requires arm64-v8a, got {abi!r}")
     subprocess.run(
         [str(args.adb), "-s", args.serial, "install", "--no-streaming", "-r", str(args.apk.resolve())],
         check=True,
@@ -229,6 +232,8 @@ def main() -> int:
         "profile": "phone",
         "journey": "career-manual-nuyen",
         "apiLevel": int(api),
+        "abi": abi,
+        "package": shared.PACKAGE,
         "apk": str(args.apk.resolve()),
         "apkSha256": shared.sha256(args.apk.resolve()),
         "driverSha256": shared.sha256(driver),

@@ -348,6 +348,429 @@ SPIRIT_NAME_CHOICE_CONTROL_E2E_PROOF_KEYS = (
     "processRestartWorkspacePersisted",
     "processRestartUiReadback",
 )
+CAPTURE_ONLY_PHONE_E2E_SOURCE_PATHS: dict[str, tuple[str, str]] = {
+    "collectionEditorPagesSha256": ("android", "src/Chummer.Android/Native/CollectionEditorPages.cs"),
+    "coordinatorSha256": ("android", "src/Chummer.Android/Native/RunnerSessionCoordinator.cs"),
+    "collectionRequestSha256": (
+        "presentation",
+        "Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+    ),
+    "collectionStateSha256": ("presentation", "Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs"),
+    "collectionProjectorSha256": (
+        "presentation",
+        "Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+    ),
+    "mutationCatalogSha256": ("presentation", "Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"),
+    "presenterMutationSha256": (
+        "presentation",
+        "Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+    ),
+    "presenterPersistenceSha256": (
+        "presentation",
+        "Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+    ),
+    "presenterInterfaceSha256": ("presentation", "Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs"),
+    "sectionModelsSha256": ("core", "Chummer.Contracts/Characters/CharacterSectionModels.cs"),
+    "sectionServiceSha256": ("core", "Chummer.Infrastructure/Xml/CharacterSectionService.cs"),
+    "workspaceStoreSha256": ("core", "Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"),
+    "gearQuantityPageSha256": ("android", "src/Chummer.Android/Native/GearQuantityPage.cs"),
+    "gearQuantityContractSha256": ("presentation", "Chummer.Presentation/Overview/GearQuantityEditRequest.cs"),
+    "collectionEditorStateSha256": (
+        "presentation",
+        "Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+    ),
+    "collectionEditorProjectorSha256": (
+        "presentation",
+        "Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+    ),
+    "gearQuantityRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterGearQuantityRules.cs"),
+    "characterSectionModelsSha256": ("core", "Chummer.Contracts/Characters/CharacterSectionModels.cs"),
+    "characterSectionServiceSha256": ("core", "Chummer.Infrastructure/Xml/CharacterSectionService.cs"),
+    "careerEdgeUsePageSha256": ("android", "src/Chummer.Android/Native/CareerEdgeUsePage.cs"),
+    "buildPageSha256": ("android", "src/Chummer.Android/Native/BuildPage.cs"),
+    "careerEdgeUseContractSha256": ("presentation", "Chummer.Presentation/Overview/CareerEdgeUseEditRequest.cs"),
+    "careerEdgeUseRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterCareerEdgeUseRules.cs"),
+    "careerManualKarmaPageSha256": ("android", "src/Chummer.Android/Native/CareerManualKarmaPage.cs"),
+    "careerManualKarmaContractSha256": (
+        "presentation",
+        "Chummer.Presentation/Overview/CareerManualKarmaEditRequest.cs",
+    ),
+    "careerManualKarmaRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterCareerManualKarmaRules.cs"),
+    "sourceResolverContractSha256": ("core", "Chummer.Application/Characters/ICharacterSourceDataResolver.cs"),
+    "sourceResolverSha256": ("core", "Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs"),
+    "careerManualNuyenPageSha256": ("android", "src/Chummer.Android/Native/CareerManualNuyenPage.cs"),
+    "careerManualNuyenContractSha256": (
+        "presentation",
+        "Chummer.Presentation/Overview/CareerManualNuyenEditRequest.cs",
+    ),
+    "careerManualNuyenRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterCareerManualNuyenRules.cs"),
+    "cyberwareCommercePageSha256": ("android", "src/Chummer.Android/Native/CyberwareCommercePage.cs"),
+    "commerceContractSha256": ("presentation", "Chummer.Presentation/Overview/CyberwareCommerceRequest.cs"),
+    "commerceRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterCyberwareCommerceRules.cs"),
+    "fileSourceResolverSha256": ("core", "Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs"),
+    "groupMembershipPageSha256": ("android", "src/Chummer.Android/Native/GroupMembershipPage.cs"),
+    "groupMembershipContractSha256": (
+        "presentation",
+        "Chummer.Presentation/Overview/GroupMembershipEditRequest.cs",
+    ),
+    "groupMembershipRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterGroupMembershipRules.cs"),
+    "groupNamePageSha256": ("android", "src/Chummer.Android/Native/GroupNamePage.cs"),
+    "groupNameContractSha256": ("presentation", "Chummer.Presentation/Overview/GroupNameEditRequest.cs"),
+    "groupNameRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterGroupNameRules.cs"),
+    "lifestyleIncrementPageSha256": ("android", "src/Chummer.Android/Native/LifestyleIncrementPage.cs"),
+    "lifestyleIncrementContractSha256": (
+        "presentation",
+        "Chummer.Presentation/Overview/LifestyleIncrementEditRequest.cs",
+    ),
+    "lifestyleIncrementRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterLifestyleIncrementRules.cs"),
+    "sustainedEffectsPageSha256": ("android", "src/Chummer.Android/Native/SustainedObjectsPage.cs"),
+    "sustainedEffectsContractSha256": ("presentation", "Chummer.Presentation/Overview/SustainedObjectEditRequest.cs"),
+    "sustainedEffectsRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterSustainedObjectRules.cs"),
+    "qualityLevelPageSha256": ("android", "src/Chummer.Android/Native/QualityLevelPage.cs"),
+    "qualityLevelContractSha256": ("presentation", "Chummer.Presentation/Overview/QualityLevelEditRequest.cs"),
+    "traditionDrainPageSha256": ("android", "src/Chummer.Android/Native/TraditionDrainPage.cs"),
+    "traditionDrainContractSha256": ("presentation", "Chummer.Presentation/Overview/TraditionDrainEditRequest.cs"),
+    "traditionDrainRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterTraditionDrainRules.cs"),
+    "traditionsCatalogSha256": ("core", "Chummer/data/traditions.xml"),
+    "traditionNamePageSha256": ("android", "src/Chummer.Android/Native/TraditionNamePage.cs"),
+    "traditionNameContractSha256": ("presentation", "Chummer.Presentation/Overview/TraditionNameEditRequest.cs"),
+    "traditionNameRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterTraditionNameRules.cs"),
+}
+CAPTURE_ONLY_PHONE_E2E_DEFINITIONS: dict[str, dict[str, Any]] = {
+    "gear-name": {
+        "driver": "tests/run_api36_gear_name_e2e.py",
+        "fixtures": (
+            ("creationFixtureSha256", "tests/fixtures/creation-gear-name-e2e.chum5"),
+            ("careerFixtureSha256", "tests/fixtures/career-gear-name-e2e.chum5"),
+        ),
+        "sourceKeys": (
+            "collectionEditorPagesSha256", "coordinatorSha256", "collectionRequestSha256",
+            "collectionStateSha256", "collectionProjectorSha256", "mutationCatalogSha256",
+            "presenterMutationSha256", "presenterPersistenceSha256", "sectionModelsSha256",
+            "sectionServiceSha256", "workspaceStoreSha256",
+        ),
+        "controls": ("CharacterCreate.tsGearName", "CharacterCareer.tsGearName"),
+        "proofKeys": (
+            "stableGearGuid", "exactGearNameElement", "baseAndCustomNamesPreserved",
+            "expectedRevisionAtomicSave", "workspacePersisted", "sameSessionReopened",
+            "processRestartWorkspacePersisted", "processRestartUiReadback",
+        ),
+        "journeys": (
+            "creationTopLevelGearNameEdited", "careerNestedGearNameEdited",
+            "sameSessionAndProcessRestartReadback", "blankAllowedAndLegacyLengthBoundBySourceContract",
+        ),
+    },
+    "gear-quantity-lifecycle": {
+        "driver": "tests/run_api36_gear_quantity_e2e.py",
+        "fixtures": (("careerFixtureSha256", "tests/fixtures/career-gear-quantity-e2e.chum5"),),
+        "sourceKeys": (
+            "gearQuantityPageSha256", "collectionEditorPagesSha256", "coordinatorSha256",
+            "gearQuantityContractSha256", "collectionEditorStateSha256", "collectionEditorProjectorSha256",
+            "mutationCatalogSha256", "presenterMutationSha256", "presenterInterfaceSha256",
+            "gearQuantityRulesSha256", "characterSectionModelsSha256", "characterSectionServiceSha256",
+        ),
+        "controls": (
+            "CharacterCareer.cmdGearIncreaseQty", "CharacterCareer.cmdGearReduceQty",
+            "CharacterCareer.cmdGearSplitQty", "CharacterCareer.cmdGearMergeQty",
+        ),
+        "proofKeys": (
+            "stableGearIdentity", "exactQuantityPrecision", "atomicWorkspacePersisted",
+            "sameSessionReopened", "processRestartWorkspacePersisted", "processRestartUiReadback",
+        ),
+        "journeys": (
+            "increasePurchaseExpense", "reduceConfirmed", "splitClonePreserved", "mergeIdentityExact",
+            "sameSessionReopen", "processRestart",
+        ),
+    },
+    "career-edge-use": {
+        "driver": "tests/run_api36_career_edge_use_e2e.py",
+        "fixtures": (("careerFixtureSha256", "tests/fixtures/career-edge-use-e2e.chum5"),),
+        "sourceKeys": (
+            "careerEdgeUsePageSha256", "buildPageSha256", "coordinatorSha256",
+            "careerEdgeUseContractSha256", "mutationCatalogSha256", "presenterMutationSha256",
+            "presenterPersistenceSha256", "presenterInterfaceSha256", "careerEdgeUseRulesSha256",
+            "workspaceStoreSha256",
+        ),
+        "controls": ("CharacterCareer.cmdEdgeSpent", "CharacterCareer.cmdEdgeGained"),
+        "proofKeys": (
+            "exactOnePointAdjustment", "legacyBounds", "workspacePersisted", "unrelatedXmlPreserved",
+            "expectedRevisionAtomicSave", "surfaceReopened", "processRestartWorkspacePersisted",
+            "processRestartUiReadback",
+        ),
+        "journeys": (
+            "careerEdgeSpent", "spentWorkspacePersisted", "spentProcessRestartUiReadback",
+            "careerEdgeRegained", "regainedWorkspacePersisted", "regainedProcessRestartUiReadback",
+            "regainDisabledAtZero", "spendDisabledAtTotal", "boundsWorkspacePersisted",
+            "boundsProcessRestartUiReadback",
+        ),
+    },
+    "career-manual-karma": {
+        "driver": "tests/run_api36_career_manual_karma_e2e.py",
+        "fixtures": (("careerFixtureSha256", "tests/fixtures/career-manual-karma-e2e.chum5"),),
+        "sourceKeys": (
+            "careerManualKarmaPageSha256", "buildPageSha256", "coordinatorSha256",
+            "careerManualKarmaContractSha256", "mutationCatalogSha256", "presenterMutationSha256",
+            "presenterPersistenceSha256", "presenterInterfaceSha256", "careerManualKarmaRulesSha256",
+            "sourceResolverContractSha256", "sourceResolverSha256", "workspaceStoreSha256",
+        ),
+        "controls": ("CharacterCareer.cmdKarmaGained", "CharacterCareer.cmdKarmaSpent"),
+        "proofKeys": (
+            "exactKarmaDelta", "exactExpenseAndUndo", "exchangeRatesExact", "legacyPeopleRateAsymmetry",
+            "chronologicalExpenseOrdering", "workspacePersisted", "unrelatedXmlPreserved",
+            "expectedRevisionAtomicSave", "surfaceReopened", "processRestartWorkspacePersisted",
+            "processRestartUiReadback",
+        ),
+        "journeys": (
+            "careerKarmaGained", "gainWorkspacePersisted", "gainProcessRestartUiReadback",
+            "careerKarmaSpentWithExchange", "exchangeExpenseAndBalancePersisted",
+            "spendProcessRestartUiReadback",
+        ),
+    },
+    "career-manual-nuyen": {
+        "driver": "tests/run_api36_career_manual_nuyen_e2e.py",
+        "fixtures": (("careerFixtureSha256", "tests/fixtures/career-manual-nuyen-e2e.chum5"),),
+        "sourceKeys": (
+            "careerManualNuyenPageSha256", "buildPageSha256", "coordinatorSha256",
+            "careerManualNuyenContractSha256", "mutationCatalogSha256", "presenterMutationSha256",
+            "presenterPersistenceSha256", "presenterInterfaceSha256", "careerManualNuyenRulesSha256",
+            "sourceResolverContractSha256", "sourceResolverSha256", "workspaceStoreSha256",
+        ),
+        "controls": ("CharacterCareer.cmdNuyenGained", "CharacterCareer.cmdNuyenSpent"),
+        "proofKeys": (
+            "exactNuyenDelta", "exactExpenseAndUndo", "percentageApplied", "exchangeRatesExact",
+            "legacyPeopleValidationManConversion", "chronologicalExpenseOrdering", "workspacePersisted",
+            "unrelatedXmlPreserved", "expectedRevisionAtomicSave", "surfaceReopened",
+            "processRestartWorkspacePersisted", "processRestartUiReadback",
+        ),
+        "journeys": (
+            "careerNuyenGainedWithPercent", "gainWorkspacePersisted", "gainProcessRestartUiReadback",
+            "careerNuyenSpentWithExchange", "exchangeExpenseAndBalancePersisted",
+            "spendProcessRestartUiReadback",
+        ),
+    },
+    "cyberware-commerce": {
+        "driver": "tests/run_api36_cyberware_commerce_e2e.py",
+        "fixtures": (("careerFixtureSha256", "tests/fixtures/career-cyberware-commerce-e2e.chum5"),),
+        "sourceKeys": (
+            "cyberwareCommercePageSha256", "collectionEditorPagesSha256", "coordinatorSha256",
+            "commerceContractSha256", "collectionEditorStateSha256", "collectionEditorProjectorSha256",
+            "mutationCatalogSha256", "presenterMutationSha256", "presenterInterfaceSha256",
+            "commerceRulesSha256", "characterSectionModelsSha256", "characterSectionServiceSha256",
+            "sourceResolverContractSha256", "fileSourceResolverSha256",
+        ),
+        "controls": ("CharacterCareer.tsCyberwareUpgrade", "CharacterCareer.tsCyberwareSell"),
+        "proofKeys": (
+            "stableCyberwareIdentity", "exactSourceBackedQuoteDigest", "expectedRevisionAtomicSave",
+            "explicitConfirmation", "sameSessionReopened", "processRestartWorkspacePersisted",
+        ),
+        "journeys": (
+            "upgradeRatingGradeEconomicsEssenceHole", "upgradeLegacyAddGearUndo",
+            "saleCancellationZeroMutation", "saleConfirmedDeletionCascade", "linkedCapacityGuard",
+            "sameSessionReopen", "processRestart",
+        ),
+    },
+    "group-membership": {
+        "driver": "tests/run_api36_group_membership_e2e.py",
+        "fixtures": (
+            ("creationFixtureSha256", "tests/fixtures/creation-group-membership-e2e.chum5"),
+            ("careerFixtureSha256", "tests/fixtures/career-group-membership-e2e.chum5"),
+        ),
+        "sourceKeys": (
+            "groupMembershipPageSha256", "buildPageSha256", "coordinatorSha256",
+            "groupMembershipContractSha256", "mutationCatalogSha256", "presenterMutationSha256",
+            "presenterPersistenceSha256", "presenterInterfaceSha256", "groupMembershipRulesSha256",
+            "sourceResolverContractSha256", "sourceResolverSha256", "workspaceStoreSha256",
+        ),
+        "controls": ("CharacterCreate.chkJoinGroup", "CharacterCareer.chkJoinGroup"),
+        "proofKeys": (
+            "membershipMutated", "exactCareerKarmaAndUndo", "workspacePersisted", "unrelatedXmlPreserved",
+            "expectedRevisionAtomicSave", "surfaceReopened", "processRestartWorkspacePersisted",
+            "processRestartUiReadback",
+        ),
+        "journeys": (
+            "creationMembershipEdited", "creationProcessRestartUiReadback",
+            "careerJoinKarmaAndUndoPersisted", "careerLeaveKarmaAndUndoPersisted",
+            "careerProcessRestartUiReadback",
+        ),
+    },
+    "group-name": {
+        "driver": "tests/run_api36_group_name_e2e.py",
+        "fixtures": (
+            ("creationFixtureSha256", "tests/fixtures/creation-group-name-e2e.chum5"),
+            ("careerFixtureSha256", "tests/fixtures/career-group-name-e2e.chum5"),
+        ),
+        "sourceKeys": (
+            "groupNamePageSha256", "buildPageSha256", "coordinatorSha256",
+            "groupNameContractSha256", "mutationCatalogSha256", "presenterMutationSha256",
+            "presenterPersistenceSha256", "presenterInterfaceSha256", "groupNameRulesSha256",
+            "workspaceStoreSha256",
+        ),
+        "controls": ("CharacterCreate.txtGroupName", "CharacterCareer.txtGroupName"),
+        "proofKeys": (
+            "exactTextMutated", "workspacePersisted", "unrelatedNestedGroupNamePreserved",
+            "expectedRevisionAtomicSave", "surfaceReopened", "processRestartWorkspacePersisted",
+            "processRestartUiReadback",
+        ),
+        "journeys": (
+            "creationGroupNameEdited", "creationProcessRestartUiReadback", "careerGroupNameEdited",
+            "careerProcessRestartUiReadback", "contactGroupNameNotCrossWired",
+        ),
+    },
+    "lifestyle-increments": {
+        "driver": "tests/run_api36_lifestyle_increments_e2e.py",
+        "fixtures": (
+            ("creationFixtureSha256", "tests/fixtures/creation-lifestyle-increments-e2e.chum5"),
+            ("careerFixtureSha256", "tests/fixtures/career-lifestyle-increments-e2e.chum5"),
+        ),
+        "sourceKeys": (
+            "lifestyleIncrementPageSha256", "collectionEditorPagesSha256", "coordinatorSha256",
+            "lifestyleIncrementContractSha256", "collectionEditorStateSha256",
+            "collectionEditorProjectorSha256", "mutationCatalogSha256", "presenterMutationSha256",
+            "presenterPersistenceSha256", "presenterInterfaceSha256", "lifestyleIncrementRulesSha256",
+            "characterSectionModelsSha256", "characterSectionServiceSha256", "workspaceStoreSha256",
+        ),
+        "controls": (
+            "CharacterCreate.nudLifestyleMonths", "CharacterCareer.cmdIncreaseLifestyleMonths",
+            "CharacterCareer.cmdDecreaseLifestyleMonths",
+        ),
+        "proofKeys": (
+            "stableLifestyleGuid", "exactCreateCareerRules", "derivedTotalsPersisted",
+            "atomicWorkspacePersisted", "sameSessionReopened", "processRestartWorkspacePersisted",
+            "processRestartUiReadback",
+        ),
+        "journeys": (
+            "creationSetOneToOneHundred", "careerPurchaseExpenseAndUndo",
+            "careerDecreaseZeroExpenseAndNegativeLegacyBound", "derivedTotalAndPurchasedUpdated",
+            "sameSessionReopen", "processRestart",
+        ),
+    },
+    "lifestyle-name": {
+        "driver": "tests/run_api36_lifestyle_name_e2e.py",
+        "fixtures": (
+            ("creationFixtureSha256", "tests/fixtures/creation-lifestyle-name-e2e.chum5"),
+            ("careerFixtureSha256", "tests/fixtures/career-lifestyle-name-e2e.chum5"),
+        ),
+        "sourceKeys": (
+            "collectionEditorPagesSha256", "coordinatorSha256", "collectionRequestSha256",
+            "collectionStateSha256", "collectionProjectorSha256", "mutationCatalogSha256",
+            "presenterMutationSha256", "presenterPersistenceSha256", "sectionModelsSha256",
+            "sectionServiceSha256", "workspaceStoreSha256",
+        ),
+        "controls": (
+            "CharacterCreate.tsLifestyleName", "CharacterCareer.tsLifestyleName",
+            "CharacterCreate.tsLifestyleNotes", "CharacterCareer.tsLifestyleNotes",
+            "CharacterCreate.tsAdvancedLifestyleNotes", "CharacterCareer.tsAdvancedLifestyleNotes",
+        ),
+        "proofKeys": (
+            "stableLifestyleGuid", "exactExtraElement", "exactNotesAndNotesColorElements",
+            "baseNameNotesAndColorPreserved", "expectedRevisionAtomicSave", "workspacePersisted",
+            "sameSessionReopened", "processRestartWorkspacePersisted", "processRestartUiReadback",
+        ),
+        "journeys": (
+            "creationLifestyleNameEdited", "careerLifestyleNameEdited",
+            "creationLifestyleNotesAndColorEdited", "careerLifestyleNotesAndColorEdited",
+            "sameSessionAndProcessRestartReadback", "notesAndNotesColorPreserved",
+            "notesAndNotesColorChangedAtomically", "blankAllowedAndLegacyLengthBoundBySourceContract",
+        ),
+    },
+    "psyche-active": {
+        "driver": "tests/run_api36_psyche_active_e2e.py",
+        "fixtures": (("fixtureSha256", "tests/fixtures/career-psyche-active-e2e.chum5"),),
+        "sourceKeys": (
+            "buildPageSha256", "sustainedEffectsPageSha256", "coordinatorSha256",
+            "sustainedEffectsContractSha256", "mutationCatalogSha256", "presenterMutationSha256",
+            "presenterPersistenceSha256", "presenterInterfaceSha256", "sustainedEffectsRulesSha256",
+            "workspaceStoreSha256",
+        ),
+        "controls": (
+            "CharacterCareer.chkPsycheActiveMagician", "CharacterCareer.chkPsycheActiveTechnomancer",
+        ),
+        "proofKeys": (
+            "sharedSavedPsycheBoolean", "legacySurfaceVisibility", "revisionBoundMutation",
+            "atomicWorkspacePersisted", "sameSessionReopened", "processRestartWorkspacePersisted",
+            "processRestartUiReadback",
+        ),
+        "journeys": (
+            "magicianEnabledSharedPsyche", "technomancerDisabledSharedPsyche",
+            "sameSessionBothSurfacesSynchronized", "processRestartWorkspaceAndUiReadback",
+            "unrelatedSustainedDataPreserved",
+        ),
+    },
+    "quality-level": {
+        "driver": "tests/run_api36_quality_level_e2e.py",
+        "fixtures": (
+            ("creationFixtureSha256", "tests/fixtures/creation-quality-level-e2e.chum5"),
+            ("careerFixtureSha256", "tests/fixtures/career-quality-level-e2e.chum5"),
+        ),
+        "sourceKeys": (
+            "qualityLevelPageSha256", "collectionEditorPagesSha256", "coordinatorSha256",
+            "qualityLevelContractSha256", "collectionEditorStateSha256",
+            "collectionEditorProjectorSha256", "mutationCatalogSha256", "presenterMutationSha256",
+            "presenterInterfaceSha256", "sourceResolverContractSha256", "characterSectionModelsSha256",
+            "characterSectionServiceSha256", "fileSourceResolverSha256",
+        ),
+        "controls": ("CharacterCreate.nudQualityLevel", "CharacterCareer.nudQualityLevel"),
+        "proofKeys": (
+            "stableQualityIdentity", "exactDuplicateLevelIdentity", "sourceMaximumBound",
+            "atomicWorkspacePersisted", "sameSessionReopened", "processRestartWorkspacePersisted",
+            "processRestartUiReadback",
+        ),
+        "journeys": (
+            "creationIncrease", "creationDecrease", "careerIncreaseConfirmed", "careerDecrease",
+            "sameSessionReopen", "processRestart",
+        ),
+    },
+    "tradition-drain": {
+        "driver": "tests/run_api36_tradition_drain_e2e.py",
+        "fixtures": (
+            ("creationFixtureSha256", "tests/fixtures/creation-tradition-drain-e2e.chum5"),
+            ("careerFixtureSha256", "tests/fixtures/career-tradition-drain-e2e.chum5"),
+        ),
+        "sourceKeys": (
+            "traditionDrainPageSha256", "buildPageSha256", "coordinatorSha256",
+            "traditionDrainContractSha256", "mutationCatalogSha256", "presenterMutationSha256",
+            "presenterPersistenceSha256", "presenterInterfaceSha256", "traditionDrainRulesSha256",
+            "sourceResolverContractSha256", "sourceResolverSha256", "traditionsCatalogSha256",
+            "workspaceStoreSha256",
+        ),
+        "controls": ("CharacterCreate.cboDrain", "CharacterCareer.cboDrain"),
+        "proofKeys": (
+            "exactCatalogExpressionMutated", "customSourceIdentityPreserved",
+            "stableTraditionGuidPreserved", "unrelatedTraditionDataPreserved",
+            "expectedRevisionAtomicSave", "workspacePersisted", "surfaceReopened",
+            "processRestartWorkspacePersisted", "processRestartUiReadback",
+        ),
+        "journeys": (
+            "creationCatalogDrainEdited", "creationProcessRestartUiReadback",
+            "careerCatalogDrainEdited", "careerProcessRestartUiReadback",
+            "adeptOnlyAndUnknownCatalogValuesRejectedBySourceContract",
+        ),
+    },
+    "tradition-name": {
+        "driver": "tests/run_api36_tradition_name_e2e.py",
+        "fixtures": (
+            ("creationFixtureSha256", "tests/fixtures/creation-tradition-name-e2e.chum5"),
+            ("careerFixtureSha256", "tests/fixtures/career-tradition-name-e2e.chum5"),
+        ),
+        "sourceKeys": (
+            "traditionNamePageSha256", "buildPageSha256", "coordinatorSha256",
+            "traditionNameContractSha256", "mutationCatalogSha256", "presenterMutationSha256",
+            "presenterPersistenceSha256", "presenterInterfaceSha256", "traditionNameRulesSha256",
+            "workspaceStoreSha256",
+        ),
+        "controls": ("CharacterCreate.txtTraditionName", "CharacterCareer.txtTraditionName"),
+        "proofKeys": (
+            "exactCustomNameMutated", "customSourceIdentityPreserved", "stableTraditionGuidPreserved",
+            "unrelatedNestedNamePreserved", "expectedRevisionAtomicSave", "workspacePersisted",
+            "surfaceReopened", "processRestartWorkspacePersisted", "processRestartUiReadback",
+        ),
+        "journeys": (
+            "creationCustomTraditionNameEdited", "creationProcessRestartUiReadback",
+            "careerCustomTraditionNameEdited", "careerProcessRestartUiReadback",
+            "nonCustomTraditionRejectedBySourceContract",
+        ),
+    },
+}
 CAREER_REPUTATION_PHONE_E2E_RECEIPT = (
     REPO_ROOT
     / "docs"
@@ -1995,6 +2418,132 @@ def _validated_spirit_name_choice_phone_e2e_receipt(
         "receiptSha256": _sha256_file(SPIRIT_NAME_CHOICE_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
+
+
+def _capture_only_phone_e2e_specs(
+    presentation_root: Path,
+    core_root: Path,
+) -> dict[str, dict[str, Any]]:
+    roots = {
+        "android": REPO_ROOT,
+        "presentation": presentation_root,
+        "core": core_root,
+    }
+    specs: dict[str, dict[str, Any]] = {}
+    for journey, definition in CAPTURE_ONLY_PHONE_E2E_DEFINITIONS.items():
+        source_files = {
+            key: roots[root_name] / relative_path
+            for key in definition["sourceKeys"]
+            for root_name, relative_path in (CAPTURE_ONLY_PHONE_E2E_SOURCE_PATHS[key],)
+        }
+        specs[journey] = {
+            **definition,
+            "journey": journey,
+            "driver": REPO_ROOT / definition["driver"],
+            "sharedDriver": REPO_ROOT / "tests" / "run_api36_editing_e2e.py",
+            "receipt": (
+                REPO_ROOT
+                / "docs"
+                / "editability-evidence"
+                / f"api36-phone-{journey}"
+                / "receipt.json"
+            ),
+            "fixtureFiles": {
+                key: REPO_ROOT / relative_path
+                for key, relative_path in definition["fixtures"]
+            },
+            "sourceFiles": source_files,
+        }
+    return specs
+
+
+def _validated_capture_only_phone_e2e_receipt(
+    spec: dict[str, Any],
+) -> dict[str, Any] | None:
+    driver = spec["driver"]
+    shared_driver = spec["sharedDriver"]
+    receipt_path = spec["receipt"]
+    fixture_files = spec["fixtureFiles"]
+    source_files = spec["sourceFiles"]
+    required_files = (driver, shared_driver, *fixture_files.values(), *source_files.values())
+    if not all(path.is_file() for path in required_files):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(receipt_path))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    controls = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_controls = set(spec["controls"])
+    proof_keys = set(spec["proofKeys"])
+    expected_journeys = set(spec["journeys"])
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == spec["journey"]
+        and receipt.get("apiLevel") == 36
+        and receipt.get("abi") == PHONE_E2E_ABI
+        and receipt.get("package") == PHONE_E2E_PACKAGE
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in fixture_files.items())
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_files.items())
+        and isinstance(journeys, dict)
+        and set(journeys) == expected_journeys
+        and all(journeys[journey] == "pass" for journey in expected_journeys)
+        and isinstance(controls, dict)
+        and set(controls) == expected_controls
+        and receipt.get("controlCount") == len(expected_controls)
+        and all(
+            isinstance(controls[control], dict)
+            and set(controls[control]) == proof_keys
+            and all(controls[control][proof_key] == "pass" for proof_key in proof_keys)
+            for control in expected_controls
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": receipt_path.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(receipt_path),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_capture_only_phone_e2e_receipts(
+    presentation_root: Path,
+    core_root: Path,
+) -> dict[str, dict[str, Any]]:
+    validated: dict[str, dict[str, Any]] = {}
+    for spec in _capture_only_phone_e2e_specs(presentation_root, core_root).values():
+        receipt = _validated_capture_only_phone_e2e_receipt(spec)
+        if receipt is not None:
+            validated[spec["driver"].relative_to(REPO_ROOT).as_posix()] = receipt
+    return validated
+
+
+def _promote_capture_only_phone_e2e(
+    known: dict[str, Any] | None,
+    validated_receipts: dict[str, dict[str, Any]],
+) -> dict[str, Any] | None:
+    if known is None:
+        return None
+    e2e = known.get("e2e")
+    if not isinstance(e2e, dict) or e2e.get("status") != "scripted_not_executed":
+        return known
+    receipt = validated_receipts.get(str(e2e.get("ref") or ""))
+    if receipt is None or known.get("status") != "implemented_pending_emulator":
+        return known
+    known["status"] = "implemented_verified_api36"
+    known["e2e"] = receipt
+    coverage_limit = known.get("coverageLimit")
+    if isinstance(coverage_limit, str):
+        known["coverageLimit"] = coverage_limit.replace("present but not yet executed", "executed")
+    return known
 
 
 def _validated_career_reputation_phone_e2e_receipt(
@@ -13278,6 +13827,10 @@ def enrich_rows(
         presentation_root,
         core_engine_root,
     )
+    capture_only_phone_e2e_receipts = _validated_capture_only_phone_e2e_receipts(
+        presentation_root,
+        core_engine_root,
+    )
     career_reputation_phone_e2e_receipt = _validated_career_reputation_phone_e2e_receipt(
         presentation_root,
         core_engine_root,
@@ -13418,6 +13971,7 @@ def enrich_rows(
             explicit_save_phone_e2e_receipt,
             nested_collection_notes_phone_e2e_receipt,
         )
+        known = _promote_capture_only_phone_e2e(known, capture_only_phone_e2e_receipts)
         if known is not None:
             phone = {
                 key: known[key]
@@ -13672,6 +14226,14 @@ def build_inventory(
         CHARACTER_NOTES_PHONE_E2E_RECEIPT,
         CAREER_NUYEN_EXPENSE_EDIT_PHONE_E2E_RECEIPT,
         SPIRIT_NAME_CHOICE_PHONE_E2E_RECEIPT,
+        *(
+            REPO_ROOT
+            / "docs"
+            / "editability-evidence"
+            / f"api36-phone-{journey}"
+            / "receipt.json"
+            for journey in CAPTURE_ONLY_PHONE_E2E_DEFINITIONS
+        ),
         CAREER_REPUTATION_PHONE_E2E_RECEIPT,
         SITUATIONAL_MODIFIERS_PHONE_E2E_RECEIPT,
         PRIMARY_ARM_PHONE_E2E_RECEIPT,

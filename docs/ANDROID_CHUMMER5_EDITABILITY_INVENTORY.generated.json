@@ -317,42 +317,42 @@
       {
         "path": "tests/run_api36_group_membership_e2e.py",
         "exists": true,
-        "sha256": "25a31e75174bc388bc91b84d4227823289bfac86ea36d1c1ade02c5573ea2994"
+        "sha256": "5de75ccee5eb37c39ed978d887a62fcd427d374326fc0abdc5b2b57e7929d305"
       },
       {
         "path": "tests/run_api36_group_name_e2e.py",
         "exists": true,
-        "sha256": "19d9f2b479d01a7d9ef26e5e3e8ed09dc72500d45f2ca8a071e41fd517e8bd08"
+        "sha256": "76dbaa59de8688f83717366df0513e6a5bd3eb4353b8614bd57f924e0ce91857"
       },
       {
         "path": "tests/run_api36_tradition_name_e2e.py",
         "exists": true,
-        "sha256": "8303515e1d72d3fe5f640b8719275f78aecd24dbe21434f419a661a5d3a9b5c5"
+        "sha256": "8a0d20c609e75b105d8fe95594440dda5975020e49741c489e0e3278222b9d6e"
       },
       {
         "path": "tests/run_api36_tradition_drain_e2e.py",
         "exists": true,
-        "sha256": "404ece49459ea8c1080eb528f07c570163be0fec13674ad4c84aea642b3e8d1d"
+        "sha256": "e951dbebb9f8c4809771edcd5b3057406adca1ab88696bfd3555fddccd6a3a10"
       },
       {
         "path": "tests/run_api36_gear_name_e2e.py",
         "exists": true,
-        "sha256": "c15124202723bd6d219e1d4e83ed05d08894049f7f17fec282ec6052698ac435"
+        "sha256": "baefd4e550a1a876f77b0fd0834fb4406d5a861c30321b8cdfdb1446c68d9ba7"
       },
       {
         "path": "tests/run_api36_lifestyle_name_e2e.py",
         "exists": true,
-        "sha256": "6275b7410d2a13924dfd88256755f9ce8608a145850849722a1d060f82f44678"
+        "sha256": "c746ee000338fa1c0302c25852830e864a1236350c7af80be1aea29673be826c"
       },
       {
         "path": "tests/run_api36_career_edge_use_e2e.py",
         "exists": true,
-        "sha256": "70d91ae22ebca39df89c8c45c1659014286fd24b7113b47fce72272084194fbd"
+        "sha256": "b4d7778468b1f84193b7163ca35ffb434b6d2fa494ec2559f7c0020d570ef320"
       },
       {
         "path": "tests/run_api36_career_manual_karma_e2e.py",
         "exists": true,
-        "sha256": "522acb20f6dca3b9ac4ef4f62ff75542a3b24233faa2dd0622386e313c9448b0"
+        "sha256": "56a426b2cb102a01e678b1771eedd9d2022c5f17f99a2be61de91ee1f2c908e8"
       },
       {
         "path": "tests/run_api36_career_nuyen_expense_edit_e2e.py",
@@ -447,17 +447,17 @@
       {
         "path": "tests/run_api36_gear_quantity_e2e.py",
         "exists": true,
-        "sha256": "9d7ab25c2583e22e33b8a648d3fc9573a7f1f01c469957a2c4e72a3fa0640541"
+        "sha256": "5c3450fdb51e0a4ae6ea8a07068621165001d31b26e91c710937bb216e6781df"
       },
       {
         "path": "tests/run_api36_quality_level_e2e.py",
         "exists": true,
-        "sha256": "1978c45201acb16618448378d4d60b75ec1d7f07e571703be7e9a25af6fe99b1"
+        "sha256": "583ea1d65561d62e504750485df88b31422d18e5f509e4aa6ec2a5c3d45c726a"
       },
       {
         "path": "tests/run_api36_cyberware_commerce_e2e.py",
         "exists": true,
-        "sha256": "f10554c97b10f90d36f7b96680d3f3c8c3af2329610a187d2355dba92314a99e"
+        "sha256": "88cbd194d8040a9e8612889dcb1e4e79f9f66491b34d183b6ffba03a15ac67e2"
       },
       {
         "path": "tests/run_api36_location_rename_e2e.py",
@@ -931,6 +931,76 @@
       },
       {
         "path": "docs/editability-evidence/api36-phone-spirit-name-choice/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-gear-name/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-gear-quantity-lifecycle/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-edge-use/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-manual-karma/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-manual-nuyen/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-cyberware-commerce/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-group-membership/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-group-name/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-lifestyle-increments/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-lifestyle-name/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-psyche-active/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-quality-level/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-tradition-drain/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-tradition-name/receipt.json",
         "exists": false,
         "sha256": null
       },
@@ -1447,7 +1517,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "68e4a1209936410dc4cb8526b080ad674f101b36054f57d1f0b7a7d84be6cbd2"
+      "sha256": "e4ff17409b47831744da67e859a43d7e10d5bf8c218e3a630e4a97c5a16feefb"
     }
   },
   "coverageByFamily": {
