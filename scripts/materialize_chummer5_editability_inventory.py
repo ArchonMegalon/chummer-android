@@ -520,6 +520,39 @@ ARMOR_ACTIVE_COMMLINK_CONTROL_E2E_PROOF_KEYS = (
     "processRestartWorkspacePersisted",
     "processRestartUiReadback",
 )
+WEAPON_ACCESSORY_INCLUDED_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-weapon-accessory-included"
+    / "receipt.json"
+)
+WEAPON_ACCESSORY_INCLUDED_E2E_JOURNEYS = (
+    "creationRunnerImported",
+    "creationAccessoryEnabled",
+    "creationAccessoryEnabledReopened",
+    "creationAccessoryEnabledProcessRestart",
+    "creationAccessoryDisabled",
+    "creationAccessoryDisabledReopened",
+    "creationAccessoryDisabledProcessRestart",
+    "careerRunnerImported",
+    "careerAccessoryEnabled",
+    "careerAccessoryEnabledReopened",
+    "careerAccessoryEnabledProcessRestart",
+    "careerAccessoryDisabled",
+    "careerAccessoryDisabledReopened",
+    "careerAccessoryDisabledProcessRestart",
+)
+WEAPON_ACCESSORY_INCLUDED_CONTROL_E2E_PROOF_KEYS = (
+    "enabledForSelectedAccessory",
+    "disabledForSelectedAccessory",
+    "stableParentAndAccessoryIdentity",
+    "workspacePersisted",
+    "unrelatedXmlPreserved",
+    "surfaceReopened",
+    "processRestartWorkspacePersisted",
+    "processRestartUiReadback",
+)
 LOCATION_RENAME_PHONE_E2E_RECEIPT = (
     REPO_ROOT
     / "docs"
@@ -810,6 +843,7 @@ VEHICLE_LOCATION_ADD_CONTROL = "cmdAddVehicleLocation"
 VEHICLE_HOME_NODE_CONTROL = "chkVehicleHomeNode"
 ARMOR_HOME_NODE_CONTROL = "chkArmorHomeNode"
 ARMOR_ACTIVE_COMMLINK_CONTROL = "chkArmorActiveCommlink"
+WEAPON_ACCESSORY_INCLUDED_CONTROL = "chkIncludedInWeapon"
 LOCATION_RENAME_CONTROLS = {
     "tsGearRenameLocation": ("Gear", "gearlocations"),
     "tsWeaponRenameLocation": ("Weapon", "weaponlocations"),
@@ -2043,6 +2077,80 @@ def _validated_armor_active_commlink_phone_e2e_receipt(
         "status": "executed_api36",
         "ref": ARMOR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(ARMOR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_weapon_accessory_included_phone_e2e_receipt(
+    presentation_root: Path,
+    core_engine_root: Path,
+) -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-weapon-accessory-included-e2e.chum5"
+    career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-weapon-accessory-included-e2e.chum5"
+    overview = presentation_root / "Chummer.Presentation" / "Overview"
+    source_digests = {
+        "weaponAccessoryIncludedPageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs",
+        "collectionEditorPagesSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
+        "coordinatorSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+        "weaponAccessoryIncludedContractSha256": overview / "WeaponAccessoryIncludedEditRequest.cs",
+        "collectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
+        "collectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
+        "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+        "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+        "characterSectionModelsSha256": core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+        "characterSectionServiceSha256": core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+    }
+    if not all(
+        path.is_file()
+        for path in (driver, shared_driver, creation_fixture, career_fixture, *source_digests.values())
+    ):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(WEAPON_ACCESSORY_INCLUDED_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    controls = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_controls = {
+        f"{form}.{WEAPON_ACCESSORY_INCLUDED_CONTROL}"
+        for form in ("CharacterCreate", "CharacterCareer")
+    }
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "weapon-accessory-included"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("creationFixtureSha256") == _sha256_file(creation_fixture)
+        and receipt.get("careerFixtureSha256") == _sha256_file(career_fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(journeys, dict)
+        and all(journeys.get(journey) == "pass" for journey in WEAPON_ACCESSORY_INCLUDED_E2E_JOURNEYS)
+        and isinstance(controls, dict)
+        and set(controls) == expected_controls
+        and receipt.get("controlCount") == len(expected_controls)
+        and all(
+            isinstance(controls.get(control), dict)
+            and all(
+                controls[control].get(proof_key) == "pass"
+                for proof_key in WEAPON_ACCESSORY_INCLUDED_CONTROL_E2E_PROOF_KEYS
+            )
+            for control in expected_controls
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": WEAPON_ACCESSORY_INCLUDED_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(WEAPON_ACCESSORY_INCLUDED_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
 
@@ -3392,6 +3500,7 @@ def _known_phone_mapping(
     vehicle_home_node_phone_e2e_receipt: dict[str, Any] | None,
     armor_home_node_phone_e2e_receipt: dict[str, Any] | None,
     armor_active_commlink_phone_e2e_receipt: dict[str, Any] | None,
+    weapon_accessory_included_phone_e2e_receipt: dict[str, Any] | None,
     location_rename_phone_e2e_receipt: dict[str, Any] | None,
     explicit_save_phone_e2e_receipt: dict[str, Any] | None,
     nested_collection_notes_phone_e2e_receipt: dict[str, Any] | None,
@@ -4631,6 +4740,172 @@ def _known_phone_mapping(
             "coverageLimit": (
                 "Exact Chummer5 selected top-level armor Home Node checkbox only; other device kinds "
                 "and Active Commlink remain separately inventoried."
+            ),
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
+        and control == WEAPON_ACCESSORY_INCLUDED_CONTROL
+    ):
+        expected_handler = "chkIncludedInWeapon_CheckedChanged"
+        legacy_source = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / f"{class_name}.cs"
+        )
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs"
+        editor = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "WeaponAccessoryIncludedEditRequest.cs"
+        state = overview / "WorkspaceCollectionEditorState.cs"
+        projector = overview / "WorkspaceCollectionEditorProjector.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        core_models = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        core_service = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        legacy_exact = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                expected_handler,
+                "is WeaponAccessory",
+                "objAccessory.IncludedInWeapon",
+                "chkIncludedInWeapon",
+                "DoThreadSafeFuncAsync(x => x.Checked",
+                "AllowEditPartOfBaseWeapon",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "WeaponAccessoryIncludedEditRequest",
+                'AutomationId = $"weapon-accessory-included-page-{targetToken}"',
+                'AutomationId = $"weapon-accessory-included-toggle-{targetToken}"',
+                'AutomationId = $"weapon-accessory-included-save-{targetToken}"',
+                "_contentRevision",
+                "_weaponId",
+                "_accessoryId",
+                "Coordinator.ApplyWeaponAccessoryIncludedEditAsync",
+            )
+            and _contains(
+                editor,
+                "item.WeaponAccessoryIncludedInWeapon is not { } includedInWeapon",
+                'Guid.TryParseExact(_target.ItemId, "D"',
+                'Guid.TryParseExact(_target.NestedItemId, "D"',
+                'automationId: $"weapon-accessory-included-open-{accessoryId:N}"',
+                "new WeaponAccessoryIncludedPage",
+            )
+            and _contains(
+                coordinator,
+                "ApplyWeaponAccessoryIncludedEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.ApplyWeaponAccessoryIncludedEditAsync",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "WeaponAccessoryIncludedEditRequest",
+                "ExpectedContentRevision",
+                "Guid WeaponId",
+                "Guid AccessoryId",
+                "bool IncludedInWeapon",
+            )
+            and _contains(state, "bool? WeaponAccessoryIncludedInWeapon")
+            and _contains(
+                projector,
+                'TryReadStrictBool(item, "includedInWeapon"',
+                'Guid.TryParseExact(target.ItemId, "D"',
+                'Guid.TryParseExact(target.NestedItemId, "D"',
+                "WeaponAccessoryIncludedInWeapon = weaponAccessoryIncludedInWeapon",
+            )
+            and _contains(
+                core_models,
+                "CharacterWeaponAccessorySummary",
+                "bool IncludedInWeapon = false",
+            )
+            and _contains(
+                core_service,
+                'IncludedInWeapon: ParseBool(ReadValue(accessory, "included"))',
+            )
+            and _contains(
+                mutation,
+                "ApplyWeaponAccessoryIncludedEdit",
+                "WorkspaceCollectionKind.Weapon",
+                "WorkspaceNestedCollectionKind.WeaponAccessory",
+                'target.Value = request.IncludedInWeapon ? "True" : "False"',
+                "ResolveCollectionItem",
+            )
+            and _contains(
+                presenter,
+                "ApplyWeaponAccessoryIncludedEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+                "ExpectedContentRevision",
+            )
+            and _contains(
+                presenter_interface,
+                "ApplyWeaponAccessoryIncludedEditAsync",
+                "WeaponAccessoryIncludedEditRequest",
+            )
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"journey": "weapon-accessory-included"',
+            '"creationAccessoryEnabled": "pass"',
+            '"creationAccessoryDisabledProcessRestart": "pass"',
+            '"careerAccessoryEnabled": "pass"',
+            '"careerAccessoryDisabledProcessRestart": "pass"',
+            '"controls": controls',
+        )
+        phone_e2e = weapon_accessory_included_phone_e2e_receipt if implemented and e2e_scripted else None
+        return {
+            "status": (
+                "implemented_verified_api36"
+                if phone_e2e
+                else "implemented_pending_emulator" if implemented else "missing"
+            ),
+            "route": (
+                "Build > Gear > Weapon Accessories > selected stable accessory > Included in Weapon"
+            ),
+            "surface": "WeaponAccessoryIncludedPage",
+            "automationId": "weapon-accessory-included-toggle-{stable-accessory-guid}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/WeaponAccessoryIncludedPage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WeaponAccessoryIncludedEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyWeaponAccessoryIncludedEditAsync("
+                "WeaponAccessoryIncludedEditRequest) with stable parent weapon Guid, stable accessory Guid, "
+                "and expected content revision"
+            ),
+            "persistenceAssertion": (
+                "selected character/weapons/weapon[stable parent Guid]/accessories/accessory[stable Guid]/included "
+                "is set to exact Chummer5 True or False while sibling accessories and unrelated XML remain exact "
+                "after revision-checked atomic save, same-session reopen, and process restart"
+            ),
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_weapon_accessory_included_e2e.py" if e2e_scripted else None,
+            },
+            "coverageLimit": (
+                "Exact Chummer5 selected saved weapon-accessory Included in Weapon Boolean; legacy desktop "
+                "visibility remains governed by AllowEditPartOfBaseWeapon, while tablet is deferred."
             ),
             "tablet": {
                 "status": "missing",
@@ -7390,6 +7665,10 @@ def enrich_rows(
         presentation_root,
         core_engine_root,
     )
+    weapon_accessory_included_phone_e2e_receipt = _validated_weapon_accessory_included_phone_e2e_receipt(
+        presentation_root,
+        core_engine_root,
+    )
     location_rename_phone_e2e_receipt = _validated_location_rename_phone_e2e_receipt(
         presentation_root,
     )
@@ -7454,6 +7733,7 @@ def enrich_rows(
             vehicle_home_node_phone_e2e_receipt,
             armor_home_node_phone_e2e_receipt,
             armor_active_commlink_phone_e2e_receipt,
+            weapon_accessory_included_phone_e2e_receipt,
             location_rename_phone_e2e_receipt,
             explicit_save_phone_e2e_receipt,
             nested_collection_notes_phone_e2e_receipt,
@@ -7553,6 +7833,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "VehicleHomeNodePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorHomeNodePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorActiveCommlinkPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "LocationRenamePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CharacterNotesPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
@@ -7574,6 +7855,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_vehicle_home_node_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_home_node_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_active_commlink_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
         REPO_ROOT / "tests" / "run_api36_location_rename_e2e.py",
         REPO_ROOT / "tests" / "run_api36_explicit_save_e2e.py",
         REPO_ROOT / "tests" / "run_api36_nested_collection_notes_e2e.py",
@@ -7606,6 +7888,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-armor-home-node-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-armor-active-commlink-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-armor-active-commlink-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-weapon-accessory-included-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-weapon-accessory-included-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-location-rename-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-location-rename-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-explicit-save-e2e.chum5",
@@ -7634,6 +7918,7 @@ def build_inventory(
         VEHICLE_HOME_NODE_PHONE_E2E_RECEIPT,
         ARMOR_HOME_NODE_PHONE_E2E_RECEIPT,
         ARMOR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT,
+        WEAPON_ACCESSORY_INCLUDED_PHONE_E2E_RECEIPT,
         LOCATION_RENAME_PHONE_E2E_RECEIPT,
         EXPLICIT_SAVE_PHONE_E2E_RECEIPT,
         NESTED_COLLECTION_NOTES_PHONE_E2E_RECEIPT,
@@ -7658,6 +7943,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "VehicleHomeNodeEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorHomeNodeEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorActiveCommlinkEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "WeaponAccessoryIncludedEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceLocationEditorState.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "LocationRenameRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceSectionRenderer.cs",

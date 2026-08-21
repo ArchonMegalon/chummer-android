@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 534,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 349,
+      "implemented_pending_emulator": 351,
       "implemented_verified_api36": 79,
-      "missing": 1090,
+      "missing": 1088,
       "not_applicable_non_mutating": 459,
       "partial_create_only": 106,
       "partial_exact_saved_data": 146
@@ -130,6 +130,11 @@
         "sha256": "07d9600c263ee92a135dc972a77674a6bbc91e84c8873ad3dcc0bdca83584ab0"
       },
       {
+        "path": "src/Chummer.Android/Native/WeaponAccessoryIncludedPage.cs",
+        "exists": true,
+        "sha256": "740b3cd362a69405240b7e0acb7fc9541efbb0dded113f3a8942198a7cfb142e"
+      },
+      {
         "path": "src/Chummer.Android/Native/LocationRenamePage.cs",
         "exists": true,
         "sha256": "3e3dda90edd6e211c84812084c05cdcc4923d4687aa739cdb90197b227150685"
@@ -142,7 +147,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "d7ac164cf54d230a78b7c13b40e59c321a425120dbce579bb48255c135ab7728"
+        "sha256": "0e4ff40e4474ed9f262f248f40bce32ea9dc2455fe8409c5a7dbd9e4e5575a51"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -167,7 +172,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "e836c6fa9b486144b955f933ebe6114473df8520ff2c26860b8cf546676455f6"
+        "sha256": "51e9a355c767a570fa16cb258a6595f15afd14838d0ff5b44856fecb2ecbdc72"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -233,6 +238,11 @@
         "path": "tests/run_api36_armor_active_commlink_e2e.py",
         "exists": true,
         "sha256": "4dc24b878429993976fea2b86e781d89c25705c69d94205a88153a1c38a293d3"
+      },
+      {
+        "path": "tests/run_api36_weapon_accessory_included_e2e.py",
+        "exists": true,
+        "sha256": "6f8544e5d320bfd1874a4387bc6b53fe90ae13f18980a5dab9e482ae13273df0"
       },
       {
         "path": "tests/run_api36_location_rename_e2e.py",
@@ -395,6 +405,16 @@
         "sha256": "73ecbf27fee1bcb2d8aeeba50d19cd864dd67084389067430a0c4c8641c6ff6f"
       },
       {
+        "path": "tests/fixtures/creation-weapon-accessory-included-e2e.chum5",
+        "exists": true,
+        "sha256": "638184c79eca1e62b7147fa7d3c74b5181326ccd93142ceda068783c9179c81d"
+      },
+      {
+        "path": "tests/fixtures/career-weapon-accessory-included-e2e.chum5",
+        "exists": true,
+        "sha256": "6c9debe27a520428b98a812688eaf1c7e32886be9997e1d00bc78ac12563472a"
+      },
+      {
         "path": "tests/fixtures/creation-location-rename-e2e.chum5",
         "exists": true,
         "sha256": "2e05323b1aaaa7fee5542ca3725ecd619400f28f25356954e63d9ebf830821ab"
@@ -545,6 +565,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-weapon-accessory-included/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-location-rename/receipt.json",
         "exists": false,
         "sha256": null
@@ -565,194 +590,199 @@
         "sha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65"
       },
       {
-        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
         "exists": true,
         "sha256": "20531172c8984c8d572b17c95fe1d92caf0076509bc382ff6bd0179e686aebf3"
       },
       {
-        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
         "exists": true,
         "sha256": "c2fc2d67a03f3ebcbd0117ea66ab1f853d13d2539de36109462db6c57891b479"
       },
       {
-        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "e51914bfab1dd48075c8679af21e5679cf9b5a01fe2df8f1f830f0e39d6f05b5"
+        "sha256": "b875ffde8028dc74067b2f545ae7157092a3ce157be6066e29a037aa81379fb9"
       },
       {
-        "path": "chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
         "exists": true,
         "sha256": "35fe5e3f251c43484efde07535b4c168d14ca9e37be71e101c121c363aaf82f8"
       },
       {
-        "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
         "sha256": "83d042e7589e1125896e5b4007b3c95f177de537d98d9a79c0c7a36f2acba232"
       },
       {
-        "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
         "exists": true,
         "sha256": "11e9624d8cc65578e0d38c7d8091b615945f566a99cb281b7233796ba4199768"
       },
       {
-        "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "28de0823643c0f7c8ddfc75810d1c0895ba38ae14a27eb5555c13d677c60cb3c"
+        "sha256": "eb8ed2b2e13226d51a43069c4c62f8c711c8e2edf9ba4399a1723d662b38fa2d"
       },
       {
-        "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
         "sha256": "ebcdaae59693ec796038cc6f74fbd49eae1a40bec76aeb56ac2dbbf00b0b6341"
       },
       {
-        "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
         "exists": true,
         "sha256": "1836a660b1c243e53756e9a35e1025663f9332100e3aca68394045f3480cc77c"
       },
       {
-        "path": "chummer-core-engine/Chummer.Rulesets.Hosting/Presentation/WorkspaceSurfaceActionCatalog.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-core-engine/Chummer.Rulesets.Hosting/Presentation/WorkspaceSurfaceActionCatalog.cs",
         "exists": true,
         "sha256": "fe8ff0a9746b3029ddf232d681000229dfc69790f2f5d3b0960fd9275324a110"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "623e4705493cf293c9ac753969d86b731863ea97202f9fd57a34d374b263c880"
+        "sha256": "30bfd0bf44ba7c010fef9fa0cec15d0da196670d7aee8eb3f2ef21bf49af010b"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
         "exists": true,
         "sha256": "022fa5d15ad2be86a4eb0aea45385befb163cc430dd1b8e5c6a4c2fb74aa2b6a"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
         "exists": true,
         "sha256": "2c6bda77607d71c1d335c298048bcd87f2363fd15440d3db08c9c16252dabc83"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
         "exists": true,
         "sha256": "ab174728493660115b62887154ec2990c64945d209a762023d941b847a06e0cb"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
         "exists": true,
         "sha256": "f889362153034f6f8e61367c31d995720a04982ba264914db59f7095cd1eba65"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WeaponLocationAddRequest.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/WeaponLocationAddRequest.cs",
         "exists": true,
         "sha256": "cd793ac4258beb2a98c1759c727d047ced979e82c625868fc5f3a3bf84046ca1"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/VehicleLocationAddRequest.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/VehicleLocationAddRequest.cs",
         "exists": true,
         "sha256": "2b74f6551e962facd2b2d572bd68c09c6b4b2af23a203180325566fceb2b4995"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/VehicleHomeNodeEditRequest.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/VehicleHomeNodeEditRequest.cs",
         "exists": true,
         "sha256": "e4a5d725e080a481343dffa5b635848776a6cfc0f36681aecb62a2f651da9197"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/ArmorHomeNodeEditRequest.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/ArmorHomeNodeEditRequest.cs",
         "exists": true,
         "sha256": "457da5b2de65f85a113726cf00c70e234b77ef4ef965171deec441370d40d1fe"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/ArmorActiveCommlinkEditRequest.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/ArmorActiveCommlinkEditRequest.cs",
         "exists": true,
         "sha256": "bf45b488209cc8f7b14a1855d84199d0930f0980dd53a261ca5a1e2fe9c0f894"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/WeaponAccessoryIncludedEditRequest.cs",
+        "exists": true,
+        "sha256": "3d665cc28f5457039132d0ac07a5449895986f5a9d59c2c0547d0eadf25dbd2d"
+      },
+      {
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
         "exists": true,
         "sha256": "b5ee911ed027d4a9b56794ea6ded98f00c66d0528a14f0a7f463fd254a4bb14a"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
         "exists": true,
         "sha256": "d43270b3751723043bae901b7ae571af4ac13c35f8ef69e162764010554c8d6c"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
         "exists": true,
         "sha256": "6ac500b49e29bf369fca9b4b51de88fd2b813c34029e23f225f205910f814f56"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewState.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewState.cs",
         "exists": true,
         "sha256": "64fae58c8d580266041f407c49cb75d60f77521a33b64a759c1e7275aedc7caa"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
         "exists": true,
         "sha256": "5a37923234bfef0fdfa5a30118adfdcd66fd78cfd2d00f2c4830049db4edb13e"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
         "exists": true,
         "sha256": "aeb6d8082f6660647d992968253ea798aee8ab69b32170e6f058d9074860b10a"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
         "exists": true,
         "sha256": "8e4b80c97d8457e4a522ba15e7f310cbb10761aac2dc50e616b72ff344994c33"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
         "exists": true,
         "sha256": "45b0507a4b1b30a8a77bd59c72040ce2e262960667d724f274260b12f35b8e1b"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
         "exists": true,
         "sha256": "c95cdae34903ee982dcc8ed766fb2699d74205e4e1bfeb7a1d5cd72184e661d6"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
         "exists": true,
         "sha256": "758669c780238031334020ad7af44b5b17612a697cbeff172662788995967ba5"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
         "exists": true,
         "sha256": "989158b6876e6ac1bbf70813bbe5e4a7f4d7055c8cd0cefa65531cae911eb575"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
         "exists": true,
         "sha256": "9a418082fa297c94d6af83096717cfcd34fe507e649cf00b562a1373cbf8fc96"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "eef50c123486432149d7f8e825916390cb7ade64017e7216b3957a24e57ec1c7"
+        "sha256": "8bfb9c5f0fb76a99cd0bdd37a24c8037adadd627f8cec00011ec792e9c641c6b"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "2a9857c8a39f4c5bdd35edd990091b644cac0945b39f111e6601a431981e74b5"
+        "sha256": "60d47afe30dee67574966914351b7cbcd85b2b1a40f2264fd16de6d0a9994ec1"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
         "exists": true,
         "sha256": "66198f194be80c7092a36c3ae359f05a4a6465829225a2452733e2de382b170f"
       },
       {
-        "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "541a6caf0fafa1915d7d919e3dafebec3d52f8d50e6a9a130a725f17439a929d"
+        "sha256": "36535ff9bdde63f600ac1cb728acfc945bbf8ed68f043562e955b37e741b22ac"
       },
       {
-        "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
+        "path": ".integration-worktrees/android-phone-weapon-accessory-included-20260821/chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
         "exists": true,
         "sha256": "9753a446b1eddbbe3c45cddf4d19b297896c5052b77ccfb42e593c8d5590a16b"
       }
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "98dc3aeded8034fbc905c1154f2dba861be12ceb4a4f1fca45dd9fef098f595d"
+      "sha256": "5240b7cf3bdeb5dd18a41c46eb549393d4ef4cfdaa579df68a2432a580032c2d"
     }
   },
   "coverageByFamily": {
@@ -1130,7 +1160,7 @@
     "weapons": {
       "rowCount": 119,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 53,
+      "phoneMissingCount": 51,
       "tabletMissingCount": 73,
       "completionProvenCount": 22
     },
@@ -38155,11 +38185,24 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Weapon Accessories > selected stable accessory > Included in Weapon",
+        "surface": "WeaponAccessoryIncludedPage",
+        "automationId": "weapon-accessory-included-toggle-{stable-accessory-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/WeaponAccessoryIncludedPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WeaponAccessoryIncludedEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 selected saved weapon-accessory Included in Weapon Boolean; legacy desktop visibility remains governed by AllowEditPartOfBaseWeapon, while tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -38167,12 +38210,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyWeaponAccessoryIncludedEditAsync(WeaponAccessoryIncludedEditRequest) with stable parent weapon Guid, stable accessory Guid, and expected content revision",
+      "persistenceAssertion": "selected character/weapons/weapon[stable parent Guid]/accessories/accessory[stable Guid]/included is set to exact Chummer5 True or False while sibling accessories and unrelated XML remain exact after revision-checked atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_weapon_accessory_included_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -54239,11 +54282,24 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Weapon Accessories > selected stable accessory > Included in Weapon",
+        "surface": "WeaponAccessoryIncludedPage",
+        "automationId": "weapon-accessory-included-toggle-{stable-accessory-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/WeaponAccessoryIncludedPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WeaponAccessoryIncludedEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 selected saved weapon-accessory Included in Weapon Boolean; legacy desktop visibility remains governed by AllowEditPartOfBaseWeapon, while tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -54251,12 +54307,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyWeaponAccessoryIncludedEditAsync(WeaponAccessoryIncludedEditRequest) with stable parent weapon Guid, stable accessory Guid, and expected content revision",
+      "persistenceAssertion": "selected character/weapons/weapon[stable parent Guid]/accessories/accessory[stable Guid]/included is set to exact Chummer5 True or False while sibling accessories and unrelated XML remain exact after revision-checked atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_weapon_accessory_included_e2e.py"
         },
         "tablet": {
           "status": "missing",

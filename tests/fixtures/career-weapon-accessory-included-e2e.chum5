@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Weapon Accessory Included E2E</name>
+  <alias>CareerWeaponAccessoryIncludedE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <customstate><included>Career unrelated included text</included></customstate>
+  <weapons>
+    <weapon>
+      <guid>58111111-5811-5811-5811-581111111111</guid>
+      <name>Career Accessory Host Weapon E2E</name>
+      <category>Pistols</category>
+      <type>Ranged</type>
+      <reach>0</reach>
+      <accuracy>5</accuracy>
+      <damage>7P</damage>
+      <ap>-1</ap>
+      <mode>SA</mode>
+      <rc>0</rc>
+      <ammo>15(c)</ammo>
+      <equipped>True</equipped>
+      <notes>Career weapon notes must remain intact</notes>
+      <accessories>
+        <accessory>
+          <guid>58222222-5822-5822-5822-582222222222</guid>
+          <name>Career Target Smartgun E2E</name>
+          <mount>Top</mount>
+          <rating>1</rating>
+          <included>False</included>
+          <equipped>True</equipped>
+          <notes>Career target accessory notes must remain intact</notes>
+        </accessory>
+        <accessory>
+          <guid>58333333-5833-5833-5833-583333333333</guid>
+          <name>Career Untouched Accessory E2E</name>
+          <mount>Under</mount>
+          <rating>1</rating>
+          <included>True</included>
+          <equipped>True</equipped>
+          <notes>Career untouched accessory notes</notes>
+        </accessory>
+      </accessories>
+    </weapon>
+  </weapons>
+</character>

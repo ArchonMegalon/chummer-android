@@ -112,6 +112,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddVehicleHomeNodeAction(item);
         AddArmorHomeNodeAction(item);
         AddArmorActiveCommlinkAction(item);
+        AddWeaponAccessoryIncludedAction(item);
         AddVehicleLocationActions(item);
 
         if (!string.IsNullOrWhiteSpace(Coordinator.State.Error))
@@ -782,6 +783,38 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 activeCommlink)),
             automationId: $"armor-active-commlink-open-{armorId:N}"));
+    }
+
+    private void AddWeaponAccessoryIncludedAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Weapon
+            || _target.NestedKind != WorkspaceNestedCollectionKind.WeaponAccessory
+            || item.WeaponAccessoryIncludedInWeapon is not { } includedInWeapon
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid weaponId)
+            || weaponId == Guid.Empty
+            || !Guid.TryParseExact(_target.NestedItemId, "D", out Guid accessoryId)
+            || accessoryId == Guid.Empty)
+        {
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        _body.Add(NativeTheme.Eyebrow("Weapon configuration"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Included in Weapon",
+            includedInWeapon
+                ? "This accessory is part of the base weapon configuration"
+                : "This accessory has separate cost and weight",
+            () => Navigation.PushAsync(new WeaponAccessoryIncludedPage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                weaponId,
+                accessoryId,
+                item.Label,
+                includedInWeapon)),
+            automationId: $"weapon-accessory-included-open-{accessoryId:N}"));
     }
 
     private string TargetToken() => Token(_target.NestedItemId ?? _target.ItemId);
