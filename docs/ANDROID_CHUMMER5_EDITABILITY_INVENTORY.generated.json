@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 534,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 371,
+      "implemented_pending_emulator": 373,
       "implemented_verified_api36": 79,
-      "missing": 1067,
+      "missing": 1065,
       "not_applicable_non_mutating": 459,
       "partial_create_only": 106,
       "partial_exact_saved_data": 147
@@ -77,7 +77,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "d604652ef1c374344ee7e416658e0cf4530ed3fecbfea7cca05f888fac192e1a"
+        "sha256": "7236111c4d23b000bb02590cb896870c4abc4761fbac7bcaba40fb6dcf481ab9"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -98,6 +98,11 @@
         "path": "src/Chummer.Android/Native/PrimaryArmPage.cs",
         "exists": true,
         "sha256": "39bf2fc3f9dfedc1cb1ea8397d95f9c7436207660f572a02174132f1a141d6ea"
+      },
+      {
+        "path": "src/Chummer.Android/Native/GroupMembershipPage.cs",
+        "exists": true,
+        "sha256": "4daca5c5a162f0290340af6df1927e0a12f4824277c82e0e1a633bc8417ac66b"
       },
       {
         "path": "src/Chummer.Android/Native/GearLocationAddPage.cs",
@@ -217,7 +222,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "ecaec0a006efdd5c117a0b5b21af9d486fc23ab11c878eb754713160998cc624"
+        "sha256": "45ba234573805789498e0fe699090855740195d90bdbfa71340da73d0a502d43"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -253,6 +258,11 @@
         "path": "tests/run_api36_primary_arm_e2e.py",
         "exists": true,
         "sha256": "a62a57a6eab0f697e62060e2679142f052f2c3a8c8e61610b46e7363c4db3d13"
+      },
+      {
+        "path": "tests/run_api36_group_membership_e2e.py",
+        "exists": true,
+        "sha256": "25a31e75174bc388bc91b84d4227823289bfac86ea36d1c1ade02c5573ea2994"
       },
       {
         "path": "tests/run_api36_gear_location_e2e.py",
@@ -433,6 +443,16 @@
         "path": "tests/fixtures/ambidextrous-primary-arm-e2e.chum5",
         "exists": true,
         "sha256": "0cc4f19c6b104b7ba7f0102d30360f1349c01aea0feeafb4e0590a3cf73279b3"
+      },
+      {
+        "path": "tests/fixtures/creation-group-membership-e2e.chum5",
+        "exists": true,
+        "sha256": "a655a1e4b70d04f958efa0814b6f35602cf3795d715799f0143aff73243ec430"
+      },
+      {
+        "path": "tests/fixtures/career-group-membership-e2e.chum5",
+        "exists": true,
+        "sha256": "e71edead1bdff3c5619d3576cd485fd29022a1a929ed44708515a7decc8a46dc"
       },
       {
         "path": "tests/fixtures/creation-gear-location-e2e.chum5",
@@ -835,6 +855,11 @@
         "sha256": "256bd61f5afe9f283f7a52c6d8f8cb0f35b2f972367d944ce9143c7ec4139931"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterGroupMembershipRules.cs",
+        "exists": true,
+        "sha256": "ee5448d8192850627d5a789f20dd63d85fde309561a2c45699181b33a351a18e"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
         "exists": true,
         "sha256": "35fe5e3f251c43484efde07535b4c168d14ca9e37be71e101c121c363aaf82f8"
@@ -842,7 +867,7 @@
       {
         "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "a323d0daa3126ad6063b314c1d12f378673e2a0c775a3ef8cc0f8e14825e28b3"
+        "sha256": "c54f7e5e304ceb192eb2f76f47796e094de51527bfd936635495719ff40bf1b1"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
@@ -862,7 +887,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "1c082a545d20f902dba897f486402ae031424a4c6cbc3ea5f72de83c0f9cc124"
+        "sha256": "32f89f75402556b3c085258bc05d86bb2b27dfe8c08698eb465cd39b4120c733"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -882,7 +907,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "ce67428f86fa11c7ac59fb0030b327bdefbfd2ae7db35c21e2d67df5ea9e94a1"
+        "sha256": "a51cdd10a621bcb4e57289034ee433a885000e2329dfc35405ee1776a52cfd1a"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -898,6 +923,11 @@
         "path": "chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
         "exists": true,
         "sha256": "ab174728493660115b62887154ec2990c64945d209a762023d941b847a06e0cb"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/GroupMembershipEditRequest.cs",
+        "exists": true,
+        "sha256": "5d96b536fc27d1c56cbf94c5e4bc8695d48f0992f2ad60ed45dae33ef8371275"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
@@ -992,7 +1022,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "55ddcc33fcf932b80d54e6fbe19a21cb7f431a320869dd8fd85e7fff3bc7b071"
+        "sha256": "251ca18fe9a32cc4cc499ffe0adec3307b1c5e457bc2110f4627e226097e2ff3"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1047,7 +1077,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "976b6716516c752cb440b96cc38199fca2bb93831b45324e748aea24ba0861a2"
+        "sha256": "07749b427c380fabab8f67de5ac3dd2d5c30f0d6aec44005562a8905e70abfc4"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1057,7 +1087,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "99c6747ac7cbba60f2654dc493f4cfac5764aa85edcb6f7b376c771205b73f3d"
+      "sha256": "607c28a1372cc4f0910f44a77ed9c4b6004ec183fe4d861bf954dd365474ec90"
     }
   },
   "coverageByFamily": {
@@ -1288,7 +1318,7 @@
     "magic_tradition_and_resonance": {
       "rowCount": 15,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 14,
+      "phoneMissingCount": 12,
       "tabletMissingCount": 14,
       "completionProvenCount": 1
     },
@@ -17091,11 +17121,25 @@
       "mutationFamily": "magic_tradition_and_resonance",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Group membership",
+        "surface": "GroupMembershipPage",
+        "automationId": "group-membership-toggle",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/GroupMembershipPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/GroupMembershipEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterGroupMembershipRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Create toggles directly like the legacy binding; Career MAG editing fails closed unless the saved settings profile proves exact KarmaJoinGroup/KarmaLeaveGroup costs; the API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -17103,12 +17147,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyGroupMembershipEditAsync / GroupMembershipEditRequest on character/groupmember",
+      "persistenceAssertion": "character/groupmember matches the submitted Create/Career value after revision-bound atomic save, same-session reopen, and process restart; Career MAG changes preserve exact profile Karma expense and JoinGroup/LeaveGroup undo while non-MAG network changes stay cost-free",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_group_membership_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -60416,11 +60460,25 @@
       "mutationFamily": "magic_tradition_and_resonance",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Group membership",
+        "surface": "GroupMembershipPage",
+        "automationId": "group-membership-toggle",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/GroupMembershipPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/GroupMembershipEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterGroupMembershipRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Create toggles directly like the legacy binding; Career MAG editing fails closed unless the saved settings profile proves exact KarmaJoinGroup/KarmaLeaveGroup costs; the API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -60428,12 +60486,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyGroupMembershipEditAsync / GroupMembershipEditRequest on character/groupmember",
+      "persistenceAssertion": "character/groupmember matches the submitted Create/Career value after revision-bound atomic save, same-session reopen, and process restart; Career MAG changes preserve exact profile Karma expense and JoinGroup/LeaveGroup undo while non-MAG network changes stay cost-free",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_group_membership_e2e.py"
         },
         "tablet": {
           "status": "missing",

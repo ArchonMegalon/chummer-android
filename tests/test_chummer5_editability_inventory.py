@@ -306,6 +306,24 @@ namespace Chummer
             self.assertIn(xml_element, row["persistenceAssertion"])
             self.assertFalse(row["completionProven"])
 
+        group_membership = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.GROUP_MEMBERSHIP_CONTROL
+        ]
+        self.assertEqual(2, len(group_membership))
+        for row in group_membership:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("Build > Runner > Group membership", row["phone"]["route"])
+            self.assertEqual("GroupMembershipPage", row["phone"]["surface"])
+            self.assertEqual("group-membership-toggle", row["phone"]["automationId"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual("tests/run_api36_group_membership_e2e.py", row["e2e"]["phone"]["ref"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertIn("groupmember", row["persistenceAssertion"])
+            self.assertIn("KarmaJoinGroup", row["phone"]["coverageLimit"])
+            self.assertFalse(row["completionProven"])
+
         gear_locations = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -1377,9 +1395,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 371,
+                "implemented_pending_emulator": 373,
                 "implemented_verified_api36": 79,
-                "missing": 1067,
+                "missing": 1065,
                 "not_applicable_non_mutating": 459,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 147,

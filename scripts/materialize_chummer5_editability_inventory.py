@@ -988,6 +988,7 @@ SITUATIONAL_MODIFIER_CONTROLS = {
 PRIMARY_ARM_CONTROLS = {
     "cboPrimaryArm": ("primaryarm", "primary-arm-choice", "PrimaryArm"),
 }
+GROUP_MEMBERSHIP_CONTROL = "chkJoinGroup"
 GEAR_LOCATION_ADD_CONTROL = "cmdAddLocation"
 WEAPON_LOCATION_ADD_CONTROL = "cmdAddWeaponLocation"
 VEHICLE_LOCATION_ADD_CONTROL = "cmdAddVehicleLocation"
@@ -8527,6 +8528,165 @@ def _known_phone_mapping(
         }
     if (
         class_name in {"CharacterCreate", "CharacterCareer"}
+        and control == GROUP_MEMBERSHIP_CONTROL
+    ):
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GroupMembershipPage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_group_membership_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-group-membership-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-group-membership-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "GroupMembershipEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterGroupMembershipRules.cs"
+        resolver_contract = character_notes_core_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs"
+        resolver = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "FileSystemCharacterSourceDataResolver.cs"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        implemented = (
+            _contains(
+                page,
+                "class GroupMembershipPage",
+                '"group-membership-page"',
+                '"group-membership-toggle"',
+                '"group-membership-save"',
+                "CharacterGroupMembershipState",
+                "_editor.ContentRevision",
+                "GroupMembershipEditRequest",
+            )
+            and _contains(build_page, '"build-group-membership"', "new GroupMembershipPage")
+            and _contains(
+                coordinator,
+                "PrepareGroupMembershipEditAsync",
+                "ApplyGroupMembershipEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "GroupMembershipEditorState",
+                "GroupMembershipEditRequest",
+                "CharacterGroupMembershipState ExpectedState",
+                "TryResolveGroupMembershipKarmaCosts",
+            )
+            and _contains(
+                mutation,
+                "ApplyGroupMembershipEdit",
+                "CharacterGroupMembershipRules.CanSet",
+                "AppendGroupMembershipExpense",
+                'new XElement("karmatype", joining ? "JoinGroup" : "LeaveGroup")',
+            )
+            and _contains(
+                presenter,
+                "PrepareGroupMembershipEditAsync",
+                "ApplyGroupMembershipEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareGroupMembershipEditAsync",
+                "ApplyGroupMembershipEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterGroupMembershipState",
+                "RequiresConfirmation",
+                "transitionCost <= availableKarma",
+            )
+            and _contains(
+                resolver_contract,
+                "TryResolveGroupMembershipKarmaCosts",
+                "joinCost",
+                "leaveCost",
+            )
+            and _contains(
+                resolver,
+                '"karmajoingroup"',
+                '"karmaleavegroup"',
+                "TryResolveGroupMembershipKarmaCosts",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                'CONTROL = "chkJoinGroup"',
+                'api != "36"',
+                '"profile": "phone"',
+                '"journey": "group-membership"',
+                '"groupMembershipRulesSha256"',
+                '"sourceResolverSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+                '"careerFixtureSha256"',
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Runner > Group membership",
+            "surface": "GroupMembershipPage",
+            "automationId": "group-membership-toggle",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/GroupMembershipPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/GroupMembershipEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterGroupMembershipRules.cs",
+                "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyGroupMembershipEditAsync / "
+                "GroupMembershipEditRequest on character/groupmember"
+            ),
+            "persistenceAssertion": (
+                "character/groupmember matches the submitted Create/Career value after revision-bound atomic save, "
+                "same-session reopen, and process restart; Career MAG changes preserve exact profile Karma expense "
+                "and JoinGroup/LeaveGroup undo while non-MAG network changes stay cost-free"
+            ),
+            "coverageLimit": (
+                "Create toggles directly like the legacy binding; Career MAG editing fails closed unless the saved "
+                "settings profile proves exact KarmaJoinGroup/KarmaLeaveGroup costs; the API 36 driver is "
+                f"{'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_group_membership_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
         and control == GEAR_LOCATION_ADD_CONTROL
     ):
         page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearLocationAddPage.cs"
@@ -10087,6 +10247,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerReputationPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SituationalModifiersPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "PrimaryArmPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GroupMembershipPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearLocationAddPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponLocationAddPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "VehicleLocationAddPage.cs",
@@ -10118,6 +10279,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_career_reputation_e2e.py",
         REPO_ROOT / "tests" / "run_api36_situational_modifiers_e2e.py",
         REPO_ROOT / "tests" / "run_api36_primary_arm_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_group_membership_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_location_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_location_e2e.py",
         REPO_ROOT / "tests" / "run_api36_vehicle_location_e2e.py",
@@ -10154,6 +10316,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "creation-primary-arm-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-primary-arm-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "ambidextrous-primary-arm-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-group-membership-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-group-membership-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-gear-location-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-location-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-weapon-location-e2e.chum5",
@@ -10232,6 +10396,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorEquipmentRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCritterPowerCountRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSpiritFetteringRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGroupMembershipRules.cs",
         core_engine_root / "Chummer.Contracts" / "Workspaces" / "CharacterWorkspaceModels.cs",
         core_engine_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterFileService.cs",
@@ -10245,6 +10410,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerReputationEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "SituationalModifiersEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "PrimaryArmEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "GroupMembershipEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GearLocationAddRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponLocationAddRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "VehicleLocationAddRequest.cs",

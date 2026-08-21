@@ -100,6 +100,18 @@ public sealed class BuildPage : NativePageBase
                 }
             },
             automationId: "build-primary-arm"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Group membership",
+            "Join or leave a magical group or Resonance network",
+            async () =>
+            {
+                GroupMembershipEditorState? editor = await Coordinator.PrepareGroupMembershipEditAsync();
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new GroupMembershipPage(Coordinator, editor));
+                }
+            },
+            automationId: "build-group-membership"));
         if (Coordinator.State.Profile?.Created == true)
         {
             _body.Add(NativeTheme.NavigationRow(
