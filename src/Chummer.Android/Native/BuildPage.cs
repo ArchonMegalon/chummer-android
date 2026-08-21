@@ -101,6 +101,18 @@ public sealed class BuildPage : NativePageBase
             },
             automationId: "build-primary-arm"));
         _body.Add(NativeTheme.NavigationRow(
+            "Sustained effects",
+            "Edit Force, Net Hits, Self-Sustained state, or stop sustaining",
+            async () =>
+            {
+                SustainedObjectsEditorState? editor = await Coordinator.PrepareSustainedObjectsEditAsync();
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new SustainedObjectsPage(Coordinator, editor));
+                }
+            },
+            automationId: "build-sustained-effects"));
+        _body.Add(NativeTheme.NavigationRow(
             "Group membership",
             "Join or leave a magical group or Resonance network",
             async () =>

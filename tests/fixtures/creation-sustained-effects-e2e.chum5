@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Sustained Effects E2E</name>
+  <alias>CreationSustainedEffectsE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customstate><sustained>Creation unrelated sustained text</sustained></customstate>
+  <spells>
+    <spell><guid>83111111-8311-8311-8311-831111111111</guid><name>Increase Reflexes</name><notes>Creation linked spell notes</notes></spell>
+  </spells>
+  <critterpowers>
+    <critterpower><guid>83222222-8322-8322-8322-832222222222</guid><name>Fear</name><notes>Creation linked power notes</notes></critterpower>
+  </critterpowers>
+  <sustainedobjects>
+    <sustainedobject><linkedobject>83111111-8311-8311-8311-831111111111</linkedobject><linkedobjecttype>Spell</linkedobjecttype><force>4</force><nethits>2</nethits><self>True</self><notes>Creation first cast untouched</notes></sustainedobject>
+    <sustainedobject><linkedobject>83111111-8311-8311-8311-831111111111</linkedobject><linkedobjecttype>Spell</linkedobjecttype><force>6</force><nethits>3</nethits><self>False</self><notes>Creation second cast target</notes></sustainedobject>
+    <sustainedobject><linkedobject>83222222-8322-8322-8322-832222222222</linkedobject><linkedobjecttype>CritterPower</linkedobjecttype><force>3</force><nethits>1</nethits><self>True</self><notes>Creation delete target</notes></sustainedobject>
+  </sustainedobjects>
+</character>

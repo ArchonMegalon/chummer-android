@@ -807,6 +807,38 @@ namespace Chummer
             )
             self.assertFalse(row["completionProven"])
 
+        sustained_effects = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "SustainedObjectControl"
+            and row["legacy"]["controlName"] in inventory.SUSTAINED_EFFECTS_CONTROLS
+        ]
+        self.assertEqual(4, len(sustained_effects))
+        for row in sustained_effects:
+            control = row["legacy"]["controlName"]
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Runner > Sustained effects > selected saved occurrence",
+                row["phone"]["route"],
+            )
+            self.assertEqual("SustainedObjectEditPage", row["phone"]["surface"])
+            self.assertEqual(
+                inventory.SUSTAINED_EFFECTS_CONTROLS[control],
+                row["phone"]["automationId"],
+            )
+            self.assertIn("linked type + linked GUID + saved occurrence", row["presenterMutation"])
+            self.assertIn("expected content revision", row["presenterMutation"])
+            self.assertIn("exact duplicate occurrence", row["persistenceAssertion"])
+            self.assertIn("confirmed delete", row["persistenceAssertion"])
+            self.assertIn("atomic save", row["persistenceAssertion"])
+            self.assertIn("runtime GUID", row["phone"]["coverageLimit"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_sustained_effects_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
         gear_quantities = [
             row for row in rows
             if row["legacy"]["formOrControl"] == "CharacterCareer"
@@ -1498,9 +1530,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 377,
+                "implemented_pending_emulator": 381,
                 "implemented_verified_api36": 79,
-                "missing": 1052,
+                "missing": 1048,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 147,
@@ -2791,6 +2823,67 @@ namespace Chummer
                 receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
                 self.assertIsNone(
                     inventory._validated_critter_power_count_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
+
+    def test_sustained_effects_receipt_is_full_source_graph_and_fixture_hash_bound(self) -> None:
+        presentation_root = REPO.parent / "chummer-presentation"
+        core_root = REPO.parent / "chummer-core-engine"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        driver = REPO / "tests" / "run_api36_sustained_effects_e2e.py"
+        shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
+        creation_fixture = REPO / "tests" / "fixtures" / "creation-sustained-effects-e2e.chum5"
+        career_fixture = REPO / "tests" / "fixtures" / "career-sustained-effects-e2e.chum5"
+        source_paths = {
+            "buildPageSha256": REPO / "src" / "Chummer.Android" / "Native" / "BuildPage.cs",
+            "sustainedEffectsPageSha256": REPO / "src" / "Chummer.Android" / "Native" / "SustainedObjectsPage.cs",
+            "coordinatorSha256": REPO / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+            "sustainedEffectsContractSha256": overview / "SustainedObjectEditRequest.cs",
+            "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+            "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+            "presenterPersistenceSha256": overview / "CharacterOverviewPresenter.Persistence.cs",
+            "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+            "sustainedEffectsRulesSha256": core_root / "Chummer.Contracts" / "Characters" / "CharacterSustainedObjectRules.cs",
+            "workspaceStoreSha256": core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs",
+        }
+        controls = {
+            f"SustainedObjectControl.{control}": {
+                key: "pass" for key in inventory.SUSTAINED_EFFECTS_CONTROL_E2E_PROOF_KEYS
+            }
+            for control in inventory.SUSTAINED_EFFECTS_CONTROLS
+        }
+        receipt = {
+            "schema": "chummer.android.editing-e2e/v1",
+            "status": "pass",
+            "profile": "phone",
+            "journey": "sustained-effects",
+            "apiLevel": 36,
+            "apkSha256": "a" * 64,
+            "driverSha256": inventory._sha256_file(driver),
+            "sharedDriverSha256": inventory._sha256_file(shared_driver),
+            "creationFixtureSha256": inventory._sha256_file(creation_fixture),
+            "careerFixtureSha256": inventory._sha256_file(career_fixture),
+            "controlCount": len(controls),
+            "controls": controls,
+            "journeys": {key: "pass" for key in inventory.SUSTAINED_EFFECTS_E2E_JOURNEYS},
+            **{key: inventory._sha256_file(path) for key, path in source_paths.items()},
+        }
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            receipt_path = Path(temporary) / "receipt.json"
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+            with patch.object(inventory, "SUSTAINED_EFFECTS_PHONE_E2E_RECEIPT", receipt_path):
+                self.assertIsNotNone(
+                    inventory._validated_sustained_effects_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
+                receipt["sustainedEffectsRulesSha256"] = "0" * 64
+                receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+                self.assertIsNone(
+                    inventory._validated_sustained_effects_phone_e2e_receipt(
                         presentation_root,
                         core_root,
                     )

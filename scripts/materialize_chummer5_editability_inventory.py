@@ -704,6 +704,35 @@ CRITTER_POWER_COUNT_CONTROL_E2E_PROOF_KEYS = (
     "processRestartWorkspacePersisted",
     "processRestartUiReadback",
 )
+SUSTAINED_EFFECTS_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-sustained-effects"
+    / "receipt.json"
+)
+SUSTAINED_EFFECTS_E2E_JOURNEYS = (
+    "creationRunnerImported",
+    "creationDuplicateEditedReopenedRestarted",
+    "creationCritterDeletedRestarted",
+    "careerRunnerImported",
+    "careerDuplicateEditedReopenedRestarted",
+    "careerCritterDeletedRestarted",
+)
+SUSTAINED_EFFECTS_CONTROL_E2E_PROOF_KEYS = (
+    "sharedCreateCareerReachability",
+    "linkedTypeGuidOccurrenceIdentity",
+    "duplicateCastIsolation",
+    "forceAndNetHitsBounds",
+    "critterPowerSelfSustainedHidden",
+    "explicitDeleteConfirmation",
+    "workspacePersisted",
+    "unrelatedXmlPreserved",
+    "expectedRevisionAtomicSave",
+    "surfaceReopened",
+    "processRestartWorkspacePersisted",
+    "processRestartUiReadback",
+)
 LOCATION_RENAME_PHONE_E2E_RECEIPT = (
     REPO_ROOT
     / "docs"
@@ -1024,6 +1053,12 @@ ARMOR_ACTIVE_COMMLINK_CONTROL = "chkArmorActiveCommlink"
 WEAPON_ACCESSORY_INCLUDED_CONTROL = "chkIncludedInWeapon"
 QUALITY_LEVEL_CONTROL = "nudQualityLevel"
 CRITTER_POWER_COUNT_CONTROL = "chkCritterPowerCount"
+SUSTAINED_EFFECTS_CONTROLS = {
+    "nudForce": "sustained-effect-force-{linked-type-guid-occurrence}",
+    "nudNetHits": "sustained-effect-net-hits-{linked-type-guid-occurrence}",
+    "chkSelfSustained": "sustained-effect-self-{linked-type-guid-occurrence}",
+    "cmdDelete": "sustained-effect-delete-{linked-type-guid-occurrence}",
+}
 ARMOR_DAMAGE_CONTROLS = {
     "cmdArmorIncrease": (
         "cmdArmorIncrease_Click",
@@ -2800,6 +2835,79 @@ def _validated_critter_power_count_phone_e2e_receipt(
         "status": "executed_api36",
         "ref": CRITTER_POWER_COUNT_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(CRITTER_POWER_COUNT_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_sustained_effects_phone_e2e_receipt(
+    presentation_root: Path,
+    core_engine_root: Path,
+) -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_sustained_effects_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-sustained-effects-e2e.chum5"
+    career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-sustained-effects-e2e.chum5"
+    overview = presentation_root / "Chummer.Presentation" / "Overview"
+    source_digests = {
+        "buildPageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs",
+        "sustainedEffectsPageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SustainedObjectsPage.cs",
+        "coordinatorSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+        "sustainedEffectsContractSha256": overview / "SustainedObjectEditRequest.cs",
+        "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+        "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "presenterPersistenceSha256": overview / "CharacterOverviewPresenter.Persistence.cs",
+        "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+        "sustainedEffectsRulesSha256": core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSustainedObjectRules.cs",
+        "workspaceStoreSha256": core_engine_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs",
+    }
+    if not all(
+        path.is_file()
+        for path in (driver, shared_driver, creation_fixture, career_fixture, *source_digests.values())
+    ):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(SUSTAINED_EFFECTS_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    controls = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_controls = {
+        f"SustainedObjectControl.{control}"
+        for control in SUSTAINED_EFFECTS_CONTROLS
+    }
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "sustained-effects"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("creationFixtureSha256") == _sha256_file(creation_fixture)
+        and receipt.get("careerFixtureSha256") == _sha256_file(career_fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(journeys, dict)
+        and all(journeys.get(journey) == "pass" for journey in SUSTAINED_EFFECTS_E2E_JOURNEYS)
+        and isinstance(controls, dict)
+        and set(controls) == expected_controls
+        and receipt.get("controlCount") == len(expected_controls)
+        and all(
+            isinstance(controls.get(control), dict)
+            and all(
+                controls[control].get(proof_key) == "pass"
+                for proof_key in SUSTAINED_EFFECTS_CONTROL_E2E_PROOF_KEYS
+            )
+            for control in expected_controls
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": SUSTAINED_EFFECTS_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(SUSTAINED_EFFECTS_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
 
@@ -7846,6 +7954,208 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name == "SustainedObjectControl" and control in SUSTAINED_EFFECTS_CONTROLS:
+        native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
+        phone_page = native_root / "SustainedObjectsPage.cs"
+        build_page = native_root / "BuildPage.cs"
+        coordinator = native_root / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_sustained_effects_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-sustained-effects-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-sustained-effects-e2e.chum5"
+        legacy_control = chummer5_root / "Chummer" / "Controls" / "Shared" / "SustainedObjectControl.cs"
+        legacy_designer = chummer5_root / "Chummer" / "Controls" / "Shared" / "SustainedObjectControl.Designer.cs"
+        legacy_shared = chummer5_root / "Chummer" / "Forms" / "Character Forms" / "CharacterShared.cs"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "SustainedObjectEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSustainedObjectRules.cs"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        legacy_exact = (
+            _contains(
+                legacy_control,
+                "RegisterAsyncDataBindingAsync",
+                "nameof(SustainedObject.Force)",
+                "nameof(SustainedObject.NetHits)",
+                "nameof(SustainedObject.SelfSustained)",
+                "Improvement.ImprovementSource.CritterPower",
+                "UnsustainObject.Invoke",
+            )
+            and _contains(
+                legacy_designer,
+                "this.nudForce.Maximum",
+                "this.nudNetHits.Maximum",
+                "this.cmdDelete.Click",
+                "this.chkSelfSustained.CheckedChanged",
+            )
+            and _contains(
+                legacy_shared,
+                "DeleteSustainedObject",
+                "ConfirmDeleteAsync",
+                "CharacterObject.SustainedCollection.RemoveAsync",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                phone_page,
+                "class SustainedObjectsPage",
+                "class SustainedObjectEditPage",
+                "CharacterSustainedObjectIdentity",
+                "sustained-effect-force-",
+                "sustained-effect-net-hits-",
+                "sustained-effect-self-",
+                "sustained-effect-delete-",
+                "CharacterSustainedObjectAction.Update",
+                "CharacterSustainedObjectAction.Delete",
+                "Confirmed: true",
+                "_contentRevision",
+            )
+            and _contains(
+                build_page,
+                'automationId: "build-sustained-effects"',
+                "PrepareSustainedObjectsEditAsync",
+                "new SustainedObjectsPage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareSustainedObjectsEditAsync",
+                "ApplySustainedObjectEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CharacterSustainedObjectIdentity",
+                "SustainedObjectsEditorState",
+                "SustainedObjectEditRequest",
+                "TryProjectAll",
+                'Elements("sustainedobjects")',
+                'Elements("sustainedobject")',
+                "Occurrence",
+            )
+            and _contains(
+                mutation,
+                "ApplySustainedObjectEdit",
+                "CharacterSustainedObjectRules.CanUpdate",
+                "CharacterSustainedObjectRules.CanDelete",
+                'SetElementValue(target.Element, "force"',
+                'SetElementValue(target.Element, "nethits"',
+                'SetElementValue(target.Element, "self"',
+                "target.Element.Remove()",
+            )
+            and _contains(
+                presenter,
+                "PrepareSustainedObjectsEditAsync",
+                "ApplySustainedObjectEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareSustainedObjectsEditAsync",
+                "ApplySustainedObjectEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterSustainedObjectIdentity",
+                "MinimumForce = 0",
+                "MaximumForce = 100",
+                "MinimumNetHits = 0",
+                "MaximumNetHits = 100",
+                "CritterPower",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"journey": "sustained-effects"',
+                'api != "36"',
+                '"profile": "phone"',
+                '"linkedTypeGuidOccurrenceIdentity"',
+                '"critterPowerSelfSustainedHidden"',
+                '"sustainedEffectsRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+                '"careerFixtureSha256"',
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        phone_e2e = (
+            _validated_sustained_effects_phone_e2e_receipt(
+                presentation_root,
+                character_notes_core_root,
+            )
+            if implemented and e2e_scripted
+            else None
+        )
+        return {
+            "status": (
+                "implemented_verified_api36"
+                if phone_e2e
+                else "implemented_pending_emulator" if implemented else "missing"
+            ),
+            "route": "Build > Runner > Sustained effects > selected saved occurrence",
+            "surface": "SustainedObjectEditPage",
+            "automationId": SUSTAINED_EFFECTS_CONTROLS[control],
+            "sourceRefs": [
+                "src/Chummer.Android/Native/SustainedObjectsPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/SustainedObjectEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSustainedObjectRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+                "tests/run_api36_sustained_effects_e2e.py",
+                "tests/fixtures/creation-sustained-effects-e2e.chum5",
+                "tests/fixtures/career-sustained-effects-e2e.chum5",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplySustainedObjectEditAsync / SustainedObjectEditRequest "
+                "with linked type + linked GUID + saved occurrence and expected content revision"
+            ),
+            "persistenceAssertion": (
+                "the exact duplicate occurrence retains 0-100 Force and Net Hits plus conditional Self-Sustained; "
+                "confirmed delete removes only the selected occurrence; unrelated XML remains exact after atomic "
+                "save, same-session reopen, recovery, and process restart"
+            ),
+            "coverageLimit": (
+                "One shared Chummer5 SustainedObjectControl row reaches Create and Career. Self-Sustained is "
+                "intentionally absent for Critter Powers; identity is the persisted linked type/GUID/occurrence "
+                "because Chummer5 does not save the control's runtime GUID."
+            ),
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_sustained_effects_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "SpiritControl" and control == "chkFettered":
         native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
         phone_page = native_root / "SpiritFetteredPage.cs"
@@ -10666,6 +10976,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CritterPowerCountPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SpiritFetteredPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SustainedObjectsPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearQuantityPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "QualityLevelPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CyberwareCommercePage.cs",
@@ -10700,6 +11011,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
         REPO_ROOT / "tests" / "run_api36_critter_power_count_e2e.py",
         REPO_ROOT / "tests" / "run_api36_spirit_fettered_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_sustained_effects_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_quantity_e2e.py",
         REPO_ROOT / "tests" / "run_api36_quality_level_e2e.py",
         REPO_ROOT / "tests" / "run_api36_cyberware_commerce_e2e.py",
@@ -10752,6 +11064,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-critter-power-count-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-spirit-fettered-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-spirit-fettered-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-sustained-effects-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-sustained-effects-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-quantity-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-quality-level-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-quality-level-e2e.chum5",
@@ -10790,6 +11104,7 @@ def build_inventory(
         ARMOR_EQUIPMENT_PHONE_E2E_RECEIPT,
         WEAPON_ACCESSORY_INCLUDED_PHONE_E2E_RECEIPT,
         CRITTER_POWER_COUNT_PHONE_E2E_RECEIPT,
+        SUSTAINED_EFFECTS_PHONE_E2E_RECEIPT,
         LOCATION_RENAME_PHONE_E2E_RECEIPT,
         EXPLICIT_SAVE_PHONE_E2E_RECEIPT,
         NESTED_COLLECTION_NOTES_PHONE_E2E_RECEIPT,
@@ -10805,6 +11120,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorEquipmentRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCritterPowerCountRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSpiritFetteringRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSustainedObjectRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGroupMembershipRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerEdgeUseRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualKarmaRules.cs",
@@ -10836,6 +11152,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponAccessoryIncludedEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CritterPowerCountEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "SpiritFetteredEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "SustainedObjectEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CyberwareCommerceRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceLocationEditorState.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "LocationRenameRequest.cs",

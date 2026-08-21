@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 377,
+      "implemented_pending_emulator": 381,
       "implemented_verified_api36": 79,
-      "missing": 1052,
+      "missing": 1048,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 147
@@ -77,7 +77,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "118db7904a50d36758c07a136c2b5ab5265dc6ff5d0ece56c408b4aa44c626f8"
+        "sha256": "b846fda573d26453195c4c1f50241bd170cf52c7f23e02f9e5b8836b6cff6eda"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -180,6 +180,11 @@
         "sha256": "99cc4fa40750d916a41f0190410b7ad5e97b2ddad9403b4e18ec7054badb7aa0"
       },
       {
+        "path": "src/Chummer.Android/Native/SustainedObjectsPage.cs",
+        "exists": true,
+        "sha256": "4be9ae0b690a4bb4b8e06fe71f82ee84a8b8ac5432dd1e7d0f9b6ba7d23b178d"
+      },
+      {
         "path": "src/Chummer.Android/Native/GearQuantityPage.cs",
         "exists": true,
         "sha256": "c45751c4da229656d55761412212cd26f6ce230d00d3bb17c38ddcbf84c485c0"
@@ -232,7 +237,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "9ea1fb9e3cedbaecc8f66bff291c40bd646ed71735a0bf7fab4b2c891f2f6ebf"
+        "sha256": "7626a4f802df6a95b166b1ffa9b76880f2a12137593a63bb4031a0b6c708c8ea"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -348,6 +353,11 @@
         "path": "tests/run_api36_spirit_fettered_e2e.py",
         "exists": true,
         "sha256": "e3e0502ad3eacdd4c71004d8e3df608c4613c08fb298691222b9d0d346bd2cb9"
+      },
+      {
+        "path": "tests/run_api36_sustained_effects_e2e.py",
+        "exists": true,
+        "sha256": "0171d6cc2175b82837cccc3e86f3087ed7147d242257c197f373209d54675b7e"
       },
       {
         "path": "tests/run_api36_gear_quantity_e2e.py",
@@ -610,6 +620,16 @@
         "sha256": "fd831a13a2f63847120c420d9a4ef669b99d07854354c1504759d26e269c9751"
       },
       {
+        "path": "tests/fixtures/creation-sustained-effects-e2e.chum5",
+        "exists": true,
+        "sha256": "4bf528bca40dbbb5aafe54b75a14e383d9d6d334dfd820c7ff4823e5ac173878"
+      },
+      {
+        "path": "tests/fixtures/career-sustained-effects-e2e.chum5",
+        "exists": true,
+        "sha256": "16f88320f3d1f37e65bfd07ea220e5a2da3aaf3548808d993e8ce701a72317c5"
+      },
+      {
         "path": "tests/fixtures/career-gear-quantity-e2e.chum5",
         "exists": true,
         "sha256": "1a533d5dfbb2a67045f8a000b9869089f953e7525cb57c8efa2685e11e402c89"
@@ -810,6 +830,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-sustained-effects/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-location-rename/receipt.json",
         "exists": false,
         "sha256": null
@@ -885,6 +910,11 @@
         "sha256": "256bd61f5afe9f283f7a52c6d8f8cb0f35b2f972367d944ce9143c7ec4139931"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSustainedObjectRules.cs",
+        "exists": true,
+        "sha256": "294bf9a9e7956aa9aaf7cee47d12c483e9aa7fa23dfc140e30f1aafc6ceaf130"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterGroupMembershipRules.cs",
         "exists": true,
         "sha256": "ee5448d8192850627d5a789f20dd63d85fde309561a2c45699181b33a351a18e"
@@ -947,7 +977,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "af187f3b09cfddc7002a7c3c4dceef31d62ea8c84abe68fab693ef28f2bb0511"
+        "sha256": "925f245937d568fc17091eb02086672a5f2e0e77d9e10d2cd881ffe245b0661a"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1040,6 +1070,11 @@
         "sha256": "083d08a675b251a45f7f0432c920358f6dfec32a77a3a283d911f3c7fba6ac3b"
       },
       {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/SustainedObjectEditRequest.cs",
+        "exists": true,
+        "sha256": "3e466ac989a18bd2675b492dad2eb9785dd4a034f162dd37f18d65f65dc9e7a3"
+      },
+      {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CyberwareCommerceRequest.cs",
         "exists": true,
         "sha256": "290e1d6bb718a6385ddc6c37421acef1227c4988b0b5c8d095d22d966540bb9c"
@@ -1072,7 +1107,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "7668e9d96b53c431c6bda04eba6d81556fd9e3e04c31647ec43d2d2a5a8448c1"
+        "sha256": "fe0438208524dcfa9fb8ce4274af1e7f2818d552712c588ff72d56e79477230c"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1127,7 +1162,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "f9321210f1454b0acee864ee1dd7c2f5e1af493ce480b24fa2a1c85e0336a7f9"
+        "sha256": "daf18a485c236cd83b33c67ff45dc85e9aa5024ee453e935d78b6925953b6538"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1137,7 +1172,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "f0646d674146fc2b8cca3b62ea6aa95489d6908fec9dd04c7d10e70776ea0804"
+      "sha256": "eaeb998b109ddc12e6780e6e7c206efbf3f89b4d400560d36c647fd90f062cef"
     }
   },
   "coverageByFamily": {
@@ -1473,7 +1508,7 @@
     "spells": {
       "rowCount": 67,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 43,
+      "phoneMissingCount": 39,
       "tabletMissingCount": 56,
       "completionProvenCount": 11
     },
@@ -8675,11 +8710,26 @@
       "mutationFamily": "spells",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Sustained effects > selected saved occurrence",
+        "surface": "SustainedObjectEditPage",
+        "automationId": "sustained-effect-self-{linked-type-guid-occurrence}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/SustainedObjectsPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/SustainedObjectEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSustainedObjectRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+          "tests/run_api36_sustained_effects_e2e.py",
+          "tests/fixtures/creation-sustained-effects-e2e.chum5",
+          "tests/fixtures/career-sustained-effects-e2e.chum5"
+        ],
+        "coverageLimit": "One shared Chummer5 SustainedObjectControl row reaches Create and Career. Self-Sustained is intentionally absent for Critter Powers; identity is the persisted linked type/GUID/occurrence because Chummer5 does not save the control's runtime GUID."
       },
       "tablet": {
         "status": "missing",
@@ -8687,12 +8737,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplySustainedObjectEditAsync / SustainedObjectEditRequest with linked type + linked GUID + saved occurrence and expected content revision",
+      "persistenceAssertion": "the exact duplicate occurrence retains 0-100 Force and Net Hits plus conditional Self-Sustained; confirmed delete removes only the selected occurrence; unrelated XML remains exact after atomic save, same-session reopen, recovery, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_sustained_effects_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -8732,11 +8782,26 @@
       "mutationFamily": "spells",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Sustained effects > selected saved occurrence",
+        "surface": "SustainedObjectEditPage",
+        "automationId": "sustained-effect-force-{linked-type-guid-occurrence}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/SustainedObjectsPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/SustainedObjectEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSustainedObjectRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+          "tests/run_api36_sustained_effects_e2e.py",
+          "tests/fixtures/creation-sustained-effects-e2e.chum5",
+          "tests/fixtures/career-sustained-effects-e2e.chum5"
+        ],
+        "coverageLimit": "One shared Chummer5 SustainedObjectControl row reaches Create and Career. Self-Sustained is intentionally absent for Critter Powers; identity is the persisted linked type/GUID/occurrence because Chummer5 does not save the control's runtime GUID."
       },
       "tablet": {
         "status": "missing",
@@ -8744,12 +8809,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplySustainedObjectEditAsync / SustainedObjectEditRequest with linked type + linked GUID + saved occurrence and expected content revision",
+      "persistenceAssertion": "the exact duplicate occurrence retains 0-100 Force and Net Hits plus conditional Self-Sustained; confirmed delete removes only the selected occurrence; unrelated XML remains exact after atomic save, same-session reopen, recovery, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_sustained_effects_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -8789,11 +8854,26 @@
       "mutationFamily": "spells",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Sustained effects > selected saved occurrence",
+        "surface": "SustainedObjectEditPage",
+        "automationId": "sustained-effect-delete-{linked-type-guid-occurrence}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/SustainedObjectsPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/SustainedObjectEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSustainedObjectRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+          "tests/run_api36_sustained_effects_e2e.py",
+          "tests/fixtures/creation-sustained-effects-e2e.chum5",
+          "tests/fixtures/career-sustained-effects-e2e.chum5"
+        ],
+        "coverageLimit": "One shared Chummer5 SustainedObjectControl row reaches Create and Career. Self-Sustained is intentionally absent for Critter Powers; identity is the persisted linked type/GUID/occurrence because Chummer5 does not save the control's runtime GUID."
       },
       "tablet": {
         "status": "missing",
@@ -8801,12 +8881,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplySustainedObjectEditAsync / SustainedObjectEditRequest with linked type + linked GUID + saved occurrence and expected content revision",
+      "persistenceAssertion": "the exact duplicate occurrence retains 0-100 Force and Net Hits plus conditional Self-Sustained; confirmed delete removes only the selected occurrence; unrelated XML remains exact after atomic save, same-session reopen, recovery, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_sustained_effects_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -8846,11 +8926,26 @@
       "mutationFamily": "spells",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Sustained effects > selected saved occurrence",
+        "surface": "SustainedObjectEditPage",
+        "automationId": "sustained-effect-net-hits-{linked-type-guid-occurrence}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/SustainedObjectsPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/SustainedObjectEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSustainedObjectRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+          "tests/run_api36_sustained_effects_e2e.py",
+          "tests/fixtures/creation-sustained-effects-e2e.chum5",
+          "tests/fixtures/career-sustained-effects-e2e.chum5"
+        ],
+        "coverageLimit": "One shared Chummer5 SustainedObjectControl row reaches Create and Career. Self-Sustained is intentionally absent for Critter Powers; identity is the persisted linked type/GUID/occurrence because Chummer5 does not save the control's runtime GUID."
       },
       "tablet": {
         "status": "missing",
@@ -8858,12 +8953,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplySustainedObjectEditAsync / SustainedObjectEditRequest with linked type + linked GUID + saved occurrence and expected content revision",
+      "persistenceAssertion": "the exact duplicate occurrence retains 0-100 Force and Net Hits plus conditional Self-Sustained; confirmed delete removes only the selected occurrence; unrelated XML remains exact after atomic save, same-session reopen, recovery, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_sustained_effects_e2e.py"
         },
         "tablet": {
           "status": "missing",

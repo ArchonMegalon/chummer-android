@@ -635,6 +635,36 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<SustainedObjectsEditorState?> PrepareSustainedObjectsEditAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareSustainedObjectsEditAsync(cancellationToken);
+
+    public async Task ApplySustainedObjectEditAsync(
+        SustainedObjectEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while sustained effects were open. Reopen them before saving.");
+        }
+
+        await _presenter.ApplySustainedObjectEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null
+            ? request.Action == CharacterSustainedObjectAction.Delete
+                ? "Sustained effect removed."
+                : "Sustained effect saved."
+            : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public async Task ApplyGearLocationAddAsync(
         GearLocationAddRequest request,
         CancellationToken cancellationToken = default)
