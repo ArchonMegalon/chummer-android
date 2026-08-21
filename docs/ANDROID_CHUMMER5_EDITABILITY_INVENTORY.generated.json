@@ -6,26 +6,26 @@
     "rowCount": 2229,
     "sourceFileCount": 300,
     "designerFileCount": 137,
-    "definiteMutationCandidateCount": 1768,
+    "definiteMutationCandidateCount": 1766,
     "reviewRequiredCount": 0,
     "legacyReviewCompleteCount": 2229,
-    "reviewedNonMutatingCount": 461,
-    "editParityRequiredCount": 1768,
+    "reviewedNonMutatingCount": 463,
+    "editParityRequiredCount": 1766,
     "unclassifiedCount": 0,
-    "completionProvenCount": 536,
+    "completionProvenCount": 538,
     "phoneStatusCounts": {
       "implemented_pending_emulator": 377,
       "implemented_verified_api36": 79,
-      "missing": 1059,
-      "not_applicable_non_mutating": 461,
+      "missing": 1057,
+      "not_applicable_non_mutating": 463,
       "partial_create_only": 106,
       "partial_exact_saved_data": 147
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
       "implemented_verified_api36": 75,
-      "missing": 1545,
-      "not_applicable_non_mutating": 461,
+      "missing": 1543,
+      "not_applicable_non_mutating": 463,
       "partial_exact_saved_data": 144
     }
   },
@@ -1137,7 +1137,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "9682ae47c4df0f32ebb10deda577e50ea7309b26fe62873e737613752873cb2a"
+      "sha256": "91eb16d6f18701824b9aafd54b8b98c5740ad09023ba5561d47998dae10348f0"
     }
   },
   "coverageByFamily": {
@@ -1165,9 +1165,9 @@
     "armor": {
       "rowCount": 97,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 32,
-      "tabletMissingCount": 61,
-      "completionProvenCount": 12
+      "phoneMissingCount": 30,
+      "tabletMissingCount": 59,
+      "completionProvenCount": 14
     },
     "armor_mods": {
       "rowCount": 27,
@@ -38626,9 +38626,9 @@
         "controlName": "chkIncludedInArmor",
         "controlType": "ColorableCheckBox",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (no event handler)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "the checkbox is disabled in the designer, has no mutation event, and selection refresh only copies ArmorMod.IncludedInArmor or Gear.IncludedInParent into Checked; it writes no runner or persisted application state",
         "text": "Part of base Armor",
         "tag": "Checkbox_BaseArmor",
         "readOnlyAtDesignTime": null,
@@ -38637,16 +38637,16 @@
         "events": []
       },
       "mutationFamily": "armor",
-      "operation": "set_value",
+      "operation": "display_included_in_armor_state",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -38655,18 +38655,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkArmorEquipped",
@@ -56360,9 +56360,9 @@
         "controlName": "chkIncludedInArmor",
         "controlType": "ColorableCheckBox",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (no event handler)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "the checkbox is disabled in the designer, has no mutation event, and selection refresh only copies ArmorMod.IncludedInArmor or Gear.IncludedInParent into Checked; it writes no runner or persisted application state",
         "text": "Part of base Armor",
         "tag": "Checkbox_BaseArmor",
         "readOnlyAtDesignTime": null,
@@ -56371,16 +56371,16 @@
         "events": []
       },
       "mutationFamily": "armor",
-      "operation": "set_value",
+      "operation": "display_included_in_armor_state",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -56389,18 +56389,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCreate.Designer.cs::Chummer.CharacterCreate::cmdAddWeaponLocation",

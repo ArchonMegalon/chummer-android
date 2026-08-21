@@ -1228,6 +1228,18 @@ SPIRIT_LINKED_RUNNER_CONTROLS = {
     "tsRemoveCharacter": "remove",
 }
 NON_MUTATING_LEGACY_INTERACTIONS = {
+    ("CharacterCreate", "chkIncludedInArmor"): (
+        "display_included_in_armor_state",
+        "the checkbox is disabled in the designer, has no mutation event, and selection refresh only copies "
+        "ArmorMod.IncludedInArmor or Gear.IncludedInParent into Checked; it writes no runner or persisted "
+        "application state",
+    ),
+    ("CharacterCareer", "chkIncludedInArmor"): (
+        "display_included_in_armor_state",
+        "the checkbox is disabled in the designer, has no mutation event, and selection refresh only copies "
+        "ArmorMod.IncludedInArmor or Gear.IncludedInParent into Checked; it writes no runner or persisted "
+        "application state",
+    ),
     ("CharacterCareer", "chkShowFreeKarma"): (
         "filter_view",
         "CheckedChanged only repopulates the Karma expense list and chart with or without zero-value entries; "
