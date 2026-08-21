@@ -14,6 +14,15 @@ inventory = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(inventory)
 
 
+def _sibling_repo(canonical_name: str, coherent_name: str) -> Path:
+    canonical = REPO.parent / canonical_name
+    return canonical if canonical.is_dir() else REPO.parent / coherent_name
+
+
+PRESENTATION_ROOT = _sibling_repo("chummer-presentation", "presentation")
+CORE_ROOT = _sibling_repo("chummer-core-engine", "core")
+
+
 class Chummer5EditabilityInventoryTests(unittest.TestCase):
     def test_parser_includes_direct_dynamic_and_event_wired_controls_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1871,9 +1880,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 420,
+                "implemented_pending_emulator": 422,
                 "implemented_verified_api36": 79,
-                "missing": 1008,
+                "missing": 1006,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 148,
@@ -1936,8 +1945,8 @@ namespace Chummer
             self.assertFalse(row["completionProven"])
 
     def test_cyberware_active_commlink_receipt_is_strict_full_graph_fixture_and_proof_bound(self) -> None:
-        presentation_root = REPO.parent / "chummer-presentation"
-        core_root = REPO.parent / "chummer-core-engine"
+        presentation_root = PRESENTATION_ROOT
+        core_root = CORE_ROOT
         overview = presentation_root / "Chummer.Presentation" / "Overview"
         native_root = REPO / "src" / "Chummer.Android" / "Native"
         driver = REPO / "tests" / "run_api36_cyberware_active_commlink_e2e.py"
@@ -2236,8 +2245,8 @@ namespace Chummer
             "receiptSha256": "a" * 64,
             "apkSha256": "b" * 64,
         }
-        presentation_root = REPO.parent / "chummer-presentation"
-        core_root = REPO.parent / "chummer-core-engine"
+        presentation_root = PRESENTATION_ROOT
+        core_root = CORE_ROOT
 
         pending_nuyen = inventory._known_phone_mapping(
             nuyen_row,
@@ -2936,8 +2945,8 @@ namespace Chummer
                 self.assertIsNone(inventory._validated_new_character_priority_phone_e2e_receipt())
 
     def test_career_nuyen_expense_receipt_is_strict_full_graph_and_proof_bound(self) -> None:
-        presentation_root = REPO.parent / "chummer-presentation"
-        core_root = REPO.parent / "chummer-core-engine"
+        presentation_root = PRESENTATION_ROOT
+        core_root = CORE_ROOT
         overview = presentation_root / "Chummer.Presentation" / "Overview"
         driver = REPO / "tests" / "run_api36_career_nuyen_expense_edit_e2e.py"
         shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
@@ -3041,8 +3050,8 @@ namespace Chummer
                 )
 
     def test_spirit_name_choice_receipt_is_strict_full_graph_and_proof_bound(self) -> None:
-        presentation_root = REPO.parent / "chummer-presentation"
-        core_root = REPO.parent / "chummer-core-engine"
+        presentation_root = PRESENTATION_ROOT
+        core_root = CORE_ROOT
         overview = presentation_root / "Chummer.Presentation" / "Overview"
         native_root = REPO / "src" / "Chummer.Android" / "Native"
         driver = REPO / "tests" / "run_api36_spirit_name_choice_e2e.py"
@@ -3180,8 +3189,8 @@ namespace Chummer
                 self.assertIsNone(inventory._validated_new_character_karma_phone_e2e_receipt())
 
     def test_armor_home_node_receipt_is_full_source_graph_and_fixture_hash_bound(self) -> None:
-        presentation_root = REPO.parent / "chummer-presentation"
-        core_root = REPO.parent / "chummer-core-engine"
+        presentation_root = PRESENTATION_ROOT
+        core_root = CORE_ROOT
         overview = presentation_root / "Chummer.Presentation" / "Overview"
         driver = REPO / "tests" / "run_api36_armor_home_node_e2e.py"
         shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
@@ -3242,8 +3251,8 @@ namespace Chummer
                 )
 
     def test_weapon_home_node_receipt_is_full_source_graph_and_fixture_hash_bound(self) -> None:
-        presentation_root = REPO.parent / "chummer-presentation"
-        core_root = REPO.parent / "chummer-core-engine"
+        presentation_root = PRESENTATION_ROOT
+        core_root = CORE_ROOT
         overview = presentation_root / "Chummer.Presentation" / "Overview"
         driver = REPO / "tests" / "run_api36_weapon_home_node_e2e.py"
         shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
@@ -3306,8 +3315,8 @@ namespace Chummer
                 )
 
     def test_armor_active_commlink_receipt_is_full_source_graph_and_fixture_hash_bound(self) -> None:
-        presentation_root = REPO.parent / "chummer-presentation"
-        core_root = REPO.parent / "chummer-core-engine"
+        presentation_root = PRESENTATION_ROOT
+        core_root = CORE_ROOT
         overview = presentation_root / "Chummer.Presentation" / "Overview"
         driver = REPO / "tests" / "run_api36_armor_active_commlink_e2e.py"
         shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
@@ -3368,8 +3377,8 @@ namespace Chummer
                 )
 
     def test_weapon_active_commlink_receipt_is_full_source_graph_and_fixture_hash_bound(self) -> None:
-        presentation_root = REPO.parent / "chummer-presentation"
-        core_root = REPO.parent / "chummer-core-engine"
+        presentation_root = PRESENTATION_ROOT
+        core_root = CORE_ROOT
         overview = presentation_root / "Chummer.Presentation" / "Overview"
         driver = REPO / "tests" / "run_api36_weapon_active_commlink_e2e.py"
         shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
@@ -3435,8 +3444,8 @@ namespace Chummer
                 )
 
     def test_armor_damage_receipt_is_full_source_graph_and_fixture_hash_bound(self) -> None:
-        presentation_root = REPO.parent / "chummer-presentation"
-        core_root = REPO.parent / "chummer-core-engine"
+        presentation_root = PRESENTATION_ROOT
+        core_root = CORE_ROOT
         overview = presentation_root / "Chummer.Presentation" / "Overview"
         driver = REPO / "tests" / "run_api36_armor_damage_e2e.py"
         shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
@@ -3496,8 +3505,8 @@ namespace Chummer
                 )
 
     def test_armor_equipment_receipt_is_full_source_graph_and_fixture_hash_bound(self) -> None:
-        presentation_root = REPO.parent / "chummer-presentation"
-        core_root = REPO.parent / "chummer-core-engine"
+        presentation_root = PRESENTATION_ROOT
+        core_root = CORE_ROOT
         overview = presentation_root / "Chummer.Presentation" / "Overview"
         contracts = core_root / "Chummer.Contracts" / "Characters"
         driver = REPO / "tests" / "run_api36_armor_equipment_e2e.py"
@@ -3561,8 +3570,8 @@ namespace Chummer
                 )
 
     def test_weapon_accessory_included_receipt_is_full_source_graph_and_fixture_hash_bound(self) -> None:
-        presentation_root = REPO.parent / "chummer-presentation"
-        core_root = REPO.parent / "chummer-core-engine"
+        presentation_root = PRESENTATION_ROOT
+        core_root = CORE_ROOT
         overview = presentation_root / "Chummer.Presentation" / "Overview"
         driver = REPO / "tests" / "run_api36_weapon_accessory_included_e2e.py"
         shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
@@ -3623,8 +3632,8 @@ namespace Chummer
                 )
 
     def test_critter_power_count_receipt_is_full_source_graph_and_fixture_hash_bound(self) -> None:
-        presentation_root = REPO.parent / "chummer-presentation"
-        core_root = REPO.parent / "chummer-core-engine"
+        presentation_root = PRESENTATION_ROOT
+        core_root = CORE_ROOT
         overview = presentation_root / "Chummer.Presentation" / "Overview"
         driver = REPO / "tests" / "run_api36_critter_power_count_e2e.py"
         shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
@@ -3688,8 +3697,8 @@ namespace Chummer
                 )
 
     def test_sustained_effects_receipt_is_full_source_graph_and_fixture_hash_bound(self) -> None:
-        presentation_root = REPO.parent / "chummer-presentation"
-        core_root = REPO.parent / "chummer-core-engine"
+        presentation_root = PRESENTATION_ROOT
+        core_root = CORE_ROOT
         overview = presentation_root / "Chummer.Presentation" / "Overview"
         driver = REPO / "tests" / "run_api36_sustained_effects_e2e.py"
         shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
