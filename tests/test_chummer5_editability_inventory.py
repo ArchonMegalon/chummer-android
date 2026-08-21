@@ -453,6 +453,24 @@ namespace Chummer
         self.assertEqual(1, len(contact_group_name))
         self.assertEqual("missing", contact_group_name[0]["phone"]["status"])
 
+        tradition_name = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.TRADITION_NAME_CONTROL
+        ]
+        self.assertEqual(2, len(tradition_name))
+        for row in tradition_name:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("Build > Magic > Custom tradition name", row["phone"]["route"])
+            self.assertEqual("TraditionNamePage", row["phone"]["surface"])
+            self.assertEqual("tradition-name-value", row["phone"]["automationId"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual("tests/run_api36_tradition_name_e2e.py", row["e2e"]["phone"]["ref"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertIn("tradition/name", row["persistenceAssertion"])
+            self.assertIn("616ba093-306c-45fc-8f41-0b98c8cccb46", row["phone"]["coverageLimit"])
+            self.assertFalse(row["completionProven"])
+
         gear_locations = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -1556,9 +1574,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 383,
+                "implemented_pending_emulator": 385,
                 "implemented_verified_api36": 79,
-                "missing": 1046,
+                "missing": 1044,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 147,

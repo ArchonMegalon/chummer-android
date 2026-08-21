@@ -1019,6 +1019,7 @@ PRIMARY_ARM_CONTROLS = {
 }
 GROUP_MEMBERSHIP_CONTROL = "chkJoinGroup"
 GROUP_NAME_CONTROL = "txtGroupName"
+TRADITION_NAME_CONTROL = "txtTraditionName"
 CAREER_EDGE_USE_CONTROLS = {
     "cmdEdgeSpent": (
         "cmdEdgeSpent_Click",
@@ -9392,6 +9393,151 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
+        and control == TRADITION_NAME_CONTROL
+    ):
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TraditionNamePage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_tradition_name_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-tradition-name-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-tradition-name-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "TraditionNameEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterTraditionNameRules.cs"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        implemented = (
+            _contains(
+                page,
+                "class TraditionNamePage",
+                'AutomationId = "tradition-name-page"',
+                'AutomationId = "tradition-name-value"',
+                'AutomationId = "tradition-name-save"',
+                "MaxLength = CharacterTraditionNameRules.MaximumLength",
+                "TraditionNameEditRequest",
+            )
+            and _contains(build_page, 'automationId: "build-tradition-name"', "new TraditionNamePage")
+            and _contains(
+                coordinator,
+                "PrepareTraditionNameEditAsync",
+                "ApplyTraditionNameEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "TraditionNameEditorState",
+                "TraditionNameEditRequest",
+                "ExpectedTraditionName",
+                'root.Elements("tradition").Take(2)',
+                'tradition.Elements("name").Take(2)',
+                "CharacterTraditionNameRules.CustomMagicalTraditionSourceId",
+            )
+            and _contains(
+                mutation,
+                "ApplyTraditionNameEdit",
+                "CharacterTraditionNameRules.TryValidate",
+                'root.Elements("tradition").Single()',
+            )
+            and _contains(
+                presenter,
+                "PrepareTraditionNameEditAsync",
+                "ApplyTraditionNameEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareTraditionNameEditAsync",
+                "ApplyTraditionNameEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterTraditionNameRules",
+                "616ba093-306c-45fc-8f41-0b98c8cccb46",
+                "MaximumLength = 32_767",
+                "IndexOfAny",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCreate.txtTraditionName"',
+                '"CharacterCareer.txtTraditionName"',
+                'api != "36"',
+                '"profile": "phone"',
+                '"journey": "tradition-name"',
+                '"traditionNameRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+                '"careerFixtureSha256"',
+                '"nonCustomTraditionRejectedBySourceContract": "pass"',
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Magic > Custom tradition name",
+            "surface": "TraditionNamePage",
+            "automationId": "tradition-name-value",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/TraditionNamePage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/TraditionNameEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionNameRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyTraditionNameEditAsync(TraditionNameEditRequest)"
+            ),
+            "persistenceAssertion": (
+                "character/tradition/name equals the exact submitted Create/Career single-line text after "
+                "stable-GUID, exact-Custom-source, revision-bound atomic save, same-session reopen, and process "
+                "restart; nested name nodes and all other tradition fields remain untouched"
+            ),
+            "coverageLimit": (
+                "Covers only CharacterCreate/CharacterCareer txtTraditionName when the saved tradition has the "
+                "exact Chummer5 Custom magical source ID 616ba093-306c-45fc-8f41-0b98c8cccb46; published, "
+                "missing, duplicate, RES, or identity-less traditions fail closed; the API 36 driver is "
+                f"{'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_tradition_name_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCareer" and control in CAREER_EDGE_USE_CONTROLS:
         handler, action, automation_id = CAREER_EDGE_USE_CONTROLS[control]
         page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerEdgeUsePage.cs"
@@ -11104,6 +11250,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "PrimaryArmPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GroupMembershipPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GroupNamePage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TraditionNamePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerEdgeUsePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerManualKarmaPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearLocationAddPage.cs",
@@ -11140,6 +11287,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_primary_arm_e2e.py",
         REPO_ROOT / "tests" / "run_api36_group_membership_e2e.py",
         REPO_ROOT / "tests" / "run_api36_group_name_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_tradition_name_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_edge_use_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_manual_karma_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_location_e2e.py",
@@ -11183,6 +11331,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-group-membership-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-group-name-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-group-name-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-tradition-name-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-tradition-name-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-edge-use-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-manual-karma-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-gear-location-e2e.chum5",
@@ -11269,6 +11419,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSustainedObjectRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGroupMembershipRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGroupNameRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterTraditionNameRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerEdgeUseRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualKarmaRules.cs",
         core_engine_root / "Chummer.Contracts" / "Workspaces" / "CharacterWorkspaceModels.cs",
@@ -11286,6 +11437,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "PrimaryArmEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GroupMembershipEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GroupNameEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "TraditionNameEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerEdgeUseEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerManualKarmaEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GearLocationAddRequest.cs",

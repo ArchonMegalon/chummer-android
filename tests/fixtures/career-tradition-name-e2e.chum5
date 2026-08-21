@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Tradition Name E2E</name>
+  <alias>CareerTraditionNameE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <tradition>
+    <sourceid>616ba093-306c-45fc-8f41-0b98c8cccb46</sourceid>
+    <guid>64470741-a0b2-4645-bada-0e2613b5886e</guid>
+    <traditiontype>MAG</traditiontype>
+    <name>Career Old Tradition</name>
+    <extra><name>Career unrelated nested name</name></extra>
+  </tradition>
+</character>

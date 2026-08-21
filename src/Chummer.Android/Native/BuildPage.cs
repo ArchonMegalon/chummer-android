@@ -136,6 +136,18 @@ public sealed class BuildPage : NativePageBase
                 }
             },
             automationId: "build-group-name"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Tradition name",
+            "Edit the saved name of a Custom magical tradition",
+            async () =>
+            {
+                TraditionNameEditorState? editor = await Coordinator.PrepareTraditionNameEditAsync();
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new TraditionNamePage(Coordinator, editor));
+                }
+            },
+            automationId: "build-tradition-name"));
         if (Coordinator.State.Profile?.Created == true)
         {
             _body.Add(NativeTheme.NavigationRow(

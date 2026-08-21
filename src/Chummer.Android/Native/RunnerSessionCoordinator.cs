@@ -609,6 +609,32 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<TraditionNameEditorState?> PrepareTraditionNameEditAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareTraditionNameEditAsync(cancellationToken);
+
+    public async Task ApplyTraditionNameEditAsync(
+        TraditionNameEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Tradition Name was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyTraditionNameEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Tradition name saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<CareerEdgeUseEditorState?> PrepareCareerEdgeUseEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareCareerEdgeUseEditAsync(cancellationToken);

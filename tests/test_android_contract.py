@@ -1679,6 +1679,45 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("Contact", request)
         self.assertNotIn("GroupMembershipEditRequest", page)
 
+    def test_phone_tradition_name_is_custom_source_revision_and_identity_bound(self) -> None:
+        page = (PROJECT / "Native" / "TraditionNamePage.cs").read_text(encoding="utf-8")
+        build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        presentation = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+        core = WORKSPACE / "chummer-core-engine"
+        request = (presentation / "TraditionNameEditRequest.cs").read_text(encoding="utf-8")
+        mutation = (presentation / "WorkspaceXmlMutationCatalog.cs").read_text(encoding="utf-8")
+        presenter = (presentation / "CharacterOverviewPresenter.WorkspaceMutations.cs").read_text(encoding="utf-8")
+        persistence = (presentation / "CharacterOverviewPresenter.Persistence.cs").read_text(encoding="utf-8")
+        rules = (core / "Chummer.Contracts" / "Characters" / "CharacterTraditionNameRules.cs").read_text(encoding="utf-8")
+        store = (core / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs").read_text(encoding="utf-8")
+
+        for token in (
+            'AutomationId = "tradition-name-page"',
+            'AutomationId = "tradition-name-value"',
+            'AutomationId = "tradition-name-save"',
+            "MaxLength = CharacterTraditionNameRules.MaximumLength",
+        ):
+            self.assertIn(token, page)
+        self.assertIn('automationId: "build-tradition-name"', build)
+        self.assertIn("new TraditionNamePage", build)
+        self.assertIn("ApplyTraditionNameEditAsync", coordinator)
+        self.assertIn("_presenter.SaveAsync", coordinator)
+        self.assertIn("ExpectedContentRevision", request)
+        self.assertIn("TraditionId", request)
+        self.assertIn("ExpectedTraditionName", request)
+        self.assertIn('root.Elements("tradition").Take(2)', request)
+        self.assertIn("CharacterTraditionNameRules.CustomMagicalTraditionSourceId", request)
+        self.assertIn("ApplyTraditionNameEdit", mutation)
+        self.assertIn("CharacterTraditionNameRules.TryValidate", mutation)
+        self.assertIn("ApplyWorkspaceXmlMutationAsync", presenter)
+        self.assertIn("TryCaptureRecoveryPayloadAsync", persistence)
+        self.assertIn("WriteRecordAtomically", store)
+        self.assertIn("616ba093-306c-45fc-8f41-0b98c8cccb46", rules)
+        self.assertIn("MaximumLength = 32_767", rules)
+        self.assertNotIn("cboTradition", page)
+        self.assertNotIn("cboDrain", page)
+
     def test_phone_cyberware_commerce_is_stable_revision_bound_and_source_exact(self) -> None:
         page = (PROJECT / "Native" / "CyberwareCommercePage.cs").read_text(encoding="utf-8")
         editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
