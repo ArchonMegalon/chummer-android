@@ -117,6 +117,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddArmorEquipmentAction(item);
         AddWeaponAccessoryIncludedAction(item);
         AddGearQuantityLifecycleAction(item);
+        AddCyberwareCommerceAction(item);
         AddVehicleLocationActions(item);
 
         if (!string.IsNullOrWhiteSpace(Coordinator.State.Error))
@@ -898,6 +899,38 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 lifecycle)),
             automationId: $"gear-quantity-open-{lifecycle.GearId:N}"));
+    }
+
+    private void AddCyberwareCommerceAction(WorkspaceCollectionItemEditorState item)
+    {
+        string selectedId = item.Target.NestedItemId ?? item.Target.ItemId;
+        if (_target.Kind != WorkspaceCollectionKind.Cyberware
+            || !item.CyberwareCommerceRequired
+            || !Guid.TryParseExact(selectedId, "D", out Guid cyberwareId)
+            || cyberwareId == Guid.Empty)
+        {
+            return;
+        }
+
+        _body.Add(NativeTheme.Eyebrow("Career commerce"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Upgrade or Sell",
+            "Quote this exact saved Cyberware by stable identity",
+            async () =>
+            {
+                CyberwareCommerceEditorState? state = await Coordinator
+                    .PrepareCyberwareCommerceEditAsync(cyberwareId);
+                if (state is null)
+                {
+                    await DisplayAlertAsync(
+                        "Cyberware Commerce",
+                        Coordinator.State.Error ?? "Exact Cyberware commerce is unavailable.",
+                        "OK");
+                    return;
+                }
+                await Navigation.PushAsync(new CyberwareCommercePage(Coordinator, state));
+            },
+            automationId: $"cyberware-commerce-open-{cyberwareId:N}"));
     }
 
     private string TargetToken() => Token(_target.NestedItemId ?? _target.ItemId);

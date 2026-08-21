@@ -1576,6 +1576,48 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("ApplyWorkspaceXmlMutationAsync", presenter)
         self.assertNotIn("WeaponAccessory", page)
 
+    def test_phone_cyberware_commerce_is_stable_revision_bound_and_source_exact(self) -> None:
+        page = (PROJECT / "Native" / "CyberwareCommercePage.cs").read_text(encoding="utf-8")
+        editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        presentation = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+        core = WORKSPACE / "chummer-core-engine"
+        request = (presentation / "CyberwareCommerceRequest.cs").read_text(encoding="utf-8")
+        mutation = (presentation / "WorkspaceXmlMutationCatalog.cs").read_text(encoding="utf-8")
+        presenter = (presentation / "CharacterOverviewPresenter.WorkspaceMutations.cs").read_text(encoding="utf-8")
+        rules = (core / "Chummer.Contracts" / "Characters" / "CharacterCyberwareCommerceRules.cs").read_text(encoding="utf-8")
+        section = (core / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs").read_text(encoding="utf-8")
+
+        for token in (
+            'AutomationId = $"cyberware-commerce-page-{token}"',
+            '$"cyberware-commerce-grade-{token}"',
+            '$"cyberware-commerce-rating-{token}"',
+            '$"cyberware-commerce-refund-percent-{token}"',
+            '$"cyberware-commerce-free-cost-{token}"',
+            '$"cyberware-commerce-upgrade-{token}"',
+            '$"cyberware-commerce-sell-{token}"',
+            '"Confirm Cyberware upgrade"',
+            '"Confirm Cyberware sale"',
+        ):
+            self.assertIn(token, page)
+        self.assertIn('automationId: $"cyberware-commerce-open-{cyberwareId:N}"', editor)
+        self.assertIn("CyberwareCommerceRequired", editor)
+        self.assertIn("PrepareCyberwareCommerceEditAsync", coordinator)
+        self.assertIn("ApplyCyberwareCommerceEditAsync", coordinator)
+        self.assertIn("_presenter.SaveAsync", coordinator)
+        self.assertIn("ExpectedContentRevision", request)
+        self.assertIn("Guid CyberwareId", request)
+        self.assertIn("string QuoteDigest", request)
+        self.assertIn("ApplyCyberwareCommerceEdit", mutation)
+        self.assertIn("QuoteUpgrade", mutation)
+        self.assertIn("QuoteSale", mutation)
+        self.assertIn('new XElement("nuyentype", "AddGear")', mutation)
+        self.assertIn("ApplyWorkspaceXmlMutationAsync", presenter)
+        self.assertIn("TryNormalizeRefundPercentage", rules)
+        self.assertIn("TryPlanEssenceHole", rules)
+        self.assertIn("Linked Capacity=[*] child", section)
+        self.assertNotIn("ArmorDamage", page)
+
     @staticmethod
     def _png_header(path: Path) -> tuple[int, int, int]:
         data = path.read_bytes()[:33]

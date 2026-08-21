@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Cyberware Commerce E2E</name>
+  <alias>CareerCyberwareCommerceE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <nuyen>10000</nuyen>
+  <customstate>Cyberware commerce unrelated state</customstate>
+  <cyberwares>
+    <cyberware>
+      <guid>91111111-1111-1111-1111-111111111111</guid>
+      <sourceid>eb9e691a-8002-4138-ac8d-d9714d398b1e</sourceid>
+      <name>Data Lock</name>
+      <category>Headware</category>
+      <improvementsource>Cyberware</improvementsource>
+      <grade>Standard</grade>
+      <rating>2</rating>
+      <cost>Rating * 1000</cost>
+      <ess>0.1</ess>
+      <capacity>[1]</capacity>
+      <discountedcost>False</discountedcost>
+      <addtoparentess>False</addtoparentess>
+      <children />
+    </cyberware>
+    <cyberware>
+      <guid>92222222-2222-2222-2222-222222222222</guid>
+      <sourceid>eb9e691a-8002-4138-ac8d-d9714d398b1e</sourceid>
+      <name>Data Lock</name>
+      <category>Headware</category>
+      <improvementsource>Cyberware</improvementsource>
+      <grade>Standard</grade>
+      <rating>1</rating>
+      <cost>Rating * 1000</cost>
+      <ess>0.1</ess>
+      <capacity>[1]</capacity>
+      <discountedcost>False</discountedcost>
+      <addtoparentess>False</addtoparentess>
+      <children />
+    </cyberware>
+    <cyberware>
+      <guid>93333333-3333-3333-3333-333333333333</guid>
+      <sourceid>eb9e691a-8002-4138-ac8d-d9714d398b1e</sourceid>
+      <name>Data Lock</name>
+      <category>Headware</category>
+      <improvementsource>Cyberware</improvementsource>
+      <grade>Standard</grade>
+      <rating>1</rating>
+      <cost>Rating * 1000</cost>
+      <ess>0.1</ess>
+      <capacity>[1]</capacity>
+      <discountedcost>False</discountedcost>
+      <addtoparentess>False</addtoparentess>
+      <children />
+    </cyberware>
+    <cyberware>
+      <guid>94444444-4444-4444-4444-444444444444</guid>
+      <sourceid>b57eadaa-7c3b-4b80-8d79-cbbd922c1196</sourceid>
+      <name>Essence Hole</name>
+      <improvementsource>Cyberware</improvementsource>
+      <grade>None</grade>
+      <rating>10</rating>
+      <cost>0</cost>
+      <ess>Rating / 100</ess>
+      <capacity>0</capacity>
+      <children />
+    </cyberware>
+    <cyberware>
+      <guid>95555555-5555-5555-5555-555555555555</guid>
+      <sourceid>eb9e691a-8002-4138-ac8d-d9714d398b1e</sourceid>
+      <name>Data Lock</name>
+      <category>Headware</category>
+      <improvementsource>Cyberware</improvementsource>
+      <grade>Standard</grade>
+      <rating>1</rating>
+      <cost>Rating * 1000</cost>
+      <ess>0.1</ess>
+      <capacity>[4]</capacity>
+      <childcostmultiplier>1</childcostmultiplier>
+      <discountedcost>False</discountedcost>
+      <addtoparentess>False</addtoparentess>
+      <children>
+        <cyberware>
+          <guid>96666666-6666-6666-6666-666666666666</guid>
+          <sourceid>eb9e691a-8002-4138-ac8d-d9714d398b1e</sourceid>
+          <name>Data Lock</name>
+          <category>Headware</category>
+          <improvementsource>Cyberware</improvementsource>
+          <grade>Standard</grade>
+          <rating>1</rating>
+          <cost>Rating * 1000</cost>
+          <ess>0.1</ess>
+          <capacity>[*]</capacity>
+          <discountedcost>False</discountedcost>
+          <addtoparentess>False</addtoparentess>
+          <children />
+        </cyberware>
+      </children>
+    </cyberware>
+  </cyberwares>
+  <expenses />
+</character>

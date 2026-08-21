@@ -777,6 +777,33 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<CyberwareCommerceEditorState?> PrepareCyberwareCommerceEditAsync(
+        Guid cyberwareId,
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCyberwareCommerceEditAsync(cyberwareId, cancellationToken);
+
+    public async Task ApplyCyberwareCommerceEditAsync(
+        CyberwareCommerceRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Cyberware Commerce was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyCyberwareCommerceEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Cyberware commerce saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public async Task ApplyLocationRenameAsync(
         LocationRenameRequest request,
         CancellationToken cancellationToken = default)

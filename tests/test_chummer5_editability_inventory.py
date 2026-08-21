@@ -597,6 +597,42 @@ namespace Chummer
             )
             self.assertFalse(row["completionProven"])
 
+        cyberware_commerce = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] in inventory.CYBERWARE_COMMERCE_CONTROLS
+        ]
+        self.assertEqual(2, len(cyberware_commerce))
+        self.assertFalse(any(
+            row["legacy"]["formOrControl"] == "CharacterCreate"
+            and row["legacy"]["controlName"] in inventory.CYBERWARE_COMMERCE_CONTROLS
+            for row in rows
+        ))
+        for row in cyberware_commerce:
+            action, automation_id = inventory.CYBERWARE_COMMERCE_CONTROLS[
+                row["legacy"]["controlName"]
+            ]
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Gear > Cyberwares > selected stable Career Cyberware > Upgrade or Sell",
+                row["phone"]["route"],
+            )
+            self.assertEqual("CyberwareCommercePage", row["phone"]["surface"])
+            self.assertEqual(automation_id, row["phone"]["automationId"])
+            self.assertIn(f"CyberwareCommerceRequest.{action}", row["presenterMutation"])
+            self.assertIn("quote digest", row["presenterMutation"])
+            self.assertIn("explicit confirmation", row["presenterMutation"])
+            self.assertIn("Essence Hole", row["persistenceAssertion"])
+            self.assertIn("atomic save", row["persistenceAssertion"])
+            self.assertIn("Capacity=[*]", row["phone"]["coverageLimit"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_cyberware_commerce_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
         location_renames = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -1200,9 +1236,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 361,
+                "implemented_pending_emulator": 363,
                 "implemented_verified_api36": 79,
-                "missing": 1078,
+                "missing": 1076,
                 "not_applicable_non_mutating": 459,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 146,

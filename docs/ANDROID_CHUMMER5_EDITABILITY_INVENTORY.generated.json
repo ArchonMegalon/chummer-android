@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 534,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 361,
+      "implemented_pending_emulator": 363,
       "implemented_verified_api36": 79,
-      "missing": 1078,
+      "missing": 1076,
       "not_applicable_non_mutating": 459,
       "partial_create_only": 106,
       "partial_exact_saved_data": 146
@@ -150,6 +150,11 @@
         "sha256": "c45751c4da229656d55761412212cd26f6ce230d00d3bb17c38ddcbf84c485c0"
       },
       {
+        "path": "src/Chummer.Android/Native/CyberwareCommercePage.cs",
+        "exists": true,
+        "sha256": "07ba49de5f625a6476bf08a4fb49b46854ef395e8cc966660ffbb76c6317595e"
+      },
+      {
         "path": "src/Chummer.Android/Native/LocationRenamePage.cs",
         "exists": true,
         "sha256": "3e3dda90edd6e211c84812084c05cdcc4923d4687aa739cdb90197b227150685"
@@ -162,7 +167,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "3f99d3e3d3179bfc8c8b0264b54749cb24cb9198ad388fee97380e5d67838b98"
+        "sha256": "18323d83befd895e992a906c8556b5819e4a6f801eeb70744ae222626b54c626"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -187,7 +192,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "17da5b50492c9e646df66f6634f0156b1f20c67080b67f6c2111033769110032"
+        "sha256": "3ebd0a5d89bca8323ff32e9beb3bc5c064451ddfc29247bf8b561688d23111fd"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -273,6 +278,11 @@
         "path": "tests/run_api36_gear_quantity_e2e.py",
         "exists": true,
         "sha256": "9d7ab25c2583e22e33b8a648d3fc9573a7f1f01c469957a2c4e72a3fa0640541"
+      },
+      {
+        "path": "tests/run_api36_cyberware_commerce_e2e.py",
+        "exists": true,
+        "sha256": "f10554c97b10f90d36f7b96680d3f3c8c3af2329610a187d2355dba92314a99e"
       },
       {
         "path": "tests/run_api36_location_rename_e2e.py",
@@ -463,6 +473,11 @@
         "path": "tests/fixtures/career-gear-quantity-e2e.chum5",
         "exists": true,
         "sha256": "1a533d5dfbb2a67045f8a000b9869089f953e7525cb57c8efa2685e11e402c89"
+      },
+      {
+        "path": "tests/fixtures/career-cyberware-commerce-e2e.chum5",
+        "exists": true,
+        "sha256": "089145abeda944fad23df8aaf9319588152b278eb65dde765318987dcefb42ff"
       },
       {
         "path": "tests/fixtures/creation-location-rename-e2e.chum5",
@@ -662,7 +677,12 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "810b8e3561cbf595e70c78b7b9c81880dd825b3b57d5f024a6151220bc7db022"
+        "sha256": "c1835f2c2a280efdd4c47f3a4edecb2f805747e7ec30a89e253ff62f9553b2e5"
+      },
+      {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareCommerceRules.cs",
+        "exists": true,
+        "sha256": "af16d1dce039f05b1a62799e2e52d3241a396cddaf2f422d934faa34206ebfdd"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorDamageRules.cs",
@@ -682,7 +702,7 @@
       {
         "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "71c33f8a1a4232af63ab681192e31d3e2b7da2f35caf9048801e9a90a534eb5f"
+        "sha256": "3003a1e4a4516ee6c244bd8aeeb41aabbd658fd7676e6744852c801dc6d6da73"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
@@ -692,12 +712,12 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "d49f09fbce19ec9cdaa23b99370a34732be273d11a3f84d3e9b37ecb24ec7a2a"
+        "sha256": "18284136624d2db1e8957e6a06f3c354fcf415b706bd7b86311db19fdd4d3e51"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "aa8663e2aab22d2081d06b00fee85c6fee28170e90d3615d078493120f20e195"
+        "sha256": "0df56dc6e6616fe8d4ef0ed5c6eec00b14f815293b6d13fa0441bbc9c4aef48b"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -712,7 +732,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "135cbe3f315d24a2b289cbb62913c505ffe2aab708fe805f21fe32699bc832db"
+        "sha256": "8af6b709f5a37f6f101d07abf6b1e3d5c0991b6709ecfc5f6f437ed6319cfca3"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -773,6 +793,11 @@
         "path": "chummer-presentation/Chummer.Presentation/Overview/WeaponAccessoryIncludedEditRequest.cs",
         "exists": true,
         "sha256": "3d665cc28f5457039132d0ac07a5449895986f5a9d59c2c0547d0eadf25dbd2d"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/CyberwareCommerceRequest.cs",
+        "exists": true,
+        "sha256": "290e1d6bb718a6385ddc6c37421acef1227c4988b0b5c8d095d22d966540bb9c"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
@@ -837,12 +862,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "a7762490aa03a578601787f63e2efe6baf40951d87de8fb65d97018d086c5c0c"
+        "sha256": "1acf150b39794bf10b3442a36c31a7b3e7de234ce29a4b10dba6f22b36294284"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "77787dbb63014c226154c63d6fc839778abe5021351c022cc44cd0bfaab87ee0"
+        "sha256": "af763145cd6e3f7b0692996b901cb6aea4bcd75a76c88a269ae91f92420e5efd"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
@@ -852,7 +877,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "5f7228d7979da465bbc5a9b1956f2566e12019571ffbd5bb8051605c4d1efe3d"
+        "sha256": "6555b2ef3e5a67f0639134ec7251584f5b0a2baacb7fdccceee058ca266361e1"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -862,7 +887,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "68450044ec8b975083ad6cb0043c65ec4951d7f302717b39835e5ee0d6b78e9f"
+      "sha256": "c7535c4e9969afff6f3ac2d3b7d5c8903ba40e6ef993e627aabfdf24e2303f57"
     }
   },
   "coverageByFamily": {
@@ -974,7 +999,7 @@
     "cyberware": {
       "rowCount": 93,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 49,
+      "phoneMissingCount": 47,
       "tabletMissingCount": 65,
       "completionProvenCount": 4
     },
@@ -42820,11 +42845,27 @@
       "mutationFamily": "cyberware",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Cyberwares > selected stable Career Cyberware > Upgrade or Sell",
+        "surface": "CyberwareCommercePage",
+        "automationId": "cyberware-commerce-sell-{stable-cyberware-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CyberwareCommercePage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CyberwareCommerceRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareCommerceRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs"
+        ],
+        "coverageLimit": "Exact simple source-backed CharacterCareer Cyberware Upgrade and Sell only; linked Capacity=[*] children and unresolved custom/generated/vehicle/modular/improvement/capacity or deletion-cascade semantics fail closed; no CharacterCreate counterparts exist."
       },
       "tablet": {
         "status": "missing",
@@ -42832,12 +42873,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCyberwareCommerceEditAsync(CyberwareCommerceRequest.sell) with stable Cyberware Guid, Core-owned exact source-backed quote digest, explicit confirmation, and expected content revision",
+      "persistenceAssertion": "upgrade replays exact rating/grade cost and Essence multipliers, adjusts existing Essence Hole bookkeeping, applies affordability and the legacy AddGear undo quirk; confirmed sale applies the exact refund and deletes only the selected complete bounded subtree; cancellation is zero mutation and unrelated XML remains exact after atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_cyberware_commerce_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -42877,11 +42918,27 @@
       "mutationFamily": "cyberware",
       "operation": "adjust",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Cyberwares > selected stable Career Cyberware > Upgrade or Sell",
+        "surface": "CyberwareCommercePage",
+        "automationId": "cyberware-commerce-upgrade-{stable-cyberware-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CyberwareCommercePage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CyberwareCommerceRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareCommerceRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs"
+        ],
+        "coverageLimit": "Exact simple source-backed CharacterCareer Cyberware Upgrade and Sell only; linked Capacity=[*] children and unresolved custom/generated/vehicle/modular/improvement/capacity or deletion-cascade semantics fail closed; no CharacterCreate counterparts exist."
       },
       "tablet": {
         "status": "missing",
@@ -42889,12 +42946,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCyberwareCommerceEditAsync(CyberwareCommerceRequest.upgrade) with stable Cyberware Guid, Core-owned exact source-backed quote digest, explicit confirmation, and expected content revision",
+      "persistenceAssertion": "upgrade replays exact rating/grade cost and Essence multipliers, adjusts existing Essence Hole bookkeeping, applies affordability and the legacy AddGear undo quirk; confirmed sale applies the exact refund and deletes only the selected complete bounded subtree; cancellation is zero mutation and unrelated XML remains exact after atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_cyberware_commerce_e2e.py"
         },
         "tablet": {
           "status": "missing",

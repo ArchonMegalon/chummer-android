@@ -933,6 +933,10 @@ ARMOR_EQUIPMENT_CONTROLS = {
         "armor-equipment-unequip-all-{stable-armor-guid}",
     ),
 }
+CYBERWARE_COMMERCE_CONTROLS = {
+    "tsCyberwareUpgrade": ("upgrade", "cyberware-commerce-upgrade-{stable-cyberware-guid}"),
+    "tsCyberwareSell": ("sell", "cyberware-commerce-sell-{stable-cyberware-guid}"),
+}
 GEAR_QUANTITY_CONTROLS = {
     "cmdGearIncreaseQty": ("increase", "gear-quantity-increase-{stable-gear-guid}"),
     "cmdGearReduceQty": ("reduce", "gear-quantity-reduce-{stable-gear-guid}"),
@@ -5508,6 +5512,184 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name == "CharacterCareer" and control in CYBERWARE_COMMERCE_CONTROLS:
+        action, automation_id = CYBERWARE_COMMERCE_CONTROLS[control]
+        expected_handler = {
+            "tsCyberwareUpgrade": "tsCyberwareUpgrade_Click",
+            "tsCyberwareSell": "tsCyberwareSell_Click",
+        }[control]
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CyberwareCommercePage.cs"
+        editor = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_cyberware_commerce_e2e.py"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "CyberwareCommerceRequest.cs"
+        state = overview / "WorkspaceCollectionEditorState.cs"
+        projector = overview / "WorkspaceCollectionEditorProjector.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        core_contracts = character_notes_core_root / "Chummer.Contracts" / "Characters"
+        core_rules = core_contracts / "CharacterCyberwareCommerceRules.cs"
+        core_models = core_contracts / "CharacterSectionModels.cs"
+        core_service = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        source_resolver = character_notes_core_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs"
+        file_source_resolver = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "FileSystemCharacterSourceDataResolver.cs"
+        implemented = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                page,
+                "CyberwareCommerceRequest",
+                'AutomationId = $"cyberware-commerce-page-{token}"',
+                'AutomationId = $"cyberware-commerce-grade-{token}"',
+                'AutomationId = $"cyberware-commerce-rating-{token}"',
+                'AutomationId = $"cyberware-commerce-refund-percent-{token}"',
+                'AutomationId = $"cyberware-commerce-free-cost-{token}"',
+                'AutomationId = $"cyberware-commerce-upgrade-{token}"',
+                'AutomationId = $"cyberware-commerce-sell-{token}"',
+                "CharacterCyberwareCommerceRules.QuoteUpgrade",
+                "CharacterCyberwareCommerceRules.QuoteSale",
+                '"Confirm Cyberware upgrade"',
+                '"Confirm Cyberware sale"',
+                "Confirmed: true",
+                "QuoteDigest: quote.QuoteDigest",
+            )
+            and _contains(
+                editor,
+                "CyberwareCommerceRequired",
+                "PrepareCyberwareCommerceEditAsync",
+                'automationId: $"cyberware-commerce-open-{cyberwareId:N}"',
+                "new CyberwareCommercePage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareCyberwareCommerceEditAsync",
+                "ApplyCyberwareCommerceEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CyberwareCommerceRequest",
+                "ExpectedContentRevision",
+                "Guid CyberwareId",
+                "CharacterCyberwareCommerceAction Action",
+                "decimal RefundPercentage",
+                "bool Confirmed",
+                "string QuoteDigest",
+            )
+            and _contains(state, "CyberwareCommerceRequired")
+            and _contains(projector, "CyberwareCommerceRequired", "careerEditable")
+            and _contains(
+                mutation,
+                "ApplyCyberwareCommerceEdit",
+                "CharacterCyberwareCommerceRules.QuoteUpgrade",
+                "CharacterCyberwareCommerceRules.QuoteSale",
+                "ApplyEssenceBookkeeping",
+                "AppendCyberwareExpense",
+                'new XElement("nuyentype", "AddGear")',
+                "explicit confirmation",
+                "quote changed",
+            )
+            and _contains(
+                presenter,
+                "PrepareCyberwareCommerceEditAsync",
+                "ApplyCyberwareCommerceEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+                "ExpectedContentRevision",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareCyberwareCommerceEditAsync",
+                "ApplyCyberwareCommerceEditAsync",
+                "CyberwareCommerceRequest",
+            )
+            and _contains(
+                core_rules,
+                "TryNormalizeRefundPercentage",
+                "TryPlanEssenceHole",
+                "QuoteUpgrade",
+                "QuoteSale",
+                "SHA256.HashData",
+            )
+            and _contains(core_models, "CharacterCyberwareCommerceSemantics", "CommerceSemantics")
+            and _contains(
+                core_service,
+                "BuildCyberwareCommerceSemantics",
+                "Linked Capacity=[*] child Cyberware",
+                "SourceEntryUsesGeneratedOrImprovementSemantics",
+                "HasExternalSavedReference",
+            )
+            and _contains(source_resolver, "TryResolveCyberwareCommerceSource")
+            and _contains(
+                file_source_resolver,
+                "TryResolveCyberwareCommerceSource",
+                'TryLoadEffectiveDocument(_catalog, "cyberware.xml"',
+                'ReadValue(settings, "essenceformat")',
+            )
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"journey": "cyberware-commerce"',
+            '"tsCyberwareUpgrade"',
+            '"tsCyberwareSell"',
+            '"controls": controls',
+            '"upgradeRatingGradeEconomicsEssenceHole": "pass"',
+            '"upgradeLegacyAddGearUndo": "pass"',
+            '"saleCancellationZeroMutation": "pass"',
+            '"saleConfirmedDeletionCascade": "pass"',
+            '"linkedCapacityGuard": "pass"',
+            '"processRestart": "pass"',
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Gear > Cyberwares > selected stable Career Cyberware > Upgrade or Sell",
+            "surface": "CyberwareCommercePage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CyberwareCommercePage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CyberwareCommerceRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareCommerceRules.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+                "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+            ],
+            "presenterMutation": (
+                f"ICharacterOverviewPresenter.ApplyCyberwareCommerceEditAsync(CyberwareCommerceRequest.{action}) "
+                "with stable Cyberware Guid, Core-owned exact source-backed quote digest, explicit confirmation, "
+                "and expected content revision"
+            ),
+            "persistenceAssertion": (
+                "upgrade replays exact rating/grade cost and Essence multipliers, adjusts existing Essence Hole "
+                "bookkeeping, applies affordability and the legacy AddGear undo quirk; confirmed sale applies the "
+                "exact refund and deletes only the selected complete bounded subtree; cancellation is zero mutation "
+                "and unrelated XML remains exact after atomic save, same-session reopen, and process restart"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_cyberware_commerce_e2e.py" if e2e_scripted else None,
+            },
+            "coverageLimit": (
+                "Exact simple source-backed CharacterCareer Cyberware Upgrade and Sell only; linked Capacity=[*] "
+                "children and unresolved custom/generated/vehicle/modular/improvement/capacity or deletion-cascade "
+                "semantics fail closed; no CharacterCreate counterparts exist."
+            ),
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCareer" and control in GEAR_QUANTITY_CONTROLS:
         action, automation_id = GEAR_QUANTITY_CONTROLS[control]
         expected_handler = {
@@ -8624,6 +8806,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorEquipmentPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearQuantityPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CyberwareCommercePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "LocationRenamePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CharacterNotesPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
@@ -8649,6 +8832,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_armor_equipment_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_quantity_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_cyberware_commerce_e2e.py",
         REPO_ROOT / "tests" / "run_api36_location_rename_e2e.py",
         REPO_ROOT / "tests" / "run_api36_explicit_save_e2e.py",
         REPO_ROOT / "tests" / "run_api36_nested_collection_notes_e2e.py",
@@ -8687,6 +8871,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "creation-weapon-accessory-included-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-weapon-accessory-included-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-quantity-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-cyberware-commerce-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-location-rename-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-location-rename-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-explicit-save-e2e.chum5",
@@ -8725,6 +8910,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterContactEditSemantics.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterPetEditSemantics.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCyberwareCommerceRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorDamageRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorEquipmentRules.cs",
         core_engine_root / "Chummer.Contracts" / "Workspaces" / "CharacterWorkspaceModels.cs",
@@ -8747,6 +8933,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorDamageAdjustmentRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorEquipmentEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponAccessoryIncludedEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CyberwareCommerceRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceLocationEditorState.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "LocationRenameRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceSectionRenderer.cs",
