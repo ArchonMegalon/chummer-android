@@ -1671,6 +1671,7 @@ ARMOR_TREE_FLAG_CONTROLS = {
         "armor-tree-discounted-cost-toggle-{stable-root-armor-guid}",
     ),
 }
+GEAR_STOLEN_CONTROL = "chkGearStolen"
 IMPROVEMENT_ACTIVE_CONTROL = "chkImprovementActive"
 CYBERWARE_COMMERCE_CONTROLS = {
     "tsCyberwareUpgrade": ("upgrade", "cyberware-commerce-upgrade-{stable-cyberware-guid}"),
@@ -9457,6 +9458,194 @@ def _known_phone_mapping(
             "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name == "CharacterCreate" and control == GEAR_STOLEN_CONTROL:
+        legacy_source = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / "CharacterCreate.cs"
+        )
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearStolenPage.cs"
+        editor = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_gear_stolen_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-gear-stolen-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-gear-stolen-negative-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "GearStolenEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = (
+            character_notes_core_root
+            / "Chummer.Contracts"
+            / "Characters"
+            / "CharacterGearStolenRules.cs"
+        )
+        workspace_store = (
+            character_notes_core_root
+            / "Chummer.Infrastructure"
+            / "Workspaces"
+            / "FileWorkspaceStore.cs"
+        )
+        legacy_exact = (
+            any(
+                event.get("handler") == "chkGearStolen_CheckedChanged"
+                for event in legacy.get("events", [])
+            )
+            and _contains(
+                legacy_source,
+                "chkGearStolen_CheckedChanged",
+                "treGear.DoThreadSafeFuncAsync",
+                "is IHasStolenProperty loot",
+                "ProcessStolenChanged(",
+                "loot.Stolen = state",
+                "Improvement.ImprovementType.Nuyen, \"Stolen\"",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "class GearStolenPage",
+                'AutomationId = $"gear-stolen-page-{rootToken}"',
+                'AutomationId = $"gear-stolen-target-{rootToken}"',
+                'AutomationId = $"gear-stolen-toggle-{rootToken}"',
+                'AutomationId = $"gear-stolen-save-{rootToken}"',
+                "CharacterGearStolenRules.IsValidIdentity",
+                "selected.Revision",
+                "GearStolenEditRequest",
+            )
+            and _contains(
+                editor,
+                "AddGearStolenAction",
+                "Coordinator.State.Profile?.Created != false",
+                'automationId: $"gear-stolen-open-{gearId:N}"',
+                "PrepareGearStolenEditAsync",
+                "new GearStolenPage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareGearStolenEditAsync",
+                "ApplyGearStolenEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CharacterGearStolenIdentity",
+                "GearStolenEditorProjector",
+                "ReadRequiredCreated(root)",
+                "HasActiveStolenNuyenImprovement(root)",
+                'string.Equals(type, "Nuyen"',
+                'string.Equals(improvedName, "Stolen"',
+                "enabled > 0",
+                "addToRating <= 0",
+                'string.Equals(condition, "create"',
+                'ReadOptionalContainer(gear, "children")',
+                "seenIds.Add(gearId)",
+                "FindUniqueDirectByGuid",
+                'ReadOptionalBoolean(gear, "stolen")',
+            )
+            and _contains(
+                mutation,
+                "ApplyGearStolenEdit",
+                "CharacterGearStolenRules.TryValidateMutation",
+                "GearStolenEditorProjector.FindNode",
+                'SetElementValue(target, "stolen"',
+            )
+            and _contains(
+                presenter,
+                "PrepareGearStolenEditAsync",
+                "ApplyGearStolenEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareGearStolenEditAsync",
+                "ApplyGearStolenEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterGearStolenIdentity",
+                "CharacterGearStolenState",
+                "IsValidIdentity",
+                "IdentityEquals",
+                "TryValidateMutation",
+                "SHA256.HashData",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCreate.chkGearStolen"',
+                'if api != "36"',
+                '"arm64-v8a" not in abi_list.split(",")',
+                '"profile": "phone"',
+                '"journey": "gear-stolen"',
+                '"creationEligibleRecursiveGearEdited": "pass"',
+                '"careerActionNotExposed": "pass"',
+                '"gearStolenRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+                '"careerNegativeFixtureSha256"',
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Gear > Gear > selected stable root Gear > Stolen",
+            "surface": "GearStolenPage",
+            "automationId": "gear-stolen-toggle-{stable-root-gear-guid}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/GearStolenPage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/GearStolenEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearStolenRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyGearStolenEditAsync with exact typed recursive Gear "
+                "hierarchy, active creation-mode non-rating Nuyen/Stolen eligibility, duplicate/ambiguity "
+                "rejection, node-local revision, and expected workspace content revision"
+            ),
+            "persistenceAssertion": (
+                "the exact selected top-level or recursively nested character/gears/.../stolen value is "
+                "updated while parent, child, sibling, Improvement, and unrelated runner XML remains exact "
+                "after revision-bound atomic save, same-session reopen, and process restart"
+            ),
+            "coverageLimit": (
+                "Exact CharacterCreate selected treGear IHasStolenProperty semantics under one stable top-level "
+                "Gear root. Editor projection fails closed unless an enabled, non-add-to-rating Nuyen/Stolen "
+                "Improvement is unconditional or create-conditioned. Duplicate identity, malformed saved state, "
+                "CharacterCareer, and tablet are intentionally unavailable."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_gear_stolen_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCreate" and control in ARMOR_TREE_FLAG_CONTROLS:
         expected_handler, xml_element, automation_id = ARMOR_TREE_FLAG_CONTROLS[control]
         legacy_source = (
@@ -14983,6 +15172,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorDamagePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorEquipmentPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorTreeFlagPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearStolenPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementActivePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CritterPowerCountPage.cs",
@@ -15031,6 +15221,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_armor_damage_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_equipment_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_tree_flags_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_gear_stolen_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_active_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
         REPO_ROOT / "tests" / "run_api36_critter_power_count_e2e.py",
@@ -15104,6 +15295,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-armor-equipment-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-armor-tree-flags-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-armor-tree-flags-negative-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-gear-stolen-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-gear-stolen-negative-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-improvement-active-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-improvement-active-negative-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-weapon-accessory-included-e2e.chum5",
@@ -15188,6 +15381,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCritterPowerCountRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSpiritFetteringRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSpiritNameChoiceRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGearStolenRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSustainedObjectRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGroupMembershipRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGroupNameRules.cs",
@@ -15235,6 +15429,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorDamageAdjustmentRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorEquipmentEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorTreeFlagEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "GearStolenEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ImprovementActiveEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponAccessoryIncludedEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CritterPowerCountEditRequest.cs",

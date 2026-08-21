@@ -714,6 +714,33 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<GearStolenEditorState?> PrepareGearStolenEditAsync(
+        Guid rootGearId,
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareGearStolenEditAsync(rootGearId, cancellationToken);
+
+    public async Task ApplyGearStolenEditAsync(
+        GearStolenEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Gear Stolen was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyGearStolenEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Gear Stolen state saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<ImprovementActiveEditorState?> PrepareImprovementActiveEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareImprovementActiveEditAsync(cancellationToken);

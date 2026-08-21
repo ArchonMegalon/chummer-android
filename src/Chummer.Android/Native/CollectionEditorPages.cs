@@ -122,6 +122,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddArmorDamageAction(item);
         AddArmorEquipmentAction(item);
         AddArmorTreeFlagAction(item);
+        AddGearStolenAction(item);
         AddLifestyleIncrementAction(item);
         AddWeaponAccessoryIncludedAction(item);
         AddCritterPowerCountAction(item);
@@ -1049,6 +1050,34 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 }
             },
             automationId: $"armor-tree-flags-open-{armorId:N}"));
+    }
+
+    private void AddGearStolenAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Gear
+            || _target.NestedKind is not null
+            || Coordinator.State.Profile?.Created != false
+            || Coordinator.State.WorkspaceId is null
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid gearId)
+            || gearId == Guid.Empty)
+        {
+            return;
+        }
+
+        _body.Add(NativeTheme.Eyebrow("Creation Gear tree"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Stolen",
+            "Edit the exact selected Gear or recursively nested child when the saved Nuyen/Stolen rule applies",
+            async () =>
+            {
+                GearStolenEditorState? editor = await Coordinator
+                    .PrepareGearStolenEditAsync(gearId);
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new GearStolenPage(Coordinator, editor));
+                }
+            },
+            automationId: $"gear-stolen-open-{gearId:N}"));
     }
 
     private void AddWeaponAccessoryIncludedAction(WorkspaceCollectionItemEditorState item)

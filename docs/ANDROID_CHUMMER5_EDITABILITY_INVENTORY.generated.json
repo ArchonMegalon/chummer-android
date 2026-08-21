@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 423,
+      "implemented_pending_emulator": 424,
       "implemented_verified_api36": 79,
-      "missing": 1005,
+      "missing": 1004,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 148
@@ -215,6 +215,11 @@
         "sha256": "f9dd2ac1d11b8a1b7b6f2523b895d4647aaf9a50846b849619dae26197157b55"
       },
       {
+        "path": "src/Chummer.Android/Native/GearStolenPage.cs",
+        "exists": true,
+        "sha256": "9379d29179b5a1c73883e473d81a69a2debcd8f49a4a180e8cfcf30be6d5389b"
+      },
+      {
         "path": "src/Chummer.Android/Native/ImprovementActivePage.cs",
         "exists": true,
         "sha256": "e3ff46925801dbf8b6595378ef06bafa79bdee847f02af29c0843e3c066dd641"
@@ -272,7 +277,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "a71e7f852553472caa4c54347de09afb6a339319171ecd53bcf4bd538ed42518"
+        "sha256": "a788ba16aa326a1ea9835c0bb21070421bb99f4fa49509c0130d370086c71886"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -297,7 +302,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "b3753c77fd35bfa3792dd9eca5401d4fc6456b21158649f98c4e7d169618c7eb"
+        "sha256": "3b3418eaca4644a42eb606060302a89d6a5144954bfc9de910815841744a6c13"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -453,6 +458,11 @@
         "path": "tests/run_api36_armor_tree_flags_e2e.py",
         "exists": true,
         "sha256": "f7de0d33e610c270eef1194134344cec1ac54217f5367bd2760913138fcf8d25"
+      },
+      {
+        "path": "tests/run_api36_gear_stolen_e2e.py",
+        "exists": true,
+        "sha256": "daa9af46a9658c8f5a944f698dc8ae214c47b62ccc19b0ddbcd07f8065085864"
       },
       {
         "path": "tests/run_api36_improvement_active_e2e.py",
@@ -818,6 +828,16 @@
         "path": "tests/fixtures/career-armor-tree-flags-negative-e2e.chum5",
         "exists": true,
         "sha256": "dc31fec5223b66a8e5afc52b775738e0b4ba6951086b209afb406ef4783d3b0f"
+      },
+      {
+        "path": "tests/fixtures/creation-gear-stolen-e2e.chum5",
+        "exists": true,
+        "sha256": "c69d28378b9d610bc2dd54a92e051517294470ecd021f77da2231544eb50440b"
+      },
+      {
+        "path": "tests/fixtures/career-gear-stolen-negative-e2e.chum5",
+        "exists": true,
+        "sha256": "2a488ce1febe52953612cd8498d8904f70db1e5c1525ccc44074455b930ac0a9"
       },
       {
         "path": "tests/fixtures/career-improvement-active-e2e.chum5",
@@ -1280,6 +1300,11 @@
         "sha256": "a52869a51129ce1c7841263c1a0e425cffac7bfee62a72a8a858d5efc3ae25af"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearStolenRules.cs",
+        "exists": true,
+        "sha256": "5057e54bdf160e074b253dc654b6c98e8228ef96dcb979f7a7955aa5fc918515"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSustainedObjectRules.cs",
         "exists": true,
         "sha256": "cbeddfd917eea8a2e7b7593bb939508c4f57e04a5451b249f516a69a5eff5585"
@@ -1387,7 +1412,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "d92dee8cdebe8bde620ecb07cb70519f39238458d242cca0fc3ae0f96da882d6"
+        "sha256": "60f562cd524696377d9f19aa6a2a88f0ceadf8a51fb57a97d177b44d85e3c5b0"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1515,6 +1540,11 @@
         "sha256": "2bdfa890aec7eaed50ace563f539014b83efb48402d082b426ae26a4d852ffb0"
       },
       {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/GearStolenEditRequest.cs",
+        "exists": true,
+        "sha256": "2c5b92f63ec11b1a8796cbae49d54077fc8622356489ae081afe04a3ca1761d1"
+      },
+      {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ImprovementActiveEditRequest.cs",
         "exists": true,
         "sha256": "297c9b2ae8af2d39e5ae35e93ace8acc21dc0391a65e7b05221d6e041c7c0679"
@@ -1577,7 +1607,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "8d8a3087ec463c55d1950bb046dda043d1d5cabd386ea84e4e9f16cf00a1c270"
+        "sha256": "96478fa2bb952582c122734660f597a10f2e32558df6fbdbb04baaeb257da5bc"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1632,7 +1662,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "afad37a69b0466436b0bc8add0566a18dc11780f724c4a45b544d7c5361a26a0"
+        "sha256": "284f26a1348b88cb2e863a320d962bdbafdc7e10c208082b4ee28558b03cb624"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1642,7 +1672,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "a8fa8cdf7fee1f17ba30c47cd0043139cd6b26847f9b9ea63ca5758959cca25d"
+      "sha256": "bc1e9a5de1490e9951ed2a89fb288ae87ed082cccd5e203727d3183f6c92758e"
     }
   },
   "coverageByFamily": {
@@ -1796,7 +1826,7 @@
     "gear": {
       "rowCount": 84,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 31,
+      "phoneMissingCount": 30,
       "tabletMissingCount": 56,
       "completionProvenCount": 4
     },
@@ -61838,11 +61868,23 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Gear > selected stable root Gear > Stolen",
+        "surface": "GearStolenPage",
+        "automationId": "gear-stolen-toggle-{stable-root-gear-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/GearStolenPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/GearStolenEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearStolenRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCreate selected treGear IHasStolenProperty semantics under one stable top-level Gear root. Editor projection fails closed unless an enabled, non-add-to-rating Nuyen/Stolen Improvement is unconditional or create-conditioned. Duplicate identity, malformed saved state, CharacterCareer, and tablet are intentionally unavailable."
       },
       "tablet": {
         "status": "missing",
@@ -61850,12 +61892,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyGearStolenEditAsync with exact typed recursive Gear hierarchy, active creation-mode non-rating Nuyen/Stolen eligibility, duplicate/ambiguity rejection, node-local revision, and expected workspace content revision",
+      "persistenceAssertion": "the exact selected top-level or recursively nested character/gears/.../stolen value is updated while parent, child, sibling, Improvement, and unrelated runner XML remains exact after revision-bound atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_gear_stolen_e2e.py"
         },
         "tablet": {
           "status": "missing",

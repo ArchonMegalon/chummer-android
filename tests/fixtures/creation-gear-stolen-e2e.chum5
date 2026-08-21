@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Gear Stolen E2E</name>
+  <alias>CreationGearStolenE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <improvements>
+    <improvement>
+      <improvementttype>Nuyen</improvementttype>
+      <improvedname>Stolen</improvedname>
+      <condition>create</condition>
+      <addtorating>0</addtorating>
+      <enabled>1</enabled>
+      <notes>Creation Stolen rule sentinel</notes>
+    </improvement>
+  </improvements>
+  <gears>
+    <gear>
+      <guid>a7111111-7111-7111-7111-711111111111</guid>
+      <name>Gear Stolen Root</name><category>Electronics</category><rating>1</rating><qty>1</qty><cost>100</cost>
+      <stolen>False</stolen><notes>Creation root Gear sentinel</notes>
+      <children><gear>
+        <guid>b7111111-7111-7111-7111-711111111111</guid>
+        <name>Gear Stolen Child</name><category>Electronics</category><rating>1</rating><qty>1</qty><cost>50</cost>
+        <stolen>True</stolen><notes>Creation child Gear sentinel</notes>
+        <children><gear>
+          <guid>c7111111-7111-7111-7111-711111111111</guid>
+          <name>Gear Stolen Target</name><category>Electronics</category><rating>1</rating><qty>1</qty><cost>25</cost>
+          <stolen>False</stolen><notes>Creation target Gear sentinel</notes><children />
+        </gear></children>
+      </gear></children>
+    </gear>
+    <gear>
+      <guid>d7111111-7111-7111-7111-711111111111</guid>
+      <name>Untouched Gear</name><category>Electronics</category><rating>1</rating><qty>1</qty><cost>75</cost>
+      <stolen>False</stolen><notes>Creation untouched Gear sentinel</notes><children />
+    </gear>
+  </gears>
+  <customstate>Creation Gear Stolen runner sentinel</customstate>
+</character>

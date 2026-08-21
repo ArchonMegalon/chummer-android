@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Gear Stolen Negative E2E</name>
+  <alias>CareerGearStolenNegativeE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <improvements>
+    <improvement><improvementttype>Nuyen</improvementttype><improvedname>Stolen</improvedname><condition>career</condition><addtorating>0</addtorating><enabled>1</enabled></improvement>
+  </improvements>
+  <gears>
+    <gear>
+      <guid>a8111111-8111-8111-8111-811111111111</guid>
+      <name>Career Gear Stolen Negative</name><category>Electronics</category><rating>1</rating><qty>1</qty><cost>100</cost>
+      <stolen>False</stolen><notes>Career Gear Stolen negative sentinel</notes><children />
+    </gear>
+  </gears>
+  <customstate>Career Gear Stolen runner sentinel</customstate>
+</character>
