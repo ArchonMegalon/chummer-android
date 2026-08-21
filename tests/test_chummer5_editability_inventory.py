@@ -1010,6 +1010,38 @@ namespace Chummer
             self.assertEqual("tests/run_api36_armor_equipment_e2e.py", row["e2e"]["phone"]["ref"])
             self.assertFalse(row["completionProven"])
 
+        armor_tree_flags = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "CharacterCreate"
+            and row["legacy"]["controlName"] in inventory.ARMOR_TREE_FLAG_CONTROLS
+        ]
+        self.assertEqual(2, len(armor_tree_flags))
+        for row in armor_tree_flags:
+            _, xml_element, automation_id = inventory.ARMOR_TREE_FLAG_CONTROLS[
+                row["legacy"]["controlName"]
+            ]
+            self.assertEqual("armor", row["mutationFamily"])
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Gear > Armor > selected stable Armor > Armor tree flags",
+                row["phone"]["route"],
+            )
+            self.assertEqual("ArmorTreeFlagPage", row["phone"]["surface"])
+            self.assertEqual(automation_id, row["phone"]["automationId"])
+            self.assertIn("typed Armor/ArmorMod/recursive Gear hierarchy", row["presenterMutation"])
+            self.assertIn(f".../{xml_element}", row["persistenceAssertion"])
+            self.assertIn("under Armor/ArmorMod", row["persistenceAssertion"])
+            self.assertIn("revision-bound atomic save", row["persistenceAssertion"])
+            self.assertIn("no source/cost eligibility is invented", row["phone"]["coverageLimit"])
+            self.assertIn("CharacterCareer", row["phone"]["coverageLimit"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_armor_tree_flags_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
         weapon_accessory_included = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -1839,9 +1871,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 418,
+                "implemented_pending_emulator": 420,
                 "implemented_verified_api36": 79,
-                "missing": 1010,
+                "missing": 1008,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 148,

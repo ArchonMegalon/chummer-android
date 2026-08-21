@@ -120,6 +120,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddPrototypeTranshumanAction(item);
         AddArmorDamageAction(item);
         AddArmorEquipmentAction(item);
+        AddArmorTreeFlagAction(item);
         AddLifestyleIncrementAction(item);
         AddWeaponAccessoryIncludedAction(item);
         AddCritterPowerCountAction(item);
@@ -989,6 +990,34 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 equipment)),
             automationId: $"armor-equipment-open-{armorId:N}"));
+    }
+
+    private void AddArmorTreeFlagAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Armor
+            || _target.NestedKind is not null
+            || Coordinator.State.Profile?.Created != false
+            || Coordinator.State.WorkspaceId is null
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid armorId)
+            || armorId == Guid.Empty)
+        {
+            return;
+        }
+
+        _body.Add(NativeTheme.Eyebrow("Creation armor tree"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Stolen & Black Market",
+            "Edit the exact selected Armor, ArmorMod, or recursively nested Gear node",
+            async () =>
+            {
+                ArmorTreeFlagEditorState? editor = await Coordinator
+                    .PrepareArmorTreeFlagEditAsync(armorId);
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new ArmorTreeFlagPage(Coordinator, editor));
+                }
+            },
+            automationId: $"armor-tree-flags-open-{armorId:N}"));
     }
 
     private void AddWeaponAccessoryIncludedAction(WorkspaceCollectionItemEditorState item)

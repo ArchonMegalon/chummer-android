@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Armor Tree Flags E2E</name>
+  <alias>CreationArmorTreeFlagsE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <armors>
+    <armor>
+      <guid>a3111111-3111-3111-3111-311111111111</guid>
+      <name>Flag Root Armor</name><category>Armor</category><armor>9</armor><rating>0</rating><cost>1200</cost><equipped>True</equipped>
+      <stolen>False</stolen><discountedcost>False</discountedcost><notes>Creation selected armor sentinel</notes>
+      <armormods>
+        <armormod>
+          <guid>b3111111-3111-3111-3111-311111111111</guid>
+          <name>Flag Armor Mod</name><category>Armor Mod</category><rating>1</rating><cost>300</cost><equipped>True</equipped>
+          <stolen>True</stolen><discountedcost>False</discountedcost><notes>Creation mod sentinel</notes>
+          <gears><gear>
+            <guid>e3111111-3111-3111-3111-311111111111</guid>
+            <name>Mod Gear Parent</name><category>Armor Gear</category><rating>0</rating><qty>1</qty><cost>40</cost>
+            <stolen>False</stolen><discountedcost>True</discountedcost>
+            <children><gear>
+              <guid>f3111111-3111-3111-3111-311111111111</guid>
+              <name>Nested Mod Gear Target</name><category>Armor Gear</category><rating>0</rating><qty>1</qty><cost>20</cost>
+              <stolen>True</stolen><discountedcost>True</discountedcost><notes>Creation nested mod gear sentinel</notes>
+            </gear></children>
+          </gear></gears>
+        </armormod>
+      </armormods>
+      <gears><gear>
+        <guid>c3111111-3111-3111-3111-311111111111</guid>
+        <name>Armor Gear Parent</name><category>Armor Gear</category><rating>0</rating><qty>1</qty><cost>60</cost>
+        <stolen>True</stolen><discountedcost>False</discountedcost>
+        <children><gear>
+          <guid>d3111111-3111-3111-3111-311111111111</guid>
+          <name>Nested Armor Gear Target</name><category>Armor Gear</category><rating>0</rating><qty>1</qty><cost>30</cost>
+          <stolen>False</stolen><discountedcost>True</discountedcost><notes>Creation nested armor gear sentinel</notes>
+        </gear></children>
+      </gear></gears>
+    </armor>
+    <armor>
+      <guid>a3222222-3222-3222-3222-322222222222</guid>
+      <name>Untouched Armor</name><category>Armor</category><armor>6</armor><rating>0</rating><cost>500</cost><equipped>False</equipped>
+      <stolen>True</stolen><discountedcost>True</discountedcost><notes>Creation untouched armor sentinel</notes>
+    </armor>
+  </armors>
+  <customstate>Creation armor tree runner sentinel</customstate>
+</character>

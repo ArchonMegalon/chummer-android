@@ -687,6 +687,33 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<ArmorTreeFlagEditorState?> PrepareArmorTreeFlagEditAsync(
+        Guid armorId,
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareArmorTreeFlagEditAsync(armorId, cancellationToken);
+
+    public async Task ApplyArmorTreeFlagEditAsync(
+        ArmorTreeFlagEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Armor Flags was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyArmorTreeFlagEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Armor-tree flags saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<CareerEdgeUseEditorState?> PrepareCareerEdgeUseEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareCareerEdgeUseEditAsync(cancellationToken);

@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 418,
+      "implemented_pending_emulator": 420,
       "implemented_verified_api36": 79,
-      "missing": 1010,
+      "missing": 1008,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 148
@@ -205,6 +205,11 @@
         "sha256": "a7902f6bc4262d741724834691e4037f808e4cca47e22a1c9ca6b3f1a706b67c"
       },
       {
+        "path": "src/Chummer.Android/Native/ArmorTreeFlagPage.cs",
+        "exists": true,
+        "sha256": "f9dd2ac1d11b8a1b7b6f2523b895d4647aaf9a50846b849619dae26197157b55"
+      },
+      {
         "path": "src/Chummer.Android/Native/WeaponAccessoryIncludedPage.cs",
         "exists": true,
         "sha256": "740b3cd362a69405240b7e0acb7fc9541efbb0dded113f3a8942198a7cfb142e"
@@ -257,7 +262,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "b5cb8ecd564dbc0bf9dd2591f44b35359494e32c972b6df140960007be016184"
+        "sha256": "e6a571104cacea18b1bbd6f93a113de824ea8fbec8446d9d8fb96ca658ef1e8b"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -282,7 +287,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "c5af09c96dd6416d201cf64a1c28b0caa8442c1e67af0240c7d4d24132b70e2e"
+        "sha256": "6aa8db85006768b43484b776716fb76c3c15a6c08e1ef9b21fb56379e2bd437d"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -428,6 +433,11 @@
         "path": "tests/run_api36_armor_equipment_e2e.py",
         "exists": true,
         "sha256": "10d3510fd823e5df31f1be47d5a0b2e09c094ecee205afc40b2e0edae22ac7c3"
+      },
+      {
+        "path": "tests/run_api36_armor_tree_flags_e2e.py",
+        "exists": true,
+        "sha256": "f7de0d33e610c270eef1194134344cec1ac54217f5367bd2760913138fcf8d25"
       },
       {
         "path": "tests/run_api36_weapon_accessory_included_e2e.py",
@@ -768,6 +778,16 @@
         "path": "tests/fixtures/career-armor-equipment-e2e.chum5",
         "exists": true,
         "sha256": "f3924f176bdc58397a6b6711ddae95a551b98603982f94ef4e1c02038998b8bf"
+      },
+      {
+        "path": "tests/fixtures/creation-armor-tree-flags-e2e.chum5",
+        "exists": true,
+        "sha256": "969739e61e5c5683570ff1b9d40c5abf63d0e372353e6211a6cb56bae051073f"
+      },
+      {
+        "path": "tests/fixtures/career-armor-tree-flags-negative-e2e.chum5",
+        "exists": true,
+        "sha256": "dc31fec5223b66a8e5afc52b775738e0b4ba6951086b209afb406ef4783d3b0f"
       },
       {
         "path": "tests/fixtures/creation-weapon-accessory-included-e2e.chum5",
@@ -1185,6 +1205,11 @@
         "sha256": "4a6a4641057afaf7e1bfcd39df9862a0d75193f213be1999e97902f4f4cc3d55"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorTreeFlagRules.cs",
+        "exists": true,
+        "sha256": "2c7713955e21cea85240e577902585abe01bd67d609b2624ba57d5e159a27747"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCritterPowerCountRules.cs",
         "exists": true,
         "sha256": "05494abd2ada41aeec925c3fa3d0b4086c3df93bdfce9de1f3572b83372efb91"
@@ -1307,7 +1332,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "897a211e70b0156b77ec4349e80db5331c143aa3124b1f3b14c1d51ba1035b1e"
+        "sha256": "ebb923544647506b0d11a224c9adb5c97a581b7742a6ef5b175d393bcb40524c"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1425,6 +1450,11 @@
         "sha256": "434c75c44b7c5e55122212c15a665a9ddbf3481975fe28eae5dcfb1b9cf73f9d"
       },
       {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/ArmorTreeFlagEditRequest.cs",
+        "exists": true,
+        "sha256": "2bdfa890aec7eaed50ace563f539014b83efb48402d082b426ae26a4d852ffb0"
+      },
+      {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WeaponAccessoryIncludedEditRequest.cs",
         "exists": true,
         "sha256": "3d665cc28f5457039132d0ac07a5449895986f5a9d59c2c0547d0eadf25dbd2d"
@@ -1482,7 +1512,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "e92d38c5ae464c4ef93fd4d4ea569624f2d0511a6d1e78619715ff89b8b532b2"
+        "sha256": "23eb7fd0a8dfe53761ea076780f73b8287a02e0373915d5395d3f37e42418a9f"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1537,7 +1567,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "90fa21d14f5420a095341edbeb79962fe95f7196b02666662432faf08625c8ce"
+        "sha256": "1e9fbe47ba9babed4376795742cb1113d047a33175282653eca75dd0e7ec26fd"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1547,7 +1577,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "9caefe5c60c8cfe8a156687ffb967c7b6b61c3740b48e9d22062a7d0c48f106b"
+      "sha256": "9c0575bd9b81abb253ae92afd02de79ffab9b03cf32c920e4865d462783687c5"
     }
   },
   "coverageByFamily": {
@@ -1575,7 +1605,7 @@
     "armor": {
       "rowCount": 97,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 30,
+      "phoneMissingCount": 28,
       "tabletMissingCount": 59,
       "completionProvenCount": 14
     },
@@ -61758,11 +61788,23 @@
       "mutationFamily": "armor",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Armor > selected stable Armor > Armor tree flags",
+        "surface": "ArmorTreeFlagPage",
+        "automationId": "armor-tree-stolen-toggle-{stable-root-armor-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ArmorTreeFlagPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ArmorTreeFlagEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorTreeFlagRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCreate selected treArmor node semantics across top-level Armor, ArmorMod, and recursively nested Gear under either Armor or ArmorMod; no source/cost eligibility is invented. Stable typed hierarchy is required; duplicate or ambiguous identity fails closed. CharacterCareer and tablet are intentionally unavailable."
       },
       "tablet": {
         "status": "missing",
@@ -61770,12 +61812,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyArmorTreeFlagEditAsync with exact typed Armor/ArmorMod/recursive Gear hierarchy, duplicate/ambiguity rejection, node-local revision, and expected workspace content revision",
+      "persistenceAssertion": "the exact selected Armor, ArmorMod, or recursively nested Gear under Armor/ArmorMod writes character/armors/.../stolen while both node flags and unrelated sibling/nested XML remain exact after revision-bound atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_armor_tree_flags_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -70434,11 +70476,23 @@
       "mutationFamily": "armor",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Armor > selected stable Armor > Armor tree flags",
+        "surface": "ArmorTreeFlagPage",
+        "automationId": "armor-tree-discounted-cost-toggle-{stable-root-armor-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ArmorTreeFlagPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ArmorTreeFlagEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorTreeFlagRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCreate selected treArmor node semantics across top-level Armor, ArmorMod, and recursively nested Gear under either Armor or ArmorMod; no source/cost eligibility is invented. Stable typed hierarchy is required; duplicate or ambiguous identity fails closed. CharacterCareer and tablet are intentionally unavailable."
       },
       "tablet": {
         "status": "missing",
@@ -70446,12 +70500,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyArmorTreeFlagEditAsync with exact typed Armor/ArmorMod/recursive Gear hierarchy, duplicate/ambiguity rejection, node-local revision, and expected workspace content revision",
+      "persistenceAssertion": "the exact selected Armor, ArmorMod, or recursively nested Gear under Armor/ArmorMod writes character/armors/.../discountedcost while both node flags and unrelated sibling/nested XML remain exact after revision-bound atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_armor_tree_flags_e2e.py"
         },
         "tablet": {
           "status": "missing",

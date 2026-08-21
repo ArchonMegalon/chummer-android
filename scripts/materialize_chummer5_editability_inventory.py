@@ -1642,6 +1642,18 @@ ARMOR_EQUIPMENT_CONTROLS = {
         "armor-equipment-unequip-all-{stable-armor-guid}",
     ),
 }
+ARMOR_TREE_FLAG_CONTROLS = {
+    "chkArmorStolen": (
+        "chkArmorStolen_CheckedChanged",
+        "stolen",
+        "armor-tree-stolen-toggle-{stable-root-armor-guid}",
+    ),
+    "chkArmorBlackMarketDiscount": (
+        "chkArmorBlackMarketDiscount_CheckedChanged",
+        "discountedcost",
+        "armor-tree-discounted-cost-toggle-{stable-root-armor-guid}",
+    ),
+}
 CYBERWARE_COMMERCE_CONTROLS = {
     "tsCyberwareUpgrade": ("upgrade", "cyberware-commerce-upgrade-{stable-cyberware-guid}"),
     "tsCyberwareSell": ("sell", "cyberware-commerce-sell-{stable-cyberware-guid}"),
@@ -8979,6 +8991,193 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name == "CharacterCreate" and control in ARMOR_TREE_FLAG_CONTROLS:
+        expected_handler, xml_element, automation_id = ARMOR_TREE_FLAG_CONTROLS[control]
+        legacy_source = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / "CharacterCreate.cs"
+        )
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorTreeFlagPage.cs"
+        editor = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_armor_tree_flags_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-armor-tree-flags-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-armor-tree-flags-negative-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "ArmorTreeFlagEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = (
+            character_notes_core_root
+            / "Chummer.Contracts"
+            / "Characters"
+            / "CharacterArmorTreeFlagRules.cs"
+        )
+        workspace_store = (
+            character_notes_core_root
+            / "Chummer.Infrastructure"
+            / "Workspaces"
+            / "FileWorkspaceStore.cs"
+        )
+        legacy_markers = (
+            ("is IHasStolenProperty loot", "ProcessStolenChanged(", "loot.Stolen = state")
+            if control == "chkArmorStolen"
+            else ("ICanBlackMarketDiscount objItem", "objItem.DiscountCost", "MakeDirtyWithCharacterUpdate")
+        )
+        legacy_exact = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                expected_handler,
+                "treArmor.DoThreadSafeFuncAsync",
+                *legacy_markers,
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "class ArmorTreeFlagPage",
+                'AutomationId = $"armor-tree-flags-page-{rootToken}"',
+                'AutomationId = $"armor-tree-flags-target-{rootToken}"',
+                'armor-tree-stolen-toggle-{rootToken}',
+                'armor-tree-discounted-cost-toggle-{rootToken}',
+                'AutomationId = $"armor-tree-flags-save-{rootToken}"',
+                "CharacterArmorTreeFlagRules.IsValidIdentity",
+                "selected.Revision",
+                "ArmorTreeFlagEditRequest",
+            )
+            and _contains(
+                editor,
+                "AddArmorTreeFlagAction",
+                "Coordinator.State.Profile?.Created != false",
+                'automationId: $"armor-tree-flags-open-{armorId:N}"',
+                "PrepareArmorTreeFlagEditAsync",
+                "new ArmorTreeFlagPage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareArmorTreeFlagEditAsync",
+                "ApplyArmorTreeFlagEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CharacterArmorTreeNodeKind",
+                "CharacterArmorTreeNodeIdentity",
+                "ArmorTreeFlagEditorProjector",
+                "ReadRequiredCreated(root)",
+                'ReadOptionalContainer(armor, "armormods")',
+                'parentGearPath.Count == 0 ? "gears" : "children"',
+                "seenIds.Add(nodeId)",
+                "FindUniqueDirectByGuid",
+                'ReadOptionalBoolean(element, "stolen")',
+                'ReadOptionalBoolean(element, "discountedcost")',
+            )
+            and _contains(
+                mutation,
+                "ApplyArmorTreeFlagEdit",
+                "CharacterArmorTreeFlagRules.TryValidateMutation",
+                "ArmorTreeFlagEditorProjector.FindNode",
+                'SetElementValue(target, "stolen"',
+                'SetElementValue(target, "discountedcost"',
+            )
+            and _contains(
+                presenter,
+                "PrepareArmorTreeFlagEditAsync",
+                "ApplyArmorTreeFlagEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareArmorTreeFlagEditAsync",
+                "ApplyArmorTreeFlagEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterArmorTreeNodeKind",
+                "CharacterArmorTreeNodeIdentity",
+                "CharacterArmorTreeFlagState",
+                "IsValidIdentity",
+                "IdentityEquals",
+                "TryValidateMutation",
+                "SHA256.HashData",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                f'"CharacterCreate.{control}"',
+                'if api != "36"',
+                '"profile": "phone"',
+                '"journey": "armor-tree-flags"',
+                '"creationAllThreeNodeKindsAndBothGearParents": "pass"',
+                '"careerActionNotExposed": "pass"',
+                '"armorTreeFlagRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+                '"careerNegativeFixtureSha256"',
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Gear > Armor > selected stable Armor > Armor tree flags",
+            "surface": "ArmorTreeFlagPage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/ArmorTreeFlagPage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ArmorTreeFlagEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorTreeFlagRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyArmorTreeFlagEditAsync with exact typed Armor/ArmorMod/"
+                "recursive Gear hierarchy, duplicate/ambiguity rejection, node-local revision, and expected "
+                "workspace content revision"
+            ),
+            "persistenceAssertion": (
+                f"the exact selected Armor, ArmorMod, or recursively nested Gear under Armor/ArmorMod writes "
+                f"character/armors/.../{xml_element} while both node flags and unrelated sibling/nested XML "
+                "remain exact after revision-bound atomic save, same-session reopen, and process restart"
+            ),
+            "coverageLimit": (
+                "Exact CharacterCreate selected treArmor node semantics across top-level Armor, ArmorMod, and "
+                "recursively nested Gear under either Armor or ArmorMod; no source/cost eligibility is invented. "
+                "Stable typed hierarchy is required; duplicate or ambiguous identity fails closed. CharacterCareer "
+                "and tablet are intentionally unavailable."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_armor_tree_flags_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if (
         class_name in {"CharacterCreate", "CharacterCareer"}
         and control in ARMOR_EQUIPMENT_CONTROLS
@@ -14311,6 +14510,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "PrototypeTranshumanPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorDamagePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorEquipmentPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorTreeFlagPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CritterPowerCountPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SpiritFetteredPage.cs",
@@ -14356,6 +14556,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_prototype_transhuman_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_damage_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_equipment_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_armor_tree_flags_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
         REPO_ROOT / "tests" / "run_api36_critter_power_count_e2e.py",
         REPO_ROOT / "tests" / "run_api36_spirit_fettered_e2e.py",
@@ -14424,6 +14625,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-armor-damage-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-armor-equipment-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-armor-equipment-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-armor-tree-flags-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-armor-tree-flags-negative-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-weapon-accessory-included-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-weapon-accessory-included-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-critter-power-count-e2e.chum5",
@@ -14499,6 +14702,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCyberwareCommerceRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorDamageRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorEquipmentRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorTreeFlagRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCritterPowerCountRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSpiritFetteringRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSpiritNameChoiceRules.cs",
@@ -14547,6 +14751,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "PrototypeTranshumanEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorDamageAdjustmentRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorEquipmentEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "ArmorTreeFlagEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponAccessoryIncludedEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CritterPowerCountEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "SpiritFetteredEditRequest.cs",
