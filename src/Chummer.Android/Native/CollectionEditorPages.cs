@@ -113,6 +113,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddVehicleHomeNodeAction(item);
         AddArmorHomeNodeAction(item);
         AddArmorActiveCommlinkAction(item);
+        AddArmorDamageAction(item);
         AddWeaponAccessoryIncludedAction(item);
         AddGearQuantityLifecycleAction(item);
         AddVehicleLocationActions(item);
@@ -785,6 +786,33 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 activeCommlink)),
             automationId: $"armor-active-commlink-open-{armorId:N}"));
+    }
+
+    private void AddArmorDamageAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Armor
+            || _target.NestedKind is not null
+            || item.ArmorDamageAdjustment is not { } armorDamage
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid armorId)
+            || armorId == Guid.Empty
+            || armorId != armorDamage.ArmorId)
+        {
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        _body.Add(NativeTheme.Eyebrow("Armor degradation"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Armor Condition",
+            $"Damage {armorDamage.Damage.ToString(CultureInfo.InvariantCulture)} / {armorDamage.Maximum.ToString(CultureInfo.InvariantCulture)}",
+            () => Navigation.PushAsync(new ArmorDamagePage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                item.Label,
+                armorDamage)),
+            automationId: $"armor-damage-open-{armorId:N}"));
     }
 
     private void AddWeaponAccessoryIncludedAction(WorkspaceCollectionItemEditorState item)

@@ -520,6 +520,36 @@ ARMOR_ACTIVE_COMMLINK_CONTROL_E2E_PROOF_KEYS = (
     "processRestartWorkspacePersisted",
     "processRestartUiReadback",
 )
+ARMOR_DAMAGE_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-armor-damage"
+    / "receipt.json"
+)
+ARMOR_DAMAGE_E2E_JOURNEYS = (
+    "careerRunnerImported",
+    "careerDegradeEnabledAtZero",
+    "careerRepairDisabledAtZero",
+    "careerDegradedToMaximum",
+    "careerDegradeDisabledAtMaximum",
+    "careerDegradedReopened",
+    "careerDegradedProcessRestart",
+    "careerRepairedToZero",
+    "careerRepairDisabledAfterRepair",
+    "careerRepairedReopened",
+    "careerRepairedProcessRestart",
+)
+ARMOR_DAMAGE_CONTROL_E2E_PROOF_KEYS = (
+    "stableArmorIdentity",
+    "exactLegacyDirection",
+    "exactBoundaryEnablement",
+    "workspacePersisted",
+    "unrelatedXmlPreserved",
+    "surfaceReopened",
+    "processRestartWorkspacePersisted",
+    "processRestartUiReadback",
+)
 WEAPON_ACCESSORY_INCLUDED_PHONE_E2E_RECEIPT = (
     REPO_ROOT
     / "docs"
@@ -844,6 +874,18 @@ VEHICLE_HOME_NODE_CONTROL = "chkVehicleHomeNode"
 ARMOR_HOME_NODE_CONTROL = "chkArmorHomeNode"
 ARMOR_ACTIVE_COMMLINK_CONTROL = "chkArmorActiveCommlink"
 WEAPON_ACCESSORY_INCLUDED_CONTROL = "chkIncludedInWeapon"
+ARMOR_DAMAGE_CONTROLS = {
+    "cmdArmorIncrease": (
+        "cmdArmorIncrease_Click",
+        "repair",
+        "armor-damage-repair-{stable-armor-guid}",
+    ),
+    "cmdArmorDecrease": (
+        "cmdArmorDecrease_Click",
+        "degrade",
+        "armor-damage-degrade-{stable-armor-guid}",
+    ),
+}
 GEAR_QUANTITY_CONTROLS = {
     "cmdGearIncreaseQty": ("increase", "gear-quantity-increase-{stable-gear-guid}"),
     "cmdGearReduceQty": ("reduce", "gear-quantity-reduce-{stable-gear-guid}"),
@@ -2083,6 +2125,79 @@ def _validated_armor_active_commlink_phone_e2e_receipt(
         "status": "executed_api36",
         "ref": ARMOR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(ARMOR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_armor_damage_phone_e2e_receipt(
+    presentation_root: Path,
+    core_engine_root: Path,
+) -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_armor_damage_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-armor-damage-e2e.chum5"
+    overview = presentation_root / "Chummer.Presentation" / "Overview"
+    source_digests = {
+        "armorDamagePageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorDamagePage.cs",
+        "collectionEditorPagesSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
+        "coordinatorSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+        "armorDamageContractSha256": overview / "ArmorDamageAdjustmentRequest.cs",
+        "collectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
+        "collectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
+        "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+        "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+        "armorDamageRulesSha256": core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorDamageRules.cs",
+        "characterSectionModelsSha256": core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+        "characterSectionServiceSha256": core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+    }
+    if not all(
+        path.is_file()
+        for path in (driver, shared_driver, career_fixture, *source_digests.values())
+    ):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(ARMOR_DAMAGE_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    controls = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_controls = {
+        f"CharacterCareer.{control}"
+        for control in ARMOR_DAMAGE_CONTROLS
+    }
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "armor-damage"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("careerFixtureSha256") == _sha256_file(career_fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(journeys, dict)
+        and all(journeys.get(journey) == "pass" for journey in ARMOR_DAMAGE_E2E_JOURNEYS)
+        and isinstance(controls, dict)
+        and set(controls) == expected_controls
+        and receipt.get("controlCount") == len(expected_controls)
+        and all(
+            isinstance(controls.get(control), dict)
+            and all(
+                controls[control].get(proof_key) == "pass"
+                for proof_key in ARMOR_DAMAGE_CONTROL_E2E_PROOF_KEYS
+            )
+            for control in expected_controls
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": ARMOR_DAMAGE_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(ARMOR_DAMAGE_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
 
@@ -3506,6 +3621,7 @@ def _known_phone_mapping(
     vehicle_home_node_phone_e2e_receipt: dict[str, Any] | None,
     armor_home_node_phone_e2e_receipt: dict[str, Any] | None,
     armor_active_commlink_phone_e2e_receipt: dict[str, Any] | None,
+    armor_damage_phone_e2e_receipt: dict[str, Any] | None,
     weapon_accessory_included_phone_e2e_receipt: dict[str, Any] | None,
     location_rename_phone_e2e_receipt: dict[str, Any] | None,
     explicit_save_phone_e2e_receipt: dict[str, Any] | None,
@@ -5077,6 +5193,188 @@ def _known_phone_mapping(
             "coverageLimit": (
                 "Exact Chummer5 selected top-level persona-capable armor Active Commlink checkbox only; "
                 "other device kinds remain separately inventoried."
+            ),
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "CharacterCareer" and control in ARMOR_DAMAGE_CONTROLS:
+        expected_handler, action, automation_id = ARMOR_DAMAGE_CONTROLS[control]
+        legacy_source = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / "CharacterCareer.cs"
+        )
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorDamagePage.cs"
+        editor = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_armor_damage_e2e.py"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "ArmorDamageAdjustmentRequest.cs"
+        state = overview / "WorkspaceCollectionEditorState.cs"
+        projector = overview / "WorkspaceCollectionEditorProjector.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        core_rules = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterArmorDamageRules.cs"
+        core_models = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        core_service = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        direction_marker = "--objArmor.ArmorDamage" if action == "repair" else "++objArmor.ArmorDamage"
+        legacy_exact = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                expected_handler,
+                "is Armor objArmor",
+                direction_marker,
+                "objArmor.ArmorDamage > 0",
+                "objArmor.ArmorDamage < await objArmor.GetTotalArmorAsync",
+                "objArmor.GetTotalOverrideArmorAsync",
+                "GetArmorDegradationAsync",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "ArmorDamageAdjustmentRequest",
+                'AutomationId = $"armor-damage-page-{token}"',
+                'AutomationId = $"armor-damage-repair-{token}"',
+                'AutomationId = $"armor-damage-degrade-{token}"',
+                "_contentRevision",
+                "Coordinator.ApplyArmorDamageAdjustmentAsync",
+            )
+            and _contains(
+                editor,
+                "item.ArmorDamageAdjustment is not { } armorDamage",
+                'Guid.TryParseExact(_target.ItemId, "D"',
+                'automationId: $"armor-damage-open-{armorId:N}"',
+                "new ArmorDamagePage",
+            )
+            and _contains(
+                coordinator,
+                "ApplyArmorDamageAdjustmentAsync",
+                "ExpectedContentRevision",
+                "_presenter.ApplyArmorDamageAdjustmentAsync",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "ArmorDamageAdjustmentRequest",
+                "ExpectedContentRevision",
+                "Guid ArmorId",
+                "ExpectedArmorDamage",
+                "ArmorDamageMaximum",
+                "CharacterArmorDamageAdjustment Adjustment",
+            )
+            and _contains(
+                state,
+                "WorkspaceArmorDamageAdjustmentState",
+                "Guid ArmorId",
+                "bool CanRepair",
+                "bool CanDegrade",
+            )
+            and _contains(
+                projector,
+                'TryReadStrictBool(item, "armorDamageMaximumExact"',
+                "CharacterArmorDamageRules.CanRepair",
+                "CharacterArmorDamageRules.CanDegrade",
+                "ArmorDamageAdjustment = armorDamageAdjustment",
+            )
+            and _contains(
+                mutation,
+                "ApplyArmorDamageAdjustment",
+                "FindUniqueItemById",
+                "TryCalculateArmorDamageMaximum",
+                "TryApplyAdjustment",
+                "target.Value = updatedDamage.ToString(CultureInfo.InvariantCulture)",
+            )
+            and _contains(
+                presenter,
+                "ApplyArmorDamageAdjustmentAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+                "ExpectedContentRevision",
+            )
+            and _contains(
+                presenter_interface,
+                "ApplyArmorDamageAdjustmentAsync",
+                "ArmorDamageAdjustmentRequest",
+            )
+            and _contains(
+                core_rules,
+                "CharacterArmorDamageAdjustment",
+                "TryCalculateMaximum",
+                "CanRepair",
+                "CanDegrade",
+                "TryApplyAdjustment",
+            )
+            and _contains(
+                core_models,
+                "CharacterArmorSummary",
+                "int ArmorDamage = 0",
+                "int ArmorDamageMaximum = 0",
+                "bool ArmorDamageMaximumExact = false",
+            )
+            and _contains(
+                core_service,
+                "BuildArmorSummary",
+                "CharacterArmorDamageRules.TryCalculateMaximum",
+                'ReadValue(item, "damage")',
+            )
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"journey": "armor-damage"',
+            '"careerDegradeEnabledAtZero": "pass"',
+            '"careerDegradedProcessRestart": "pass"',
+            '"careerRepairedToZero": "pass"',
+            '"careerRepairedProcessRestart": "pass"',
+            '"controls": controls',
+        )
+        phone_e2e = armor_damage_phone_e2e_receipt if implemented and e2e_scripted else None
+        return {
+            "status": (
+                "implemented_verified_api36"
+                if phone_e2e
+                else "implemented_pending_emulator" if implemented else "missing"
+            ),
+            "route": "Build > Gear > Armor > selected stable Career armor > Armor Condition",
+            "surface": "ArmorDamagePage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/ArmorDamagePage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ArmorDamageAdjustmentRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterArmorDamageRules.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyArmorDamageAdjustmentAsync(ArmorDamageAdjustmentRequest) "
+                f"with CharacterArmorDamageAdjustment.{action.title()}, stable top-level armor Guid, exact "
+                "expected damage/maximum, and expected content revision"
+            ),
+            "persistenceAssertion": (
+                f"selected character/armors/armor[stable Guid]/damage changes by exactly one legacy {action} "
+                "step inside the exact primary/override half-armor bound; sibling armor and unrelated XML remain "
+                "exact after revision-checked atomic save, same-session reopen, and process restart"
+            ),
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_armor_damage_e2e.py" if e2e_scripted else None,
+            },
+            "coverageLimit": (
+                "Exact Chummer5 Career top-level saved armor repair/degrade buttons. Legacy visibility remains "
+                "governed by ArmorDegradation; unresolved armor/rating/modifier expressions fail closed, and "
+                "tablet is deferred. No matching CharacterCreate controls exist."
             ),
             "tablet": {
                 "status": "missing",
@@ -7852,6 +8150,10 @@ def enrich_rows(
         presentation_root,
         core_engine_root,
     )
+    armor_damage_phone_e2e_receipt = _validated_armor_damage_phone_e2e_receipt(
+        presentation_root,
+        core_engine_root,
+    )
     weapon_accessory_included_phone_e2e_receipt = _validated_weapon_accessory_included_phone_e2e_receipt(
         presentation_root,
         core_engine_root,
@@ -7920,6 +8222,7 @@ def enrich_rows(
             vehicle_home_node_phone_e2e_receipt,
             armor_home_node_phone_e2e_receipt,
             armor_active_commlink_phone_e2e_receipt,
+            armor_damage_phone_e2e_receipt,
             weapon_accessory_included_phone_e2e_receipt,
             location_rename_phone_e2e_receipt,
             explicit_save_phone_e2e_receipt,
@@ -8020,6 +8323,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "VehicleHomeNodePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorHomeNodePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorActiveCommlinkPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorDamagePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearQuantityPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "LocationRenamePage.cs",
@@ -8043,6 +8347,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_vehicle_home_node_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_home_node_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_active_commlink_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_armor_damage_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_quantity_e2e.py",
         REPO_ROOT / "tests" / "run_api36_location_rename_e2e.py",
@@ -8077,6 +8382,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-armor-home-node-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-armor-active-commlink-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-armor-active-commlink-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-armor-damage-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-weapon-accessory-included-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-weapon-accessory-included-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-quantity-e2e.chum5",
@@ -8108,6 +8414,7 @@ def build_inventory(
         VEHICLE_HOME_NODE_PHONE_E2E_RECEIPT,
         ARMOR_HOME_NODE_PHONE_E2E_RECEIPT,
         ARMOR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT,
+        ARMOR_DAMAGE_PHONE_E2E_RECEIPT,
         WEAPON_ACCESSORY_INCLUDED_PHONE_E2E_RECEIPT,
         LOCATION_RENAME_PHONE_E2E_RECEIPT,
         EXPLICIT_SAVE_PHONE_E2E_RECEIPT,
@@ -8116,6 +8423,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterContactEditSemantics.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterPetEditSemantics.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorDamageRules.cs",
         core_engine_root / "Chummer.Contracts" / "Workspaces" / "CharacterWorkspaceModels.cs",
         core_engine_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterFileService.cs",
@@ -8133,6 +8441,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "VehicleHomeNodeEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorHomeNodeEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorActiveCommlinkEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "ArmorDamageAdjustmentRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponAccessoryIncludedEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceLocationEditorState.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "LocationRenameRequest.cs",

@@ -473,6 +473,41 @@ namespace Chummer
             )
             self.assertFalse(row["completionProven"])
 
+        armor_damage = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] in inventory.ARMOR_DAMAGE_CONTROLS
+        ]
+        self.assertEqual(2, len(armor_damage))
+        self.assertFalse(any(
+            row["legacy"]["formOrControl"] == "CharacterCreate"
+            and row["legacy"]["controlName"] in inventory.ARMOR_DAMAGE_CONTROLS
+            for row in rows
+        ))
+        for row in armor_damage:
+            _, action, automation_id = inventory.ARMOR_DAMAGE_CONTROLS[
+                row["legacy"]["controlName"]
+            ]
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Gear > Armor > selected stable Career armor > Armor Condition",
+                row["phone"]["route"],
+            )
+            self.assertEqual("ArmorDamagePage", row["phone"]["surface"])
+            self.assertEqual(automation_id, row["phone"]["automationId"])
+            self.assertIn(f"CharacterArmorDamageAdjustment.{action.title()}", row["presenterMutation"])
+            self.assertIn("stable top-level armor Guid", row["presenterMutation"])
+            self.assertIn("primary/override half-armor bound", row["persistenceAssertion"])
+            self.assertIn("atomic save", row["persistenceAssertion"])
+            self.assertIn("ArmorDegradation", row["phone"]["coverageLimit"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_armor_damage_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
         weapon_accessory_included = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -1137,9 +1172,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 355,
+                "implemented_pending_emulator": 357,
                 "implemented_verified_api36": 79,
-                "missing": 1084,
+                "missing": 1082,
                 "not_applicable_non_mutating": 459,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 146,
@@ -1983,6 +2018,67 @@ namespace Chummer
                 receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
                 self.assertIsNone(
                     inventory._validated_armor_active_commlink_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
+
+    def test_armor_damage_receipt_is_full_source_graph_and_fixture_hash_bound(self) -> None:
+        presentation_root = REPO.parent / "chummer-presentation"
+        core_root = REPO.parent / "chummer-core-engine"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        driver = REPO / "tests" / "run_api36_armor_damage_e2e.py"
+        shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
+        career_fixture = REPO / "tests" / "fixtures" / "career-armor-damage-e2e.chum5"
+        source_paths = {
+            "armorDamagePageSha256": REPO / "src" / "Chummer.Android" / "Native" / "ArmorDamagePage.cs",
+            "collectionEditorPagesSha256": REPO / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
+            "coordinatorSha256": REPO / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+            "armorDamageContractSha256": overview / "ArmorDamageAdjustmentRequest.cs",
+            "collectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
+            "collectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
+            "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+            "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+            "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+            "armorDamageRulesSha256": core_root / "Chummer.Contracts" / "Characters" / "CharacterArmorDamageRules.cs",
+            "characterSectionModelsSha256": core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+            "characterSectionServiceSha256": core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+        }
+        controls = {
+            f"CharacterCareer.{control}": {
+                key: "pass" for key in inventory.ARMOR_DAMAGE_CONTROL_E2E_PROOF_KEYS
+            }
+            for control in inventory.ARMOR_DAMAGE_CONTROLS
+        }
+        receipt = {
+            "schema": "chummer.android.editing-e2e/v1",
+            "status": "pass",
+            "profile": "phone",
+            "journey": "armor-damage",
+            "apiLevel": 36,
+            "apkSha256": "a" * 64,
+            "driverSha256": inventory._sha256_file(driver),
+            "sharedDriverSha256": inventory._sha256_file(shared_driver),
+            "careerFixtureSha256": inventory._sha256_file(career_fixture),
+            "controlCount": len(controls),
+            "controls": controls,
+            "journeys": {key: "pass" for key in inventory.ARMOR_DAMAGE_E2E_JOURNEYS},
+            **{key: inventory._sha256_file(path) for key, path in source_paths.items()},
+        }
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            receipt_path = Path(temporary) / "receipt.json"
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+            with patch.object(inventory, "ARMOR_DAMAGE_PHONE_E2E_RECEIPT", receipt_path):
+                self.assertIsNotNone(
+                    inventory._validated_armor_damage_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
+                receipt["armorDamageRulesSha256"] = "0" * 64
+                receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+                self.assertIsNone(
+                    inventory._validated_armor_damage_phone_e2e_receipt(
                         presentation_root,
                         core_root,
                     )
