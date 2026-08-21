@@ -676,6 +676,28 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("XPath", page + coordinator)
         self.assertNotIn("<gearlocations", page + coordinator)
 
+    def test_location_rename_is_typed_stable_revision_bound_phone_navigation(self) -> None:
+        flow = (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8")
+        page = (PROJECT / "Native" / "LocationRenamePage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+
+        self.assertIn("ActiveLocationEditor", flow)
+        self.assertIn("WorkspaceLocationItemState", flow)
+        self.assertIn("new LocationRenamePage", flow)
+        self.assertIn('"location-rename-open-', flow)
+        self.assertIn('AutomationId = "location-rename-name"', page)
+        self.assertIn('AutomationId = "location-rename-save"', page)
+        self.assertIn("LocationRenameRequest.MaximumNameLength", page)
+        self.assertIn("_location.Id", page)
+        self.assertIn("Coordinator.ApplyLocationRenameAsync", page)
+        self.assertIn("State.WorkspaceId != request.WorkspaceId", coordinator)
+        self.assertIn("State.ContentRevision != request.ExpectedContentRevision", coordinator)
+        self.assertIn("_presenter.ApplyLocationRenameAsync", coordinator)
+        self.assertIn("await _presenter.SaveAsync", coordinator)
+        self.assertNotIn("XDocument", page + coordinator)
+        self.assertNotIn("XPath", page + coordinator)
+        self.assertNotIn("<location", page + coordinator)
+
     def test_device_damage_tracks_use_exact_shared_phone_and_tablet_patch(self) -> None:
         phone = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
         tablet = (PROJECT / "Native" / "TabletBuildPage.cs").read_text(encoding="utf-8")

@@ -557,6 +557,28 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public async Task ApplyLocationRenameAsync(
+        LocationRenameRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Rename Location was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyLocationRenameAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Location renamed." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public async Task ExecuteDialogActionAsync(string actionId, CancellationToken cancellationToken = default)
     {
         long contentRevision = State.ContentRevision;

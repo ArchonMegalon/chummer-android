@@ -43,7 +43,7 @@ public sealed class BuildSectionPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(runner));
         _body.Add(NativeTheme.Title(_title));
 
-        AddGearLocationAction();
+        AddLocationActions();
 
         if (Coordinator.State.ActiveCollectionEditor is not null)
         {
@@ -64,7 +64,7 @@ public sealed class BuildSectionPage : NativePageBase
         }
     }
 
-    private void AddGearLocationAction()
+    private void AddLocationActions()
     {
         if (!string.Equals(Coordinator.State.ActiveSectionId, "gearlocations", StringComparison.Ordinal)
             || Coordinator.State.WorkspaceId is not { } workspaceId)
@@ -72,14 +72,15 @@ public sealed class BuildSectionPage : NativePageBase
             return;
         }
 
-        _body.Add(NativeTheme.Eyebrow("Locations"));
+        long contentRevision = Coordinator.State.ContentRevision;
+        _body.Add(NativeTheme.Eyebrow("Edit"));
         _body.Add(NativeTheme.NavigationRow(
             "Add gear location",
             "Create a named container for this runner's gear",
             () => Navigation.PushAsync(new GearLocationAddPage(
                 Coordinator,
                 workspaceId,
-                Coordinator.State.ContentRevision)),
+                contentRevision)),
             automationId: "gear-location-open-add"));
     }
 
@@ -106,6 +107,12 @@ public sealed class BuildSectionPage : NativePageBase
         if (Coordinator.State.ActiveConditionMonitor is { } conditionMonitor)
         {
             AddConditionMonitorRows(conditionMonitor);
+            return;
+        }
+
+        if (Coordinator.State.ActiveLocationEditor is { } locationEditor)
+        {
+            AddLocationRows(locationEditor);
             return;
         }
 
@@ -139,6 +146,38 @@ public sealed class BuildSectionPage : NativePageBase
                 RunnerSessionCoordinator.HumanizeId(groupKey),
                 count == 1 ? "1 detail" : $"{count} details",
                 () => Navigation.PushAsync(new BuildValueGroupPage(Coordinator, _tabId, _title, groupKey))));
+        }
+    }
+
+    private void AddLocationRows(WorkspaceLocationEditorState editor)
+    {
+        _body.Add(NativeTheme.Eyebrow("Locations"));
+        if (editor.Items.Count == 0)
+        {
+            _body.Add(NativeTheme.Body("No locations are defined.", NativeTheme.Muted));
+            return;
+        }
+
+        if (Coordinator.State.WorkspaceId is not { } workspaceId)
+        {
+            _body.Add(NativeTheme.Body("Location editing requires an active runner.", NativeTheme.Danger));
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        foreach (WorkspaceLocationItemState location in editor.Items)
+        {
+            string title = string.IsNullOrEmpty(location.Name) ? "Unnamed location" : location.Name;
+            _body.Add(NativeTheme.NavigationRow(
+                title,
+                $"{HumanizeLocationKind(editor.Kind)} location",
+                () => Navigation.PushAsync(new LocationRenamePage(
+                    Coordinator,
+                    workspaceId,
+                    contentRevision,
+                    editor.Kind,
+                    location)),
+                automationId: $"location-rename-open-{NormalizeAutomationToken(editor.Kind.ToString())}-{location.Id:N}"));
         }
     }
 
@@ -233,6 +272,16 @@ public sealed class BuildSectionPage : NativePageBase
 
     private static string NormalizeAutomationToken(string value)
         => new(value.Trim().ToLowerInvariant().Select(character => char.IsLetterOrDigit(character) ? character : '-').ToArray());
+
+    private static string HumanizeLocationKind(WorkspaceLocationKind kind)
+        => kind switch
+        {
+            WorkspaceLocationKind.Gear => "Gear",
+            WorkspaceLocationKind.Weapon => "Weapon",
+            WorkspaceLocationKind.Armor => "Armor",
+            WorkspaceLocationKind.Vehicle => "Vehicle",
+            _ => "Runner"
+        };
 
     private static string CollectionItemTitle(string label)
     {

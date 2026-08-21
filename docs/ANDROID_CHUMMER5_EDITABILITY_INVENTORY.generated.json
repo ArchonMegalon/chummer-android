@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 534,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 330,
+      "implemented_pending_emulator": 338,
       "implemented_verified_api36": 79,
-      "missing": 1105,
+      "missing": 1097,
       "not_applicable_non_mutating": 459,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
@@ -72,7 +72,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildFlowPages.cs",
         "exists": true,
-        "sha256": "be32dd2d984fa466c683047df9d52f9d1f54dabcfb81ce9b7b6fda36df438406"
+        "sha256": "410038039bda5e04a2e52a83382a6b1a72e6abb67602740c90c6c8088b64d7e2"
       },
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
@@ -103,6 +103,11 @@
         "path": "src/Chummer.Android/Native/GearLocationAddPage.cs",
         "exists": true,
         "sha256": "dd94a3649a3bd58da26d8d9afa09a5c8daa43e2ebe4eabe96c35c15ebd1dd6c8"
+      },
+      {
+        "path": "src/Chummer.Android/Native/LocationRenamePage.cs",
+        "exists": true,
+        "sha256": "3e3dda90edd6e211c84812084c05cdcc4923d4687aa739cdb90197b227150685"
       },
       {
         "path": "src/Chummer.Android/Native/CharacterNotesPage.cs",
@@ -137,7 +142,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "b7b9a91df704a655f5af53f93dc9d41a538db415d504dcf1caa527aceaabd127"
+        "sha256": "5a61a61ee0c7abd6e8a209e3c4faa5bb0297631d1df3c1465bec7a47601f1afe"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -178,6 +183,11 @@
         "path": "tests/run_api36_gear_location_e2e.py",
         "exists": true,
         "sha256": "aa47940684d723878094cfd65550576c1a47471bda288c5a05828ec323107d62"
+      },
+      {
+        "path": "tests/run_api36_location_rename_e2e.py",
+        "exists": true,
+        "sha256": "aa43d08c8588e855bf795c37d6da21b6419ec26309f719c1cb977fa55e40b176"
       },
       {
         "path": "tests/run_api36_explicit_save_e2e.py",
@@ -283,6 +293,16 @@
         "path": "tests/fixtures/career-gear-location-e2e.chum5",
         "exists": true,
         "sha256": "b9373109a7ad395d7862b335f03ef683ceb7bf9aea443de76f8eb4ee9204b238"
+      },
+      {
+        "path": "tests/fixtures/creation-location-rename-e2e.chum5",
+        "exists": true,
+        "sha256": "2e05323b1aaaa7fee5542ca3725ecd619400f28f25356954e63d9ebf830821ab"
+      },
+      {
+        "path": "tests/fixtures/career-location-rename-e2e.chum5",
+        "exists": true,
+        "sha256": "f05687d354befd1d699043b7f2aad15147c5a672d842c69852b88f7c215d0f7f"
       },
       {
         "path": "tests/fixtures/creation-explicit-save-e2e.chum5",
@@ -400,6 +420,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-location-rename/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-explicit-save/receipt.json",
         "exists": false,
         "sha256": null
@@ -467,7 +492,7 @@
       {
         "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "f1bf8bec2e0c3cc4221d2ec3829c6f7ca05568c9bf5e24f71e8ba069545f451b"
+        "sha256": "39d7feca56c906995dd663121b68ddb2bab8d8f29c5b536206cafb229f551429"
       },
       {
         "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -488,6 +513,26 @@
         "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
         "exists": true,
         "sha256": "f889362153034f6f8e61367c31d995720a04982ba264914db59f7095cd1eba65"
+      },
+      {
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
+        "exists": true,
+        "sha256": "b5ee911ed027d4a9b56794ea6ded98f00c66d0528a14f0a7f463fd254a4bb14a"
+      },
+      {
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
+        "exists": true,
+        "sha256": "d43270b3751723043bae901b7ae571af4ac13c35f8ef69e162764010554c8d6c"
+      },
+      {
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
+        "exists": true,
+        "sha256": "6ac500b49e29bf369fca9b4b51de88fd2b813c34029e23f225f205910f814f56"
+      },
+      {
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewState.cs",
+        "exists": true,
+        "sha256": "64fae58c8d580266041f407c49cb75d60f77521a33b64a759c1e7275aedc7caa"
       },
       {
         "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
@@ -547,7 +592,7 @@
       {
         "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "d3de57e5e837c59f66919b9b6ab5eb631749efd51ed7058d159f4ea515b81a72"
+        "sha256": "3f1ab701ca7ed4ff582caa66a549456bc4839d36553f0565f77953d2d7aaf76c"
       },
       {
         "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -557,7 +602,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "c154d9e4416286df8dac902055ae74eb3d338eea10a6bfed11954b535da5e9d1"
+      "sha256": "450a5601110e5b99923f1e209006d00526fbc012d2909ecb394333bfc28c82e3"
     }
   },
   "coverageByFamily": {
@@ -585,7 +630,7 @@
     "armor": {
       "rowCount": 97,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 44,
+      "phoneMissingCount": 42,
       "tabletMissingCount": 61,
       "completionProvenCount": 12
     },
@@ -711,7 +756,7 @@
     "gear": {
       "rowCount": 84,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 43,
+      "phoneMissingCount": 41,
       "tabletMissingCount": 58,
       "completionProvenCount": 2
     },
@@ -921,7 +966,7 @@
     "vehicles_and_drones": {
       "rowCount": 151,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 61,
+      "phoneMissingCount": 59,
       "tabletMissingCount": 102,
       "completionProvenCount": 25
     },
@@ -935,7 +980,7 @@
     "weapons": {
       "rowCount": 119,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 55,
+      "phoneMissingCount": 53,
       "tabletMissingCount": 73,
       "completionProvenCount": 22
     },
@@ -44325,11 +44370,22 @@
       "mutationFamily": "gear",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Gear Locations > selected stable location > Rename",
+        "surface": "LocationRenamePage",
+        "automationId": "location-rename-save",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/LocationRenamePage.cs",
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 top-level Gear/Weapon/Armor/Vehicle Location rename only; improvement-location and tablet actions remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -44337,12 +44393,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyLocationRenameAsync(LocationRenameRequest) with WorkspaceLocationKind.Gear and stable Guid identity",
+      "persistenceAssertion": "the stable-guid character/gearlocations/location keeps its identity and notes while its exact nonempty name persists after save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_location_rename_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -44681,11 +44737,22 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Vehicle Locations > selected stable location > Rename",
+        "surface": "LocationRenamePage",
+        "automationId": "location-rename-save",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/LocationRenamePage.cs",
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 top-level Gear/Weapon/Armor/Vehicle Location rename only; improvement-location and tablet actions remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -44693,12 +44760,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyLocationRenameAsync(LocationRenameRequest) with WorkspaceLocationKind.Vehicle and stable Guid identity",
+      "persistenceAssertion": "the stable-guid character/vehiclelocations/location keeps its identity and notes while its exact nonempty name persists after save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_location_rename_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -46106,11 +46173,22 @@
       "mutationFamily": "armor",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Armor Locations > selected stable location > Rename",
+        "surface": "LocationRenamePage",
+        "automationId": "location-rename-save",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/LocationRenamePage.cs",
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 top-level Gear/Weapon/Armor/Vehicle Location rename only; improvement-location and tablet actions remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -46118,12 +46196,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyLocationRenameAsync(LocationRenameRequest) with WorkspaceLocationKind.Armor and stable Guid identity",
+      "persistenceAssertion": "the stable-guid character/armorlocations/location keeps its identity and notes while its exact nonempty name persists after save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_location_rename_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -46391,11 +46469,22 @@
       "mutationFamily": "weapons",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Weapon Locations > selected stable location > Rename",
+        "surface": "LocationRenamePage",
+        "automationId": "location-rename-save",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/LocationRenamePage.cs",
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 top-level Gear/Weapon/Armor/Vehicle Location rename only; improvement-location and tablet actions remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -46403,12 +46492,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyLocationRenameAsync(LocationRenameRequest) with WorkspaceLocationKind.Weapon and stable Guid identity",
+      "persistenceAssertion": "the stable-guid character/weaponlocations/location keeps its identity and notes while its exact nonempty name persists after save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_location_rename_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -65758,11 +65847,22 @@
       "mutationFamily": "gear",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Gear Locations > selected stable location > Rename",
+        "surface": "LocationRenamePage",
+        "automationId": "location-rename-save",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/LocationRenamePage.cs",
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 top-level Gear/Weapon/Armor/Vehicle Location rename only; improvement-location and tablet actions remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -65770,12 +65870,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyLocationRenameAsync(LocationRenameRequest) with WorkspaceLocationKind.Gear and stable Guid identity",
+      "persistenceAssertion": "the stable-guid character/gearlocations/location keeps its identity and notes while its exact nonempty name persists after save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_location_rename_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -66223,11 +66323,22 @@
       "mutationFamily": "armor",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Armor Locations > selected stable location > Rename",
+        "surface": "LocationRenamePage",
+        "automationId": "location-rename-save",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/LocationRenamePage.cs",
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 top-level Gear/Weapon/Armor/Vehicle Location rename only; improvement-location and tablet actions remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -66235,12 +66346,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyLocationRenameAsync(LocationRenameRequest) with WorkspaceLocationKind.Armor and stable Guid identity",
+      "persistenceAssertion": "the stable-guid character/armorlocations/location keeps its identity and notes while its exact nonempty name persists after save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_location_rename_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -66451,11 +66562,22 @@
       "mutationFamily": "weapons",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Weapon Locations > selected stable location > Rename",
+        "surface": "LocationRenamePage",
+        "automationId": "location-rename-save",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/LocationRenamePage.cs",
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 top-level Gear/Weapon/Armor/Vehicle Location rename only; improvement-location and tablet actions remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -66463,12 +66585,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyLocationRenameAsync(LocationRenameRequest) with WorkspaceLocationKind.Weapon and stable Guid identity",
+      "persistenceAssertion": "the stable-guid character/weaponlocations/location keeps its identity and notes while its exact nonempty name persists after save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_location_rename_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -67612,11 +67734,22 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Vehicle Locations > selected stable location > Rename",
+        "surface": "LocationRenamePage",
+        "automationId": "location-rename-save",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/LocationRenamePage.cs",
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 top-level Gear/Weapon/Armor/Vehicle Location rename only; improvement-location and tablet actions remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -67624,12 +67757,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyLocationRenameAsync(LocationRenameRequest) with WorkspaceLocationKind.Vehicle and stable Guid identity",
+      "persistenceAssertion": "the stable-guid character/vehiclelocations/location keeps its identity and notes while its exact nonempty name persists after save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_location_rename_e2e.py"
         },
         "tablet": {
           "status": "missing",

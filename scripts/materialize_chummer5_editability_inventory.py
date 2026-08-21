@@ -383,6 +383,31 @@ GEAR_LOCATION_CONTROL_E2E_PROOF_KEYS = (
     "surfaceReopened",
     "processRestartWorkspacePersisted",
 )
+LOCATION_RENAME_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-location-rename"
+    / "receipt.json"
+)
+LOCATION_RENAME_E2E_JOURNEYS = (
+    "creationRunnerImported",
+    "creationAllLocationsRenamed",
+    "creationWorkspaceXmlPersisted",
+    "creationAllSurfacesReopened",
+    "creationProcessRestartPersistence",
+    "careerRunnerImported",
+    "careerAllLocationsRenamed",
+    "careerWorkspaceXmlPersisted",
+    "careerAllSurfacesReopened",
+    "careerProcessRestartPersistence",
+)
+LOCATION_RENAME_CONTROL_E2E_PROOF_KEYS = (
+    "mutated",
+    "workspacePersisted",
+    "surfaceReopened",
+    "processRestartWorkspacePersisted",
+)
 EXPLICIT_SAVE_PHONE_E2E_RECEIPT = (
     REPO_ROOT
     / "docs"
@@ -642,6 +667,12 @@ PRIMARY_ARM_CONTROLS = {
     "cboPrimaryArm": ("primaryarm", "primary-arm-choice", "PrimaryArm"),
 }
 GEAR_LOCATION_ADD_CONTROL = "cmdAddLocation"
+LOCATION_RENAME_CONTROLS = {
+    "tsGearRenameLocation": ("Gear", "gearlocations"),
+    "tsWeaponRenameLocation": ("Weapon", "weaponlocations"),
+    "tsArmorRenameLocation": ("Armor", "armorlocations"),
+    "tsVehicleRenameLocation": ("Vehicle", "vehiclelocations"),
+}
 EXPLICIT_SAVE_CONTROLS = {
     ("CharacterCreate", "tsbSave"): (
         "Build > toolbar Save",
@@ -1491,6 +1522,85 @@ def _validated_gear_location_phone_e2e_receipt(
         "status": "executed_api36",
         "ref": GEAR_LOCATION_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(GEAR_LOCATION_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_location_rename_phone_e2e_receipt(
+    presentation_root: Path,
+) -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_location_rename_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-location-rename-e2e.chum5"
+    career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-location-rename-e2e.chum5"
+    overview = presentation_root / "Chummer.Presentation" / "Overview"
+    source_digests = {
+        "locationRenamePageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "LocationRenamePage.cs",
+        "buildFlowPagesSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildFlowPages.cs",
+        "coordinatorSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+        "locationStateSha256": overview / "WorkspaceLocationEditorState.cs",
+        "locationRenameContractSha256": overview / "LocationRenameRequest.cs",
+        "sectionRendererSha256": overview / "WorkspaceSectionRenderer.cs",
+        "overviewStateSha256": overview / "CharacterOverviewState.cs",
+        "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+        "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+    }
+    if not all(
+        path.is_file()
+        for path in (
+            driver,
+            shared_driver,
+            creation_fixture,
+            career_fixture,
+            *source_digests.values(),
+        )
+    ):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(LOCATION_RENAME_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    controls = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_controls = {
+        f"{form}.{control}"
+        for form in ("CharacterCreate", "CharacterCareer")
+        for control in LOCATION_RENAME_CONTROLS
+    }
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "location-rename"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("creationFixtureSha256") == _sha256_file(creation_fixture)
+        and receipt.get("careerFixtureSha256") == _sha256_file(career_fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(journeys, dict)
+        and all(journeys.get(journey) == "pass" for journey in LOCATION_RENAME_E2E_JOURNEYS)
+        and isinstance(controls, dict)
+        and set(controls) == expected_controls
+        and receipt.get("controlCount") == len(expected_controls)
+        and all(
+            isinstance(controls.get(control), dict)
+            and all(
+                controls[control].get(proof_key) == "pass"
+                for proof_key in LOCATION_RENAME_CONTROL_E2E_PROOF_KEYS
+            )
+            for control in expected_controls
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": LOCATION_RENAME_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(LOCATION_RENAME_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
 
@@ -2756,6 +2866,7 @@ def _known_phone_mapping(
     situational_modifiers_phone_e2e_receipt: dict[str, Any] | None,
     primary_arm_phone_e2e_receipt: dict[str, Any] | None,
     gear_location_phone_e2e_receipt: dict[str, Any] | None,
+    location_rename_phone_e2e_receipt: dict[str, Any] | None,
     explicit_save_phone_e2e_receipt: dict[str, Any] | None,
     nested_collection_notes_phone_e2e_receipt: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
@@ -5037,6 +5148,155 @@ def _known_phone_mapping(
                 "collections remain separately inventoried and are not claimed by this control."
             ),
         }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
+        and control in LOCATION_RENAME_CONTROLS
+    ):
+        kind, section_id = LOCATION_RENAME_CONTROLS[control]
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "LocationRenamePage.cs"
+        flow = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildFlowPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_location_rename_e2e.py"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        state = overview / "WorkspaceLocationEditorState.cs"
+        request = overview / "LocationRenameRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        renderer = overview / "WorkspaceSectionRenderer.cs"
+        overview_state = overview / "CharacterOverviewState.cs"
+        legacy_source = (
+            presentation_root
+            / "Chummer"
+            / "Forms"
+            / "Character Forms"
+            / f"{class_name}.cs"
+        )
+        expected_handler = f"{control}_Click"
+        legacy_exact = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                expected_handler,
+                "objSelectedNode?.Tag is Location objLocation",
+                "DefaultString = objLocation.Name",
+                "objLocation.Name = frmPickText.MyForm.SelectedValue",
+                "SetDirty(true)",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                'AutomationId = "location-rename-page"',
+                'AutomationId = "location-rename-name"',
+                'AutomationId = "location-rename-save"',
+                "LocationRenameRequest.MaximumNameLength",
+                "Coordinator.ApplyLocationRenameAsync",
+            )
+            and _contains(
+                flow,
+                "ActiveLocationEditor",
+                "WorkspaceLocationItemState",
+                "new LocationRenamePage",
+                'automationId: $"location-rename-open-',
+            )
+            and _contains(
+                coordinator,
+                "ApplyLocationRenameAsync",
+                "ExpectedContentRevision",
+                "_presenter.ApplyLocationRenameAsync",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                state,
+                f"WorkspaceLocationKind.{kind} => \"{section_id}\"",
+                "Guid Id",
+                "Guid.TryParseExact",
+                "declaredCount != locations.Count",
+            )
+            and _contains(
+                request,
+                "LocationRenameRequest",
+                "ExpectedContentRevision",
+                "Guid LocationId",
+                "MaximumNameLength = 32767",
+                "ValidateName",
+            )
+            and _contains(
+                mutation,
+                "ApplyLocationRename",
+                "WorkspaceLocationEditorProjector.SectionId",
+                "FindUniqueItemById",
+                'SetElementValue(location, "name", name)',
+            )
+            and _contains(
+                presenter,
+                "ApplyLocationRenameAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+                "ExpectedContentRevision",
+            )
+            and _contains(
+                presenter_interface,
+                "ApplyLocationRenameAsync",
+                "LocationRenameRequest",
+            )
+            and _contains(
+                renderer,
+                "WorkspaceLocationEditorProjector.TryProject",
+                "ActiveLocationEditor: locationEditor",
+            )
+            and _contains(overview_state, "WorkspaceLocationEditorState? ActiveLocationEditor")
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"journey": "location-rename"',
+            '"creationAllLocationsRenamed": "pass"',
+            '"creationWorkspaceXmlPersisted": "pass"',
+            '"creationProcessRestartPersistence": "pass"',
+            '"careerAllLocationsRenamed": "pass"',
+            '"careerWorkspaceXmlPersisted": "pass"',
+            '"careerProcessRestartPersistence": "pass"',
+            '"controlCount": len(controls)',
+        )
+        phone_e2e = location_rename_phone_e2e_receipt if implemented and e2e_scripted else None
+        return {
+            "status": (
+                "implemented_verified_api36"
+                if phone_e2e
+                else "implemented_pending_emulator" if implemented else "missing"
+            ),
+            "route": f"Build > Gear > {kind} Locations > selected stable location > Rename",
+            "surface": "LocationRenamePage",
+            "automationId": "location-rename-save",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/LocationRenamePage.cs",
+                "src/Chummer.Android/Native/BuildFlowPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyLocationRenameAsync(LocationRenameRequest) "
+                f"with WorkspaceLocationKind.{kind} and stable Guid identity"
+            ),
+            "persistenceAssertion": (
+                f"the stable-guid character/{section_id}/location keeps its identity and notes while "
+                "its exact nonempty name persists after save, same-session reopen, and process restart"
+            ),
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_location_rename_e2e.py" if e2e_scripted else None,
+            },
+            "coverageLimit": (
+                "Exact Chummer5 top-level Gear/Weapon/Armor/Vehicle Location rename only; "
+                "improvement-location and tablet actions remain separately inventoried."
+            ),
+        }
     if class_name in {"CharacterCreate", "CharacterCareer"} and control in SITUATIONAL_MODIFIER_CONTROLS:
         xml_element, automation_id, property_name = SITUATIONAL_MODIFIER_CONTROLS[control]
         page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SituationalModifiersPage.cs"
@@ -5728,6 +5988,9 @@ def enrich_rows(
     gear_location_phone_e2e_receipt = _validated_gear_location_phone_e2e_receipt(
         presentation_root,
     )
+    location_rename_phone_e2e_receipt = _validated_location_rename_phone_e2e_receipt(
+        presentation_root,
+    )
     explicit_save_phone_e2e_receipt = _validated_explicit_save_phone_e2e_receipt(
         presentation_root,
     )
@@ -5784,6 +6047,7 @@ def enrich_rows(
             situational_modifiers_phone_e2e_receipt,
             primary_arm_phone_e2e_receipt,
             gear_location_phone_e2e_receipt,
+            location_rename_phone_e2e_receipt,
             explicit_save_phone_e2e_receipt,
             nested_collection_notes_phone_e2e_receipt,
         )
@@ -5877,6 +6141,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SituationalModifiersPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "PrimaryArmPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearLocationAddPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "LocationRenamePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CharacterNotesPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ConditionMonitorEditPage.cs",
@@ -5892,6 +6157,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_situational_modifiers_e2e.py",
         REPO_ROOT / "tests" / "run_api36_primary_arm_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_location_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_location_rename_e2e.py",
         REPO_ROOT / "tests" / "run_api36_explicit_save_e2e.py",
         REPO_ROOT / "tests" / "run_api36_nested_collection_notes_e2e.py",
         REPO_ROOT / "tests" / "run_api36_attribute_e2e.py",
@@ -5913,6 +6179,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "ambidextrous-primary-arm-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-gear-location-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-location-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-location-rename-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-location-rename-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-explicit-save-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-explicit-save-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-nested-notes-e2e.chum5",
@@ -5934,6 +6202,7 @@ def build_inventory(
         SITUATIONAL_MODIFIERS_PHONE_E2E_RECEIPT,
         PRIMARY_ARM_PHONE_E2E_RECEIPT,
         GEAR_LOCATION_PHONE_E2E_RECEIPT,
+        LOCATION_RENAME_PHONE_E2E_RECEIPT,
         EXPLICIT_SAVE_PHONE_E2E_RECEIPT,
         NESTED_COLLECTION_NOTES_PHONE_E2E_RECEIPT,
         LINKED_RUNNER_PHONE_E2E_RECEIPT,
@@ -5952,6 +6221,10 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "SituationalModifiersEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "PrimaryArmEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GearLocationAddRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceLocationEditorState.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "LocationRenameRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceSectionRenderer.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewState.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.Persistence.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditorState.cs",

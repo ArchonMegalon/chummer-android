@@ -306,6 +306,45 @@ namespace Chummer
             )
             self.assertFalse(row["completionProven"])
 
+        location_renames = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] in inventory.LOCATION_RENAME_CONTROLS
+        ]
+        self.assertEqual(
+            {
+                (form, control)
+                for form in ("CharacterCreate", "CharacterCareer")
+                for control in inventory.LOCATION_RENAME_CONTROLS
+            },
+            {
+                (row["legacy"]["formOrControl"], row["legacy"]["controlName"])
+                for row in location_renames
+            },
+        )
+        for row in location_renames:
+            kind, section_id = inventory.LOCATION_RENAME_CONTROLS[
+                row["legacy"]["controlName"]
+            ]
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                f"Build > Gear > {kind} Locations > selected stable location > Rename",
+                row["phone"]["route"],
+            )
+            self.assertEqual("LocationRenamePage", row["phone"]["surface"])
+            self.assertEqual("location-rename-save", row["phone"]["automationId"])
+            self.assertIn(f"WorkspaceLocationKind.{kind}", row["presenterMutation"])
+            self.assertIn("stable Guid identity", row["presenterMutation"])
+            self.assertIn(f"character/{section_id}/location", row["persistenceAssertion"])
+            self.assertIn("same-session reopen", row["persistenceAssertion"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_location_rename_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
         explicit_save = [
             row for row in rows
             if (
@@ -868,9 +907,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 330,
+                "implemented_pending_emulator": 338,
                 "implemented_verified_api36": 79,
-                "missing": 1105,
+                "missing": 1097,
                 "not_applicable_non_mutating": 459,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 146,
