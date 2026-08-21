@@ -1850,6 +1850,39 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('NotesColor: ReadValue(lifestyle, "notesColor")', sections)
         self.assertIn("WriteRecordAtomically", store)
 
+    def test_phone_lifestyle_intervals_preserve_exact_creation_and_career_transactions(self) -> None:
+        page = (PROJECT / "Native" / "LifestyleIncrementPage.cs").read_text(encoding="utf-8")
+        collection_page = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        presentation = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+        request = (presentation / "LifestyleIncrementEditRequest.cs").read_text(encoding="utf-8")
+        state = (presentation / "WorkspaceCollectionEditorState.cs").read_text(encoding="utf-8")
+        projector = (presentation / "WorkspaceCollectionEditorProjector.cs").read_text(encoding="utf-8")
+        mutation = (presentation / "WorkspaceXmlMutationCatalog.cs").read_text(encoding="utf-8")
+        presenter = (presentation / "CharacterOverviewPresenter.WorkspaceMutations.cs").read_text(encoding="utf-8")
+        core = WORKSPACE / "chummer-core-engine"
+        rules = (core / "Chummer.Contracts" / "Characters" / "CharacterLifestyleIncrementRules.cs").read_text(encoding="utf-8")
+        models = (core / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs").read_text(encoding="utf-8")
+        sections = (core / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs").read_text(encoding="utf-8")
+
+        self.assertIn("LifestyleIncrementPage", collection_page)
+        self.assertIn('lifestyle-increments-open-', collection_page)
+        self.assertIn('lifestyle-increments-set-', page)
+        self.assertIn('lifestyle-increments-increase-', page)
+        self.assertIn('lifestyle-increments-decrease-', page)
+        self.assertIn("CharacterLifestyleIncrementRules.Quote", page)
+        self.assertIn("LifestyleIncrementEditRequest", request + page + coordinator)
+        self.assertIn("ExpectedContentRevision", request + presenter)
+        self.assertIn("LifestyleIncrement", state + projector)
+        self.assertIn("ApplyLifestyleIncrementEdit", mutation + presenter)
+        self.assertIn('new XElement("nuyentype", "IncreaseLifestyle")', mutation)
+        self.assertIn('new XElement("amount", amount.ToString', mutation)
+        self.assertIn("CreationMinimum = 1", rules)
+        self.assertIn("CreationMaximum = 100", rules)
+        self.assertIn("Chummer5 intentionally does not impose a lower bound", rules)
+        self.assertIn("CharacterLifestyleIncrementState", models)
+        self.assertIn('ReadValue(lifestyle, "totalmonthlycost")', sections)
+
     def test_phone_cyberware_commerce_is_stable_revision_bound_and_source_exact(self) -> None:
         page = (PROJECT / "Native" / "CyberwareCommercePage.cs").read_text(encoding="utf-8")
         editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")

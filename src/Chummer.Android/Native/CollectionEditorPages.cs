@@ -1,4 +1,5 @@
 using System.Globalization;
+using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
@@ -117,6 +118,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddArmorActiveCommlinkAction(item);
         AddArmorDamageAction(item);
         AddArmorEquipmentAction(item);
+        AddLifestyleIncrementAction(item);
         AddWeaponAccessoryIncludedAction(item);
         AddCritterPowerCountAction(item);
         AddSpiritFetteredAction(item);
@@ -981,6 +983,39 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 lifecycle)),
             automationId: $"gear-quantity-open-{lifecycle.GearId:N}"));
+    }
+
+    private void AddLifestyleIncrementAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Lifestyle
+            || _target.NestedKind is not null
+            || item.LifestyleIncrement is not { } increment
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid lifestyleId)
+            || lifestyleId == Guid.Empty
+            || lifestyleId != increment.LifestyleId)
+        {
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        string unit = increment.Unit switch
+        {
+            CharacterLifestyleIncrementUnit.Day => "day",
+            CharacterLifestyleIncrementUnit.Week => "week",
+            _ => "month"
+        };
+        _body.Add(NativeTheme.Eyebrow(increment.CareerMode ? "Career Lifestyle" : "Creation Lifestyle"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Lifestyle Intervals",
+            $"{increment.Increments.ToString(CultureInfo.InvariantCulture)} {unit} interval(s)",
+            () => Navigation.PushAsync(new LifestyleIncrementPage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                item.Label,
+                increment)),
+            automationId: $"lifestyle-increments-open-{lifestyleId:N}"));
     }
 
     private void AddQualityLevelAction(WorkspaceCollectionItemEditorState item)

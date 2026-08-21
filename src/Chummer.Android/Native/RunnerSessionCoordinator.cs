@@ -1051,6 +1051,28 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public async Task ApplyLifestyleIncrementEditAsync(
+        LifestyleIncrementEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Lifestyle intervals were open. Reopen them before saving.");
+        }
+
+        await _presenter.ApplyLifestyleIncrementEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Lifestyle intervals saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public async Task ApplyQualityLevelEditAsync(
         QualityLevelEditRequest request,
         CancellationToken cancellationToken = default)

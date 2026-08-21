@@ -558,6 +558,32 @@ namespace Chummer
             self.assertIn("patched together", row["phone"]["coverageLimit"])
             self.assertFalse(row["completionProven"])
 
+        lifestyle_increments = [
+            row for row in rows
+            if (row["legacy"]["formOrControl"], row["legacy"]["controlName"])
+            in inventory.LIFESTYLE_INCREMENT_CONTROLS
+        ]
+        self.assertEqual(3, len(lifestyle_increments))
+        expected_actions = {
+            (form, control): action
+            for (form, control), (action, _) in inventory.LIFESTYLE_INCREMENT_CONTROLS.items()
+        }
+        for row in lifestyle_increments:
+            identity = (row["legacy"]["formOrControl"], row["legacy"]["controlName"])
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Lifestyle Intervals",
+                row["phone"]["route"],
+            )
+            self.assertEqual("LifestyleIncrementPage", row["phone"]["surface"])
+            self.assertIn(expected_actions[identity], row["presenterMutation"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual("tests/run_api36_lifestyle_increments_e2e.py", row["e2e"]["phone"]["ref"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertIn("derived totalcost", row["persistenceAssertion"])
+            self.assertIn("lack of a lower bound", row["phone"]["coverageLimit"])
+            self.assertFalse(row["completionProven"])
+
         gear_locations = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -1661,9 +1687,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 395,
+                "implemented_pending_emulator": 398,
                 "implemented_verified_api36": 79,
-                "missing": 1034,
+                "missing": 1031,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 147,

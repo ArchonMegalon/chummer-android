@@ -1024,6 +1024,20 @@ TRADITION_DRAIN_CONTROL = "cboDrain"
 GEAR_NAME_CONTROL = "tsGearName"
 LIFESTYLE_NAME_CONTROL = "tsLifestyleName"
 LIFESTYLE_NOTES_CONTROLS = {"tsLifestyleNotes", "tsAdvancedLifestyleNotes"}
+LIFESTYLE_INCREMENT_CONTROLS = {
+    ("CharacterCreate", "nudLifestyleMonths"): (
+        "SetCreation",
+        "lifestyle-increments-value-{stable-lifestyle-guid} + lifestyle-increments-set-{stable-lifestyle-guid}",
+    ),
+    ("CharacterCareer", "cmdIncreaseLifestyleMonths"): (
+        "IncreaseCareer",
+        "lifestyle-increments-increase-{stable-lifestyle-guid}",
+    ),
+    ("CharacterCareer", "cmdDecreaseLifestyleMonths"): (
+        "DecreaseCareer",
+        "lifestyle-increments-decrease-{stable-lifestyle-guid}",
+    ),
+}
 CAREER_EDGE_USE_CONTROLS = {
     "cmdEdgeSpent": (
         "cmdEdgeSpent_Click",
@@ -9922,7 +9936,8 @@ def _known_phone_mapping(
             )
             and _contains(
                 core_sections,
-                'Guid: ReadValue(lifestyle, "guid")',
+                'string guidText = ReadValue(lifestyle, "guid")',
+                'Guid: guidText',
                 'CustomName: ReadValue(lifestyle, "extra")',
                 "ParseLifestyles",
             )
@@ -10158,6 +10173,151 @@ def _known_phone_mapping(
             "e2e": {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_lifestyle_name_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if (class_name, control) in LIFESTYLE_INCREMENT_CONTROLS:
+        action, automation_id = LIFESTYLE_INCREMENT_CONTROLS[(class_name, control)]
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "LifestyleIncrementPage.cs"
+        collection_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_lifestyle_increments_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-lifestyle-increments-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-lifestyle-increments-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "LifestyleIncrementEditRequest.cs"
+        state = overview / "WorkspaceCollectionEditorState.cs"
+        projector = overview / "WorkspaceCollectionEditorProjector.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        rules = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterLifestyleIncrementRules.cs"
+        models = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        sections = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        action_marker = f"CharacterLifestyleIncrementAction.{action}"
+        implemented = (
+            _contains(
+                page,
+                "LifestyleIncrementPage",
+                "LifestyleIncrementEditRequest",
+                "CharacterLifestyleIncrementRules.Quote",
+                action_marker,
+            )
+            and _contains(
+                collection_page,
+                "AddLifestyleIncrementAction",
+                "WorkspaceCollectionKind.Lifestyle",
+                "lifestyle-increments-open-",
+            )
+            and _contains(
+                coordinator,
+                "ApplyLifestyleIncrementEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "LifestyleIncrementEditRequest",
+                "ExpectedContentRevision",
+                "ExpectedState",
+            )
+            and _contains(state, "CharacterLifestyleIncrementState", "LifestyleIncrement")
+            and _contains(projector, "ProjectLifestyleIncrement", "incrementState")
+            and _contains(
+                mutation,
+                "ApplyLifestyleIncrementEdit",
+                "ProjectLifestyleIncrementState",
+                'SetElementValue(resolved.Item, "months"',
+                'SetElementValue(resolved.Item, "totalcost"',
+                'SetElementValue(resolved.Item, "purchased"',
+                'new XElement("nuyentype", "IncreaseLifestyle")',
+            )
+            and _contains(presenter, "ApplyLifestyleIncrementEditAsync", "ApplyWorkspaceXmlMutationAsync")
+            and _contains(presenter_interface, "ApplyLifestyleIncrementEditAsync")
+            and _contains(presenter_persistence, "TryBeginCaptureIntent", "_workspacePersistenceService.SaveAsync")
+            and _contains(
+                rules,
+                "CreationMinimum = 1",
+                "CreationMaximum = 100",
+                "IncreaseCareer",
+                "DecreaseCareer",
+                "Chummer5 intentionally does not impose a lower bound",
+            )
+            and _contains(models, "CharacterLifestyleIncrementState", "IncrementState")
+            and _contains(
+                sections,
+                'ReadValue(lifestyle, "months")',
+                'ReadValue(lifestyle, "totalmonthlycost")',
+                'ReadValue(character, "nuyen")',
+            )
+            and _contains(store, "expectedContentRevision", "Flush(flushToDisk: true)", "File.Replace")
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCreate.nudLifestyleMonths"',
+                '"CharacterCareer.cmdIncreaseLifestyleMonths"',
+                '"CharacterCareer.cmdDecreaseLifestyleMonths"',
+                'api != "36"',
+                '"journey": "lifestyle-increments"',
+                '"careerPurchaseExpenseAndUndo": "pass"',
+                '"careerDecreaseZeroExpenseAndNegativeLegacyBound": "pass"',
+                '"lifestyleIncrementRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Lifestyle Intervals",
+            "surface": "LifestyleIncrementPage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/LifestyleIncrementPage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/LifestyleIncrementEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterLifestyleIncrementRules.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyLifestyleIncrementEditAsync("
+                f"LifestyleIncrementEditRequest.{action})"
+            ),
+            "persistenceAssertion": (
+                "the unique stable character/lifestyles/lifestyle months, derived totalcost, and purchased flag are "
+                "changed in one expected-revision atomic save; Career Increase also subtracts exact saved "
+                "totalmonthlycost and writes IncreaseLifestyle undo, while Career Decrease writes the legacy zero-"
+                "Nuyen expense without undo; unrelated Lifestyle/runner data survives reopen and process restart"
+            ),
+            "coverageLimit": (
+                "Covers exact CharacterCreate nudLifestyleMonths (direct 1–100 interval set) and CharacterCareer "
+                "cmdIncreaseLifestyleMonths/cmdDecreaseLifestyleMonths. Career Increase requires affordable exact "
+                "saved totalmonthlycost and Nuyen authority; Career Decrease intentionally preserves Chummer5's lack "
+                "of a lower bound. Day/Week/Month permanent thresholds are exact. Add/edit/delete/advanced Lifestyle "
+                "dialogs remain separate controls. The API 36 driver is "
+                f"{'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_lifestyle_increments_e2e.py" if e2e_scripted else None,
             },
             "tablet": {
                 "status": "missing",

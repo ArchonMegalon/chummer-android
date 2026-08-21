@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 395,
+      "implemented_pending_emulator": 398,
       "implemented_verified_api36": 79,
-      "missing": 1034,
+      "missing": 1031,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 147
@@ -227,7 +227,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "c36684863eb01f99371703c938c95d4f99b0a1d08fc4d93e540e0454cc1ddd4f"
+        "sha256": "beaeada0351aae4c2153293a0222aa60e31b4d74c90b94f696d522514a558daa"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -252,7 +252,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "466f860d243a1beba0070492b5dcf9334dcc82ab015d148abb852e268ca2ea9d"
+        "sha256": "b11ff933863741d25e59d59c2016c712a23447bbc6f7edf90a869063a358005c"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -957,7 +957,7 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "3f9b4664e4b6e8c57d99edfae0c9fd20e24bb7a7443f0175f972346789fbcc84"
+        "sha256": "b22552699a9bd654d122e4249f1da5f856cb0cf9e99204d54ba09c06cf8a75e8"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponHomeNodeRules.cs",
@@ -1057,7 +1057,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "0f84384bb86a2e4fa39181c535f555643a64f9f7985a2710bcb9b4724c5e5720"
+        "sha256": "1afc499593dc5c1c9656b25273b5721d3304b768a67afdfa1a5f2fe2814b53aa"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
@@ -1087,7 +1087,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "30ee80ad222dbbb88df68a85a339a93f07c24d5189388fef1c52e56b47447810"
+        "sha256": "a39308a1e6df5a240b6aa4209db6681e9b72f276d54a28c1534c43f876793df7"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1232,7 +1232,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "73c13982afbdd26e6ea72048379baebff957341567d4e72e7c5b197049dc3bfc"
+        "sha256": "2c399eb8ea38bedee750956f9e82623e1488e6b1ee6952278363ec53f9e606ea"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1272,12 +1272,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "0201c55c6b466f6be89ab69fad6e12e0a0cddce8978ae000c288717cffe4610f"
+        "sha256": "f6fa85dcf635489dbc4bba1be938a7bf1e2c7eedac6b16c795c97e48ea1d6d70"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "0dc0fcdc42834da48cd77f249e61eba535f334c35f48da124c8dbb35a032b8dd"
+        "sha256": "b7bff3c8da5e4baa295d90a79c31d7111b2e4e30fa8ff046a8a3b09c77f73a25"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
@@ -1287,7 +1287,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "c91cc04e518a8a2efa7ff938c7962093e9a7d994ec59318f320d91658ca614db"
+        "sha256": "79ae354d8aa273cbd226c668cb536c10948eddf5089198a2cfa0e80ff21709a5"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1297,7 +1297,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "389cddb20f7a8d53d99351db8cc57d9dc5b9ae8b4bb585cde481887d5c0e6e8b"
+      "sha256": "f09cad4070f80272734dc452fc0d872e575ff4b7db4c3936acdc7ea6751978ba"
     }
   },
   "coverageByFamily": {
@@ -1507,7 +1507,7 @@
     "lifestyles": {
       "rowCount": 58,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 44,
+      "phoneMissingCount": 41,
       "tabletMissingCount": 50,
       "completionProvenCount": 8
     },
@@ -30790,11 +30790,26 @@
       "mutationFamily": "lifestyles",
       "operation": "adjust",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Lifestyle Intervals",
+        "surface": "LifestyleIncrementPage",
+        "automationId": "lifestyle-increments-decrease-{stable-lifestyle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/LifestyleIncrementPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/LifestyleIncrementEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterLifestyleIncrementRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers exact CharacterCreate nudLifestyleMonths (direct 1\u2013100 interval set) and CharacterCareer cmdIncreaseLifestyleMonths/cmdDecreaseLifestyleMonths. Career Increase requires affordable exact saved totalmonthlycost and Nuyen authority; Career Decrease intentionally preserves Chummer5's lack of a lower bound. Day/Week/Month permanent thresholds are exact. Add/edit/delete/advanced Lifestyle dialogs remain separate controls. The API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -30802,12 +30817,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyLifestyleIncrementEditAsync(LifestyleIncrementEditRequest.DecreaseCareer)",
+      "persistenceAssertion": "the unique stable character/lifestyles/lifestyle months, derived totalcost, and purchased flag are changed in one expected-revision atomic save; Career Increase also subtracts exact saved totalmonthlycost and writes IncreaseLifestyle undo, while Career Decrease writes the legacy zero-Nuyen expense without undo; unrelated Lifestyle/runner data survives reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_lifestyle_increments_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -30847,11 +30862,26 @@
       "mutationFamily": "lifestyles",
       "operation": "adjust",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Lifestyle Intervals",
+        "surface": "LifestyleIncrementPage",
+        "automationId": "lifestyle-increments-increase-{stable-lifestyle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/LifestyleIncrementPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/LifestyleIncrementEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterLifestyleIncrementRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers exact CharacterCreate nudLifestyleMonths (direct 1\u2013100 interval set) and CharacterCareer cmdIncreaseLifestyleMonths/cmdDecreaseLifestyleMonths. Career Increase requires affordable exact saved totalmonthlycost and Nuyen authority; Career Decrease intentionally preserves Chummer5's lack of a lower bound. Day/Week/Month permanent thresholds are exact. Add/edit/delete/advanced Lifestyle dialogs remain separate controls. The API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -30859,12 +30889,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyLifestyleIncrementEditAsync(LifestyleIncrementEditRequest.IncreaseCareer)",
+      "persistenceAssertion": "the unique stable character/lifestyles/lifestyle months, derived totalcost, and purchased flag are changed in one expected-revision atomic save; Career Increase also subtracts exact saved totalmonthlycost and writes IncreaseLifestyle undo, while Career Decrease writes the legacy zero-Nuyen expense without undo; unrelated Lifestyle/runner data survives reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_lifestyle_increments_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -53361,11 +53391,26 @@
       "mutationFamily": "lifestyles",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Lifestyle Intervals",
+        "surface": "LifestyleIncrementPage",
+        "automationId": "lifestyle-increments-value-{stable-lifestyle-guid} + lifestyle-increments-set-{stable-lifestyle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/LifestyleIncrementPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/LifestyleIncrementEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterLifestyleIncrementRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers exact CharacterCreate nudLifestyleMonths (direct 1\u2013100 interval set) and CharacterCareer cmdIncreaseLifestyleMonths/cmdDecreaseLifestyleMonths. Career Increase requires affordable exact saved totalmonthlycost and Nuyen authority; Career Decrease intentionally preserves Chummer5's lack of a lower bound. Day/Week/Month permanent thresholds are exact. Add/edit/delete/advanced Lifestyle dialogs remain separate controls. The API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -53373,12 +53418,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyLifestyleIncrementEditAsync(LifestyleIncrementEditRequest.SetCreation)",
+      "persistenceAssertion": "the unique stable character/lifestyles/lifestyle months, derived totalcost, and purchased flag are changed in one expected-revision atomic save; Career Increase also subtracts exact saved totalmonthlycost and writes IncreaseLifestyle undo, while Career Decrease writes the legacy zero-Nuyen expense without undo; unrelated Lifestyle/runner data survives reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_lifestyle_increments_e2e.py"
         },
         "tablet": {
           "status": "missing",
