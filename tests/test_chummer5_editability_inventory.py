@@ -996,6 +996,32 @@ namespace Chummer
             )
             self.assertFalse(row["completionProven"])
 
+        psyche_active = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] in inventory.PSYCHE_ACTIVE_CONTROLS
+        ]
+        self.assertEqual(2, len(psyche_active))
+        for row in psyche_active:
+            surface, automation_id = inventory.PSYCHE_ACTIVE_CONTROLS[
+                row["legacy"]["controlName"]
+            ]
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Runner > Sustained effects > Psyche",
+                row["phone"]["route"],
+            )
+            self.assertEqual("SustainedObjectsPage", row["phone"]["surface"])
+            self.assertEqual(automation_id, row["phone"]["automationId"])
+            self.assertIn(f"CharacterPsycheActiveSurface.{surface}", row["presenterMutation"])
+            self.assertIn("shared saved Psyche state", row["presenterMutation"])
+            self.assertIn("one root character/psyche Boolean", row["persistenceAssertion"])
+            self.assertIn("same Character.PsycheActive value", row["phone"]["coverageLimit"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual("tests/run_api36_psyche_active_e2e.py", row["e2e"]["phone"]["ref"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertFalse(row["completionProven"])
+
         gear_quantities = [
             row for row in rows
             if row["legacy"]["formOrControl"] == "CharacterCareer"
@@ -1687,9 +1713,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 398,
+                "implemented_pending_emulator": 400,
                 "implemented_verified_api36": 79,
-                "missing": 1031,
+                "missing": 1029,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 147,

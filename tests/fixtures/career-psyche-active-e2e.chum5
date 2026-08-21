@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Psyche Active E2E</name>
+  <alias>CareerPsycheActiveE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <psyche>False</psyche>
+  <customstate><psyche>Preserve unrelated Psyche fixture state</psyche></customstate>
+  <spells>
+    <spell><guid>84111111-8411-8411-8411-841111111111</guid><name>Increase Reflexes</name><notes>Linked spell remains untouched</notes></spell>
+  </spells>
+  <complexforms>
+    <complexform><guid>84222222-8422-8422-8422-842222222222</guid><name>Resonance Veil</name><notes>Linked complex form remains untouched</notes></complexform>
+  </complexforms>
+  <sustainedobjects>
+    <sustainedobject><linkedobject>84111111-8411-8411-8411-841111111111</linkedobject><linkedobjecttype>Spell</linkedobjecttype><force>4</force><nethits>2</nethits><self>True</self><notes>Spell sustained state remains untouched</notes></sustainedobject>
+    <sustainedobject><linkedobject>84222222-8422-8422-8422-842222222222</linkedobject><linkedobjecttype>ComplexForm</linkedobjecttype><force>5</force><nethits>3</nethits><self>False</self><notes>Complex Form sustained state remains untouched</notes></sustainedobject>
+  </sustainedobjects>
+</character>

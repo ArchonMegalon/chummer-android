@@ -1883,6 +1883,34 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("CharacterLifestyleIncrementState", models)
         self.assertIn('ReadValue(lifestyle, "totalmonthlycost")', sections)
 
+    def test_phone_psyche_active_is_shared_revision_bound_and_surface_exact(self) -> None:
+        page = (PROJECT / "Native" / "SustainedObjectsPage.cs").read_text(encoding="utf-8")
+        build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        presentation = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+        contract = (presentation / "SustainedObjectEditRequest.cs").read_text(encoding="utf-8")
+        mutation = (presentation / "WorkspaceXmlMutationCatalog.cs").read_text(encoding="utf-8")
+        presenter = (presentation / "CharacterOverviewPresenter.WorkspaceMutations.cs").read_text(encoding="utf-8")
+        persistence = (presentation / "CharacterOverviewPresenter.Persistence.cs").read_text(encoding="utf-8")
+        core = WORKSPACE / "chummer-core-engine"
+        rules = (core / "Chummer.Contracts" / "Characters" / "CharacterSustainedObjectRules.cs").read_text(encoding="utf-8")
+        store = (core / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs").read_text(encoding="utf-8")
+
+        self.assertIn('automationId: "build-sustained-effects"', build)
+        self.assertIn('"sustained-psyche-active-magician"', page)
+        self.assertIn('"sustained-psyche-active-technomancer"', page)
+        self.assertIn("CharacterPsycheActiveSurface.Magician", page)
+        self.assertIn("CharacterPsycheActiveSurface.Technomancer", page)
+        self.assertIn("ApplyPsycheActiveEditAsync", page + coordinator + presenter)
+        self.assertIn("_presenter.SaveAsync", coordinator)
+        self.assertIn("PsycheActiveEditRequest", contract)
+        self.assertIn("ExpectedContentRevision", contract + presenter)
+        self.assertIn("ProjectPsycheActiveState", contract + mutation)
+        self.assertIn('SetElementValue(document.Root!, "psyche"', mutation)
+        self.assertIn("CanSetPsycheActive", rules + mutation)
+        self.assertIn("TryCaptureRecoveryPayloadAsync", persistence)
+        self.assertIn("WriteRecordAtomically", store)
+
     def test_phone_cyberware_commerce_is_stable_revision_bound_and_source_exact(self) -> None:
         page = (PROJECT / "Native" / "CyberwareCommercePage.cs").read_text(encoding="utf-8")
         editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")

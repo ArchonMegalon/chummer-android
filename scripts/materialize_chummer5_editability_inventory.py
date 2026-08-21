@@ -1079,6 +1079,16 @@ SUSTAINED_EFFECTS_CONTROLS = {
     "chkSelfSustained": "sustained-effect-self-{linked-type-guid-occurrence}",
     "cmdDelete": "sustained-effect-delete-{linked-type-guid-occurrence}",
 }
+PSYCHE_ACTIVE_CONTROLS = {
+    "chkPsycheActiveMagician": (
+        "Magician",
+        "sustained-psyche-active-magician",
+    ),
+    "chkPsycheActiveTechnomancer": (
+        "Technomancer",
+        "sustained-psyche-active-technomancer",
+    ),
+}
 ARMOR_DAMAGE_CONTROLS = {
     "cmdArmorIncrease": (
         "cmdArmorIncrease_Click",
@@ -8167,6 +8177,166 @@ def _known_phone_mapping(
             "e2e": phone_e2e or {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_sustained_effects_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "CharacterCareer" and control in PSYCHE_ACTIVE_CONTROLS:
+        surface, automation_id = PSYCHE_ACTIVE_CONTROLS[control]
+        native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
+        phone_page = native_root / "SustainedObjectsPage.cs"
+        build_page = native_root / "BuildPage.cs"
+        coordinator = native_root / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_psyche_active_e2e.py"
+        fixture = REPO_ROOT / "tests" / "fixtures" / "career-psyche-active-e2e.chum5"
+        legacy_career = chummer5_root / "Chummer" / "Forms" / "Character Forms" / "CharacterCareer.cs"
+        legacy_shared = chummer5_root / "Chummer" / "Forms" / "Character Forms" / "CharacterShared.cs"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "SustainedObjectEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSustainedObjectRules.cs"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        legacy_exact = (
+            _contains(
+                legacy_career,
+                "chkPsycheActiveMagician.RegisterAsyncDataBindingAsync",
+                "chkPsycheActiveTechnomancer.RegisterAsyncDataBindingAsync",
+                "nameof(Character.PsycheActive)",
+                "GetPsycheActiveAsync",
+                "SetPsycheActiveAsync",
+            )
+            and _contains(
+                legacy_shared,
+                "RefreshSustainedSpells",
+                "Improvement.ImprovementSource.Spell",
+                "Improvement.ImprovementSource.ComplexForm",
+                "chkPsycheActiveMagician",
+                "chkPsycheActiveTechnomancer",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                phone_page,
+                '"sustained-psyche-active-magician"',
+                '"sustained-psyche-active-technomancer"',
+                "CharacterPsycheActiveSurface.Magician",
+                "CharacterPsycheActiveSurface.Technomancer",
+                "ApplyPsycheAsync",
+            )
+            and _contains(
+                build_page,
+                'automationId: "build-sustained-effects"',
+                "new SustainedObjectsPage",
+            )
+            and _contains(
+                coordinator,
+                "ApplyPsycheActiveEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CharacterPsycheActiveState",
+                "PsycheActiveEditRequest",
+                "ProjectPsycheActiveState",
+                'ReadOptionalBool(root, "psyche", fallback: false)',
+            )
+            and _contains(
+                mutation,
+                "ApplyPsycheActiveEdit",
+                "CharacterSustainedObjectRules.CanSetPsycheActive",
+                'SetElementValue(document.Root!, "psyche"',
+                "failed post-mutation validation",
+            )
+            and _contains(
+                presenter,
+                "ApplyPsycheActiveEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(presenter_interface, "ApplyPsycheActiveEditAsync")
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterPsycheActiveState",
+                "CharacterPsycheActiveSurface",
+                "CanSetPsycheActive",
+                "MagicianControlAvailable",
+                "TechnomancerControlAvailable",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCareer.chkPsycheActiveMagician"',
+                '"CharacterCareer.chkPsycheActiveTechnomancer"',
+                'api != "36"',
+                '"journey": "psyche-active"',
+                'device.shell("am", "force-stop"',
+                '"sharedSavedPsycheBoolean"',
+                '"sustainedEffectsRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"fixtureSha256"',
+            )
+            and fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Runner > Sustained effects > Psyche",
+            "surface": "SustainedObjectsPage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/SustainedObjectsPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/SustainedObjectEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSustainedObjectRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+                "tests/run_api36_psyche_active_e2e.py",
+                "tests/fixtures/career-psyche-active-e2e.chum5",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyPsycheActiveEditAsync / PsycheActiveEditRequest."
+                f"CharacterPsycheActiveSurface.{surface} with expected content revision and shared saved Psyche state"
+            ),
+            "persistenceAssertion": (
+                "the one root character/psyche Boolean changes atomically from the exact visible Career Spell or "
+                "Complex Form surface; both surfaces read back the same state while all sustained objects and "
+                "unrelated runner data survive same-session reopen, recovery, and process restart"
+            ),
+            "coverageLimit": (
+                "Career-only exact parity. Chummer5 exposes Magician only while at least one Spell is sustained and "
+                "Technomancer only while at least one Complex Form is sustained; both checkboxes bind the same "
+                "Character.PsycheActive value. No creation-mode control exists. The API 36 driver is "
+                f"{'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_psyche_active_e2e.py" if e2e_scripted else None,
             },
             "tablet": {
                 "status": "missing",

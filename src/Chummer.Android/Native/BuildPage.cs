@@ -102,7 +102,7 @@ public sealed class BuildPage : NativePageBase
             automationId: "build-primary-arm"));
         _body.Add(NativeTheme.NavigationRow(
             "Sustained effects",
-            "Edit Force, Net Hits, Self-Sustained state, or stop sustaining",
+            "Edit Psyche, Force, Net Hits, Self-Sustained state, or stop sustaining",
             async () =>
             {
                 SustainedObjectsEditorState? editor = await Coordinator.PrepareSustainedObjectsEditAsync();

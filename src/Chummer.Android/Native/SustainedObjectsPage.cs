@@ -8,6 +8,9 @@ namespace Chummer.Android.Native;
 public sealed class SustainedObjectsPage : NativePageBase
 {
     private readonly SustainedObjectsEditorState _editor;
+    private readonly Switch? _magicianPsyche;
+    private readonly Switch? _technomancerPsyche;
+    private bool _handlingPsyche;
 
     public SustainedObjectsPage(
         RunnerSessionCoordinator coordinator,
@@ -29,6 +32,35 @@ public sealed class SustainedObjectsPage : NativePageBase
             "Match Chummer5's sustained Spell, Complex Form, and Critter Power controls. "
             + "Duplicate casts remain distinct by their saved occurrence order.",
             NativeTheme.Muted));
+
+        _magicianPsyche = null;
+        _technomancerPsyche = null;
+        if (editor.PsycheActive.CareerMode
+            && (editor.PsycheActive.MagicianControlAvailable
+                || editor.PsycheActive.TechnomancerControlAvailable))
+        {
+            body.Add(NativeTheme.Eyebrow("Psyche"));
+            body.Add(NativeTheme.Body(
+                "Chummer5 exposes the same saved Psyche state beside sustained Spells and Complex Forms. "
+                + "Each visible phone switch updates that one shared runner value.",
+                NativeTheme.Muted));
+            if (editor.PsycheActive.MagicianControlAvailable)
+            {
+                _magicianPsyche = AddPsycheSwitch(
+                    body,
+                    "Psyche active · Magician",
+                    "sustained-psyche-active-magician",
+                    CharacterPsycheActiveSurface.Magician);
+            }
+            if (editor.PsycheActive.TechnomancerControlAvailable)
+            {
+                _technomancerPsyche = AddPsycheSwitch(
+                    body,
+                    "Psyche active · Technomancer",
+                    "sustained-psyche-active-technomancer",
+                    CharacterPsycheActiveSurface.Technomancer);
+            }
+        }
 
         if (editor.Objects.Count == 0)
         {
@@ -52,14 +84,100 @@ public sealed class SustainedObjectsPage : NativePageBase
         }
 
         Content = new ScrollView { Content = body };
+        RefreshEnabledState();
     }
 
-    protected override void Refresh()
+    protected override void Refresh() => RefreshEnabledState();
+
+    private Switch AddPsycheSwitch(
+        VerticalStackLayout body,
+        string label,
+        string automationId,
+        CharacterPsycheActiveSurface surface)
     {
-        if (Coordinator.State.WorkspaceId != _editor.WorkspaceId
-            || Coordinator.State.ContentRevision != _editor.ContentRevision)
+        Switch toggle = new()
+        {
+            AutomationId = automationId,
+            IsToggled = _editor.PsycheActive.Active,
+            OnColor = NativeTheme.Signal
+        };
+        toggle.Toggled += async (_, args) =>
+        {
+            if (_handlingPsyche || args.Value == _editor.PsycheActive.Active)
+            {
+                return;
+            }
+            await RunAsync(() => ApplyPsycheAsync(surface, args.Value));
+        };
+        Grid row = new()
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto)
+            }
+        };
+        row.Add(NativeTheme.FieldLabel(label), 0, 0);
+        row.Add(toggle, 1, 0);
+        body.Add(NativeTheme.Card(row));
+        return toggle;
+    }
+
+    private void RefreshEnabledState()
+    {
+        bool revisionMatches = Coordinator.State.WorkspaceId == _editor.WorkspaceId
+            && Coordinator.State.ContentRevision == _editor.ContentRevision;
+        if (!revisionMatches)
         {
             Title = "Sustained Effects · Reload";
+        }
+        if (_magicianPsyche is not null)
+        {
+            _magicianPsyche.IsEnabled = revisionMatches
+                && CharacterSustainedObjectRules.CanSetPsycheActive(
+                    _editor.PsycheActive,
+                    CharacterPsycheActiveSurface.Magician,
+                    !_editor.PsycheActive.Active);
+        }
+        if (_technomancerPsyche is not null)
+        {
+            _technomancerPsyche.IsEnabled = revisionMatches
+                && CharacterSustainedObjectRules.CanSetPsycheActive(
+                    _editor.PsycheActive,
+                    CharacterPsycheActiveSurface.Technomancer,
+                    !_editor.PsycheActive.Active);
+        }
+    }
+
+    private async Task ApplyPsycheAsync(CharacterPsycheActiveSurface surface, bool active)
+    {
+        _handlingPsyche = true;
+        try
+        {
+            await Coordinator.ApplyPsycheActiveEditAsync(new PsycheActiveEditRequest(
+                _editor.WorkspaceId,
+                _editor.ContentRevision,
+                _editor.PsycheActive,
+                surface,
+                active));
+            if (Coordinator.State.Error is null)
+            {
+                await Navigation.PopAsync();
+                return;
+            }
+
+            if (_magicianPsyche is not null)
+            {
+                _magicianPsyche.IsToggled = _editor.PsycheActive.Active;
+            }
+            if (_technomancerPsyche is not null)
+            {
+                _technomancerPsyche.IsToggled = _editor.PsycheActive.Active;
+            }
+        }
+        finally
+        {
+            _handlingPsyche = false;
         }
     }
 

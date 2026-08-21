@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 398,
+      "implemented_pending_emulator": 400,
       "implemented_verified_api36": 79,
-      "missing": 1031,
+      "missing": 1029,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 147
@@ -77,7 +77,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "ba8a8bec876ce9124e3d9605e6dc12f0417be48880b7e59aa19a3472123d5800"
+        "sha256": "ca30021a743bf63164e45036d024093c9b3cb51f57a03cb2b2884ec7aea2c354"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -197,7 +197,7 @@
       {
         "path": "src/Chummer.Android/Native/SustainedObjectsPage.cs",
         "exists": true,
-        "sha256": "4be9ae0b690a4bb4b8e06fe71f82ee84a8b8ac5432dd1e7d0f9b6ba7d23b178d"
+        "sha256": "a8ac519e23e2be8b3b405e0cec9ecfc5aceeadc67b8a006ccc86c007cba52a46"
       },
       {
         "path": "src/Chummer.Android/Native/GearQuantityPage.cs",
@@ -252,7 +252,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "b11ff933863741d25e59d59c2016c712a23447bbc6f7edf90a869063a358005c"
+        "sha256": "74d48e2ae3dfbc37562fde00c25252d448baa82b0db3e01c34ade289c4497716"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1002,7 +1002,7 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSustainedObjectRules.cs",
         "exists": true,
-        "sha256": "294bf9a9e7956aa9aaf7cee47d12c483e9aa7fa23dfc140e30f1aafc6ceaf130"
+        "sha256": "cbeddfd917eea8a2e7b7593bb939508c4f57e04a5451b249f516a69a5eff5585"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterGroupMembershipRules.cs",
@@ -1087,7 +1087,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "a39308a1e6df5a240b6aa4209db6681e9b72f276d54a28c1534c43f876793df7"
+        "sha256": "30747eeaec46908cf27785b6918ef7676781fd9ab0337923dff20d8d12505aab"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1197,7 +1197,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/SustainedObjectEditRequest.cs",
         "exists": true,
-        "sha256": "3e466ac989a18bd2675b492dad2eb9785dd4a034f162dd37f18d65f65dc9e7a3"
+        "sha256": "58b906c7408b0e29a559ff9f14baf33d6a5b7780068c5d6f1486055aefd23c8d"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CyberwareCommerceRequest.cs",
@@ -1232,7 +1232,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "2c399eb8ea38bedee750956f9e82623e1488e6b1ee6952278363ec53f9e606ea"
+        "sha256": "bc13477b7debe8ff2a2af22e6eb316374ea49bca597f24bac98673c73126f21c"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1287,7 +1287,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "79ae354d8aa273cbd226c668cb536c10948eddf5089198a2cfa0e80ff21709a5"
+        "sha256": "3b338bb381a6e0c6b4862a68a85a96563ae2d28f968c8819d55c9067f7eff411"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1297,7 +1297,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "f09cad4070f80272734dc452fc0d872e575ff4b7db4c3936acdc7ea6751978ba"
+      "sha256": "69535bf9511e93fe6b5bce6f1d77cb34405581227ba907f85af998f8573fa787"
     }
   },
   "coverageByFamily": {
@@ -1528,7 +1528,7 @@
     "magic_tradition_and_resonance": {
       "rowCount": 15,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 6,
+      "phoneMissingCount": 4,
       "tabletMissingCount": 14,
       "completionProvenCount": 1
     },
@@ -40311,11 +40311,25 @@
       "mutationFamily": "magic_tradition_and_resonance",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Sustained effects > Psyche",
+        "surface": "SustainedObjectsPage",
+        "automationId": "sustained-psyche-active-magician",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/SustainedObjectsPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/SustainedObjectEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSustainedObjectRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+          "tests/run_api36_psyche_active_e2e.py",
+          "tests/fixtures/career-psyche-active-e2e.chum5"
+        ],
+        "coverageLimit": "Career-only exact parity. Chummer5 exposes Magician only while at least one Spell is sustained and Technomancer only while at least one Complex Form is sustained; both checkboxes bind the same Character.PsycheActive value. No creation-mode control exists. The API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -40323,12 +40337,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyPsycheActiveEditAsync / PsycheActiveEditRequest.CharacterPsycheActiveSurface.Magician with expected content revision and shared saved Psyche state",
+      "persistenceAssertion": "the one root character/psyche Boolean changes atomically from the exact visible Career Spell or Complex Form surface; both surfaces read back the same state while all sustained objects and unrelated runner data survive same-session reopen, recovery, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_psyche_active_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -40363,11 +40377,25 @@
       "mutationFamily": "magic_tradition_and_resonance",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Sustained effects > Psyche",
+        "surface": "SustainedObjectsPage",
+        "automationId": "sustained-psyche-active-technomancer",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/SustainedObjectsPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/SustainedObjectEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSustainedObjectRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+          "tests/run_api36_psyche_active_e2e.py",
+          "tests/fixtures/career-psyche-active-e2e.chum5"
+        ],
+        "coverageLimit": "Career-only exact parity. Chummer5 exposes Magician only while at least one Spell is sustained and Technomancer only while at least one Complex Form is sustained; both checkboxes bind the same Character.PsycheActive value. No creation-mode control exists. The API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -40375,12 +40403,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyPsycheActiveEditAsync / PsycheActiveEditRequest.CharacterPsycheActiveSurface.Technomancer with expected content revision and shared saved Psyche state",
+      "persistenceAssertion": "the one root character/psyche Boolean changes atomically from the exact visible Career Spell or Complex Form surface; both surfaces read back the same state while all sustained objects and unrelated runner data survive same-session reopen, recovery, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_psyche_active_e2e.py"
         },
         "tablet": {
           "status": "missing",
