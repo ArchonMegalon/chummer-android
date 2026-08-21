@@ -698,6 +698,33 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("XPath", page + coordinator)
         self.assertNotIn("<weaponlocations", page + coordinator)
 
+    def test_vehicle_location_add_covers_global_and_selected_vehicle_branches_with_typed_identity(self) -> None:
+        flow = (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8")
+        editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
+        page = (PROJECT / "Native" / "VehicleLocationAddPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+
+        self.assertIn('case "vehiclelocations"', flow)
+        self.assertIn("new VehicleLocationAddPage", flow + editor)
+        self.assertIn('automationId: "vehicle-location-open-add-global"', flow)
+        self.assertIn('"vehicle-location-open-add-{vehicleId:N}"', editor)
+        self.assertIn("item.VehicleLocations is null", editor)
+        self.assertIn('Guid.TryParseExact(_target.ItemId, "D"', editor)
+        self.assertIn('vehicleId?.ToString("N") ?? "global"', page)
+        self.assertIn("VehicleLocationAddRequest.MaximumNameLength", page)
+        self.assertIn("_vehicleId", page)
+        self.assertIn("_workspaceId", page)
+        self.assertIn("_contentRevision", page)
+        self.assertIn("Coordinator.ApplyVehicleLocationAddAsync", page)
+        self.assertIn("State.WorkspaceId != request.WorkspaceId", coordinator)
+        self.assertIn("State.ContentRevision != request.ExpectedContentRevision", coordinator)
+        self.assertIn("_presenter.ApplyVehicleLocationAddAsync", coordinator)
+        self.assertIn("await _presenter.SaveAsync", coordinator)
+        self.assertNotIn("XDocument", page + editor + coordinator)
+        self.assertNotIn("XPath", page + editor + coordinator)
+        self.assertNotIn("<vehiclelocations", page + editor + coordinator)
+        self.assertNotIn("<locations", page + editor + coordinator)
+
     def test_location_rename_is_typed_stable_revision_bound_phone_navigation(self) -> None:
         flow = (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8")
         page = (PROJECT / "Native" / "LocationRenamePage.cs").read_text(encoding="utf-8")

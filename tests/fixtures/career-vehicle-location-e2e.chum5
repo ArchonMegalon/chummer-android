@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Vehicle Location E2E</name>
+  <alias>CareerVehicleLocationE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <vehiclelocations>
+    <location>
+      <guid>42111111-4211-4211-4211-421111111111</guid>
+      <name>Career Existing Global Vehicle Location E2E</name>
+      <notes>Career existing global vehicle notes E2E</notes>
+    </location>
+  </vehiclelocations>
+  <vehicles>
+    <vehicle>
+      <guid>42222222-4222-4222-4222-422222222222</guid>
+      <name>Career Roadmaster E2E</name>
+      <category>Groundcraft</category>
+      <body>8</body>
+      <locations>
+        <location>
+          <guid>42333333-4233-4233-4233-423333333333</guid>
+          <name>Career Existing Nested Vehicle Location E2E</name>
+          <notes>Career existing nested vehicle notes E2E</notes>
+        </location>
+      </locations>
+      <mods />
+      <weapons />
+    </vehicle>
+    <vehicle>
+      <guid>42444444-4244-4244-4244-424444444444</guid>
+      <name>Career Untouched Bike E2E</name>
+      <category>Groundcraft</category>
+      <body>2</body>
+      <locations>
+        <location>
+          <guid>42555555-4255-4255-4255-425555555555</guid>
+          <name>Career Untouched Nested Vehicle Location E2E</name>
+          <notes>Career untouched nested vehicle notes E2E</notes>
+        </location>
+      </locations>
+      <mods />
+      <weapons />
+    </vehicle>
+  </vehicles>
+</character>

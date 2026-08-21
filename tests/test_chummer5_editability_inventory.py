@@ -334,6 +334,37 @@ namespace Chummer
             )
             self.assertFalse(row["completionProven"])
 
+        vehicle_locations = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.VEHICLE_LOCATION_ADD_CONTROL
+        ]
+        self.assertEqual(2, len(vehicle_locations))
+        for row in vehicle_locations:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Gear > Vehicle Locations > Add vehicle location OR "
+                "Build > Gear > Vehicles > selected stable vehicle > Add location to vehicle",
+                row["phone"]["route"],
+            )
+            self.assertEqual("VehicleLocationAddPage", row["phone"]["surface"])
+            self.assertEqual(
+                "vehicle-location-add-{global|stable-vehicle-guid}",
+                row["phone"]["automationId"],
+            )
+            self.assertIn("null for global", row["presenterMutation"])
+            self.assertIn("stable vehicle Guid", row["presenterMutation"])
+            self.assertIn("character/vehiclelocations/location", row["persistenceAssertion"])
+            self.assertIn("character/vehicles/vehicle[stable Guid]/locations/location", row["persistenceAssertion"])
+            self.assertIn("untouched-vehicle", row["persistenceAssertion"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_vehicle_location_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
         location_renames = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -935,11 +966,11 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 340,
+                "implemented_pending_emulator": 342,
                 "implemented_verified_api36": 79,
                 "missing": 1097,
                 "not_applicable_non_mutating": 459,
-                "partial_create_only": 108,
+                "partial_create_only": 106,
                 "partial_exact_saved_data": 146,
             },
             payload["summary"]["phoneStatusCounts"],

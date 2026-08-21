@@ -96,6 +96,19 @@ public sealed class BuildSectionPage : NativePageBase
                         contentRevision)),
                     automationId: "weapon-location-open-add"));
                 break;
+            case "vehiclelocations":
+                _body.Add(NativeTheme.Eyebrow("Edit"));
+                _body.Add(NativeTheme.NavigationRow(
+                    "Add vehicle location",
+                    "Create a global location for this runner's vehicles",
+                    () => Navigation.PushAsync(new VehicleLocationAddPage(
+                        Coordinator,
+                        workspaceId,
+                        contentRevision,
+                        vehicleId: null,
+                        vehicleName: null)),
+                    automationId: "vehicle-location-open-add-global"));
+                break;
         }
     }
 

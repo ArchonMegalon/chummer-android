@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Vehicle Location E2E</name>
+  <alias>CreationVehicleLocationE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <vehiclelocations>
+    <location>
+      <guid>41111111-4111-4111-4111-411111111111</guid>
+      <name>Creation Existing Global Vehicle Location E2E</name>
+      <notes>Creation existing global vehicle notes E2E</notes>
+    </location>
+  </vehiclelocations>
+  <vehicles>
+    <vehicle>
+      <guid>41222222-4122-4122-4122-412222222222</guid>
+      <name>Creation Roadmaster E2E</name>
+      <category>Groundcraft</category>
+      <body>8</body>
+      <locations>
+        <location>
+          <guid>41333333-4133-4133-4133-413333333333</guid>
+          <name>Creation Existing Nested Vehicle Location E2E</name>
+          <notes>Creation existing nested vehicle notes E2E</notes>
+        </location>
+      </locations>
+      <mods />
+      <weapons />
+    </vehicle>
+    <vehicle>
+      <guid>41444444-4144-4144-4144-414444444444</guid>
+      <name>Creation Untouched Bike E2E</name>
+      <category>Groundcraft</category>
+      <body>2</body>
+      <locations>
+        <location>
+          <guid>41555555-4155-4155-4155-415555555555</guid>
+          <name>Creation Untouched Nested Vehicle Location E2E</name>
+          <notes>Creation untouched nested vehicle notes E2E</notes>
+        </location>
+      </locations>
+      <mods />
+      <weapons />
+    </vehicle>
+  </vehicles>
+</character>

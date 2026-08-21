@@ -109,6 +109,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddLinkedCharacterActions(item);
         AddMoveAndDeleteActions(item);
         AddNestedActions(item);
+        AddVehicleLocationActions(item);
 
         if (!string.IsNullOrWhiteSpace(Coordinator.State.Error))
         {
@@ -653,6 +654,48 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 () => Navigation.PushAsync(new NestedCollectionAddPage(Coordinator, _target, nestedKind)),
                 automationId: $"collection-add-{Token(nestedKind.ToString())}-{TargetToken()}"));
         }
+    }
+
+    private void AddVehicleLocationActions(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Vehicle
+            || _target.NestedKind is not null
+            || item.VehicleLocations is null
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid vehicleId)
+            || vehicleId == Guid.Empty)
+        {
+            return;
+        }
+
+        _body.Add(NativeTheme.Eyebrow("Vehicle locations"));
+        if (item.VehicleLocations.Count == 0)
+        {
+            _body.Add(NativeTheme.Body("No locations are defined inside this vehicle.", NativeTheme.Muted));
+        }
+        else
+        {
+            VerticalStackLayout locations = new() { Spacing = 10 };
+            foreach (WorkspaceLocationItemState location in item.VehicleLocations)
+            {
+                locations.Add(NativeTheme.Metric(
+                    string.IsNullOrEmpty(location.Name) ? "Unnamed location" : location.Name,
+                    string.IsNullOrEmpty(location.Notes) ? "No notes" : location.Notes));
+            }
+            _body.Add(NativeTheme.Card(locations));
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        _body.Add(NativeTheme.NavigationRow(
+            "Add location to vehicle",
+            $"Create a location inside {item.Label}",
+            () => Navigation.PushAsync(new VehicleLocationAddPage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                vehicleId,
+                item.Label)),
+            automationId: $"vehicle-location-open-add-{vehicleId:N}"));
     }
 
     private string TargetToken() => Token(_target.NestedItemId ?? _target.ItemId);
