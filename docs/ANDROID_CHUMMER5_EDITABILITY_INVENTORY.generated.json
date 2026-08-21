@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 405,
+      "implemented_pending_emulator": 407,
       "implemented_verified_api36": 79,
-      "missing": 1023,
+      "missing": 1021,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 148
@@ -180,6 +180,11 @@
         "sha256": "07d9600c263ee92a135dc972a77674a6bbc91e84c8873ad3dcc0bdca83584ab0"
       },
       {
+        "path": "src/Chummer.Android/Native/GearActiveCommlinkPage.cs",
+        "exists": true,
+        "sha256": "759c911013f8f48a17ad5fc5b49fdc110191823604433006025c1680f86eb321"
+      },
+      {
         "path": "src/Chummer.Android/Native/ArmorDamagePage.cs",
         "exists": true,
         "sha256": "1e365406ba8ec41751f25cd26ccbe7020ab8979cb061a3a9487f1d5abf4bf116"
@@ -242,7 +247,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "4adfed84d234298a3636195d191e3d6c6145c70593eb80ef6c6dc8554bc4cd5d"
+        "sha256": "f7ba4d57ab28192b2000d34ef65d6c8769c79a1231a67e362fb25b76f249974b"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -267,7 +272,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "bd6c402f81cb9e300500e33ea8903c650f8e07a396711fa776cb572d568c0849"
+        "sha256": "6fbd72687f09c8e5001e5f33a00f1bf31f1054c08df1680d4c25dfc7183864cf"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -388,6 +393,11 @@
         "path": "tests/run_api36_armor_active_commlink_e2e.py",
         "exists": true,
         "sha256": "4dc24b878429993976fea2b86e781d89c25705c69d94205a88153a1c38a293d3"
+      },
+      {
+        "path": "tests/run_api36_gear_active_commlink_e2e.py",
+        "exists": true,
+        "sha256": "2ed368c5defd9c06f52e94d170b6bc1c4d6610d0e188aba77c77f6bc12cdd98a"
       },
       {
         "path": "tests/run_api36_armor_damage_e2e.py",
@@ -695,6 +705,16 @@
         "sha256": "73ecbf27fee1bcb2d8aeeba50d19cd864dd67084389067430a0c4c8641c6ff6f"
       },
       {
+        "path": "tests/fixtures/creation-gear-active-commlink-e2e.chum5",
+        "exists": true,
+        "sha256": "0218b5aec59b4035affda474f2178122db8f2a1229487e8b9ae543bc524ba90f"
+      },
+      {
+        "path": "tests/fixtures/career-gear-active-commlink-e2e.chum5",
+        "exists": true,
+        "sha256": "0c53c03f4de3ebca42846299d1526c6f1e443a85c8fcca15178daf9e53510924"
+      },
+      {
         "path": "tests/fixtures/career-armor-damage-e2e.chum5",
         "exists": true,
         "sha256": "065554699b67e8a07c1e1c67dde9b0a627174cfff158498801d90877b34369b1"
@@ -940,6 +960,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-gear-active-commlink/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-armor-damage/receipt.json",
         "exists": false,
         "sha256": null
@@ -997,7 +1022,7 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "dfe97603bc50b9633447fd62a505b3a9edd2fb7fccf5a886187a2272b7d7445b"
+        "sha256": "52b84e4d3f6fcab70d6a1270d9eefba36bae208a6a1b6ab4bdfe11713dd6d3c1"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponHomeNodeRules.cs",
@@ -1008,6 +1033,11 @@
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponActiveCommlinkRules.cs",
         "exists": true,
         "sha256": "2aff7e273a7fcdf446aebcfc4c49bd357d82b75a138c370378cfec2869dd29e8"
+      },
+      {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearActiveCommlinkRules.cs",
+        "exists": true,
+        "sha256": "886a7d266aaa3b12b6930ec9bdf5b5136cb92a16fd60c27abef61e6b9106b576"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponMatrixParentResolver.cs",
@@ -1117,7 +1147,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "e76669ad7b265b4a721ab44f60efa76405dd7f30366521d91953adf031d41281"
+        "sha256": "7a981f2a1c323705bb1171cdf3ef0d5457a5fa34c63bfea04741476b67d1c632"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
@@ -1147,7 +1177,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "e947d81a3f3d094ca48257d88ebdff250341bc33bb517667ed5586fa3579e91f"
+        "sha256": "9893097b7098c1ded669e012fd8bf9992f15b77104ef71163eda60d21d721b0f"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1240,6 +1270,11 @@
         "sha256": "bf45b488209cc8f7b14a1855d84199d0930f0980dd53a261ca5a1e2fe9c0f894"
       },
       {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/GearActiveCommlinkEditRequest.cs",
+        "exists": true,
+        "sha256": "6c2800c43c53ec0a422051ac60c07c64da9f51c9db4a57c4fcc52999ca3ae394"
+      },
+      {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ArmorDamageAdjustmentRequest.cs",
         "exists": true,
         "sha256": "1c7a286ada3a140c597fe2ede8420657fb05d31e3564cd807233a95128f8302c"
@@ -1307,7 +1342,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "9826922e65711b286d7b4d7a52fe98dff204c670f2da81749c25ec2284d03d17"
+        "sha256": "627b92876faab43ca342d3dc737eaf43af1e69aee842cb310c623e27981c4497"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1347,12 +1382,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "16b55aed8e6937fd5293518f18a3cb4e90949af913b742fc241718b5e63267a1"
+        "sha256": "3721fe5e28eb0fa7c179050a68f2bdbd06d92acf392ccc39c6f4f6f3a042e995"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "47b4cd2b9cb43cf036505577197108fe2fdcc21163554d71f90138c848bb0dc0"
+        "sha256": "25920b39742ee3db10321ad409895409a275f392e3a5591e05dd89e1d4b557f0"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
@@ -1362,7 +1397,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "77c85d027485c150ff7b9686982d40ca8b5cb322218d962852e5afa4e9c322d2"
+        "sha256": "f21ba119919177ebfca6c57437b867ca306472685b3eab7d7743c86f16517209"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1372,7 +1407,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "6234fc27eeecbddf2d6384547aa9beffb299a27a520a369ee348dac6b6e0dfeb"
+      "sha256": "c795854f2f52ada17801f653c72c98c568fb1005393fdb7eaa61414b2f5e87b4"
     }
   },
   "coverageByFamily": {
@@ -1526,7 +1561,7 @@
     "gear": {
       "rowCount": 84,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 33,
+      "phoneMissingCount": 31,
       "tabletMissingCount": 56,
       "completionProvenCount": 4
     },
@@ -39663,11 +39698,25 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > selected stable persona-capable gear > Gear Active Commlink",
+        "surface": "GearActiveCommlinkPage",
+        "automationId": "gear-active-commlink-toggle-{stable-gear-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/GearActiveCommlinkPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/GearActiveCommlinkEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearActiveCommlinkRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 selected stable persona-capable Gear Active Commlink checkbox only. Other device kinds remain separately inventoried; tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -39675,12 +39724,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyGearActiveCommlinkEditAsync(GearActiveCommlinkEditRequest) with one stable gear Guid, full expected Core semantics, exact persona eligibility, and expected content revision",
+      "persistenceAssertion": "enabling selected persona-capable gear[stable Guid]/active revalidates the exact Core semantics, sets it True, and normalizes every other recognized saved matrix-device active False; disabling requires and clears the selected active gear only; unrelated active XML and other fields remain exact after revision-checked atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_gear_active_commlink_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -57101,11 +57150,25 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > selected stable persona-capable gear > Gear Active Commlink",
+        "surface": "GearActiveCommlinkPage",
+        "automationId": "gear-active-commlink-toggle-{stable-gear-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/GearActiveCommlinkPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/GearActiveCommlinkEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearActiveCommlinkRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 selected stable persona-capable Gear Active Commlink checkbox only. Other device kinds remain separately inventoried; tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -57113,12 +57176,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyGearActiveCommlinkEditAsync(GearActiveCommlinkEditRequest) with one stable gear Guid, full expected Core semantics, exact persona eligibility, and expected content revision",
+      "persistenceAssertion": "enabling selected persona-capable gear[stable Guid]/active revalidates the exact Core semantics, sets it True, and normalizes every other recognized saved matrix-device active False; disabling requires and clears the selected active gear only; unrelated active XML and other fields remain exact after revision-checked atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_gear_active_commlink_e2e.py"
         },
         "tablet": {
           "status": "missing",
