@@ -654,6 +654,28 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("XPath", phone + tablet)
         self.assertNotIn("<character", phone + tablet)
 
+    def test_gear_location_add_is_revision_bound_phone_deep_navigation(self) -> None:
+        flow = (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8")
+        page = (PROJECT / "Native" / "GearLocationAddPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+
+        self.assertIn('"gearlocations"', flow)
+        self.assertIn("new GearLocationAddPage", flow)
+        self.assertIn('automationId: "gear-location-open-add"', flow)
+        self.assertIn('AutomationId = "gear-location-name"', page)
+        self.assertIn('AutomationId = "gear-location-add"', page)
+        self.assertIn("GearLocationAddRequest.MaximumNameLength", page)
+        self.assertIn("_workspaceId", page)
+        self.assertIn("_contentRevision", page)
+        self.assertIn("Coordinator.ApplyGearLocationAddAsync", page)
+        self.assertIn("State.WorkspaceId != request.WorkspaceId", coordinator)
+        self.assertIn("State.ContentRevision != request.ExpectedContentRevision", coordinator)
+        self.assertIn("_presenter.ApplyGearLocationAddAsync", coordinator)
+        self.assertIn("await _presenter.SaveAsync", coordinator)
+        self.assertNotIn("XDocument", page + coordinator)
+        self.assertNotIn("XPath", page + coordinator)
+        self.assertNotIn("<gearlocations", page + coordinator)
+
     def test_device_damage_tracks_use_exact_shared_phone_and_tablet_patch(self) -> None:
         phone = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
         tablet = (PROJECT / "Native" / "TabletBuildPage.cs").read_text(encoding="utf-8")

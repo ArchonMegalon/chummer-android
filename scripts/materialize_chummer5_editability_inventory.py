@@ -358,6 +358,31 @@ PRIMARY_ARM_CONTROL_E2E_PROOF_KEYS = (
     "workspacePersisted",
     "processRestartUiReadback",
 )
+GEAR_LOCATION_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-gear-location-add"
+    / "receipt.json"
+)
+GEAR_LOCATION_E2E_JOURNEYS = (
+    "creationRunnerImported",
+    "creationGearLocationAdded",
+    "creationWorkspaceXmlPersisted",
+    "creationSurfaceReopened",
+    "creationProcessRestartPersistence",
+    "careerRunnerImported",
+    "careerGearLocationAdded",
+    "careerWorkspaceXmlPersisted",
+    "careerSurfaceReopened",
+    "careerProcessRestartPersistence",
+)
+GEAR_LOCATION_CONTROL_E2E_PROOF_KEYS = (
+    "mutated",
+    "workspacePersisted",
+    "surfaceReopened",
+    "processRestartWorkspacePersisted",
+)
 EXPLICIT_SAVE_PHONE_E2E_RECEIPT = (
     REPO_ROOT
     / "docs"
@@ -616,6 +641,7 @@ SITUATIONAL_MODIFIER_CONTROLS = {
 PRIMARY_ARM_CONTROLS = {
     "cboPrimaryArm": ("primaryarm", "primary-arm-choice", "PrimaryArm"),
 }
+GEAR_LOCATION_ADD_CONTROL = "cmdAddLocation"
 EXPLICIT_SAVE_CONTROLS = {
     ("CharacterCreate", "tsbSave"): (
         "Build > toolbar Save",
@@ -1391,6 +1417,80 @@ def _validated_primary_arm_phone_e2e_receipt(
         "status": "executed_api36",
         "ref": PRIMARY_ARM_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(PRIMARY_ARM_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_gear_location_phone_e2e_receipt(
+    presentation_root: Path,
+) -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_gear_location_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-gear-location-e2e.chum5"
+    career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-gear-location-e2e.chum5"
+    source_digests = {
+        "gearLocationPageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearLocationAddPage.cs",
+        "buildFlowPagesSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildFlowPages.cs",
+        "coordinatorSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+        "gearLocationContractSha256": presentation_root / "Chummer.Presentation" / "Overview" / "GearLocationAddRequest.cs",
+        "mutationCatalogSha256": presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs",
+        "presenterMutationSha256": presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "presenterInterfaceSha256": presentation_root / "Chummer.Presentation" / "Overview" / "ICharacterOverviewPresenter.cs",
+    }
+    if not all(
+        path.is_file()
+        for path in (
+            driver,
+            shared_driver,
+            creation_fixture,
+            career_fixture,
+            *source_digests.values(),
+        )
+    ):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(GEAR_LOCATION_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    controls = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_controls = {
+        f"{form}.{GEAR_LOCATION_ADD_CONTROL}"
+        for form in ("CharacterCreate", "CharacterCareer")
+    }
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "gear-location-add"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("creationFixtureSha256") == _sha256_file(creation_fixture)
+        and receipt.get("careerFixtureSha256") == _sha256_file(career_fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(journeys, dict)
+        and all(journeys.get(journey) == "pass" for journey in GEAR_LOCATION_E2E_JOURNEYS)
+        and isinstance(controls, dict)
+        and set(controls) == expected_controls
+        and receipt.get("controlCount") == len(expected_controls)
+        and all(
+            isinstance(controls.get(control), dict)
+            and all(
+                controls[control].get(proof_key) == "pass"
+                for proof_key in GEAR_LOCATION_CONTROL_E2E_PROOF_KEYS
+            )
+            for control in expected_controls
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": GEAR_LOCATION_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(GEAR_LOCATION_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
 
@@ -2655,6 +2755,7 @@ def _known_phone_mapping(
     career_reputation_phone_e2e_receipt: dict[str, Any] | None,
     situational_modifiers_phone_e2e_receipt: dict[str, Any] | None,
     primary_arm_phone_e2e_receipt: dict[str, Any] | None,
+    gear_location_phone_e2e_receipt: dict[str, Any] | None,
     explicit_save_phone_e2e_receipt: dict[str, Any] | None,
     nested_collection_notes_phone_e2e_receipt: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
@@ -3996,8 +4097,8 @@ def _known_phone_mapping(
         mutation = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs"
         projector = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorProjector.cs"
         presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs"
-        core_models = presentation_root.parent / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
-        core_parser = presentation_root.parent / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        core_models = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        core_parser = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
         shared = (
             _contains(request, "WorkspaceCollectionItemTarget", "WorkspaceDeleteCollectionItemRequest")
             and _contains(projector, f"WorkspaceCollectionKind.{kind}")
@@ -4053,8 +4154,8 @@ def _known_phone_mapping(
         mutation = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceXmlMutationCatalog.cs"
         projector = presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceCollectionEditorProjector.cs"
         presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs"
-        core_models = presentation_root.parent / "chummer-core-engine" / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
-        core_parser = presentation_root.parent / "chummer-core-engine" / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        core_models = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        core_parser = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
         common_shared = (
             _contains(request, "WorkspaceCollectionKind", "    Spirit,")
             and _contains(projector, '"spirits"', "WorkspaceCollectionKind.Spirit")
@@ -4816,6 +4917,126 @@ def _known_phone_mapping(
                 "ref": "tests/run_api36_primary_arm_e2e.py" if e2e_scripted else None,
             },
         }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
+        and control == GEAR_LOCATION_ADD_CONTROL
+    ):
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearLocationAddPage.cs"
+        flow = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildFlowPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_gear_location_e2e.py"
+        presentation_overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = presentation_overview / "GearLocationAddRequest.cs"
+        mutation = presentation_overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = presentation_overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = presentation_overview / "ICharacterOverviewPresenter.cs"
+        legacy_source = (
+            presentation_root
+            / "Chummer"
+            / "Forms"
+            / "Character Forms"
+            / f"{class_name}.cs"
+        )
+        expected_handler = "cmdAddLocation_Click"
+        legacy_exact = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                expected_handler,
+                "new Location(CharacterObject, CharacterObject.GearLocations",
+                "CharacterObject.GearLocations.AddAsync",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                'AutomationId = "gear-location-name"',
+                'AutomationId = "gear-location-add"',
+                "GearLocationAddRequest.MaximumNameLength",
+                "Coordinator.ApplyGearLocationAddAsync",
+            )
+            and _contains(
+                flow,
+                '"gearlocations"',
+                'automationId: "gear-location-open-add"',
+                "new GearLocationAddPage",
+            )
+            and _contains(
+                coordinator,
+                "ApplyGearLocationAddAsync",
+                "ExpectedContentRevision",
+                "_presenter.ApplyGearLocationAddAsync",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "GearLocationAddRequest",
+                "ExpectedContentRevision",
+                "MaximumNameLength = 32767",
+                "ValidateName",
+            )
+            and _contains(
+                mutation,
+                "ApplyGearLocationAdd",
+                '"gearlocations"',
+                "Guid.NewGuid()",
+                'new XElement("notes", string.Empty)',
+            )
+            and _contains(
+                presenter,
+                "ApplyGearLocationAddAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+                "ExpectedContentRevision",
+            )
+            and _contains(presenter_interface, "ApplyGearLocationAddAsync", "GearLocationAddRequest")
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"journey": "gear-location-add"',
+            '"creationGearLocationAdded": "pass"',
+            '"creationWorkspaceXmlPersisted": "pass"',
+            '"creationProcessRestartPersistence": "pass"',
+            '"careerGearLocationAdded": "pass"',
+            '"careerWorkspaceXmlPersisted": "pass"',
+            '"careerProcessRestartPersistence": "pass"',
+            '"controls": controls',
+        )
+        phone_e2e = gear_location_phone_e2e_receipt if implemented and e2e_scripted else None
+        return {
+            "status": (
+                "implemented_verified_api36"
+                if phone_e2e
+                else "implemented_pending_emulator" if implemented else "missing"
+            ),
+            "route": "Build > Gear > Gear Locations > Add gear location",
+            "surface": "GearLocationAddPage",
+            "automationId": "gear-location-add",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/GearLocationAddPage.cs",
+                "src/Chummer.Android/Native/BuildFlowPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyGearLocationAddAsync(GearLocationAddRequest)"
+            ),
+            "persistenceAssertion": (
+                "one new stable-guid character/gearlocations/location preserves the exact nonempty "
+                "name and empty notes after save, same-session reopen, and process restart"
+            ),
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_gear_location_e2e.py" if e2e_scripted else None,
+            },
+            "coverageLimit": (
+                "Exact Chummer5 GearLocations add only; weapon, armor, and vehicle location "
+                "collections remain separately inventoried and are not claimed by this control."
+            ),
+        }
     if class_name in {"CharacterCreate", "CharacterCareer"} and control in SITUATIONAL_MODIFIER_CONTROLS:
         xml_element, automation_id, property_name = SITUATIONAL_MODIFIER_CONTROLS[control]
         page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SituationalModifiersPage.cs"
@@ -5504,6 +5725,9 @@ def enrich_rows(
         presentation_root,
         core_engine_root,
     )
+    gear_location_phone_e2e_receipt = _validated_gear_location_phone_e2e_receipt(
+        presentation_root,
+    )
     explicit_save_phone_e2e_receipt = _validated_explicit_save_phone_e2e_receipt(
         presentation_root,
     )
@@ -5559,6 +5783,7 @@ def enrich_rows(
             career_reputation_phone_e2e_receipt,
             situational_modifiers_phone_e2e_receipt,
             primary_arm_phone_e2e_receipt,
+            gear_location_phone_e2e_receipt,
             explicit_save_phone_e2e_receipt,
             nested_collection_notes_phone_e2e_receipt,
         )
@@ -5651,6 +5876,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerReputationPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SituationalModifiersPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "PrimaryArmPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearLocationAddPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CharacterNotesPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ConditionMonitorEditPage.cs",
@@ -5665,6 +5891,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_career_reputation_e2e.py",
         REPO_ROOT / "tests" / "run_api36_situational_modifiers_e2e.py",
         REPO_ROOT / "tests" / "run_api36_primary_arm_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_gear_location_e2e.py",
         REPO_ROOT / "tests" / "run_api36_explicit_save_e2e.py",
         REPO_ROOT / "tests" / "run_api36_nested_collection_notes_e2e.py",
         REPO_ROOT / "tests" / "run_api36_attribute_e2e.py",
@@ -5684,6 +5911,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "creation-primary-arm-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-primary-arm-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "ambidextrous-primary-arm-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-gear-location-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-gear-location-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-explicit-save-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-explicit-save-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-nested-notes-e2e.chum5",
@@ -5704,6 +5933,7 @@ def build_inventory(
         CAREER_REPUTATION_PHONE_E2E_RECEIPT,
         SITUATIONAL_MODIFIERS_PHONE_E2E_RECEIPT,
         PRIMARY_ARM_PHONE_E2E_RECEIPT,
+        GEAR_LOCATION_PHONE_E2E_RECEIPT,
         EXPLICIT_SAVE_PHONE_E2E_RECEIPT,
         NESTED_COLLECTION_NOTES_PHONE_E2E_RECEIPT,
         LINKED_RUNNER_PHONE_E2E_RECEIPT,
@@ -5721,6 +5951,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerReputationEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "SituationalModifiersEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "PrimaryArmEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "GearLocationAddRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.Persistence.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditorState.cs",

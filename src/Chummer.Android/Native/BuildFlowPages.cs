@@ -43,6 +43,8 @@ public sealed class BuildSectionPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(runner));
         _body.Add(NativeTheme.Title(_title));
 
+        AddGearLocationAction();
+
         if (Coordinator.State.ActiveCollectionEditor is not null)
         {
             AddValueGroups();
@@ -60,6 +62,25 @@ public sealed class BuildSectionPage : NativePageBase
         {
             _body.Add(NativeTheme.Body(Coordinator.State.Error ?? Coordinator.Surface.Error!, NativeTheme.Danger));
         }
+    }
+
+    private void AddGearLocationAction()
+    {
+        if (!string.Equals(Coordinator.State.ActiveSectionId, "gearlocations", StringComparison.Ordinal)
+            || Coordinator.State.WorkspaceId is not { } workspaceId)
+        {
+            return;
+        }
+
+        _body.Add(NativeTheme.Eyebrow("Locations"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Add gear location",
+            "Create a named container for this runner's gear",
+            () => Navigation.PushAsync(new GearLocationAddPage(
+                Coordinator,
+                workspaceId,
+                Coordinator.State.ContentRevision)),
+            automationId: "gear-location-open-add"));
     }
 
     private void AddSectionActions()

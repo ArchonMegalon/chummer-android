@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 534,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 328,
+      "implemented_pending_emulator": 330,
       "implemented_verified_api36": 79,
-      "missing": 1107,
+      "missing": 1105,
       "not_applicable_non_mutating": 459,
       "partial_create_only": 110,
       "partial_exact_saved_data": 146
@@ -72,7 +72,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildFlowPages.cs",
         "exists": true,
-        "sha256": "c849741c55cb86fe5807d716408548fcdedef7a79f7a4973746744c1f5415a66"
+        "sha256": "be32dd2d984fa466c683047df9d52f9d1f54dabcfb81ce9b7b6fda36df438406"
       },
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
@@ -98,6 +98,11 @@
         "path": "src/Chummer.Android/Native/PrimaryArmPage.cs",
         "exists": true,
         "sha256": "39bf2fc3f9dfedc1cb1ea8397d95f9c7436207660f572a02174132f1a141d6ea"
+      },
+      {
+        "path": "src/Chummer.Android/Native/GearLocationAddPage.cs",
+        "exists": true,
+        "sha256": "dd94a3649a3bd58da26d8d9afa09a5c8daa43e2ebe4eabe96c35c15ebd1dd6c8"
       },
       {
         "path": "src/Chummer.Android/Native/CharacterNotesPage.cs",
@@ -132,7 +137,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "6fc329b9e5a345b25886983edfb265118f06b1d7225a041ce76ae7d51fc6749d"
+        "sha256": "b7b9a91df704a655f5af53f93dc9d41a538db415d504dcf1caa527aceaabd127"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -168,6 +173,11 @@
         "path": "tests/run_api36_primary_arm_e2e.py",
         "exists": true,
         "sha256": "a62a57a6eab0f697e62060e2679142f052f2c3a8c8e61610b46e7363c4db3d13"
+      },
+      {
+        "path": "tests/run_api36_gear_location_e2e.py",
+        "exists": true,
+        "sha256": "aa47940684d723878094cfd65550576c1a47471bda288c5a05828ec323107d62"
       },
       {
         "path": "tests/run_api36_explicit_save_e2e.py",
@@ -263,6 +273,16 @@
         "path": "tests/fixtures/ambidextrous-primary-arm-e2e.chum5",
         "exists": true,
         "sha256": "0cc4f19c6b104b7ba7f0102d30360f1349c01aea0feeafb4e0590a3cf73279b3"
+      },
+      {
+        "path": "tests/fixtures/creation-gear-location-e2e.chum5",
+        "exists": true,
+        "sha256": "eb8a3966abda7969e997284176f55b3cf386e116638e1ded18872ad29bf89212"
+      },
+      {
+        "path": "tests/fixtures/career-gear-location-e2e.chum5",
+        "exists": true,
+        "sha256": "b9373109a7ad395d7862b335f03ef683ceb7bf9aea443de76f8eb4ee9204b238"
       },
       {
         "path": "tests/fixtures/creation-explicit-save-e2e.chum5",
@@ -375,6 +395,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-gear-location-add/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-explicit-save/receipt.json",
         "exists": false,
         "sha256": null
@@ -440,94 +465,99 @@
         "sha256": "fe8ff0a9746b3029ddf232d681000229dfc69790f2f5d3b0960fd9275324a110"
       },
       {
-        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "ce753f47ab825f37356a96389a0744eb745fb171fe6c12d67f34ed58eac85374"
+        "sha256": "f1bf8bec2e0c3cc4221d2ec3829c6f7ca05568c9bf5e24f71e8ba069545f451b"
       },
       {
-        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
         "exists": true,
         "sha256": "5b92472b62172705ea98700faf31d0029ce93bd2d43fea08f5877b6d848fc89f"
       },
       {
-        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
         "exists": true,
         "sha256": "2c6bda77607d71c1d335c298048bcd87f2363fd15440d3db08c9c16252dabc83"
       },
       {
-        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
         "exists": true,
         "sha256": "ab174728493660115b62887154ec2990c64945d209a762023d941b847a06e0cb"
       },
       {
-        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
+        "exists": true,
+        "sha256": "f889362153034f6f8e61367c31d995720a04982ba264914db59f7095cd1eba65"
+      },
+      {
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
         "exists": true,
         "sha256": "5a37923234bfef0fdfa5a30118adfdcd66fd78cfd2d00f2c4830049db4edb13e"
       },
       {
-        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
         "exists": true,
         "sha256": "aeb6d8082f6660647d992968253ea798aee8ab69b32170e6f058d9074860b10a"
       },
       {
-        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
         "exists": true,
         "sha256": "8e4b80c97d8457e4a522ba15e7f310cbb10761aac2dc50e616b72ff344994c33"
       },
       {
-        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
         "exists": true,
         "sha256": "45b0507a4b1b30a8a77bd59c72040ce2e262960667d724f274260b12f35b8e1b"
       },
       {
-        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
         "exists": true,
         "sha256": "c95cdae34903ee982dcc8ed766fb2699d74205e4e1bfeb7a1d5cd72184e661d6"
       },
       {
-        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
         "exists": true,
         "sha256": "758669c780238031334020ad7af44b5b17612a697cbeff172662788995967ba5"
       },
       {
-        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
         "exists": true,
         "sha256": "bb87b7b58664e2ceb7c0d58c95fd694bcbdb8f043e3765be9ec0c5471c2f8a50"
       },
       {
-        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
         "exists": true,
         "sha256": "220d165ea994832a58e437a32f16bd1dcc0b230759d87b86c4f13851d3745f04"
       },
       {
-        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
         "sha256": "05ee0331331a5f7a14b8ac7499d363720865e482212d755f13166664380b226e"
       },
       {
-        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
         "sha256": "6ae514666fcfb25b99f9cbf27bc2e4cc9888e7881beb0a0bd1ea1a13b05e68f5"
       },
       {
-        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
         "exists": true,
         "sha256": "98a4b10cec3e0925b288c2bd1d70c4d48ed08b22665734b7550e35eead4e1517"
       },
       {
-        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "d3a8d7a29c823cf80655dfab8d8c721b87f17d08132c71d90516496a7aacf314"
+        "sha256": "d3de57e5e837c59f66919b9b6ab5eb631749efd51ed7058d159f4ea515b81a72"
       },
       {
-        "path": ".state/android-career-reputation-inventory-20260820/chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
         "exists": true,
         "sha256": "a5575ff98735e9685cdb7c97fad634fda18716c922c977c30592ee548311554f"
       }
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "0979acdb7e34b7e0dbc9011cc99b2e825c856f546b3280d0feb042943fce60b6"
+      "sha256": "c154d9e4416286df8dac902055ae74eb3d338eea10a6bfed11954b535da5e9d1"
     }
   },
   "coverageByFamily": {
@@ -751,7 +781,7 @@
     "locations_and_containers": {
       "rowCount": 2,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 2,
+      "phoneMissingCount": 0,
       "tabletMissingCount": 2,
       "completionProvenCount": 0
     },
@@ -26320,11 +26350,20 @@
       "mutationFamily": "locations_and_containers",
       "operation": "add",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Gear Locations > Add gear location",
+        "surface": "GearLocationAddPage",
+        "automationId": "gear-location-add",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/GearLocationAddPage.cs",
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 GearLocations add only; weapon, armor, and vehicle location collections remain separately inventoried and are not claimed by this control."
       },
       "tablet": {
         "status": "missing",
@@ -26332,12 +26371,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyGearLocationAddAsync(GearLocationAddRequest)",
+      "persistenceAssertion": "one new stable-guid character/gearlocations/location preserves the exact nonempty name and empty notes after save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_gear_location_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -54671,11 +54710,20 @@
       "mutationFamily": "locations_and_containers",
       "operation": "add",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Gear Locations > Add gear location",
+        "surface": "GearLocationAddPage",
+        "automationId": "gear-location-add",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/GearLocationAddPage.cs",
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 GearLocations add only; weapon, armor, and vehicle location collections remain separately inventoried and are not claimed by this control."
       },
       "tablet": {
         "status": "missing",
@@ -54683,12 +54731,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyGearLocationAddAsync(GearLocationAddRequest)",
+      "persistenceAssertion": "one new stable-guid character/gearlocations/location preserves the exact nonempty name and empty notes after save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_gear_location_e2e.py"
         },
         "tablet": {
           "status": "missing",

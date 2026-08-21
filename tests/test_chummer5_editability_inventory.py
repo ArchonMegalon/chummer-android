@@ -282,6 +282,30 @@ namespace Chummer
             self.assertIn(xml_element, row["persistenceAssertion"])
             self.assertFalse(row["completionProven"])
 
+        gear_locations = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.GEAR_LOCATION_ADD_CONTROL
+        ]
+        self.assertEqual(2, len(gear_locations))
+        for row in gear_locations:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("Build > Gear > Gear Locations > Add gear location", row["phone"]["route"])
+            self.assertEqual("GearLocationAddPage", row["phone"]["surface"])
+            self.assertEqual("gear-location-add", row["phone"]["automationId"])
+            self.assertEqual(
+                "ICharacterOverviewPresenter.ApplyGearLocationAddAsync(GearLocationAddRequest)",
+                row["presenterMutation"],
+            )
+            self.assertIn("stable-guid", row["persistenceAssertion"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_gear_location_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
         explicit_save = [
             row for row in rows
             if (
@@ -844,9 +868,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 328,
+                "implemented_pending_emulator": 330,
                 "implemented_verified_api36": 79,
-                "missing": 1107,
+                "missing": 1105,
                 "not_applicable_non_mutating": 459,
                 "partial_create_only": 110,
                 "partial_exact_saved_data": 146,

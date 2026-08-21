@@ -535,6 +535,28 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public async Task ApplyGearLocationAddAsync(
+        GearLocationAddRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Add Gear Location was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyGearLocationAddAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Gear location added." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public async Task ExecuteDialogActionAsync(string actionId, CancellationToken cancellationToken = default)
     {
         long contentRevision = State.ContentRevision;
