@@ -127,6 +127,18 @@ public sealed class BuildPage : NativePageBase
                 },
                 automationId: "build-career-edge-use"));
             _body.Add(NativeTheme.NavigationRow(
+                "Manual Karma",
+                "Record dated Karma gained or spent, with optional Nuyen exchange",
+                async () =>
+                {
+                    CareerManualKarmaEditorState? editor = await Coordinator.PrepareCareerManualKarmaEditAsync();
+                    if (editor is not null)
+                    {
+                        await Navigation.PushAsync(new CareerManualKarmaPage(Coordinator, editor));
+                    }
+                },
+                automationId: "build-career-manual-karma"));
+            _body.Add(NativeTheme.NavigationRow(
                 "Reputation",
                 "Street Cred, notoriety and source-aware reputation",
                 async () =>

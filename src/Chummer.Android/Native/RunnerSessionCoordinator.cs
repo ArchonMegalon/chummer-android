@@ -609,6 +609,32 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<CareerManualKarmaEditorState?> PrepareCareerManualKarmaEditAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCareerManualKarmaEditAsync(cancellationToken);
+
+    public async Task ApplyCareerManualKarmaEditAsync(
+        CareerManualKarmaEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while manual Karma was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyCareerManualKarmaEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Manual Karma saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public async Task ApplyGearLocationAddAsync(
         GearLocationAddRequest request,
         CancellationToken cancellationToken = default)

@@ -1001,6 +1001,18 @@ CAREER_EDGE_USE_CONTROLS = {
         "career-edge-use-regain",
     ),
 }
+CAREER_MANUAL_KARMA_CONTROLS = {
+    "cmdKarmaGained": (
+        "cmdKarmaGained_Click",
+        "gain",
+        "career-manual-karma-gain",
+    ),
+    "cmdKarmaSpent": (
+        "cmdKarmaSpent_Click",
+        "spend",
+        "career-manual-karma-spend",
+    ),
+}
 GEAR_LOCATION_ADD_CONTROL = "cmdAddLocation"
 WEAPON_LOCATION_ADD_CONTROL = "cmdAddWeaponLocation"
 VEHICLE_LOCATION_ADD_CONTROL = "cmdAddVehicleLocation"
@@ -5051,6 +5063,182 @@ def _known_phone_mapping(
                 f"selected stable {kind} guid retains {xml_element} after save, reopen, and process restart"
             ),
             "e2e": {"status": "missing", "ref": None},
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "CharacterCareer" and control in CAREER_MANUAL_KARMA_CONTROLS:
+        handler, action, automation_id = CAREER_MANUAL_KARMA_CONTROLS[control]
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerManualKarmaPage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_career_manual_karma_e2e.py"
+        fixture = REPO_ROOT / "tests" / "fixtures" / "career-manual-karma-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "CareerManualKarmaEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualKarmaRules.cs"
+        source_resolver_contract = character_notes_core_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs"
+        source_resolver = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "FileSystemCharacterSourceDataResolver.cs"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        legacy_handler_exact = any(
+            event.get("handler") == handler
+            for event in legacy.get("events", [])
+            if isinstance(event, dict)
+        )
+        action_marker = (
+            "CharacterCareerManualKarmaAction.Gain"
+            if action == "gain"
+            else "CharacterCareerManualKarmaAction.Spend"
+        )
+        implemented = (
+            legacy_handler_exact
+            and _contains(
+                page,
+                "class CareerManualKarmaPage",
+                'AutomationId = "career-manual-karma-page"',
+                f'AutomationId = "{automation_id}"',
+                'AutomationId = "career-manual-karma-amount"',
+                '"career-manual-karma-reason"',
+                '"career-manual-karma-exchange"',
+                '"career-manual-karma-force-career-visible"',
+                action_marker,
+                "_editor.ContentRevision",
+            )
+            and _contains(build_page, '"build-career-manual-karma"', "new CareerManualKarmaPage")
+            and _contains(
+                coordinator,
+                "PrepareCareerManualKarmaEditAsync",
+                "ApplyCareerManualKarmaEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CareerManualKarmaEditorState",
+                "CareerManualKarmaEditRequest",
+                "CharacterCareerManualKarmaState ExpectedState",
+                'ReadRequiredBool(root, "created")',
+                'ReadOptionalInt(root, "karma")',
+                'ReadOptionalDecimal(root, "nuyen")',
+                "TryResolveKarmaNuyenExchangeRates",
+            )
+            and _contains(
+                mutation,
+                "ApplyCareerManualKarmaEdit",
+                "CharacterCareerManualKarmaRules.TryQuote",
+                'EnsureElement(root, "karma")',
+                'EnsureElement(root, "nuyen")',
+                "InsertManualKarmaExpenseSorted",
+                'new XElement("forcecareervisible"',
+                'nuyenType: "ManualSubtract"',
+            )
+            and _contains(
+                presenter,
+                "PrepareCareerManualKarmaEditAsync",
+                "ApplyCareerManualKarmaEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareCareerManualKarmaEditAsync",
+                "ApplyCareerManualKarmaEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterCareerManualKarmaState",
+                "CharacterCareerManualKarmaQuote",
+                "NuyenPerKarmaWorkingForPeople",
+                "NuyenPerKarmaWorkingForMan",
+                "nuyenExpenseAmount = checked(-amount * state.NuyenPerKarmaWorkingForPeople)",
+                "nuyenBalanceDelta = checked(-amount * state.NuyenPerKarmaWorkingForMan)",
+            )
+            and _contains(
+                source_resolver_contract,
+                "TryResolveKarmaNuyenExchangeRates",
+                "workingForPeopleRate",
+                "workingForManRate",
+            )
+            and _contains(
+                source_resolver,
+                '"nuyenperbpwftp"',
+                '"nuyenperbpwftm"',
+                "TryReadPositiveDecimal",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                'CONTROLS = ("cmdKarmaGained", "cmdKarmaSpent")',
+                'api != "36"',
+                '"profile": "phone"',
+                '"journey": "career-manual-karma"',
+                '"careerManualKarmaRulesSha256"',
+                '"sourceResolverSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"careerFixtureSha256"',
+            )
+            and fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Runner > Manual Karma",
+            "surface": "CareerManualKarmaPage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CareerManualKarmaPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CareerManualKarmaEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerManualKarmaRules.cs",
+                "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCareerManualKarmaEditAsync / "
+                f"CareerManualKarmaEditRequest({action}) on character/karma, character/nuyen, and character/expenses"
+            ),
+            "persistenceAssertion": (
+                "character/karma, optional exchange-driven character/nuyen, exact sorted Karma/Nuyen expense and "
+                "legacy undo metadata persist after revision-bound atomic save, same-session reopen, and two "
+                "process restarts; unrelated nested Karma XML survives"
+            ),
+            "coverageLimit": (
+                "Career only, matching Chummer5; exact saved settings must prove both NuyenPerBPWftP and "
+                "NuyenPerBPWftM, including the gained-Karma People-expense/Man-balance asymmetry; the API 36 "
+                f"phone driver is {'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_career_manual_karma_e2e.py" if e2e_scripted else None,
+            },
             "tablet": {
                 "status": "missing",
                 "surface": None,
@@ -10425,6 +10613,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "PrimaryArmPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GroupMembershipPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerEdgeUsePage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerManualKarmaPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearLocationAddPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponLocationAddPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "VehicleLocationAddPage.cs",
@@ -10458,6 +10647,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_primary_arm_e2e.py",
         REPO_ROOT / "tests" / "run_api36_group_membership_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_edge_use_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_career_manual_karma_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_location_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_location_e2e.py",
         REPO_ROOT / "tests" / "run_api36_vehicle_location_e2e.py",
@@ -10497,6 +10687,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "creation-group-membership-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-group-membership-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-edge-use-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-manual-karma-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-gear-location-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-location-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-weapon-location-e2e.chum5",
@@ -10577,6 +10768,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSpiritFetteringRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGroupMembershipRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerEdgeUseRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualKarmaRules.cs",
         core_engine_root / "Chummer.Contracts" / "Workspaces" / "CharacterWorkspaceModels.cs",
         core_engine_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterFileService.cs",
@@ -10592,6 +10784,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "PrimaryArmEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GroupMembershipEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerEdgeUseEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CareerManualKarmaEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GearLocationAddRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponLocationAddRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "VehicleLocationAddRequest.cs",
