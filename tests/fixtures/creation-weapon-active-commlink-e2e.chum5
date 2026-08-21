@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Weapon Active Commlink E2E</name>
+  <alias>CreationWeaponActiveCommlinkE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <depenabled>False</depenabled>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <attributes />
+  <gears>
+    <gear>
+      <guid>65111111-6511-6511-6511-651111111111</guid>
+      <name>Creation Weapon Persona Module E2E</name>
+      <rating>1</rating>
+      <canformpersona>Self</canformpersona>
+      <active>True</active>
+      <notes>Creation owner notes must remain intact</notes>
+      <children />
+    </gear>
+  </gears>
+  <weapons>
+    <weapon>
+      <guid>65222222-6522-6522-6522-652222222222</guid>
+      <name>Creation Persona-linked Weapon E2E</name>
+      <category>Blades</category>
+      <parentid>65111111-6511-6511-6511-651111111111</parentid>
+      <active>False</active>
+      <notes>Creation target notes must remain intact</notes>
+    </weapon>
+    <weapon>
+      <guid>65333333-6533-6533-6533-653333333333</guid>
+      <name>Creation Untouched Weapon E2E</name>
+      <category>Blades</category>
+      <active>False</active>
+      <notes>Creation untouched notes</notes>
+    </weapon>
+  </weapons>
+</character>

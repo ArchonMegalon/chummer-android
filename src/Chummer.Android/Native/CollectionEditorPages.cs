@@ -113,6 +113,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddVehicleHomeNodeAction(item);
         AddArmorHomeNodeAction(item);
         AddWeaponHomeNodeAction(item);
+        AddWeaponActiveCommlinkAction(item);
         AddArmorActiveCommlinkAction(item);
         AddArmorDamageAction(item);
         AddArmorEquipmentAction(item);
@@ -821,6 +822,36 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 activeCommlink)),
             automationId: $"armor-active-commlink-open-{armorId:N}"));
+    }
+
+    private void AddWeaponActiveCommlinkAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Weapon
+            || _target.NestedKind is not null
+            || item.WeaponActiveCommlink is not { IsCommlink: true } semantics
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid weaponId)
+            || weaponId == Guid.Empty
+            || semantics.WeaponId != weaponId)
+        {
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        _body.Add(NativeTheme.Eyebrow("Matrix identity"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Weapon Active Commlink",
+            semantics.ActiveCommlink
+                ? "This weapon is the runner's active commlink"
+                : "This weapon is not the runner's active commlink",
+            () => Navigation.PushAsync(new WeaponActiveCommlinkPage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                weaponId,
+                item.Label,
+                semantics)),
+            automationId: $"weapon-active-commlink-open-{weaponId:N}"));
     }
 
     private void AddArmorDamageAction(WorkspaceCollectionItemEditorState item)
