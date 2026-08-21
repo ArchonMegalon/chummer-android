@@ -811,6 +811,35 @@ namespace Chummer
             )
             self.assertFalse(row["completionProven"])
 
+        gear_active_commlinks = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.GEAR_ACTIVE_COMMLINK_CONTROL
+        ]
+        self.assertEqual(2, len(gear_active_commlinks))
+        for row in gear_active_commlinks:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Gear > selected stable persona-capable gear > Gear Active Commlink",
+                row["phone"]["route"],
+            )
+            self.assertEqual("GearActiveCommlinkPage", row["phone"]["surface"])
+            self.assertEqual(
+                "gear-active-commlink-toggle-{stable-gear-guid}",
+                row["phone"]["automationId"],
+            )
+            self.assertIn("full expected Core semantics", row["presenterMutation"])
+            self.assertIn("every other recognized saved matrix-device active False", row["persistenceAssertion"])
+            self.assertIn("unrelated active XML", row["persistenceAssertion"])
+            self.assertIn("revision-checked atomic save", row["persistenceAssertion"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_gear_active_commlink_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
         quality_levels = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -1735,9 +1764,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 405,
+                "implemented_pending_emulator": 407,
                 "implemented_verified_api36": 79,
-                "missing": 1023,
+                "missing": 1021,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 148,
@@ -1764,6 +1793,39 @@ namespace Chummer
                 if row["editParityRequired"] and row["id"] not in mapped_ids
             )
         )
+
+    def test_gear_active_commlink_phone_mapping_is_exact_phone_only_and_scripted(self) -> None:
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = [
+            row for row in payload["rows"]
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.GEAR_ACTIVE_COMMLINK_CONTROL
+        ]
+        self.assertEqual(2, len(rows))
+        for row in rows:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Gear > selected stable persona-capable gear > Gear Active Commlink",
+                row["phone"]["route"],
+            )
+            self.assertEqual("GearActiveCommlinkPage", row["phone"]["surface"])
+            self.assertEqual(
+                "gear-active-commlink-toggle-{stable-gear-guid}",
+                row["phone"]["automationId"],
+            )
+            self.assertIn("full expected Core semantics", row["presenterMutation"])
+            self.assertIn("revision-checked atomic save", row["persistenceAssertion"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_gear_active_commlink_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
 
     def test_career_edge_use_phone_mapping_is_exact_phone_only_and_scripted(self) -> None:
         payload = json.loads(

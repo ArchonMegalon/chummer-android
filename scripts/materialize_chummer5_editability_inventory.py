@@ -583,6 +583,22 @@ ARMOR_ACTIVE_COMMLINK_CONTROL_E2E_PROOF_KEYS = (
     "processRestartWorkspacePersisted",
     "processRestartUiReadback",
 )
+GEAR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-gear-active-commlink"
+    / "receipt.json"
+)
+GEAR_ACTIVE_COMMLINK_CONTROL_E2E_PROOF_KEYS = (
+    "stableGearGuid",
+    "legacyPersonaEligibility",
+    "exclusiveCharacterWideActiveCommlink",
+    "expectedRevisionAtomicSave",
+    "sameSessionReopened",
+    "processRestartWorkspacePersisted",
+    "processRestartUiReadback",
+)
 ARMOR_DAMAGE_PHONE_E2E_RECEIPT = (
     REPO_ROOT
     / "docs"
@@ -1087,6 +1103,7 @@ ARMOR_HOME_NODE_CONTROL = "chkArmorHomeNode"
 WEAPON_HOME_NODE_CONTROL = "chkWeaponHomeNode"
 WEAPON_ACTIVE_COMMLINK_CONTROL = "chkWeaponActiveCommlink"
 ARMOR_ACTIVE_COMMLINK_CONTROL = "chkArmorActiveCommlink"
+GEAR_ACTIVE_COMMLINK_CONTROL = "chkGearActiveCommlink"
 WEAPON_ACCESSORY_INCLUDED_CONTROL = "chkIncludedInWeapon"
 QUALITY_LEVEL_CONTROL = "nudQualityLevel"
 CRITTER_POWER_COUNT_CONTROL = "chkCritterPowerCount"
@@ -2505,6 +2522,78 @@ def _validated_armor_active_commlink_phone_e2e_receipt(
         "status": "executed_api36",
         "ref": ARMOR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(ARMOR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_gear_active_commlink_phone_e2e_receipt(
+    presentation_root: Path,
+    core_engine_root: Path,
+) -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_gear_active_commlink_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-gear-active-commlink-e2e.chum5"
+    career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-gear-active-commlink-e2e.chum5"
+    overview = presentation_root / "Chummer.Presentation" / "Overview"
+    source_digests = {
+        "gearActiveCommlinkPageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearActiveCommlinkPage.cs",
+        "collectionEditorPagesSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
+        "coordinatorSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+        "gearActiveCommlinkContractSha256": overview / "GearActiveCommlinkEditRequest.cs",
+        "collectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
+        "collectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
+        "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+        "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+        "gearActiveCommlinkRulesSha256": core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGearActiveCommlinkRules.cs",
+        "characterSectionModelsSha256": core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+        "characterSectionServiceSha256": core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+    }
+    if not all(
+        path.is_file()
+        for path in (driver, shared_driver, creation_fixture, career_fixture, *source_digests.values())
+    ):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(GEAR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    controls = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_controls = {
+        f"{form}.{GEAR_ACTIVE_COMMLINK_CONTROL}"
+        for form in ("CharacterCreate", "CharacterCareer")
+    }
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "gear-active-commlink"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("creationFixtureSha256") == _sha256_file(creation_fixture)
+        and receipt.get("careerFixtureSha256") == _sha256_file(career_fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(controls, dict)
+        and set(controls) == expected_controls
+        and receipt.get("controlCount") == len(expected_controls)
+        and all(
+            isinstance(controls.get(control), dict)
+            and all(
+                controls[control].get(proof_key) == "pass"
+                for proof_key in GEAR_ACTIVE_COMMLINK_CONTROL_E2E_PROOF_KEYS
+            )
+            for control in expected_controls
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": GEAR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(GEAR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
 
@@ -4311,6 +4400,7 @@ def _known_phone_mapping(
     weapon_home_node_phone_e2e_receipt: dict[str, Any] | None,
     weapon_active_commlink_phone_e2e_receipt: dict[str, Any] | None,
     armor_active_commlink_phone_e2e_receipt: dict[str, Any] | None,
+    gear_active_commlink_phone_e2e_receipt: dict[str, Any] | None,
     armor_damage_phone_e2e_receipt: dict[str, Any] | None,
     armor_equipment_phone_e2e_receipt: dict[str, Any] | None,
     weapon_accessory_included_phone_e2e_receipt: dict[str, Any] | None,
@@ -6819,6 +6909,182 @@ def _known_phone_mapping(
                 "owner is uniquely resolved and locally provable; source-only vehicle-mod contributions "
                 "fail closed. Legacy WeaponAccessory/Gear tree selections remain separately inventoried. "
                 "Tablet is deferred."
+            ),
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
+        and control == GEAR_ACTIVE_COMMLINK_CONTROL
+    ):
+        expected_handler = "chkGearActiveCommlink_CheckedChanged"
+        legacy_source = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / f"{class_name}.cs"
+        )
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearActiveCommlinkPage.cs"
+        editor = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_gear_active_commlink_e2e.py"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "GearActiveCommlinkEditRequest.cs"
+        state = overview / "WorkspaceCollectionEditorState.cs"
+        projector = overview / "WorkspaceCollectionEditorProjector.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        core_rules = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterGearActiveCommlinkRules.cs"
+        core_models = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        core_service = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        legacy_exact = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                expected_handler,
+                "IHasMatrixAttributes objSelectedCommlink",
+                "objSelectedCommlink.SetActiveCommlinkAsync(CharacterObject",
+                "chkGearActiveCommlink.DoThreadSafeFuncAsync(x => x.Checked",
+                "x.Visible = blnIsCommlink",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "GearActiveCommlinkEditRequest",
+                'AutomationId = $"gear-active-commlink-page-{targetToken}"',
+                'AutomationId = $"gear-active-commlink-toggle-{targetToken}"',
+                'AutomationId = $"gear-active-commlink-save-{targetToken}"',
+                "_contentRevision",
+                "Coordinator.ApplyGearActiveCommlinkEditAsync",
+            )
+            and _contains(
+                editor,
+                "item.GearActiveCommlink is not { IsCommlink: true } semantics",
+                'Guid.TryParseExact(_target.ItemId, "D"',
+                'automationId: $"gear-active-commlink-open-{gearId:N}"',
+                "new GearActiveCommlinkPage",
+            )
+            and _contains(
+                coordinator,
+                "ApplyGearActiveCommlinkEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.ApplyGearActiveCommlinkEditAsync",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "GearActiveCommlinkEditRequest",
+                "ExpectedContentRevision",
+                "Guid GearId",
+                "bool ActiveCommlink",
+                "CharacterGearActiveCommlinkSemantics ExpectedSemantics",
+            )
+            and _contains(state, "CharacterGearActiveCommlinkSemantics? GearActiveCommlink")
+            and _contains(
+                projector,
+                "ProjectGearActiveCommlink",
+                'TryReadStrictString(semantics, "gearId"',
+                'TryReadStrictBool(semantics, "activeCommlink"',
+                'TryReadStrictBool(semantics, "isCommlink"',
+                "GearActiveCommlink = gearActiveCommlink",
+            )
+            and _contains(
+                core_rules,
+                "CharacterGearActiveCommlinkSemantics",
+                "TryReadUniqueStableGuid",
+                "TryReadActiveCommlinkState",
+                'Contains("Self", StringComparison.Ordinal)',
+                'Contains("Parent", StringComparison.Ordinal)',
+                "EnumerateSavedActiveCommlinks",
+            )
+            and _contains(
+                core_models,
+                "CharacterGearSummary",
+                "CharacterGearActiveCommlinkSemantics? ActiveCommlinkSemantics",
+            )
+            and _contains(
+                core_service,
+                "CharacterGearActiveCommlinkRules.TryProject",
+                "ActiveCommlinkSemantics = activeCommlinkSemantics",
+            )
+            and _contains(
+                mutation,
+                "ApplyGearActiveCommlinkEdit",
+                "CharacterGearActiveCommlinkRules.TryProject",
+                'root.Descendants("gear")',
+                'active.Value = "False"',
+                'target.Value = "True"',
+                "FindUniqueItemById",
+            )
+            and _contains(
+                presenter,
+                "ApplyGearActiveCommlinkEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+                "ExpectedContentRevision",
+            )
+            and _contains(
+                presenter_interface,
+                "ApplyGearActiveCommlinkEditAsync",
+                "GearActiveCommlinkEditRequest",
+            )
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"profile": "phone"',
+            '"journey": "gear-active-commlink"',
+            '"CharacterCreate.chkGearActiveCommlink"',
+            '"CharacterCareer.chkGearActiveCommlink"',
+            '"exclusiveCharacterWideActiveCommlink"',
+            '"gearActiveCommlinkRulesSha256"',
+        )
+        phone_e2e = gear_active_commlink_phone_e2e_receipt if implemented and e2e_scripted else None
+        return {
+            "status": (
+                "implemented_verified_api36"
+                if phone_e2e
+                else "implemented_pending_emulator" if implemented else "missing"
+            ),
+            "route": "Build > Gear > selected stable persona-capable gear > Gear Active Commlink",
+            "surface": "GearActiveCommlinkPage",
+            "automationId": "gear-active-commlink-toggle-{stable-gear-guid}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/GearActiveCommlinkPage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/GearActiveCommlinkEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearActiveCommlinkRules.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyGearActiveCommlinkEditAsync("
+                "GearActiveCommlinkEditRequest) with one stable gear Guid, full expected Core semantics, "
+                "exact persona eligibility, and expected content revision"
+            ),
+            "persistenceAssertion": (
+                "enabling selected persona-capable gear[stable Guid]/active revalidates the exact Core "
+                "semantics, sets it True, and normalizes every other recognized saved matrix-device active "
+                "False; disabling requires and clears the selected active gear only; unrelated active XML "
+                "and other fields remain exact after revision-checked atomic save, same-session reopen, "
+                "and process restart"
+            ),
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_gear_active_commlink_e2e.py" if e2e_scripted else None,
+            },
+            "coverageLimit": (
+                "Exact Chummer5 selected stable persona-capable Gear Active Commlink checkbox only. "
+                "Other device kinds remain separately inventoried; tablet is deferred."
             ),
             "tablet": {
                 "status": "missing",
@@ -12613,6 +12879,10 @@ def enrich_rows(
         presentation_root,
         core_engine_root,
     )
+    gear_active_commlink_phone_e2e_receipt = _validated_gear_active_commlink_phone_e2e_receipt(
+        presentation_root,
+        core_engine_root,
+    )
     armor_damage_phone_e2e_receipt = _validated_armor_damage_phone_e2e_receipt(
         presentation_root,
         core_engine_root,
@@ -12696,6 +12966,7 @@ def enrich_rows(
             weapon_home_node_phone_e2e_receipt,
             weapon_active_commlink_phone_e2e_receipt,
             armor_active_commlink_phone_e2e_receipt,
+            gear_active_commlink_phone_e2e_receipt,
             armor_damage_phone_e2e_receipt,
             armor_equipment_phone_e2e_receipt,
             weapon_accessory_included_phone_e2e_receipt,
@@ -12809,6 +13080,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponHomeNodePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponActiveCommlinkPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorActiveCommlinkPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearActiveCommlinkPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorDamagePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorEquipmentPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs",
@@ -12851,6 +13123,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_weapon_home_node_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_active_commlink_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_active_commlink_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_gear_active_commlink_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_damage_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_equipment_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
@@ -12912,6 +13185,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-weapon-active-commlink-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-armor-active-commlink-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-armor-active-commlink-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-gear-active-commlink-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-gear-active-commlink-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-armor-damage-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-armor-equipment-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-armor-equipment-e2e.chum5",
@@ -12959,6 +13234,7 @@ def build_inventory(
         WEAPON_HOME_NODE_PHONE_E2E_RECEIPT,
         WEAPON_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT,
         ARMOR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT,
+        GEAR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT,
         ARMOR_DAMAGE_PHONE_E2E_RECEIPT,
         ARMOR_EQUIPMENT_PHONE_E2E_RECEIPT,
         WEAPON_ACCESSORY_INCLUDED_PHONE_E2E_RECEIPT,
@@ -12973,6 +13249,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterWeaponHomeNodeRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterWeaponActiveCommlinkRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGearActiveCommlinkRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterWeaponMatrixParentResolver.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCyberwareCommerceRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorDamageRules.cs",
@@ -13019,6 +13296,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorHomeNodeEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponHomeNodeEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorActiveCommlinkEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "GearActiveCommlinkEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorDamageAdjustmentRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorEquipmentEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponAccessoryIncludedEditRequest.cs",
