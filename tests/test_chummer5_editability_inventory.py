@@ -234,6 +234,36 @@ namespace Chummer
             self.assertEqual("not_applicable_non_mutating", row["tablet"]["status"])
             self.assertTrue(row["completionProven"])
 
+    def test_vehicle_included_and_gear_filter_checkboxes_are_reviewed_non_mutating(self) -> None:
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        expected = {
+            ("CharacterCreate", "chkVehicleIncludedInWeapon"): "display_included_in_weapon_state",
+            ("CharacterCareer", "chkVehicleIncludedInWeapon"): "display_included_in_weapon_state",
+            ("CharacterCreate", "chkCommlinks"): "filter_gear_view",
+            ("CharacterCareer", "chkCommlinks"): "filter_gear_view",
+            ("CharacterCareer", "chkHideLoadedAmmo"): "filter_gear_view",
+        }
+        rows = {
+            (row["legacy"]["formOrControl"], row["legacy"]["controlName"]): row
+            for row in payload["rows"]
+            if (row["legacy"]["formOrControl"], row["legacy"]["controlName"]) in expected
+        }
+
+        self.assertEqual(set(expected), set(rows))
+        for identity, operation in expected.items():
+            row = rows[identity]
+            self.assertEqual(operation, row["operation"])
+            self.assertEqual("non_mutating", row["legacy"]["mutationDisposition"])
+            self.assertIn("writes no runner", row["legacy"]["dispositionEvidence"])
+            self.assertFalse(row["editParityRequired"])
+            self.assertEqual("not_applicable_non_mutating", row["phone"]["status"])
+            self.assertEqual("not_applicable_non_mutating", row["tablet"]["status"])
+            self.assertTrue(row["completionProven"])
+
     def test_generated_inventory_is_row_complete_unique_and_honestly_incomplete(self) -> None:
         artifact_path = REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
         payload = json.loads(artifact_path.read_text(encoding="utf-8"))
@@ -1470,8 +1500,8 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 377,
                 "implemented_verified_api36": 79,
-                "missing": 1057,
-                "not_applicable_non_mutating": 463,
+                "missing": 1052,
+                "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 147,
             },
@@ -1481,8 +1511,8 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 4,
                 "implemented_verified_api36": 75,
-                "missing": 1543,
-                "not_applicable_non_mutating": 463,
+                "missing": 1538,
+                "not_applicable_non_mutating": 468,
                 "partial_exact_saved_data": 144,
             },
             payload["summary"]["tabletStatusCounts"],

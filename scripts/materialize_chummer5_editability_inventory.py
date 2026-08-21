@@ -1240,6 +1240,33 @@ NON_MUTATING_LEGACY_INTERACTIONS = {
         "ArmorMod.IncludedInArmor or Gear.IncludedInParent into Checked; it writes no runner or persisted "
         "application state",
     ),
+    ("CharacterCreate", "chkVehicleIncludedInWeapon"): (
+        "display_included_in_weapon_state",
+        "the checkbox is disabled in the designer, has no mutation event, and vehicle-tree selection refresh "
+        "only copies Weapon.IncludedInWeapon or WeaponAccessory.IncludedInWeapon into Checked; it writes no "
+        "runner or persisted application state",
+    ),
+    ("CharacterCareer", "chkVehicleIncludedInWeapon"): (
+        "display_included_in_weapon_state",
+        "the checkbox is disabled in the designer, has no mutation event, and vehicle-tree selection refresh "
+        "only copies Weapon.IncludedInWeapon or WeaponAccessory.IncludedInWeapon into Checked; it writes no "
+        "runner or persisted application state",
+    ),
+    ("CharacterCreate", "chkCommlinks"): (
+        "filter_gear_view",
+        "CheckedChanged only rebuilds the Gear tree with the commlinks-only filter; it writes no runner or "
+        "persisted application state",
+    ),
+    ("CharacterCareer", "chkCommlinks"): (
+        "filter_gear_view",
+        "CheckedChanged only rebuilds the Gear tree with the commlinks-only filter; it writes no runner or "
+        "persisted application state",
+    ),
+    ("CharacterCareer", "chkHideLoadedAmmo"): (
+        "filter_gear_view",
+        "CheckedChanged only rebuilds the Gear tree with the hide-loaded-ammo filter; it writes no runner or "
+        "persisted application state",
+    ),
     ("CharacterCareer", "chkShowFreeKarma"): (
         "filter_view",
         "CheckedChanged only repopulates the Karma expense list and chart with or without zero-value entries; "

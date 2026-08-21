@@ -6,26 +6,26 @@
     "rowCount": 2229,
     "sourceFileCount": 300,
     "designerFileCount": 137,
-    "definiteMutationCandidateCount": 1766,
+    "definiteMutationCandidateCount": 1761,
     "reviewRequiredCount": 0,
     "legacyReviewCompleteCount": 2229,
-    "reviewedNonMutatingCount": 463,
-    "editParityRequiredCount": 1766,
+    "reviewedNonMutatingCount": 468,
+    "editParityRequiredCount": 1761,
     "unclassifiedCount": 0,
-    "completionProvenCount": 538,
+    "completionProvenCount": 543,
     "phoneStatusCounts": {
       "implemented_pending_emulator": 377,
       "implemented_verified_api36": 79,
-      "missing": 1057,
-      "not_applicable_non_mutating": 463,
+      "missing": 1052,
+      "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 147
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
       "implemented_verified_api36": 75,
-      "missing": 1543,
-      "not_applicable_non_mutating": 463,
+      "missing": 1538,
+      "not_applicable_non_mutating": 468,
       "partial_exact_saved_data": 144
     }
   },
@@ -1137,7 +1137,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "91eb16d6f18701824b9aafd54b8b98c5740ad09023ba5561d47998dae10348f0"
+      "sha256": "f0646d674146fc2b8cca3b62ea6aa95489d6908fec9dd04c7d10e70776ea0804"
     }
   },
   "coverageByFamily": {
@@ -1291,9 +1291,9 @@
     "gear": {
       "rowCount": 84,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 37,
-      "tabletMissingCount": 58,
-      "completionProvenCount": 2
+      "phoneMissingCount": 35,
+      "tabletMissingCount": 56,
+      "completionProvenCount": 4
     },
     "generic_selection_and_collection_controls": {
       "rowCount": 31,
@@ -1501,9 +1501,9 @@
     "vehicles_and_drones": {
       "rowCount": 151,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 57,
-      "tabletMissingCount": 102,
-      "completionProvenCount": 25
+      "phoneMissingCount": 55,
+      "tabletMissingCount": 100,
+      "completionProvenCount": 27
     },
     "weapon_accessories": {
       "rowCount": 31,
@@ -1515,9 +1515,9 @@
     "weapons": {
       "rowCount": 119,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 47,
-      "tabletMissingCount": 73,
-      "completionProvenCount": 22
+      "phoneMissingCount": 46,
+      "tabletMissingCount": 72,
+      "completionProvenCount": 23
     },
     "xml_and_custom_data": {
       "rowCount": 14,
@@ -23768,9 +23768,9 @@
         "controlName": "chkVehicleIncludedInWeapon",
         "controlType": "Chummer.ColorableCheckBox",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (no event handler)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "the checkbox is disabled in the designer, has no mutation event, and vehicle-tree selection refresh only copies Weapon.IncludedInWeapon or WeaponAccessory.IncludedInWeapon into Checked; it writes no runner or persisted application state",
         "text": "Part of base Weapon",
         "tag": "Checkbox_BaseWeapon",
         "readOnlyAtDesignTime": null,
@@ -23779,16 +23779,16 @@
         "events": []
       },
       "mutationFamily": "vehicles_and_drones",
-      "operation": "set_value",
+      "operation": "display_included_in_weapon_state",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -23797,18 +23797,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkVehicleWeaponAccessoryInstalled",
@@ -38569,9 +38569,9 @@
         "controlName": "chkCommlinks",
         "controlType": "ColorableCheckBox",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (chkCommlinks_CheckedChanged)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "CheckedChanged only rebuilds the Gear tree with the commlinks-only filter; it writes no runner or persisted application state",
         "text": "Only show Commlinks",
         "tag": "Checkbox_Commlinks",
         "readOnlyAtDesignTime": null,
@@ -38585,16 +38585,16 @@
         ]
       },
       "mutationFamily": "gear",
-      "operation": "set_value",
+      "operation": "filter_gear_view",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -38603,18 +38603,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkIncludedInArmor",
@@ -50637,9 +50637,9 @@
         "controlName": "chkHideLoadedAmmo",
         "controlType": "ColorableCheckBox",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (chkHideLoadedAmmo_CheckedChanged)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "CheckedChanged only rebuilds the Gear tree with the hide-loaded-ammo filter; it writes no runner or persisted application state",
         "text": "Hide loaded ammo",
         "tag": "Checkbox_HideAmmo",
         "readOnlyAtDesignTime": null,
@@ -50653,16 +50653,16 @@
         ]
       },
       "mutationFamily": "weapons",
-      "operation": "set_value",
+      "operation": "filter_gear_view",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -50671,18 +50671,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::tsCyberwareReapplyImprovements",
@@ -56478,9 +56478,9 @@
         "controlName": "chkCommlinks",
         "controlType": "ColorableCheckBox",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (chkCommlinks_CheckedChanged)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "CheckedChanged only rebuilds the Gear tree with the commlinks-only filter; it writes no runner or persisted application state",
         "text": "Only show Commlinks",
         "tag": "Checkbox_Commlinks",
         "readOnlyAtDesignTime": null,
@@ -56494,16 +56494,16 @@
         ]
       },
       "mutationFamily": "gear",
-      "operation": "set_value",
+      "operation": "filter_gear_view",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -56512,18 +56512,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCreate.Designer.cs::Chummer.CharacterCreate::chkGearActiveCommlink",
@@ -61575,9 +61575,9 @@
         "controlName": "chkVehicleIncludedInWeapon",
         "controlType": "ColorableCheckBox",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (no event handler)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "the checkbox is disabled in the designer, has no mutation event, and vehicle-tree selection refresh only copies Weapon.IncludedInWeapon or WeaponAccessory.IncludedInWeapon into Checked; it writes no runner or persisted application state",
         "text": "Part of base Weapon",
         "tag": "Checkbox_BaseWeapon",
         "readOnlyAtDesignTime": null,
@@ -61586,16 +61586,16 @@
         "events": []
       },
       "mutationFamily": "vehicles_and_drones",
-      "operation": "set_value",
+      "operation": "display_included_in_weapon_state",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -61604,18 +61604,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCreate.Designer.cs::Chummer.CharacterCreate::chkVehicleStolen",
