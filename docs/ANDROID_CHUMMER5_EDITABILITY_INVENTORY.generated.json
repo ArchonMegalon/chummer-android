@@ -6,26 +6,26 @@
     "rowCount": 2229,
     "sourceFileCount": 300,
     "designerFileCount": 137,
-    "definiteMutationCandidateCount": 1770,
+    "definiteMutationCandidateCount": 1768,
     "reviewRequiredCount": 0,
     "legacyReviewCompleteCount": 2229,
-    "reviewedNonMutatingCount": 459,
-    "editParityRequiredCount": 1770,
+    "reviewedNonMutatingCount": 461,
+    "editParityRequiredCount": 1768,
     "unclassifiedCount": 0,
-    "completionProvenCount": 534,
+    "completionProvenCount": 536,
     "phoneStatusCounts": {
       "implemented_pending_emulator": 375,
       "implemented_verified_api36": 79,
-      "missing": 1063,
-      "not_applicable_non_mutating": 459,
+      "missing": 1061,
+      "not_applicable_non_mutating": 461,
       "partial_create_only": 106,
       "partial_exact_saved_data": 147
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
       "implemented_verified_api36": 75,
-      "missing": 1547,
-      "not_applicable_non_mutating": 459,
+      "missing": 1545,
+      "not_applicable_non_mutating": 461,
       "partial_exact_saved_data": 144
     }
   },
@@ -1112,7 +1112,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "cdeb354dd4652c3124e17410e2e5085057208c32d02b1487d9f90752505ef8b6"
+      "sha256": "74ddbd804c0eb0d5e34ff807981cf2100637f20bebe0d273aec6a766319367a6"
     }
   },
   "coverageByFamily": {
@@ -1308,9 +1308,9 @@
     "karma_nuyen_and_reputation": {
       "rowCount": 18,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 9,
-      "tabletMissingCount": 17,
-      "completionProvenCount": 1
+      "phoneMissingCount": 7,
+      "tabletMissingCount": 15,
+      "completionProvenCount": 3
     },
     "knowledge_and_languages": {
       "rowCount": 11,
@@ -25153,9 +25153,9 @@
         "controlName": "chkShowFreeKarma",
         "controlType": "Chummer.ColorableCheckBox",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (chkShowFreeKarma_CheckedChanged)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "CheckedChanged only repopulates the Karma expense list and chart with or without zero-value entries; it writes no runner or persisted application state",
         "text": "Show Free Entries",
         "tag": "Checkbox_ShowFreeEntries",
         "readOnlyAtDesignTime": null,
@@ -25169,16 +25169,16 @@
         ]
       },
       "mutationFamily": "karma_nuyen_and_reputation",
-      "operation": "set_value",
+      "operation": "filter_view",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -25187,18 +25187,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::cmdKarmaEdit",
@@ -39271,9 +39271,9 @@
         "controlName": "chkShowKarmaChart",
         "controlType": "ColorableCheckBox",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (chkShowKarmaChart_CheckedChanged)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "CheckedChanged only assigns chtKarma.Visible from the checkbox; it writes no runner or persisted application state",
         "text": "Show Chart",
         "tag": "Checkbox_ShowChart",
         "readOnlyAtDesignTime": null,
@@ -39287,16 +39287,16 @@
         ]
       },
       "mutationFamily": "karma_nuyen_and_reputation",
-      "operation": "set_value",
+      "operation": "toggle_view",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -39305,18 +39305,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::chkShowNuyenChart",

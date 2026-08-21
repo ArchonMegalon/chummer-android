@@ -161,6 +161,55 @@ namespace Chummer
                 all(row["legacy"]["mutationDisposition"] == "mutating" for row in rows)
             )
 
+    def test_career_karma_view_toggles_are_reviewed_non_mutating(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            forms = root / "Chummer" / "Forms"
+            controls = root / "Chummer" / "Controls"
+            forms.mkdir(parents=True)
+            controls.mkdir(parents=True)
+            (forms / "CharacterCareer.Designer.cs").write_text(
+                """
+namespace Chummer
+{
+    partial class CharacterCareer
+    {
+        private Chummer.ColorableCheckBox chkShowFreeKarma;
+        private Chummer.ColorableCheckBox chkShowKarmaChart;
+        private void InitializeComponent()
+        {
+            this.chkShowFreeKarma.CheckedChanged += chkShowFreeKarma_CheckedChanged;
+            this.chkShowKarmaChart.CheckedChanged += chkShowKarmaChart_CheckedChanged;
+        }
+    }
+}
+""",
+                encoding="utf-8",
+            )
+            (forms / "CharacterCareer.cs").write_text(
+                """
+namespace Chummer
+{
+    partial class CharacterCareer
+    {
+        private void chkShowFreeKarma_CheckedChanged(object sender, System.EventArgs e)
+            => RepopulateKarmaExpenseList();
+        private void chkShowKarmaChart_CheckedChanged(object sender, System.EventArgs e)
+            => chtKarma.Visible = chkShowKarmaChart.Checked;
+    }
+}
+""",
+                encoding="utf-8",
+            )
+
+            rows, _ = inventory.extract_legacy_rows(root)
+            by_name = {row["legacy"]["controlName"]: row for row in rows}
+            self.assertEqual("filter_view", by_name["chkShowFreeKarma"]["operation"])
+            self.assertEqual("toggle_view", by_name["chkShowKarmaChart"]["operation"])
+            for control in ("chkShowFreeKarma", "chkShowKarmaChart"):
+                self.assertEqual("non_mutating", by_name[control]["legacy"]["mutationDisposition"])
+                self.assertIn("writes no runner", by_name[control]["legacy"]["dispositionEvidence"])
+
     def test_generated_inventory_is_row_complete_unique_and_honestly_incomplete(self) -> None:
         artifact_path = REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
         payload = json.loads(artifact_path.read_text(encoding="utf-8"))
@@ -1397,8 +1446,8 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 375,
                 "implemented_verified_api36": 79,
-                "missing": 1063,
-                "not_applicable_non_mutating": 459,
+                "missing": 1061,
+                "not_applicable_non_mutating": 461,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 147,
             },
@@ -1408,8 +1457,8 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 4,
                 "implemented_verified_api36": 75,
-                "missing": 1547,
-                "not_applicable_non_mutating": 459,
+                "missing": 1545,
+                "not_applicable_non_mutating": 461,
                 "partial_exact_saved_data": 144,
             },
             payload["summary"]["tabletStatusCounts"],

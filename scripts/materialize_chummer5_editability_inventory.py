@@ -1215,6 +1215,18 @@ SPIRIT_LINKED_RUNNER_CONTROLS = {
     "tsAttachCharacter": "attach",
     "tsRemoveCharacter": "remove",
 }
+NON_MUTATING_LEGACY_INTERACTIONS = {
+    ("CharacterCareer", "chkShowFreeKarma"): (
+        "filter_view",
+        "CheckedChanged only repopulates the Karma expense list and chart with or without zero-value entries; "
+        "it writes no runner or persisted application state",
+    ),
+    ("CharacterCareer", "chkShowKarmaChart"): (
+        "toggle_view",
+        "CheckedChanged only assigns chtKarma.Visible from the checkbox; it writes no runner or persisted "
+        "application state",
+    ),
+}
 
 MATRIX_CONDITION_CONTROL_RE = re.compile(
     r"^chk(?P<kind>Cyberware|Gear|Armor|Weapon|Vehicle)MatrixCM(?P<box>[1-9]|1[0-9]|2[0-4])$"
@@ -3911,7 +3923,11 @@ def extract_legacy_rows(chummer5_root: Path) -> tuple[list[dict[str, Any]], dict
             operation, confidence = _operation(control, kind, handlers)
             control_properties = properties.get(control, {})
             inert_evidence = INERT_LEGACY_DESIGNER_FIELDS.get((class_name, control))
-            if inert_evidence is not None:
+            reviewed_non_mutating = NON_MUTATING_LEGACY_INTERACTIONS.get((class_name, control))
+            if reviewed_non_mutating is not None:
+                operation, inert_evidence = reviewed_non_mutating
+                confidence = "non_mutating"
+            elif inert_evidence is not None:
                 operation = "unreachable_designer_field"
                 confidence = "non_mutating"
             elif (
