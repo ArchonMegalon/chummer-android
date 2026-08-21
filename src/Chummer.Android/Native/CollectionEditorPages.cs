@@ -118,6 +118,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddArmorDamageAction(item);
         AddArmorEquipmentAction(item);
         AddWeaponAccessoryIncludedAction(item);
+        AddCritterPowerCountAction(item);
         AddGearQuantityLifecycleAction(item);
         AddQualityLevelAction(item);
         AddCyberwareCommerceAction(item);
@@ -991,6 +992,35 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 qualityLevel)),
             automationId: $"quality-level-open-{qualityId:N}"));
+    }
+
+    private void AddCritterPowerCountAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.CritterPower
+            || _target.NestedKind is not null
+            || item.CritterPowerCount is not { } countState
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid critterPowerId)
+            || critterPowerId == Guid.Empty
+            || critterPowerId != countState.CritterPowerId)
+        {
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        _body.Add(NativeTheme.Eyebrow("Critter Power limit"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Counts towards limit",
+            countState.CountsTowardsLimit
+                ? "This power counts towards the Critter Power limit"
+                : "This power is excluded from the Critter Power limit",
+            () => Navigation.PushAsync(new CritterPowerCountPage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                item.Label,
+                countState)),
+            automationId: $"critter-power-count-open-{critterPowerId:N}"));
     }
 
     private void AddCyberwareCommerceAction(WorkspaceCollectionItemEditorState item)

@@ -1607,6 +1607,42 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("ApplyWorkspaceXmlMutationAsync", presenter)
         self.assertNotIn("GearQuantity", page)
 
+    def test_phone_critter_power_count_is_stable_revision_bound_and_legacy_exact(self) -> None:
+        page = (PROJECT / "Native" / "CritterPowerCountPage.cs").read_text(encoding="utf-8")
+        editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        presentation = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+        core = WORKSPACE / "chummer-core-engine"
+        request = (presentation / "CritterPowerCountEditRequest.cs").read_text(encoding="utf-8")
+        mutation = (presentation / "WorkspaceXmlMutationCatalog.cs").read_text(encoding="utf-8")
+        presenter = (presentation / "CharacterOverviewPresenter.WorkspaceMutations.cs").read_text(encoding="utf-8")
+        persistence = (presentation / "CharacterOverviewPresenter.Persistence.cs").read_text(encoding="utf-8")
+        rules = (core / "Chummer.Contracts" / "Characters" / "CharacterCritterPowerCountRules.cs").read_text(encoding="utf-8")
+        workspace_store = (core / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs").read_text(encoding="utf-8")
+
+        for token in (
+            'AutomationId = $"critter-power-count-page-{targetToken}"',
+            '$"critter-power-count-toggle-{targetToken}"',
+            '$"critter-power-count-save-{targetToken}"',
+            '"Counts towards Critter Power limit"',
+        ):
+            self.assertIn(token, page)
+        self.assertIn('automationId: $"critter-power-count-open-{critterPowerId:N}"', editor)
+        self.assertIn("item.CritterPowerCount", editor)
+        self.assertIn("ApplyCritterPowerCountEditAsync", coordinator)
+        self.assertIn("_presenter.SaveAsync", coordinator)
+        self.assertIn("ExpectedContentRevision", request)
+        self.assertIn("Guid CritterPowerId", request)
+        self.assertIn("ApplyCritterPowerCountEdit", mutation)
+        self.assertIn("ApplyWorkspaceXmlMutationAsync", presenter)
+        self.assertIn("TryCaptureRecoveryPayloadAsync", persistence)
+        self.assertIn("postcommit save recovery", persistence)
+        self.assertIn("WriteRecordAtomically", workspace_store)
+        self.assertIn("Flush(true)", workspace_store)
+        self.assertIn("LegacyDefault = true", rules)
+        self.assertIn("savedValues.Count > 1", rules)
+        self.assertNotIn("nudQualityLevel", page)
+
     def test_phone_cyberware_commerce_is_stable_revision_bound_and_source_exact(self) -> None:
         page = (PROJECT / "Native" / "CyberwareCommercePage.cs").read_text(encoding="utf-8")
         editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")

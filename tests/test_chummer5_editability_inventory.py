@@ -657,6 +657,35 @@ namespace Chummer
             )
             self.assertFalse(row["completionProven"])
 
+        critter_power_count = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.CRITTER_POWER_COUNT_CONTROL
+        ]
+        self.assertEqual(2, len(critter_power_count))
+        for row in critter_power_count:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Critter > Critter Powers > selected stable power > Counts towards limit",
+                row["phone"]["route"],
+            )
+            self.assertEqual("CritterPowerCountPage", row["phone"]["surface"])
+            self.assertEqual(
+                "critter-power-count-toggle-{stable-critter-power-guid}",
+                row["phone"]["automationId"],
+            )
+            self.assertIn("stable CritterPower Guid", row["presenterMutation"])
+            self.assertIn("expected content revision", row["presenterMutation"])
+            self.assertIn("both directions", row["persistenceAssertion"])
+            self.assertIn("atomic save", row["persistenceAssertion"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_critter_power_count_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
         gear_quantities = [
             row for row in rows
             if row["legacy"]["formOrControl"] == "CharacterCareer"
@@ -1330,9 +1359,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 369,
+                "implemented_pending_emulator": 371,
                 "implemented_verified_api36": 79,
-                "missing": 1070,
+                "missing": 1068,
                 "not_applicable_non_mutating": 459,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 146,
@@ -2495,6 +2524,71 @@ namespace Chummer
                 receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
                 self.assertIsNone(
                     inventory._validated_weapon_accessory_included_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
+
+    def test_critter_power_count_receipt_is_full_source_graph_and_fixture_hash_bound(self) -> None:
+        presentation_root = REPO.parent / "chummer-presentation"
+        core_root = REPO.parent / "chummer-core-engine"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        driver = REPO / "tests" / "run_api36_critter_power_count_e2e.py"
+        shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
+        creation_fixture = REPO / "tests" / "fixtures" / "creation-critter-power-count-e2e.chum5"
+        career_fixture = REPO / "tests" / "fixtures" / "career-critter-power-count-e2e.chum5"
+        source_paths = {
+            "critterPowerCountPageSha256": REPO / "src" / "Chummer.Android" / "Native" / "CritterPowerCountPage.cs",
+            "collectionEditorPagesSha256": REPO / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
+            "coordinatorSha256": REPO / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+            "critterPowerCountContractSha256": overview / "CritterPowerCountEditRequest.cs",
+            "collectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
+            "collectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
+            "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+            "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+            "presenterPersistenceSha256": overview / "CharacterOverviewPresenter.Persistence.cs",
+            "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+            "critterPowerCountRulesSha256": core_root / "Chummer.Contracts" / "Characters" / "CharacterCritterPowerCountRules.cs",
+            "characterSectionModelsSha256": core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+            "characterSectionServiceSha256": core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+            "workspaceStoreSha256": core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs",
+        }
+        controls = {
+            f"{form}.{inventory.CRITTER_POWER_COUNT_CONTROL}": {
+                key: "pass" for key in inventory.CRITTER_POWER_COUNT_CONTROL_E2E_PROOF_KEYS
+            }
+            for form in ("CharacterCreate", "CharacterCareer")
+        }
+        receipt = {
+            "schema": "chummer.android.editing-e2e/v1",
+            "status": "pass",
+            "profile": "phone",
+            "journey": "critter-power-count",
+            "apiLevel": 36,
+            "apkSha256": "a" * 64,
+            "driverSha256": inventory._sha256_file(driver),
+            "sharedDriverSha256": inventory._sha256_file(shared_driver),
+            "creationFixtureSha256": inventory._sha256_file(creation_fixture),
+            "careerFixtureSha256": inventory._sha256_file(career_fixture),
+            "controlCount": len(controls),
+            "controls": controls,
+            "journeys": {key: "pass" for key in inventory.CRITTER_POWER_COUNT_E2E_JOURNEYS},
+            **{key: inventory._sha256_file(path) for key, path in source_paths.items()},
+        }
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            receipt_path = Path(temporary) / "receipt.json"
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+            with patch.object(inventory, "CRITTER_POWER_COUNT_PHONE_E2E_RECEIPT", receipt_path):
+                self.assertIsNotNone(
+                    inventory._validated_critter_power_count_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
+                receipt["critterPowerCountRulesSha256"] = "0" * 64
+                receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+                self.assertIsNone(
+                    inventory._validated_critter_power_count_phone_e2e_receipt(
                         presentation_root,
                         core_root,
                     )

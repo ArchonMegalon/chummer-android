@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Critter Power Count E2E</name>
+  <alias>CreationCritterPowerCountE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <customstate><counttowardslimit>Creation unrelated count text</counttowardslimit></customstate>
+  <critterpowers>
+    <critterpower>
+      <guid>69111111-6911-6911-6911-691111111111</guid>
+      <name>Creation Target Fear E2E</name>
+      <category>Critter</category><type>M</type><action>Complex</action><range>LOS</range><duration>Instant</duration>
+      <source>SR5</source><rating>1</rating>
+      <notes>Creation target power notes must remain intact</notes>
+    </critterpower>
+    <critterpower>
+      <guid>69222222-6922-6922-6922-692222222222</guid>
+      <name>Creation Untouched Armor E2E</name>
+      <category>Critter</category><type>P</type><action>Auto</action><range>Self</range><duration>Always</duration>
+      <source>SR5</source><rating>2</rating><counttowardslimit>False</counttowardslimit>
+      <notes>Creation untouched power notes must remain intact</notes>
+    </critterpower>
+  </critterpowers>
+</character>

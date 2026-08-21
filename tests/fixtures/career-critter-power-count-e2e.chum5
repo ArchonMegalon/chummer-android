@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Critter Power Count E2E</name>
+  <alias>CareerCritterPowerCountE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <customstate><counttowardslimit>Career unrelated count text</counttowardslimit></customstate>
+  <critterpowers>
+    <critterpower>
+      <guid>69333333-6933-6933-6933-693333333333</guid>
+      <name>Career Target Fear E2E</name>
+      <category>Critter</category><type>M</type><action>Complex</action><range>LOS</range><duration>Instant</duration>
+      <source>SR5</source><rating>1</rating><counttowardslimit>True</counttowardslimit>
+      <notes>Career target power notes must remain intact</notes>
+    </critterpower>
+    <critterpower>
+      <guid>69444444-6944-6944-6944-694444444444</guid>
+      <name>Career Untouched Armor E2E</name>
+      <category>Critter</category><type>P</type><action>Auto</action><range>Self</range><duration>Always</duration>
+      <source>SR5</source><rating>2</rating><counttowardslimit>False</counttowardslimit>
+      <notes>Career untouched power notes must remain intact</notes>
+    </critterpower>
+  </critterpowers>
+</character>

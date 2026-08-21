@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 534,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 369,
+      "implemented_pending_emulator": 371,
       "implemented_verified_api36": 79,
-      "missing": 1070,
+      "missing": 1068,
       "not_applicable_non_mutating": 459,
       "partial_create_only": 106,
       "partial_exact_saved_data": 146
@@ -155,6 +155,11 @@
         "sha256": "740b3cd362a69405240b7e0acb7fc9541efbb0dded113f3a8942198a7cfb142e"
       },
       {
+        "path": "src/Chummer.Android/Native/CritterPowerCountPage.cs",
+        "exists": true,
+        "sha256": "d0c96f25ee501d8f098b0cea50004172235bc609c105e640a673de8dfcb40fc8"
+      },
+      {
         "path": "src/Chummer.Android/Native/GearQuantityPage.cs",
         "exists": true,
         "sha256": "c45751c4da229656d55761412212cd26f6ce230d00d3bb17c38ddcbf84c485c0"
@@ -182,7 +187,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "efaff0b362408f8d3c45e0e85d67cd3773e8525fc1779dfe58eb7faa9e65ee71"
+        "sha256": "5dea4034a02fe3e7b049d8a77c96e8694dfefed9344b5f73aab89a107b492692"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -207,7 +212,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "ea6e341ce417f4cd6af65c85377dd893ff497bf3a3fdfa3b2a1153fec1dbb2ca"
+        "sha256": "45a0d92933540a5e287079878fd02bcc4499e4463d2a61d836397df1c413e71d"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -298,6 +303,11 @@
         "path": "tests/run_api36_weapon_accessory_included_e2e.py",
         "exists": true,
         "sha256": "6f8544e5d320bfd1874a4387bc6b53fe90ae13f18980a5dab9e482ae13273df0"
+      },
+      {
+        "path": "tests/run_api36_critter_power_count_e2e.py",
+        "exists": true,
+        "sha256": "437c59c5ad15ef1e79d669d081694ab076c1f8b12f3d4357cc811d0f900b65b3"
       },
       {
         "path": "tests/run_api36_gear_quantity_e2e.py",
@@ -520,6 +530,16 @@
         "sha256": "6c9debe27a520428b98a812688eaf1c7e32886be9997e1d00bc78ac12563472a"
       },
       {
+        "path": "tests/fixtures/creation-critter-power-count-e2e.chum5",
+        "exists": true,
+        "sha256": "e654eabbee34ff1de818eb1dbcbaff45b9400101ee86f6e6ab0d2c9dc0f7b62a"
+      },
+      {
+        "path": "tests/fixtures/career-critter-power-count-e2e.chum5",
+        "exists": true,
+        "sha256": "6dd558db38e98def76803d742d92337f78882e6c6b4164f6a3dc1d3755bdb060"
+      },
+      {
         "path": "tests/fixtures/career-gear-quantity-e2e.chum5",
         "exists": true,
         "sha256": "1a533d5dfbb2a67045f8a000b9869089f953e7525cb57c8efa2685e11e402c89"
@@ -715,6 +735,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-critter-power-count/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-location-rename/receipt.json",
         "exists": false,
         "sha256": null
@@ -747,7 +772,7 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "4fcc5fac9ec7c055fe33f9aaf9f7dd84ded7e2d3047b4655e0b79db51f6c24a4"
+        "sha256": "5e53fee52ad3c2d95d650d58b2d992cf5f8bfccd68fa3b976d17683c2131a8eb"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponHomeNodeRules.cs",
@@ -780,6 +805,11 @@
         "sha256": "4a6a4641057afaf7e1bfcd39df9862a0d75193f213be1999e97902f4f4cc3d55"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCritterPowerCountRules.cs",
+        "exists": true,
+        "sha256": "05494abd2ada41aeec925c3fa3d0b4086c3df93bdfce9de1f3572b83372efb91"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
         "exists": true,
         "sha256": "35fe5e3f251c43484efde07535b4c168d14ca9e37be71e101c121c363aaf82f8"
@@ -797,7 +827,12 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "975a2916ca7f977e45747098080926d6e7de3311a3bdd95d7715c850e64c8777"
+        "sha256": "d79316a7b134ae83eb7752a893ec39e52a035fb532bc991073cba30fd81e4454"
+      },
+      {
+        "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+        "exists": true,
+        "sha256": "ca21bc20efdec00d783875c3df1c69abe141010ccd380bf029a00765674ccaa5"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
@@ -817,7 +852,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "285258d0218d33434df2dc9ae4f329554ed177e77ede9e8982f9d88c471c13ee"
+        "sha256": "45a0c0e06055b88faed7039b92bb906606266bf13a562236fa0057992f677819"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -883,6 +918,11 @@
         "path": "chummer-presentation/Chummer.Presentation/Overview/WeaponAccessoryIncludedEditRequest.cs",
         "exists": true,
         "sha256": "3d665cc28f5457039132d0ac07a5449895986f5a9d59c2c0547d0eadf25dbd2d"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/CritterPowerCountEditRequest.cs",
+        "exists": true,
+        "sha256": "38e3e92a962d310aa92cb318fbb00bd9d298f2576732077868e4635946fb5e4f"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CyberwareCommerceRequest.cs",
@@ -952,12 +992,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "56e0e864ff983a9628c0759378c3d6f90ec669dcb7493beb6666d2eb85a706b0"
+        "sha256": "0eb9d43ff098f7b1dd6e257ed5ee578acf5c3f0b85ebe0a4fc8b1ca0b33f5612"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "51d6339a30e4b0ea1c3812854a4c107ed21175116256e997fc1ca3fef9618627"
+        "sha256": "3ec8ce77eb8dbc19c696e4cee70ac39762f156dabf145218cb87a43eec86e6a8"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
@@ -967,7 +1007,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "e0601b987387de2aac2e626e6805cfd6555f4f900716d24799fd3a67e48cfa0e"
+        "sha256": "37e846bca9e8db862f03c3388e815ce40482fc6c9d5a5809297d7bb02e1eea12"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -977,7 +1017,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "895f12328a2449e65830e6b6c164087401706580cc218e4e6f8df944598a982a"
+      "sha256": "0c3b33760d36b93f80e45a9408cd10831ffab675219b767e358f1619000048bc"
     }
   },
   "coverageByFamily": {
@@ -1082,7 +1122,7 @@
     "critter_powers": {
       "rowCount": 22,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 11,
+      "phoneMissingCount": 9,
       "tabletMissingCount": 19,
       "completionProvenCount": 3
     },
@@ -16238,11 +16278,26 @@
       "mutationFamily": "critter_powers",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Critter > Critter Powers > selected stable power > Counts towards limit",
+        "surface": "CritterPowerCountPage",
+        "automationId": "critter-power-count-toggle-{stable-critter-power-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CritterPowerCountPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CritterPowerCountEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCritterPowerCountRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 chkCritterPowerCount in CharacterCreate and CharacterCareer only; other Critter Power actions and tablet remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -16250,12 +16305,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCritterPowerCountEditAsync(CritterPowerCountEditRequest) with stable CritterPower Guid, exact legacy default-true Boolean, and expected content revision",
+      "persistenceAssertion": "selected character/critterpowers/critterpower[stable Guid]/counttowardslimit changes in both directions while unrelated power and custom XML remain exact after atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_critter_power_count_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -56046,11 +56101,26 @@
       "mutationFamily": "critter_powers",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Critter > Critter Powers > selected stable power > Counts towards limit",
+        "surface": "CritterPowerCountPage",
+        "automationId": "critter-power-count-toggle-{stable-critter-power-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CritterPowerCountPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CritterPowerCountEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCritterPowerCountRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 chkCritterPowerCount in CharacterCreate and CharacterCareer only; other Critter Power actions and tablet remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -56058,12 +56128,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCritterPowerCountEditAsync(CritterPowerCountEditRequest) with stable CritterPower Guid, exact legacy default-true Boolean, and expected content revision",
+      "persistenceAssertion": "selected character/critterpowers/critterpower[stable Guid]/counttowardslimit changes in both directions while unrelated power and custom XML remain exact after atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_critter_power_count_e2e.py"
         },
         "tablet": {
           "status": "missing",

@@ -676,6 +676,34 @@ WEAPON_ACCESSORY_INCLUDED_CONTROL_E2E_PROOF_KEYS = (
     "processRestartWorkspacePersisted",
     "processRestartUiReadback",
 )
+CRITTER_POWER_COUNT_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-critter-power-count"
+    / "receipt.json"
+)
+CRITTER_POWER_COUNT_E2E_JOURNEYS = (
+    "creationRunnerImported",
+    "creationLegacyDefaultReadback",
+    "creationExcludedPersistedReopenedRestarted",
+    "creationIncludedPersistedReopenedRestarted",
+    "careerRunnerImported",
+    "careerSavedTrueReadback",
+    "careerExcludedPersistedReopenedRestarted",
+    "careerIncludedPersistedReopenedRestarted",
+)
+CRITTER_POWER_COUNT_CONTROL_E2E_PROOF_KEYS = (
+    "selectedIdentityStable",
+    "legacyDefaultTrue",
+    "excludedAndIncluded",
+    "workspacePersisted",
+    "unrelatedXmlPreserved",
+    "expectedRevisionAtomicSave",
+    "surfaceReopened",
+    "processRestartWorkspacePersisted",
+    "processRestartUiReadback",
+)
 LOCATION_RENAME_PHONE_E2E_RECEIPT = (
     REPO_ROOT
     / "docs"
@@ -970,6 +998,7 @@ WEAPON_ACTIVE_COMMLINK_CONTROL = "chkWeaponActiveCommlink"
 ARMOR_ACTIVE_COMMLINK_CONTROL = "chkArmorActiveCommlink"
 WEAPON_ACCESSORY_INCLUDED_CONTROL = "chkIncludedInWeapon"
 QUALITY_LEVEL_CONTROL = "nudQualityLevel"
+CRITTER_POWER_COUNT_CONTROL = "chkCritterPowerCount"
 ARMOR_DAMAGE_CONTROLS = {
     "cmdArmorIncrease": (
         "cmdArmorIncrease_Click",
@@ -2622,6 +2651,83 @@ def _validated_weapon_accessory_included_phone_e2e_receipt(
     }
 
 
+def _validated_critter_power_count_phone_e2e_receipt(
+    presentation_root: Path,
+    core_engine_root: Path,
+) -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_critter_power_count_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-critter-power-count-e2e.chum5"
+    career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-critter-power-count-e2e.chum5"
+    overview = presentation_root / "Chummer.Presentation" / "Overview"
+    source_digests = {
+        "critterPowerCountPageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CritterPowerCountPage.cs",
+        "collectionEditorPagesSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
+        "coordinatorSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+        "critterPowerCountContractSha256": overview / "CritterPowerCountEditRequest.cs",
+        "collectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
+        "collectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
+        "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+        "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "presenterPersistenceSha256": overview / "CharacterOverviewPresenter.Persistence.cs",
+        "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+        "critterPowerCountRulesSha256": core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCritterPowerCountRules.cs",
+        "characterSectionModelsSha256": core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+        "characterSectionServiceSha256": core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+        "workspaceStoreSha256": core_engine_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs",
+    }
+    if not all(
+        path.is_file()
+        for path in (driver, shared_driver, creation_fixture, career_fixture, *source_digests.values())
+    ):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(CRITTER_POWER_COUNT_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    controls = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_controls = {
+        f"{form}.{CRITTER_POWER_COUNT_CONTROL}"
+        for form in ("CharacterCreate", "CharacterCareer")
+    }
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "critter-power-count"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("creationFixtureSha256") == _sha256_file(creation_fixture)
+        and receipt.get("careerFixtureSha256") == _sha256_file(career_fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(journeys, dict)
+        and all(journeys.get(journey) == "pass" for journey in CRITTER_POWER_COUNT_E2E_JOURNEYS)
+        and isinstance(controls, dict)
+        and set(controls) == expected_controls
+        and receipt.get("controlCount") == len(expected_controls)
+        and all(
+            isinstance(controls.get(control), dict)
+            and all(
+                controls[control].get(proof_key) == "pass"
+                for proof_key in CRITTER_POWER_COUNT_CONTROL_E2E_PROOF_KEYS
+            )
+            for control in expected_controls
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": CRITTER_POWER_COUNT_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(CRITTER_POWER_COUNT_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
 def _validated_location_rename_phone_e2e_receipt(
     presentation_root: Path,
 ) -> dict[str, Any] | None:
@@ -3973,6 +4079,7 @@ def _known_phone_mapping(
     armor_damage_phone_e2e_receipt: dict[str, Any] | None,
     armor_equipment_phone_e2e_receipt: dict[str, Any] | None,
     weapon_accessory_included_phone_e2e_receipt: dict[str, Any] | None,
+    critter_power_count_phone_e2e_receipt: dict[str, Any] | None,
     location_rename_phone_e2e_receipt: dict[str, Any] | None,
     explicit_save_phone_e2e_receipt: dict[str, Any] | None,
     nested_collection_notes_phone_e2e_receipt: dict[str, Any] | None,
@@ -5212,6 +5319,190 @@ def _known_phone_mapping(
             "coverageLimit": (
                 "Exact Chummer5 selected top-level armor Home Node checkbox only; other device kinds "
                 "and Active Commlink remain separately inventoried."
+            ),
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
+        and control == CRITTER_POWER_COUNT_CONTROL
+    ):
+        expected_handler = "chkCritterPowerCount_CheckedChanged"
+        legacy_source = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / f"{class_name}.cs"
+        )
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CritterPowerCountPage.cs"
+        editor = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_critter_power_count_e2e.py"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "CritterPowerCountEditRequest.cs"
+        state = overview / "WorkspaceCollectionEditorState.cs"
+        projector = overview / "WorkspaceCollectionEditorProjector.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        core_rules = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterCritterPowerCountRules.cs"
+        core_models = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        core_service = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        legacy_exact = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                expected_handler,
+                "is",
+                "CritterPower objPower",
+                "objPower.CountTowardsLimit",
+                "chkCritterPowerCount",
+                "DoThreadSafeFuncAsync(x => x.Checked",
+                "MakeDirtyWithCharacterUpdate",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "CritterPowerCountEditRequest",
+                'AutomationId = $"critter-power-count-page-{targetToken}"',
+                'AutomationId = $"critter-power-count-toggle-{targetToken}"',
+                'AutomationId = $"critter-power-count-save-{targetToken}"',
+                "_contentRevision",
+                "_state.CritterPowerId",
+                "Coordinator.ApplyCritterPowerCountEditAsync",
+            )
+            and _contains(
+                editor,
+                "item.CritterPowerCount is not { } countState",
+                'Guid.TryParseExact(_target.ItemId, "D"',
+                'automationId: $"critter-power-count-open-{critterPowerId:N}"',
+                "new CritterPowerCountPage",
+            )
+            and _contains(
+                coordinator,
+                "ApplyCritterPowerCountEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.ApplyCritterPowerCountEditAsync",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CritterPowerCountEditRequest",
+                "ExpectedContentRevision",
+                "Guid CritterPowerId",
+                "bool CountsTowardsLimit",
+            )
+            and _contains(state, "CharacterCritterPowerCountState? CritterPowerCount")
+            and _contains(
+                projector,
+                'TryGetPropertyValueIgnoreCase(item, "countTowardsLimitSemantics"',
+                'TryReadStrictBool(semantics, "countsTowardsLimit"',
+                "CritterPowerCount = critterPowerCount",
+            )
+            and _contains(
+                core_rules,
+                "CharacterCritterPowerCountState",
+                "LegacyDefault = true",
+                "savedIdentities.Count != 1",
+                "savedValues.Count > 1",
+            )
+            and _contains(
+                core_models,
+                "CharacterCritterPowerSummary",
+                "CountTowardsLimitSemantics",
+            )
+            and _contains(
+                core_service,
+                'power.Elements("counttowardslimit")',
+                "CharacterCritterPowerCountRules.TryProject",
+            )
+            and _contains(
+                mutation,
+                "ApplyCritterPowerCountEdit",
+                "WorkspaceCollectionKind.CritterPower",
+                'new XElement("counttowardslimit")',
+                'target.Value = request.CountsTowardsLimit ? "True" : "False"',
+                "ResolveCollectionItem",
+            )
+            and _contains(
+                presenter,
+                "ApplyCritterPowerCountEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+                "ExpectedContentRevision",
+            )
+            and _contains(
+                presenter_persistence,
+                "public async Task SaveAsync",
+                "TryCaptureRecoveryPayloadAsync",
+                "postcommit save recovery",
+            )
+            and _contains(
+                workspace_store,
+                "WriteRecordAtomically",
+                "Flush(true)",
+                "File.Replace",
+            )
+            and _contains(
+                presenter_interface,
+                "ApplyCritterPowerCountEditAsync",
+                "CritterPowerCountEditRequest",
+            )
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"journey": "critter-power-count"',
+            '"creationLegacyDefaultReadback": "pass"',
+            '"creationExcludedPersistedReopenedRestarted": "pass"',
+            '"careerIncludedPersistedReopenedRestarted": "pass"',
+            '"controls": controls',
+        )
+        phone_e2e = critter_power_count_phone_e2e_receipt if implemented and e2e_scripted else None
+        return {
+            "status": (
+                "implemented_verified_api36"
+                if phone_e2e
+                else "implemented_pending_emulator" if implemented else "missing"
+            ),
+            "route": "Build > Critter > Critter Powers > selected stable power > Counts towards limit",
+            "surface": "CritterPowerCountPage",
+            "automationId": "critter-power-count-toggle-{stable-critter-power-guid}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CritterPowerCountPage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CritterPowerCountEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterCritterPowerCountRules.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCritterPowerCountEditAsync(CritterPowerCountEditRequest) "
+                "with stable CritterPower Guid, exact legacy default-true Boolean, and expected content revision"
+            ),
+            "persistenceAssertion": (
+                "selected character/critterpowers/critterpower[stable Guid]/counttowardslimit changes in both "
+                "directions while unrelated power and custom XML remain exact after atomic save, same-session "
+                "reopen, and process restart"
+            ),
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_critter_power_count_e2e.py" if e2e_scripted else None,
+            },
+            "coverageLimit": (
+                "Exact Chummer5 chkCritterPowerCount in CharacterCreate and CharacterCareer only; other "
+                "Critter Power actions and tablet remain separately inventoried."
             ),
             "tablet": {
                 "status": "missing",
@@ -9465,6 +9756,10 @@ def enrich_rows(
         presentation_root,
         core_engine_root,
     )
+    critter_power_count_phone_e2e_receipt = _validated_critter_power_count_phone_e2e_receipt(
+        presentation_root,
+        core_engine_root,
+    )
     location_rename_phone_e2e_receipt = _validated_location_rename_phone_e2e_receipt(
         presentation_root,
     )
@@ -9535,6 +9830,7 @@ def enrich_rows(
             armor_damage_phone_e2e_receipt,
             armor_equipment_phone_e2e_receipt,
             weapon_accessory_included_phone_e2e_receipt,
+            critter_power_count_phone_e2e_receipt,
             location_rename_phone_e2e_receipt,
             explicit_save_phone_e2e_receipt,
             nested_collection_notes_phone_e2e_receipt,
@@ -9639,6 +9935,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorDamagePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorEquipmentPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CritterPowerCountPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearQuantityPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "QualityLevelPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CyberwareCommercePage.cs",
@@ -9668,6 +9965,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_armor_damage_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_equipment_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_critter_power_count_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_quantity_e2e.py",
         REPO_ROOT / "tests" / "run_api36_quality_level_e2e.py",
         REPO_ROOT / "tests" / "run_api36_cyberware_commerce_e2e.py",
@@ -9712,6 +10010,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-armor-equipment-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-weapon-accessory-included-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-weapon-accessory-included-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-critter-power-count-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-critter-power-count-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-quantity-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-quality-level-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-quality-level-e2e.chum5",
@@ -9749,6 +10049,7 @@ def build_inventory(
         ARMOR_DAMAGE_PHONE_E2E_RECEIPT,
         ARMOR_EQUIPMENT_PHONE_E2E_RECEIPT,
         WEAPON_ACCESSORY_INCLUDED_PHONE_E2E_RECEIPT,
+        CRITTER_POWER_COUNT_PHONE_E2E_RECEIPT,
         LOCATION_RENAME_PHONE_E2E_RECEIPT,
         EXPLICIT_SAVE_PHONE_E2E_RECEIPT,
         NESTED_COLLECTION_NOTES_PHONE_E2E_RECEIPT,
@@ -9762,10 +10063,12 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCyberwareCommerceRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorDamageRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorEquipmentRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCritterPowerCountRules.cs",
         core_engine_root / "Chummer.Contracts" / "Workspaces" / "CharacterWorkspaceModels.cs",
         core_engine_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterFileService.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+        core_engine_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "FileSystemCharacterSourceDataResolver.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",
         core_engine_root / "Chummer.Rulesets.Hosting" / "Presentation" / "WorkspaceSurfaceActionCatalog.cs",
@@ -9783,6 +10086,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorDamageAdjustmentRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorEquipmentEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponAccessoryIncludedEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CritterPowerCountEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CyberwareCommerceRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceLocationEditorState.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "LocationRenameRequest.cs",
