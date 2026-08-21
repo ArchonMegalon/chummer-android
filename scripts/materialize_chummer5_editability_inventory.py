@@ -7590,6 +7590,169 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name == "SpiritControl" and control == "chkFettered":
+        native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
+        phone_page = native_root / "SpiritFetteredPage.cs"
+        collection_page = native_root / "CollectionEditorPages.cs"
+        coordinator = native_root / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_spirit_fettered_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-spirit-fettered-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-spirit-fettered-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "SpiritFetteredEditRequest.cs"
+        state = overview / "WorkspaceCollectionEditorState.cs"
+        projector = overview / "WorkspaceCollectionEditorProjector.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_contracts = character_notes_core_root / "Chummer.Contracts" / "Characters"
+        core_rules = core_contracts / "CharacterSpiritFetteringRules.cs"
+        core_models = core_contracts / "CharacterSectionModels.cs"
+        core_parser = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        phone_implemented = (
+            _contains(
+                phone_page,
+                "class SpiritFetteredPage",
+                "CharacterSpiritFetteringState",
+                "spirit-fettered-toggle-",
+                "spirit-fettered-save-",
+                "_contentRevision",
+            )
+            and _contains(
+                collection_page,
+                "AddSpiritFetteredAction",
+                "spirit-fettered-open-",
+                "WorkspaceCollectionKind.Spirit",
+            )
+            and _contains(
+                coordinator,
+                "ApplySpiritFetteredEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "SpiritFetteredEditRequest",
+                "CharacterSpiritFetteringState ExpectedState",
+            )
+            and _contains(
+                state,
+                "CharacterSpiritFetteringState? SpiritFettering",
+            )
+            and _contains(
+                projector,
+                "ProjectSpiritFettering",
+                '"fetteringSemantics"',
+                '"spiritId"',
+            )
+            and _contains(
+                mutation,
+                "ApplySpiritFetteredEdit",
+                "CharacterSpiritFetteringRules.CanSet",
+                "CreateSpiritFetteringImprovement",
+                "AppendSpiritFetteringExpense",
+                'new XElement("karmatype", "SpiritFettering")',
+            )
+            and _contains(
+                presenter,
+                "ApplySpiritFetteredEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(presenter_interface, "ApplySpiritFetteredEditAsync")
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterSpiritFetteringState",
+                "allowSpriteFettering",
+                "karmaSpiritFettering",
+                "violatesCareerUnboundLimit",
+            )
+            and _contains(core_models, "FetteringSemantics")
+            and _contains(
+                core_parser,
+                "ProjectSpiritFetteringSemantics",
+                '"AllowSpriteFettering"',
+                '"SpiritFettering"',
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                'CONTROL = "SpiritControl.chkFettered"',
+                'api != "36"',
+                '"profile": "phone"',
+                '"controlCount": 1',
+                '"spiritFetteringRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+                '"careerFixtureSha256"',
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        return {
+            "status": "partial_exact_saved_data" if phone_implemented else "missing",
+            "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite > Fettered Spirit / Sprite Pet",
+            "surface": "SpiritFetteredPage",
+            "automationId": "spirit-fettered-toggle-{stable-target}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/SpiritFetteredPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/BuildFlowPages.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/SpiritFetteredEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSpiritFetteringRules.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+                "chummer-core-engine/Chummer.Rulesets.Sr5/Sr5ShellCatalogs.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplySpiritFetteredEditAsync / "
+                "SpiritFetteredEditRequest on one stable Spirit or Sprite guid"
+            ),
+            "persistenceAssertion": (
+                "one shared SpiritControl row reaches Create and Career; the selected stable Spirit or Sprite guid "
+                "retains fettered plus exact MAG improvement and Career Karma/SpiritFettering undo side effects "
+                "after atomic save, reopen, recovery, and process restart"
+            ),
+            "coverageLimit": (
+                "Activation is enabled only when saved improvements prove Sprite Pet eligibility and, for a Career "
+                "Spirit, the active KarmaSpiritFettering value is persisted with the runner; the API 36 driver is "
+                f"{'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {"status": "missing", "ref": None},
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "SpiritControl" and control in SPIRIT_GENERIC_EDITOR_CONTROLS:
         editor_kind, field, xml_element = SPIRIT_GENERIC_EDITOR_CONTROLS[control]
         phone_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
@@ -9936,6 +10099,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorEquipmentPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CritterPowerCountPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SpiritFetteredPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearQuantityPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "QualityLevelPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CyberwareCommercePage.cs",
@@ -9966,6 +10130,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_armor_equipment_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
         REPO_ROOT / "tests" / "run_api36_critter_power_count_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_spirit_fettered_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_quantity_e2e.py",
         REPO_ROOT / "tests" / "run_api36_quality_level_e2e.py",
         REPO_ROOT / "tests" / "run_api36_cyberware_commerce_e2e.py",
@@ -10012,6 +10177,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-weapon-accessory-included-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-critter-power-count-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-critter-power-count-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-spirit-fettered-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-spirit-fettered-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-quantity-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-quality-level-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-quality-level-e2e.chum5",
@@ -10064,6 +10231,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorDamageRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorEquipmentRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCritterPowerCountRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSpiritFetteringRules.cs",
         core_engine_root / "Chummer.Contracts" / "Workspaces" / "CharacterWorkspaceModels.cs",
         core_engine_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterFileService.cs",
@@ -10072,6 +10240,7 @@ def build_inventory(
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "FileSystemCharacterSourceDataResolver.cs",
         core_engine_root / "Chummer.Infrastructure" / "Xml" / "Chummer5LinkedDocumentCodec.cs",
         core_engine_root / "Chummer.Rulesets.Hosting" / "Presentation" / "WorkspaceSurfaceActionCatalog.cs",
+        core_engine_root / "Chummer.Rulesets.Sr5" / "Sr5ShellCatalogs.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.WorkspaceMutations.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerReputationEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "SituationalModifiersEditRequest.cs",
@@ -10087,12 +10256,14 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorEquipmentEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponAccessoryIncludedEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CritterPowerCountEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "SpiritFetteredEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CyberwareCommerceRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceLocationEditorState.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "LocationRenameRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceSectionRenderer.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewState.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterOverviewPresenter.Persistence.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "ICharacterOverviewPresenter.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ConditionMonitorEditorState.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "DialogCoordinator.cs",

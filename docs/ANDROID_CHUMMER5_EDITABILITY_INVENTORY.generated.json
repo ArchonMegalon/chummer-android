@@ -16,10 +16,10 @@
     "phoneStatusCounts": {
       "implemented_pending_emulator": 371,
       "implemented_verified_api36": 79,
-      "missing": 1068,
+      "missing": 1067,
       "not_applicable_non_mutating": 459,
       "partial_create_only": 106,
-      "partial_exact_saved_data": 146
+      "partial_exact_saved_data": 147
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
@@ -160,6 +160,11 @@
         "sha256": "d0c96f25ee501d8f098b0cea50004172235bc609c105e640a673de8dfcb40fc8"
       },
       {
+        "path": "src/Chummer.Android/Native/SpiritFetteredPage.cs",
+        "exists": true,
+        "sha256": "99cc4fa40750d916a41f0190410b7ad5e97b2ddad9403b4e18ec7054badb7aa0"
+      },
+      {
         "path": "src/Chummer.Android/Native/GearQuantityPage.cs",
         "exists": true,
         "sha256": "c45751c4da229656d55761412212cd26f6ce230d00d3bb17c38ddcbf84c485c0"
@@ -187,7 +192,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "5dea4034a02fe3e7b049d8a77c96e8694dfefed9344b5f73aab89a107b492692"
+        "sha256": "3e0f70c2621a639f642f4c591115eaddbb1d7059d8df34c5624248ca5530a2b4"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -212,7 +217,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "45a0d92933540a5e287079878fd02bcc4499e4463d2a61d836397df1c413e71d"
+        "sha256": "ecaec0a006efdd5c117a0b5b21af9d486fc23ab11c878eb754713160998cc624"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -308,6 +313,11 @@
         "path": "tests/run_api36_critter_power_count_e2e.py",
         "exists": true,
         "sha256": "437c59c5ad15ef1e79d669d081694ab076c1f8b12f3d4357cc811d0f900b65b3"
+      },
+      {
+        "path": "tests/run_api36_spirit_fettered_e2e.py",
+        "exists": true,
+        "sha256": "e3e0502ad3eacdd4c71004d8e3df608c4613c08fb298691222b9d0d346bd2cb9"
       },
       {
         "path": "tests/run_api36_gear_quantity_e2e.py",
@@ -538,6 +548,16 @@
         "path": "tests/fixtures/career-critter-power-count-e2e.chum5",
         "exists": true,
         "sha256": "6dd558db38e98def76803d742d92337f78882e6c6b4164f6a3dc1d3755bdb060"
+      },
+      {
+        "path": "tests/fixtures/creation-spirit-fettered-e2e.chum5",
+        "exists": true,
+        "sha256": "2eee029b33cfcd8d9a5bb5629c34ce6cff40fe3991051614318f6656d3f66330"
+      },
+      {
+        "path": "tests/fixtures/career-spirit-fettered-e2e.chum5",
+        "exists": true,
+        "sha256": "fd831a13a2f63847120c420d9a4ef669b99d07854354c1504759d26e269c9751"
       },
       {
         "path": "tests/fixtures/career-gear-quantity-e2e.chum5",
@@ -772,7 +792,7 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "5e53fee52ad3c2d95d650d58b2d992cf5f8bfccd68fa3b976d17683c2131a8eb"
+        "sha256": "520eea63e3322535b066438ab0239adae5478d06ff792fe47b9a9b3b27ac78b7"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponHomeNodeRules.cs",
@@ -810,6 +830,11 @@
         "sha256": "05494abd2ada41aeec925c3fa3d0b4086c3df93bdfce9de1f3572b83372efb91"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSpiritFetteringRules.cs",
+        "exists": true,
+        "sha256": "256bd61f5afe9f283f7a52c6d8f8cb0f35b2f972367d944ce9143c7ec4139931"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
         "exists": true,
         "sha256": "35fe5e3f251c43484efde07535b4c168d14ca9e37be71e101c121c363aaf82f8"
@@ -827,7 +852,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "d79316a7b134ae83eb7752a893ec39e52a035fb532bc991073cba30fd81e4454"
+        "sha256": "b749c6379f4e46ab747ea460a0fb1f6cb5eabb9bc528b8cef72aae4158b59f23"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
@@ -850,9 +875,14 @@
         "sha256": "fe8ff0a9746b3029ddf232d681000229dfc69790f2f5d3b0960fd9275324a110"
       },
       {
+        "path": "chummer-core-engine/Chummer.Rulesets.Sr5/Sr5ShellCatalogs.cs",
+        "exists": true,
+        "sha256": "246cf7a4d05f8e4347aea7a175b23e51468f915fe59a6af81abe1a684560cb5e"
+      },
+      {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "45a0c0e06055b88faed7039b92bb906606266bf13a562236fa0057992f677819"
+        "sha256": "ce67428f86fa11c7ac59fb0030b327bdefbfd2ae7db35c21e2d67df5ea9e94a1"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -925,6 +955,11 @@
         "sha256": "38e3e92a962d310aa92cb318fbb00bd9d298f2576732077868e4635946fb5e4f"
       },
       {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/SpiritFetteredEditRequest.cs",
+        "exists": true,
+        "sha256": "083d08a675b251a45f7f0432c920358f6dfec32a77a3a283d911f3c7fba6ac3b"
+      },
+      {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CyberwareCommerceRequest.cs",
         "exists": true,
         "sha256": "290e1d6bb718a6385ddc6c37421acef1227c4988b0b5c8d095d22d966540bb9c"
@@ -953,6 +988,11 @@
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
         "exists": true,
         "sha256": "5a37923234bfef0fdfa5a30118adfdcd66fd78cfd2d00f2c4830049db4edb13e"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+        "exists": true,
+        "sha256": "55ddcc33fcf932b80d54e6fbe19a21cb7f431a320869dd8fd85e7fff3bc7b071"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -992,12 +1032,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "0eb9d43ff098f7b1dd6e257ed5ee578acf5c3f0b85ebe0a4fc8b1ca0b33f5612"
+        "sha256": "96ae4dc5fd1f8670bf4ba959c7074469a53131e49452d9f126f85fa782b0fee1"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "3ec8ce77eb8dbc19c696e4cee70ac39762f156dabf145218cb87a43eec86e6a8"
+        "sha256": "0dc0fcdc42834da48cd77f249e61eba535f334c35f48da124c8dbb35a032b8dd"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
@@ -1007,7 +1047,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "37e846bca9e8db862f03c3388e815ce40482fc6c9d5a5809297d7bb02e1eea12"
+        "sha256": "976b6716516c752cb440b96cc38199fca2bb93831b45324e748aea24ba0861a2"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1017,7 +1057,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "0c3b33760d36b93f80e45a9408cd10831ffab675219b767e358f1619000048bc"
+      "sha256": "99c6747ac7cbba60f2654dc493f4cfac5764aa85edcb6f7b376c771205b73f3d"
     }
   },
   "coverageByFamily": {
@@ -1360,7 +1400,7 @@
     "spirits_and_sprites": {
       "rowCount": 32,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 14,
+      "phoneMissingCount": 13,
       "tabletMissingCount": 28,
       "completionProvenCount": 4
     },
@@ -4253,11 +4293,30 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite > Fettered Spirit / Sprite Pet",
+        "surface": "SpiritFetteredPage",
+        "automationId": "spirit-fettered-toggle-{stable-target}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/SpiritFetteredPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/SpiritFetteredEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSpiritFetteringRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+          "chummer-core-engine/Chummer.Rulesets.Sr5/Sr5ShellCatalogs.cs"
+        ],
+        "coverageLimit": "Activation is enabled only when saved improvements prove Sprite Pet eligibility and, for a Career Spirit, the active KarmaSpiritFettering value is persisted with the runner; the API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -4265,8 +4324,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplySpiritFetteredEditAsync / SpiritFetteredEditRequest on one stable Spirit or Sprite guid",
+      "persistenceAssertion": "one shared SpiritControl row reaches Create and Career; the selected stable Spirit or Sprite guid retains fettered plus exact MAG improvement and Career Karma/SpiritFettering undo side effects after atomic save, reopen, recovery, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",

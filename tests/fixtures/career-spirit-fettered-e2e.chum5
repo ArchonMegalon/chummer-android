@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Spirit Fettered E2E</name>
+  <alias>CareerSpiritFetteredE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <karma>20</karma>
+  <karmaspiritfettering>3</karmaspiritfettering>
+  <improvements />
+  <expenses />
+  <customstate><fettered>Career unrelated fettered text</fettered></customstate>
+  <spirits>
+    <spirit>
+      <guid>74333333-7433-7433-7433-743333333333</guid>
+      <name>Spirit of Beasts</name><type>Spirit</type><force>4</force><services>2</services><bound>True</bound><fettered>False</fettered>
+      <notes>Career target spirit notes must remain intact</notes>
+    </spirit>
+    <spirit>
+      <guid>74444444-7444-7444-7444-744444444444</guid>
+      <name>Spirit of Man</name><type>Spirit</type><force>3</force><services>1</services><bound>True</bound><fettered>False</fettered>
+      <notes>Career untouched spirit notes must remain intact</notes>
+    </spirit>
+  </spirits>
+</character>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Spirit Fettered E2E</name>
+  <alias>CreationSpiritFetteredE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <karma>0</karma>
+  <improvements />
+  <customstate><fettered>Creation unrelated fettered text</fettered></customstate>
+  <spirits>
+    <spirit>
+      <guid>74111111-7411-7411-7411-741111111111</guid>
+      <name>Spirit of Fire</name><type>Spirit</type><force>4</force><services>2</services><bound>True</bound><fettered>False</fettered>
+      <notes>Creation target spirit notes must remain intact</notes>
+    </spirit>
+    <spirit>
+      <guid>74222222-7422-7422-7422-742222222222</guid>
+      <name>Spirit of Air</name><type>Spirit</type><force>3</force><services>1</services><bound>True</bound><fettered>False</fettered>
+      <notes>Creation untouched spirit notes must remain intact</notes>
+    </spirit>
+  </spirits>
+</character>

@@ -1208,6 +1208,24 @@ namespace Chummer
                 )
             else:
                 self.assertEqual("collection-delete-{stable-target}", row["phone"]["automationId"])
+        fettered_rows = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "SpiritControl"
+            and row["legacy"]["controlName"] == "chkFettered"
+        ]
+        self.assertEqual(1, len(fettered_rows), "the shared control must remain one legacy authority row")
+        fettered = fettered_rows[0]
+        self.assertEqual("partial_exact_saved_data", fettered["phone"]["status"])
+        self.assertEqual("SpiritFetteredPage", fettered["phone"]["surface"])
+        self.assertEqual("spirit-fettered-toggle-{stable-target}", fettered["phone"]["automationId"])
+        self.assertIn("Fettered Spirit / Sprite Pet", fettered["phone"]["route"])
+        self.assertIn("ApplySpiritFetteredEditAsync", fettered["presenterMutation"])
+        self.assertIn("Create and Career", fettered["persistenceAssertion"])
+        self.assertIn("KarmaSpiritFettering", fettered["phone"]["coverageLimit"])
+        self.assertIn("present but not yet executed", fettered["phone"]["coverageLimit"])
+        self.assertEqual("missing", fettered["e2e"]["phone"]["status"])
+        self.assertEqual("missing", fettered["tablet"]["status"])
+        self.assertFalse(fettered["completionProven"])
         self.assertTrue(all(row["presenterMutation"] for row in origin_rows + attribute_rows))
         for row in origin_rows:
             self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
@@ -1361,10 +1379,10 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 371,
                 "implemented_verified_api36": 79,
-                "missing": 1068,
+                "missing": 1067,
                 "not_applicable_non_mutating": 459,
                 "partial_create_only": 106,
-                "partial_exact_saved_data": 146,
+                "partial_exact_saved_data": 147,
             },
             payload["summary"]["phoneStatusCounts"],
         )

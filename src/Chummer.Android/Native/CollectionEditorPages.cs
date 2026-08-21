@@ -119,6 +119,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddArmorEquipmentAction(item);
         AddWeaponAccessoryIncludedAction(item);
         AddCritterPowerCountAction(item);
+        AddSpiritFetteredAction(item);
         AddGearQuantityLifecycleAction(item);
         AddQualityLevelAction(item);
         AddCyberwareCommerceAction(item);
@@ -1021,6 +1022,37 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 countState)),
             automationId: $"critter-power-count-open-{critterPowerId:N}"));
+    }
+
+    private void AddSpiritFetteredAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Spirit
+            || _target.NestedKind is not null
+            || item.SpiritFettering is not { } fettering
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid spiritId)
+            || spiritId == Guid.Empty
+            || spiritId != fettering.SpiritId)
+        {
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        string label = fettering.EntityType == "Sprite" ? "Sprite Pet" : "Fettered Spirit";
+        string status = fettering.Fettered
+            ? $"This {fettering.EntityType.ToLowerInvariant()} is {label.ToLowerInvariant()}"
+            : $"This {fettering.EntityType.ToLowerInvariant()} is not {label.ToLowerInvariant()}";
+        _body.Add(NativeTheme.Eyebrow("Spirit services"));
+        _body.Add(NativeTheme.NavigationRow(
+            label,
+            status,
+            () => Navigation.PushAsync(new SpiritFetteredPage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                item.Label,
+                fettering)),
+            automationId: $"spirit-fettered-open-{spiritId:N}"));
     }
 
     private void AddCyberwareCommerceAction(WorkspaceCollectionItemEditorState item)
