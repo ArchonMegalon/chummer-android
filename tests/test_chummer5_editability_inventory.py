@@ -236,6 +236,30 @@ namespace Chummer
             self.assertIn(xml_element, row["persistenceAssertion"])
             self.assertFalse(row["completionProven"])
 
+        burn_street_cred = next(
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] == inventory.BURN_STREET_CRED_CONTROL
+        )
+        self.assertEqual("implemented_pending_emulator", burn_street_cred["phone"]["status"])
+        self.assertEqual(
+            "Build > Reputation > Burn 2 Street Cred",
+            burn_street_cred["phone"]["route"],
+        )
+        self.assertEqual("CareerReputationPage", burn_street_cred["phone"]["surface"])
+        self.assertEqual(
+            "career-reputation-burn-street-cred",
+            burn_street_cred["phone"]["automationId"],
+        )
+        self.assertEqual("missing", burn_street_cred["tablet"]["status"])
+        self.assertEqual("scripted_not_executed", burn_street_cred["e2e"]["phone"]["status"])
+        self.assertEqual(
+            "tests/run_api36_career_reputation_e2e.py",
+            burn_street_cred["e2e"]["phone"]["ref"],
+        )
+        self.assertIn("burntstreetcred", burn_street_cred["persistenceAssertion"])
+        self.assertFalse(burn_street_cred["completionProven"])
+
         situational_modifiers = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -993,9 +1017,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 344,
+                "implemented_pending_emulator": 345,
                 "implemented_verified_api36": 79,
-                "missing": 1095,
+                "missing": 1094,
                 "not_applicable_non_mutating": 459,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 146,

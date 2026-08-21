@@ -300,6 +300,8 @@ CAREER_REPUTATION_E2E_JOURNEYS = (
     "coreOnlySourceVisibilityEnforced",
     "fullSourceProfileImported",
     "allCareerReputationEdited",
+    "streetCredBurnConfirmed",
+    "burntStreetCredIncrementedByTwo",
     "careerWorkspaceXmlPersisted",
     "careerUiReopenReadback",
     "careerProcessRestartUiReadback",
@@ -730,6 +732,7 @@ CAREER_REPUTATION_CONTROLS = {
     "nudAstralReputation": ("baseastralreputation", "career-reputation-astral", "AstralReputation"),
     "nudWildReputation": ("basewildreputation", "career-reputation-wild", "WildReputation"),
 }
+BURN_STREET_CRED_CONTROL = "cmdBurnStreetCred"
 SITUATIONAL_MODIFIER_CONTROLS = {
     "nudCounterspellingDice": (
         "currentcounterspellingdice",
@@ -1347,7 +1350,7 @@ def _validated_career_reputation_phone_e2e_receipt(
     apk_sha = str(receipt.get("apkSha256") or "")
     expected_controls = {
         f"CharacterCareer.{control}" for control in CAREER_REPUTATION_CONTROLS
-    }
+    } | {f"CharacterCareer.{BURN_STREET_CRED_CONTROL}"}
     if not (
         receipt.get("schema") == "chummer.android.editing-e2e/v1"
         and receipt.get("status") == "pass"
@@ -6161,6 +6164,89 @@ def _known_phone_mapping(
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_situational_modifiers_e2e.py" if e2e_scripted else None,
             },
+        }
+    if class_name == "CharacterCareer" and control == BURN_STREET_CRED_CONTROL:
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerReputationPage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_career_reputation_e2e.py"
+        presentation_overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = presentation_overview / "CareerReputationEditRequest.cs"
+        mutation = presentation_overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = presentation_overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        implemented = (
+            _contains(
+                page,
+                '"career-reputation-burn-street-cred"',
+                'DisplayAlertAsync(',
+                '"Burn"',
+                "BurnStreetCredRequest",
+            )
+            and _contains(build_page, '"build-career-reputation"', "new CareerReputationPage")
+            and _contains(
+                coordinator,
+                "ApplyBurnStreetCredAsync",
+                "ExpectedContentRevision",
+                "SaveAsync",
+            )
+            and _contains(
+                request,
+                "BurnStreetCredRequest",
+                "CareerStreetCredRules",
+                "CanBurnStreetCred",
+                "TotalStreetCred",
+                "ExpectedContentRevision",
+            )
+            and _contains(
+                mutation,
+                "ApplyBurnStreetCred",
+                "CareerStreetCredRules.Project(root)",
+                'SetElementValue(root, "burntstreetcred"',
+            )
+            and _contains(
+                presenter,
+                "ApplyBurnStreetCredAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"journey": "career-reputation"',
+            'BURN_CONTROL = "cmdBurnStreetCred"',
+            '"streetCredBurnConfirmed": "pass"',
+            '"burntStreetCredIncrementedByTwo": "pass"',
+            '"burntstreetcred": "2"',
+        )
+        phone_e2e = career_reputation_phone_e2e_receipt if implemented and e2e_scripted else None
+        return {
+            "status": "implemented_verified_api36" if phone_e2e else "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Reputation > Burn 2 Street Cred",
+            "surface": "CareerReputationPage",
+            "automationId": "career-reputation-burn-street-cred",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CareerReputationPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+            ],
+            "presenterMutation": "ICharacterOverviewPresenter.ApplyBurnStreetCredAsync(BurnStreetCredRequest)",
+            "persistenceAssertion": (
+                "career character/burntstreetcred increases by exactly 2 after confirmation, "
+                "save, same-session reopen, and process restart"
+            ),
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": e2e_driver.relative_to(REPO_ROOT).as_posix() if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
         }
     if class_name == "CharacterCareer" and control in CAREER_REPUTATION_CONTROLS:
         xml_element, automation_id, property_name = CAREER_REPUTATION_CONTROLS[control]

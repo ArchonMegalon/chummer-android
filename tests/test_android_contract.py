@@ -402,6 +402,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("PrepareCareerReputationEditAsync", build + coordinator)
         self.assertIn("ApplyCareerReputationEditAsync", page + coordinator)
         self.assertIn("CareerReputationEditRequest", page)
+        self.assertIn("BurnStreetCredRequest", page + coordinator)
+        self.assertIn("ApplyBurnStreetCredAsync", page + coordinator)
         self.assertIn("ExpectedContentRevision", coordinator)
         self.assertIn("State.WorkspaceId != request.WorkspaceId", coordinator)
         self.assertIn("State.ContentRevision != request.ExpectedContentRevision", coordinator)
@@ -413,6 +415,7 @@ class AndroidContractTests(unittest.TestCase):
             "career-reputation-astral",
             "career-reputation-wild",
             "career-reputation-save",
+            "career-reputation-burn-street-cred",
         ):
             self.assertIn(automation_id, page)
         self.assertIn("if (editor.AstralReputationVisible)", page)
@@ -436,6 +439,9 @@ class AndroidContractTests(unittest.TestCase):
             self.assertIn(f'"{control}"', driver)
         self.assertIn('"coreOnlySourceVisibilityEnforced": "pass"', driver)
         self.assertIn('"allCareerReputationEdited": "pass"', driver)
+        self.assertIn('"streetCredBurnConfirmed": "pass"', driver)
+        self.assertIn('"burntStreetCredIncrementedByTwo": "pass"', driver)
+        self.assertIn('"cmdBurnStreetCred"', driver)
         self.assertIn('"careerWorkspaceXmlPersisted": "pass"', driver)
         self.assertIn('"careerUiReopenReadback": "pass"', driver)
         self.assertIn('"careerProcessRestartUiReadback": "pass"', driver)

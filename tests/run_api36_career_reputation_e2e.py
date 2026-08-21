@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prove the five Chummer5 career reputation controls on a real API 36 phone."""
+"""Prove the Chummer5 career reputation controls on a real API 36 phone."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ CONTROLS: dict[str, tuple[str, str, int]] = {
     "nudWildReputation": ("basewildreputation", "career-reputation-wild", 25),
 }
 CONTROL_PROOF_KEYS = ("mutated", "workspacePersisted", "processRestartUiReadback")
+BURN_CONTROL = "cmdBurnStreetCred"
 
 
 def prepare_career_runner(device: shared.Device, fixture_name: str) -> None:
@@ -95,6 +96,25 @@ def edit_all_reputation(device: shared.Device) -> None:
     )
 
 
+def burn_street_cred(device: shared.Device) -> None:
+    open_reputation(device)
+    device.tap(
+        "career-reputation-burn-street-cred",
+        scroll=True,
+        timeout=60,
+        max_scrolls=12,
+        scroll_distance_ratio=0.22,
+    )
+    device.tap("Burn", timeout=60)
+    device.wait(
+        "build-career-reputation",
+        timeout=120,
+        scroll=True,
+        max_scrolls=20,
+        scroll_distance_ratio=0.22,
+    )
+
+
 def workspace_payloads(device: shared.Device) -> list[str]:
     listing = device.shell("run-as", shared.PACKAGE, "find", "files/state", "-type", "f")
     payloads: list[str] = []
@@ -114,7 +134,10 @@ def workspace_payloads(device: shared.Device) -> list[str]:
 
 
 def assert_workspace_values(device: shared.Device) -> None:
-    expected = {element: str(value) for element, _selector, value in CONTROLS.values()}
+    expected = {
+        **{element: str(value) for element, _selector, value in CONTROLS.values()},
+        "burntstreetcred": "2",
+    }
     observed: list[dict[str, str]] = []
     for payload in workspace_payloads(device):
         try:
@@ -201,6 +224,7 @@ def main() -> int:
     device.shell("pm", "clear", shared.PACKAGE)
     prepare_career_runner(device, full_fixture.name)
     edit_all_reputation(device)
+    burn_street_cred(device)
     assert_workspace_values(device)
     open_reputation(device)
     assert_ui_values(device)
@@ -219,6 +243,9 @@ def main() -> int:
     controls = {
         f"CharacterCareer.{control}": {key: "pass" for key in CONTROL_PROOF_KEYS}
         for control in CONTROLS
+    }
+    controls[f"CharacterCareer.{BURN_CONTROL}"] = {
+        key: "pass" for key in CONTROL_PROOF_KEYS
     }
     receipt = {
         "schema": "chummer.android.editing-e2e/v1",
@@ -240,6 +267,8 @@ def main() -> int:
             "coreOnlySourceVisibilityEnforced": "pass",
             "fullSourceProfileImported": "pass",
             "allCareerReputationEdited": "pass",
+            "streetCredBurnConfirmed": "pass",
+            "burntStreetCredIncrementedByTwo": "pass",
             "careerWorkspaceXmlPersisted": "pass",
             "careerUiReopenReadback": "pass",
             "careerProcessRestartUiReadback": "pass",

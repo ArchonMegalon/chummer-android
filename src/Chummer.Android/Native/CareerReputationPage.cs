@@ -11,6 +11,7 @@ public sealed class CareerReputationPage : NativePageBase
     private readonly Picker _publicAwareness;
     private readonly Picker? _astralReputation;
     private readonly Picker? _wildReputation;
+    private readonly Button _burnStreetCred;
     private readonly Button _save;
 
     public CareerReputationPage(
@@ -31,6 +32,21 @@ public sealed class CareerReputationPage : NativePageBase
         body.Add(NativeTheme.Body(
             "Manual reputation values stored in this runner. Source-specific fields appear only when the saved character settings enable their books.",
             NativeTheme.Muted));
+        body.Add(NativeTheme.Body(
+            $"Total Street Cred: {editor.TotalStreetCred.ToString(CultureInfo.InvariantCulture)} · already burnt: {editor.BurntStreetCred.ToString(CultureInfo.InvariantCulture)}",
+            NativeTheme.Muted));
+
+        _burnStreetCred = NativeTheme.SecondaryButton("Burn 2 Street Cred");
+        _burnStreetCred.AutomationId = "career-reputation-burn-street-cred";
+        _burnStreetCred.Clicked += async (_, _) => await RunAsync(BurnStreetCredAsync);
+        body.Add(_burnStreetCred);
+        if (!editor.CanBurnStreetCred)
+        {
+            body.Add(NativeTheme.Body(
+                editor.BurnStreetCredUnavailableReason
+                ?? "At least 2 total Street Cred is required.",
+                NativeTheme.Muted));
+        }
 
         _streetCred = AddPicker(body, "Street Cred", "career-reputation-street-cred", editor.StreetCred);
         _notoriety = AddPicker(body, "Notoriety", "career-reputation-notoriety", editor.Notoriety);
@@ -74,7 +90,29 @@ public sealed class CareerReputationPage : NativePageBase
         {
             _wildReputation.IsEnabled = exactRevision;
         }
+        _burnStreetCred.IsEnabled = exactRevision && _editor.CanBurnStreetCred;
         _save.IsEnabled = exactRevision;
+    }
+
+    private async Task BurnStreetCredAsync()
+    {
+        bool confirmed = await DisplayAlertAsync(
+            "Burn Street Cred?",
+            "Burning Street Cred is permanent and reduces total Street Cred by 2.",
+            "Burn",
+            "Cancel");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        await Coordinator.ApplyBurnStreetCredAsync(new BurnStreetCredRequest(
+            _editor.WorkspaceId,
+            _editor.ContentRevision));
+        if (Coordinator.State.Error is null)
+        {
+            await Navigation.PopAsync();
+        }
     }
 
     private async Task SaveAsync()

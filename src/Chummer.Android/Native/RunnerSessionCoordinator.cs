@@ -483,6 +483,28 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public async Task ApplyBurnStreetCredAsync(
+        BurnStreetCredRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while reputation was open. Reopen Reputation before burning Street Cred.");
+        }
+
+        await _presenter.ApplyBurnStreetCredAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "2 Street Cred burned." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<SituationalModifiersEditorState?> PrepareSituationalModifiersEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareSituationalModifiersEditAsync(cancellationToken);
