@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Gear Equipped E2E</name><alias>CreationGearEquippedE2E</alias>
+  <playername>Local API 36 E2E</playername><metatype>Human</metatype><buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion><appversion>5.225.0</appversion>
+  <created>False</created><gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <nuyen>4321</nuyen><karma>7</karma>
+  <gears>
+    <gear>
+      <guid>a9121111-9111-4111-8111-911111111111</guid>
+      <name>Creation Equipment Root</name><category>Electronics</category><rating>1</rating><qty>1</qty><cost>100</cost>
+      <parentid></parentid><equipped>True</equipped><notes>Creation root sentinel</notes>
+      <children>
+        <gear>
+          <guid>b9121111-9111-4111-8111-911111111111</guid>
+          <name>Creation Equipment Target</name><category>Electronics</category><rating>1</rating><qty>1</qty><cost>50</cost>
+          <equipped>False</equipped><notes>Creation target sentinel</notes><children />
+        </gear>
+        <gear>
+          <guid>c9121111-9111-4111-8111-911111111111</guid>
+          <name>Creation Included Fixed</name><category>Electronics</category><rating>1</rating><qty>1</qty><cost>0</cost>
+          <parentid>included-source</parentid><equipped>True</equipped><notes>Creation fixed sentinel</notes><children />
+        </gear>
+      </children>
+    </gear>
+    <gear>
+      <guid>d9121111-9111-4111-8111-911111111111</guid>
+      <name>Creation Untouched</name><category>Electronics</category><rating>1</rating><qty>1</qty><cost>75</cost>
+      <equipped>False</equipped><notes>Creation untouched sentinel</notes><children />
+    </gear>
+  </gears>
+  <customstate>Creation Gear Equipped runner sentinel</customstate>
+</character>

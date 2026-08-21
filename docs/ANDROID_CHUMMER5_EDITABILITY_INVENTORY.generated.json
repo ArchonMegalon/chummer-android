@@ -282,7 +282,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "a788ba16aa326a1ea9835c0bb21070421bb99f4fa49509c0130d370086c71886"
+        "sha256": "49c2b68fc1c4e5c5705d7c4319111bb06d9736e7410c5b391688b1bfce32fc2d"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -307,7 +307,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "10b4b4fc42e6074fcbc656cf8cf28d87fd336daabcf3f0dab09e3a7b5b35b035"
+        "sha256": "60cfb674c47a5637c00876fab924faee4cf2e6392ada881c9ae0500609c29798"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -468,6 +468,11 @@
         "path": "tests/run_api36_gear_stolen_e2e.py",
         "exists": true,
         "sha256": "daa9af46a9658c8f5a944f698dc8ae214c47b62ccc19b0ddbcd07f8065085864"
+      },
+      {
+        "path": "tests/run_api36_gear_equipment_e2e.py",
+        "exists": true,
+        "sha256": "91b56200e97e187b667966c73e9a928c8748f9173a8f6eb4a868f91db3bd7bd7"
       },
       {
         "path": "tests/run_api36_improvement_active_e2e.py",
@@ -1437,7 +1442,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "6edbf712be6482f95aa507a4da68a7e59c9ee8205676baefc915a05add26ba3f"
+        "sha256": "4520acf0e60b6bccca44f563ae0d8a53b229429d31bbc53f3e049eb1c60eaa2b"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1637,7 +1642,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "3e4fd469102c2df1b7721be22c0e5796af38d683bb1285c0423f74b192d3d253"
+        "sha256": "f271678882ab049404e79b49932fb30e265151b76a9eb2cafc20ddda9646d636"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1692,7 +1697,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "baeaa763ffd2f3b2e4b1b1be3b9bc65ac7e83816517eeba2ef7ab932e7ccd480"
+        "sha256": "9063238fcf2f40d3f3276336cfea87d4f0affdea7898331eb8b6aa66b55ba26a"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1702,7 +1707,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "bd0cc2e02f3a1c8494c083648ff482b4b50de633ee7f8980a329cab655a0d7ed"
+      "sha256": "1bf98b36e9347043e87d393c66cfc075a14fe90bcf5545be4cf0882ae5a760c4"
     }
   },
   "coverageByFamily": {
@@ -39956,17 +39961,22 @@
       "operation": "set_value",
       "phone": {
         "status": "implemented_pending_emulator",
-        "route": "Build > Gear > selected item > Equipped",
-        "surface": "CollectionItemEditorPage",
-        "automationId": "collection-toggle-equipped-{stable-target}",
+        "route": "Build > Gear > Gear > selected stable root Gear > Equipped",
+        "surface": "GearEquipmentPage",
+        "automationId": "gear-equipment-toggle-{stable-root-gear-guid}",
         "sourceRefs": [
-          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/GearEquipmentPage.cs",
           "src/Chummer.Android/Native/CollectionEditorPages.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
-        ]
+          "chummer-presentation/Chummer.Presentation/Overview/GearEquipmentEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearEquipmentRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCreate and CharacterCareer selected treGear Gear semantics under one stable top-level Gear root. IncludedInParent Gear is read-only and loaded-clip Gear is outside the character/gears tree; duplicate identity, malformed saved state, and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -39974,12 +39984,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Equipped on WorkspaceCollectionKind.Gear",
-      "persistenceAssertion": "selected stable Gear guid retains equipped after save, reopen, and process restart",
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyGearEquipmentEditAsync with exact typed recursive Gear hierarchy, Create/Career phase, CanChangeEquip eligibility, zero Nuyen/Karma economics, duplicate/ambiguity rejection, node-local revision, and expected workspace content revision",
+      "persistenceAssertion": "the exact selected top-level or recursively nested character/gears/.../equipped value is updated while Nuyen, Karma, parent, child, sibling, and unrelated runner XML remains exact after revision-bound atomic save/recovery, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_gear_equipment_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -56696,17 +56706,22 @@
       "operation": "set_value",
       "phone": {
         "status": "implemented_pending_emulator",
-        "route": "Build > Gear > selected item > Equipped",
-        "surface": "CollectionItemEditorPage",
-        "automationId": "collection-toggle-equipped-{stable-target}",
+        "route": "Build > Gear > Gear > selected stable root Gear > Equipped",
+        "surface": "GearEquipmentPage",
+        "automationId": "gear-equipment-toggle-{stable-root-gear-guid}",
         "sourceRefs": [
-          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/GearEquipmentPage.cs",
           "src/Chummer.Android/Native/CollectionEditorPages.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
-        ]
+          "chummer-presentation/Chummer.Presentation/Overview/GearEquipmentEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearEquipmentRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCreate and CharacterCareer selected treGear Gear semantics under one stable top-level Gear root. IncludedInParent Gear is read-only and loaded-clip Gear is outside the character/gears tree; duplicate identity, malformed saved state, and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -56714,12 +56729,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.Equipped on WorkspaceCollectionKind.Gear",
-      "persistenceAssertion": "selected stable Gear guid retains equipped after save, reopen, and process restart",
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyGearEquipmentEditAsync with exact typed recursive Gear hierarchy, Create/Career phase, CanChangeEquip eligibility, zero Nuyen/Karma economics, duplicate/ambiguity rejection, node-local revision, and expected workspace content revision",
+      "persistenceAssertion": "the exact selected top-level or recursively nested character/gears/.../equipped value is updated while Nuyen, Karma, parent, child, sibling, and unrelated runner XML remains exact after revision-bound atomic save/recovery, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_gear_equipment_e2e.py"
         },
         "tablet": {
           "status": "missing",

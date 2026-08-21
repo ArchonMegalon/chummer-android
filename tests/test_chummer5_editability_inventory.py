@@ -1083,6 +1083,43 @@ namespace Chummer
         )
         self.assertFalse(row["completionProven"])
 
+        gear_equipment = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.GEAR_EQUIPMENT_CONTROL
+        ]
+        self.assertEqual(2, len(gear_equipment))
+        self.assertEqual(
+            {"CharacterCreate", "CharacterCareer"},
+            {row["legacy"]["formOrControl"] for row in gear_equipment},
+        )
+        for row in gear_equipment:
+            self.assertEqual("gear", row["mutationFamily"])
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Gear > Gear > selected stable root Gear > Equipped",
+                row["phone"]["route"],
+            )
+            self.assertEqual("GearEquipmentPage", row["phone"]["surface"])
+            self.assertEqual(
+                "gear-equipment-toggle-{stable-root-gear-guid}",
+                row["phone"]["automationId"],
+            )
+            self.assertIn("exact typed recursive Gear hierarchy", row["presenterMutation"])
+            self.assertIn("Create/Career phase", row["presenterMutation"])
+            self.assertIn("zero Nuyen/Karma economics", row["presenterMutation"])
+            self.assertIn("character/gears/.../equipped", row["persistenceAssertion"])
+            self.assertIn("Nuyen, Karma", row["persistenceAssertion"])
+            self.assertIn("revision-bound atomic save/recovery", row["persistenceAssertion"])
+            self.assertIn("IncludedInParent Gear is read-only", row["phone"]["coverageLimit"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_gear_equipment_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
         improvement_active = [
             row for row in rows
             if row["legacy"]["formOrControl"] == "CharacterCareer"
@@ -1673,7 +1710,8 @@ namespace Chummer
         character_collection_toggle_rows = [
             row for row in rows
             if row["legacy"]["controlName"] in inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS
-            and row["legacy"]["controlName"] != "chkArmorEquipped"
+            and row["legacy"]["controlName"]
+                not in {"chkArmorEquipped", inventory.GEAR_EQUIPMENT_CONTROL}
             and row["legacy"]["formOrControl"]
                 in inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS[
                     row["legacy"]["controlName"]
@@ -1683,7 +1721,7 @@ namespace Chummer
             (form_name, control)
             for control, (_, _, _, _, form_names)
                 in inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS.items()
-            if control != "chkArmorEquipped"
+            if control not in {"chkArmorEquipped", inventory.GEAR_EQUIPMENT_CONTROL}
             for form_name in form_names
         }
         self.assertEqual(
@@ -1693,7 +1731,7 @@ namespace Chummer
                 for row in character_collection_toggle_rows
             },
         )
-        self.assertEqual(18, len(character_collection_toggle_rows))
+        self.assertEqual(16, len(character_collection_toggle_rows))
         for row in character_collection_toggle_rows:
             kind, section_label, field, xml_element, _ = (
                 inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS[

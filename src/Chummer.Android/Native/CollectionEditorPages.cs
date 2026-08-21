@@ -123,6 +123,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddArmorEquipmentAction(item);
         AddArmorTreeFlagAction(item);
         AddGearStolenAction(item);
+        AddGearEquipmentAction(item);
         AddLifestyleIncrementAction(item);
         AddWeaponAccessoryIncludedAction(item);
         AddCritterPowerCountAction(item);
@@ -1078,6 +1079,33 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 }
             },
             automationId: $"gear-stolen-open-{gearId:N}"));
+    }
+
+    private void AddGearEquipmentAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Gear
+            || _target.NestedKind is not null
+            || Coordinator.State.WorkspaceId is null
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid gearId)
+            || gearId == Guid.Empty)
+        {
+            return;
+        }
+
+        _body.Add(NativeTheme.Eyebrow("Gear loadout"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Equipped",
+            "Edit the exact selected Gear or recursively nested child with zero Create/Career cost",
+            async () =>
+            {
+                GearEquipmentEditorState? editor = await Coordinator
+                    .PrepareGearEquipmentEditAsync(gearId);
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new GearEquipmentPage(Coordinator, editor));
+                }
+            },
+            automationId: $"gear-equipment-open-{gearId:N}"));
     }
 
     private void AddWeaponAccessoryIncludedAction(WorkspaceCollectionItemEditorState item)

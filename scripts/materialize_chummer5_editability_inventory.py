@@ -1672,6 +1672,7 @@ ARMOR_TREE_FLAG_CONTROLS = {
     ),
 }
 GEAR_STOLEN_CONTROL = "chkGearStolen"
+GEAR_EQUIPMENT_CONTROL = "chkGearEquipped"
 IMPROVEMENT_ACTIVE_CONTROL = "chkImprovementActive"
 IMPROVEMENT_GROUP_ACTIVE_CONTROLS = {
     "cmdImprovementsEnableAll": (
@@ -9664,6 +9665,193 @@ def _known_phone_mapping(
             "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name in {"CharacterCreate", "CharacterCareer"} and control == GEAR_EQUIPMENT_CONTROL:
+        legacy_source = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / f"{class_name}.cs"
+        )
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearEquipmentPage.cs"
+        editor = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_gear_equipment_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-gear-equipment-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-gear-equipment-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "GearEquipmentEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = (
+            character_notes_core_root
+            / "Chummer.Contracts"
+            / "Characters"
+            / "CharacterGearEquipmentRules.cs"
+        )
+        workspace_store = (
+            character_notes_core_root
+            / "Chummer.Infrastructure"
+            / "Workspaces"
+            / "FileWorkspaceStore.cs"
+        )
+        legacy_exact = (
+            any(
+                event.get("handler") == "chkGearEquipped_CheckedChanged"
+                for event in legacy.get("events", [])
+            )
+            and _contains(
+                legacy_source,
+                "chkGearEquipped_CheckedChanged",
+                "treGear.DoThreadSafeFuncAsync",
+                "is Gear",
+                "SetEquippedAsync(blnChecked",
+                "ChangeEquippedStatusAsync(blnChecked",
+                "MakeDirtyWithCharacterUpdate",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "class GearEquipmentPage",
+                'AutomationId = $"gear-equipment-page-{rootToken}"',
+                'AutomationId = $"gear-equipment-target-{rootToken}"',
+                'AutomationId = $"gear-equipment-toggle-{rootToken}"',
+                'AutomationId = $"gear-equipment-save-{rootToken}"',
+                "CharacterGearEquipmentRules.IsValidIdentity",
+                "selected.CanChangeEquip",
+                "selected.Revision",
+                "GearEquipmentEditRequest",
+            )
+            and _contains(
+                editor,
+                "AddGearEquipmentAction",
+                'automationId: $"gear-equipment-open-{gearId:N}"',
+                "PrepareGearEquipmentEditAsync",
+                "new GearEquipmentPage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareGearEquipmentEditAsync",
+                "ApplyGearEquipmentEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CharacterGearEquipmentIdentity",
+                "GearEquipmentEditorProjector",
+                'ReadRequiredBoolean(root, "created"',
+                'ReadOptionalContainer(gear, "children")',
+                "seenIds.Add(gearId)",
+                "FindUniqueDirectByGuid",
+                'ReadRequiredBoolean(gear, "equipped"',
+                'ReadOptionalSingleText(gear, "parentid")',
+            )
+            and _contains(
+                mutation,
+                "ApplyGearEquipmentEdit",
+                "CharacterGearEquipmentRules.TryValidateMutation",
+                "GearEquipmentEditorProjector.FindNode",
+                'SetElementValue(target, "equipped"',
+            )
+            and _contains(
+                presenter,
+                "PrepareGearEquipmentEditAsync",
+                "ApplyGearEquipmentEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareGearEquipmentEditAsync",
+                "ApplyGearEquipmentEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterGearEquipmentIdentity",
+                "CharacterGearEquipmentState",
+                "CharacterGearEquipmentPhase",
+                "CharacterGearEquipmentEconomics",
+                "CanChangeEquip",
+                "NuyenDelta: 0m",
+                "KarmaDelta: 0",
+                "TryValidateMutation",
+                "SHA256.HashData",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCreate.chkGearEquipped"',
+                '"CharacterCareer.chkGearEquipped"',
+                'if api != "36"',
+                '"arm64-v8a" not in abi_list.split(",")',
+                '"package": shared.PACKAGE',
+                '"profile": "phone"',
+                '"journey": "gear-equipment"',
+                '"zeroEconomicDeltaBothPhases": "pass"',
+                '"processRestartBothPhases": "pass"',
+                '"gearEquipmentRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+                '"careerFixtureSha256"',
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Gear > Gear > selected stable root Gear > Equipped",
+            "surface": "GearEquipmentPage",
+            "automationId": "gear-equipment-toggle-{stable-root-gear-guid}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/GearEquipmentPage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/GearEquipmentEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearEquipmentRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyGearEquipmentEditAsync with exact typed recursive Gear "
+                "hierarchy, Create/Career phase, CanChangeEquip eligibility, zero Nuyen/Karma economics, "
+                "duplicate/ambiguity rejection, node-local revision, and expected workspace content revision"
+            ),
+            "persistenceAssertion": (
+                "the exact selected top-level or recursively nested character/gears/.../equipped value is "
+                "updated while Nuyen, Karma, parent, child, sibling, and unrelated runner XML remains exact "
+                "after revision-bound atomic save/recovery, same-session reopen, and process restart"
+            ),
+            "coverageLimit": (
+                "Exact CharacterCreate and CharacterCareer selected treGear Gear semantics under one stable "
+                "top-level Gear root. IncludedInParent Gear is read-only and loaded-clip Gear is outside the "
+                "character/gears tree; duplicate identity, malformed saved state, and tablet fail closed."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_gear_equipment_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCreate" and control == GEAR_STOLEN_CONTROL:
         legacy_source = (
             presentation_root / "Chummer" / "Forms" / "Character Forms" / "CharacterCreate.cs"
@@ -15429,6 +15617,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_armor_equipment_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_tree_flags_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_stolen_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_gear_equipment_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_active_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_group_active_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
