@@ -635,6 +635,32 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<TraditionDrainEditorState?> PrepareTraditionDrainEditAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareTraditionDrainEditAsync(cancellationToken);
+
+    public async Task ApplyTraditionDrainEditAsync(
+        TraditionDrainEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Tradition Drain was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyTraditionDrainEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Tradition drain attributes saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<CareerEdgeUseEditorState?> PrepareCareerEdgeUseEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareCareerEdgeUseEditAsync(cancellationToken);

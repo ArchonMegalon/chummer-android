@@ -1020,6 +1020,7 @@ PRIMARY_ARM_CONTROLS = {
 GROUP_MEMBERSHIP_CONTROL = "chkJoinGroup"
 GROUP_NAME_CONTROL = "txtGroupName"
 TRADITION_NAME_CONTROL = "txtTraditionName"
+TRADITION_DRAIN_CONTROL = "cboDrain"
 CAREER_EDGE_USE_CONTROLS = {
     "cmdEdgeSpent": (
         "cmdEdgeSpent_Click",
@@ -9538,6 +9539,171 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
+        and control == TRADITION_DRAIN_CONTROL
+    ):
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TraditionDrainPage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_tradition_drain_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-tradition-drain-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-tradition-drain-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "TraditionDrainEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterTraditionDrainRules.cs"
+        resolver_contract = character_notes_core_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs"
+        resolver = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "FileSystemCharacterSourceDataResolver.cs"
+        traditions_catalog = character_notes_core_root / "Chummer" / "data" / "traditions.xml"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        implemented = (
+            _contains(
+                page,
+                "class TraditionDrainPage",
+                'AutomationId = "tradition-drain-page"',
+                'AutomationId = "tradition-drain-value"',
+                'AutomationId = "tradition-drain-save"',
+                "CharacterTraditionDrainRules.TryValidateRequestedExpression",
+                "TraditionDrainEditRequest",
+            )
+            and _contains(build_page, 'automationId: "build-tradition-drain"', "new TraditionDrainPage")
+            and _contains(
+                coordinator,
+                "PrepareTraditionDrainEditAsync",
+                "ApplyTraditionDrainEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "TraditionDrainEditorState",
+                "TraditionDrainEditRequest",
+                "ExpectedDrainExpression",
+                'root.Elements("tradition").Take(2)',
+                'ReadOptionalBoolean(root, "adept")',
+                'ReadOptionalBoolean(root, "magician")',
+                "TryResolveTraditionDrainExpressions",
+            )
+            and _contains(
+                mutation,
+                "ApplyTraditionDrainEdit",
+                "CharacterTraditionDrainRules.TryValidateRequestedExpression",
+                'tradition.Elements("drain").Single()',
+            )
+            and _contains(
+                presenter,
+                "PrepareTraditionDrainEditAsync",
+                "ApplyTraditionDrainEditAsync",
+                "_characterSourceDataResolver",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareTraditionDrainEditAsync",
+                "ApplyTraditionDrainEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterTraditionDrainRules",
+                "CharacterTraditionNameRules.CustomMagicalTraditionSourceId",
+                "adeptEnabled && !magicianEnabled",
+                "TryValidateRequestedExpression",
+            )
+            and _contains(resolver_contract, "TryResolveTraditionDrainExpressions")
+            and _contains(
+                resolver,
+                'TryLoadEffectiveDocument(_catalog, "traditions.xml"',
+                'Elements("drainattributes").Take(2)',
+                'Elements("drainattribute")',
+            )
+            and _contains(traditions_catalog, "<drainattributes>", "{WIL} + {CHA}", "{WIL} + {LOG}")
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCreate.cboDrain"',
+                '"CharacterCareer.cboDrain"',
+                'api != "36"',
+                '"profile": "phone"',
+                '"journey": "tradition-drain"',
+                '"traditionDrainRulesSha256"',
+                '"sourceResolverSha256"',
+                '"traditionsCatalogSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+                '"careerFixtureSha256"',
+                '"adeptOnlyAndUnknownCatalogValuesRejectedBySourceContract": "pass"',
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Magic > Tradition drain",
+            "surface": "TraditionDrainPage",
+            "automationId": "tradition-drain-value",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/TraditionDrainPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/TraditionDrainEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionDrainRules.cs",
+                "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer/data/traditions.xml",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyTraditionDrainEditAsync(TraditionDrainEditRequest)"
+            ),
+            "persistenceAssertion": (
+                "character/tradition/drain equals the exact selected traditions.xml/drainattributes value after "
+                "stable-GUID, source-profile, eligibility, revision-bound atomic save, same-session reopen, and "
+                "process restart; source identity and unrelated tradition fields remain untouched"
+            ),
+            "coverageLimit": (
+                "Covers CharacterCreate/CharacterCareer cboDrain only for a saved MAG tradition that is not "
+                "Adept-only and either has the exact Custom source ID or an empty saved drain; values are limited "
+                "to the exact effective traditions.xml/drainattributes catalog plus blank. Missing/duplicate "
+                "identity, unavailable overlay authority, RES, unknown values, and non-Custom nonempty drain "
+                "states fail closed; the API 36 driver is "
+                f"{'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_tradition_drain_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCareer" and control in CAREER_EDGE_USE_CONTROLS:
         handler, action, automation_id = CAREER_EDGE_USE_CONTROLS[control]
         page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerEdgeUsePage.cs"
@@ -11251,6 +11417,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GroupMembershipPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GroupNamePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TraditionNamePage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TraditionDrainPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerEdgeUsePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerManualKarmaPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearLocationAddPage.cs",
@@ -11288,6 +11455,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_group_membership_e2e.py",
         REPO_ROOT / "tests" / "run_api36_group_name_e2e.py",
         REPO_ROOT / "tests" / "run_api36_tradition_name_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_tradition_drain_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_edge_use_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_manual_karma_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_location_e2e.py",
@@ -11333,6 +11501,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-group-name-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-tradition-name-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-tradition-name-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-tradition-drain-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-tradition-drain-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-edge-use-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-manual-karma-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-gear-location-e2e.chum5",
@@ -11420,6 +11590,8 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGroupMembershipRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGroupNameRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterTraditionNameRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterTraditionDrainRules.cs",
+        core_engine_root / "Chummer" / "data" / "traditions.xml",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerEdgeUseRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualKarmaRules.cs",
         core_engine_root / "Chummer.Contracts" / "Workspaces" / "CharacterWorkspaceModels.cs",
@@ -11438,6 +11610,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "GroupMembershipEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GroupNameEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "TraditionNameEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "TraditionDrainEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerEdgeUseEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerManualKarmaEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GearLocationAddRequest.cs",

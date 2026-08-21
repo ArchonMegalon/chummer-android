@@ -148,6 +148,18 @@ public sealed class BuildPage : NativePageBase
                 }
             },
             automationId: "build-tradition-name"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Tradition drain",
+            "Choose exact drain attributes for an eligible magical tradition",
+            async () =>
+            {
+                TraditionDrainEditorState? editor = await Coordinator.PrepareTraditionDrainEditAsync();
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new TraditionDrainPage(Coordinator, editor));
+                }
+            },
+            automationId: "build-tradition-drain"));
         if (Coordinator.State.Profile?.Created == true)
         {
             _body.Add(NativeTheme.NavigationRow(

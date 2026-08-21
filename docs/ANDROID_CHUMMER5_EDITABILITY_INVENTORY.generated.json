@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 385,
+      "implemented_pending_emulator": 387,
       "implemented_verified_api36": 79,
-      "missing": 1044,
+      "missing": 1042,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 147
@@ -77,7 +77,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "88a8650f83b56ab5e6bc0343122e518d1714e1dd86abc76a020df4108957f4df"
+        "sha256": "ba8a8bec876ce9124e3d9605e6dc12f0417be48880b7e59aa19a3472123d5800"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -113,6 +113,11 @@
         "path": "src/Chummer.Android/Native/TraditionNamePage.cs",
         "exists": true,
         "sha256": "1a8f1641e7e0163079d6265d9b3f7defbbe000f1ed32bc8a964167444c1841be"
+      },
+      {
+        "path": "src/Chummer.Android/Native/TraditionDrainPage.cs",
+        "exists": true,
+        "sha256": "44ec88d754d538c59cd8b364244de81a70c0618a9cce926a3c98f691dbd1d777"
       },
       {
         "path": "src/Chummer.Android/Native/CareerEdgeUsePage.cs",
@@ -247,7 +252,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "acf92524056936a1f11a96798a3453b41e9bff10788e9eaa14e74c2f5a4807cc"
+        "sha256": "466f860d243a1beba0070492b5dcf9334dcc82ab015d148abb852e268ca2ea9d"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -298,6 +303,11 @@
         "path": "tests/run_api36_tradition_name_e2e.py",
         "exists": true,
         "sha256": "8303515e1d72d3fe5f640b8719275f78aecd24dbe21434f419a661a5d3a9b5c5"
+      },
+      {
+        "path": "tests/run_api36_tradition_drain_e2e.py",
+        "exists": true,
+        "sha256": "404ece49459ea8c1080eb528f07c570163be0fec13674ad4c84aea642b3e8d1d"
       },
       {
         "path": "tests/run_api36_career_edge_use_e2e.py",
@@ -523,6 +533,16 @@
         "path": "tests/fixtures/career-tradition-name-e2e.chum5",
         "exists": true,
         "sha256": "7147134e38e05c2c9de5cc9da8feabe68bb0d9e6a53c0fab442bd874c38722a5"
+      },
+      {
+        "path": "tests/fixtures/creation-tradition-drain-e2e.chum5",
+        "exists": true,
+        "sha256": "5a75809fa64beae4bfee9bba922acc2bee25b866473725f1b814cff96343e899"
+      },
+      {
+        "path": "tests/fixtures/career-tradition-drain-e2e.chum5",
+        "exists": true,
+        "sha256": "c73d5c6a73070c994d14547b59c1dabb8fd42398ce90f5e01df3bdfb26c30183"
       },
       {
         "path": "tests/fixtures/career-edge-use-e2e.chum5",
@@ -970,6 +990,16 @@
         "sha256": "73388bd5ed9920a32b52117525b8ef1f3c5aee5a800c045581126e827a93141c"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionDrainRules.cs",
+        "exists": true,
+        "sha256": "9e98871e64b74cb7e9e09253b1ff1aeadc25c281dd2541fd853a21d5dfaf24d2"
+      },
+      {
+        "path": "chummer-core-engine/Chummer/data/traditions.xml",
+        "exists": true,
+        "sha256": "10babe291e995f8c5362cff2c6c901011d0575e6da0efd162b5dac2412318174"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerEdgeUseRules.cs",
         "exists": true,
         "sha256": "d59db7c77f2a62d6a1d2541ae61eeb69f226066a0c4242a6089981269e00e610"
@@ -987,7 +1017,7 @@
       {
         "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "3ba80b4ec695cc5eb8b659eb680c8ab772852c5aa5822acc980ca04f4c45120b"
+        "sha256": "e237ba5e8692139ed7237788adaccfe0847d241b768dec42979bdac7a9ecfdfe"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
@@ -1007,7 +1037,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "46886a07affcad0bd4b2b912976f387aba980fd52e120ca2cce6bc1df2857e68"
+        "sha256": "0b08f67cedec74fee0fe6b988549f7aa8b75a5573b3d3b0ba3157c6d8e35ead7"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -1027,7 +1057,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "dd982af46be3e6d708fb4381510dc425da8dd48fdf7c13cdf56713c095040af6"
+        "sha256": "30ee80ad222dbbb88df68a85a339a93f07c24d5189388fef1c52e56b47447810"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1058,6 +1088,11 @@
         "path": "chummer-presentation/Chummer.Presentation/Overview/TraditionNameEditRequest.cs",
         "exists": true,
         "sha256": "acc3c6a1ac4c802a7961ba41899843285fc5018c6cdbb15c6f533a2b070e46ff"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/TraditionDrainEditRequest.cs",
+        "exists": true,
+        "sha256": "682a03edf299db5719160f47f82bf4cd3d0d90ee902037ab834e32cb3a9f3116"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerEdgeUseEditRequest.cs",
@@ -1167,7 +1202,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "9f41ab3dfd775fe1e4a82eeb419f8da51eb9ee330efb14724db5df08aaef932e"
+        "sha256": "73c13982afbdd26e6ea72048379baebff957341567d4e72e7c5b197049dc3bfc"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1222,7 +1257,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "dded14212a824f1baa95f863b901c88236cf7309d366150c3e16276bef27bb68"
+        "sha256": "72ccf9446f48ca40d16c8f5d7c0fe64898b997780f9ae79ab75fdc7ae025721c"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1232,7 +1267,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "1722f2324a55738e59beb4222ac57a18c2da41110f381da1773183ab37d3691a"
+      "sha256": "188bfee10247ed615297d2668e8fcce0963b982d566bc23213a47b36135be4ef"
     }
   },
   "coverageByFamily": {
@@ -1463,7 +1498,7 @@
     "magic_tradition_and_resonance": {
       "rowCount": 15,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 8,
+      "phoneMissingCount": 6,
       "tabletMissingCount": 14,
       "completionProvenCount": 1
     },
@@ -15716,11 +15751,26 @@
       "mutationFamily": "magic_tradition_and_resonance",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic > Tradition drain",
+        "surface": "TraditionDrainPage",
+        "automationId": "tradition-drain-value",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/TraditionDrainPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/TraditionDrainEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionDrainRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer/data/traditions.xml",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers CharacterCreate/CharacterCareer cboDrain only for a saved MAG tradition that is not Adept-only and either has the exact Custom source ID or an empty saved drain; values are limited to the exact effective traditions.xml/drainattributes catalog plus blank. Missing/duplicate identity, unavailable overlay authority, RES, unknown values, and non-Custom nonempty drain states fail closed; the API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -15728,12 +15778,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyTraditionDrainEditAsync(TraditionDrainEditRequest)",
+      "persistenceAssertion": "character/tradition/drain equals the exact selected traditions.xml/drainattributes value after stable-GUID, source-profile, eligibility, revision-bound atomic save, same-session reopen, and process restart; source identity and unrelated tradition fields remain untouched",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_tradition_drain_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -57540,11 +57590,26 @@
       "mutationFamily": "magic_tradition_and_resonance",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic > Tradition drain",
+        "surface": "TraditionDrainPage",
+        "automationId": "tradition-drain-value",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/TraditionDrainPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/TraditionDrainEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionDrainRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer/data/traditions.xml",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers CharacterCreate/CharacterCareer cboDrain only for a saved MAG tradition that is not Adept-only and either has the exact Custom source ID or an empty saved drain; values are limited to the exact effective traditions.xml/drainattributes catalog plus blank. Missing/duplicate identity, unavailable overlay authority, RES, unknown values, and non-Custom nonempty drain states fail closed; the API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -57552,12 +57617,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyTraditionDrainEditAsync(TraditionDrainEditRequest)",
+      "persistenceAssertion": "character/tradition/drain equals the exact selected traditions.xml/drainattributes value after stable-GUID, source-profile, eligibility, revision-bound atomic save, same-session reopen, and process restart; source identity and unrelated tradition fields remain untouched",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_tradition_drain_e2e.py"
         },
         "tablet": {
           "status": "missing",

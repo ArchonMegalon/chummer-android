@@ -1718,6 +1718,50 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("cboTradition", page)
         self.assertNotIn("cboDrain", page)
 
+    def test_phone_tradition_drain_is_source_allowlisted_revision_and_identity_bound(self) -> None:
+        page = (PROJECT / "Native" / "TraditionDrainPage.cs").read_text(encoding="utf-8")
+        build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        presentation = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+        core = WORKSPACE / "chummer-core-engine"
+        request = (presentation / "TraditionDrainEditRequest.cs").read_text(encoding="utf-8")
+        mutation = (presentation / "WorkspaceXmlMutationCatalog.cs").read_text(encoding="utf-8")
+        presenter = (presentation / "CharacterOverviewPresenter.WorkspaceMutations.cs").read_text(encoding="utf-8")
+        persistence = (presentation / "CharacterOverviewPresenter.Persistence.cs").read_text(encoding="utf-8")
+        rules = (core / "Chummer.Contracts" / "Characters" / "CharacterTraditionDrainRules.cs").read_text(encoding="utf-8")
+        resolver_contract = (core / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs").read_text(encoding="utf-8")
+        resolver = (core / "Chummer.Infrastructure" / "Xml" / "FileSystemCharacterSourceDataResolver.cs").read_text(encoding="utf-8")
+        store = (core / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs").read_text(encoding="utf-8")
+
+        for token in (
+            'AutomationId = "tradition-drain-page"',
+            'AutomationId = "tradition-drain-value"',
+            'AutomationId = "tradition-drain-save"',
+            "CharacterTraditionDrainRules.TryValidateRequestedExpression",
+        ):
+            self.assertIn(token, page)
+        self.assertIn('automationId: "build-tradition-drain"', build)
+        self.assertIn("new TraditionDrainPage", build)
+        self.assertIn("ApplyTraditionDrainEditAsync", coordinator)
+        self.assertIn("_presenter.SaveAsync", coordinator)
+        self.assertIn("ExpectedContentRevision", request)
+        self.assertIn("TraditionId", request)
+        self.assertIn("ExpectedDrainExpression", request)
+        self.assertIn('root.Elements("tradition").Take(2)', request)
+        self.assertIn('ReadOptionalBoolean(root, "adept")', request)
+        self.assertIn('ReadOptionalBoolean(root, "magician")', request)
+        self.assertIn("TryResolveTraditionDrainExpressions", resolver_contract)
+        self.assertIn('TryLoadEffectiveDocument(_catalog, "traditions.xml"', resolver)
+        self.assertIn('Elements("drainattributes").Take(2)', resolver)
+        self.assertIn("ApplyTraditionDrainEdit", mutation)
+        self.assertIn("_characterSourceDataResolver", presenter)
+        self.assertIn("ApplyWorkspaceXmlMutationAsync", presenter)
+        self.assertIn("TryCaptureRecoveryPayloadAsync", persistence)
+        self.assertIn("WriteRecordAtomically", store)
+        self.assertIn("CharacterTraditionNameRules.CustomMagicalTraditionSourceId", rules)
+        self.assertIn("adeptEnabled && !magicianEnabled", rules)
+        self.assertNotIn("Entry", page)
+
     def test_phone_cyberware_commerce_is_stable_revision_bound_and_source_exact(self) -> None:
         page = (PROJECT / "Native" / "CyberwareCommercePage.cs").read_text(encoding="utf-8")
         editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")

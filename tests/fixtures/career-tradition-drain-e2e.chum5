@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Tradition Drain E2E</name>
+  <alias>CareerTraditionDrainE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <adept>False</adept>
+  <magician>True</magician>
+  <tradition>
+    <sourceid>616ba093-306c-45fc-8f41-0b98c8cccb46</sourceid>
+    <guid>c412cb61-4a84-496c-b811-3e4a13b0dd27</guid>
+    <traditiontype>MAG</traditiontype>
+    <name>Career Custom Tradition</name>
+    <drain>{WIL} + {INT}</drain>
+    <extra>Career unrelated tradition data</extra>
+  </tradition>
+</character>

@@ -471,6 +471,24 @@ namespace Chummer
             self.assertIn("616ba093-306c-45fc-8f41-0b98c8cccb46", row["phone"]["coverageLimit"])
             self.assertFalse(row["completionProven"])
 
+        tradition_drain = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.TRADITION_DRAIN_CONTROL
+        ]
+        self.assertEqual(2, len(tradition_drain))
+        for row in tradition_drain:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("Build > Magic > Tradition drain", row["phone"]["route"])
+            self.assertEqual("TraditionDrainPage", row["phone"]["surface"])
+            self.assertEqual("tradition-drain-value", row["phone"]["automationId"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual("tests/run_api36_tradition_drain_e2e.py", row["e2e"]["phone"]["ref"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertIn("tradition/drain", row["persistenceAssertion"])
+            self.assertIn("traditions.xml/drainattributes", row["phone"]["coverageLimit"])
+            self.assertFalse(row["completionProven"])
+
         gear_locations = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -1574,9 +1592,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 385,
+                "implemented_pending_emulator": 387,
                 "implemented_verified_api36": 79,
-                "missing": 1044,
+                "missing": 1042,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 147,
