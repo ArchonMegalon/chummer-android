@@ -22,6 +22,8 @@ class Api36SpiritNameChoiceE2EDriverTests(unittest.TestCase):
         self.assertIn('"profile": "phone"', source)
         self.assertIn('"journey": "spirit-name-choice"', source)
         self.assertIn('api != "36"', source)
+        self.assertIn('abi != "arm64-v8a"', source)
+        self.assertIn('"package": shared.PACKAGE', source)
         self.assertIn('"build-section-tab-magician"', source)
         self.assertIn('"build-action-tab-magician-spirits"', source)
         self.assertIn('f"collection-item-spirit-{expected[\'target_id\']}"', source)

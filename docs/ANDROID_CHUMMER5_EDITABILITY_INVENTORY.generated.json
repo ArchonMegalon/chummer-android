@@ -357,7 +357,7 @@
       {
         "path": "tests/run_api36_career_nuyen_expense_edit_e2e.py",
         "exists": true,
-        "sha256": "25eebccb8abf175414353d73d2504d584cfcd706930fef78590124d84d8c9c5e"
+        "sha256": "ed5503def5a35b09519dca198d81c5af98ab716a2ec9ddfd21164079a3fcd6a2"
       },
       {
         "path": "tests/run_api36_gear_location_e2e.py",
@@ -437,7 +437,7 @@
       {
         "path": "tests/run_api36_spirit_name_choice_e2e.py",
         "exists": true,
-        "sha256": "6b95f6a644bbfd8a30ac8cf87d6f269e6535f923694e26299804dcf3d6bf9cea"
+        "sha256": "ae8cff06d774b68af1944ff5ede33abb93c5faf520a4bcd1481fd933259688cd"
       },
       {
         "path": "tests/run_api36_sustained_effects_e2e.py",
@@ -921,6 +921,16 @@
       },
       {
         "path": "docs/editability-evidence/api36-phone-character-notes/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-nuyen-expense-edit/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-spirit-name-choice/receipt.json",
         "exists": false,
         "sha256": null
       },

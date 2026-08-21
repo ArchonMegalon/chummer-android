@@ -21,6 +21,8 @@ from typing import Any, Iterable
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+PHONE_E2E_PACKAGE = "com.myexternalbrain.chummer"
+PHONE_E2E_ABI = "arm64-v8a"
 
 
 def _resolve_workspace_root() -> Path:
@@ -287,6 +289,63 @@ CHARACTER_NOTES_E2E_JOURNEYS = (
 CHARACTER_NOTES_CONTROL_E2E_PROOF_KEYS = (
     "mutated",
     "workspacePersisted",
+    "processRestartUiReadback",
+)
+CAREER_NUYEN_EXPENSE_EDIT_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-career-nuyen-expense-edit"
+    / "receipt.json"
+)
+CAREER_NUYEN_EXPENSE_EDIT_E2E_JOURNEYS = (
+    "manualAmountReasonEdit",
+    "manualBalanceDeltaPersisted",
+    "lockedAmountReasonOnlyEdit",
+    "twoProcessRestarts",
+)
+CAREER_NUYEN_EXPENSE_EDIT_CONTROL_E2E_PROOF_KEYS = (
+    "stableExpenseGuid",
+    "manualAmountAuthority",
+    "lockedAmountAuthority",
+    "exactNuyenDelta",
+    "dateReasonEditable",
+    "lockedMetadataPreserved",
+    "workspacePersisted",
+    "unrelatedXmlPreserved",
+    "expectedRevisionAtomicSave",
+    "surfaceReopened",
+    "processRestartWorkspacePersisted",
+    "processRestartUiReadback",
+)
+SPIRIT_NAME_CHOICE_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-spirit-name-choice"
+    / "receipt.json"
+)
+SPIRIT_NAME_CHOICE_E2E_JOURNEYS = (
+    "creationRunnerImported",
+    "creationLimitedBaseAndAddSpiritEditedReopenedRestarted",
+    "creationRevertedAndRestarted",
+    "careerRunnerImported",
+    "careerStreamAndAddSpriteEditedReopenedRestarted",
+    "careerRevertedAndRestarted",
+)
+SPIRIT_NAME_CHOICE_CONTROL_E2E_PROOF_KEYS = (
+    "sharedCreateCareerReachability",
+    "dropDownListOnly",
+    "selectedIdentityStable",
+    "traditionStreamChoices",
+    "limitBeforeAddRules",
+    "enabledImprovementsOnly",
+    "critterNameUnchanged",
+    "workspacePersisted",
+    "unrelatedXmlPreserved",
+    "expectedRevisionAtomicSave",
+    "surfaceReopened",
+    "processRestartWorkspacePersisted",
     "processRestartUiReadback",
 )
 CAREER_REPUTATION_PHONE_E2E_RECEIPT = (
@@ -1773,6 +1832,167 @@ def _validated_character_notes_phone_e2e_receipt(
         "status": "executed_api36",
         "ref": CHARACTER_NOTES_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(CHARACTER_NOTES_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_career_nuyen_expense_edit_phone_e2e_receipt(
+    presentation_root: Path,
+    core_root: Path,
+) -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_career_nuyen_expense_edit_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    fixture = REPO_ROOT / "tests" / "fixtures" / "career-nuyen-expense-edit-e2e.chum5"
+    native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
+    overview = presentation_root / "Chummer.Presentation" / "Overview"
+    source_digests = {
+        "careerNuyenExpensePageSha256": native_root / "CareerNuyenExpensePage.cs",
+        "buildPageSha256": native_root / "BuildPage.cs",
+        "coordinatorSha256": native_root / "RunnerSessionCoordinator.cs",
+        "careerNuyenExpenseContractSha256": overview / "CareerNuyenExpenseEditRequest.cs",
+        "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+        "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "presenterPersistenceSha256": overview / "CharacterOverviewPresenter.Persistence.cs",
+        "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+        "careerNuyenExpenseRulesSha256": core_root / "Chummer.Contracts" / "Characters" / "CharacterCareerNuyenExpenseEditRules.cs",
+        "workspaceStoreSha256": core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs",
+    }
+    required_files = (driver, shared_driver, fixture, *source_digests.values())
+    if not all(path.is_file() for path in required_files):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(CAREER_NUYEN_EXPENSE_EDIT_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    controls = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_controls = {
+        f"CharacterCareer.{control}"
+        for control in CAREER_NUYEN_EXPENSE_EDIT_CONTROLS
+    }
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "career-nuyen-expense-edit"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("abi") == PHONE_E2E_ABI
+        and receipt.get("package") == PHONE_E2E_PACKAGE
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("careerFixtureSha256") == _sha256_file(fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(journeys, dict)
+        and set(journeys) == set(CAREER_NUYEN_EXPENSE_EDIT_E2E_JOURNEYS)
+        and all(journeys[journey] == "pass" for journey in CAREER_NUYEN_EXPENSE_EDIT_E2E_JOURNEYS)
+        and isinstance(controls, dict)
+        and set(controls) == expected_controls
+        and receipt.get("controlCount") == len(expected_controls)
+        and all(
+            isinstance(controls[control], dict)
+            and set(controls[control]) == set(CAREER_NUYEN_EXPENSE_EDIT_CONTROL_E2E_PROOF_KEYS)
+            and all(
+                controls[control][proof_key] == "pass"
+                for proof_key in CAREER_NUYEN_EXPENSE_EDIT_CONTROL_E2E_PROOF_KEYS
+            )
+            for control in expected_controls
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": CAREER_NUYEN_EXPENSE_EDIT_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(CAREER_NUYEN_EXPENSE_EDIT_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_spirit_name_choice_phone_e2e_receipt(
+    presentation_root: Path,
+    core_root: Path,
+) -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_spirit_name_choice_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-spirit-name-choice-e2e.chum5"
+    career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-spirit-name-choice-e2e.chum5"
+    native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
+    overview = presentation_root / "Chummer.Presentation" / "Overview"
+    source_digests = {
+        "buildPageSha256": native_root / "BuildPage.cs",
+        "buildFlowPagesSha256": native_root / "BuildFlowPages.cs",
+        "spiritNameChoicePageSha256": native_root / "SpiritNameChoicePage.cs",
+        "collectionEditorPagesSha256": native_root / "CollectionEditorPages.cs",
+        "coordinatorSha256": native_root / "RunnerSessionCoordinator.cs",
+        "spiritNameChoiceContractSha256": overview / "SpiritNameChoiceEditRequest.cs",
+        "collectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
+        "collectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
+        "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+        "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "presenterPersistenceSha256": overview / "CharacterOverviewPresenter.Persistence.cs",
+        "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+        "spiritNameChoiceRulesSha256": core_root / "Chummer.Contracts" / "Characters" / "CharacterSpiritNameChoiceRules.cs",
+        "characterSectionModelsSha256": core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+        "sourceResolverContractSha256": core_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs",
+        "sourceResolverSha256": core_root / "Chummer.Infrastructure" / "Xml" / "FileSystemCharacterSourceDataResolver.cs",
+        "characterSectionServiceSha256": core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+        "traditionsCatalogSha256": core_root / "Chummer" / "data" / "traditions.xml",
+        "streamsCatalogSha256": core_root / "Chummer" / "data" / "streams.xml",
+        "workspaceStoreSha256": core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs",
+        "sr5ShellCatalogSha256": core_root / "Chummer.Rulesets.Sr5" / "Sr5ShellCatalogs.cs",
+    }
+    required_files = (
+        driver,
+        shared_driver,
+        creation_fixture,
+        career_fixture,
+        *source_digests.values(),
+    )
+    if not all(path.is_file() for path in required_files):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(SPIRIT_NAME_CHOICE_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    journeys = receipt.get("journeys")
+    controls = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_control = "SpiritControl.cboSpiritName"
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "spirit-name-choice"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("abi") == PHONE_E2E_ABI
+        and receipt.get("package") == PHONE_E2E_PACKAGE
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("creationFixtureSha256") == _sha256_file(creation_fixture)
+        and receipt.get("careerFixtureSha256") == _sha256_file(career_fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(journeys, dict)
+        and set(journeys) == set(SPIRIT_NAME_CHOICE_E2E_JOURNEYS)
+        and all(journeys[journey] == "pass" for journey in SPIRIT_NAME_CHOICE_E2E_JOURNEYS)
+        and isinstance(controls, dict)
+        and set(controls) == {expected_control}
+        and receipt.get("controlCount") == 1
+        and isinstance(controls[expected_control], dict)
+        and set(controls[expected_control]) == set(SPIRIT_NAME_CHOICE_CONTROL_E2E_PROOF_KEYS)
+        and all(
+            controls[expected_control][proof_key] == "pass"
+            for proof_key in SPIRIT_NAME_CHOICE_CONTROL_E2E_PROOF_KEYS
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": SPIRIT_NAME_CHOICE_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(SPIRIT_NAME_CHOICE_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
 
@@ -4392,6 +4612,8 @@ def _known_phone_mapping(
     new_character_karma_phone_e2e_receipt: dict[str, Any] | None,
     new_character_priority_phone_e2e_receipt: dict[str, Any] | None,
     character_notes_phone_e2e_receipt: dict[str, Any] | None,
+    career_nuyen_expense_edit_phone_e2e_receipt: dict[str, Any] | None,
+    spirit_name_choice_phone_e2e_receipt: dict[str, Any] | None,
     career_reputation_phone_e2e_receipt: dict[str, Any] | None,
     situational_modifiers_phone_e2e_receipt: dict[str, Any] | None,
     primary_arm_phone_e2e_receipt: dict[str, Any] | None,
@@ -5820,7 +6042,9 @@ def _known_phone_mapping(
                 driver,
                 'CONTROLS = ("cmdNuyenEdit", "lstNuyen", "tsEditNuyenExpense")',
                 'api != "36"',
+                'abi != "arm64-v8a"',
                 '"profile": "phone"',
+                '"package": shared.PACKAGE',
                 '"journey": "career-nuyen-expense-edit"',
                 '"careerNuyenExpenseRulesSha256"',
                 '"presenterPersistenceSha256"',
@@ -5829,8 +6053,17 @@ def _known_phone_mapping(
             )
             and fixture.is_file()
         )
+        phone_e2e = (
+            career_nuyen_expense_edit_phone_e2e_receipt
+            if implemented and e2e_scripted
+            else None
+        )
         return {
-            "status": "implemented_pending_emulator" if implemented else "missing",
+            "status": (
+                "implemented_verified_api36"
+                if phone_e2e
+                else "implemented_pending_emulator" if implemented else "missing"
+            ),
             "route": "Build > Runner > Nuyen expenses",
             "surface": "CareerNuyenExpensePage",
             "automationId": automation_id,
@@ -5859,9 +6092,10 @@ def _known_phone_mapping(
                 "Career only. Covers the shared lstNuyen_DoubleClick handler reached by cmdNuyenEdit, lstNuyen "
                 "double-click, and tsEditNuyenExpense. Amount is locked unless the saved undo NuyenType is ManualAdd "
                 "or ManualSubtract; refund and force-career-visible remain immutable exactly as in Chummer5. The "
-                f"API 36 phone driver is {'present but not yet executed' if e2e_scripted else 'missing'}"
+                "API 36 phone driver is "
+                f"{'executed' if phone_e2e else 'present but not yet executed' if e2e_scripted else 'missing'}"
             ),
-            "e2e": {
+            "e2e": phone_e2e or {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_career_nuyen_expense_edit_e2e.py" if e2e_scripted else None,
             },
@@ -9316,7 +9550,9 @@ def _known_phone_mapping(
                 driver,
                 'CONTROL = "SpiritControl.cboSpiritName"',
                 'api != "36"',
+                'abi != "arm64-v8a"',
                 '"profile": "phone"',
+                '"package": shared.PACKAGE',
                 '"journey": "spirit-name-choice"',
                 '"controlCount": 1',
                 '"limitBeforeAddRules"',
@@ -9332,8 +9568,13 @@ def _known_phone_mapping(
             and creation_fixture.is_file()
             and career_fixture.is_file()
         )
+        phone_e2e = spirit_name_choice_phone_e2e_receipt if phone_implemented and e2e_scripted else None
         return {
-            "status": "partial_exact_saved_data" if phone_implemented else "missing",
+            "status": (
+                "implemented_verified_api36"
+                if phone_e2e
+                else "partial_exact_saved_data" if phone_implemented else "missing"
+            ),
             "route": "Build > Magic and Resonance > Spirits and sprites > selected stable Spirit or Sprite > Spirit/Sprite metatype",
             "surface": "SpiritNameChoicePage",
             "automationId": "spirit-name-choice-picker-{stable-spirit-guid}",
@@ -9378,9 +9619,10 @@ def _known_phone_mapping(
                 "MAG/RES-gated AddSpirit/AddSprite improvements. All expands from the exact active base/overlay catalog "
                 "only when no custom data directories are active; otherwise it fails closed. Source translation affects "
                 "display labels only and is not persisted. The API 36 phone driver is "
-                f"{'present but not yet executed' if e2e_scripted else 'missing'}; tablet is deferred."
+                f"{'executed' if phone_e2e else 'present but not yet executed' if e2e_scripted else 'missing'}; "
+                "tablet is deferred."
             ),
-            "e2e": {"status": "missing", "ref": None},
+            "e2e": phone_e2e or {"status": "missing", "ref": None},
             "tablet": {
                 "status": "missing",
                 "surface": None,
@@ -13028,6 +13270,14 @@ def enrich_rows(
         presentation_root,
         core_engine_root,
     )
+    career_nuyen_expense_edit_phone_e2e_receipt = _validated_career_nuyen_expense_edit_phone_e2e_receipt(
+        presentation_root,
+        core_engine_root,
+    )
+    spirit_name_choice_phone_e2e_receipt = _validated_spirit_name_choice_phone_e2e_receipt(
+        presentation_root,
+        core_engine_root,
+    )
     career_reputation_phone_e2e_receipt = _validated_career_reputation_phone_e2e_receipt(
         presentation_root,
         core_engine_root,
@@ -13146,6 +13396,8 @@ def enrich_rows(
             new_character_karma_phone_e2e_receipt,
             new_character_priority_phone_e2e_receipt,
             character_notes_phone_e2e_receipt,
+            career_nuyen_expense_edit_phone_e2e_receipt,
+            spirit_name_choice_phone_e2e_receipt,
             career_reputation_phone_e2e_receipt,
             situational_modifiers_phone_e2e_receipt,
             primary_arm_phone_e2e_receipt,
@@ -13418,6 +13670,8 @@ def build_inventory(
         CHARACTER_SETTINGS_ACTIONS_PHONE_E2E_RECEIPT,
         ORIGIN_DOSSIER_PHONE_E2E_RECEIPT,
         CHARACTER_NOTES_PHONE_E2E_RECEIPT,
+        CAREER_NUYEN_EXPENSE_EDIT_PHONE_E2E_RECEIPT,
+        SPIRIT_NAME_CHOICE_PHONE_E2E_RECEIPT,
         CAREER_REPUTATION_PHONE_E2E_RECEIPT,
         SITUATIONAL_MODIFIERS_PHONE_E2E_RECEIPT,
         PRIMARY_ARM_PHONE_E2E_RECEIPT,

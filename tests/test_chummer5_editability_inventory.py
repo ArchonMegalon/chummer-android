@@ -1997,6 +1997,78 @@ namespace Chummer
             self.assertEqual("missing", row["e2e"]["tablet"]["status"])
             self.assertFalse(row["completionProven"])
 
+    def test_nuyen_expense_and_spirit_name_promote_only_with_validated_receipts(self) -> None:
+        import inspect
+
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        nuyen_row = next(
+            row for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] == "cmdNuyenEdit"
+        )
+        spirit_row = next(
+            row for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == "SpiritControl"
+            and row["legacy"]["controlName"] == "cboSpiritName"
+        )
+        parameters = list(inspect.signature(inventory._known_phone_mapping).parameters)
+        receipt_arguments = {
+            name: {} if name in {"condition_e2e_receipts", "contact_pet_e2e_receipts"} else None
+            for name in parameters[4:]
+        }
+        executed = {
+            "status": "executed_api36",
+            "ref": "docs/editability-evidence/test/receipt.json",
+            "receiptSha256": "a" * 64,
+            "apkSha256": "b" * 64,
+        }
+        presentation_root = REPO.parent / "chummer-presentation"
+        core_root = REPO.parent / "chummer-core-engine"
+
+        pending_nuyen = inventory._known_phone_mapping(
+            nuyen_row,
+            inventory.DEFAULT_CHUMMER5_ROOT,
+            presentation_root,
+            core_root,
+            **receipt_arguments,
+        )
+        self.assertEqual("implemented_pending_emulator", pending_nuyen["status"])
+        receipt_arguments["career_nuyen_expense_edit_phone_e2e_receipt"] = executed
+        verified_nuyen = inventory._known_phone_mapping(
+            nuyen_row,
+            inventory.DEFAULT_CHUMMER5_ROOT,
+            presentation_root,
+            core_root,
+            **receipt_arguments,
+        )
+        self.assertEqual("implemented_verified_api36", verified_nuyen["status"])
+        self.assertEqual(executed, verified_nuyen["e2e"])
+
+        receipt_arguments["career_nuyen_expense_edit_phone_e2e_receipt"] = None
+        partial_spirit = inventory._known_phone_mapping(
+            spirit_row,
+            inventory.DEFAULT_CHUMMER5_ROOT,
+            presentation_root,
+            core_root,
+            **receipt_arguments,
+        )
+        self.assertEqual("partial_exact_saved_data", partial_spirit["status"])
+        self.assertEqual("missing", partial_spirit["e2e"]["status"])
+        receipt_arguments["spirit_name_choice_phone_e2e_receipt"] = executed
+        verified_spirit = inventory._known_phone_mapping(
+            spirit_row,
+            inventory.DEFAULT_CHUMMER5_ROOT,
+            presentation_root,
+            core_root,
+            **receipt_arguments,
+        )
+        self.assertEqual("implemented_verified_api36", verified_spirit["status"])
+        self.assertEqual(executed, verified_spirit["e2e"])
+
     def test_select_build_method_phone_mapping_is_exact_and_fail_closed(self) -> None:
         payload = json.loads(
             (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
@@ -2652,6 +2724,209 @@ namespace Chummer
                 receipt["driverSha256"] = "0" * 64
                 receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
                 self.assertIsNone(inventory._validated_new_character_priority_phone_e2e_receipt())
+
+    def test_career_nuyen_expense_receipt_is_strict_full_graph_and_proof_bound(self) -> None:
+        presentation_root = REPO.parent / "chummer-presentation"
+        core_root = REPO.parent / "chummer-core-engine"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        driver = REPO / "tests" / "run_api36_career_nuyen_expense_edit_e2e.py"
+        shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
+        fixture = REPO / "tests" / "fixtures" / "career-nuyen-expense-edit-e2e.chum5"
+        native_root = REPO / "src" / "Chummer.Android" / "Native"
+        source_paths = {
+            "careerNuyenExpensePageSha256": native_root / "CareerNuyenExpensePage.cs",
+            "buildPageSha256": native_root / "BuildPage.cs",
+            "coordinatorSha256": native_root / "RunnerSessionCoordinator.cs",
+            "careerNuyenExpenseContractSha256": overview / "CareerNuyenExpenseEditRequest.cs",
+            "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+            "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+            "presenterPersistenceSha256": overview / "CharacterOverviewPresenter.Persistence.cs",
+            "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+            "careerNuyenExpenseRulesSha256": core_root / "Chummer.Contracts" / "Characters" / "CharacterCareerNuyenExpenseEditRules.cs",
+            "workspaceStoreSha256": core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs",
+        }
+        controls = {
+            f"CharacterCareer.{control}": {
+                key: "pass"
+                for key in inventory.CAREER_NUYEN_EXPENSE_EDIT_CONTROL_E2E_PROOF_KEYS
+            }
+            for control in inventory.CAREER_NUYEN_EXPENSE_EDIT_CONTROLS
+        }
+        receipt = {
+            "schema": "chummer.android.editing-e2e/v1",
+            "status": "pass",
+            "profile": "phone",
+            "journey": "career-nuyen-expense-edit",
+            "apiLevel": 36,
+            "abi": inventory.PHONE_E2E_ABI,
+            "package": inventory.PHONE_E2E_PACKAGE,
+            "apkSha256": "a" * 64,
+            "driverSha256": inventory._sha256_file(driver),
+            "sharedDriverSha256": inventory._sha256_file(shared_driver),
+            "careerFixtureSha256": inventory._sha256_file(fixture),
+            "controlCount": len(controls),
+            "controls": controls,
+            "journeys": {
+                journey: "pass"
+                for journey in inventory.CAREER_NUYEN_EXPENSE_EDIT_E2E_JOURNEYS
+            },
+            **{key: inventory._sha256_file(path) for key, path in source_paths.items()},
+        }
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            receipt_path = Path(temporary) / "receipt.json"
+            with patch.object(
+                inventory,
+                "CAREER_NUYEN_EXPENSE_EDIT_PHONE_E2E_RECEIPT",
+                receipt_path,
+            ):
+                self.assertIsNone(
+                    inventory._validated_career_nuyen_expense_edit_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
+                receipt_path.write_text("{", encoding="utf-8")
+                self.assertIsNone(
+                    inventory._validated_career_nuyen_expense_edit_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
+                receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+                self.assertIsNotNone(
+                    inventory._validated_career_nuyen_expense_edit_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
+                for key, value in (
+                    ("abi", "x86_64"),
+                    ("package", "invalid.package"),
+                    ("apiLevel", 35),
+                    ("apkSha256", "invalid"),
+                    ("driverSha256", "0" * 64),
+                    ("careerFixtureSha256", "0" * 64),
+                    ("careerNuyenExpenseRulesSha256", "0" * 64),
+                ):
+                    stale = json.loads(json.dumps(receipt))
+                    stale[key] = value
+                    receipt_path.write_text(json.dumps(stale), encoding="utf-8")
+                    self.assertIsNone(
+                        inventory._validated_career_nuyen_expense_edit_phone_e2e_receipt(
+                            presentation_root,
+                            core_root,
+                        ),
+                        key,
+                    )
+                stale = json.loads(json.dumps(receipt))
+                stale["controls"]["CharacterCareer.cmdNuyenEdit"].pop(
+                    inventory.CAREER_NUYEN_EXPENSE_EDIT_CONTROL_E2E_PROOF_KEYS[0]
+                )
+                receipt_path.write_text(json.dumps(stale), encoding="utf-8")
+                self.assertIsNone(
+                    inventory._validated_career_nuyen_expense_edit_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
+
+    def test_spirit_name_choice_receipt_is_strict_full_graph_and_proof_bound(self) -> None:
+        presentation_root = REPO.parent / "chummer-presentation"
+        core_root = REPO.parent / "chummer-core-engine"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        native_root = REPO / "src" / "Chummer.Android" / "Native"
+        driver = REPO / "tests" / "run_api36_spirit_name_choice_e2e.py"
+        shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
+        creation_fixture = REPO / "tests" / "fixtures" / "creation-spirit-name-choice-e2e.chum5"
+        career_fixture = REPO / "tests" / "fixtures" / "career-spirit-name-choice-e2e.chum5"
+        source_paths = {
+            "buildPageSha256": native_root / "BuildPage.cs",
+            "buildFlowPagesSha256": native_root / "BuildFlowPages.cs",
+            "spiritNameChoicePageSha256": native_root / "SpiritNameChoicePage.cs",
+            "collectionEditorPagesSha256": native_root / "CollectionEditorPages.cs",
+            "coordinatorSha256": native_root / "RunnerSessionCoordinator.cs",
+            "spiritNameChoiceContractSha256": overview / "SpiritNameChoiceEditRequest.cs",
+            "collectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
+            "collectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
+            "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+            "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+            "presenterPersistenceSha256": overview / "CharacterOverviewPresenter.Persistence.cs",
+            "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+            "spiritNameChoiceRulesSha256": core_root / "Chummer.Contracts" / "Characters" / "CharacterSpiritNameChoiceRules.cs",
+            "characterSectionModelsSha256": core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+            "sourceResolverContractSha256": core_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs",
+            "sourceResolverSha256": core_root / "Chummer.Infrastructure" / "Xml" / "FileSystemCharacterSourceDataResolver.cs",
+            "characterSectionServiceSha256": core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+            "traditionsCatalogSha256": core_root / "Chummer" / "data" / "traditions.xml",
+            "streamsCatalogSha256": core_root / "Chummer" / "data" / "streams.xml",
+            "workspaceStoreSha256": core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs",
+            "sr5ShellCatalogSha256": core_root / "Chummer.Rulesets.Sr5" / "Sr5ShellCatalogs.cs",
+        }
+        control = "SpiritControl.cboSpiritName"
+        controls = {
+            control: {
+                key: "pass"
+                for key in inventory.SPIRIT_NAME_CHOICE_CONTROL_E2E_PROOF_KEYS
+            }
+        }
+        receipt = {
+            "schema": "chummer.android.editing-e2e/v1",
+            "status": "pass",
+            "profile": "phone",
+            "journey": "spirit-name-choice",
+            "apiLevel": 36,
+            "abi": inventory.PHONE_E2E_ABI,
+            "package": inventory.PHONE_E2E_PACKAGE,
+            "apkSha256": "b" * 64,
+            "driverSha256": inventory._sha256_file(driver),
+            "sharedDriverSha256": inventory._sha256_file(shared_driver),
+            "creationFixtureSha256": inventory._sha256_file(creation_fixture),
+            "careerFixtureSha256": inventory._sha256_file(career_fixture),
+            "controlCount": 1,
+            "controls": controls,
+            "journeys": {
+                journey: "pass"
+                for journey in inventory.SPIRIT_NAME_CHOICE_E2E_JOURNEYS
+            },
+            **{key: inventory._sha256_file(path) for key, path in source_paths.items()},
+        }
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            receipt_path = Path(temporary) / "receipt.json"
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+            with patch.object(inventory, "SPIRIT_NAME_CHOICE_PHONE_E2E_RECEIPT", receipt_path):
+                self.assertIsNotNone(
+                    inventory._validated_spirit_name_choice_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
+                for key, value in (
+                    ("abi", "x86_64"),
+                    ("package", "invalid.package"),
+                    ("status", "fail"),
+                    ("apkSha256", "0"),
+                    ("creationFixtureSha256", "0" * 64),
+                    ("collectionEditorProjectorSha256", "0" * 64),
+                ):
+                    stale = json.loads(json.dumps(receipt))
+                    stale[key] = value
+                    receipt_path.write_text(json.dumps(stale), encoding="utf-8")
+                    self.assertIsNone(
+                        inventory._validated_spirit_name_choice_phone_e2e_receipt(
+                            presentation_root,
+                            core_root,
+                        ),
+                        key,
+                    )
+                stale = json.loads(json.dumps(receipt))
+                stale["journeys"]["unexpected"] = "pass"
+                receipt_path.write_text(json.dumps(stale), encoding="utf-8")
+                self.assertIsNone(
+                    inventory._validated_spirit_name_choice_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
 
     def test_new_character_karma_receipt_is_source_hash_bound(self) -> None:
         self.assertIsNone(
