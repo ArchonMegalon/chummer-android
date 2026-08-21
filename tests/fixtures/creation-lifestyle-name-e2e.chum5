@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Lifestyle Name E2E</name>
+  <alias>CreationLifestyleNameE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <lifestyles>
+    <lifestyle>
+      <guid>81111111-1111-1111-1111-111111111111</guid>
+      <name>Low</name><baselifestyle>Low</baselifestyle>
+      <extra>Old creation safehouse</extra>
+      <notes>Creation notes preserved</notes><notesColor>#ff123456</notesColor>
+      <cost>2000</cost><months>2</months><source>SR5</source>
+    </lifestyle>
+  </lifestyles>
+  <customstate>Creation unrelated state</customstate>
+</character>

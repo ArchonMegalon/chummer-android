@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 389,
+      "implemented_pending_emulator": 391,
       "implemented_verified_api36": 79,
-      "missing": 1040,
+      "missing": 1038,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 147
@@ -227,7 +227,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "5c925cdb45510de8a0497c076f10b2a5d5ab4918e0c7ba7cd5629de61a435bfa"
+        "sha256": "af4452231265d92c65810e309723b09a980dfa8cf78df442c649699a60886689"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -313,6 +313,11 @@
         "path": "tests/run_api36_gear_name_e2e.py",
         "exists": true,
         "sha256": "c15124202723bd6d219e1d4e83ed05d08894049f7f17fec282ec6052698ac435"
+      },
+      {
+        "path": "tests/run_api36_lifestyle_name_e2e.py",
+        "exists": true,
+        "sha256": "196ccf880ce169aa0e64ff73a5d3da32d66d7fad6503a669e866265a59aa734b"
       },
       {
         "path": "tests/run_api36_career_edge_use_e2e.py",
@@ -558,6 +563,16 @@
         "path": "tests/fixtures/career-gear-name-e2e.chum5",
         "exists": true,
         "sha256": "368f8240d13266c6779933ecf1eb60bd00330b9c9ba6d8928558382132e1e4d8"
+      },
+      {
+        "path": "tests/fixtures/creation-lifestyle-name-e2e.chum5",
+        "exists": true,
+        "sha256": "087f9fb4897b87963a08623f6e34c80d3c88f16308cac5df2938bb99befada3d"
+      },
+      {
+        "path": "tests/fixtures/career-lifestyle-name-e2e.chum5",
+        "exists": true,
+        "sha256": "a4216393e63fcb345f9543d1dc5e58635005bd8c7bd34716ed2272faf8db6efe"
       },
       {
         "path": "tests/fixtures/career-edge-use-e2e.chum5",
@@ -942,7 +957,7 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "db0f61f4ba03ba65846c2b15cdb714ecdad559a2dc66e0a879b6885b951a204e"
+        "sha256": "980628c9f08392aab3af72a652c4df515d92e6e7f1bc736d5c49802b0dd04f43"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponHomeNodeRules.cs",
@@ -1042,7 +1057,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "e3a5541958fbac6bb8b0f8aa2c8ea1f26740166f4bb5273e7e8ae00e7386c46b"
+        "sha256": "1310b0b5f1b8074621aa6d4395e06806823779c3905178650ad08c553fcb00d3"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
@@ -1257,7 +1272,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "abb017c758ea669d732e06cb515abebce4ebcdcaa61ae29865d96e4bd7665454"
+        "sha256": "5afbf03935959806390cbd307bfda7a56771e31195d7a7fd487cb6c1b45e0ba1"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
@@ -1267,12 +1282,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
         "exists": true,
-        "sha256": "1204f2bf5a924acf61469ea4e3a8a201322438b372a8881939c0d803108f23f6"
+        "sha256": "c8a894f141d791a14be82c1f6f0d6a24b67ee40a4d35608bcea76fa4d5159e5c"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "d61e9e66c0e60306ae7beac81e4646999f1913cf317c540a4eb3178444331d65"
+        "sha256": "36a3ec9921240faf21746e12f29450400a715ebc1aec7f549523732154b87fe8"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1282,7 +1297,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "e8cddada4132e8f16a798aac7eb36a53aa2ba382f214b345e07bdc456ed3aadd"
+      "sha256": "dbd085d44057a2182ac01e6b2b9abed03371a349d41a46d8d63f513fd3fdfc8d"
     }
   },
   "coverageByFamily": {
@@ -1492,7 +1507,7 @@
     "lifestyles": {
       "rowCount": 58,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 50,
+      "phoneMissingCount": 48,
       "tabletMissingCount": 50,
       "completionProvenCount": 8
     },
@@ -47066,11 +47081,24 @@
       "mutationFamily": "lifestyles",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Lifestyle Name",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-lifestylename-{stable-lifestyle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers CharacterCreate/CharacterCareer tsLifestyleName for a uniquely identified top-level Lifestyle. It reproduces Chummer5 SelectText semantics: blank is allowed, unchanged/cancel is a no-op, and input is bounded by the legacy 32767-character textbox limit. Lifestyle delete/move and the separate rich-text Notes+notesColor control remain unavailable until their own exact contracts; duplicate/missing GUID identities fail closed. The API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -47078,12 +47106,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync(WorkspacePatchCollectionItemRequest: WorkspaceCollectionKind.Lifestyle + WorkspaceCollectionTextField.CustomName)",
+      "persistenceAssertion": "the unique stable character/lifestyles/lifestyle/extra equals the submitted Create/Career text after revision-bound atomic save, same-session reopen, and process restart; guid, base name, notes, notesColor, cost, months, and unrelated character state remain unchanged",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_lifestyle_name_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -66720,11 +66748,24 @@
       "mutationFamily": "lifestyles",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Lifestyle Name",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-lifestylename-{stable-lifestyle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers CharacterCreate/CharacterCareer tsLifestyleName for a uniquely identified top-level Lifestyle. It reproduces Chummer5 SelectText semantics: blank is allowed, unchanged/cancel is a no-op, and input is bounded by the legacy 32767-character textbox limit. Lifestyle delete/move and the separate rich-text Notes+notesColor control remain unavailable until their own exact contracts; duplicate/missing GUID identities fail closed. The API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -66732,12 +66773,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync(WorkspacePatchCollectionItemRequest: WorkspaceCollectionKind.Lifestyle + WorkspaceCollectionTextField.CustomName)",
+      "persistenceAssertion": "the unique stable character/lifestyles/lifestyle/extra equals the submitted Create/Career text after revision-bound atomic save, same-session reopen, and process restart; guid, base name, notes, notesColor, cost, months, and unrelated character state remain unchanged",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_lifestyle_name_e2e.py"
         },
         "tablet": {
           "status": "missing",

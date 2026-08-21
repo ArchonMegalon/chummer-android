@@ -507,6 +507,31 @@ namespace Chummer
             self.assertIn("32767-character", row["phone"]["coverageLimit"])
             self.assertFalse(row["completionProven"])
 
+        lifestyle_name = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.LIFESTYLE_NAME_CONTROL
+        ]
+        self.assertEqual(2, len(lifestyle_name))
+        for row in lifestyle_name:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Lifestyle Name",
+                row["phone"]["route"],
+            )
+            self.assertEqual("CollectionItemEditorPage", row["phone"]["surface"])
+            self.assertEqual(
+                "collection-field-lifestylename-{stable-lifestyle-guid}",
+                row["phone"]["automationId"],
+            )
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual("tests/run_api36_lifestyle_name_e2e.py", row["e2e"]["phone"]["ref"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertIn("lifestyles/lifestyle/extra", row["persistenceAssertion"])
+            self.assertIn("32767-character", row["phone"]["coverageLimit"])
+            self.assertIn("notesColor", row["persistenceAssertion"])
+            self.assertFalse(row["completionProven"])
+
         gear_locations = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -1610,9 +1635,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 389,
+                "implemented_pending_emulator": 391,
                 "implemented_verified_api36": 79,
-                "missing": 1040,
+                "missing": 1038,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 147,

@@ -1022,6 +1022,7 @@ GROUP_NAME_CONTROL = "txtGroupName"
 TRADITION_NAME_CONTROL = "txtTraditionName"
 TRADITION_DRAIN_CONTROL = "cboDrain"
 GEAR_NAME_CONTROL = "tsGearName"
+LIFESTYLE_NAME_CONTROL = "tsLifestyleName"
 CAREER_EDGE_USE_CONTROLS = {
     "cmdEdgeSpent": (
         "cmdEdgeSpent_Click",
@@ -9841,6 +9842,167 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
+        and control == LIFESTYLE_NAME_CONTROL
+    ):
+        build_flow = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildFlowPages.cs"
+        collection_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_lifestyle_name_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-lifestyle-name-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-lifestyle-name-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "WorkspaceCollectionMutationRequest.cs"
+        projector = overview / "WorkspaceCollectionEditorProjector.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_models = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        core_sections = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        implemented = (
+            _contains(
+                build_flow,
+                "ActiveCollectionEditor",
+                "CollectionItemEditorPage",
+                "collection-item-",
+            )
+            and _contains(
+                collection_page,
+                "WorkspaceCollectionKind.Lifestyle",
+                "WorkspaceCollectionTextField.CustomName",
+                '"Lifestyle Name"',
+                '=> "lifestylename"',
+                "WorkspacePatchCollectionItemRequest",
+                "ApplyCollectionMutationAsync",
+                "!item.CanMove && !item.CanDelete",
+            )
+            and _contains(
+                request,
+                "WorkspaceCollectionKind",
+                "Lifestyle",
+                "WorkspaceCollectionTextField",
+                "CustomName",
+                "WorkspaceSetCollectionTextRequest",
+            )
+            and _contains(
+                projector,
+                '"lifestyles" => new(key, "lifestyles", WorkspaceCollectionKind.Lifestyle)',
+                "WorkspaceCollectionTextField.CustomName",
+                "MaximumSelectTextLength = 32_767",
+                "CanDelete: schema.Kind != WorkspaceCollectionKind.Lifestyle",
+                "CanMove: schema.Kind != WorkspaceCollectionKind.Lifestyle",
+            )
+            and _contains(
+                mutation,
+                "WorkspaceCollectionKind.Lifestyle",
+                'new(["lifestyles"], "lifestyle")',
+                "WorkspaceCollectionTextField.CustomName",
+                "MaximumSelectTextLength = 32_767",
+                'return "extra"',
+            )
+            and _contains(
+                presenter,
+                "ApplyCollectionMutationAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_models,
+                "CharacterLifestyleSummary",
+                'string Guid = ""',
+                'string CustomName = ""',
+            )
+            and _contains(
+                core_sections,
+                'Guid: ReadValue(lifestyle, "guid")',
+                'CustomName: ReadValue(lifestyle, "extra")',
+                "ParseLifestyles",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCreate.tsLifestyleName"',
+                '"CharacterCareer.tsLifestyleName"',
+                'api != "36"',
+                '"profile": "phone"',
+                '"journey": "lifestyle-name"',
+                '"build-action-tab-lifestyle-lifestyles"',
+                '"collectionRequestSha256"',
+                '"collectionProjectorSha256"',
+                '"mutationCatalogSha256"',
+                '"presenterPersistenceSha256"',
+                '"sectionModelsSha256"',
+                '"sectionServiceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+                '"careerFixtureSha256"',
+                '"notesAndNotesColorPreserved": "pass"',
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Lifestyle Name",
+            "surface": "CollectionItemEditorPage",
+            "automationId": "collection-field-lifestylename-{stable-lifestyle-guid}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/BuildFlowPages.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCollectionMutationAsync(WorkspacePatchCollectionItemRequest: "
+                "WorkspaceCollectionKind.Lifestyle + WorkspaceCollectionTextField.CustomName)"
+            ),
+            "persistenceAssertion": (
+                "the unique stable character/lifestyles/lifestyle/extra equals the submitted Create/Career text after "
+                "revision-bound atomic save, same-session reopen, and process restart; guid, base name, notes, "
+                "notesColor, cost, months, and unrelated character state remain unchanged"
+            ),
+            "coverageLimit": (
+                "Covers CharacterCreate/CharacterCareer tsLifestyleName for a uniquely identified top-level Lifestyle. "
+                "It reproduces Chummer5 SelectText semantics: blank is allowed, unchanged/cancel is a no-op, and input "
+                "is bounded by the legacy 32767-character textbox limit. Lifestyle delete/move and the separate rich-"
+                "text Notes+notesColor control remain unavailable until their own exact contracts; duplicate/missing "
+                "GUID identities fail closed. The API 36 driver is "
+                f"{'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_lifestyle_name_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCareer" and control in CAREER_EDGE_USE_CONTROLS:
         handler, action, automation_id = CAREER_EDGE_USE_CONTROLS[control]
         page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerEdgeUsePage.cs"
@@ -11594,6 +11756,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_tradition_name_e2e.py",
         REPO_ROOT / "tests" / "run_api36_tradition_drain_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_name_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_lifestyle_name_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_edge_use_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_manual_karma_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_location_e2e.py",
@@ -11643,6 +11806,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-tradition-drain-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-gear-name-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-name-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-lifestyle-name-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-lifestyle-name-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-edge-use-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-manual-karma-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-gear-location-e2e.chum5",

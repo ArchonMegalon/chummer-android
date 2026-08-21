@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Lifestyle Name E2E</name>
+  <alias>CareerLifestyleNameE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <lifestyles>
+    <lifestyle>
+      <guid>82222222-2222-2222-2222-222222222222</guid>
+      <name>Middle</name><baselifestyle>Middle</baselifestyle>
+      <extra>Old career apartment</extra>
+      <notes>Career notes preserved</notes><notesColor>#ff654321</notesColor>
+      <cost>5000</cost><months>4</months><source>SR5</source>
+    </lifestyle>
+  </lifestyles>
+  <customstate>Career unrelated state</customstate>
+</character>

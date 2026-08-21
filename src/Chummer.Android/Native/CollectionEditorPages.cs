@@ -140,10 +140,13 @@ public sealed class CollectionItemEditorPage : NativePageBase
 
     private void AddTextField(WorkspaceCollectionTextValueState value)
     {
-        string label = RunnerSessionCoordinator.HumanizeId(value.Field.ToString());
+        string label = _target.Kind == WorkspaceCollectionKind.Lifestyle
+            && value.Field == WorkspaceCollectionTextField.CustomName
+                ? "Lifestyle Name"
+                : RunnerSessionCoordinator.HumanizeId(value.Field.ToString());
         VerticalStackLayout field = new() { Spacing = 5 };
         field.Add(NativeTheme.FieldLabel(value.IsRequired ? $"{label} · required" : label));
-        string automationId = $"collection-field-{TextFieldToken(value.Field)}-{TargetToken()}";
+        string automationId = $"collection-field-{TextFieldToken(_target.Kind, value.Field)}-{TargetToken()}";
         InputView input;
         if (value.Field == WorkspaceCollectionTextField.Notes)
         {
@@ -565,6 +568,11 @@ public sealed class CollectionItemEditorPage : NativePageBase
 
     private void AddMoveAndDeleteActions(WorkspaceCollectionItemEditorState item)
     {
+        if (!item.CanMove && !item.CanDelete)
+        {
+            return;
+        }
+
         _body.Add(NativeTheme.Eyebrow("Order and removal"));
         HorizontalStackLayout order = new() { Spacing = 10 };
         Button up = NativeTheme.SecondaryButton("Move up");
@@ -1089,10 +1097,13 @@ public sealed class CollectionItemEditorPage : NativePageBase
 
     private string TargetToken() => Token(_target.NestedItemId ?? _target.ItemId);
 
-    private static string TextFieldToken(WorkspaceCollectionTextField field)
-        => field switch
+    private static string TextFieldToken(
+        WorkspaceCollectionKind kind,
+        WorkspaceCollectionTextField field)
+        => (kind, field) switch
         {
-            WorkspaceCollectionTextField.GearName => "gearname",
+            (_, WorkspaceCollectionTextField.GearName) => "gearname",
+            (WorkspaceCollectionKind.Lifestyle, WorkspaceCollectionTextField.CustomName) => "lifestylename",
             _ => Token(field.ToString())
         };
 

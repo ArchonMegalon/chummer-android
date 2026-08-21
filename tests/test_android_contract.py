@@ -1796,6 +1796,50 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('GearName: ReadValue(item, "gearname")', sections)
         self.assertIn("WriteRecordAtomically", store)
 
+    def test_phone_lifestyle_name_is_stable_guid_revision_and_exact_extra_bound(self) -> None:
+        page = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        overview = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+        request = (overview / "WorkspaceCollectionMutationRequest.cs").read_text(encoding="utf-8")
+        projector = (overview / "WorkspaceCollectionEditorProjector.cs").read_text(encoding="utf-8")
+        mutation = (overview / "WorkspaceXmlMutationCatalog.cs").read_text(encoding="utf-8")
+        workspace_mutations = (overview / "CharacterOverviewPresenter.WorkspaceMutations.cs").read_text(
+            encoding="utf-8"
+        )
+        persistence = (overview / "CharacterOverviewPresenter.Persistence.cs").read_text(encoding="utf-8")
+        core = WORKSPACE / "chummer-core-engine"
+        models = (core / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs").read_text(
+            encoding="utf-8"
+        )
+        sections = (core / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs").read_text(
+            encoding="utf-8"
+        )
+        store = (core / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("WorkspaceCollectionKind.Lifestyle", page)
+        self.assertIn("WorkspaceCollectionTextField.CustomName", page)
+        self.assertIn('"Lifestyle Name"', page)
+        self.assertIn('=> "lifestylename"', page)
+        self.assertIn("!item.CanMove && !item.CanDelete", page)
+        self.assertIn("ApplyCollectionMutationAsync", coordinator)
+        self.assertIn("Lifestyle", request)
+        self.assertIn("WorkspaceSetCollectionTextRequest", request)
+        self.assertIn('"lifestyles" => new(key, "lifestyles", WorkspaceCollectionKind.Lifestyle)', projector)
+        self.assertIn("MaximumSelectTextLength = 32_767", projector)
+        self.assertIn("CanDelete: schema.Kind != WorkspaceCollectionKind.Lifestyle", projector)
+        self.assertIn("CanMove: schema.Kind != WorkspaceCollectionKind.Lifestyle", projector)
+        self.assertIn("WorkspaceCollectionKind.Lifestyle", mutation)
+        self.assertIn('new(["lifestyles"], "lifestyle")', mutation)
+        self.assertIn('return "extra"', mutation)
+        self.assertIn("ApplyWorkspaceXmlMutationAsync", workspace_mutations)
+        self.assertIn("TryCaptureRecoveryPayloadAsync", persistence)
+        self.assertIn("CharacterLifestyleSummary", models)
+        self.assertIn('string CustomName = ""', models)
+        self.assertIn('CustomName: ReadValue(lifestyle, "extra")', sections)
+        self.assertIn("WriteRecordAtomically", store)
+
     def test_phone_cyberware_commerce_is_stable_revision_bound_and_source_exact(self) -> None:
         page = (PROJECT / "Native" / "CyberwareCommercePage.cs").read_text(encoding="utf-8")
         editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
