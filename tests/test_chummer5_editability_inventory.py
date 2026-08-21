@@ -814,8 +814,8 @@ namespace Chummer
         for control, (editor_kind, field, token) in inventory.SPIRIT_GENERIC_EDITOR_CONTROLS.items():
             row = spirit_rows[control]
             self.assertEqual(
-                "partial_exact_saved_data"
-                if editor_kind in {"force", "critter"}
+                "missing"
+                if control in {"txtCritterName", "nudForce", "nudServices", "chkBound"}
                 else "implemented_pending_emulator",
                 row["phone"]["status"],
             )
@@ -993,12 +993,12 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 344,
+                "implemented_pending_emulator": 342,
                 "implemented_verified_api36": 79,
-                "missing": 1095,
+                "missing": 1099,
                 "not_applicable_non_mutating": 459,
                 "partial_create_only": 106,
-                "partial_exact_saved_data": 146,
+                "partial_exact_saved_data": 144,
             },
             payload["summary"]["phoneStatusCounts"],
         )

@@ -14,12 +14,12 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 534,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 344,
+      "implemented_pending_emulator": 342,
       "implemented_verified_api36": 79,
-      "missing": 1095,
+      "missing": 1099,
       "not_applicable_non_mutating": 459,
       "partial_create_only": 106,
-      "partial_exact_saved_data": 146
+      "partial_exact_saved_data": 144
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
@@ -515,179 +515,179 @@
         "sha256": "e7449fb6221a5046b8c1214d8b21f1340e400917f80f4e4f214fe416a187db65"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterContactEditSemantics.cs",
         "exists": true,
         "sha256": "20531172c8984c8d572b17c95fe1d92caf0076509bc382ff6bd0179e686aebf3"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterPetEditSemantics.cs",
         "exists": true,
         "sha256": "c2fc2d67a03f3ebcbd0117ea66ab1f853d13d2539de36109462db6c57891b479"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
         "sha256": "61e5a08f295b327980ea2577f651f95e189fa368e58323f8ef8c634cc2e9cbf4"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
         "exists": true,
         "sha256": "35fe5e3f251c43484efde07535b4c168d14ca9e37be71e101c121c363aaf82f8"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
         "sha256": "83d042e7589e1125896e5b4007b3c95f177de537d98d9a79c0c7a36f2acba232"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
         "exists": true,
         "sha256": "11e9624d8cc65578e0d38c7d8091b615945f566a99cb281b7233796ba4199768"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
         "sha256": "f04a06d1345db0ec380a72c779dfed404b6d0ef373b3fb7ed307f39c1863244d"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
         "sha256": "ebcdaae59693ec796038cc6f74fbd49eae1a40bec76aeb56ac2dbbf00b0b6341"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
         "exists": true,
         "sha256": "1836a660b1c243e53756e9a35e1025663f9332100e3aca68394045f3480cc77c"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-core-engine/Chummer.Rulesets.Hosting/Presentation/WorkspaceSurfaceActionCatalog.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-core-engine/Chummer.Rulesets.Hosting/Presentation/WorkspaceSurfaceActionCatalog.cs",
         "exists": true,
         "sha256": "fe8ff0a9746b3029ddf232d681000229dfc69790f2f5d3b0960fd9275324a110"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "d1c0e8a3a72c6afafa8664bdee2d9675f212502825183f2becf68a0dfbb54e35"
+        "sha256": "af47ece0d8621794d782daa14c54d19403120cb098fcf5c2e672e1ca6e132eae"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
         "exists": true,
         "sha256": "5b92472b62172705ea98700faf31d0029ce93bd2d43fea08f5877b6d848fc89f"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/SituationalModifiersEditRequest.cs",
         "exists": true,
         "sha256": "2c6bda77607d71c1d335c298048bcd87f2363fd15440d3db08c9c16252dabc83"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/PrimaryArmEditRequest.cs",
         "exists": true,
         "sha256": "ab174728493660115b62887154ec2990c64945d209a762023d941b847a06e0cb"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
         "exists": true,
         "sha256": "f889362153034f6f8e61367c31d995720a04982ba264914db59f7095cd1eba65"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/WeaponLocationAddRequest.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WeaponLocationAddRequest.cs",
         "exists": true,
         "sha256": "cd793ac4258beb2a98c1759c727d047ced979e82c625868fc5f3a3bf84046ca1"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/VehicleLocationAddRequest.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/VehicleLocationAddRequest.cs",
         "exists": true,
         "sha256": "2b74f6551e962facd2b2d572bd68c09c6b4b2af23a203180325566fceb2b4995"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/VehicleHomeNodeEditRequest.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/VehicleHomeNodeEditRequest.cs",
         "exists": true,
         "sha256": "e4a5d725e080a481343dffa5b635848776a6cfc0f36681aecb62a2f651da9197"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
         "exists": true,
         "sha256": "b5ee911ed027d4a9b56794ea6ded98f00c66d0528a14f0a7f463fd254a4bb14a"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/LocationRenameRequest.cs",
         "exists": true,
         "sha256": "d43270b3751723043bae901b7ae571af4ac13c35f8ef69e162764010554c8d6c"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceSectionRenderer.cs",
         "exists": true,
         "sha256": "6ac500b49e29bf369fca9b4b51de88fd2b813c34029e23f225f205910f814f56"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewState.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewState.cs",
         "exists": true,
         "sha256": "64fae58c8d580266041f407c49cb75d60f77521a33b64a759c1e7275aedc7caa"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
         "exists": true,
         "sha256": "5a37923234bfef0fdfa5a30118adfdcd66fd78cfd2d00f2c4830049db4edb13e"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
         "exists": true,
         "sha256": "aeb6d8082f6660647d992968253ea798aee8ab69b32170e6f058d9074860b10a"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditorState.cs",
         "exists": true,
         "sha256": "8e4b80c97d8457e4a522ba15e7f310cbb10761aac2dc50e616b72ff344994c33"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
         "exists": true,
         "sha256": "45b0507a4b1b30a8a77bd59c72040ce2e262960667d724f274260b12f35b8e1b"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
         "exists": true,
         "sha256": "c95cdae34903ee982dcc8ed766fb2699d74205e4e1bfeb7a1d5cd72184e661d6"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
         "exists": true,
         "sha256": "758669c780238031334020ad7af44b5b17612a697cbeff172662788995967ba5"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsProfiles.cs",
         "exists": true,
-        "sha256": "bb87b7b58664e2ceb7c0d58c95fd694bcbdb8f043e3765be9ec0c5471c2f8a50"
+        "sha256": "989158b6876e6ac1bbf70813bbe5e4a7f4d7055c8cd0cefa65531cae911eb575"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/Chummer5CharacterSettingsRuntimeContract.Generated.cs",
         "exists": true,
-        "sha256": "220d165ea994832a58e437a32f16bd1dcc0b230759d87b86c4f13851d3745f04"
+        "sha256": "9a418082fa297c94d6af83096717cfcd34fe507e649cf00b562a1373cbf8fc96"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "53ec77b23bd48f34794bd105279f8e43a47b0f214da236e4c6c1ae9bf8c87838"
+        "sha256": "e9d0bc324c6d6456f09f907f3511456631b1d901c8d96fb7ef076ae70e9d59d6"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "5b5fcfb6ec08f07979bc94f077aaa5036ca5ec6aa51433652baca0ca1a8a921e"
+        "sha256": "7610bd7bcf4d4933eacd207ac610ce07ccca2496521248f6ed7ef053ba00da58"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
         "exists": true,
-        "sha256": "98a4b10cec3e0925b288c2bd1d70c4d48ed08b22665734b7550e35eead4e1517"
+        "sha256": "287d4ddc4a432d7f9977edffaa5797d94f9af5e2482eb8771d85d8c004c54c32"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "4e6a6db1fe68b0cb8cf515a5ff4068153d2822a20232fd348a3686536140967f"
+        "sha256": "ccb855b6a802c0e03243d07b67baa614740427f4a781837666b9faab709aabed"
       },
       {
-        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
+        "path": ".integration-worktrees/android-vehicle-home-node-coherent-20260821/chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
         "exists": true,
-        "sha256": "a5575ff98735e9685cdb7c97fad634fda18716c922c977c30592ee548311554f"
+        "sha256": "9753a446b1eddbbe3c45cddf4d19b297896c5052b77ccfb42e593c8d5590a16b"
       }
     ],
     "generator": {
@@ -1035,7 +1035,7 @@
     "spirits_and_sprites": {
       "rowCount": 32,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 14,
+      "phoneMissingCount": 18,
       "tabletMissingCount": 28,
       "completionProvenCount": 4
     },
@@ -3632,7 +3632,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-integer-services-{stable-target}",
@@ -3693,7 +3693,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-integer-force-{stable-target}",
@@ -3754,7 +3754,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-toggle-bound-{stable-target}",
@@ -3867,7 +3867,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "partial_exact_saved_data",
+        "status": "missing",
         "route": "Build > Magic and Resonance > Spirits and sprites > selected spirit or sprite",
         "surface": "CollectionItemEditorPage",
         "automationId": "collection-field-crittername-{stable-target}",
