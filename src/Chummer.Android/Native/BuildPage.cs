@@ -176,6 +176,19 @@ public sealed class BuildPage : NativePageBase
         if (Coordinator.State.Profile?.Created == true)
         {
             _body.Add(NativeTheme.NavigationRow(
+                "Improvements",
+                "Enable or disable one directly selected saved Improvement",
+                async () =>
+                {
+                    ImprovementActiveEditorState? editor =
+                        await Coordinator.PrepareImprovementActiveEditAsync();
+                    if (editor is not null)
+                    {
+                        await Navigation.PushAsync(new ImprovementActivePage(Coordinator, editor));
+                    }
+                },
+                automationId: "build-improvement-active"));
+            _body.Add(NativeTheme.NavigationRow(
                 "Edge use",
                 "Spend or regain one point of current Edge",
                 async () =>

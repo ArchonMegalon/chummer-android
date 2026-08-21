@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Improvement Active E2E</name>
+  <alias>CareerImprovementActiveE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <improvements>
+    <improvement>
+      <improvedname>BOD</improvedname><sourcename>a5111111-5111-5111-5111-511111111111</sourcename>
+      <improvementttype>Attribute</improvementttype><improvementsource>Quality</improvementsource>
+      <customname>Body bonus</customname><enabled>1</enabled><notes>Career untouched improvement sentinel</notes>
+    </improvement>
+    <improvement>
+      <improvedname>AGI</improvedname><sourcename>a5111111-5111-5111-5111-511111111111</sourcename>
+      <improvementttype>Attribute</improvementttype><improvementsource>Quality</improvementsource>
+      <customname>Agility bonus target</customname><enabled>0</enabled><notes>Career selected improvement sentinel</notes>
+    </improvement>
+    <improvement>
+      <improvedname>REA</improvedname><sourcename>b5111111-5111-5111-5111-511111111111</sourcename>
+      <improvementttype>Attribute</improvementttype><improvementsource>Quality</improvementsource>
+      <customname>Reaction bonus</customname><enabled>True</enabled>
+    </improvement>
+  </improvements>
+  <customstate>Career improvement runner sentinel</customstate>
+</character>

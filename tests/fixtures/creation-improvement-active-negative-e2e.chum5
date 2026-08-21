@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Improvement Active Negative E2E</name>
+  <alias>CreationImprovementActiveNegativeE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <improvements>
+    <improvement>
+      <improvedname>LOG</improvedname><sourcename>c5111111-5111-5111-5111-511111111111</sourcename>
+      <improvementttype>Attribute</improvementttype><improvementsource>Quality</improvementsource>
+      <customname>Creation negative bonus</customname><enabled>1</enabled><notes>Creation negative sentinel</notes>
+    </improvement>
+  </improvements>
+  <customstate>Creation improvement runner sentinel</customstate>
+</character>

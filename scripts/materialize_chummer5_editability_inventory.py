@@ -1671,6 +1671,7 @@ ARMOR_TREE_FLAG_CONTROLS = {
         "armor-tree-discounted-cost-toggle-{stable-root-armor-guid}",
     ),
 }
+IMPROVEMENT_ACTIVE_CONTROL = "chkImprovementActive"
 CYBERWARE_COMMERCE_CONTROLS = {
     "tsCyberwareUpgrade": ("upgrade", "cyberware-commerce-upgrade-{stable-cyberware-guid}"),
     "tsCyberwareSell": ("sell", "cyberware-commerce-sell-{stable-cyberware-guid}"),
@@ -9278,6 +9279,184 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name == "CharacterCareer" and control == IMPROVEMENT_ACTIVE_CONTROL:
+        expected_handler = "chkImprovementActive_CheckedChanged"
+        legacy_source = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / "CharacterCareer.cs"
+        )
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementActivePage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_improvement_active_e2e.py"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-improvement-active-e2e.chum5"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-improvement-active-negative-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "ImprovementActiveEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = (
+            character_notes_core_root
+            / "Chummer.Contracts"
+            / "Characters"
+            / "CharacterImprovementActiveRules.cs"
+        )
+        workspace_store = (
+            character_notes_core_root
+            / "Chummer.Infrastructure"
+            / "Workspaces"
+            / "FileWorkspaceStore.cs"
+        )
+        legacy_exact = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                expected_handler,
+                "treImprovements.DoThreadSafeFuncAsync",
+                "nodSelected.Tag is Improvement objImprovement",
+                "ImprovementManager.EnableImprovementsAsync",
+                "ImprovementManager.DisableImprovementsAsync",
+                "MakeDirtyWithCharacterUpdate",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "class ImprovementActivePage",
+                'AutomationId = "improvement-active-page"',
+                'AutomationId = "improvement-active-target"',
+                'AutomationId = "improvement-active-toggle"',
+                'AutomationId = "improvement-active-save"',
+                "CharacterImprovementActiveRules.IsValidIdentity",
+                "selected.Revision",
+                "ImprovementActiveEditRequest",
+            )
+            and _contains(
+                build_page,
+                "Coordinator.State.Profile?.Created == true",
+                'automationId: "build-improvement-active"',
+                "PrepareImprovementActiveEditAsync",
+                "new ImprovementActivePage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareImprovementActiveEditAsync",
+                "ApplyImprovementActiveEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CharacterImprovementIdentity",
+                "ImprovementActiveEditorProjector",
+                "ReadRequiredCreated(root)",
+                'ReadRequiredContainer(root, "improvements")',
+                "seen.Add(identity)",
+                "ReadEnabled(improvement)",
+                "count > 0",
+                "FindNode",
+            )
+            and _contains(
+                mutation,
+                "ApplyImprovementActiveEdit",
+                "CharacterImprovementActiveRules.TryValidateMutation",
+                "ImprovementActiveEditorProjector.FindNode",
+                'SetElementValue(target, "enabled", request.Enabled ? "1" : "0")',
+            )
+            and _contains(
+                presenter,
+                "PrepareImprovementActiveEditAsync",
+                "ApplyImprovementActiveEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareImprovementActiveEditAsync",
+                "ApplyImprovementActiveEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterImprovementIdentity",
+                "CharacterImprovementActiveState",
+                "IsValidIdentity",
+                "IdentityEquals",
+                "TryValidateMutation",
+                "SHA256.HashData",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCareer.chkImprovementActive"',
+                'if api != "36"',
+                '"profile": "phone"',
+                '"journey": "improvement-active"',
+                '"careerDirectImprovementEdited": "pass"',
+                '"creationActionNotExposed": "pass"',
+                '"improvementActiveRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"careerFixtureSha256"',
+                '"creationNegativeFixtureSha256"',
+            )
+            and career_fixture.is_file()
+            and creation_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Improvements > Active state",
+            "surface": "ImprovementActivePage",
+            "automationId": "improvement-active-toggle",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/ImprovementActivePage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ImprovementActiveEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementActiveRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyImprovementActiveEditAsync with typed stable SourceName-anchored "
+                "semantic Improvement identity, duplicate/ambiguity rejection, item-local revision, and expected "
+                "workspace content revision"
+            ),
+            "persistenceAssertion": (
+                "the exact directly selected character/improvements/improvement/enabled value is normalized to "
+                "numeric 1 or 0 while unrelated Improvement and runner XML remains exact after revision-bound "
+                "atomic save/recovery, same-session reopen, and process restart"
+            ),
+            "coverageLimit": (
+                "Exact CharacterCareer direct treImprovements node semantics only: source grouping nodes are not "
+                "editable, stable semantic identity is required, and duplicate or ambiguous identity fails closed. "
+                "CharacterCreate and tablet are intentionally unavailable."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_improvement_active_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCreate" and control in ARMOR_TREE_FLAG_CONTROLS:
         expected_handler, xml_element, automation_id = ARMOR_TREE_FLAG_CONTROLS[control]
         legacy_source = (
@@ -14804,6 +14983,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorDamagePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorEquipmentPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorTreeFlagPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementActivePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CritterPowerCountPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SpiritFetteredPage.cs",
@@ -14851,6 +15031,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_armor_damage_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_equipment_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_tree_flags_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_improvement_active_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
         REPO_ROOT / "tests" / "run_api36_critter_power_count_e2e.py",
         REPO_ROOT / "tests" / "run_api36_spirit_fettered_e2e.py",
@@ -14923,6 +15104,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-armor-equipment-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-armor-tree-flags-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-armor-tree-flags-negative-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-improvement-active-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-improvement-active-negative-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-weapon-accessory-included-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-weapon-accessory-included-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-critter-power-count-e2e.chum5",
@@ -15001,6 +15184,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorDamageRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorEquipmentRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorTreeFlagRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterImprovementActiveRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCritterPowerCountRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSpiritFetteringRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSpiritNameChoiceRules.cs",
@@ -15051,6 +15235,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorDamageAdjustmentRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorEquipmentEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorTreeFlagEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "ImprovementActiveEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponAccessoryIncludedEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CritterPowerCountEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "SpiritFetteredEditRequest.cs",
