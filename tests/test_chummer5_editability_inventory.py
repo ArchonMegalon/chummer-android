@@ -1544,6 +1544,28 @@ namespace Chummer
                 )
             else:
                 self.assertEqual("collection-delete-{stable-target}", row["phone"]["automationId"])
+        name_choice_rows = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "SpiritControl"
+            and row["legacy"]["controlName"] == "cboSpiritName"
+        ]
+        self.assertEqual(1, len(name_choice_rows), "the shared selector must remain one legacy authority row")
+        name_choice = name_choice_rows[0]
+        self.assertEqual("partial_exact_saved_data", name_choice["phone"]["status"])
+        self.assertEqual("SpiritNameChoicePage", name_choice["phone"]["surface"])
+        self.assertEqual(
+            "spirit-name-choice-picker-{stable-spirit-guid}",
+            name_choice["phone"]["automationId"],
+        )
+        self.assertIn("Spirit/Sprite metatype", name_choice["phone"]["route"])
+        self.assertIn("ApplySpiritNameChoiceEditAsync", name_choice["presenterMutation"])
+        self.assertIn("direct name", name_choice["persistenceAssertion"])
+        self.assertIn("One shared SpiritControl.cboSpiritName row", name_choice["phone"]["coverageLimit"])
+        self.assertIn("All expands", name_choice["phone"]["coverageLimit"])
+        self.assertIn("present but not yet executed", name_choice["phone"]["coverageLimit"])
+        self.assertEqual("missing", name_choice["e2e"]["phone"]["status"])
+        self.assertEqual("missing", name_choice["tablet"]["status"])
+        self.assertFalse(name_choice["completionProven"])
         fettered_rows = [
             row for row in rows
             if row["legacy"]["formOrControl"] == "SpiritControl"
@@ -1715,10 +1737,10 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 405,
                 "implemented_verified_api36": 79,
-                "missing": 1024,
+                "missing": 1023,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
-                "partial_exact_saved_data": 147,
+                "partial_exact_saved_data": 148,
             },
             payload["summary"]["phoneStatusCounts"],
         )

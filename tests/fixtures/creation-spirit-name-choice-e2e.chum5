@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Spirit Metatype E2E</name>
+  <alias>CreationSpiritMetatypeE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <magenabled>True</magenabled>
+  <resenabled>False</resenabled>
+  <tradition>
+    <guid>85200000-0000-0000-0000-000000000001</guid>
+    <traditiontype>MAG</traditiontype>
+    <sourceid>616ba093-306c-45fc-8f41-0b98c8cccb46</sourceid>
+    <name>Creation Exact Custom Tradition</name>
+    <spiritcombat>Spirit of Fire</spiritcombat>
+    <spiritdetection>Spirit of Water</spiritdetection>
+    <spirithealth>Spirit of Earth</spirithealth>
+    <spiritillusion>Spirit of Man</spiritillusion>
+    <spiritmanipulation>Spirit of Air</spiritmanipulation>
+    <spirits />
+  </tradition>
+  <improvements>
+    <improvement><improvementttype>LimitSpiritCategory</improvementttype><improvedname>Spirit of Fire</improvedname><enabled>1</enabled></improvement>
+    <improvement><improvementttype>LimitSpiritCategory</improvementttype><improvedname>Spirit of Water</improvedname><enabled>True</enabled></improvement>
+    <improvement><improvementttype>LimitSpiritCategory</improvementttype><improvedname>Spirit of Earth</improvedname><enabled>False</enabled></improvement>
+    <improvement><improvementttype>AddSpirit</improvementttype><improvedname>Guardian Spirit</improvedname><enabled>1</enabled></improvement>
+  </improvements>
+  <customstate><name>Creation unrelated Spirit name text</name></customstate>
+  <spirits>
+    <spirit>
+      <guid>85111111-8511-8511-8511-851111111111</guid>
+      <name>Spirit of Fire</name><type>Spirit</type><crittername>Ash</crittername><force>4</force><services>2</services><bound>True</bound><fettered>False</fettered>
+      <notes>Creation target Spirit notes must remain intact</notes>
+    </spirit>
+    <spirit>
+      <guid>85222222-8522-8522-8522-852222222222</guid>
+      <name>Spirit of Water</name><type>Spirit</type><crittername>Tide</crittername><force>3</force><services>1</services><bound>True</bound><fettered>False</fettered>
+      <notes>Creation untouched Spirit notes must remain intact</notes>
+    </spirit>
+  </spirits>
+</character>

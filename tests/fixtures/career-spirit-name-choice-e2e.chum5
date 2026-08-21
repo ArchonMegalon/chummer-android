@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Sprite Metatype E2E</name>
+  <alias>CareerSpriteMetatypeE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <magenabled>False</magenabled>
+  <resenabled>True</resenabled>
+  <tradition>
+    <guid>85400000-0000-0000-0000-000000000001</guid>
+    <traditiontype>RES</traditiontype>
+    <sourceid>7a3ecfbe-616e-425d-b204-329de37ffdbb</sourceid>
+    <name>Default</name>
+    <spiritcombat />
+    <spiritdetection />
+    <spirithealth />
+    <spiritillusion />
+    <spiritmanipulation />
+    <spirits><spirit>Machine Sprite</spirit><spirit>Courier Sprite</spirit><spirit>Data Sprite</spirit></spirits>
+  </tradition>
+  <improvements>
+    <improvement><improvementttype>AddSprite</improvementttype><improvedname>Diagnostics Sprite</improvedname><enabled>1</enabled></improvement>
+    <improvement><improvementttype>AddSprite</improvementttype><improvedname>Companion Sprite</improvedname><enabled>0</enabled></improvement>
+  </improvements>
+  <customstate><name>Career unrelated Sprite name text</name></customstate>
+  <spirits>
+    <spirit>
+      <guid>85333333-8533-8533-8533-853333333333</guid>
+      <name>Machine Sprite</name><type>Sprite</type><crittername>Bit</crittername><force>5</force><services>3</services><bound>True</bound><fettered>False</fettered>
+      <notes>Career target Sprite notes must remain intact</notes>
+    </spirit>
+    <spirit>
+      <guid>85444444-8544-8544-8544-854444444444</guid>
+      <name>Courier Sprite</name><type>Sprite</type><crittername>Packet</crittername><force>3</force><services>1</services><bound>True</bound><fettered>False</fettered>
+      <notes>Career untouched Sprite notes must remain intact</notes>
+    </spirit>
+  </spirits>
+</character>

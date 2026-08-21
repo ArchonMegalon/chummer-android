@@ -8702,6 +8702,236 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name == "SpiritControl" and control == "cboSpiritName":
+        native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
+        phone_page = native_root / "SpiritNameChoicePage.cs"
+        collection_page = native_root / "CollectionEditorPages.cs"
+        coordinator = native_root / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_spirit_name_choice_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-spirit-name-choice-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-spirit-name-choice-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "SpiritNameChoiceEditRequest.cs"
+        state = overview / "WorkspaceCollectionEditorState.cs"
+        projector = overview / "WorkspaceCollectionEditorProjector.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_contracts = character_notes_core_root / "Chummer.Contracts" / "Characters"
+        core_rules = core_contracts / "CharacterSpiritNameChoiceRules.cs"
+        core_models = core_contracts / "CharacterSectionModels.cs"
+        resolver_contract = character_notes_core_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs"
+        core_parser = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        resolver = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "FileSystemCharacterSourceDataResolver.cs"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        legacy_source = presentation_root / "Chummer" / "Controls" / "Characters" / "SpiritControl.cs"
+        legacy_designer = presentation_root / "Chummer" / "Controls" / "Characters" / "SpiritControl.Designer.cs"
+        legacy_exact = (
+            _contains(
+                legacy_designer,
+                "cboSpiritName.DropDownStyle",
+                "System.Windows.Forms.ComboBoxStyle.DropDownList",
+            )
+            and _contains(
+                legacy_source,
+                "nameof(Spirit.Name)",
+                "cboSpiritName.RegisterAsyncDataBindingWithDelayAsync",
+                "(x, y) => x.SetNameAsync(y, _objMyToken)",
+                "1000, _objMyToken, _objMyToken",
+                "RebuildSpiritList",
+                "Improvement.ImprovementType.LimitSpiritCategory",
+                "objTradition.IsCustomTradition",
+                'spirits/spirit[. = \\"All\\"]',
+                "Improvement.ImprovementType.AddSpirit",
+                "Improvement.ImprovementType.AddSprite",
+                "PopulateWithListItemsAsync",
+            )
+        )
+        phone_implemented = (
+            legacy_exact
+            and _contains(
+                phone_page,
+                "class SpiritNameChoicePage",
+                "CharacterSpiritNameChoiceState",
+                "CharacterSpiritNameChoiceRules.CanSet",
+                'AutomationId = $"spirit-name-choice-page-{token}"',
+                'AutomationId = $"spirit-name-choice-picker-{token}"',
+                'AutomationId = $"spirit-name-choice-save-{token}"',
+                "_contentRevision",
+                "ItemsSource = options",
+                "Coordinator.ApplySpiritNameChoiceEditAsync",
+            )
+            and _contains(
+                collection_page,
+                "AddSpiritNameChoiceAction",
+                "item.SpiritNameChoice is not { } nameChoice",
+                'automationId: $"spirit-name-choice-open-{spiritId:N}"',
+                "new SpiritNameChoicePage",
+            )
+            and _contains(
+                coordinator,
+                "ApplySpiritNameChoiceEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.ApplySpiritNameChoiceEditAsync",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "SpiritNameChoiceEditRequest",
+                "ExpectedContentRevision",
+                "CharacterSpiritNameChoiceState ExpectedState",
+                "string SpiritName",
+            )
+            and _contains(state, "CharacterSpiritNameChoiceState? SpiritNameChoice")
+            and _contains(
+                projector,
+                "ProjectSpiritNameChoice",
+                '"nameChoiceSemantics"',
+                '"allowedNames"',
+                "CharacterSpiritNameChoiceRules.IsValidState",
+                "SpiritNameChoice = spiritNameChoice",
+            )
+            and _contains(
+                mutation,
+                "ApplySpiritNameChoiceEdit",
+                "CharacterSpiritNameChoiceRules.Matches",
+                "CharacterSpiritNameChoiceRules.CanSet",
+                'resolved.Item.Elements("name").Take(2)',
+                "names[0].Value = request.SpiritName",
+            )
+            and _contains(
+                presenter,
+                "ApplySpiritNameChoiceEditAsync",
+                "ExpectedContentRevision",
+                "ApplyWorkspaceXmlMutationAsync",
+                "_characterSourceDataResolver",
+            )
+            and _contains(presenter_interface, "ApplySpiritNameChoiceEditAsync")
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterSpiritNameChoiceState",
+                "limitCategories",
+                "addedSpiritNames",
+                "addedSpriteNames",
+                "CharacterSpiritNameChoiceRules",
+            )
+            and _contains(core_models, "NameChoiceSemantics")
+            and _contains(
+                core_parser,
+                "ProjectSpiritNameChoiceSemantics",
+                "TryReadTraditionSpiritBaseNames",
+                '"LimitSpiritCategory"',
+                '"AddSpirit"',
+                '"AddSprite"',
+            )
+            and _contains(
+                resolver_contract,
+                "TryResolveSpiritCatalogNames",
+                "TryResolveTraditionSpiritNames",
+            )
+            and _contains(
+                resolver,
+                "TryResolveSpiritCatalogNames",
+                "TryResolveTraditionSpiritNames",
+                "TryResolveTarget",
+                '"Spirit" => "traditions.xml"',
+                '"Sprite" => "streams.xml"',
+                "_customDirectories.Count != 0",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                'CONTROL = "SpiritControl.cboSpiritName"',
+                'api != "36"',
+                '"profile": "phone"',
+                '"journey": "spirit-name-choice"',
+                '"controlCount": 1',
+                '"limitBeforeAddRules"',
+                '"spiritNameChoiceRulesSha256"',
+                '"sourceResolverSha256"',
+                '"traditionsCatalogSha256"',
+                '"streamsCatalogSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+                '"careerFixtureSha256"',
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        return {
+            "status": "partial_exact_saved_data" if phone_implemented else "missing",
+            "route": "Build > Magic and Resonance > Spirits and sprites > selected stable Spirit or Sprite > Spirit/Sprite metatype",
+            "surface": "SpiritNameChoicePage",
+            "automationId": "spirit-name-choice-picker-{stable-spirit-guid}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/SpiritNameChoicePage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/BuildFlowPages.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/SpiritNameChoiceEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSpiritNameChoiceRules.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer/data/traditions.xml",
+                "chummer-core-engine/Chummer/data/streams.xml",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+                "chummer-core-engine/Chummer.Rulesets.Sr5/Sr5ShellCatalogs.cs",
+                "tests/run_api36_spirit_name_choice_e2e.py",
+                "tests/fixtures/creation-spirit-name-choice-e2e.chum5",
+                "tests/fixtures/career-spirit-name-choice-e2e.chum5",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplySpiritNameChoiceEditAsync / "
+                "SpiritNameChoiceEditRequest with typed stable Spirit/Sprite identity, exact allowed values, and expected content revision"
+            ),
+            "persistenceAssertion": (
+                "the selected stable Spirit/Sprite direct name changes only to an exact legacy DropDownList value; "
+                "CritterName, force, services, bound/fettered state, sibling entities, tradition/stream, improvements, "
+                "and unrelated XML remain exact after atomic save, same-session reopen, recovery, and process restart"
+            ),
+            "coverageLimit": (
+                "One shared SpiritControl.cboSpiritName row reaches both CharacterCreate and CharacterCareer. Exact for "
+                "saved custom role lists, exact active non-custom tradition/stream source rows, enabled LimitSpiritCategory and "
+                "MAG/RES-gated AddSpirit/AddSprite improvements. All expands from the exact active base/overlay catalog "
+                "only when no custom data directories are active; otherwise it fails closed. Source translation affects "
+                "display labels only and is not persisted. The API 36 phone driver is "
+                f"{'present but not yet executed' if e2e_scripted else 'missing'}; tablet is deferred."
+            ),
+            "e2e": {"status": "missing", "ref": None},
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "SpiritControl" and control == "chkFettered":
         native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
         phone_page = native_root / "SpiritFetteredPage.cs"
@@ -12584,6 +12814,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CritterPowerCountPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SpiritFetteredPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SpiritNameChoicePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SustainedObjectsPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearQuantityPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "QualityLevelPage.cs",
@@ -12625,6 +12856,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
         REPO_ROOT / "tests" / "run_api36_critter_power_count_e2e.py",
         REPO_ROOT / "tests" / "run_api36_spirit_fettered_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_spirit_name_choice_e2e.py",
         REPO_ROOT / "tests" / "run_api36_sustained_effects_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_quantity_e2e.py",
         REPO_ROOT / "tests" / "run_api36_quality_level_e2e.py",
@@ -12689,6 +12921,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-critter-power-count-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-spirit-fettered-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-spirit-fettered-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-spirit-name-choice-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-spirit-name-choice-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-sustained-effects-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-sustained-effects-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-quantity-e2e.chum5",
@@ -12745,12 +12979,14 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorEquipmentRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCritterPowerCountRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSpiritFetteringRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSpiritNameChoiceRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSustainedObjectRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGroupMembershipRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGroupNameRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterTraditionNameRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterTraditionDrainRules.cs",
         core_engine_root / "Chummer" / "data" / "traditions.xml",
+        core_engine_root / "Chummer" / "data" / "streams.xml",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerEdgeUseRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualKarmaRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualNuyenRules.cs",
@@ -12788,6 +13024,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponAccessoryIncludedEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CritterPowerCountEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "SpiritFetteredEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "SpiritNameChoiceEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "SustainedObjectEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CyberwareCommerceRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WorkspaceLocationEditorState.cs",

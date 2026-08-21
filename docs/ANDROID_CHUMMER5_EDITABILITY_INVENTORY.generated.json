@@ -16,10 +16,10 @@
     "phoneStatusCounts": {
       "implemented_pending_emulator": 405,
       "implemented_verified_api36": 79,
-      "missing": 1024,
+      "missing": 1023,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
-      "partial_exact_saved_data": 147
+      "partial_exact_saved_data": 148
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
@@ -205,6 +205,11 @@
         "sha256": "99cc4fa40750d916a41f0190410b7ad5e97b2ddad9403b4e18ec7054badb7aa0"
       },
       {
+        "path": "src/Chummer.Android/Native/SpiritNameChoicePage.cs",
+        "exists": true,
+        "sha256": "964f79a13a85f0db1649d75f53f8a62ac3baec1539f6fc799329757bc48c4b46"
+      },
+      {
         "path": "src/Chummer.Android/Native/SustainedObjectsPage.cs",
         "exists": true,
         "sha256": "a8ac519e23e2be8b3b405e0cec9ecfc5aceeadc67b8a006ccc86c007cba52a46"
@@ -237,7 +242,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "beaeada0351aae4c2153293a0222aa60e31b4d74c90b94f696d522514a558daa"
+        "sha256": "4adfed84d234298a3636195d191e3d6c6145c70593eb80ef6c6dc8554bc4cd5d"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -262,7 +267,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "293974267ed024b6aba3d9373ebd28d4b0d98d8f7c60f145aaa6ad7baffb6e7f"
+        "sha256": "bd6c402f81cb9e300500e33ea8903c650f8e07a396711fa776cb572d568c0849"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -408,6 +413,11 @@
         "path": "tests/run_api36_spirit_fettered_e2e.py",
         "exists": true,
         "sha256": "e3e0502ad3eacdd4c71004d8e3df608c4613c08fb298691222b9d0d346bd2cb9"
+      },
+      {
+        "path": "tests/run_api36_spirit_name_choice_e2e.py",
+        "exists": true,
+        "sha256": "6b95f6a644bbfd8a30ac8cf87d6f269e6535f923694e26299804dcf3d6bf9cea"
       },
       {
         "path": "tests/run_api36_sustained_effects_e2e.py",
@@ -730,6 +740,16 @@
         "sha256": "fd831a13a2f63847120c420d9a4ef669b99d07854354c1504759d26e269c9751"
       },
       {
+        "path": "tests/fixtures/creation-spirit-name-choice-e2e.chum5",
+        "exists": true,
+        "sha256": "975a545fbfa6461c270a57470c81a8c4c1a50a9d0c8fb622b2fa948508c6f3f8"
+      },
+      {
+        "path": "tests/fixtures/career-spirit-name-choice-e2e.chum5",
+        "exists": true,
+        "sha256": "f217e18c57b26173386bd86e20c7d713da21d23ff614f930d0ec7714e24c1e7c"
+      },
+      {
         "path": "tests/fixtures/creation-sustained-effects-e2e.chum5",
         "exists": true,
         "sha256": "4bf528bca40dbbb5aafe54b75a14e383d9d6d334dfd820c7ff4823e5ac173878"
@@ -977,7 +997,7 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "b22552699a9bd654d122e4249f1da5f856cb0cf9e99204d54ba09c06cf8a75e8"
+        "sha256": "dfe97603bc50b9633447fd62a505b3a9edd2fb7fccf5a886187a2272b7d7445b"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponHomeNodeRules.cs",
@@ -1020,6 +1040,11 @@
         "sha256": "256bd61f5afe9f283f7a52c6d8f8cb0f35b2f972367d944ce9143c7ec4139931"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSpiritNameChoiceRules.cs",
+        "exists": true,
+        "sha256": "a52869a51129ce1c7841263c1a0e425cffac7bfee62a72a8a858d5efc3ae25af"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSustainedObjectRules.cs",
         "exists": true,
         "sha256": "cbeddfd917eea8a2e7b7593bb939508c4f57e04a5451b249f516a69a5eff5585"
@@ -1050,6 +1075,11 @@
         "sha256": "10babe291e995f8c5362cff2c6c901011d0575e6da0efd162b5dac2412318174"
       },
       {
+        "path": "chummer-core-engine/Chummer/data/streams.xml",
+        "exists": true,
+        "sha256": "488ce2f8e03d50307179a5343b396d153f4733be8dee0747fedfb417c180f2a4"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerEdgeUseRules.cs",
         "exists": true,
         "sha256": "d59db7c77f2a62d6a1d2541ae61eeb69f226066a0c4242a6089981269e00e610"
@@ -1077,7 +1107,7 @@
       {
         "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "e237ba5e8692139ed7237788adaccfe0847d241b768dec42979bdac7a9ecfdfe"
+        "sha256": "f4a6519a527d9b84b80cc45de45d053a083ebe4b18026ce80ba2ef4c45ceb793"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
@@ -1087,7 +1117,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "1afc499593dc5c1c9656b25273b5721d3304b768a67afdfa1a5f2fe2814b53aa"
+        "sha256": "e76669ad7b265b4a721ab44f60efa76405dd7f30366521d91953adf031d41281"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
@@ -1097,7 +1127,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "0b08f67cedec74fee0fe6b988549f7aa8b75a5573b3d3b0ba3157c6d8e35ead7"
+        "sha256": "e0d60e036580b27ebecca775632b5d5dc66bd73c0027cb03b7924a0456a49616"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -1117,7 +1147,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "65a73b148a1bd680e71ed14af6f8a8205333b623f15e6a55090e3e4c06e77470"
+        "sha256": "e947d81a3f3d094ca48257d88ebdff250341bc33bb517667ed5586fa3579e91f"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1235,6 +1265,11 @@
         "sha256": "083d08a675b251a45f7f0432c920358f6dfec32a77a3a283d911f3c7fba6ac3b"
       },
       {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/SpiritNameChoiceEditRequest.cs",
+        "exists": true,
+        "sha256": "6b8dd2d3bc18f6b751a5d69bf94efcf74062b11b0ec33989df841e0d547308c5"
+      },
+      {
         "path": "chummer-presentation/Chummer.Presentation/Overview/SustainedObjectEditRequest.cs",
         "exists": true,
         "sha256": "58b906c7408b0e29a559ff9f14baf33d6a5b7780068c5d6f1486055aefd23c8d"
@@ -1272,7 +1307,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "f365b1af6a5ac20b9ff29f718b13df517727f8faadf905aeace1d0f3aac64ddd"
+        "sha256": "9826922e65711b286d7b4d7a52fe98dff204c670f2da81749c25ec2284d03d17"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1312,12 +1347,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "f6fa85dcf635489dbc4bba1be938a7bf1e2c7eedac6b16c795c97e48ea1d6d70"
+        "sha256": "16b55aed8e6937fd5293518f18a3cb4e90949af913b742fc241718b5e63267a1"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "b7bff3c8da5e4baa295d90a79c31d7111b2e4e30fa8ff046a8a3b09c77f73a25"
+        "sha256": "47b4cd2b9cb43cf036505577197108fe2fdcc21163554d71f90138c848bb0dc0"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
@@ -1327,7 +1362,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "802ff462664877fbf804cc443266c9ae34407da4610e7da674ee3b4daa2187a2"
+        "sha256": "77c85d027485c150ff7b9686982d40ca8b5cb322218d962852e5afa4e9c322d2"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1337,7 +1372,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "9eb16f77a80865c27b89072fec48464b0c1016502abc1cc40dab60712df4f19c"
+      "sha256": "6234fc27eeecbddf2d6384547aa9beffb299a27a520a369ee348dac6b6e0dfeb"
     }
   },
   "coverageByFamily": {
@@ -1680,7 +1715,7 @@
     "spirits_and_sprites": {
       "rowCount": 32,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 13,
+      "phoneMissingCount": 12,
       "tabletMissingCount": 28,
       "completionProvenCount": 4
     },
@@ -4460,11 +4495,37 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Magic and Resonance > Spirits and sprites > selected stable Spirit or Sprite > Spirit/Sprite metatype",
+        "surface": "SpiritNameChoicePage",
+        "automationId": "spirit-name-choice-picker-{stable-spirit-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/SpiritNameChoicePage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/SpiritNameChoiceEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSpiritNameChoiceRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer/data/traditions.xml",
+          "chummer-core-engine/Chummer/data/streams.xml",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+          "chummer-core-engine/Chummer.Rulesets.Sr5/Sr5ShellCatalogs.cs",
+          "tests/run_api36_spirit_name_choice_e2e.py",
+          "tests/fixtures/creation-spirit-name-choice-e2e.chum5",
+          "tests/fixtures/career-spirit-name-choice-e2e.chum5"
+        ],
+        "coverageLimit": "One shared SpiritControl.cboSpiritName row reaches both CharacterCreate and CharacterCareer. Exact for saved custom role lists, exact active non-custom tradition/stream source rows, enabled LimitSpiritCategory and MAG/RES-gated AddSpirit/AddSprite improvements. All expands from the exact active base/overlay catalog only when no custom data directories are active; otherwise it fails closed. Source translation affects display labels only and is not persisted. The API 36 phone driver is present but not yet executed; tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -4472,8 +4533,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplySpiritNameChoiceEditAsync / SpiritNameChoiceEditRequest with typed stable Spirit/Sprite identity, exact allowed values, and expected content revision",
+      "persistenceAssertion": "the selected stable Spirit/Sprite direct name changes only to an exact legacy DropDownList value; CritterName, force, services, bound/fettered state, sibling entities, tradition/stream, improvements, and unrelated XML remain exact after atomic save, same-session reopen, recovery, and process restart",
       "e2e": {
         "phone": {
           "status": "missing",

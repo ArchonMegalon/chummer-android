@@ -122,6 +122,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddWeaponAccessoryIncludedAction(item);
         AddCritterPowerCountAction(item);
         AddSpiritFetteredAction(item);
+        AddSpiritNameChoiceAction(item);
         AddGearQuantityLifecycleAction(item);
         AddQualityLevelAction(item);
         AddCyberwareCommerceAction(item);
@@ -1103,6 +1104,33 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 fettering)),
             automationId: $"spirit-fettered-open-{spiritId:N}"));
+    }
+
+    private void AddSpiritNameChoiceAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Spirit
+            || _target.NestedKind is not null
+            || item.SpiritNameChoice is not { } nameChoice
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid spiritId)
+            || spiritId == Guid.Empty
+            || spiritId != nameChoice.SpiritId)
+        {
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        _body.Add(NativeTheme.Eyebrow("Spirit tradition"));
+        _body.Add(NativeTheme.NavigationRow(
+            $"{nameChoice.EntityType} metatype",
+            nameChoice.CurrentName,
+            () => Navigation.PushAsync(new SpiritNameChoicePage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                item.Label,
+                nameChoice)),
+            automationId: $"spirit-name-choice-open-{spiritId:N}"));
     }
 
     private void AddCyberwareCommerceAction(WorkspaceCollectionItemEditorState item)
