@@ -1713,6 +1713,7 @@ ARMOR_TREE_FLAG_CONTROLS = {
 GEAR_STOLEN_CONTROL = "chkGearStolen"
 GEAR_EQUIPMENT_CONTROL = "chkGearEquipped"
 IMPROVEMENT_ACTIVE_CONTROL = "chkImprovementActive"
+IMPROVEMENT_NOTES_CONTROL = "tsImprovementNotes"
 IMPROVEMENT_GROUP_ACTIVE_CONTROLS = {
     "cmdImprovementsEnableAll": (
         "cmdImprovementsEnableAll_Click",
@@ -9891,6 +9892,197 @@ def _known_phone_mapping(
             "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name == "CharacterCareer" and control == IMPROVEMENT_NOTES_CONTROL:
+        expected_handler = "tsImprovementNotes_Click"
+        legacy_source = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / "CharacterCareer.cs"
+        )
+        legacy_shared = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / "CharacterShared.cs"
+        )
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementNotesPage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_improvement_notes_e2e.py"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-improvement-notes-e2e.chum5"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-improvement-notes-negative-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "ImprovementNotesEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = (
+            character_notes_core_root
+            / "Chummer.Contracts"
+            / "Characters"
+            / "CharacterImprovementNotesRules.cs"
+        )
+        workspace_store = (
+            character_notes_core_root
+            / "Chummer.Infrastructure"
+            / "Workspaces"
+            / "FileWorkspaceStore.cs"
+        )
+        legacy_exact = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                expected_handler,
+                "WriteNotes(",
+                "treImprovements.DoThreadSafeFuncAsync",
+            )
+            and _contains(
+                legacy_shared,
+                "protected async Task WriteNotes",
+                "treNode?.Tag is IHasNotes",
+                "GetNotesAsync",
+                "GetNotesColorAsync",
+                "SetNotesAsync",
+                "SetNotesColorAsync",
+                "SetDirty(true",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "class ImprovementNotesPage",
+                'AutomationId = "improvement-notes-page"',
+                'AutomationId = "improvement-notes-target"',
+                'AutomationId = "improvement-notes-text"',
+                'AutomationId = "improvement-notes-color"',
+                'AutomationId = "improvement-notes-save"',
+                "CharacterImprovementNotesRules.CanSetLegacyHtmlColor",
+                "selected.Revision",
+                "ImprovementNotesEditRequest",
+            )
+            and _contains(
+                build_page,
+                "Coordinator.State.Profile?.Created == true",
+                'automationId: "build-improvement-notes"',
+                "PrepareImprovementNotesEditAsync",
+                "new ImprovementNotesPage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareImprovementNotesEditAsync",
+                "ApplyImprovementNotesEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CharacterImprovementIdentity",
+                "ImprovementNotesEditorProjector",
+                "ImprovementActiveEditorProjector.ProjectValue",
+                "CharacterImprovementNotesRules.TryCreateState",
+                "LegacyDefaultNotesColor",
+                "FindNode",
+            )
+            and _contains(
+                mutation,
+                "ApplyImprovementNotesEdit",
+                "CharacterImprovementNotesRules.TryValidateMutation",
+                "ImprovementNotesEditorProjector.FindNode",
+                'SetElementValue(target, "notes", request.Notes)',
+                'SetElementValue(target, "notesColor", request.NotesColor)',
+            )
+            and _contains(
+                presenter,
+                "PrepareImprovementNotesEditAsync",
+                "ApplyImprovementNotesEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareImprovementNotesEditAsync",
+                "ApplyImprovementNotesEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterImprovementNotesState",
+                "CharacterImprovementIdentity",
+                "IsValidLegacyHtmlColor",
+                "CanSetLegacyHtmlColor",
+                "TryValidateMutation",
+                "SHA256.HashData",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCareer.tsImprovementNotes"',
+                'if api != "36"',
+                'ABI = "arm64-v8a"',
+                'PACKAGE = "com.myexternalbrain.chummer"',
+                '"profile": "phone"',
+                '"journey": "improvement-notes"',
+                '"careerDirectImprovementNotesEdited": "pass"',
+                '"creationActionNotExposed": "pass"',
+                '"improvementNotesRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"careerFixtureSha256"',
+                '"creationNegativeFixtureSha256"',
+            )
+            and career_fixture.is_file()
+            and creation_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Improvement Notes > selected saved Improvement",
+            "surface": "ImprovementNotesPage",
+            "automationId": "improvement-notes-text",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/ImprovementNotesPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ImprovementNotesEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementNotesRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyImprovementNotesEditAsync with typed stable SourceName-anchored "
+                "semantic Improvement identity, duplicate/ambiguity rejection, notes-and-color item-local revision, "
+                "legacy HTML color validation, and expected workspace content revision"
+            ),
+            "persistenceAssertion": (
+                "the exact directly selected character/improvements/improvement receives notes and notesColor "
+                "together while enabled state, sibling Improvements, and unrelated runner XML remain exact after "
+                "revision-bound atomic save/recovery, same-session reopen, and process restart"
+            ),
+            "coverageLimit": (
+                "Exact CharacterCareer direct treImprovements IHasNotes node semantics only: source/group nodes are "
+                "not editable, stable semantic identity is required, duplicate or ambiguous identity fails closed, "
+                "missing notes use empty text, missing notesColor uses Chummer5's Chocolate default, and "
+                "CharacterCreate and tablet are intentionally unavailable."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_improvement_notes_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCreate" and control == GEAR_STOLEN_CONTROL:
         legacy_source = (
             presentation_root / "Chummer" / "Forms" / "Character Forms" / "CharacterCreate.cs"
@@ -15734,6 +15926,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorTreeFlagPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearStolenPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementActivePage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementNotesPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementGroupActivePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CritterPowerCountPage.cs",
@@ -15785,6 +15978,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_gear_stolen_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_equipment_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_active_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_improvement_notes_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_group_active_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
         REPO_ROOT / "tests" / "run_api36_critter_power_count_e2e.py",
@@ -15943,6 +16137,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorEquipmentRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorTreeFlagRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterImprovementActiveRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterImprovementNotesRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterImprovementGroupActiveRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCritterPowerCountRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSpiritFetteringRules.cs",
@@ -15997,6 +16192,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorTreeFlagEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GearStolenEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ImprovementActiveEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "ImprovementNotesEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ImprovementGroupActiveEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponAccessoryIncludedEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CritterPowerCountEditRequest.cs",

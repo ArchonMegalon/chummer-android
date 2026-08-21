@@ -202,6 +202,19 @@ public sealed class BuildPage : NativePageBase
                 },
                 automationId: "build-improvement-active"));
             _body.Add(NativeTheme.NavigationRow(
+                "Improvement Notes",
+                "Edit notes and note color for one directly selected saved Improvement",
+                async () =>
+                {
+                    ImprovementNotesEditorState? editor =
+                        await Coordinator.PrepareImprovementNotesEditAsync();
+                    if (editor is not null)
+                    {
+                        await Navigation.PushAsync(new ImprovementNotesPage(Coordinator, editor));
+                    }
+                },
+                automationId: "build-improvement-notes"));
+            _body.Add(NativeTheme.NavigationRow(
                 "Edge use",
                 "Spend or regain one point of current Edge",
                 async () =>

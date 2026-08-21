@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Improvement Notes E2E</name>
+  <alias>CareerImprovementNotesE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <improvements>
+    <improvement>
+      <improvedname>BOD</improvedname><sourcename>a5121111-5111-5111-5111-511111111111</sourcename>
+      <improvementttype>Attribute</improvementttype><improvementsource>Quality</improvementsource>
+      <customname>Body notes untouched</customname><enabled>1</enabled>
+      <notes>Career untouched improvement note</notes><notesColor>#775533</notesColor>
+    </improvement>
+    <improvement>
+      <improvedname>AGI</improvedname><sourcename>a5121111-5111-5111-5111-511111111111</sourcename>
+      <improvementttype>Attribute</improvementttype><improvementsource>Quality</improvementsource>
+      <customname>Agility notes target</customname><enabled>0</enabled>
+      <notes>Career selected improvement note</notes><notesColor>#112233</notesColor>
+    </improvement>
+    <improvement>
+      <improvedname>REA</improvedname><sourcename>b5121111-5111-5111-5111-511111111111</sourcename>
+      <improvementttype>Attribute</improvementttype><improvementsource>Quality</improvementsource>
+      <customname>Reaction notes untouched</customname><enabled>True</enabled>
+      <notes>Second untouched note</notes><notesColor>Chocolate</notesColor>
+    </improvement>
+  </improvements>
+  <customstate>Career improvement notes runner sentinel</customstate>
+</character>

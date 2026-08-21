@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 427,
+      "implemented_pending_emulator": 428,
       "implemented_verified_api36": 79,
-      "missing": 1001,
+      "missing": 1000,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 148
@@ -77,7 +77,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "8d3e3b8627eb5e63c889ef29c0f1bb5a202c6d77fa8c2a5970d54eaec7a57179"
+        "sha256": "0df86101729ee525fa552fc13cdc3a2477bec269ec5df9d0a799d0541c3fc537"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -265,6 +265,11 @@
         "sha256": "e3ff46925801dbf8b6595378ef06bafa79bdee847f02af29c0843e3c066dd641"
       },
       {
+        "path": "src/Chummer.Android/Native/ImprovementNotesPage.cs",
+        "exists": true,
+        "sha256": "6d36778eb7b1433c7a796ed0a48a05e14d14f23115dfc89a031633c6b468ea84"
+      },
+      {
         "path": "src/Chummer.Android/Native/ImprovementGroupActivePage.cs",
         "exists": true,
         "sha256": "be2df4a3f71c121d31d677fe23b59a1ef8251b3eb51d898ff76bec2d52f4fe19"
@@ -347,7 +352,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "de797df9a9f44a6da0ab5c7a75a24228c96c36dfcd3311a9a3674be1a1a6ca0f"
+        "sha256": "eb7c4d887516c4f63721f5562a3804244498b01142ce3b075a497272e365b6d3"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -518,6 +523,11 @@
         "path": "tests/run_api36_improvement_active_e2e.py",
         "exists": true,
         "sha256": "4af8a6b701eb66f5ba6bfa4837a555205e8282653f999923f2426bb80b07142e"
+      },
+      {
+        "path": "tests/run_api36_improvement_notes_e2e.py",
+        "exists": true,
+        "sha256": "32d6cd680e9f665916852381e2997381646310b658618227033877dbeda17d2f"
       },
       {
         "path": "tests/run_api36_improvement_group_active_e2e.py",
@@ -1355,6 +1365,11 @@
         "sha256": "ee6256aa3e03b184ce068e873830167d81c7a6b8c3619792815725be169b4705"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementNotesRules.cs",
+        "exists": true,
+        "sha256": "c5553856cd2e086a3e8acd3bd6b29f1ee225fff24635ac7658d8d8c60a6ef693"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementGroupActiveRules.cs",
         "exists": true,
         "sha256": "23dc170aeb3aa7eb7d7c42da54962b05a404273051ddf7f01b6a875e3c8bdf7a"
@@ -1487,7 +1502,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "4520acf0e60b6bccca44f563ae0d8a53b229429d31bbc53f3e049eb1c60eaa2b"
+        "sha256": "136abc10e68ce20035c080c5afed99d322cd275491ac02fc80c2c5c1ad0cbe76"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1625,6 +1640,11 @@
         "sha256": "297c9b2ae8af2d39e5ae35e93ace8acc21dc0391a65e7b05221d6e041c7c0679"
       },
       {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/ImprovementNotesEditRequest.cs",
+        "exists": true,
+        "sha256": "81fc1adba3db7a2b689401e09fd6744a00246ebdd3558da7f65cf5a61fdf80a5"
+      },
+      {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ImprovementGroupActiveEditRequest.cs",
         "exists": true,
         "sha256": "5fe6dd5e4e82de15030825d4e6d6f5149744728bfe5a9b83b060adc40cb834c6"
@@ -1687,7 +1707,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "f271678882ab049404e79b49932fb30e265151b76a9eb2cafc20ddda9646d636"
+        "sha256": "99364bfab56a84407877ed3fc72570bd4384cc83f1c15596947fcf5b6db80063"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1742,7 +1762,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "9063238fcf2f40d3f3276336cfea87d4f0affdea7898331eb8b6aa66b55ba26a"
+        "sha256": "dd5577838a28b7f331b211308bc20081bc106fa2108d095f773833d02cc467ed"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1752,7 +1772,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "248c0618777d3b59bb263ce723fb49b06e90cb91eb14f287bccb4588c7fd87e0"
+      "sha256": "c280d30d91e2f24f0e44502c4c671e41c4e57112c2fef4f41253e15d9ef67448"
     }
   },
   "coverageByFamily": {
@@ -1927,7 +1947,7 @@
     "improvements": {
       "rowCount": 64,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 57,
+      "phoneMissingCount": 56,
       "tabletMissingCount": 60,
       "completionProvenCount": 4
     },
@@ -46335,11 +46355,23 @@
       "mutationFamily": "improvements",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Improvement Notes > selected saved Improvement",
+        "surface": "ImprovementNotesPage",
+        "automationId": "improvement-notes-text",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ImprovementNotesPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ImprovementNotesEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementNotesRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer direct treImprovements IHasNotes node semantics only: source/group nodes are not editable, stable semantic identity is required, duplicate or ambiguous identity fails closed, missing notes use empty text, missing notesColor uses Chummer5's Chocolate default, and CharacterCreate and tablet are intentionally unavailable."
       },
       "tablet": {
         "status": "missing",
@@ -46347,12 +46379,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyImprovementNotesEditAsync with typed stable SourceName-anchored semantic Improvement identity, duplicate/ambiguity rejection, notes-and-color item-local revision, legacy HTML color validation, and expected workspace content revision",
+      "persistenceAssertion": "the exact directly selected character/improvements/improvement receives notes and notesColor together while enabled state, sibling Improvements, and unrelated runner XML remain exact after revision-bound atomic save/recovery, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_improvement_notes_e2e.py"
         },
         "tablet": {
           "status": "missing",

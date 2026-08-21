@@ -855,6 +855,32 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<ImprovementNotesEditorState?> PrepareImprovementNotesEditAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareImprovementNotesEditAsync(cancellationToken);
+
+    public async Task ApplyImprovementNotesEditAsync(
+        ImprovementNotesEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Improvement notes were open. Reopen them before saving.");
+        }
+
+        await _presenter.ApplyImprovementNotesEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Improvement notes saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<ImprovementGroupActiveEditorState?> PrepareImprovementGroupActiveEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareImprovementGroupActiveEditAsync(cancellationToken);
