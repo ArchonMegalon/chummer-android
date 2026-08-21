@@ -840,6 +840,43 @@ namespace Chummer
             )
             self.assertFalse(row["completionProven"])
 
+        prototype_transhuman_rows = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "CharacterCreate"
+            and row["legacy"]["controlName"] == inventory.PROTOTYPE_TRANSHUMAN_CONTROL
+        ]
+        self.assertEqual(1, len(prototype_transhuman_rows))
+        prototype_transhuman = prototype_transhuman_rows[0]
+        self.assertEqual("CharacterCreate", prototype_transhuman["legacy"]["formOrControl"])
+        self.assertEqual("cyberware", prototype_transhuman["mutationFamily"])
+        self.assertEqual("implemented_pending_emulator", prototype_transhuman["phone"]["status"])
+        self.assertEqual(
+            "Build > Gear > Cyberware > selected stable top-level Bioware > Prototype Transhuman",
+            prototype_transhuman["phone"]["route"],
+        )
+        self.assertEqual("PrototypeTranshumanPage", prototype_transhuman["phone"]["surface"])
+        self.assertEqual(
+            "prototype-transhuman-toggle-{stable-cyberware-guid}",
+            prototype_transhuman["phone"]["automationId"],
+        )
+        self.assertIn("full expected Core hierarchy/allowance semantics", prototype_transhuman["presenterMutation"])
+        self.assertIn("exact stable recursive hierarchy", prototype_transhuman["persistenceAssertion"])
+        self.assertIn("unrelated cyberware", prototype_transhuman["persistenceAssertion"])
+        self.assertIn("revision-checked atomic save", prototype_transhuman["persistenceAssertion"])
+        self.assertIn("Career has no authoritative checkbox row", prototype_transhuman["phone"]["coverageLimit"])
+        self.assertEqual("missing", prototype_transhuman["tablet"]["status"])
+        self.assertEqual("scripted_not_executed", prototype_transhuman["e2e"]["phone"]["status"])
+        self.assertEqual(
+            "tests/run_api36_prototype_transhuman_e2e.py",
+            prototype_transhuman["e2e"]["phone"]["ref"],
+        )
+        self.assertFalse(prototype_transhuman["completionProven"])
+        self.assertFalse(any(
+            row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] == inventory.PROTOTYPE_TRANSHUMAN_CONTROL
+            for row in rows
+        ))
+
         quality_levels = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -1764,9 +1801,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 407,
+                "implemented_pending_emulator": 408,
                 "implemented_verified_api36": 79,
-                "missing": 1021,
+                "missing": 1020,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 148,

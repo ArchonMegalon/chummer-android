@@ -117,6 +117,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddWeaponActiveCommlinkAction(item);
         AddArmorActiveCommlinkAction(item);
         AddGearActiveCommlinkAction(item);
+        AddPrototypeTranshumanAction(item);
         AddArmorDamageAction(item);
         AddArmorEquipmentAction(item);
         AddLifestyleIncrementAction(item);
@@ -904,6 +905,36 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 semantics)),
             automationId: $"gear-active-commlink-open-{gearId:N}"));
+    }
+
+    private void AddPrototypeTranshumanAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Cyberware
+            || _target.NestedKind is not null
+            || item.PrototypeTranshuman is not { } semantics
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid cyberwareId)
+            || cyberwareId == Guid.Empty
+            || semantics.CyberwareId != cyberwareId)
+        {
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        _body.Add(NativeTheme.Eyebrow("Creation Essence"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Prototype Transhuman",
+            semantics.PrototypeTranshuman
+                ? "This Bioware hierarchy uses the Prototype Transhuman allowance"
+                : "This Bioware hierarchy consumes normal Essence",
+            () => Navigation.PushAsync(new PrototypeTranshumanPage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                cyberwareId,
+                item.Label,
+                semantics)),
+            automationId: $"prototype-transhuman-open-{cyberwareId:N}"));
     }
 
     private void AddArmorDamageAction(WorkspaceCollectionItemEditorState item)

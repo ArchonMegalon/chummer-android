@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 407,
+      "implemented_pending_emulator": 408,
       "implemented_verified_api36": 79,
-      "missing": 1021,
+      "missing": 1020,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 148
@@ -185,6 +185,11 @@
         "sha256": "759c911013f8f48a17ad5fc5b49fdc110191823604433006025c1680f86eb321"
       },
       {
+        "path": "src/Chummer.Android/Native/PrototypeTranshumanPage.cs",
+        "exists": true,
+        "sha256": "0652261e9baa27cb5687734d9dc112d1135dd27064ea86e0abf330766817c9ed"
+      },
+      {
         "path": "src/Chummer.Android/Native/ArmorDamagePage.cs",
         "exists": true,
         "sha256": "1e365406ba8ec41751f25cd26ccbe7020ab8979cb061a3a9487f1d5abf4bf116"
@@ -247,7 +252,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "f7ba4d57ab28192b2000d34ef65d6c8769c79a1231a67e362fb25b76f249974b"
+        "sha256": "b5cb8ecd564dbc0bf9dd2591f44b35359494e32c972b6df140960007be016184"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -272,7 +277,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "6fbd72687f09c8e5001e5f33a00f1bf31f1054c08df1680d4c25dfc7183864cf"
+        "sha256": "31ff3f48df7819bd8072027311a5175a5c236ed46e0a076d3bb4bac535c08706"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -398,6 +403,11 @@
         "path": "tests/run_api36_gear_active_commlink_e2e.py",
         "exists": true,
         "sha256": "2ed368c5defd9c06f52e94d170b6bc1c4d6610d0e188aba77c77f6bc12cdd98a"
+      },
+      {
+        "path": "tests/run_api36_prototype_transhuman_e2e.py",
+        "exists": true,
+        "sha256": "fe247145d548e64e15ceb5f5f3d22543669171e8b421a6bcd7fef967e1524183"
       },
       {
         "path": "tests/run_api36_armor_damage_e2e.py",
@@ -715,6 +725,16 @@
         "sha256": "0c53c03f4de3ebca42846299d1526c6f1e443a85c8fcca15178daf9e53510924"
       },
       {
+        "path": "tests/fixtures/creation-prototype-transhuman-e2e.chum5",
+        "exists": true,
+        "sha256": "cdcc790ea205b13a12c469fcbb217cb3d969a00fb3ca97ab4fd8bbf1c73a25f1"
+      },
+      {
+        "path": "tests/fixtures/career-prototype-transhuman-e2e.chum5",
+        "exists": true,
+        "sha256": "727c3336b4715e9489fa3139cfed35a91b7f9419a5cf443e7dd5ceb11a417a4b"
+      },
+      {
         "path": "tests/fixtures/career-armor-damage-e2e.chum5",
         "exists": true,
         "sha256": "065554699b67e8a07c1e1c67dde9b0a627174cfff158498801d90877b34369b1"
@@ -1022,7 +1042,7 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "52b84e4d3f6fcab70d6a1270d9eefba36bae208a6a1b6ab4bdfe11713dd6d3c1"
+        "sha256": "f1c78d152ddf5ed4ce13d00c6d464062f353d2a69807abbb0048fe300a53f0ca"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponHomeNodeRules.cs",
@@ -1038,6 +1058,11 @@
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearActiveCommlinkRules.cs",
         "exists": true,
         "sha256": "886a7d266aaa3b12b6930ec9bdf5b5136cb92a16fd60c27abef61e6b9106b576"
+      },
+      {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterPrototypeTranshumanRules.cs",
+        "exists": true,
+        "sha256": "eed8eb6b40fc93cc885a342ba94946030ab010cbebfef8228f6861f0dae5f815"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponMatrixParentResolver.cs",
@@ -1147,7 +1172,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "7a981f2a1c323705bb1171cdf3ef0d5457a5fa34c63bfea04741476b67d1c632"
+        "sha256": "307704fa0e618bae624b9bb9966a808dd0d3d63a0301bc63600e3da997fad614"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
@@ -1177,7 +1202,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "9893097b7098c1ded669e012fd8bf9992f15b77104ef71163eda60d21d721b0f"
+        "sha256": "55621333bb2d898ca79c2d3e62cc63bed32eae6e3a153ef0146d50719a5a9d4b"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1275,6 +1300,11 @@
         "sha256": "6c2800c43c53ec0a422051ac60c07c64da9f51c9db4a57c4fcc52999ca3ae394"
       },
       {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/PrototypeTranshumanEditRequest.cs",
+        "exists": true,
+        "sha256": "6ba5b414cfa639b24c201888904b4fe2b9d35c3ab46a4405cfb20aa0e1b9a5fd"
+      },
+      {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ArmorDamageAdjustmentRequest.cs",
         "exists": true,
         "sha256": "1c7a286ada3a140c597fe2ede8420657fb05d31e3564cd807233a95128f8302c"
@@ -1342,7 +1372,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "627b92876faab43ca342d3dc737eaf43af1e69aee842cb310c623e27981c4497"
+        "sha256": "0111aa0464efa6588cdc875d005e036dc80619551bc45f5d8ea74ed6a2b30900"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1382,12 +1412,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "3721fe5e28eb0fa7c179050a68f2bdbd06d92acf392ccc39c6f4f6f3a042e995"
+        "sha256": "7e8713fd54eb623304c0fe002aaf7500639fe6d823663059ba845ba78777ffa3"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "25920b39742ee3db10321ad409895409a275f392e3a5591e05dd89e1d4b557f0"
+        "sha256": "d11d5ca29045c90dd9a12c19a4b1ca28f772c47ae8d628c19f264026b51518ab"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
@@ -1397,7 +1427,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "f21ba119919177ebfca6c57437b867ca306472685b3eab7d7743c86f16517209"
+        "sha256": "84b1f2ef066fbca37294446abcf5abb1d23a92496ad9a06c332e68af376ac0a0"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1407,7 +1437,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "c795854f2f52ada17801f653c72c98c568fb1005393fdb7eaa61414b2f5e87b4"
+      "sha256": "a35594ca127e6094db8dc298552a67501e3e5ffb5ec9f6c32eb1756a5b0d0bef"
     }
   },
   "coverageByFamily": {
@@ -1496,10 +1526,10 @@
       "completionProvenCount": 53
     },
     "contacts": {
-      "rowCount": 64,
+      "rowCount": 63,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 15,
-      "tabletMissingCount": 21,
+      "phoneMissingCount": 14,
+      "tabletMissingCount": 20,
       "completionProvenCount": 39
     },
     "crash_report_and_diagnostics": {
@@ -1517,10 +1547,10 @@
       "completionProvenCount": 3
     },
     "cyberware": {
-      "rowCount": 93,
+      "rowCount": 94,
       "reviewRequiredCount": 0,
       "phoneMissingCount": 47,
-      "tabletMissingCount": 65,
+      "tabletMissingCount": 66,
       "completionProvenCount": 4
     },
     "data_tools": {
@@ -59901,14 +59931,28 @@
           }
         ]
       },
-      "mutationFamily": "contacts",
+      "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Cyberware > selected stable top-level Bioware > Prototype Transhuman",
+        "surface": "PrototypeTranshumanPage",
+        "automationId": "prototype-transhuman-toggle-{stable-cyberware-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/PrototypeTranshumanPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/PrototypeTranshumanEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterPrototypeTranshumanRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ],
+        "coverageLimit": "Exact CharacterCreate.chkPrototypeTranshuman only: stable top-level Bioware enabled by a positive saved PrototypeTranshuman improvement. Career has no authoritative checkbox row and is covered only by the negative fixture. Tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -59916,12 +59960,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyPrototypeTranshumanEditAsync(PrototypeTranshumanEditRequest) with one stable top-level Bioware Guid, full expected Core hierarchy/allowance semantics, and expected content revision",
+      "persistenceAssertion": "revalidates creation mode, the enabled positive PrototypeTranshuman Essence allowance, top-level Bioware identity, and the exact stable recursive hierarchy before setting every root/descendant prototypetranshuman value atomically; unrelated cyberware and custom XML remain exact after revision-checked atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_prototype_transhuman_e2e.py"
         },
         "tablet": {
           "status": "missing",

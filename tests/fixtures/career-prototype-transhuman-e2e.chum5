@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Prototype Transhuman E2E</name>
+  <alias>CareerPrototypeTranshumanE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <customstate>Career Prototype Transhuman unrelated text</customstate>
+  <improvements>
+    <improvement>
+      <improvementttype>PrototypeTranshuman</improvementttype>
+      <val>1</val>
+      <enabled>1</enabled>
+    </improvement>
+  </improvements>
+  <cyberwares>
+    <cyberware>
+      <guid>84444444-8444-8444-8444-844444444444</guid>
+      <name>Career Prototype Bioware E2E</name>
+      <category>Basic</category>
+      <improvementsource>Bioware</improvementsource>
+      <ess>0.4</ess>
+      <rating>1</rating>
+      <grade>Standard</grade>
+      <prototypetranshuman>False</prototypetranshuman>
+      <notes>Career parent notes remain intact</notes>
+      <children>
+        <cyberware>
+          <guid>85555555-8555-8555-8555-855555555555</guid>
+          <name>Career Prototype Child E2E</name>
+          <category>Basic</category>
+          <improvementsource>Bioware</improvementsource>
+          <ess>0.1</ess>
+          <rating>1</rating>
+          <grade>Standard</grade>
+          <prototypetranshuman>False</prototypetranshuman>
+          <notes>Career child notes remain intact</notes>
+        </cyberware>
+      </children>
+    </cyberware>
+  </cyberwares>
+</character>

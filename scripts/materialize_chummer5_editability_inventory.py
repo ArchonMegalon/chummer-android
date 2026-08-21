@@ -1104,6 +1104,7 @@ WEAPON_HOME_NODE_CONTROL = "chkWeaponHomeNode"
 WEAPON_ACTIVE_COMMLINK_CONTROL = "chkWeaponActiveCommlink"
 ARMOR_ACTIVE_COMMLINK_CONTROL = "chkArmorActiveCommlink"
 GEAR_ACTIVE_COMMLINK_CONTROL = "chkGearActiveCommlink"
+PROTOTYPE_TRANSHUMAN_CONTROL = "chkPrototypeTranshuman"
 WEAPON_ACCESSORY_INCLUDED_CONTROL = "chkIncludedInWeapon"
 QUALITY_LEVEL_CONTROL = "nudQualityLevel"
 CRITTER_POWER_COUNT_CONTROL = "chkCritterPowerCount"
@@ -4038,6 +4039,8 @@ def _family(path: str, class_name: str, control: str, handlers: list[dict[str, s
         return "attributes"
     if class_name in {"CharacterCreate", "CharacterCareer"}:
         token = control.lower()
+        if class_name == "CharacterCreate" and control == PROTOTYPE_TRANSHUMAN_CONTROL:
+            return "cyberware"
         if token.startswith("tab") or token.startswith("lbl") and "source" in token:
             return "origin_dossier" if token == "tablongtexts" else "navigation_and_reference_actions"
         if token.startswith(("mnufile", "mnucreate", "tsbsave", "tsbprint", "tsbcopy", "tsbpaste")):
@@ -6909,6 +6912,194 @@ def _known_phone_mapping(
                 "owner is uniquely resolved and locally provable; source-only vehicle-mod contributions "
                 "fail closed. Legacy WeaponAccessory/Gear tree selections remain separately inventoried. "
                 "Tablet is deferred."
+            ),
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "CharacterCreate" and control == PROTOTYPE_TRANSHUMAN_CONTROL:
+        expected_handler = "chkPrototypeTranshuman_CheckedChanged"
+        legacy_source = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / "CharacterCreate.cs"
+        )
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "PrototypeTranshumanPage.cs"
+        editor = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_prototype_transhuman_e2e.py"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "PrototypeTranshumanEditRequest.cs"
+        state = overview / "WorkspaceCollectionEditorState.cs"
+        projector = overview / "WorkspaceCollectionEditorProjector.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        core_rules = (
+            character_notes_core_root
+            / "Chummer.Contracts"
+            / "Characters"
+            / "CharacterPrototypeTranshumanRules.cs"
+        )
+        core_models = (
+            character_notes_core_root
+            / "Chummer.Contracts"
+            / "Characters"
+            / "CharacterSectionModels.cs"
+        )
+        core_service = (
+            character_notes_core_root
+            / "Chummer.Infrastructure"
+            / "Xml"
+            / "CharacterSectionService.cs"
+        )
+        legacy_exact = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                expected_handler,
+                "SetPrototypeTranshumanAsync",
+                "blnCanBePT = blnPTVisible && blnNoParent",
+                "Improvement.ImprovementSource.Bioware",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "PrototypeTranshumanEditRequest",
+                'AutomationId = $"prototype-transhuman-page-{targetToken}"',
+                'AutomationId = $"prototype-transhuman-toggle-{targetToken}"',
+                'AutomationId = $"prototype-transhuman-save-{targetToken}"',
+                "semantics.EssenceAllowance",
+                "Coordinator.ApplyPrototypeTranshumanEditAsync",
+            )
+            and _contains(
+                editor,
+                "item.PrototypeTranshuman is not { } semantics",
+                'Guid.TryParseExact(_target.ItemId, "D"',
+                'automationId: $"prototype-transhuman-open-{cyberwareId:N}"',
+                "new PrototypeTranshumanPage",
+            )
+            and _contains(
+                coordinator,
+                "ApplyPrototypeTranshumanEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.ApplyPrototypeTranshumanEditAsync",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "PrototypeTranshumanEditRequest",
+                "ExpectedContentRevision",
+                "Guid CyberwareId",
+                "bool PrototypeTranshuman",
+                "CharacterPrototypeTranshumanSemantics ExpectedSemantics",
+            )
+            and _contains(state, "CharacterPrototypeTranshumanSemantics? PrototypeTranshuman")
+            and _contains(
+                projector,
+                "ProjectPrototypeTranshuman",
+                'TryReadStrictString(semantics, "cyberwareId"',
+                'TryReadStrictBool(semantics, "prototypeTranshuman"',
+                'TryReadStrictDecimal(semantics, "essenceAllowance"',
+                "CharacterPrototypeTranshumanNodeState",
+                "PrototypeTranshuman = prototypeTranshuman",
+            )
+            and _contains(
+                core_rules,
+                "CharacterPrototypeTranshumanSemantics",
+                "CharacterPrototypeTranshumanNodeState",
+                'ReadValue(cyberware, "improvementsource")',
+                '"Bioware"',
+                '"PrototypeTranshuman"',
+                "EnumerateHierarchy",
+                "TryReadUniqueStableGuid",
+                "Matches",
+            )
+            and _contains(
+                core_models,
+                "CharacterCyberwareSummary",
+                "CharacterPrototypeTranshumanSemantics? PrototypeTranshumanSemantics",
+            )
+            and _contains(
+                core_service,
+                "CharacterPrototypeTranshumanRules.TryProject",
+                "PrototypeTranshumanSemantics = prototypeTranshumanSemantics",
+            )
+            and _contains(
+                mutation,
+                "ApplyPrototypeTranshumanEdit",
+                "CharacterPrototypeTranshumanRules.TryProject",
+                "CharacterPrototypeTranshumanRules.Matches",
+                "CharacterPrototypeTranshumanRules.EnumerateHierarchy",
+                'item.Elements("prototypetranshuman")',
+                'target.Value = request.PrototypeTranshuman ? "True" : "False"',
+            )
+            and _contains(
+                presenter,
+                "ApplyPrototypeTranshumanEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+                "ExpectedContentRevision",
+            )
+            and _contains(
+                presenter_interface,
+                "ApplyPrototypeTranshumanEditAsync",
+                "PrototypeTranshumanEditRequest",
+            )
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"profile": "phone"',
+            '"journey": "prototype-transhuman"',
+            'CONTROL = "CharacterCreate.chkPrototypeTranshuman"',
+            '"enabledPrototypeTranshumanImprovement"',
+            '"prototypeTranshumanRulesSha256"',
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": (
+                "Build > Gear > Cyberware > selected stable top-level Bioware > "
+                "Prototype Transhuman"
+            ),
+            "surface": "PrototypeTranshumanPage",
+            "automationId": "prototype-transhuman-toggle-{stable-cyberware-guid}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/PrototypeTranshumanPage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/PrototypeTranshumanEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterPrototypeTranshumanRules.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyPrototypeTranshumanEditAsync("
+                "PrototypeTranshumanEditRequest) with one stable top-level Bioware Guid, full expected "
+                "Core hierarchy/allowance semantics, and expected content revision"
+            ),
+            "persistenceAssertion": (
+                "revalidates creation mode, the enabled positive PrototypeTranshuman Essence allowance, "
+                "top-level Bioware identity, and the exact stable recursive hierarchy before setting "
+                "every root/descendant prototypetranshuman value atomically; unrelated cyberware and "
+                "custom XML remain exact after revision-checked atomic save, same-session reopen, and "
+                "process restart"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_prototype_transhuman_e2e.py" if e2e_scripted else None,
+            },
+            "coverageLimit": (
+                "Exact CharacterCreate.chkPrototypeTranshuman only: stable top-level Bioware enabled by "
+                "a positive saved PrototypeTranshuman improvement. Career has no authoritative checkbox "
+                "row and is covered only by the negative fixture. Tablet is deferred."
             ),
             "tablet": {
                 "status": "missing",
@@ -13081,6 +13272,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponActiveCommlinkPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorActiveCommlinkPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearActiveCommlinkPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "PrototypeTranshumanPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorDamagePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorEquipmentPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs",
@@ -13124,6 +13316,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_weapon_active_commlink_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_active_commlink_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_active_commlink_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_prototype_transhuman_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_damage_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_equipment_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
@@ -13187,6 +13380,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-armor-active-commlink-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-gear-active-commlink-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-active-commlink-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-prototype-transhuman-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-prototype-transhuman-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-armor-damage-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-armor-equipment-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-armor-equipment-e2e.chum5",
@@ -13250,6 +13445,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterWeaponHomeNodeRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterWeaponActiveCommlinkRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGearActiveCommlinkRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterPrototypeTranshumanRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterWeaponMatrixParentResolver.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCyberwareCommerceRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorDamageRules.cs",
@@ -13297,6 +13493,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponHomeNodeEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorActiveCommlinkEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GearActiveCommlinkEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "PrototypeTranshumanEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorDamageAdjustmentRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorEquipmentEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponAccessoryIncludedEditRequest.cs",
