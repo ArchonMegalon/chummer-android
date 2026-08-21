@@ -117,6 +117,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddWeaponActiveCommlinkAction(item);
         AddArmorActiveCommlinkAction(item);
         AddGearActiveCommlinkAction(item);
+        AddCyberwareActiveCommlinkAction(item);
         AddPrototypeTranshumanAction(item);
         AddArmorDamageAction(item);
         AddArmorEquipmentAction(item);
@@ -906,6 +907,36 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 semantics)),
             automationId: $"gear-active-commlink-open-{gearId:N}"));
+    }
+
+    private void AddCyberwareActiveCommlinkAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Cyberware
+            || _target.NestedKind is not null
+            || item.CyberwareActiveCommlink is not { IsCommlink: true } semantics
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid cyberwareId)
+            || cyberwareId == Guid.Empty
+            || semantics.CyberwareId != cyberwareId)
+        {
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        _body.Add(NativeTheme.Eyebrow("Matrix identity"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Cyberware Active Commlink",
+            semantics.ActiveCommlink
+                ? "This cyberware is the runner's active commlink"
+                : "This cyberware is not the runner's active commlink",
+            () => Navigation.PushAsync(new CyberwareActiveCommlinkPage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                cyberwareId,
+                item.Label,
+                semantics)),
+            automationId: $"cyberware-active-commlink-open-{cyberwareId:N}"));
     }
 
     private void AddPrototypeTranshumanAction(WorkspaceCollectionItemEditorState item)

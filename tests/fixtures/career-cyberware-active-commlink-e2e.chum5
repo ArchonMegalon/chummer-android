@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Cyberware Active Commlink E2E</name>
+  <alias>CareerCyberwareActiveCommlinkE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <customstate><active>Career unrelated active text</active></customstate>
+  <cyberwares>
+    <cyberware>
+      <guid>92222222-9222-9222-9222-922222222222</guid>
+      <name>Career Persona Cyberware E2E</name>
+      <category>Headware</category>
+      <improvementsource>Cyberware</improvementsource>
+      <rating>3</rating>
+      <ess>0.2</ess>
+      <cost>1000</cost>
+      <grade>Standard</grade>
+      <equipped>True</equipped>
+      <active>False</active>
+      <canformpersona>Self</canformpersona>
+      <devicerating>Rating</devicerating>
+      <notes>Career target notes must remain intact</notes>
+      <children />
+      <gears />
+    </cyberware>
+    <cyberware>
+      <guid>92333333-9233-9233-9233-923333333333</guid>
+      <name>Career Untouched Cyberware E2E</name>
+      <category>Bodyware</category>
+      <improvementsource>Cyberware</improvementsource>
+      <rating>1</rating>
+      <ess>0.1</ess>
+      <cost>50</cost>
+      <grade>Standard</grade>
+      <equipped>False</equipped>
+      <active>False</active>
+      <canformpersona />
+      <notes>Career untouched notes</notes>
+      <children />
+      <gears />
+    </cyberware>
+  </cyberwares>
+  <gears>
+    <gear>
+      <guid>92111111-9211-9211-9211-921111111111</guid>
+      <name>Career Prior Active Gear E2E</name>
+      <category>Commlinks</category>
+      <rating>2</rating>
+      <qty>1</qty>
+      <cost>500</cost>
+      <equipped>True</equipped>
+      <active>True</active>
+      <canformpersona>Self</canformpersona>
+      <notes>Career gear must remain intact</notes>
+      <children />
+    </gear>
+  </gears>
+</character>

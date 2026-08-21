@@ -1081,6 +1081,22 @@ GEAR_ACTIVE_COMMLINK_CONTROL_E2E_PROOF_KEYS = (
     "processRestartWorkspacePersisted",
     "processRestartUiReadback",
 )
+CYBERWARE_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-cyberware-active-commlink"
+    / "receipt.json"
+)
+CYBERWARE_ACTIVE_COMMLINK_CONTROL_E2E_PROOF_KEYS = (
+    "stableCyberwareGuid",
+    "legacyPersonaEligibility",
+    "exclusiveCharacterWideActiveCommlink",
+    "expectedRevisionAtomicSave",
+    "sameSessionReopened",
+    "processRestartWorkspacePersisted",
+    "processRestartUiReadback",
+)
 ARMOR_DAMAGE_PHONE_E2E_RECEIPT = (
     REPO_ROOT
     / "docs"
@@ -1593,6 +1609,7 @@ WEAPON_HOME_NODE_CONTROL = "chkWeaponHomeNode"
 WEAPON_ACTIVE_COMMLINK_CONTROL = "chkWeaponActiveCommlink"
 ARMOR_ACTIVE_COMMLINK_CONTROL = "chkArmorActiveCommlink"
 GEAR_ACTIVE_COMMLINK_CONTROL = "chkGearActiveCommlink"
+CYBERWARE_ACTIVE_COMMLINK_CONTROL = "chkCyberwareActiveCommlink"
 PROTOTYPE_TRANSHUMAN_CONTROL = "chkPrototypeTranshuman"
 WEAPON_ACCESSORY_INCLUDED_CONTROL = "chkIncludedInWeapon"
 QUALITY_LEVEL_CONTROL = "nudQualityLevel"
@@ -3383,6 +3400,86 @@ def _validated_gear_active_commlink_phone_e2e_receipt(
         "status": "executed_api36",
         "ref": GEAR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
         "receiptSha256": _sha256_file(GEAR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT),
+        "apkSha256": apk_sha,
+    }
+
+
+def _validated_cyberware_active_commlink_phone_e2e_receipt(
+    presentation_root: Path,
+    core_engine_root: Path,
+) -> dict[str, Any] | None:
+    driver = REPO_ROOT / "tests" / "run_api36_cyberware_active_commlink_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    creation_fixture = (
+        REPO_ROOT / "tests" / "fixtures" / "creation-cyberware-active-commlink-e2e.chum5"
+    )
+    career_fixture = (
+        REPO_ROOT / "tests" / "fixtures" / "career-cyberware-active-commlink-e2e.chum5"
+    )
+    overview = presentation_root / "Chummer.Presentation" / "Overview"
+    source_digests = {
+        "cyberwareActiveCommlinkPageSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CyberwareActiveCommlinkPage.cs",
+        "collectionEditorPagesSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
+        "coordinatorSha256": REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+        "cyberwareActiveCommlinkContractSha256": overview / "CyberwareActiveCommlinkEditRequest.cs",
+        "collectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
+        "collectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
+        "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+        "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+        "cyberwareActiveCommlinkRulesSha256": core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCyberwareActiveCommlinkRules.cs",
+        "weaponHomeNodeRulesSha256": core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterWeaponHomeNodeRules.cs",
+        "characterSectionModelsSha256": core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+        "characterSectionServiceSha256": core_engine_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+    }
+    if not all(
+        path.is_file()
+        for path in (driver, shared_driver, creation_fixture, career_fixture, *source_digests.values())
+    ):
+        return None
+
+    try:
+        receipt = json.loads(_read_text(CYBERWARE_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    controls = receipt.get("controls")
+    apk_sha = str(receipt.get("apkSha256") or "")
+    expected_controls = {
+        f"{form}.{CYBERWARE_ACTIVE_COMMLINK_CONTROL}"
+        for form in ("CharacterCreate", "CharacterCareer")
+    }
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "cyberware-active-commlink"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("abi") == PHONE_E2E_ABI
+        and receipt.get("package") == PHONE_E2E_PACKAGE
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("creationFixtureSha256") == _sha256_file(creation_fixture)
+        and receipt.get("careerFixtureSha256") == _sha256_file(career_fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(controls, dict)
+        and set(controls) == expected_controls
+        and receipt.get("controlCount") == len(expected_controls)
+        and all(
+            isinstance(controls.get(control), dict)
+            and set(controls[control]) == set(CYBERWARE_ACTIVE_COMMLINK_CONTROL_E2E_PROOF_KEYS)
+            and all(
+                controls[control].get(proof_key) == "pass"
+                for proof_key in CYBERWARE_ACTIVE_COMMLINK_CONTROL_E2E_PROOF_KEYS
+            )
+            for control in expected_controls
+        )
+        and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
+    ):
+        return None
+    return {
+        "status": "executed_api36",
+        "ref": CYBERWARE_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(CYBERWARE_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
 
@@ -5194,6 +5291,7 @@ def _known_phone_mapping(
     weapon_active_commlink_phone_e2e_receipt: dict[str, Any] | None,
     armor_active_commlink_phone_e2e_receipt: dict[str, Any] | None,
     gear_active_commlink_phone_e2e_receipt: dict[str, Any] | None,
+    cyberware_active_commlink_phone_e2e_receipt: dict[str, Any] | None,
     armor_damage_phone_e2e_receipt: dict[str, Any] | None,
     armor_equipment_phone_e2e_receipt: dict[str, Any] | None,
     weapon_accessory_included_phone_e2e_receipt: dict[str, Any] | None,
@@ -7902,6 +8000,195 @@ def _known_phone_mapping(
                 "Exact CharacterCreate.chkPrototypeTranshuman only: stable top-level Bioware enabled by "
                 "a positive saved PrototypeTranshuman improvement. Career has no authoritative checkbox "
                 "row and is covered only by the negative fixture. Tablet is deferred."
+            ),
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
+        and control == CYBERWARE_ACTIVE_COMMLINK_CONTROL
+    ):
+        expected_handler = "chkCyberwareActiveCommlink_CheckedChanged"
+        legacy_source = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / f"{class_name}.cs"
+        )
+        native = REPO_ROOT / "src" / "Chummer.Android" / "Native"
+        page = native / "CyberwareActiveCommlinkPage.cs"
+        editor = native / "CollectionEditorPages.cs"
+        coordinator = native / "RunnerSessionCoordinator.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_cyberware_active_commlink_e2e.py"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "CyberwareActiveCommlinkEditRequest.cs"
+        state = overview / "WorkspaceCollectionEditorState.cs"
+        projector = overview / "WorkspaceCollectionEditorProjector.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        core_characters = character_notes_core_root / "Chummer.Contracts" / "Characters"
+        core_rules = core_characters / "CharacterCyberwareActiveCommlinkRules.cs"
+        owner_rules = core_characters / "CharacterWeaponHomeNodeRules.cs"
+        core_models = core_characters / "CharacterSectionModels.cs"
+        core_service = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        legacy_exact = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                expected_handler,
+                "treCyberware.DoThreadSafeFuncAsync(x => x.SelectedNode?.Tag",
+                "IHasMatrixAttributes objSelectedCommlink",
+                "objSelectedCommlink.SetActiveCommlinkAsync(CharacterObject",
+                "chkCyberwareActiveCommlink.DoThreadSafeFuncAsync(x => x.Checked",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "CyberwareActiveCommlinkEditRequest",
+                'AutomationId = $"cyberware-active-commlink-page-{targetToken}"',
+                'AutomationId = $"cyberware-active-commlink-toggle-{targetToken}"',
+                'AutomationId = $"cyberware-active-commlink-save-{targetToken}"',
+                "_contentRevision",
+                "Coordinator.ApplyCyberwareActiveCommlinkEditAsync",
+            )
+            and _contains(
+                editor,
+                "item.CyberwareActiveCommlink is not { IsCommlink: true } semantics",
+                'Guid.TryParseExact(_target.ItemId, "D"',
+                'automationId: $"cyberware-active-commlink-open-{cyberwareId:N}"',
+                "new CyberwareActiveCommlinkPage",
+            )
+            and _contains(
+                coordinator,
+                "ApplyCyberwareActiveCommlinkEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.ApplyCyberwareActiveCommlinkEditAsync",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CyberwareActiveCommlinkEditRequest",
+                "ExpectedContentRevision",
+                "Guid CyberwareId",
+                "bool ActiveCommlink",
+                "CharacterCyberwareActiveCommlinkSemantics ExpectedSemantics",
+            )
+            and _contains(
+                state,
+                "CharacterCyberwareActiveCommlinkSemantics? CyberwareActiveCommlink",
+            )
+            and _contains(
+                projector,
+                "ProjectCyberwareActiveCommlink",
+                'TryReadStrictString(semantics, "cyberwareId"',
+                'TryReadStrictBool(semantics, "activeCommlink"',
+                'TryReadStrictBool(semantics, "isCommlink"',
+                "CyberwareActiveCommlink = cyberwareActiveCommlink",
+            )
+            and _contains(
+                core_rules,
+                "CharacterCyberwareActiveCommlinkSemantics",
+                "TryReadUniqueStableGuid",
+                "TryReadActiveCommlinkState",
+                "CharacterWeaponHomeNodeRules.TryEvaluateOwnerIsCommlink",
+                "EnumerateSavedActiveCommlinks",
+            )
+            and _contains(owner_rules, "case CharacterMatrixOwnerKind.Cyberware:")
+            and _contains(
+                core_models,
+                "CharacterCyberwareSummary",
+                "CharacterCyberwareActiveCommlinkSemantics? ActiveCommlinkSemantics",
+            )
+            and _contains(
+                core_service,
+                "CharacterCyberwareActiveCommlinkRules.TryProject",
+                "ActiveCommlinkSemantics = activeCommlinkSemantics",
+            )
+            and _contains(
+                mutation,
+                "ApplyCyberwareActiveCommlinkEdit",
+                "CharacterCyberwareActiveCommlinkRules.TryProject",
+                'root.Descendants("cyberware")',
+                'active.Value = "False"',
+                'target.Value = "True"',
+                "FindUniqueItemById",
+            )
+            and _contains(
+                presenter,
+                "ApplyCyberwareActiveCommlinkEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+                "ExpectedContentRevision",
+            )
+            and _contains(
+                presenter_interface,
+                "ApplyCyberwareActiveCommlinkEditAsync",
+                "CyberwareActiveCommlinkEditRequest",
+            )
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"profile": "phone"',
+            '"journey": "cyberware-active-commlink"',
+            'abi != "arm64-v8a"',
+            '"package": shared.PACKAGE',
+            '"CharacterCreate.chkCyberwareActiveCommlink"',
+            '"CharacterCareer.chkCyberwareActiveCommlink"',
+            '"exclusiveCharacterWideActiveCommlink"',
+            '"cyberwareActiveCommlinkRulesSha256"',
+        )
+        phone_e2e = (
+            cyberware_active_commlink_phone_e2e_receipt
+            if implemented and e2e_scripted
+            else None
+        )
+        return {
+            "status": (
+                "implemented_verified_api36"
+                if phone_e2e
+                else "implemented_pending_emulator" if implemented else "missing"
+            ),
+            "route": "Build > Gear > Cyberware > selected stable persona-capable cyberware > Cyberware Active Commlink",
+            "surface": "CyberwareActiveCommlinkPage",
+            "automationId": "cyberware-active-commlink-toggle-{stable-cyberware-guid}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CyberwareActiveCommlinkPage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CyberwareActiveCommlinkEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareActiveCommlinkRules.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponHomeNodeRules.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCyberwareActiveCommlinkEditAsync("
+                "CyberwareActiveCommlinkEditRequest) with one stable cyberware Guid, full expected Core "
+                "persona semantics, and expected content revision"
+            ),
+            "persistenceAssertion": (
+                "enabling selected persona-capable cyberware[stable Guid]/active revalidates the exact "
+                "Core semantics, sets it True, and normalizes every other recognized saved matrix-device "
+                "active False; disabling requires and clears the selected active cyberware only; unrelated "
+                "active XML and other fields remain exact after revision-checked atomic save, same-session "
+                "reopen, and process restart recovery"
+            ),
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_cyberware_active_commlink_e2e.py" if e2e_scripted else None,
+            },
+            "coverageLimit": (
+                "Exact Chummer5 selected stable persona-capable Cyberware Active Commlink checkbox only. "
+                "Other device kinds remain separately inventoried; tablet is deferred."
             ),
             "tablet": {
                 "status": "missing",
@@ -14305,6 +14592,10 @@ def enrich_rows(
         presentation_root,
         core_engine_root,
     )
+    cyberware_active_commlink_phone_e2e_receipt = _validated_cyberware_active_commlink_phone_e2e_receipt(
+        presentation_root,
+        core_engine_root,
+    )
     armor_damage_phone_e2e_receipt = _validated_armor_damage_phone_e2e_receipt(
         presentation_root,
         core_engine_root,
@@ -14391,6 +14682,7 @@ def enrich_rows(
             weapon_active_commlink_phone_e2e_receipt,
             armor_active_commlink_phone_e2e_receipt,
             gear_active_commlink_phone_e2e_receipt,
+            cyberware_active_commlink_phone_e2e_receipt,
             armor_damage_phone_e2e_receipt,
             armor_equipment_phone_e2e_receipt,
             weapon_accessory_included_phone_e2e_receipt,
@@ -14507,6 +14799,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponActiveCommlinkPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorActiveCommlinkPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearActiveCommlinkPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CyberwareActiveCommlinkPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "PrototypeTranshumanPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorDamagePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorEquipmentPage.cs",
@@ -14553,6 +14846,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_weapon_active_commlink_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_active_commlink_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_active_commlink_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_cyberware_active_commlink_e2e.py",
         REPO_ROOT / "tests" / "run_api36_prototype_transhuman_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_damage_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_equipment_e2e.py",
@@ -14620,6 +14914,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-armor-active-commlink-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-gear-active-commlink-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-active-commlink-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-cyberware-active-commlink-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-cyberware-active-commlink-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-prototype-transhuman-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-prototype-transhuman-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-armor-damage-e2e.chum5",
@@ -14682,6 +14978,7 @@ def build_inventory(
         WEAPON_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT,
         ARMOR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT,
         GEAR_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT,
+        CYBERWARE_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT,
         ARMOR_DAMAGE_PHONE_E2E_RECEIPT,
         ARMOR_EQUIPMENT_PHONE_E2E_RECEIPT,
         WEAPON_ACCESSORY_INCLUDED_PHONE_E2E_RECEIPT,
@@ -14697,6 +14994,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterWeaponHomeNodeRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterWeaponActiveCommlinkRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGearActiveCommlinkRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCyberwareActiveCommlinkRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterPrototypeTranshumanRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterWeaponMatrixParentResolver.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCyberwareCommerceRules.cs",
@@ -14748,6 +15046,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponHomeNodeEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorActiveCommlinkEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GearActiveCommlinkEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CyberwareActiveCommlinkEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "PrototypeTranshumanEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorDamageAdjustmentRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ArmorEquipmentEditRequest.cs",

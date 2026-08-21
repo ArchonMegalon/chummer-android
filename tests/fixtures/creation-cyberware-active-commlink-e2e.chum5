@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Cyberware Active Commlink E2E</name>
+  <alias>CreationCyberwareActiveCommlinkE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <customstate><active>Creation unrelated active text</active></customstate>
+  <cyberwares>
+    <cyberware>
+      <guid>91222222-9122-9122-9122-912222222222</guid>
+      <name>Creation Persona Cyberware E2E</name>
+      <category>Headware</category>
+      <improvementsource>Cyberware</improvementsource>
+      <rating>3</rating>
+      <ess>0.2</ess>
+      <cost>1000</cost>
+      <grade>Standard</grade>
+      <equipped>True</equipped>
+      <active>False</active>
+      <canformpersona>Self</canformpersona>
+      <devicerating>Rating</devicerating>
+      <notes>Creation target notes must remain intact</notes>
+      <children />
+      <gears />
+    </cyberware>
+    <cyberware>
+      <guid>91333333-9133-9133-9133-913333333333</guid>
+      <name>Creation Untouched Cyberware E2E</name>
+      <category>Bodyware</category>
+      <improvementsource>Cyberware</improvementsource>
+      <rating>1</rating>
+      <ess>0.1</ess>
+      <cost>50</cost>
+      <grade>Standard</grade>
+      <equipped>False</equipped>
+      <active>False</active>
+      <canformpersona />
+      <notes>Creation untouched notes</notes>
+      <children />
+      <gears />
+    </cyberware>
+  </cyberwares>
+  <gears>
+    <gear>
+      <guid>91111111-9111-9111-9111-911111111111</guid>
+      <name>Creation Prior Active Gear E2E</name>
+      <category>Commlinks</category>
+      <rating>2</rating>
+      <qty>1</qty>
+      <cost>500</cost>
+      <equipped>True</equipped>
+      <active>True</active>
+      <canformpersona>Self</canformpersona>
+      <notes>Creation gear must remain intact</notes>
+      <children />
+    </gear>
+  </gears>
+</character>
