@@ -1544,6 +1544,38 @@ class AndroidContractTests(unittest.TestCase):
             compile_project,
         )
 
+    def test_phone_gear_quantity_lifecycle_is_stable_revision_bound_and_career_exact(self) -> None:
+        page = (PROJECT / "Native" / "GearQuantityPage.cs").read_text(encoding="utf-8")
+        editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        presentation = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+        request = (presentation / "GearQuantityEditRequest.cs").read_text(encoding="utf-8")
+        mutation = (presentation / "WorkspaceXmlMutationCatalog.cs").read_text(encoding="utf-8")
+        presenter = (presentation / "CharacterOverviewPresenter.WorkspaceMutations.cs").read_text(encoding="utf-8")
+
+        for token in (
+            'AutomationId = $"gear-quantity-page-{targetToken}"',
+            '$"gear-quantity-increase-{targetToken}"',
+            '$"gear-quantity-reduce-{targetToken}"',
+            '$"gear-quantity-split-{targetToken}"',
+            '$"gear-quantity-merge-{targetToken}"',
+            'AutomationId = $"gear-quantity-amount-{targetToken}"',
+            'AutomationId = $"gear-quantity-merge-target-{targetToken}"',
+            "reductionConfirmed = await DisplayAlertAsync",
+        ):
+            self.assertIn(token, page)
+        self.assertIn('automationId: $"gear-quantity-open-{lifecycle.GearId:N}"', editor)
+        self.assertIn("item.GearQuantityLifecycleRequired", editor)
+        self.assertIn("ApplyGearQuantityEditAsync", coordinator)
+        self.assertIn("_presenter.SaveAsync", coordinator)
+        self.assertIn("ExpectedContentRevision", request)
+        self.assertIn("Guid GearId", request)
+        self.assertIn("ApplyGearQuantityEdit", mutation)
+        self.assertIn("CharacterGearQuantityRules.AreIdenticalForMerge", mutation)
+        self.assertIn("AppendGearPurchaseExpense", mutation)
+        self.assertIn("ApplyWorkspaceXmlMutationAsync", presenter)
+        self.assertNotIn("WeaponAccessory", page)
+
     @staticmethod
     def _png_header(path: Path) -> tuple[int, int, int]:
         data = path.read_bytes()[:33]

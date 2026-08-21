@@ -75,6 +75,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 "Quantity",
                 quantity.Value.ToString(CultureInfo.InvariantCulture),
                 $"collection-quantity-{TargetToken()}");
+            _quantityInput.IsReadOnly = item.GearQuantityLifecycleRequired;
         }
 
         foreach (WorkspaceCollectionIntegerValueState value in item.IntegerValues)
@@ -113,6 +114,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddArmorHomeNodeAction(item);
         AddArmorActiveCommlinkAction(item);
         AddWeaponAccessoryIncludedAction(item);
+        AddGearQuantityLifecycleAction(item);
         AddVehicleLocationActions(item);
 
         if (!string.IsNullOrWhiteSpace(Coordinator.State.Error))
@@ -815,6 +817,31 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 includedInWeapon)),
             automationId: $"weapon-accessory-included-open-{accessoryId:N}"));
+    }
+
+    private void AddGearQuantityLifecycleAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Gear
+            || _target.NestedKind is not null
+            || item.GearQuantityLifecycle is not { } lifecycle
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || lifecycle.GearId == Guid.Empty)
+        {
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        _body.Add(NativeTheme.Eyebrow("Career inventory"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Gear Quantity",
+            "Increase, reduce, split, or merge this exact saved stack",
+            () => Navigation.PushAsync(new GearQuantityPage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                item.Label,
+                lifecycle)),
+            automationId: $"gear-quantity-open-{lifecycle.GearId:N}"));
     }
 
     private string TargetToken() => Token(_target.NestedItemId ?? _target.ItemId);

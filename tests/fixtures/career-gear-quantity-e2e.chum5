@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Gear Quantity E2E</name>
+  <alias>CareerGearQuantityE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <nuyen>10000</nuyen>
+  <customstate>Gear quantity unrelated state</customstate>
+  <gears>
+    <gear><guid>81111111-1111-1111-1111-111111111111</guid><name>Increase Stack E2E</name><category>Supplies</category><rating>1</rating><qty>5</qty><cost>100</cost><discountedcost>False</discountedcost><extra>Increase</extra><gearname>Increase label</gearname><notes>Increase notes</notes><equipped>True</equipped><location>locker-a</location><children /></gear>
+    <gear><guid>82222222-2222-2222-2222-222222222222</guid><name>Reduce Stack E2E</name><category>Supplies</category><rating>1</rating><qty>5</qty><cost>25</cost><discountedcost>False</discountedcost><extra>Reduce</extra><gearname>Reduce label</gearname><notes>Reduce notes</notes><equipped>True</equipped><location>locker-b</location><children /></gear>
+    <gear><guid>83333333-3333-3333-3333-333333333333</guid><name>Split Stack E2E</name><category>Supplies</category><rating>1</rating><qty>5</qty><cost>10</cost><discountedcost>False</discountedcost><extra>Split</extra><gearname>Split label</gearname><notes>Split notes</notes><equipped>True</equipped><location>locker-c</location><children><gear><guid>83333333-3333-3333-3333-444444444444</guid><name>Split Child E2E</name><category>Supplies</category><rating>0</rating><qty>1</qty><cost>0</cost><discountedcost>False</discountedcost><extra /><gearname /><notes>Split child notes</notes><equipped>True</equipped><location>locker-c</location><children /></gear></children></gear>
+    <gear><guid>84444444-4444-4444-4444-444444444444</guid><name>Merge Stack E2E</name><category>Supplies</category><rating>2</rating><qty>5</qty><cost>50</cost><discountedcost>False</discountedcost><extra>Merge</extra><gearname>Merge source label</gearname><notes>Merge source notes</notes><equipped>True</equipped><location>locker-d</location><children /></gear>
+    <gear><guid>85555555-5555-5555-5555-555555555555</guid><name>Merge Stack E2E</name><category>Supplies</category><rating>2</rating><qty>3</qty><cost>50</cost><discountedcost>False</discountedcost><extra>Merge</extra><gearname>Merge target label</gearname><notes>Merge target notes</notes><equipped>False</equipped><location>locker-e</location><children /></gear>
+  </gears>
+  <expenses />
+</character>

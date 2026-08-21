@@ -502,6 +502,40 @@ namespace Chummer
             )
             self.assertFalse(row["completionProven"])
 
+        gear_quantities = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] in inventory.GEAR_QUANTITY_CONTROLS
+        ]
+        self.assertEqual(4, len(gear_quantities))
+        self.assertFalse(any(
+            row["legacy"]["formOrControl"] == "CharacterCreate"
+            and row["legacy"]["controlName"] in inventory.GEAR_QUANTITY_CONTROLS
+            for row in rows
+        ))
+        for row in gear_quantities:
+            action, automation_id = inventory.GEAR_QUANTITY_CONTROLS[
+                row["legacy"]["controlName"]
+            ]
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Gear > Gear > selected stable Career Gear > Gear Quantity",
+                row["phone"]["route"],
+            )
+            self.assertEqual("GearQuantityPage", row["phone"]["surface"])
+            self.assertEqual(automation_id, row["phone"]["automationId"])
+            self.assertIn(f"GearQuantityEditRequest.{action}", row["presenterMutation"])
+            self.assertIn("stable top-level gear Guid", row["presenterMutation"])
+            self.assertIn("exact decimal quantity", row["persistenceAssertion"])
+            self.assertIn("atomic save", row["persistenceAssertion"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_gear_quantity_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
         location_renames = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -1103,9 +1137,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 351,
+                "implemented_pending_emulator": 355,
                 "implemented_verified_api36": 79,
-                "missing": 1088,
+                "missing": 1084,
                 "not_applicable_non_mutating": 459,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 146,

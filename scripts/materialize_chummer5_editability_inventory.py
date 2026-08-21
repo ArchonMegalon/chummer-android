@@ -844,6 +844,12 @@ VEHICLE_HOME_NODE_CONTROL = "chkVehicleHomeNode"
 ARMOR_HOME_NODE_CONTROL = "chkArmorHomeNode"
 ARMOR_ACTIVE_COMMLINK_CONTROL = "chkArmorActiveCommlink"
 WEAPON_ACCESSORY_INCLUDED_CONTROL = "chkIncludedInWeapon"
+GEAR_QUANTITY_CONTROLS = {
+    "cmdGearIncreaseQty": ("increase", "gear-quantity-increase-{stable-gear-guid}"),
+    "cmdGearReduceQty": ("reduce", "gear-quantity-reduce-{stable-gear-guid}"),
+    "cmdGearSplitQty": ("split", "gear-quantity-split-{stable-gear-guid}"),
+    "cmdGearMergeQty": ("merge", "gear-quantity-merge-{stable-gear-guid}"),
+}
 LOCATION_RENAME_CONTROLS = {
     "tsGearRenameLocation": ("Gear", "gearlocations"),
     "tsWeaponRenameLocation": ("Weapon", "weaponlocations"),
@@ -5080,6 +5086,187 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name == "CharacterCareer" and control in GEAR_QUANTITY_CONTROLS:
+        action, automation_id = GEAR_QUANTITY_CONTROLS[control]
+        expected_handler = {
+            "cmdGearIncreaseQty": "cmdGearIncreaseQty_Click",
+            "cmdGearReduceQty": "cmdGearReduceQty_Click",
+            "cmdGearSplitQty": "cmdGearSplitQty_Click",
+            "cmdGearMergeQty": "cmdGearMergeQty_Click",
+        }[control]
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearQuantityPage.cs"
+        editor = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_gear_quantity_e2e.py"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "GearQuantityEditRequest.cs"
+        state = overview / "WorkspaceCollectionEditorState.cs"
+        projector = overview / "WorkspaceCollectionEditorProjector.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        core_contracts = character_notes_core_root / "Chummer.Contracts" / "Characters"
+        core_rules = core_contracts / "CharacterGearQuantityRules.cs"
+        core_models = core_contracts / "CharacterSectionModels.cs"
+        core_service = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        source_resolver = character_notes_core_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs"
+        file_source_resolver = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "FileSystemCharacterSourceDataResolver.cs"
+        implemented = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                page,
+                "GearQuantityEditRequest",
+                'AutomationId = $"gear-quantity-page-{targetToken}"',
+                'AutomationId = $"gear-quantity-amount-{targetToken}"',
+                'AutomationId = $"gear-quantity-merge-target-{targetToken}"',
+                'ActionButton("Increase quantity", $"gear-quantity-increase-{targetToken}"',
+                'ActionButton("Reduce quantity", $"gear-quantity-reduce-{targetToken}"',
+                'ActionButton("Split stack", $"gear-quantity-split-{targetToken}"',
+                'ActionButton("Merge stacks", $"gear-quantity-merge-{targetToken}"',
+                "CharacterGearQuantityRules.IsValidAmount",
+                "DisplayAlertAsync",
+                "reductionConfirmed",
+            )
+            and _contains(
+                editor,
+                "GearQuantityLifecycleRequired",
+                "GearQuantityLifecycle",
+                'automationId: $"gear-quantity-open-{lifecycle.GearId:N}"',
+                "new GearQuantityPage",
+            )
+            and _contains(
+                coordinator,
+                "ApplyGearQuantityEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.ApplyGearQuantityEditAsync",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "GearQuantityEditRequest",
+                "ExpectedContentRevision",
+                "Guid GearId",
+                "GearQuantityAction Action",
+                "decimal Amount",
+                "Guid? MergeTargetGearId",
+                "bool ReductionConfirmed",
+            )
+            and _contains(
+                state,
+                "WorkspaceGearQuantityLifecycleState",
+                "WorkspaceGearMergeCandidateState",
+                "GearQuantityLifecycleRequired",
+            )
+            and _contains(
+                projector,
+                "ProjectGearQuantityLifecycle",
+                '"quantitySemantics"',
+                "MinimumIncrement",
+                "MergeCandidates",
+            )
+            and _contains(
+                mutation,
+                "ApplyGearQuantityEdit",
+                "ApplyGearQuantityIncrease",
+                "ApplyGearQuantityReduction",
+                "ApplyGearQuantitySplit",
+                "ApplyGearQuantityMerge",
+                "CharacterGearQuantityRules.AreIdenticalForMerge",
+                "EnsureGearCloneOrRemovalIsIsolated",
+                'new XElement("type", "Nuyen")',
+                'new XElement("nuyentype", "AddGear")',
+                "Guid.NewGuid()",
+            )
+            and _contains(
+                presenter,
+                "ApplyGearQuantityEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+                "ExpectedContentRevision",
+            )
+            and _contains(
+                presenter_interface,
+                "ApplyGearQuantityEditAsync",
+                "GearQuantityEditRequest",
+            )
+            and _contains(
+                core_rules,
+                "TryResolvePrecision",
+                "AreIdenticalForMerge",
+                "TryCalculatePurchaseUnitCost",
+            )
+            and _contains(core_models, "CharacterGearQuantitySemantics", "MergeCandidateGuids")
+            and _contains(
+                core_service,
+                "BuildGearQuantitySemantics",
+                "CharacterGearQuantityRules.AreIdenticalForMerge",
+                "TryBuildGearCostSnapshot",
+            )
+            and _contains(source_resolver, "TryResolveMaxNuyenDecimals")
+            and _contains(file_source_resolver, "TryResolveMaxNuyenDecimals", 'ReadValue(settings, "nuyenformat")')
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"journey": "gear-quantity-lifecycle"',
+            '"cmdGearIncreaseQty"',
+            '"cmdGearReduceQty"',
+            '"cmdGearSplitQty"',
+            '"cmdGearMergeQty"',
+            '"controls": controls',
+            '"increasePurchaseExpense": "pass"',
+            '"reduceConfirmed": "pass"',
+            '"splitClonePreserved": "pass"',
+            '"mergeIdentityExact": "pass"',
+            '"processRestart": "pass"',
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Gear > Gear > selected stable Career Gear > Gear Quantity",
+            "surface": "GearQuantityPage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/GearQuantityPage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/GearQuantityEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearQuantityRules.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+                "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+            ],
+            "presenterMutation": (
+                f"ICharacterOverviewPresenter.ApplyGearQuantityEditAsync(GearQuantityEditRequest.{action}) "
+                "with stable top-level gear Guid, exact Core-projected precision/merge/cost authority, "
+                "and expected content revision"
+            ),
+            "persistenceAssertion": (
+                "exact decimal quantity is increased, confirmed-reduced/deleted, split into a deep clone with "
+                "fresh recursive Gear GUIDs, or merged only under exact IsIdenticalToOtherGear-compatible identity; "
+                "career increase subtracts exact Nuyen and appends its expense/undo; unrelated saved XML remains "
+                "exact after atomic save, same-session reopen, and process restart"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_gear_quantity_e2e.py" if e2e_scripted else None,
+            },
+            "coverageLimit": (
+                "Exact Chummer5 top-level CharacterCareer Gear stack quantity lifecycle only; no CharacterCreate "
+                "counterparts exist; nested gear, linked/generated-weapon Gear, external saved-data references, "
+                "or unsupported source/settings data fail closed."
+            ),
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if control in LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS:
         kind, section_label, field, xml_element, supported_forms = (
             LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS[control]
@@ -7834,6 +8021,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorHomeNodePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorActiveCommlinkPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearQuantityPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "LocationRenamePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CharacterNotesPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs",
@@ -7856,6 +8044,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_armor_home_node_e2e.py",
         REPO_ROOT / "tests" / "run_api36_armor_active_commlink_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_gear_quantity_e2e.py",
         REPO_ROOT / "tests" / "run_api36_location_rename_e2e.py",
         REPO_ROOT / "tests" / "run_api36_explicit_save_e2e.py",
         REPO_ROOT / "tests" / "run_api36_nested_collection_notes_e2e.py",
@@ -7890,6 +8079,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-armor-active-commlink-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-weapon-accessory-included-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-weapon-accessory-included-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-gear-quantity-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-location-rename-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-location-rename-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-explicit-save-e2e.chum5",

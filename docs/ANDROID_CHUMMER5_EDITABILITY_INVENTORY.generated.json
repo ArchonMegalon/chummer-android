@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 534,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 351,
+      "implemented_pending_emulator": 355,
       "implemented_verified_api36": 79,
-      "missing": 1088,
+      "missing": 1084,
       "not_applicable_non_mutating": 459,
       "partial_create_only": 106,
       "partial_exact_saved_data": 146
@@ -135,6 +135,11 @@
         "sha256": "740b3cd362a69405240b7e0acb7fc9541efbb0dded113f3a8942198a7cfb142e"
       },
       {
+        "path": "src/Chummer.Android/Native/GearQuantityPage.cs",
+        "exists": true,
+        "sha256": "c45751c4da229656d55761412212cd26f6ce230d00d3bb17c38ddcbf84c485c0"
+      },
+      {
         "path": "src/Chummer.Android/Native/LocationRenamePage.cs",
         "exists": true,
         "sha256": "3e3dda90edd6e211c84812084c05cdcc4923d4687aa739cdb90197b227150685"
@@ -147,7 +152,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "0e4ff40e4474ed9f262f248f40bce32ea9dc2455fe8409c5a7dbd9e4e5575a51"
+        "sha256": "fd5d5cea664e789fb8501d673cad937b76f4ed920ab8d8df90eebf99fcc0e09c"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -172,7 +177,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "51e9a355c767a570fa16cb258a6595f15afd14838d0ff5b44856fecb2ecbdc72"
+        "sha256": "30a33b51e8ada9cebf956295df41192677605971a88574a0ddda504050a4deee"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -243,6 +248,11 @@
         "path": "tests/run_api36_weapon_accessory_included_e2e.py",
         "exists": true,
         "sha256": "6f8544e5d320bfd1874a4387bc6b53fe90ae13f18980a5dab9e482ae13273df0"
+      },
+      {
+        "path": "tests/run_api36_gear_quantity_e2e.py",
+        "exists": true,
+        "sha256": "9d7ab25c2583e22e33b8a648d3fc9573a7f1f01c469957a2c4e72a3fa0640541"
       },
       {
         "path": "tests/run_api36_location_rename_e2e.py",
@@ -413,6 +423,11 @@
         "path": "tests/fixtures/career-weapon-accessory-included-e2e.chum5",
         "exists": true,
         "sha256": "6c9debe27a520428b98a812688eaf1c7e32886be9997e1d00bc78ac12563472a"
+      },
+      {
+        "path": "tests/fixtures/career-gear-quantity-e2e.chum5",
+        "exists": true,
+        "sha256": "1a533d5dfbb2a67045f8a000b9869089f953e7525cb57c8efa2685e11e402c89"
       },
       {
         "path": "tests/fixtures/creation-location-rename-e2e.chum5",
@@ -602,7 +617,7 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "b875ffde8028dc74067b2f545ae7157092a3ce157be6066e29a037aa81379fb9"
+        "sha256": "0739a928011ef6f9966a27043a858af0d2df81ed870080c0da4e678816b2766f"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
@@ -612,7 +627,7 @@
       {
         "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "83d042e7589e1125896e5b4007b3c95f177de537d98d9a79c0c7a36f2acba232"
+        "sha256": "71c33f8a1a4232af63ab681192e31d3e2b7da2f35caf9048801e9a90a534eb5f"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
@@ -622,12 +637,12 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "eb8ed2b2e13226d51a43069c4c62f8c711c8e2edf9ba4399a1723d662b38fa2d"
+        "sha256": "447a6a39fc4bbb6485cfdb4d9353bd73212b539b2c4a55a57cb39004f4a47d3c"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "ebcdaae59693ec796038cc6f74fbd49eae1a40bec76aeb56ac2dbbf00b0b6341"
+        "sha256": "aa8663e2aab22d2081d06b00fee85c6fee28170e90d3615d078493120f20e195"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -642,7 +657,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "30bfd0bf44ba7c010fef9fa0cec15d0da196670d7aee8eb3f2ef21bf49af010b"
+        "sha256": "a98a0635b7b289048ae9271c491393426c3bd1652533cedecdd44c2cafdaa10a"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -757,12 +772,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "8bfb9c5f0fb76a99cd0bdd37a24c8037adadd627f8cec00011ec792e9c641c6b"
+        "sha256": "3cb364bd320a1e5c29a364a00b74eeea7c3332ae3166e93dc0277cf48ae60fc6"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "60d47afe30dee67574966914351b7cbcd85b2b1a40f2264fd16de6d0a9994ec1"
+        "sha256": "70c3d5c02327c8cb88eb94a7e559910093e05ef28c44953394c3039325f90edd"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
@@ -772,7 +787,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "36535ff9bdde63f600ac1cb728acfc945bbf8ed68f043562e955b37e741b22ac"
+        "sha256": "8748035c65e83501cfbeb14aabd373a0c60490764259dfdb3bb094c6a93eba82"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -782,7 +797,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "5240b7cf3bdeb5dd18a41c46eb549393d4ef4cfdaa579df68a2432a580032c2d"
+      "sha256": "ab164fd9129dfa87c566a646809e17ae68ecd562acf7fc14d2c1881ee01ed3ae"
     }
   },
   "coverageByFamily": {
@@ -936,7 +951,7 @@
     "gear": {
       "rowCount": 84,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 41,
+      "phoneMissingCount": 37,
       "tabletMissingCount": 58,
       "completionProvenCount": 2
     },
@@ -35385,11 +35400,27 @@
       "mutationFamily": "gear",
       "operation": "adjust",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Gear > selected stable Career Gear > Gear Quantity",
+        "surface": "GearQuantityPage",
+        "automationId": "gear-quantity-increase-{stable-gear-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/GearQuantityPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/GearQuantityEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearQuantityRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 top-level CharacterCareer Gear stack quantity lifecycle only; no CharacterCreate counterparts exist; nested gear, linked/generated-weapon Gear, external saved-data references, or unsupported source/settings data fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -35397,12 +35428,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyGearQuantityEditAsync(GearQuantityEditRequest.increase) with stable top-level gear Guid, exact Core-projected precision/merge/cost authority, and expected content revision",
+      "persistenceAssertion": "exact decimal quantity is increased, confirmed-reduced/deleted, split into a deep clone with fresh recursive Gear GUIDs, or merged only under exact IsIdenticalToOtherGear-compatible identity; career increase subtracts exact Nuyen and appends its expense/undo; unrelated saved XML remains exact after atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_gear_quantity_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -35442,11 +35473,27 @@
       "mutationFamily": "gear",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Gear > selected stable Career Gear > Gear Quantity",
+        "surface": "GearQuantityPage",
+        "automationId": "gear-quantity-reduce-{stable-gear-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/GearQuantityPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/GearQuantityEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearQuantityRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 top-level CharacterCareer Gear stack quantity lifecycle only; no CharacterCreate counterparts exist; nested gear, linked/generated-weapon Gear, external saved-data references, or unsupported source/settings data fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -35454,12 +35501,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyGearQuantityEditAsync(GearQuantityEditRequest.reduce) with stable top-level gear Guid, exact Core-projected precision/merge/cost authority, and expected content revision",
+      "persistenceAssertion": "exact decimal quantity is increased, confirmed-reduced/deleted, split into a deep clone with fresh recursive Gear GUIDs, or merged only under exact IsIdenticalToOtherGear-compatible identity; career increase subtracts exact Nuyen and appends its expense/undo; unrelated saved XML remains exact after atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_gear_quantity_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -35499,11 +35546,27 @@
       "mutationFamily": "gear",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Gear > selected stable Career Gear > Gear Quantity",
+        "surface": "GearQuantityPage",
+        "automationId": "gear-quantity-split-{stable-gear-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/GearQuantityPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/GearQuantityEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearQuantityRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 top-level CharacterCareer Gear stack quantity lifecycle only; no CharacterCreate counterparts exist; nested gear, linked/generated-weapon Gear, external saved-data references, or unsupported source/settings data fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -35511,12 +35574,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyGearQuantityEditAsync(GearQuantityEditRequest.split) with stable top-level gear Guid, exact Core-projected precision/merge/cost authority, and expected content revision",
+      "persistenceAssertion": "exact decimal quantity is increased, confirmed-reduced/deleted, split into a deep clone with fresh recursive Gear GUIDs, or merged only under exact IsIdenticalToOtherGear-compatible identity; career increase subtracts exact Nuyen and appends its expense/undo; unrelated saved XML remains exact after atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_gear_quantity_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -35556,11 +35619,27 @@
       "mutationFamily": "gear",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Gear > selected stable Career Gear > Gear Quantity",
+        "surface": "GearQuantityPage",
+        "automationId": "gear-quantity-merge-{stable-gear-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/GearQuantityPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/GearQuantityEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearQuantityRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 top-level CharacterCareer Gear stack quantity lifecycle only; no CharacterCreate counterparts exist; nested gear, linked/generated-weapon Gear, external saved-data references, or unsupported source/settings data fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -35568,12 +35647,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyGearQuantityEditAsync(GearQuantityEditRequest.merge) with stable top-level gear Guid, exact Core-projected precision/merge/cost authority, and expected content revision",
+      "persistenceAssertion": "exact decimal quantity is increased, confirmed-reduced/deleted, split into a deep clone with fresh recursive Gear GUIDs, or merged only under exact IsIdenticalToOtherGear-compatible identity; career increase subtracts exact Nuyen and appends its expense/undo; unrelated saved XML remains exact after atomic save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_gear_quantity_e2e.py"
         },
         "tablet": {
           "status": "missing",
