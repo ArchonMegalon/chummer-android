@@ -1519,6 +1519,13 @@ GROUP_MEMBERSHIP_CONTROL = "chkJoinGroup"
 GROUP_NAME_CONTROL = "txtGroupName"
 TRADITION_NAME_CONTROL = "txtTraditionName"
 TRADITION_DRAIN_CONTROL = "cboDrain"
+TRADITION_SPIRIT_CATEGORY_CONTROLS = {
+    "cboSpiritCombat": ("Combat", "spiritcombat", "combat"),
+    "cboSpiritDetection": ("Detection", "spiritdetection", "detection"),
+    "cboSpiritHealth": ("Health", "spirithealth", "health"),
+    "cboSpiritIllusion": ("Illusion", "spiritillusion", "illusion"),
+    "cboSpiritManipulation": ("Manipulation", "spiritmanipulation", "manipulation"),
+}
 GEAR_NAME_CONTROL = "tsGearName"
 LIFESTYLE_NAME_CONTROL = "tsLifestyleName"
 LIFESTYLE_NOTES_CONTROLS = {"tsLifestyleNotes", "tsAdvancedLifestyleNotes"}
@@ -11727,6 +11734,228 @@ def _known_phone_mapping(
         }
     if (
         class_name in {"CharacterCreate", "CharacterCareer"}
+        and control in TRADITION_SPIRIT_CATEGORY_CONTROLS
+    ):
+        category, xml_element, token = TRADITION_SPIRIT_CATEGORY_CONTROLS[control]
+        legacy_source = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / f"{class_name}.cs"
+        )
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TraditionSpiritCategoryPage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_tradition_spirit_categories_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-tradition-spirit-categories-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-tradition-spirit-categories-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "TraditionSpiritCategoryEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = (
+            character_notes_core_root
+            / "Chummer.Contracts"
+            / "Characters"
+            / "CharacterTraditionSpiritCategoryRules.cs"
+        )
+        resolver_contract = (
+            character_notes_core_root
+            / "Chummer.Application"
+            / "Characters"
+            / "ICharacterSourceDataResolver.cs"
+        )
+        resolver = (
+            character_notes_core_root
+            / "Chummer.Infrastructure"
+            / "Xml"
+            / "FileSystemCharacterSourceDataResolver.cs"
+        )
+        traditions_catalog = character_notes_core_root / "Chummer" / "data" / "traditions.xml"
+        workspace_store = (
+            character_notes_core_root
+            / "Chummer.Infrastructure"
+            / "Workspaces"
+            / "FileWorkspaceStore.cs"
+        )
+        legacy_exact = _contains(
+            legacy_source,
+            "BindSpiritVisibility",
+            control,
+            f"nameof(Tradition.Spirit{category})",
+            f"GetSpirit{category}Async",
+            f"SetSpirit{category}Async",
+            "LimitSpiritCategory",
+            '"traditions.xml"',
+            '"spirits/spirit"',
+            "blnIsMag",
+            "blnCustomTradition",
+            "ListItem.Blank",
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "class TraditionSpiritCategoryPage",
+                'AutomationId = "tradition-spirit-categories-page"',
+                'AutomationId = $"tradition-spirit-{token}-value"',
+                'AutomationId = "tradition-spirit-categories-save"',
+                "CharacterTraditionSpiritCategoryRules.TryValidateRequestedValue",
+                "field.Revision",
+                "TraditionSpiritCategoryEditRequest",
+            )
+            and _contains(
+                build_page,
+                'automationId: "build-tradition-spirit-categories"',
+                "PrepareTraditionSpiritCategoryEditAsync",
+                "new TraditionSpiritCategoryPage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareTraditionSpiritCategoryEditAsync",
+                "ApplyTraditionSpiritCategoryEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "TraditionSpiritCategoryEditorState",
+                "TraditionSpiritCategoryFieldEdit",
+                "ExpectedFieldRevision",
+                "CharacterTraditionSpiritCategoryRules.TryCreateSemantics",
+                'TryResolveSpiritCatalogNames("Spirit"',
+                'ReadRequiredBoolean(root, "magenabled")',
+                'ReadRequiredBoolean(root, "resenabled")',
+                '"LimitSpiritCategory"',
+            )
+            and _contains(
+                mutation,
+                "ApplyTraditionSpiritCategoryEdit",
+                "request.Fields.Count != CharacterTraditionSpiritCategoryRules.Categories.Count",
+                "CharacterTraditionSpiritCategoryRules.TryValidateRequestedValue",
+                "edit.ExpectedFieldRevision",
+                'tradition.Elements(elementName).Take(2)',
+            )
+            and _contains(
+                presenter,
+                "PrepareTraditionSpiritCategoryEditAsync",
+                "ApplyTraditionSpiritCategoryEditAsync",
+                "_characterSourceDataResolver",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareTraditionSpiritCategoryEditAsync",
+                "ApplyTraditionSpiritCategoryEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterTraditionSpiritCategoryRules",
+                "CharacterTraditionNameRules.CustomMagicalTraditionSourceId",
+                '"MAG"',
+                "resonanceEnabled",
+                "AllowedSpiritNames",
+                "CalculateFieldRevision",
+                "SHA256.HashData",
+                "TryValidateRequestedValue",
+            )
+            and _contains(resolver_contract, "TryResolveSpiritCatalogNames")
+            and _contains(
+                resolver,
+                "TryResolveSpiritCatalogNames",
+                'TryLoadEffectiveDocument(_catalog, fileName',
+                'EnumerateFiles(directory.Path, $"*_{fileName}"',
+                'TryResolveTarget(',
+                'Elements("spirits").Take(2)',
+            )
+            and _contains(traditions_catalog, "<spirits>", "Spirit of Fire", "Spirit of Air")
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                f'"{class_name}.{control}"',
+                'api != "36"',
+                '"profile": "phone"',
+                '"journey": "tradition-spirit-categories"',
+                '"fiveFieldLocalRevisions"',
+                '"spiritCategoryRulesSha256"',
+                '"sourceResolverSha256"',
+                '"traditionsCatalogSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+                '"careerFixtureSha256"',
+                '"customOverlayAndFieldRevisionDriftFailClosedBySourceContract": "pass"',
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Magic > Tradition spirits",
+            "surface": "TraditionSpiritCategoryPage",
+            "automationId": f"tradition-spirit-{token}-value",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/TraditionSpiritCategoryPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/TraditionSpiritCategoryEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionSpiritCategoryRules.cs",
+                "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer/data/traditions.xml",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyTraditionSpiritCategoryEditAsync("
+                "TraditionSpiritCategoryEditRequest) with stable tradition/source GUIDs, exact active "
+                "catalog authority, and all five field-local revisions"
+            ),
+            "persistenceAssertion": (
+                f"character/tradition/{xml_element} equals the exact selected active traditions.xml Spirit "
+                "name or canonical blank after LimitSpiritCategory filtering and five-field revision-bound "
+                "atomic save, same-session reopen, and process restart; the other four category values, "
+                "stable identity, and unrelated XML are preserved exactly as submitted"
+            ),
+            "coverageLimit": (
+                "Covers the five CharacterCreate/CharacterCareer cboSpirit* controls only for an exact saved "
+                "Custom MAG tradition with MAG enabled, RES disabled, stable instance/source GUIDs, and an "
+                "available active traditions.xml Spirit catalog including selected custom-data overlays. "
+                "Enabled LimitSpiritCategory improvements filter choices; blank is canonical. Non-Custom, "
+                "RES, missing/duplicate identity, missing source authority, unknown saved values, and custom-"
+                "overlay/catalog revision drift fail closed. Tablet is deferred."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_tradition_spirit_categories_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
         and control == GEAR_NAME_CONTROL
     ):
         collection_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
@@ -14065,6 +14294,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GroupNamePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TraditionNamePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TraditionDrainPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TraditionSpiritCategoryPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerEdgeUsePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerManualKarmaPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerManualNuyenPage.cs",
@@ -14108,6 +14338,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_group_name_e2e.py",
         REPO_ROOT / "tests" / "run_api36_tradition_name_e2e.py",
         REPO_ROOT / "tests" / "run_api36_tradition_drain_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_tradition_spirit_categories_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_name_e2e.py",
         REPO_ROOT / "tests" / "run_api36_lifestyle_name_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_edge_use_e2e.py",
@@ -14161,6 +14392,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-tradition-name-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-tradition-drain-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-tradition-drain-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-tradition-spirit-categories-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-tradition-spirit-categories-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-gear-name-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-name-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-lifestyle-name-e2e.chum5",
@@ -14274,6 +14507,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGroupNameRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterTraditionNameRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterTraditionDrainRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterTraditionSpiritCategoryRules.cs",
         core_engine_root / "Chummer" / "data" / "traditions.xml",
         core_engine_root / "Chummer" / "data" / "streams.xml",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerEdgeUseRules.cs",
@@ -14297,6 +14531,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "GroupNameEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "TraditionNameEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "TraditionDrainEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "TraditionSpiritCategoryEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerEdgeUseEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerManualKarmaEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerManualNuyenEditRequest.cs",

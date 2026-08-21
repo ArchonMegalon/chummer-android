@@ -489,6 +489,44 @@ namespace Chummer
             self.assertIn("traditions.xml/drainattributes", row["phone"]["coverageLimit"])
             self.assertFalse(row["completionProven"])
 
+        tradition_spirit_categories = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] in inventory.TRADITION_SPIRIT_CATEGORY_CONTROLS
+        ]
+        self.assertEqual(10, len(tradition_spirit_categories))
+        self.assertEqual(
+            {"CharacterCreate", "CharacterCareer"},
+            {row["legacy"]["formOrControl"] for row in tradition_spirit_categories},
+        )
+        for row in tradition_spirit_categories:
+            _, xml_element, token = inventory.TRADITION_SPIRIT_CATEGORY_CONTROLS[
+                row["legacy"]["controlName"]
+            ]
+            self.assertEqual("spirits_and_sprites", row["mutationFamily"])
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("Build > Magic > Tradition spirits", row["phone"]["route"])
+            self.assertEqual("TraditionSpiritCategoryPage", row["phone"]["surface"])
+            self.assertEqual(
+                f"tradition-spirit-{token}-value",
+                row["phone"]["automationId"],
+            )
+            self.assertIn("all five field-local revisions", row["presenterMutation"])
+            self.assertIn(f"tradition/{xml_element}", row["persistenceAssertion"])
+            self.assertIn("LimitSpiritCategory", row["persistenceAssertion"])
+            self.assertIn("atomic save", row["persistenceAssertion"])
+            self.assertIn("custom-data overlays", row["phone"]["coverageLimit"])
+            self.assertIn("Non-Custom", row["phone"]["coverageLimit"])
+            self.assertIn("RES", row["phone"]["coverageLimit"])
+            self.assertIn("catalog revision drift fail closed", row["phone"]["coverageLimit"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_tradition_spirit_categories_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertFalse(row["completionProven"])
+
         gear_name = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -1801,9 +1839,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 408,
+                "implemented_pending_emulator": 418,
                 "implemented_verified_api36": 79,
-                "missing": 1020,
+                "missing": 1010,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 148,

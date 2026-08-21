@@ -661,6 +661,32 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<TraditionSpiritCategoryEditorState?> PrepareTraditionSpiritCategoryEditAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareTraditionSpiritCategoryEditAsync(cancellationToken);
+
+    public async Task ApplyTraditionSpiritCategoryEditAsync(
+        TraditionSpiritCategoryEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Spirit Categories was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyTraditionSpiritCategoryEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Tradition spirit categories saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<CareerEdgeUseEditorState?> PrepareCareerEdgeUseEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareCareerEdgeUseEditAsync(cancellationToken);

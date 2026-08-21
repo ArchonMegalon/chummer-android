@@ -160,6 +160,19 @@ public sealed class BuildPage : NativePageBase
                 }
             },
             automationId: "build-tradition-drain"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Tradition spirits",
+            "Edit the five Spirit categories of an exact Custom magical tradition",
+            async () =>
+            {
+                TraditionSpiritCategoryEditorState? editor =
+                    await Coordinator.PrepareTraditionSpiritCategoryEditAsync();
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new TraditionSpiritCategoryPage(Coordinator, editor));
+                }
+            },
+            automationId: "build-tradition-spirit-categories"));
         if (Coordinator.State.Profile?.Created == true)
         {
             _body.Add(NativeTheme.NavigationRow(

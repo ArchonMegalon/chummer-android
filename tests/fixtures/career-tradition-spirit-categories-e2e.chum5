@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Tradition Spirit Categories E2E</name>
+  <alias>CareerSpiritCategoriesE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <magenabled>True</magenabled>
+  <resenabled>False</resenabled>
+  <improvements>
+    <improvement><improvementttype>LimitSpiritCategory</improvementttype><improvedname>Spirit of Fire</improvedname><enabled>1</enabled></improvement>
+    <improvement><improvementttype>LimitSpiritCategory</improvementttype><improvedname>Spirit of Air</improvedname><enabled>True</enabled></improvement>
+  </improvements>
+  <tradition>
+    <sourceid>616ba093-306c-45fc-8f41-0b98c8cccb46</sourceid>
+    <guid>92222222-9222-9222-9222-922222222222</guid>
+    <traditiontype>MAG</traditiontype>
+    <name>Career Custom Category Tradition</name>
+    <spiritcombat>Spirit of Air</spiritcombat>
+    <spiritdetection>Spirit of Fire</spiritdetection>
+    <spirithealth />
+    <spiritillusion>Spirit of Air</spiritillusion>
+    <spiritmanipulation>Spirit of Fire</spiritmanipulation>
+    <extra>Career tradition sentinel</extra>
+  </tradition>
+  <customstate>Career runner sentinel</customstate>
+</character>

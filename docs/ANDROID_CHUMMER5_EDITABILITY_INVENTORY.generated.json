@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 408,
+      "implemented_pending_emulator": 418,
       "implemented_verified_api36": 79,
-      "missing": 1020,
+      "missing": 1010,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 148
@@ -77,7 +77,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "bf7550e1f2767ebb3126eef35f8c1f668bbcba0da9d4cdd22ec66f34a2565f2e"
+        "sha256": "5edf0259621bdca46383ea40c50abd15834816423d820f453bf9045d5948b7a0"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -118,6 +118,11 @@
         "path": "src/Chummer.Android/Native/TraditionDrainPage.cs",
         "exists": true,
         "sha256": "44ec88d754d538c59cd8b364244de81a70c0618a9cce926a3c98f691dbd1d777"
+      },
+      {
+        "path": "src/Chummer.Android/Native/TraditionSpiritCategoryPage.cs",
+        "exists": true,
+        "sha256": "a2c2533b178ee2bcfbbb04a82dfad30c0b82801bf6b67e2c3051fca9d5e5c56b"
       },
       {
         "path": "src/Chummer.Android/Native/CareerEdgeUsePage.cs",
@@ -277,7 +282,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "31ff3f48df7819bd8072027311a5175a5c236ed46e0a076d3bb4bac535c08706"
+        "sha256": "c5af09c96dd6416d201cf64a1c28b0caa8442c1e67af0240c7d4d24132b70e2e"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -333,6 +338,11 @@
         "path": "tests/run_api36_tradition_drain_e2e.py",
         "exists": true,
         "sha256": "e951dbebb9f8c4809771edcd5b3057406adca1ab88696bfd3555fddccd6a3a10"
+      },
+      {
+        "path": "tests/run_api36_tradition_spirit_categories_e2e.py",
+        "exists": true,
+        "sha256": "ef5a97df6ebb9529e8eedffda9ac43a4e3a48d58de9601b7590f3bbc706b6815"
       },
       {
         "path": "tests/run_api36_gear_name_e2e.py",
@@ -598,6 +608,16 @@
         "path": "tests/fixtures/career-tradition-drain-e2e.chum5",
         "exists": true,
         "sha256": "c73d5c6a73070c994d14547b59c1dabb8fd42398ce90f5e01df3bdfb26c30183"
+      },
+      {
+        "path": "tests/fixtures/creation-tradition-spirit-categories-e2e.chum5",
+        "exists": true,
+        "sha256": "dc52b59b5c7af973da4ce3800652bc79d6bc111fb168a12d906794a6c74b1807"
+      },
+      {
+        "path": "tests/fixtures/career-tradition-spirit-categories-e2e.chum5",
+        "exists": true,
+        "sha256": "1583506c20c57cb9a03bbf2832f8c5c21720da4f92502cafc89ac0b60650b9f9"
       },
       {
         "path": "tests/fixtures/creation-gear-name-e2e.chum5",
@@ -1205,6 +1225,11 @@
         "sha256": "9e98871e64b74cb7e9e09253b1ff1aeadc25c281dd2541fd853a21d5dfaf24d2"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionSpiritCategoryRules.cs",
+        "exists": true,
+        "sha256": "893cf0aea70ff71752fc9dfc90577905406513cb8ca2c12dd807c06881fb4049"
+      },
+      {
         "path": "chummer-core-engine/Chummer/data/traditions.xml",
         "exists": true,
         "sha256": "10babe291e995f8c5362cff2c6c901011d0575e6da0efd162b5dac2412318174"
@@ -1262,7 +1287,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "e0d60e036580b27ebecca775632b5d5dc66bd73c0027cb03b7924a0456a49616"
+        "sha256": "787c53c846ea50eb1a5e0d2f60d9e1693691a1a210ce79b264c9ebcf2a8dca01"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -1282,7 +1307,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "55621333bb2d898ca79c2d3e62cc63bed32eae6e3a153ef0146d50719a5a9d4b"
+        "sha256": "897a211e70b0156b77ec4349e80db5331c143aa3124b1f3b14c1d51ba1035b1e"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1318,6 +1343,11 @@
         "path": "chummer-presentation/Chummer.Presentation/Overview/TraditionDrainEditRequest.cs",
         "exists": true,
         "sha256": "682a03edf299db5719160f47f82bf4cd3d0d90ee902037ab834e32cb3a9f3116"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/TraditionSpiritCategoryEditRequest.cs",
+        "exists": true,
+        "sha256": "00b8928e7b480eeaad49223909e70959c988c479cc0edeaf3662559480414ded"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerEdgeUseEditRequest.cs",
@@ -1452,7 +1482,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "0111aa0464efa6588cdc875d005e036dc80619551bc45f5d8ea74ed6a2b30900"
+        "sha256": "e92d38c5ae464c4ef93fd4d4ea569624f2d0511a6d1e78619715ff89b8b532b2"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1507,7 +1537,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "84b1f2ef066fbca37294446abcf5abb1d23a92496ad9a06c332e68af376ac0a0"
+        "sha256": "90fa21d14f5420a095341edbeb79962fe95f7196b02666662432faf08625c8ce"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1517,7 +1547,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "e4ff17409b47831744da67e859a43d7e10d5bf8c218e3a630e4a97c5a16feefb"
+      "sha256": "9caefe5c60c8cfe8a156687ffb967c7b6b61c3740b48e9d22062a7d0c48f106b"
     }
   },
   "coverageByFamily": {
@@ -1860,7 +1890,7 @@
     "spirits_and_sprites": {
       "rowCount": 32,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 12,
+      "phoneMissingCount": 2,
       "tabletMissingCount": 28,
       "completionProvenCount": 4
     },
@@ -15767,11 +15797,26 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic > Tradition spirits",
+        "surface": "TraditionSpiritCategoryPage",
+        "automationId": "tradition-spirit-manipulation-value",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/TraditionSpiritCategoryPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/TraditionSpiritCategoryEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionSpiritCategoryRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer/data/traditions.xml",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers the five CharacterCreate/CharacterCareer cboSpirit* controls only for an exact saved Custom MAG tradition with MAG enabled, RES disabled, stable instance/source GUIDs, and an available active traditions.xml Spirit catalog including selected custom-data overlays. Enabled LimitSpiritCategory improvements filter choices; blank is canonical. Non-Custom, RES, missing/duplicate identity, missing source authority, unknown saved values, and custom-overlay/catalog revision drift fail closed. Tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -15779,12 +15824,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyTraditionSpiritCategoryEditAsync(TraditionSpiritCategoryEditRequest) with stable tradition/source GUIDs, exact active catalog authority, and all five field-local revisions",
+      "persistenceAssertion": "character/tradition/spiritmanipulation equals the exact selected active traditions.xml Spirit name or canonical blank after LimitSpiritCategory filtering and five-field revision-bound atomic save, same-session reopen, and process restart; the other four category values, stable identity, and unrelated XML are preserved exactly as submitted",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_tradition_spirit_categories_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -15819,11 +15864,26 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic > Tradition spirits",
+        "surface": "TraditionSpiritCategoryPage",
+        "automationId": "tradition-spirit-illusion-value",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/TraditionSpiritCategoryPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/TraditionSpiritCategoryEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionSpiritCategoryRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer/data/traditions.xml",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers the five CharacterCreate/CharacterCareer cboSpirit* controls only for an exact saved Custom MAG tradition with MAG enabled, RES disabled, stable instance/source GUIDs, and an available active traditions.xml Spirit catalog including selected custom-data overlays. Enabled LimitSpiritCategory improvements filter choices; blank is canonical. Non-Custom, RES, missing/duplicate identity, missing source authority, unknown saved values, and custom-overlay/catalog revision drift fail closed. Tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -15831,12 +15891,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyTraditionSpiritCategoryEditAsync(TraditionSpiritCategoryEditRequest) with stable tradition/source GUIDs, exact active catalog authority, and all five field-local revisions",
+      "persistenceAssertion": "character/tradition/spiritillusion equals the exact selected active traditions.xml Spirit name or canonical blank after LimitSpiritCategory filtering and five-field revision-bound atomic save, same-session reopen, and process restart; the other four category values, stable identity, and unrelated XML are preserved exactly as submitted",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_tradition_spirit_categories_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -15871,11 +15931,26 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic > Tradition spirits",
+        "surface": "TraditionSpiritCategoryPage",
+        "automationId": "tradition-spirit-health-value",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/TraditionSpiritCategoryPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/TraditionSpiritCategoryEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionSpiritCategoryRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer/data/traditions.xml",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers the five CharacterCreate/CharacterCareer cboSpirit* controls only for an exact saved Custom MAG tradition with MAG enabled, RES disabled, stable instance/source GUIDs, and an available active traditions.xml Spirit catalog including selected custom-data overlays. Enabled LimitSpiritCategory improvements filter choices; blank is canonical. Non-Custom, RES, missing/duplicate identity, missing source authority, unknown saved values, and custom-overlay/catalog revision drift fail closed. Tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -15883,12 +15958,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyTraditionSpiritCategoryEditAsync(TraditionSpiritCategoryEditRequest) with stable tradition/source GUIDs, exact active catalog authority, and all five field-local revisions",
+      "persistenceAssertion": "character/tradition/spirithealth equals the exact selected active traditions.xml Spirit name or canonical blank after LimitSpiritCategory filtering and five-field revision-bound atomic save, same-session reopen, and process restart; the other four category values, stable identity, and unrelated XML are preserved exactly as submitted",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_tradition_spirit_categories_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -15923,11 +15998,26 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic > Tradition spirits",
+        "surface": "TraditionSpiritCategoryPage",
+        "automationId": "tradition-spirit-detection-value",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/TraditionSpiritCategoryPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/TraditionSpiritCategoryEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionSpiritCategoryRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer/data/traditions.xml",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers the five CharacterCreate/CharacterCareer cboSpirit* controls only for an exact saved Custom MAG tradition with MAG enabled, RES disabled, stable instance/source GUIDs, and an available active traditions.xml Spirit catalog including selected custom-data overlays. Enabled LimitSpiritCategory improvements filter choices; blank is canonical. Non-Custom, RES, missing/duplicate identity, missing source authority, unknown saved values, and custom-overlay/catalog revision drift fail closed. Tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -15935,12 +16025,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyTraditionSpiritCategoryEditAsync(TraditionSpiritCategoryEditRequest) with stable tradition/source GUIDs, exact active catalog authority, and all five field-local revisions",
+      "persistenceAssertion": "character/tradition/spiritdetection equals the exact selected active traditions.xml Spirit name or canonical blank after LimitSpiritCategory filtering and five-field revision-bound atomic save, same-session reopen, and process restart; the other four category values, stable identity, and unrelated XML are preserved exactly as submitted",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_tradition_spirit_categories_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -15975,11 +16065,26 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic > Tradition spirits",
+        "surface": "TraditionSpiritCategoryPage",
+        "automationId": "tradition-spirit-combat-value",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/TraditionSpiritCategoryPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/TraditionSpiritCategoryEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionSpiritCategoryRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer/data/traditions.xml",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers the five CharacterCreate/CharacterCareer cboSpirit* controls only for an exact saved Custom MAG tradition with MAG enabled, RES disabled, stable instance/source GUIDs, and an available active traditions.xml Spirit catalog including selected custom-data overlays. Enabled LimitSpiritCategory improvements filter choices; blank is canonical. Non-Custom, RES, missing/duplicate identity, missing source authority, unknown saved values, and custom-overlay/catalog revision drift fail closed. Tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -15987,12 +16092,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyTraditionSpiritCategoryEditAsync(TraditionSpiritCategoryEditRequest) with stable tradition/source GUIDs, exact active catalog authority, and all five field-local revisions",
+      "persistenceAssertion": "character/tradition/spiritcombat equals the exact selected active traditions.xml Spirit name or canonical blank after LimitSpiritCategory filtering and five-field revision-bound atomic save, same-session reopen, and process restart; the other four category values, stable identity, and unrelated XML are preserved exactly as submitted",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_tradition_spirit_categories_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -58213,11 +58318,26 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic > Tradition spirits",
+        "surface": "TraditionSpiritCategoryPage",
+        "automationId": "tradition-spirit-combat-value",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/TraditionSpiritCategoryPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/TraditionSpiritCategoryEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionSpiritCategoryRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer/data/traditions.xml",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers the five CharacterCreate/CharacterCareer cboSpirit* controls only for an exact saved Custom MAG tradition with MAG enabled, RES disabled, stable instance/source GUIDs, and an available active traditions.xml Spirit catalog including selected custom-data overlays. Enabled LimitSpiritCategory improvements filter choices; blank is canonical. Non-Custom, RES, missing/duplicate identity, missing source authority, unknown saved values, and custom-overlay/catalog revision drift fail closed. Tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -58225,12 +58345,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyTraditionSpiritCategoryEditAsync(TraditionSpiritCategoryEditRequest) with stable tradition/source GUIDs, exact active catalog authority, and all five field-local revisions",
+      "persistenceAssertion": "character/tradition/spiritcombat equals the exact selected active traditions.xml Spirit name or canonical blank after LimitSpiritCategory filtering and five-field revision-bound atomic save, same-session reopen, and process restart; the other four category values, stable identity, and unrelated XML are preserved exactly as submitted",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_tradition_spirit_categories_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -58265,11 +58385,26 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic > Tradition spirits",
+        "surface": "TraditionSpiritCategoryPage",
+        "automationId": "tradition-spirit-manipulation-value",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/TraditionSpiritCategoryPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/TraditionSpiritCategoryEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionSpiritCategoryRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer/data/traditions.xml",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers the five CharacterCreate/CharacterCareer cboSpirit* controls only for an exact saved Custom MAG tradition with MAG enabled, RES disabled, stable instance/source GUIDs, and an available active traditions.xml Spirit catalog including selected custom-data overlays. Enabled LimitSpiritCategory improvements filter choices; blank is canonical. Non-Custom, RES, missing/duplicate identity, missing source authority, unknown saved values, and custom-overlay/catalog revision drift fail closed. Tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -58277,12 +58412,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyTraditionSpiritCategoryEditAsync(TraditionSpiritCategoryEditRequest) with stable tradition/source GUIDs, exact active catalog authority, and all five field-local revisions",
+      "persistenceAssertion": "character/tradition/spiritmanipulation equals the exact selected active traditions.xml Spirit name or canonical blank after LimitSpiritCategory filtering and five-field revision-bound atomic save, same-session reopen, and process restart; the other four category values, stable identity, and unrelated XML are preserved exactly as submitted",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_tradition_spirit_categories_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -58317,11 +58452,26 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic > Tradition spirits",
+        "surface": "TraditionSpiritCategoryPage",
+        "automationId": "tradition-spirit-illusion-value",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/TraditionSpiritCategoryPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/TraditionSpiritCategoryEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionSpiritCategoryRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer/data/traditions.xml",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers the five CharacterCreate/CharacterCareer cboSpirit* controls only for an exact saved Custom MAG tradition with MAG enabled, RES disabled, stable instance/source GUIDs, and an available active traditions.xml Spirit catalog including selected custom-data overlays. Enabled LimitSpiritCategory improvements filter choices; blank is canonical. Non-Custom, RES, missing/duplicate identity, missing source authority, unknown saved values, and custom-overlay/catalog revision drift fail closed. Tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -58329,12 +58479,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyTraditionSpiritCategoryEditAsync(TraditionSpiritCategoryEditRequest) with stable tradition/source GUIDs, exact active catalog authority, and all five field-local revisions",
+      "persistenceAssertion": "character/tradition/spiritillusion equals the exact selected active traditions.xml Spirit name or canonical blank after LimitSpiritCategory filtering and five-field revision-bound atomic save, same-session reopen, and process restart; the other four category values, stable identity, and unrelated XML are preserved exactly as submitted",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_tradition_spirit_categories_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -58369,11 +58519,26 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic > Tradition spirits",
+        "surface": "TraditionSpiritCategoryPage",
+        "automationId": "tradition-spirit-health-value",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/TraditionSpiritCategoryPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/TraditionSpiritCategoryEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionSpiritCategoryRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer/data/traditions.xml",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers the five CharacterCreate/CharacterCareer cboSpirit* controls only for an exact saved Custom MAG tradition with MAG enabled, RES disabled, stable instance/source GUIDs, and an available active traditions.xml Spirit catalog including selected custom-data overlays. Enabled LimitSpiritCategory improvements filter choices; blank is canonical. Non-Custom, RES, missing/duplicate identity, missing source authority, unknown saved values, and custom-overlay/catalog revision drift fail closed. Tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -58381,12 +58546,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyTraditionSpiritCategoryEditAsync(TraditionSpiritCategoryEditRequest) with stable tradition/source GUIDs, exact active catalog authority, and all five field-local revisions",
+      "persistenceAssertion": "character/tradition/spirithealth equals the exact selected active traditions.xml Spirit name or canonical blank after LimitSpiritCategory filtering and five-field revision-bound atomic save, same-session reopen, and process restart; the other four category values, stable identity, and unrelated XML are preserved exactly as submitted",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_tradition_spirit_categories_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -58421,11 +58586,26 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Magic > Tradition spirits",
+        "surface": "TraditionSpiritCategoryPage",
+        "automationId": "tradition-spirit-detection-value",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/TraditionSpiritCategoryPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/TraditionSpiritCategoryEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterTraditionSpiritCategoryRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer/data/traditions.xml",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers the five CharacterCreate/CharacterCareer cboSpirit* controls only for an exact saved Custom MAG tradition with MAG enabled, RES disabled, stable instance/source GUIDs, and an available active traditions.xml Spirit catalog including selected custom-data overlays. Enabled LimitSpiritCategory improvements filter choices; blank is canonical. Non-Custom, RES, missing/duplicate identity, missing source authority, unknown saved values, and custom-overlay/catalog revision drift fail closed. Tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -58433,12 +58613,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyTraditionSpiritCategoryEditAsync(TraditionSpiritCategoryEditRequest) with stable tradition/source GUIDs, exact active catalog authority, and all five field-local revisions",
+      "persistenceAssertion": "character/tradition/spiritdetection equals the exact selected active traditions.xml Spirit name or canonical blank after LimitSpiritCategory filtering and five-field revision-bound atomic save, same-session reopen, and process restart; the other four category values, stable identity, and unrelated XML are preserved exactly as submitted",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_tradition_spirit_categories_e2e.py"
         },
         "tablet": {
           "status": "missing",
