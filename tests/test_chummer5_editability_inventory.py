@@ -532,6 +532,32 @@ namespace Chummer
             self.assertIn("notesColor", row["persistenceAssertion"])
             self.assertFalse(row["completionProven"])
 
+        lifestyle_notes = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] in inventory.LIFESTYLE_NOTES_CONTROLS
+        ]
+        self.assertEqual(4, len(lifestyle_notes))
+        for row in lifestyle_notes:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Notes + Notes Color",
+                row["phone"]["route"],
+            )
+            self.assertEqual("CollectionItemEditorPage", row["phone"]["surface"])
+            self.assertEqual(
+                "collection-field-notes-{stable-lifestyle-guid} + "
+                "collection-field-notescolor-{stable-lifestyle-guid}",
+                row["phone"]["automationId"],
+            )
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual("tests/run_api36_lifestyle_name_e2e.py", row["e2e"]["phone"]["ref"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertIn("notes and canonical notesColor together", row["persistenceAssertion"])
+            self.assertIn("effectively-unbounded RichTextBox", row["phone"]["coverageLimit"])
+            self.assertIn("patched together", row["phone"]["coverageLimit"])
+            self.assertFalse(row["completionProven"])
+
         gear_locations = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -1635,9 +1661,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 391,
+                "implemented_pending_emulator": 395,
                 "implemented_verified_api36": 79,
-                "missing": 1038,
+                "missing": 1034,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 147,

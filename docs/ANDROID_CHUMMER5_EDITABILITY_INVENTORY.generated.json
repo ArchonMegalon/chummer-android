@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 391,
+      "implemented_pending_emulator": 395,
       "implemented_verified_api36": 79,
-      "missing": 1038,
+      "missing": 1034,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 147
@@ -227,7 +227,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "af4452231265d92c65810e309723b09a980dfa8cf78df442c649699a60886689"
+        "sha256": "c36684863eb01f99371703c938c95d4f99b0a1d08fc4d93e540e0454cc1ddd4f"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -317,7 +317,7 @@
       {
         "path": "tests/run_api36_lifestyle_name_e2e.py",
         "exists": true,
-        "sha256": "196ccf880ce169aa0e64ff73a5d3da32d66d7fad6503a669e866265a59aa734b"
+        "sha256": "6275b7410d2a13924dfd88256755f9ce8608a145850849722a1d060f82f44678"
       },
       {
         "path": "tests/run_api36_career_edge_use_e2e.py",
@@ -957,7 +957,7 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "980628c9f08392aab3af72a652c4df515d92e6e7f1bc736d5c49802b0dd04f43"
+        "sha256": "3f9b4664e4b6e8c57d99edfae0c9fd20e24bb7a7443f0175f972346789fbcc84"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponHomeNodeRules.cs",
@@ -1057,7 +1057,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "1310b0b5f1b8074621aa6d4395e06806823779c3905178650ad08c553fcb00d3"
+        "sha256": "0f84384bb86a2e4fa39181c535f555643a64f9f7985a2710bcb9b4724c5e5720"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
@@ -1272,7 +1272,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "5afbf03935959806390cbd307bfda7a56771e31195d7a7fd487cb6c1b45e0ba1"
+        "sha256": "0201c55c6b466f6be89ab69fad6e12e0a0cddce8978ae000c288717cffe4610f"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
@@ -1282,12 +1282,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
         "exists": true,
-        "sha256": "c8a894f141d791a14be82c1f6f0d6a24b67ee40a4d35608bcea76fa4d5159e5c"
+        "sha256": "4f26d429241fb2399060dbbfe7ef3f6b8d68a67d3122ce81a64ac0123542e860"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "36a3ec9921240faf21746e12f29450400a715ebc1aec7f549523732154b87fe8"
+        "sha256": "c91cc04e518a8a2efa7ff938c7962093e9a7d994ec59318f320d91658ca614db"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1297,7 +1297,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "dbd085d44057a2182ac01e6b2b9abed03371a349d41a46d8d63f513fd3fdfc8d"
+      "sha256": "389cddb20f7a8d53d99351db8cc57d9dc5b9ae8b4bb585cde481887d5c0e6e8b"
     }
   },
   "coverageByFamily": {
@@ -1507,7 +1507,7 @@
     "lifestyles": {
       "rowCount": 58,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 48,
+      "phoneMissingCount": 44,
       "tabletMissingCount": 50,
       "completionProvenCount": 8
     },
@@ -45392,11 +45392,24 @@
       "mutationFamily": "lifestyles",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Notes + Notes Color",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-lifestyle-guid} + collection-field-notescolor-{stable-lifestyle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers CharacterCreate/CharacterCareer tsLifestyleNotes and tsAdvancedLifestyleNotes through their shared WriteNotes behavior for one uniquely identified top-level Lifestyle. Notes retain the legacy effectively-unbounded RichTextBox length; color accepts the canonical values the legacy color picker serializes (#RRGGBB, #AARRGGBB, or a known HTML color name). Notes and color are patched together; malformed colors and duplicate/missing GUID identities fail closed. Lifestyle delete/move remain unavailable. The API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -45404,12 +45417,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync(WorkspacePatchCollectionItemRequest: WorkspaceCollectionKind.Lifestyle + atomic Notes/NotesColor text values)",
+      "persistenceAssertion": "the unique stable character/lifestyles/lifestyle receives the submitted notes and canonical notesColor together in one revision-bound atomic save; guid, base/custom name, cost, months, and unrelated character state remain unchanged through same-session reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_lifestyle_name_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -47098,7 +47111,7 @@
           "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
           "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
         ],
-        "coverageLimit": "Covers CharacterCreate/CharacterCareer tsLifestyleName for a uniquely identified top-level Lifestyle. It reproduces Chummer5 SelectText semantics: blank is allowed, unchanged/cancel is a no-op, and input is bounded by the legacy 32767-character textbox limit. Lifestyle delete/move and the separate rich-text Notes+notesColor control remain unavailable until their own exact contracts; duplicate/missing GUID identities fail closed. The API 36 driver is present but not yet executed"
+        "coverageLimit": "Covers CharacterCreate/CharacterCareer tsLifestyleName for a uniquely identified top-level Lifestyle. It reproduces Chummer5 SelectText semantics: blank is allowed, unchanged/cancel is a no-op, and input is bounded by the legacy 32767-character textbox limit. Lifestyle delete/move and the separate rich-text Notes+notesColor control is covered by its own exact coupled-field mapping; duplicate/missing GUID identities fail closed. The API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -47151,11 +47164,24 @@
       "mutationFamily": "lifestyles",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Notes + Notes Color",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-lifestyle-guid} + collection-field-notescolor-{stable-lifestyle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers CharacterCreate/CharacterCareer tsLifestyleNotes and tsAdvancedLifestyleNotes through their shared WriteNotes behavior for one uniquely identified top-level Lifestyle. Notes retain the legacy effectively-unbounded RichTextBox length; color accepts the canonical values the legacy color picker serializes (#RRGGBB, #AARRGGBB, or a known HTML color name). Notes and color are patched together; malformed colors and duplicate/missing GUID identities fail closed. Lifestyle delete/move remain unavailable. The API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -47163,12 +47189,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync(WorkspacePatchCollectionItemRequest: WorkspaceCollectionKind.Lifestyle + atomic Notes/NotesColor text values)",
+      "persistenceAssertion": "the unique stable character/lifestyles/lifestyle receives the submitted notes and canonical notesColor together in one revision-bound atomic save; guid, base/custom name, cost, months, and unrelated character state remain unchanged through same-session reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_lifestyle_name_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -66765,7 +66791,7 @@
           "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
           "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
         ],
-        "coverageLimit": "Covers CharacterCreate/CharacterCareer tsLifestyleName for a uniquely identified top-level Lifestyle. It reproduces Chummer5 SelectText semantics: blank is allowed, unchanged/cancel is a no-op, and input is bounded by the legacy 32767-character textbox limit. Lifestyle delete/move and the separate rich-text Notes+notesColor control remain unavailable until their own exact contracts; duplicate/missing GUID identities fail closed. The API 36 driver is present but not yet executed"
+        "coverageLimit": "Covers CharacterCreate/CharacterCareer tsLifestyleName for a uniquely identified top-level Lifestyle. It reproduces Chummer5 SelectText semantics: blank is allowed, unchanged/cancel is a no-op, and input is bounded by the legacy 32767-character textbox limit. Lifestyle delete/move and the separate rich-text Notes+notesColor control is covered by its own exact coupled-field mapping; duplicate/missing GUID identities fail closed. The API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -66818,11 +66844,24 @@
       "mutationFamily": "lifestyles",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Notes + Notes Color",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-lifestyle-guid} + collection-field-notescolor-{stable-lifestyle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers CharacterCreate/CharacterCareer tsLifestyleNotes and tsAdvancedLifestyleNotes through their shared WriteNotes behavior for one uniquely identified top-level Lifestyle. Notes retain the legacy effectively-unbounded RichTextBox length; color accepts the canonical values the legacy color picker serializes (#RRGGBB, #AARRGGBB, or a known HTML color name). Notes and color are patched together; malformed colors and duplicate/missing GUID identities fail closed. Lifestyle delete/move remain unavailable. The API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -66830,12 +66869,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync(WorkspacePatchCollectionItemRequest: WorkspaceCollectionKind.Lifestyle + atomic Notes/NotesColor text values)",
+      "persistenceAssertion": "the unique stable character/lifestyles/lifestyle receives the submitted notes and canonical notesColor together in one revision-bound atomic save; guid, base/custom name, cost, months, and unrelated character state remain unchanged through same-session reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_lifestyle_name_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -67119,11 +67158,24 @@
       "mutationFamily": "lifestyles",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Notes + Notes Color",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "collection-field-notes-{stable-lifestyle-guid} + collection-field-notescolor-{stable-lifestyle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Covers CharacterCreate/CharacterCareer tsLifestyleNotes and tsAdvancedLifestyleNotes through their shared WriteNotes behavior for one uniquely identified top-level Lifestyle. Notes retain the legacy effectively-unbounded RichTextBox length; color accepts the canonical values the legacy color picker serializes (#RRGGBB, #AARRGGBB, or a known HTML color name). Notes and color are patched together; malformed colors and duplicate/missing GUID identities fail closed. Lifestyle delete/move remain unavailable. The API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -67131,12 +67183,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync(WorkspacePatchCollectionItemRequest: WorkspaceCollectionKind.Lifestyle + atomic Notes/NotesColor text values)",
+      "persistenceAssertion": "the unique stable character/lifestyles/lifestyle receives the submitted notes and canonical notesColor together in one revision-bound atomic save; guid, base/custom name, cost, months, and unrelated character state remain unchanged through same-session reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_lifestyle_name_e2e.py"
         },
         "tablet": {
           "status": "missing",

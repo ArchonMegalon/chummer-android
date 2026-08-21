@@ -1023,6 +1023,7 @@ TRADITION_NAME_CONTROL = "txtTraditionName"
 TRADITION_DRAIN_CONTROL = "cboDrain"
 GEAR_NAME_CONTROL = "tsGearName"
 LIFESTYLE_NAME_CONTROL = "tsLifestyleName"
+LIFESTYLE_NOTES_CONTROLS = {"tsLifestyleNotes", "tsAdvancedLifestyleNotes"}
 CAREER_EDGE_USE_CONTROLS = {
     "cmdEdgeSpent": (
         "cmdEdgeSpent_Click",
@@ -9987,8 +9988,171 @@ def _known_phone_mapping(
                 "Covers CharacterCreate/CharacterCareer tsLifestyleName for a uniquely identified top-level Lifestyle. "
                 "It reproduces Chummer5 SelectText semantics: blank is allowed, unchanged/cancel is a no-op, and input "
                 "is bounded by the legacy 32767-character textbox limit. Lifestyle delete/move and the separate rich-"
-                "text Notes+notesColor control remain unavailable until their own exact contracts; duplicate/missing "
+                "text Notes+notesColor control is covered by its own exact coupled-field mapping; duplicate/missing "
                 "GUID identities fail closed. The API 36 driver is "
+                f"{'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_lifestyle_name_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
+        and control in LIFESTYLE_NOTES_CONTROLS
+    ):
+        collection_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_lifestyle_name_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-lifestyle-name-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-lifestyle-name-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "WorkspaceCollectionMutationRequest.cs"
+        projector = overview / "WorkspaceCollectionEditorProjector.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_models = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs"
+        core_sections = character_notes_core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        implemented = (
+            _contains(
+                collection_page,
+                "WorkspaceCollectionKind.Lifestyle",
+                "WorkspaceCollectionTextField.Notes",
+                "WorkspaceCollectionTextField.NotesColor",
+                '"Notes Color"',
+                '=> "notescolor"',
+                "WorkspacePatchCollectionItemRequest",
+                "ApplyCollectionMutationAsync",
+                "!item.CanMove && !item.CanDelete",
+            )
+            and _contains(
+                request,
+                "WorkspaceCollectionTextField",
+                "Notes",
+                "NotesColor",
+                "WorkspacePatchCollectionItemRequest",
+            )
+            and _contains(
+                projector,
+                "WorkspaceCollectionKind.Lifestyle",
+                "WorkspaceCollectionTextField.Notes",
+                "WorkspaceCollectionTextField.NotesColor",
+                "MaximumRichTextLength = int.MaxValue",
+                "MaximumNotesColorLength = 32",
+                'WorkspaceCollectionTextField.NotesColor => "notesColor"',
+            )
+            and _contains(
+                mutation,
+                "WorkspaceCollectionKind.Lifestyle",
+                "WorkspaceCollectionTextField.Notes",
+                "WorkspaceCollectionTextField.NotesColor",
+                "MaximumRichTextLength = int.MaxValue",
+                "NormalizeNotesColor",
+                'return "notesColor"',
+            )
+            and _contains(
+                presenter,
+                "ApplyCollectionMutationAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_models,
+                "CharacterLifestyleSummary",
+                'string Notes = ""',
+                'string NotesColor = ""',
+            )
+            and _contains(
+                core_sections,
+                'Notes: ReadValue(lifestyle, "notes")',
+                'NotesColor: ReadValue(lifestyle, "notesColor")',
+                "ParseLifestyles",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCreate.tsLifestyleNotes"',
+                '"CharacterCareer.tsLifestyleNotes"',
+                '"CharacterCreate.tsAdvancedLifestyleNotes"',
+                '"CharacterCareer.tsAdvancedLifestyleNotes"',
+                'api != "36"',
+                '"profile": "phone"',
+                '"journey": "lifestyle-name"',
+                '"collection-field-notes-{target}"',
+                '"collection-field-notescolor-{target}"',
+                '"notesAndNotesColorChangedAtomically": "pass"',
+                '"collectionRequestSha256"',
+                '"collectionProjectorSha256"',
+                '"mutationCatalogSha256"',
+                '"presenterPersistenceSha256"',
+                '"sectionModelsSha256"',
+                '"sectionServiceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+                '"careerFixtureSha256"',
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Notes + Notes Color",
+            "surface": "CollectionItemEditorPage",
+            "automationId": (
+                "collection-field-notes-{stable-lifestyle-guid} + "
+                "collection-field-notescolor-{stable-lifestyle-guid}"
+            ),
+            "sourceRefs": [
+                "src/Chummer.Android/Native/BuildFlowPages.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCollectionMutationAsync(WorkspacePatchCollectionItemRequest: "
+                "WorkspaceCollectionKind.Lifestyle + atomic Notes/NotesColor text values)"
+            ),
+            "persistenceAssertion": (
+                "the unique stable character/lifestyles/lifestyle receives the submitted notes and canonical "
+                "notesColor together in one revision-bound atomic save; guid, base/custom name, cost, months, and "
+                "unrelated character state remain unchanged through same-session reopen and process restart"
+            ),
+            "coverageLimit": (
+                "Covers CharacterCreate/CharacterCareer tsLifestyleNotes and tsAdvancedLifestyleNotes through their "
+                "shared WriteNotes behavior for one "
+                "uniquely identified top-level Lifestyle. Notes retain the legacy effectively-unbounded RichTextBox "
+                "length; color accepts the canonical values the legacy color picker serializes (#RRGGBB, #AARRGGBB, "
+                "or a known HTML color name). Notes and color are patched together; malformed colors and duplicate/"
+                "missing GUID identities fail closed. Lifestyle delete/move remain unavailable. The API 36 driver is "
                 f"{'present but not yet executed' if e2e_scripted else 'missing'}"
             ),
             "e2e": {

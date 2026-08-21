@@ -14,15 +14,22 @@ import xml.etree.ElementTree as ET
 import run_api36_editing_e2e as shared
 
 
-CONTROLS = ("CharacterCreate.tsLifestyleName", "CharacterCareer.tsLifestyleName")
+CONTROLS = (
+    "CharacterCreate.tsLifestyleName",
+    "CharacterCareer.tsLifestyleName",
+    "CharacterCreate.tsLifestyleNotes",
+    "CharacterCareer.tsLifestyleNotes",
+    "CharacterCreate.tsAdvancedLifestyleNotes",
+    "CharacterCareer.tsAdvancedLifestyleNotes",
+)
 PROFILES = {
     "creation": {
         "fixture": "creation-lifestyle-name-e2e.chum5",
         "target": "81111111-1111-1111-1111-111111111111",
         "expected": "Creation bolt-hole",
         "name": "Low",
-        "notes": "Creation notes preserved",
-        "notes_color": "#ff123456",
+        "expected_notes": "Creation notes updated\nSecond line",
+        "expected_notes_color": "#112233",
         "customstate": "Creation unrelated state",
     },
     "career": {
@@ -30,14 +37,15 @@ PROFILES = {
         "target": "82222222-2222-2222-2222-222222222222",
         "expected": "Career bolt-hole",
         "name": "Middle",
-        "notes": "Career notes preserved",
-        "notes_color": "#ff654321",
+        "expected_notes": "Career notes updated\nSecond line",
+        "expected_notes_color": "#445566",
         "customstate": "Career unrelated state",
     },
 }
 PROOF_KEYS = (
     "stableLifestyleGuid",
     "exactExtraElement",
+    "exactNotesAndNotesColorElements",
     "baseNameNotesAndColorPreserved",
     "expectedRevisionAtomicSave",
     "workspacePersisted",
@@ -69,11 +77,11 @@ def open_editor(device: shared.Device, target: str) -> None:
     device.wait(f"collection-field-lifestylename-{target}", timeout=60, scroll=True)
 
 
-def read_value(device: shared.Device, target: str) -> str:
+def read_value(device: shared.Device, target: str, token: str, label: str) -> str:
     return shared.selected_text(
         device,
-        f"collection-field-lifestylename-{target}",
-        "Lifestyle Name",
+        f"collection-field-{token}-{target}",
+        label,
         scroll=True,
     )
 
@@ -116,8 +124,8 @@ def assert_workspace(device: shared.Device, expected: dict[str, str]) -> None:
             wanted = (
                 expected["expected"],
                 expected["name"],
-                expected["notes"],
-                expected["notes_color"],
+                expected["expected_notes"],
+                expected["expected_notes_color"],
             )
             if state == wanted:
                 if root.findtext("customstate", default="") != expected["customstate"]:
@@ -139,17 +147,37 @@ def prove_profile(device: shared.Device, fixture: Path, profile: str) -> None:
         expected["expected"],
         scroll=True,
     )
+    device.set_text(
+        f"collection-field-notes-{target}",
+        "Notes",
+        expected["expected_notes"],
+        scroll=True,
+    )
+    device.set_text(
+        f"collection-field-notescolor-{target}",
+        "Notes Color",
+        expected["expected_notes_color"],
+        scroll=True,
+    )
     device.tap(f"collection-save-{target}", timeout=180, scroll=True)
     device.wait(f"collection-field-lifestylename-{target}", timeout=120, scroll=True)
     assert_workspace(device, expected)
-    if read_value(device, target) != expected["expected"]:
+    if read_value(device, target, "lifestylename", "Lifestyle Name") != expected["expected"]:
         raise RuntimeError("Lifestyle Name did not survive immediate refresh")
+    if read_value(device, target, "notes", "Notes") != expected["expected_notes"]:
+        raise RuntimeError("Lifestyle Notes did not survive immediate refresh")
+    if read_value(device, target, "notescolor", "Notes Color") != expected["expected_notes_color"]:
+        raise RuntimeError("Lifestyle Notes Color did not survive immediate refresh")
 
     device.back()
     device.tap(f"collection-item-lifestyle-{target}", timeout=120, scroll=True, max_scrolls=40)
     device.wait(f"collection-editor-lifestyle-{target}", timeout=120)
-    if read_value(device, target) != expected["expected"]:
-        raise RuntimeError("Lifestyle Name did not survive same-session reopen")
+    if (
+        read_value(device, target, "lifestylename", "Lifestyle Name") != expected["expected"]
+        or read_value(device, target, "notes", "Notes") != expected["expected_notes"]
+        or read_value(device, target, "notescolor", "Notes Color") != expected["expected_notes_color"]
+    ):
+        raise RuntimeError("Lifestyle Name/Notes did not survive same-session reopen")
     device.capture(f"lifestyle-name-{profile}-after-reopen")
 
     device.shell("am", "force-stop", shared.PACKAGE)
@@ -157,8 +185,12 @@ def prove_profile(device: shared.Device, fixture: Path, profile: str) -> None:
     device.wait("Continue building", timeout=120)
     assert_workspace(device, expected)
     open_editor(device, target)
-    if read_value(device, target) != expected["expected"]:
-        raise RuntimeError("Lifestyle Name did not survive process restart")
+    if (
+        read_value(device, target, "lifestylename", "Lifestyle Name") != expected["expected"]
+        or read_value(device, target, "notes", "Notes") != expected["expected_notes"]
+        or read_value(device, target, "notescolor", "Notes Color") != expected["expected_notes_color"]
+    ):
+        raise RuntimeError("Lifestyle Name/Notes did not survive process restart")
     device.capture(f"lifestyle-name-{profile}-after-process-restart")
 
 
@@ -234,8 +266,11 @@ def main() -> int:
         "journeys": {
             "creationLifestyleNameEdited": "pass",
             "careerLifestyleNameEdited": "pass",
+            "creationLifestyleNotesAndColorEdited": "pass",
+            "careerLifestyleNotesAndColorEdited": "pass",
             "sameSessionAndProcessRestartReadback": "pass",
             "notesAndNotesColorPreserved": "pass",
+            "notesAndNotesColorChangedAtomically": "pass",
             "blankAllowedAndLegacyLengthBoundBySourceContract": "pass",
         },
     }

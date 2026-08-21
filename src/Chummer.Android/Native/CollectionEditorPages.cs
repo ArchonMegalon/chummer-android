@@ -140,10 +140,12 @@ public sealed class CollectionItemEditorPage : NativePageBase
 
     private void AddTextField(WorkspaceCollectionTextValueState value)
     {
-        string label = _target.Kind == WorkspaceCollectionKind.Lifestyle
-            && value.Field == WorkspaceCollectionTextField.CustomName
-                ? "Lifestyle Name"
-                : RunnerSessionCoordinator.HumanizeId(value.Field.ToString());
+        string label = (_target.Kind, value.Field) switch
+        {
+            (WorkspaceCollectionKind.Lifestyle, WorkspaceCollectionTextField.CustomName) => "Lifestyle Name",
+            (WorkspaceCollectionKind.Lifestyle, WorkspaceCollectionTextField.NotesColor) => "Notes Color",
+            _ => RunnerSessionCoordinator.HumanizeId(value.Field.ToString())
+        };
         VerticalStackLayout field = new() { Spacing = 5 };
         field.Add(NativeTheme.FieldLabel(value.IsRequired ? $"{label} · required" : label));
         string automationId = $"collection-field-{TextFieldToken(_target.Kind, value.Field)}-{TargetToken()}";
@@ -160,6 +162,11 @@ public sealed class CollectionItemEditorPage : NativePageBase
             Entry entry = NativeTheme.TextField(automationId, value.Value);
             entry.MaxLength = value.MaximumLength;
             entry.IsEnabled = value.IsEnabled;
+            if (_target.Kind == WorkspaceCollectionKind.Lifestyle
+                && value.Field == WorkspaceCollectionTextField.NotesColor)
+            {
+                entry.Placeholder = "#RRGGBB, #AARRGGBB, or a known HTML color";
+            }
             field.Add(entry);
             input = entry;
         }
@@ -1104,6 +1111,8 @@ public sealed class CollectionItemEditorPage : NativePageBase
         {
             (_, WorkspaceCollectionTextField.GearName) => "gearname",
             (WorkspaceCollectionKind.Lifestyle, WorkspaceCollectionTextField.CustomName) => "lifestylename",
+            (WorkspaceCollectionKind.Lifestyle, WorkspaceCollectionTextField.Notes) => "notes",
+            (WorkspaceCollectionKind.Lifestyle, WorkspaceCollectionTextField.NotesColor) => "notescolor",
             _ => Token(field.ToString())
         };
 

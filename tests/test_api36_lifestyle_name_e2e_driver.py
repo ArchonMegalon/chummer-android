@@ -19,6 +19,10 @@ class Api36LifestyleNameDriverTests(unittest.TestCase):
         for marker in (
             '"CharacterCreate.tsLifestyleName"',
             '"CharacterCareer.tsLifestyleName"',
+            '"CharacterCreate.tsLifestyleNotes"',
+            '"CharacterCareer.tsLifestyleNotes"',
+            '"CharacterCreate.tsAdvancedLifestyleNotes"',
+            '"CharacterCareer.tsAdvancedLifestyleNotes"',
             '"profile": "phone"',
             '"journey": "lifestyle-name"',
             'api != "36"',
@@ -32,6 +36,9 @@ class Api36LifestyleNameDriverTests(unittest.TestCase):
             '"sectionServiceSha256"',
             '"workspaceStoreSha256"',
             '"notesAndNotesColorPreserved": "pass"',
+            '"notesAndNotesColorChangedAtomically": "pass"',
+            '"collection-field-notes-{target}"',
+            '"collection-field-notescolor-{target}"',
         ):
             self.assertIn(marker, source)
         self.assertGreaterEqual(source.count('device.shell("am", "force-stop"'), 1)
