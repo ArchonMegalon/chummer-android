@@ -676,6 +676,28 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("XPath", page + coordinator)
         self.assertNotIn("<gearlocations", page + coordinator)
 
+    def test_weapon_location_add_is_revision_bound_phone_deep_navigation(self) -> None:
+        flow = (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8")
+        page = (PROJECT / "Native" / "WeaponLocationAddPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+
+        self.assertIn('case "weaponlocations"', flow)
+        self.assertIn("new WeaponLocationAddPage", flow)
+        self.assertIn('automationId: "weapon-location-open-add"', flow)
+        self.assertIn('AutomationId = "weapon-location-name"', page)
+        self.assertIn('AutomationId = "weapon-location-add"', page)
+        self.assertIn("WeaponLocationAddRequest.MaximumNameLength", page)
+        self.assertIn("_workspaceId", page)
+        self.assertIn("_contentRevision", page)
+        self.assertIn("Coordinator.ApplyWeaponLocationAddAsync", page)
+        self.assertIn("State.WorkspaceId != request.WorkspaceId", coordinator)
+        self.assertIn("State.ContentRevision != request.ExpectedContentRevision", coordinator)
+        self.assertIn("_presenter.ApplyWeaponLocationAddAsync", coordinator)
+        self.assertIn("await _presenter.SaveAsync", coordinator)
+        self.assertNotIn("XDocument", page + coordinator)
+        self.assertNotIn("XPath", page + coordinator)
+        self.assertNotIn("<weaponlocations", page + coordinator)
+
     def test_location_rename_is_typed_stable_revision_bound_phone_navigation(self) -> None:
         flow = (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8")
         page = (PROJECT / "Native" / "LocationRenamePage.cs").read_text(encoding="utf-8")

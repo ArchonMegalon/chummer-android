@@ -557,6 +557,28 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public async Task ApplyWeaponLocationAddAsync(
+        WeaponLocationAddRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Add Weapon Location was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyWeaponLocationAddAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Weapon location added." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public async Task ApplyLocationRenameAsync(
         LocationRenameRequest request,
         CancellationToken cancellationToken = default)

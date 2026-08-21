@@ -66,22 +66,37 @@ public sealed class BuildSectionPage : NativePageBase
 
     private void AddLocationActions()
     {
-        if (!string.Equals(Coordinator.State.ActiveSectionId, "gearlocations", StringComparison.Ordinal)
-            || Coordinator.State.WorkspaceId is not { } workspaceId)
+        if (Coordinator.State.WorkspaceId is not { } workspaceId)
         {
             return;
         }
 
         long contentRevision = Coordinator.State.ContentRevision;
-        _body.Add(NativeTheme.Eyebrow("Edit"));
-        _body.Add(NativeTheme.NavigationRow(
-            "Add gear location",
-            "Create a named container for this runner's gear",
-            () => Navigation.PushAsync(new GearLocationAddPage(
-                Coordinator,
-                workspaceId,
-                contentRevision)),
-            automationId: "gear-location-open-add"));
+        switch (Coordinator.State.ActiveSectionId)
+        {
+            case "gearlocations":
+                _body.Add(NativeTheme.Eyebrow("Edit"));
+                _body.Add(NativeTheme.NavigationRow(
+                    "Add gear location",
+                    "Create a named container for this runner's gear",
+                    () => Navigation.PushAsync(new GearLocationAddPage(
+                        Coordinator,
+                        workspaceId,
+                        contentRevision)),
+                    automationId: "gear-location-open-add"));
+                break;
+            case "weaponlocations":
+                _body.Add(NativeTheme.Eyebrow("Edit"));
+                _body.Add(NativeTheme.NavigationRow(
+                    "Add weapon location",
+                    "Create a named container for this runner's weapons",
+                    () => Navigation.PushAsync(new WeaponLocationAddPage(
+                        Coordinator,
+                        workspaceId,
+                        contentRevision)),
+                    automationId: "weapon-location-open-add"));
+                break;
+        }
     }
 
     private void AddSectionActions()

@@ -14,11 +14,11 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 534,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 338,
+      "implemented_pending_emulator": 340,
       "implemented_verified_api36": 79,
       "missing": 1097,
       "not_applicable_non_mutating": 459,
-      "partial_create_only": 110,
+      "partial_create_only": 108,
       "partial_exact_saved_data": 146
     },
     "tabletStatusCounts": {
@@ -72,7 +72,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildFlowPages.cs",
         "exists": true,
-        "sha256": "410038039bda5e04a2e52a83382a6b1a72e6abb67602740c90c6c8088b64d7e2"
+        "sha256": "dd813406cd172b9dd4a0fc8b60d43aa9068c9c8b6fbc04ae1f1d19a23243f707"
       },
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
@@ -103,6 +103,11 @@
         "path": "src/Chummer.Android/Native/GearLocationAddPage.cs",
         "exists": true,
         "sha256": "dd94a3649a3bd58da26d8d9afa09a5c8daa43e2ebe4eabe96c35c15ebd1dd6c8"
+      },
+      {
+        "path": "src/Chummer.Android/Native/WeaponLocationAddPage.cs",
+        "exists": true,
+        "sha256": "7c094ab5c0ae67b6945712eaa87b5415e01b8b5f3330a7ad23c2ea0f07490994"
       },
       {
         "path": "src/Chummer.Android/Native/LocationRenamePage.cs",
@@ -142,7 +147,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "5a61a61ee0c7abd6e8a209e3c4faa5bb0297631d1df3c1465bec7a47601f1afe"
+        "sha256": "88d51a6853d30435bb5784b2cc2313dadef0d8396054f70953550b5f0153aa2f"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -183,6 +188,11 @@
         "path": "tests/run_api36_gear_location_e2e.py",
         "exists": true,
         "sha256": "aa47940684d723878094cfd65550576c1a47471bda288c5a05828ec323107d62"
+      },
+      {
+        "path": "tests/run_api36_weapon_location_e2e.py",
+        "exists": true,
+        "sha256": "1a8829dad201461349616169f4c14274975b5a97481c386cd4166751d1da566f"
       },
       {
         "path": "tests/run_api36_location_rename_e2e.py",
@@ -293,6 +303,16 @@
         "path": "tests/fixtures/career-gear-location-e2e.chum5",
         "exists": true,
         "sha256": "b9373109a7ad395d7862b335f03ef683ceb7bf9aea443de76f8eb4ee9204b238"
+      },
+      {
+        "path": "tests/fixtures/creation-weapon-location-e2e.chum5",
+        "exists": true,
+        "sha256": "2348b7c616290c01b4b63b1d2018512c4c063eafd7e08408183cf0e5c09f09fa"
+      },
+      {
+        "path": "tests/fixtures/career-weapon-location-e2e.chum5",
+        "exists": true,
+        "sha256": "7a3ad1f080a6ebc27b0d2ddc2e88f699413e71b111936e58a760ce2c109b65f3"
       },
       {
         "path": "tests/fixtures/creation-location-rename-e2e.chum5",
@@ -420,6 +440,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-weapon-location-add/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-location-rename/receipt.json",
         "exists": false,
         "sha256": null
@@ -492,7 +517,7 @@
       {
         "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "39d7feca56c906995dd663121b68ddb2bab8d8f29c5b536206cafb229f551429"
+        "sha256": "80a666391af97a5751a129ce0864ca6703dfac2fda3d0ae6ea4d6b06de08456c"
       },
       {
         "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -513,6 +538,11 @@
         "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/GearLocationAddRequest.cs",
         "exists": true,
         "sha256": "f889362153034f6f8e61367c31d995720a04982ba264914db59f7095cd1eba65"
+      },
+      {
+        "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/WeaponLocationAddRequest.cs",
+        "exists": true,
+        "sha256": "cd793ac4258beb2a98c1759c727d047ced979e82c625868fc5f3a3bf84046ca1"
       },
       {
         "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceLocationEditorState.cs",
@@ -592,7 +622,7 @@
       {
         "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "3f1ab701ca7ed4ff582caa66a549456bc4839d36553f0565f77953d2d7aaf76c"
+        "sha256": "c6c580927c6deb0db44f40fab00adc137d4d72894acc77c202c7477758e41a1e"
       },
       {
         "path": ".state/android-gear-location-composite-20260821/chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -602,7 +632,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "450a5601110e5b99923f1e209006d00526fbc012d2909ecb394333bfc28c82e3"
+      "sha256": "0a83b035f5a0afa9b15d69d78583c425c0e9fa5fe7a44e43a11a7f6443c8676a"
     }
   },
   "coverageByFamily": {
@@ -29196,11 +29226,20 @@
       "mutationFamily": "weapons",
       "operation": "add",
       "phone": {
-        "status": "partial_create_only",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Weapon Locations > Add weapon location",
+        "surface": "WeaponLocationAddPage",
+        "automationId": "weapon-location-add",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/WeaponLocationAddPage.cs",
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WeaponLocationAddRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 top-level WeaponLocations add only; selected-vehicle nested locations and item-into-location actions remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -29208,12 +29247,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "workspace quick-add mutation",
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyWeaponLocationAddAsync(WeaponLocationAddRequest)",
+      "persistenceAssertion": "one new stable-guid character/weaponlocations/location preserves the exact nonempty name and empty notes while existing locations remain unchanged after save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_weapon_location_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -55431,11 +55470,20 @@
       "mutationFamily": "weapons",
       "operation": "add",
       "phone": {
-        "status": "partial_create_only",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Weapon Locations > Add weapon location",
+        "surface": "WeaponLocationAddPage",
+        "automationId": "weapon-location-add",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/WeaponLocationAddPage.cs",
+          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WeaponLocationAddRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 top-level WeaponLocations add only; selected-vehicle nested locations and item-into-location actions remain separately inventoried."
       },
       "tablet": {
         "status": "missing",
@@ -55443,12 +55491,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "workspace quick-add mutation",
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyWeaponLocationAddAsync(WeaponLocationAddRequest)",
+      "persistenceAssertion": "one new stable-guid character/weaponlocations/location preserves the exact nonempty name and empty notes while existing locations remain unchanged after save, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_weapon_location_e2e.py"
         },
         "tablet": {
           "status": "missing",

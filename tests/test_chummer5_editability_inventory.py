@@ -306,6 +306,34 @@ namespace Chummer
             )
             self.assertFalse(row["completionProven"])
 
+        weapon_locations = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.WEAPON_LOCATION_ADD_CONTROL
+        ]
+        self.assertEqual(2, len(weapon_locations))
+        for row in weapon_locations:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Gear > Weapon Locations > Add weapon location",
+                row["phone"]["route"],
+            )
+            self.assertEqual("WeaponLocationAddPage", row["phone"]["surface"])
+            self.assertEqual("weapon-location-add", row["phone"]["automationId"])
+            self.assertEqual(
+                "ICharacterOverviewPresenter.ApplyWeaponLocationAddAsync(WeaponLocationAddRequest)",
+                row["presenterMutation"],
+            )
+            self.assertIn("stable-guid", row["persistenceAssertion"])
+            self.assertIn("existing locations remain unchanged", row["persistenceAssertion"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_weapon_location_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
         location_renames = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -907,11 +935,11 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 338,
+                "implemented_pending_emulator": 340,
                 "implemented_verified_api36": 79,
                 "missing": 1097,
                 "not_applicable_non_mutating": 459,
-                "partial_create_only": 110,
+                "partial_create_only": 108,
                 "partial_exact_saved_data": 146,
             },
             payload["summary"]["phoneStatusCounts"],
