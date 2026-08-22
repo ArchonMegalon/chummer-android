@@ -404,6 +404,15 @@ CAPTURE_ONLY_PHONE_E2E_SOURCE_PATHS: dict[str, tuple[str, str]] = {
         "Chummer.Presentation/Overview/CareerManualNuyenEditRequest.cs",
     ),
     "careerManualNuyenRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterCareerManualNuyenRules.cs"),
+    "careerCreateExpensePageSha256": ("android", "src/Chummer.Android/Native/CareerCreateExpensePage.cs"),
+    "careerCreateExpenseContractSha256": (
+        "presentation",
+        "Chummer.Presentation/Overview/CareerCreateExpenseEditRequest.cs",
+    ),
+    "careerCreateExpenseRulesSha256": (
+        "core",
+        "Chummer.Contracts/Characters/CharacterCareerCreateExpenseRules.cs",
+    ),
     "cyberwareCommercePageSha256": ("android", "src/Chummer.Android/Native/CyberwareCommercePage.cs"),
     "commerceContractSha256": ("presentation", "Chummer.Presentation/Overview/CyberwareCommerceRequest.cs"),
     "commerceRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterCyberwareCommerceRules.cs"),
@@ -2145,6 +2154,59 @@ CAREER_MANUAL_NUYEN_CONTROLS = {
         "spend",
         "career-manual-nuyen-spend",
     ),
+}
+CREATE_EXPENSE_CONTROLS = {
+    "nudAmount": "career-create-expense-amount",
+    "txtDescription": "career-create-expense-description",
+    "cmdOK": "career-create-expense-ok",
+    "chkRefund": "career-create-expense-refund",
+    "datDate": "career-create-expense-date",
+    "nudPercent": "career-create-expense-percent",
+    "chkKarmaNuyenExchange": "career-create-expense-exchange",
+    "chkForceCareerVisible": "career-create-expense-force-career-visible",
+}
+CREATE_EXPENSE_LEGACY_AUTHORITY = {
+    "revision": "fe4355d06c98cd9b7feade89f5fc1a0e438f7ce3",
+    "fileDigests": {
+        "Chummer/Forms/Creation Forms/CreateExpense.Designer.cs": (
+            "9067bf7d24570afb97ae1da487e9c3c5d67a719b7cbe8f64c164ccf39b7af2c0"
+        ),
+        "Chummer/Forms/Creation Forms/CreateExpense.cs": (
+            "c258ff16c49954aaf729a1df864f5b6b0c456cb50721d77e5421ea2eb9718b72"
+        ),
+        "Chummer/Forms/Character Forms/CharacterCareer.cs": (
+            "b1f58def07884877638e7c31a5af194a5ce8869c0020447154f827ba56e813ea"
+        ),
+        "Chummer/Backend/Uniques/Expenses.cs": (
+            "5a8376ffb23f57f2206ca1d23493220b1c0efd4bd3ffdaf85506ca15de9738e8"
+        ),
+        "Chummer/Backend/Character Settings/CharacterSettings.cs": (
+            "5fae3d58aa0b0c30920bc4180430ab56250521e5b8db21097b0b9460f74ef943"
+        ),
+    },
+    "methodDigests": {
+        ("Chummer/Forms/Creation Forms/CreateExpense.cs", "cmdOK_Click"): (
+            "691d893616ef540e901c6f9e24ab45c1af4f63e0eda0b120d2955035f2e59c92"
+        ),
+        ("Chummer/Forms/Creation Forms/CreateExpense.cs", "chkKarmaNuyenExchange_CheckedChanged"): (
+            "04c7091589e783be38545cf085e63693481434ea2c0223084543e1d0817315f0"
+        ),
+        ("Chummer/Forms/Creation Forms/CreateExpense.cs", "CreateExpanse_Load"): (
+            "04f2725eaab2c67145573e9b5c4ee45baf62fe2759e409647aa3366520a72521"
+        ),
+        ("Chummer/Forms/Character Forms/CharacterCareer.cs", "cmdKarmaGained_Click"): (
+            "3c44c346cfc0781ee22a87cbe874dca11e2d121f4ebf490e9d20687a2a1d5fc7"
+        ),
+        ("Chummer/Forms/Character Forms/CharacterCareer.cs", "cmdKarmaSpent_Click"): (
+            "cf23e750b9d7fac29baa73146f59ed1662d5762ec29735cd69f5a5081be56f0f"
+        ),
+        ("Chummer/Forms/Character Forms/CharacterCareer.cs", "cmdNuyenGained_Click"): (
+            "3bf30e710358fa8dc6caffecc3da5208f1aeb31e18dac5b4fa87274d9d349d3a"
+        ),
+        ("Chummer/Forms/Character Forms/CharacterCareer.cs", "cmdNuyenSpent_Click"): (
+            "f7e67f6dc64a7e9b399a8bb18cbd539f321ec5ac2ea07cd027c0ddad6fa75954"
+        ),
+    },
 }
 CAREER_NUYEN_EXPENSE_EDIT_CONTROLS = {
     "cmdNuyenEdit": "career-nuyen-expense-save",
@@ -6496,6 +6558,29 @@ def _application_update_settings_legacy_authority(chummer5_root: Path) -> bool:
     return True
 
 
+def _create_expense_legacy_authority(chummer5_root: Path) -> bool:
+    """Authenticate CreateExpense controls, handlers, caller rules, and expense XML save/load."""
+
+    authority = CREATE_EXPENSE_LEGACY_AUTHORITY
+    if _git_value(chummer5_root, "rev-parse", "HEAD") != authority["revision"]:
+        return False
+    if _git_value(chummer5_root, "status", "--porcelain", "--untracked-files=no"):
+        return False
+
+    source_texts: dict[str, str] = {}
+    for relative, expected_digest in authority["fileDigests"].items():
+        path = chummer5_root / relative
+        if not path.is_file() or _sha256_file(path) != expected_digest:
+            return False
+        source_texts[relative] = path.read_bytes().decode("utf-8-sig")
+
+    for (relative, method_name), expected_digest in authority["methodDigests"].items():
+        source = source_texts.get(relative)
+        if source is None or _legacy_method_digest([source], method_name) != expected_digest:
+            return False
+    return True
+
+
 def _known_phone_mapping(
     row: dict[str, Any],
     chummer5_root: Path,
@@ -7475,6 +7560,206 @@ def _known_phone_mapping(
                 f"selected stable {kind} guid retains {xml_element} after save, reopen, and process restart"
             ),
             "e2e": {"status": "missing", "ref": None},
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "CreateExpense" and control in CREATE_EXPENSE_CONTROLS:
+        automation_id = CREATE_EXPENSE_CONTROLS[control]
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerCreateExpensePage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_career_create_expense_e2e.py"
+        fixture = REPO_ROOT / "tests" / "fixtures" / "career-manual-nuyen-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "CareerCreateExpenseEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        rules = (
+            character_notes_core_root
+            / "Chummer.Contracts"
+            / "Characters"
+            / "CharacterCareerCreateExpenseRules.cs"
+        )
+        source_resolver_contract = (
+            character_notes_core_root
+            / "Chummer.Application"
+            / "Characters"
+            / "ICharacterSourceDataResolver.cs"
+        )
+        source_resolver = (
+            character_notes_core_root
+            / "Chummer.Infrastructure"
+            / "Xml"
+            / "FileSystemCharacterSourceDataResolver.cs"
+        )
+        workspace_store = (
+            character_notes_core_root
+            / "Chummer.Infrastructure"
+            / "Workspaces"
+            / "FileWorkspaceStore.cs"
+        )
+        authority_exact = _create_expense_legacy_authority(chummer5_root)
+        implemented = (
+            authority_exact
+            and _contains(
+                page,
+                "class CareerCreateExpenseMenuPage",
+                "class CareerCreateExpensePage",
+                'AutomationId = "career-create-expense-page"',
+                f'"{automation_id}"',
+                '"career-create-expense-time"',
+                '"career-create-expense-karma-gained"',
+                '"career-create-expense-karma-spent"',
+                '"career-create-expense-nuyen-gained"',
+                '"career-create-expense-nuyen-spent"',
+                "CharacterCareerCreateExpenseRules.ExchangeReason",
+                "NuyenExchangeValidationRejected",
+                "NuyenExchangeCanonicalNoOp",
+                "CallerBalanceValidationRejected",
+                "do not save",
+                "Navigation.PopAsync",
+                "_editor.ContentRevision",
+            )
+            and _contains(
+                build_page,
+                'automationId: "build-career-create-expense"',
+                "new CareerCreateExpenseMenuPage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareCareerCreateExpenseEditAsync",
+                "ApplyCareerCreateExpenseEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CareerCreateExpenseEditorState",
+                "CareerCreateExpenseEditRequest",
+                "CharacterCareerCreateExpenseOperation Operation",
+                "CharacterCareerCreateExpenseState ExpectedState",
+                "ProjectState",
+            )
+            and _contains(
+                mutation,
+                "ApplyCareerCreateExpenseEdit",
+                "CharacterCareerCreateExpenseRules.TryEvaluateDialog",
+                "NuyenExchangeValidationRejected",
+                "NuyenExchangeCanonicalNoOp",
+                "ApplyCareerManualNuyenEdit",
+                "ApplyCareerManualKarmaEdit",
+            )
+            and _contains(
+                presenter,
+                "PrepareCareerCreateExpenseEditAsync",
+                "ApplyCareerCreateExpenseEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareCareerCreateExpenseEditAsync",
+                "ApplyCareerCreateExpenseEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                rules,
+                "CharacterCareerCreateExpenseOperation",
+                "CharacterCareerCreateExpenseState",
+                'DefaultReason = "Mission Reward"',
+                '=> "Working for the People"',
+                '=> "Working for the Man"',
+                "NuyenExchangeValidationRejected",
+                "NuyenExchangeCanonicalNoOp",
+                "decimal.Floor(dividend) == decimal.Ceiling(dividend)",
+            )
+            and _contains(
+                source_resolver_contract,
+                "TryResolveKarmaNuyenExchangeRates",
+                "workingForPeopleRate",
+                "workingForManRate",
+            )
+            and _contains(
+                source_resolver,
+                '"nuyenperbpwftp"',
+                '"nuyenperbpwftm"',
+                "TryReadPositiveDecimal",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                'api != "36"',
+                '"profile": "phone"',
+                '"journey": "career-create-expense"',
+                "LEGACY_REVISION",
+                "LEGACY_SOURCE_DIGESTS",
+                '"careerCreateExpenseRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"careerFixtureSha256"',
+                "NuyenExchangeCanonicalNoOp",
+            )
+            and fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Runner > Create expense > operation",
+            "surface": "CareerCreateExpensePage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CareerCreateExpensePage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CareerCreateExpenseEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerCreateExpenseRules.cs",
+                "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+                "tests/run_api36_career_create_expense_e2e.py",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCareerCreateExpenseEditAsync / "
+                "CareerCreateExpenseEditRequest on typed operation, workspace identity, and expected content revision"
+            ),
+            "persistenceAssertion": (
+                "exact signed balances, percentage, date, description, refund, exchange visibility, sorted expenses, "
+                "and undo metadata persist after one revision-bound atomic save, reopen, and process restart; back and "
+                "both canonical Nuyen-exchange outcomes perform no save"
+            ),
+            "coverageLimit": (
+                "Career phone only. Exact canonical Chummer5 fe4355d source, handler, caller, settings, and expense "
+                "save/load files are digest authenticated. Integral Nuyen exchange deliberately performs no mutation, "
+                "does not close, and leaves the editor open; a non-integral People-rate multiple shows validation. "
+                f"The API 36 phone driver is {'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_career_create_expense_e2e.py" if e2e_scripted else None,
+            },
             "tablet": {
                 "status": "missing",
                 "surface": None,
@@ -21746,6 +22031,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerEdgeUsePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerManualKarmaPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerManualNuyenPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerCreateExpensePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerNuyenExpensePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearLocationAddPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponLocationAddPage.cs",
@@ -21835,6 +22121,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_lifestyle_name_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_edge_use_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_manual_karma_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_career_create_expense_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_nuyen_expense_edit_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_location_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_location_e2e.py",
@@ -22054,6 +22341,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerEdgeUseRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualKarmaRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualNuyenRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerCreateExpenseRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerNuyenExpenseEditRules.cs",
         core_engine_root / "Chummer.Contracts" / "Workspaces" / "CharacterWorkspaceModels.cs",
         core_engine_root / "Chummer.Application" / "Characters" / "ICharacterSourceDataResolver.cs",
@@ -22076,6 +22364,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerEdgeUseEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerManualKarmaEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerManualNuyenEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CareerCreateExpenseEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerNuyenExpenseEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GearLocationAddRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponLocationAddRequest.cs",

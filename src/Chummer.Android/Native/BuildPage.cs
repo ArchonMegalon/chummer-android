@@ -318,6 +318,14 @@ public sealed class BuildPage : NativePageBase
                 },
                 automationId: "build-career-manual-karma"));
             _body.Add(NativeTheme.NavigationRow(
+                "Create expense",
+                "Choose a source-exact Karma/Nuyen gained or spent operation",
+                async () =>
+                {
+                    await Navigation.PushAsync(new CareerCreateExpenseMenuPage(Coordinator));
+                },
+                automationId: "build-career-create-expense"));
+            _body.Add(NativeTheme.NavigationRow(
                 "Manual Nuyen",
                 "Record dated Nuyen gained or spent, with percentage and optional Karma exchange",
                 async () =>

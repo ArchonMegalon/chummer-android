@@ -1609,6 +1609,33 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<CareerCreateExpenseEditorState?> PrepareCareerCreateExpenseEditAsync(
+        CharacterCareerCreateExpenseOperation operation,
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCareerCreateExpenseEditAsync(operation, cancellationToken);
+
+    public async Task ApplyCareerCreateExpenseEditAsync(
+        CareerCreateExpenseEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Create Expense was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyCareerCreateExpenseEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Expense saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<CareerNuyenExpenseEditorState?> PrepareCareerNuyenExpenseEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareCareerNuyenExpenseEditAsync(cancellationToken);

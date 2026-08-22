@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 553,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 469,
+      "implemented_pending_emulator": 477,
       "implemented_verified_api36": 79,
-      "missing": 925,
+      "missing": 917,
       "not_applicable_non_mutating": 478,
       "partial_create_only": 106,
       "partial_exact_saved_data": 172
@@ -81,7 +81,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "e3bd865c86918e0363fb7af3686af0005be1628835f134c541d17036a007d9a2"
+        "sha256": "378cb4505e5607f02d4ca22f0692a60404444b62f382b7c7830a6f198833bc77"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -252,6 +252,11 @@
         "path": "src/Chummer.Android/Native/CareerManualNuyenPage.cs",
         "exists": true,
         "sha256": "7d16eec58e05e3fcbf6dbbe786bf1ceba94fec3a8f02c49338a5dcb1cae68ce1"
+      },
+      {
+        "path": "src/Chummer.Android/Native/CareerCreateExpensePage.cs",
+        "exists": true,
+        "sha256": "fdc1d58d3e99294c529f24a82083572c42eed54a3dad1126ff747a122e339740"
       },
       {
         "path": "src/Chummer.Android/Native/CareerNuyenExpensePage.cs",
@@ -561,7 +566,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "486ae8011dbe529f6de9c3796f3053af41a48ff724acc671d3dd812f22d907fc"
+        "sha256": "4e97453d096cb9b28e52b8236aa42a2091b0653f9f198bde10303d5f64ea4027"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -697,6 +702,11 @@
         "path": "tests/run_api36_career_manual_karma_e2e.py",
         "exists": true,
         "sha256": "56a426b2cb102a01e678b1771eedd9d2022c5f17f99a2be61de91ee1f2c908e8"
+      },
+      {
+        "path": "tests/run_api36_career_create_expense_e2e.py",
+        "exists": true,
+        "sha256": "5bef250533ef46225ee0fe4b98d6e131dec657ac0ba3ef4fc85d2e27a4cfca1a"
       },
       {
         "path": "tests/run_api36_career_nuyen_expense_edit_e2e.py",
@@ -1894,6 +1904,11 @@
         "sha256": "7d0a46446658b2f5ddf22ca55e7fbeb9c422b897d45fcb782f9ba5e9704ad207"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerCreateExpenseRules.cs",
+        "exists": true,
+        "sha256": "b161cf69cc2f07dbc89e4fa923aacabbd922c792436b42be40d23eaaf579d8ba"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerNuyenExpenseEditRules.cs",
         "exists": true,
         "sha256": "3e5a7ac5de667dd35ad0fdb70189a3e171e4867d7fd52c21426028657536254b"
@@ -1946,7 +1961,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "b61c3d4388584249556ffe0be25b379072cf413f86b251537297046f65d09142"
+        "sha256": "09d9bdd9d60834f1dbf63382376f2c98c4c5af1edf7db6927d9352efce8d06a0"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -2002,6 +2017,11 @@
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerManualNuyenEditRequest.cs",
         "exists": true,
         "sha256": "c6783b6fd4595aa4117bdc52ba3b512a77d49e7467dd225f45ad86251aa6d8b0"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/CareerCreateExpenseEditRequest.cs",
+        "exists": true,
+        "sha256": "18b0a762619a85afe31f473a16e31ea531eec6d67ea9e54c69eef5691cdf901e"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerNuyenExpenseEditRequest.cs",
@@ -2156,7 +2176,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "9bd52bd6d2df8f468de1cb08606048931725618ea1b1612c70cf538bd87c055c"
+        "sha256": "f9b8a8b6a066c471f92b605b5472fac1229cc5f81998c93edb1271c30a5ab0df"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2211,7 +2231,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "3bee65d02c90a1944cca28f5b5040ce19a3358e19181a14e6774f2ccc90a160c"
+        "sha256": "8e51fee4bdb94f7364144ce76a2dff64073356e96bda667e1654f58914b2a59b"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -2221,7 +2241,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "906b97480a438361904fd3a5b747cbd7e24e42342019ffa2a728f826e39807e7"
+      "sha256": "527b07b7e52709f7f7fd5aa60a096897fa5235c9243028dfd14d5ccf41d60f1c"
     }
   },
   "coverageByFamily": {
@@ -2361,7 +2381,7 @@
     "expenses": {
       "rowCount": 19,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 10,
+      "phoneMissingCount": 2,
       "tabletMissingCount": 15,
       "completionProvenCount": 4
     },
@@ -78864,11 +78884,26 @@
       "mutationFamily": "expenses",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Create expense > operation",
+        "surface": "CareerCreateExpensePage",
+        "automationId": "career-create-expense-amount",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerCreateExpensePage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerCreateExpenseEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerCreateExpenseRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+          "tests/run_api36_career_create_expense_e2e.py"
+        ],
+        "coverageLimit": "Career phone only. Exact canonical Chummer5 fe4355d source, handler, caller, settings, and expense save/load files are digest authenticated. Integral Nuyen exchange deliberately performs no mutation, does not close, and leaves the editor open; a non-integral People-rate multiple shows validation. The API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -78876,12 +78911,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerCreateExpenseEditAsync / CareerCreateExpenseEditRequest on typed operation, workspace identity, and expected content revision",
+      "persistenceAssertion": "exact signed balances, percentage, date, description, refund, exchange visibility, sorted expenses, and undo metadata persist after one revision-bound atomic save, reopen, and process restart; back and both canonical Nuyen-exchange outcomes perform no save",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_create_expense_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -78916,11 +78951,26 @@
       "mutationFamily": "expenses",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Create expense > operation",
+        "surface": "CareerCreateExpensePage",
+        "automationId": "career-create-expense-description",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerCreateExpensePage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerCreateExpenseEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerCreateExpenseRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+          "tests/run_api36_career_create_expense_e2e.py"
+        ],
+        "coverageLimit": "Career phone only. Exact canonical Chummer5 fe4355d source, handler, caller, settings, and expense save/load files are digest authenticated. Integral Nuyen exchange deliberately performs no mutation, does not close, and leaves the editor open; a non-integral People-rate multiple shows validation. The API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -78928,12 +78978,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerCreateExpenseEditAsync / CareerCreateExpenseEditRequest on typed operation, workspace identity, and expected content revision",
+      "persistenceAssertion": "exact signed balances, percentage, date, description, refund, exchange visibility, sorted expenses, and undo metadata persist after one revision-bound atomic save, reopen, and process restart; back and both canonical Nuyen-exchange outcomes perform no save",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_create_expense_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -79030,11 +79080,26 @@
       "mutationFamily": "expenses",
       "operation": "commit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Create expense > operation",
+        "surface": "CareerCreateExpensePage",
+        "automationId": "career-create-expense-ok",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerCreateExpensePage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerCreateExpenseEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerCreateExpenseRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+          "tests/run_api36_career_create_expense_e2e.py"
+        ],
+        "coverageLimit": "Career phone only. Exact canonical Chummer5 fe4355d source, handler, caller, settings, and expense save/load files are digest authenticated. Integral Nuyen exchange deliberately performs no mutation, does not close, and leaves the editor open; a non-integral People-rate multiple shows validation. The API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -79042,12 +79107,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerCreateExpenseEditAsync / CareerCreateExpenseEditRequest on typed operation, workspace identity, and expected content revision",
+      "persistenceAssertion": "exact signed balances, percentage, date, description, refund, exchange visibility, sorted expenses, and undo metadata persist after one revision-bound atomic save, reopen, and process restart; back and both canonical Nuyen-exchange outcomes perform no save",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_create_expense_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -79082,11 +79147,26 @@
       "mutationFamily": "expenses",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Create expense > operation",
+        "surface": "CareerCreateExpensePage",
+        "automationId": "career-create-expense-refund",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerCreateExpensePage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerCreateExpenseEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerCreateExpenseRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+          "tests/run_api36_career_create_expense_e2e.py"
+        ],
+        "coverageLimit": "Career phone only. Exact canonical Chummer5 fe4355d source, handler, caller, settings, and expense save/load files are digest authenticated. Integral Nuyen exchange deliberately performs no mutation, does not close, and leaves the editor open; a non-integral People-rate multiple shows validation. The API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -79094,12 +79174,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerCreateExpenseEditAsync / CareerCreateExpenseEditRequest on typed operation, workspace identity, and expected content revision",
+      "persistenceAssertion": "exact signed balances, percentage, date, description, refund, exchange visibility, sorted expenses, and undo metadata persist after one revision-bound atomic save, reopen, and process restart; back and both canonical Nuyen-exchange outcomes perform no save",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_create_expense_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -79134,11 +79214,26 @@
       "mutationFamily": "expenses",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Create expense > operation",
+        "surface": "CareerCreateExpensePage",
+        "automationId": "career-create-expense-date",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerCreateExpensePage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerCreateExpenseEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerCreateExpenseRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+          "tests/run_api36_career_create_expense_e2e.py"
+        ],
+        "coverageLimit": "Career phone only. Exact canonical Chummer5 fe4355d source, handler, caller, settings, and expense save/load files are digest authenticated. Integral Nuyen exchange deliberately performs no mutation, does not close, and leaves the editor open; a non-integral People-rate multiple shows validation. The API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -79146,12 +79241,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerCreateExpenseEditAsync / CareerCreateExpenseEditRequest on typed operation, workspace identity, and expected content revision",
+      "persistenceAssertion": "exact signed balances, percentage, date, description, refund, exchange visibility, sorted expenses, and undo metadata persist after one revision-bound atomic save, reopen, and process restart; back and both canonical Nuyen-exchange outcomes perform no save",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_create_expense_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -79186,11 +79281,26 @@
       "mutationFamily": "expenses",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Create expense > operation",
+        "surface": "CareerCreateExpensePage",
+        "automationId": "career-create-expense-percent",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerCreateExpensePage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerCreateExpenseEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerCreateExpenseRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+          "tests/run_api36_career_create_expense_e2e.py"
+        ],
+        "coverageLimit": "Career phone only. Exact canonical Chummer5 fe4355d source, handler, caller, settings, and expense save/load files are digest authenticated. Integral Nuyen exchange deliberately performs no mutation, does not close, and leaves the editor open; a non-integral People-rate multiple shows validation. The API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -79198,12 +79308,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerCreateExpenseEditAsync / CareerCreateExpenseEditRequest on typed operation, workspace identity, and expected content revision",
+      "persistenceAssertion": "exact signed balances, percentage, date, description, refund, exchange visibility, sorted expenses, and undo metadata persist after one revision-bound atomic save, reopen, and process restart; back and both canonical Nuyen-exchange outcomes perform no save",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_create_expense_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -79243,11 +79353,26 @@
       "mutationFamily": "expenses",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Create expense > operation",
+        "surface": "CareerCreateExpensePage",
+        "automationId": "career-create-expense-exchange",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerCreateExpensePage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerCreateExpenseEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerCreateExpenseRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+          "tests/run_api36_career_create_expense_e2e.py"
+        ],
+        "coverageLimit": "Career phone only. Exact canonical Chummer5 fe4355d source, handler, caller, settings, and expense save/load files are digest authenticated. Integral Nuyen exchange deliberately performs no mutation, does not close, and leaves the editor open; a non-integral People-rate multiple shows validation. The API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -79255,12 +79380,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerCreateExpenseEditAsync / CareerCreateExpenseEditRequest on typed operation, workspace identity, and expected content revision",
+      "persistenceAssertion": "exact signed balances, percentage, date, description, refund, exchange visibility, sorted expenses, and undo metadata persist after one revision-bound atomic save, reopen, and process restart; back and both canonical Nuyen-exchange outcomes perform no save",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_create_expense_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -79295,11 +79420,26 @@
       "mutationFamily": "expenses",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Create expense > operation",
+        "surface": "CareerCreateExpensePage",
+        "automationId": "career-create-expense-force-career-visible",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerCreateExpensePage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerCreateExpenseEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerCreateExpenseRules.cs",
+          "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+          "tests/run_api36_career_create_expense_e2e.py"
+        ],
+        "coverageLimit": "Career phone only. Exact canonical Chummer5 fe4355d source, handler, caller, settings, and expense save/load files are digest authenticated. Integral Nuyen exchange deliberately performs no mutation, does not close, and leaves the editor open; a non-integral People-rate multiple shows validation. The API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -79307,12 +79447,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerCreateExpenseEditAsync / CareerCreateExpenseEditRequest on typed operation, workspace identity, and expected content revision",
+      "persistenceAssertion": "exact signed balances, percentage, date, description, refund, exchange visibility, sorted expenses, and undo metadata persist after one revision-bound atomic save, reopen, and process restart; back and both canonical Nuyen-exchange outcomes perform no save",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_create_expense_e2e.py"
         },
         "tablet": {
           "status": "missing",
