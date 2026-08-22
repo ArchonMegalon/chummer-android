@@ -106,13 +106,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t bundles < <(
-            find chummer-android/src/Chummer.Android/bin/Release/net10.0-android36.0/android-arm64/publish \
-              -maxdepth 1 -type f -name '*.aab' -print
-          )
-          test "${#bundles[@]}" -eq 1
+          source_aab="chummer-android/src/Chummer.Android/bin/Release/net10.0-android36.0/android-arm64/publish/com.myexternalbrain.chummer.aab"
+          test -f "$source_aab"
           install -d -m 0755 "$RUNNER_TEMP/chummer-preview9-aab"
-          install -m 0644 "${bundles[0]}" "$RUNNER_TEMP/chummer-preview9-aab/chummer-android-0.1.0-preview.9-unsigned.aab"
+          install -m 0644 "$source_aab" "$RUNNER_TEMP/chummer-preview9-aab/chummer-android-0.1.0-preview.9-unsigned.aab"
           sha256sum "$RUNNER_TEMP/chummer-preview9-aab/chummer-android-0.1.0-preview.9-unsigned.aab" \
             >"$RUNNER_TEMP/chummer-preview9-aab/chummer-android-0.1.0-preview.9-unsigned.aab.sha256"
 
