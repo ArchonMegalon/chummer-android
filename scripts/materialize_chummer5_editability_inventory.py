@@ -582,6 +582,33 @@ CAPTURE_ONLY_PHONE_E2E_DEFINITIONS: dict[str, dict[str, Any]] = {
             "newestValidBackupRecovery", "characterDocumentPreserved",
         ),
     },
+    "application-index-visibility-settings": {
+        "driver": "tests/run_api36_application_index_visibility_settings_e2e.py",
+        "fixtures": (
+            ("runnerFixtureSha256", "tests/fixtures/application-index-visibility-settings-e2e.chum5"),
+        ),
+        "sourceKeys": (
+            "applicationSettingsPageSha256", "homePageSha256", "coordinatorSha256",
+            "mauiProgramSha256", "applicationSettingsPresenterSha256",
+            "applicationSettingsContractSha256", "applicationSettingsRulesSha256",
+            "applicationSettingsStoreSha256",
+        ),
+        "controls": (
+            "EditGlobalSettings.chkHideMasterIndex",
+            "EditGlobalSettings.chkHideCharacterRoster",
+        ),
+        "proofKeys": (
+            "exactLegacySourceAuthority", "legacyRegistryIdentity", "legacyDefaultFalse",
+            "independentBooleanValues", "draftBackDoesNotPersist", "typedSettingIdentity",
+            "wholePageExpectedRevisionCas", "singleAtomicSave", "processRestartReadback",
+            "newestValidBackupRecovery", "characterDocumentPreserved",
+        ),
+        "journeys": (
+            "legacyDefaults", "draftDiscardedOnBack", "explicitWholeSnapshotSave",
+            "independentValueSave", "processRestartReadback", "atomicPreviousSnapshotBackup",
+            "newestValidBackupRecovery", "characterDocumentPreserved",
+        ),
+    },
     "gear-name": {
         "driver": "tests/run_api36_gear_name_e2e.py",
         "fixtures": (
@@ -1848,6 +1875,41 @@ APPLICATION_DATE_TIME_CONTROLS = {
     "txtDateFormat": "settings-date-format",
     "txtTimeFormat": "settings-time-format",
     "chkDatesIncludeTime": "settings-dates-include-time",
+}
+APPLICATION_INDEX_VISIBILITY_CONTROLS = {
+    "chkHideMasterIndex": "settings-hide-master-index",
+    "chkHideCharacterRoster": "settings-hide-character-roster",
+}
+APPLICATION_INDEX_VISIBILITY_LEGACY_AUTHORITY = {
+    "revision": "fe4355d06c98cd9b7feade89f5fc1a0e438f7ce3",
+    "fileDigests": {
+        "Chummer/Forms/EditGlobalSettings.Designer.cs": (
+            "8b5070f37ee7231fec6b4a1c01525845d23c15342942c5300025f3f7bf9df88a"
+        ),
+        "Chummer/Forms/EditGlobalSettings.cs": (
+            "69252752f1d75c32392407f88f8627e7ec802087870ff0415dd42d7d2d6d565e"
+        ),
+        "Chummer/Backend/Static/GlobalSettings.cs": (
+            "bf22d91a6ba2d3b24092fa70d00c08d92b62a519ac59dc28fd51c64beb05a577"
+        ),
+    },
+    "methodDigests": {
+        ("Chummer/Forms/EditGlobalSettings.cs", "PopulateOptions"): (
+            "3003316b73ee852b7a9fb9a81e396b73b696fc0391bce0da96da18627172659d"
+        ),
+        ("Chummer/Forms/EditGlobalSettings.cs", "SaveGlobalOptions"): (
+            "42e4e472e700e3133bd74ff13304a0bf98617584454198ccb4703a4ba96a26d2"
+        ),
+        ("Chummer/Forms/EditGlobalSettings.cs", "SaveRegistrySettings"): (
+            "d176877f4237adf5b73a070411b827b846828b77da684c2d6dc7cc4d2bbac9b8"
+        ),
+        ("Chummer/Backend/Static/GlobalSettings.cs", "LoadBoolFromRegistry"): (
+            "dab70eaa3c420fa64383a7c67dc834b09dab1cb9cb04abf8777434cbc8c7f73a"
+        ),
+        ("Chummer/Backend/Static/GlobalSettings.cs", "SaveOptionsToRegistry"): (
+            "eebdf053b1e324955a070eb5e33127cbd0d84d57df17de1ac44ddf15b5f28787"
+        ),
+    },
 }
 GROUP_NAME_CONTROL = "txtGroupName"
 TRADITION_NAME_CONTROL = "txtTraditionName"
@@ -6103,6 +6165,30 @@ def _android_token(value: str) -> str:
     return "".join(character if character.isalnum() else "-" for character in value.strip().lower())
 
 
+def _application_index_visibility_legacy_authority(chummer5_root: Path) -> bool:
+    """Authenticate the exact Chummer5 default/load/save chain for the two adjacent booleans."""
+
+    authority = APPLICATION_INDEX_VISIBILITY_LEGACY_AUTHORITY
+    if _git_value(chummer5_root, "rev-parse", "HEAD") != authority["revision"]:
+        return False
+    if _git_value(chummer5_root, "status", "--porcelain", "--untracked-files=no"):
+        return False
+
+    source_texts: dict[str, str] = {}
+    for relative, expected_digest in authority["fileDigests"].items():
+        path = chummer5_root / relative
+        if not path.is_file() or _sha256_file(path) != expected_digest:
+            return False
+        if relative.endswith(".cs"):
+            source_texts[relative] = path.read_bytes().decode("utf-8-sig")
+
+    for (relative, method_name), expected_digest in authority["methodDigests"].items():
+        source = source_texts.get(relative)
+        if source is None or _legacy_method_digest([source], method_name) != expected_digest:
+            return False
+    return True
+
+
 def _known_phone_mapping(
     row: dict[str, Any],
     chummer5_root: Path,
@@ -8017,6 +8103,148 @@ def _known_phone_mapping(
             "e2e": {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_application_date_time_settings_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "EditGlobalSettings" and control in APPLICATION_INDEX_VISIBILITY_CONTROLS:
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ApplicationSettingsPage.cs"
+        home_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "HomePage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        maui_program = REPO_ROOT / "src" / "Chummer.Android" / "MauiProgram.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_application_index_visibility_settings_e2e.py"
+        fixture = REPO_ROOT / "tests" / "fixtures" / "application-index-visibility-settings-e2e.chum5"
+        presenter = presentation_root / "Chummer.Presentation" / "Overview" / "ApplicationDeleteConfirmationPresenter.cs"
+        contract = character_notes_core_root / "Chummer.Contracts" / "Api" / "ApplicationDeleteConfirmationContracts.cs"
+        rules = character_notes_core_root / "Chummer.Application" / "Tools" / "ApplicationDeleteConfirmationRules.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure" / "Files" / "FileApplicationDeleteConfirmationStore.cs"
+        automation_id = APPLICATION_INDEX_VISIBILITY_CONTROLS[control]
+        legacy_authority = _application_index_visibility_legacy_authority(chummer5_root)
+        implemented = (
+            legacy_authority
+            and _contains(
+                page,
+                "class ApplicationSettingsPage",
+                'AutomationId = "settings-hide-master-index"',
+                'AutomationId = "settings-hide-character-roster"',
+                "_baseline.HideMasterIndex",
+                "_baseline.HideCharacterRoster",
+                "SaveApplicationSettingsAsync",
+                "_baseline.Revision",
+            )
+            and _contains(home_page, 'AutomationId = "home-application-settings"', "new ApplicationSettingsPage")
+            and _contains(
+                coordinator,
+                "SaveApplicationSettingsAsync",
+                "ApplicationSettingsSnapshotMutation",
+                "ApplicationSettingIdentity.HideMasterIndex",
+                "ApplicationSettingIdentity.HideCharacterRoster",
+                "expectedRevision",
+                "_applicationSettingsPresenter.ApplySettingsSnapshot",
+            )
+            and _contains(
+                maui_program,
+                "IApplicationDeleteConfirmationStore",
+                "FileApplicationDeleteConfirmationStore",
+                "ApplicationDeleteConfirmationPresenter",
+            )
+            and _contains(
+                presenter,
+                "ApplySettingsSnapshot",
+                "ApplicationDeleteConfirmationRules.ApplySettingsSnapshot",
+                "_store.Save(mutation.ExpectedRevision, updated)",
+            )
+            and _contains(
+                contract,
+                "ApplicationSettingIdentity",
+                "HideMasterIndex",
+                "HideCharacterRoster",
+                "ApplicationSettingValue<T>",
+                "ApplicationSettingsSnapshotMutation",
+                "ExpectedRevision",
+            )
+            and _contains(
+                rules,
+                'LegacyHideMasterIndexIdentity = "hidemasterindex"',
+                'LegacyHideCharacterRosterIdentity = "hidecharacterroster"',
+                "RequireIdentity(mutation.HideMasterIndex, ApplicationSettingIdentity.HideMasterIndex)",
+                "RequireIdentity(mutation.HideCharacterRoster, ApplicationSettingIdentity.HideCharacterRoster)",
+                "HideMasterIndex = mutation.HideMasterIndex.Value",
+                "HideCharacterRoster = mutation.HideCharacterRoster.Value",
+                "mutation.ExpectedRevision != current.Revision",
+            )
+            and _contains(
+                store,
+                "application-delete-confirmation.json",
+                'TryGetProperty("HideMasterIndex"',
+                'TryGetProperty("HideCharacterRoster"',
+                "hideMasterIndex = false",
+                "hideCharacterRoster = false",
+                "primary.Revision >= backup.Revision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                'path + ".bak"',
+                "current.Revision != expectedRevision",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"EditGlobalSettings.chkHideMasterIndex"',
+                '"EditGlobalSettings.chkHideCharacterRoster"',
+                'api != "36"',
+                'abi != "arm64-v8a"',
+                '"profile": "phone"',
+                '"journey": "application-index-visibility-settings"',
+                'device.shell("pm", "path", shared.PACKAGE)',
+                '"applicationSettingsStoreSha256"',
+                '"runnerFixtureSha256"',
+                'device.shell("am", "force-stop"',
+            )
+            and fixture.is_file()
+        )
+        control_label = {
+            "chkHideMasterIndex": "Hide the Master Index",
+            "chkHideCharacterRoster": "Hide the Character Roster",
+        }[control]
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": f"Home > Application settings > Navigation visibility > {control_label} > Save",
+            "surface": "ApplicationSettingsPage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+                "src/Chummer.Android/Native/HomePage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "src/Chummer.Android/MauiProgram.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+                "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs",
+            ],
+            "presenterMutation": (
+                "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)"
+            ),
+            "persistenceAssertion": (
+                "the two typed legacy booleans default false, load and save independently under hidemasterindex and "
+                "hidecharacterroster, have no dependency or validation beyond the Boolean domain, and share the "
+                "page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and "
+                "primary/.bak recovery; Back performs no write and character XML remains byte-independent"
+            ),
+            "coverageLimit": (
+                "Phone application settings only for chkHideMasterIndex and chkHideCharacterRoster, authenticated "
+                "against exact canonical Chummer5 revision and source/load/save digests. No other Global Settings "
+                "or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 phone "
+                f"driver is {'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_application_index_visibility_settings_e2e.py" if e2e_scripted else None,
             },
             "tablet": {
                 "status": "missing",
@@ -20107,6 +20335,8 @@ def build_inventory(
         core_engine_root / "Chummer.Infrastructure" / "Files" / "FileApplicationDeleteConfirmationStore.cs",
         REPO_ROOT / "tests" / "run_api36_application_date_time_settings_e2e.py",
         REPO_ROOT / "tests" / "fixtures" / "application-date-time-settings-e2e.chum5",
+        REPO_ROOT / "tests" / "run_api36_application_index_visibility_settings_e2e.py",
+        REPO_ROOT / "tests" / "fixtures" / "application-index-visibility-settings-e2e.chum5",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterRosterFavoritePresenter.cs",
         core_engine_root / "Chummer.Contracts" / "Api" / "CharacterRosterFavoriteContracts.cs",
         core_engine_root / "Chummer.Application" / "Tools" / "CharacterRosterFavoriteRules.cs",

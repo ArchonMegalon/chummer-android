@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 553,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 459,
+      "implemented_pending_emulator": 461,
       "implemented_verified_api36": 79,
-      "missing": 935,
+      "missing": 933,
       "not_applicable_non_mutating": 478,
       "partial_create_only": 106,
       "partial_exact_saved_data": 172
@@ -126,22 +126,22 @@
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
         "exists": true,
-        "sha256": "49c938061dd455952b1b18aa7fc0f5a3a4ad689ea605a221170330f2c7a0bfc8"
+        "sha256": "f2886a3f33344e34d8aabfd9e2398ad2daf4a0ae614426f770201d848021601a"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
         "exists": true,
-        "sha256": "debb64f54042286d73c52d075b9abe4b1dbae0c49e58afb15bd5df37d65b6cbd"
+        "sha256": "20f0009df50c5dd0dfc9b7b81e98ec4a4f09de6a4828de78b2f7af18f945674a"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
         "exists": true,
-        "sha256": "56ca258f29fb711555a00d48799a652340bd730a95cac4aab0d184ffb2642fb0"
+        "sha256": "941e17264d4cbfbda1c3870ae376d931cf37eb6e76794e1251d17c29cb2b7cbf"
       },
       {
         "path": "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
         "exists": true,
-        "sha256": "5037002ef9bacc828b70b5745f2a6549bdcdf1e06efd356b127db8abcf038cce"
+        "sha256": "e86de8cd24d951b3531eeae1de3bf94fdcdc79ab72f00e5e578bce51c6e5c53f"
       },
       {
         "path": "chummer-core-engine/Chummer.Application/Tools/IApplicationDeleteConfirmationStore.cs",
@@ -151,7 +151,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs",
         "exists": true,
-        "sha256": "132e24571d711e9b774209e12ebf637f0db0d886be2f937fed76365cbbcc88b9"
+        "sha256": "cb52a6f42c318b499b350d974b0e4be030c270e369aa8ff8950ea63ed766fd9c"
       },
       {
         "path": "tests/run_api36_application_date_time_settings_e2e.py",
@@ -162,6 +162,16 @@
         "path": "tests/fixtures/application-date-time-settings-e2e.chum5",
         "exists": true,
         "sha256": "ac27dc8da444ffb50c68b3d8793b88ded6da4fcb1aaf889ceb1565af2fa73c20"
+      },
+      {
+        "path": "tests/run_api36_application_index_visibility_settings_e2e.py",
+        "exists": true,
+        "sha256": "997a800c8211394c0370c7a65c4914ce7308cdf27d6f9c85ed2e6d1f5ce54556"
+      },
+      {
+        "path": "tests/fixtures/application-index-visibility-settings-e2e.chum5",
+        "exists": true,
+        "sha256": "1e0fbbecf51d53219a36e25d439d4c34852a6b0bcbcd95154997c5d22712431a"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterRosterFavoritePresenter.cs",
@@ -516,7 +526,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "5d7cf9f641e51de8c9dde08975e1129321c2a3313a708f0925b0c52be8021c61"
+        "sha256": "82d8135f18a098171b7afc3f3e2784947ac3d4558db27a6e5d552f187ac7d3d5"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1444,6 +1454,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-application-index-visibility-settings/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-gear-name/receipt.json",
         "exists": false,
         "sha256": null
@@ -2151,7 +2166,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "1fb8591994014400aacfc952ec21a5c771cc81e80f8f789803f3e3245138cabe"
+      "sha256": "0904370917239bd21021af64c1c66dce417fd4d01c8acfcc9bd57773985b400c"
     }
   },
   "coverageByFamily": {
@@ -2172,7 +2187,7 @@
     "application_settings": {
       "rowCount": 73,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 49,
+      "phoneMissingCount": 47,
       "tabletMissingCount": 56,
       "completionProvenCount": 17
     },
@@ -95909,11 +95924,21 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Home > Application settings > Navigation visibility > Hide the Master Index > Save",
+        "surface": "ApplicationSettingsPage",
+        "automationId": "settings-hide-master-index",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+          "src/Chummer.Android/Native/HomePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/MauiProgram.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+        ],
+        "coverageLimit": "Phone application settings only for chkHideMasterIndex and chkHideCharacterRoster, authenticated against exact canonical Chummer5 revision and source/load/save digests. No other Global Settings or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -95921,12 +95946,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
+      "persistenceAssertion": "the two typed legacy booleans default false, load and save independently under hidemasterindex and hidecharacterroster, have no dependency or validation beyond the Boolean domain, and share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; Back performs no write and character XML remains byte-independent",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_application_index_visibility_settings_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -95966,11 +95991,21 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Home > Application settings > Navigation visibility > Hide the Character Roster > Save",
+        "surface": "ApplicationSettingsPage",
+        "automationId": "settings-hide-character-roster",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+          "src/Chummer.Android/Native/HomePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/MauiProgram.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+        ],
+        "coverageLimit": "Phone application settings only for chkHideMasterIndex and chkHideCharacterRoster, authenticated against exact canonical Chummer5 revision and source/load/save digests. No other Global Settings or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -95978,12 +96013,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
+      "persistenceAssertion": "the two typed legacy booleans default false, load and save independently under hidemasterindex and hidecharacterroster, have no dependency or validation beyond the Boolean domain, and share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; Back performs no write and character XML remains byte-independent",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_application_index_visibility_settings_e2e.py"
         },
         "tablet": {
           "status": "missing",

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Index Visibility Settings Proof</name>
+  <alias>Application Index Visibility Proof</alias>
+  <created>True</created>
+  <gameedition>SR6</gameedition>
+  <settings>settings.xml</settings>
+  <customstate>
+    <indexvisibility>character XML must remain unrelated</indexvisibility>
+  </customstate>
+</character>

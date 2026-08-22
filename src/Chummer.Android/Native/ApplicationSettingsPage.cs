@@ -5,7 +5,7 @@ using Chummer.Contracts.Api;
 namespace Chummer.Android.Native;
 
 /// <summary>
-/// Phone-only Chummer5 Global Options surface for confirmation and date/time settings.
+/// Phone-only Chummer5 Global Options surface for confirmation, index visibility, and date/time settings.
 /// All controls are local drafts; only the explicit Save action invokes one atomic persistence boundary.
 /// </summary>
 public sealed class ApplicationSettingsPage : NativePageBase
@@ -13,6 +13,8 @@ public sealed class ApplicationSettingsPage : NativePageBase
     private readonly ApplicationDeleteConfirmationState _baseline;
     private readonly Switch _confirmDelete;
     private readonly Switch _confirmKarmaExpense;
+    private readonly Switch _hideMasterIndex;
+    private readonly Switch _hideCharacterRoster;
     private readonly Switch _customDateTimeFormats;
     private readonly Entry _dateFormat;
     private readonly Label _datePreview;
@@ -85,6 +87,31 @@ public sealed class ApplicationSettingsPage : NativePageBase
         karmaRow.Add(karmaLabels);
         karmaRow.Add(_confirmKarmaExpense, 1);
         body.Add(NativeTheme.Card(karmaRow));
+
+        body.Add(NativeTheme.Title("Navigation visibility"));
+        body.Add(NativeTheme.Body(
+            "Matches Chummer5’s independent hidemasterindex and hidecharacterroster application options.",
+            NativeTheme.Muted));
+
+        _hideMasterIndex = new Switch
+        {
+            AutomationId = "settings-hide-master-index",
+            IsToggled = _baseline.HideMasterIndex
+        };
+        body.Add(CreateSwitchCard(
+            "Hide the Master Index",
+            "Stored as the hidemasterindex application setting. It does not change runner XML.",
+            _hideMasterIndex));
+
+        _hideCharacterRoster = new Switch
+        {
+            AutomationId = "settings-hide-character-roster",
+            IsToggled = _baseline.HideCharacterRoster
+        };
+        body.Add(CreateSwitchCard(
+            "Hide the Character Roster",
+            "Stored independently as hidecharacterroster. Back discards both visibility drafts.",
+            _hideCharacterRoster));
 
         body.Add(NativeTheme.Title("Date and time"));
         body.Add(NativeTheme.Body(
@@ -168,6 +195,8 @@ public sealed class ApplicationSettingsPage : NativePageBase
                 _dateFormat.Text ?? string.Empty,
                 _timeFormat.Text ?? string.Empty,
                 _datesIncludeTime.IsToggled,
+                _hideMasterIndex.IsToggled,
+                _hideCharacterRoster.IsToggled,
                 _baseline.Revision);
             await Navigation.PopAsync();
         });

@@ -360,6 +360,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         string customDateFormat,
         string customTimeFormat,
         bool datesIncludeTime,
+        bool hideMasterIndex,
+        bool hideCharacterRoster,
         long expectedRevision,
         CancellationToken cancellationToken = default)
     {
@@ -372,6 +374,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 new(ApplicationSettingIdentity.CustomDateFormat, customDateFormat),
                 new(ApplicationSettingIdentity.CustomTimeFormat, customTimeFormat),
                 new(ApplicationSettingIdentity.DatesIncludeTime, datesIncludeTime),
+                new(ApplicationSettingIdentity.HideMasterIndex, hideMasterIndex),
+                new(ApplicationSettingIdentity.HideCharacterRoster, hideCharacterRoster),
                 expectedRevision));
         _notice = "Application settings saved.";
         NotifyChanged();
