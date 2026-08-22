@@ -52,7 +52,7 @@ public sealed class WeaponStolenPage : NativePageBase
         _target = new Picker
         {
             Title = "Weapon-tree node",
-            ItemsSource = _options,
+            ItemsSource = (System.Collections.IList)_options,
             ItemDisplayBinding = new Binding(nameof(NodeOption.Label)),
             SelectedIndex = 0,
             AutomationId = $"weapon-stolen-target-{rootToken}",

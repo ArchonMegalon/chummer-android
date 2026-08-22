@@ -50,7 +50,7 @@ public sealed class ArmorTreeFlagPage : NativePageBase
         _target = new Picker
         {
             Title = "Armor-tree node",
-            ItemsSource = _options,
+            ItemsSource = (System.Collections.IList)_options,
             ItemDisplayBinding = new Binding(nameof(NodeOption.Label)),
             SelectedIndex = 0,
             AutomationId = $"armor-tree-flags-target-{rootToken}",

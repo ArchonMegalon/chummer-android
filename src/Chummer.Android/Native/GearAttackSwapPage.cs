@@ -48,7 +48,7 @@ public sealed class GearAttackSwapPage : NativePageBase
             node, $"{node.DisplayPath} · {node.Identity.GearPath[^1].ToString("N")[..8]}")).ToArray();
         _gear = new Picker
         {
-            Title = "Matrix Gear", ItemsSource = _options,
+            Title = "Matrix Gear", ItemsSource = (System.Collections.IList)_options,
             ItemDisplayBinding = new Binding(nameof(NodeOption.Label)), SelectedIndex = 0,
             AutomationId = $"gear-attack-swap-target-{rootToken}",
             BackgroundColor = NativeTheme.Surface, TextColor = NativeTheme.Text
@@ -63,7 +63,7 @@ public sealed class GearAttackSwapPage : NativePageBase
 
         _target = new Picker
         {
-            Title = "Swap Attack with", ItemsSource = TargetOptions,
+            Title = "Swap Attack with", ItemsSource = (System.Collections.IList)TargetOptions,
             ItemDisplayBinding = new Binding(nameof(TargetOption.Label)), SelectedIndex = 0,
             AutomationId = $"gear-attack-swap-attribute-{rootToken}",
             BackgroundColor = NativeTheme.Surface, TextColor = NativeTheme.Text

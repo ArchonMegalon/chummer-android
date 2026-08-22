@@ -51,7 +51,7 @@ public sealed class GearEquipmentPage : NativePageBase
         _target = new Picker
         {
             Title = "Gear node",
-            ItemsSource = _options,
+            ItemsSource = (System.Collections.IList)_options,
             ItemDisplayBinding = new Binding(nameof(NodeOption.Label)),
             SelectedIndex = 0,
             AutomationId = $"gear-equipment-target-{rootToken}",

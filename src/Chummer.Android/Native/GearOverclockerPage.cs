@@ -62,7 +62,7 @@ public sealed class GearOverclockerPage : NativePageBase
         _target = new Picker
         {
             Title = "Cyberdeck Gear",
-            ItemsSource = _options,
+            ItemsSource = (System.Collections.IList)_options,
             ItemDisplayBinding = new Binding(nameof(NodeOption.Label)),
             SelectedIndex = 0,
             AutomationId = $"gear-overclocker-target-{rootToken}",
@@ -76,7 +76,7 @@ public sealed class GearOverclockerPage : NativePageBase
         _attribute = new Picker
         {
             Title = "Boosted Matrix attribute",
-            ItemsSource = AttributeOptions,
+            ItemsSource = (System.Collections.IList)AttributeOptions,
             ItemDisplayBinding = new Binding(nameof(AttributeOption.Label)),
             AutomationId = $"gear-overclocker-attribute-{rootToken}",
             BackgroundColor = NativeTheme.Surface,
