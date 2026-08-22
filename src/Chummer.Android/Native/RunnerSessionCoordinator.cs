@@ -41,6 +41,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private const string CharacterSettingsCatalogPreferenceKey = "chummer.android.character-settings-catalog.v1";
     private const string RosterLocatorPreferencePrefix = "chummer.android.roster-locator.v1.";
     private readonly ICharacterOverviewPresenter _presenter;
+    private readonly ICharacterCreationFoundationInteractionPresenter _foundationInteractionPresenter;
     private readonly IShellPresenter _shellPresenter;
     private readonly IShellSurfaceResolver _surfaceResolver;
     private readonly ICommandAvailabilityEvaluator _availability;
@@ -76,6 +77,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     public RunnerSessionCoordinator(
         ICharacterOverviewPresenter presenter,
+        ICharacterCreationFoundationInteractionPresenter foundationInteractionPresenter,
         IShellPresenter shellPresenter,
         IShellSurfaceResolver surfaceResolver,
         ICommandAvailabilityEvaluator availability,
@@ -87,6 +89,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         ApplicationDeleteConfirmationPresenter applicationSettingsPresenter)
     {
         _presenter = presenter;
+        _foundationInteractionPresenter = foundationInteractionPresenter;
         _shellPresenter = shellPresenter;
         _surfaceResolver = surfaceResolver;
         _availability = availability;
@@ -158,6 +161,51 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     public bool IsBusy => State.IsBusy || Surface.IsBusy;
 
+    public CharacterCreationFoundationInteractionLoadResult LoadCreationFoundation()
+        => _foundationInteractionPresenter.Load(State);
+
+    public CharacterCreationFoundationInteractionPrepareResult PrepareCreationFoundation(
+        CharacterCreationFoundationSelectionInput input)
+        => _foundationInteractionPresenter.Prepare(State, input);
+
+    public async Task<CharacterCreationFoundationInteractionConfirmResult> ConfirmCreationFoundationAsync(
+        CharacterCreationFoundationConfirmation confirmation,
+        CancellationToken cancellationToken = default)
+    {
+        CharacterCreationFoundationInteractionConfirmResult result =
+            _foundationInteractionPresenter.Confirm(State, confirmation);
+        if (!string.Equals(
+                result.Outcome,
+                CharacterCreationFoundationOutcomes.Success,
+                StringComparison.Ordinal)
+            || result.Receipt is not { } receipt)
+        {
+            return result;
+        }
+
+        await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken);
+        await SyncShellAsync(cancellationToken);
+        if (!OverviewMatchesFoundationReceipt(State, result, receipt))
+        {
+            _notice = null;
+            NotifyChanged();
+            return result with
+            {
+                Outcome = CharacterCreationFoundationOutcomes.Conflict,
+                RefreshedState = null,
+                Blockers = result.Blockers
+                    .Append(CharacterCreationFoundationInteractionBlockers.RefreshAuthorityRequired)
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(static blocker => blocker, StringComparer.Ordinal)
+                    .ToArray()
+            };
+        }
+
+        _notice = "Foundation draft saved. Character effects remain pending compilation.";
+        NotifyChanged();
+        return result;
+    }
+
     public void AskRook(string question)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(question);
@@ -175,6 +223,30 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _rookConversations.AddGroundedTurn(snapshot, question);
         NotifyChanged();
     }
+
+    private static bool OverviewMatchesFoundationReceipt(
+        CharacterOverviewState overview,
+        CharacterCreationFoundationInteractionConfirmResult result,
+        CharacterCreationFoundationApplyReceipt receipt)
+        => result.RefreshedState is { } refreshed
+           && overview.WorkspaceId == receipt.WorkspaceId
+           && overview.ContentRevision == receipt.ContentRevision
+           && overview.SavedRevision == receipt.SavedRevision
+           && overview.Profile?.Created == false
+           && overview.CreationWizard is { } wizard
+           && wizard.WorkspaceRevision == receipt.ContentRevision
+           && string.Equals(wizard.SourceDigest, receipt.SourceDigest, StringComparison.Ordinal)
+           && overview.CreationFoundation is { } foundation
+           && foundation.Binding.WorkspaceId == receipt.WorkspaceId
+           && foundation.Binding.ContentRevision == receipt.ContentRevision
+           && foundation.Binding.SavedRevision == receipt.SavedRevision
+           && string.Equals(foundation.Binding.SourceDigest, receipt.SourceDigest, StringComparison.Ordinal)
+           && string.Equals(foundation.SnapshotDigest, refreshed.FoundationSnapshotDigest, StringComparison.Ordinal)
+           && foundation.PendingDraft is { } draft
+           && draft.DraftRevision == receipt.DraftRevision
+           && string.Equals(draft.DraftDigest, receipt.DraftDigest, StringComparison.Ordinal)
+           && !draft.CharacterEffectsApplied
+           && !receipt.CharacterEffectsApplied;
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {

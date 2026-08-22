@@ -26,6 +26,98 @@ class CreationWizardSourceContractTests(unittest.TestCase):
             "provider.GetRequiredService<ICharacterCreationFoundationService>()",
             source[factory_registration:presenter_registration],
         )
+        self.assertIn(
+            "builder.Services.AddSingleton<ICharacterCreationFoundationInteractionPresenter>(provider =>",
+            source,
+        )
+        self.assertIn("new CharacterCreationFoundationInteractionPresenter(", source)
+
+    def test_foundation_interaction_stays_behind_presentation_and_refreshes_overview(self) -> None:
+        source = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        for marker in (
+            "ICharacterCreationFoundationInteractionPresenter foundationInteractionPresenter",
+            "LoadCreationFoundation()",
+            "PrepareCreationFoundation(",
+            "ConfirmCreationFoundationAsync(",
+            "_foundationInteractionPresenter.Load(State)",
+            "_foundationInteractionPresenter.Prepare(State, input)",
+            "_foundationInteractionPresenter.Confirm(State, confirmation)",
+            "await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken)",
+            "OverviewMatchesFoundationReceipt(State, result, receipt)",
+            "CharacterCreationFoundationInteractionBlockers.RefreshAuthorityRequired",
+            "foundation.PendingDraft is { } draft",
+            "!draft.CharacterEffectsApplied",
+        ):
+            self.assertIn(marker, source)
+
+    def test_phone_foundation_pages_render_authority_and_keep_explicit_preview(self) -> None:
+        selection = (NATIVE / "CreationFoundationPage.cs").read_text(encoding="utf-8")
+        preview = (NATIVE / "CreationFoundationPreviewPage.cs").read_text(encoding="utf-8")
+        dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+
+        for marker in (
+            "Coordinator.LoadCreationFoundation()",
+            "state.MetatypeOptions",
+            "state.NationalityOptions",
+            "nationality.Versions",
+            "nationality.FollowUps.Concat(version?.FollowUps ?? [])",
+            'string.Equals(prompt.InputKind, "select"',
+            'string.Equals(prompt.InputKind, "single-select"',
+            "option.SourceValue",
+            "Unsupported follow-up kind:",
+            "Requires authoritative metatype evaluation in Preview",
+            "IsMetatypeEvaluationCandidate(",
+            "CanEvaluateWithSelectedMetatype(",
+            "HasExactCandidateIdentityCostAndSource(",
+            "HasOnlyEligibilityAuthorityBlocker(",
+            "CharacterCreationFoundationBlockers.CharacterEligibilityAuthorityRequired",
+            "HasOnlyTypedMetatypeRequirements(",
+            "requirement.RequiresCharacterAuthority",
+            'string.Equals(requirement.Operator, "oneof"',
+            'string.Equals(requirement.SubjectKind, "metatype"',
+            "Coordinator.PrepareCreationFoundation(",
+            "new CreationFoundationPreviewPage(Coordinator, prepared)",
+            '"creation-foundation-prepare-preview"',
+            '"creation-foundation-pending-draft"',
+            '"creation-foundation-pending-compilation-status"',
+            '"creation-foundation-pending-character-effects-applied"',
+        ):
+            self.assertIn(marker, selection)
+        for forbidden in ('?? "Human"', "Picker", "SelectedIndex = 0"):
+            self.assertNotIn(forbidden, selection)
+        self.assertIn("bool selectable = option.IsEnabled || evaluationCandidate;", selection)
+        self.assertIn("bool selectable = version.IsEnabled || evaluationCandidate;", selection)
+
+        for marker in (
+            "private readonly CharacterCreationFoundationPreparedPreview _prepared",
+            "_prepared.PreviewDigest",
+            "ExplicitlyConfirmed: true",
+            "Coordinator.ConfirmCreationFoundationAsync(",
+            "_prepared.LifeModuleBudgetBefore",
+            "_prepared.LifeModuleBudgetAfter",
+            "foreach (CharacterCreationFoundationDiffEntry diff in _prepared.Diff)",
+            '"creation-foundation-preview-diff-',
+            '"creation-foundation-confirm"',
+            '"creation-foundation-character-effects-applied"',
+            '"creation-foundation-compilation-status"',
+            '"creation-foundation-save"',
+        ):
+            self.assertIn(marker, preview)
+        self.assertLess(
+            selection.index("Coordinator.PrepareCreationFoundation("),
+            selection.index("new CreationFoundationPreviewPage(Coordinator, prepared)"),
+        )
+        self.assertNotIn("Coordinator.PrepareCreationFoundation", preview)
+
+        for marker in (
+            "HasAuthoritativeFoundationOptions()",
+            "CharacterCreationWizardStepIds.Foundation",
+            "CharacterCreationWizardStepIds.LifeModules",
+            "new CreationFoundationPage(Coordinator)",
+            "Coordinator.State.Profile?.Created == false",
+            "!foundation.CharacterCreated",
+        ):
+            self.assertIn(marker, dashboard)
 
     def test_uncreated_build_is_gated_before_exhaustive_editor(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
@@ -138,6 +230,21 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         self.assertIn('device.set_text("rook-question"', source)
         self.assertIn('device.tap("rook-send-question"', source)
         self.assertIn("assert_same_binding", source)
+        for marker in (
+            'device.tap_until_visible(\n        "creation-stage-foundation"',
+            'tap_first_enabled_prefix(device, "creation-foundation-metatype-")',
+            'tap_first_enabled_prefix(device, "creation-foundation-nationality-")',
+            'device.tap("creation-foundation-prepare-preview"',
+            'device.wait("creation-foundation-preview-diff-"',
+            'device.tap("creation-foundation-confirm"',
+            'device.wait("creation-foundation-confirm-receipt"',
+            'device.tap("creation-foundation-save"',
+            'device.wait("creation-foundation-pending-draft"',
+            '"foundationDraftSaveReloadAndProcessRestart": "pass"',
+            '"foundationCharacterEffectsAppliedFalse": "pass"',
+            '"foundationCompilationPending": "pass"',
+        ):
+            self.assertIn(marker, source)
         self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', source)
         self.assertIn('"rookTranscriptSurvivesProcessRestart": "pass"', source)
         self.assertNotIn('"profile": "tablet"', source)

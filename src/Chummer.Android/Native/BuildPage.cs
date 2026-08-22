@@ -218,7 +218,14 @@ public sealed class BuildPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow("Generation steps"));
         foreach (CharacterCreationWizardStageState stage in snapshot.Steps)
         {
-            string detail = HumanizeStatus(stage.Status);
+            bool foundation = IsFoundationStage(stage.StepId);
+            bool canOpen = foundation
+                           && stage.IsAvailable
+                           && HasAuthoritativeFoundationOptions();
+            Func<Task> selected = canOpen ? OpenCreationFoundationAsync : () => Task.CompletedTask;
+            string detail = canOpen
+                ? "Choose an exact metatype and Nationality Life Module"
+                : HumanizeStatus(stage.Status);
             if (stage.Blockers.Count > 0)
             {
                 detail += $" · {stage.Blockers[0]}";
@@ -226,8 +233,8 @@ public sealed class BuildPage : NativePageBase
             Border row = NativeTheme.NavigationRow(
                 stage.Label,
                 detail,
-                () => Task.CompletedTask,
-                enabled: false,
+                selected,
+                enabled: canOpen,
                 automationId: $"creation-stage-{Token(stage.StepId)}");
             _body.Add(row);
         }
@@ -279,20 +286,50 @@ public sealed class BuildPage : NativePageBase
                 stepId,
                 CharacterCreationWizardStepIds.Attributes,
                 StringComparison.Ordinal);
-            bool canOpen = attributes && stage.IsAvailable && HasEnabledAttributesTab();
-            string detail = canOpen
-                ? "Open the typed creation attribute editor"
+            bool foundation = IsFoundationStage(stepId);
+            bool canOpenFoundation = foundation
+                                     && stage.IsAvailable
+                                     && HasAuthoritativeFoundationOptions();
+            bool canOpenAttributes = attributes && stage.IsAvailable && HasEnabledAttributesTab();
+            bool canOpen = canOpenFoundation || canOpenAttributes;
+            Func<Task> selected = canOpenFoundation
+                ? OpenCreationFoundationAsync
+                : canOpenAttributes
+                    ? OpenCreationAttributesAsync
+                    : () => Task.CompletedTask;
+            string detail = canOpenFoundation
+                ? "Choose an exact metatype and Nationality Life Module"
+                : canOpenAttributes
+                    ? "Open the typed creation attribute editor"
                 : stage.IsAvailable
                     ? "Legal in the projection · dedicated phone step is not wired yet"
                     : stage.Blockers.FirstOrDefault() ?? "Blocked by the current projection";
             _body.Add(NativeTheme.NavigationRow(
                 stage.Label,
                 detail,
-                canOpen ? OpenCreationAttributesAsync : () => Task.CompletedTask,
+                selected,
                 canOpen,
                 $"creation-next-{Token(stepId)}"));
         }
     }
+
+    private bool HasAuthoritativeFoundationOptions()
+        => Coordinator.State.Profile?.Created == false
+           && Coordinator.State.WorkspaceId is { } workspaceId
+           && Coordinator.State.CreationFoundation is { } foundation
+           && !foundation.CharacterCreated
+           && foundation.Binding.WorkspaceId == workspaceId
+           && foundation.Binding.ContentRevision == Coordinator.State.ContentRevision
+           && foundation.Binding.SavedRevision == Coordinator.State.SavedRevision
+           && foundation.MetatypeOptions.Count > 0
+           && foundation.NationalityOptions.Count > 0;
+
+    private static bool IsFoundationStage(string stepId)
+        => string.Equals(stepId, CharacterCreationWizardStepIds.Foundation, StringComparison.Ordinal)
+           || string.Equals(stepId, CharacterCreationWizardStepIds.LifeModules, StringComparison.Ordinal);
+
+    private Task OpenCreationFoundationAsync()
+        => Navigation.PushAsync(new CreationFoundationPage(Coordinator));
 
     private bool HasEnabledAttributesTab()
         => Coordinator.Surface.NavigationTabs.Any(tab =>
