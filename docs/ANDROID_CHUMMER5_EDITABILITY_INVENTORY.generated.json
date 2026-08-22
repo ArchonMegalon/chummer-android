@@ -6,26 +6,26 @@
     "rowCount": 2229,
     "sourceFileCount": 300,
     "designerFileCount": 137,
-    "definiteMutationCandidateCount": 1759,
+    "definiteMutationCandidateCount": 1758,
     "reviewRequiredCount": 0,
     "legacyReviewCompleteCount": 2229,
-    "reviewedNonMutatingCount": 470,
-    "editParityRequiredCount": 1759,
+    "reviewedNonMutatingCount": 471,
+    "editParityRequiredCount": 1758,
     "unclassifiedCount": 0,
-    "completionProvenCount": 545,
+    "completionProvenCount": 546,
     "phoneStatusCounts": {
       "implemented_pending_emulator": 452,
       "implemented_verified_api36": 79,
-      "missing": 950,
-      "not_applicable_non_mutating": 470,
+      "missing": 949,
+      "not_applicable_non_mutating": 471,
       "partial_create_only": 106,
       "partial_exact_saved_data": 172
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
       "implemented_verified_api36": 75,
-      "missing": 1536,
-      "not_applicable_non_mutating": 470,
+      "missing": 1535,
+      "not_applicable_non_mutating": 471,
       "partial_exact_saved_data": 144
     }
   },
@@ -2077,7 +2077,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "7624af6acbfb519f0c3973e21d8602a02383c6c3c6fbffb2930541a1500cd387"
+      "sha256": "c0e99b771d4b80084a90600be88c00bea0aef8bd619b4ceef821895b0c437ddb"
     }
   },
   "coverageByFamily": {
@@ -2119,9 +2119,9 @@
     "attributes": {
       "rowCount": 12,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 5,
-      "tabletMissingCount": 9,
-      "completionProvenCount": 3
+      "phoneMissingCount": 4,
+      "tabletMissingCount": 8,
+      "completionProvenCount": 4
     },
     "bioware": {
       "rowCount": 5,
@@ -27915,9 +27915,9 @@
         "controlName": "cboAttributeCategory",
         "controlType": "Chummer.ElasticComboBox",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (cboAttributeCategory_SelectedIndexChanged)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "cboAttributeCategory_SelectedIndexChanged only converts the selected value and calls CharacterObject.AttributeSection.SetAttributeCategoryAsync to rebind the active Standard or Shapeshifter attribute view and choose the current in-memory Print projection; CharacterCareer load always resets the selection to Standard, AttributeSection.Save only serializes CharacterAttrib values, and Load never restores _eAttributeCategory, so it writes no runner or persisted application state",
         "text": null,
         "tag": null,
         "readOnlyAtDesignTime": null,
@@ -27931,16 +27931,16 @@
         ]
       },
       "mutationFamily": "attributes",
-      "operation": "set_value",
+      "operation": "select_shapeshifter_attribute_view",
       "phone": {
-        "status": "missing",
-        "route": "AttributeEditPage",
+        "status": "not_applicable_non_mutating",
+        "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -27949,18 +27949,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::cmdCyberwareChangeMount",

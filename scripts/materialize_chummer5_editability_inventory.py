@@ -2173,6 +2173,14 @@ SPIRIT_LINKED_RUNNER_CONTROLS = {
     "tsRemoveCharacter": "remove",
 }
 NON_MUTATING_LEGACY_INTERACTIONS = {
+    ("CharacterCareer", "cboAttributeCategory"): (
+        "select_shapeshifter_attribute_view",
+        "cboAttributeCategory_SelectedIndexChanged only converts the selected value and calls "
+        "CharacterObject.AttributeSection.SetAttributeCategoryAsync to rebind the active Standard or Shapeshifter "
+        "attribute view and choose the current in-memory Print projection; CharacterCareer load always resets the "
+        "selection to Standard, AttributeSection.Save only serializes CharacterAttrib values, and Load never "
+        "restores _eAttributeCategory, so it writes no runner or persisted application state",
+    ),
     ("CharacterCreate", "chkIncludedInArmor"): (
         "display_included_in_armor_state",
         "the checkbox is disabled in the designer, has no mutation event, and selection refresh only copies "

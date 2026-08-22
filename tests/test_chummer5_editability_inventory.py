@@ -303,6 +303,39 @@ namespace Chummer
             self.assertEqual("not_applicable_non_mutating", row["e2e"]["phone"]["status"])
             self.assertTrue(row["completionProven"])
 
+    def test_career_attribute_category_is_reviewed_as_transient_shapeshifter_view(self) -> None:
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = [
+            row
+            for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] == "cboAttributeCategory"
+        ]
+
+        self.assertEqual(1, len(rows))
+        row = rows[0]
+        self.assertEqual("select_shapeshifter_attribute_view", row["operation"])
+        self.assertEqual("non_mutating", row["legacy"]["mutationDisposition"])
+        self.assertIn(
+            "cboAttributeCategory_SelectedIndexChanged",
+            row["legacy"]["dispositionEvidence"],
+        )
+        self.assertIn("SetAttributeCategoryAsync", row["legacy"]["dispositionEvidence"])
+        self.assertIn("current in-memory Print projection", row["legacy"]["dispositionEvidence"])
+        self.assertIn("always resets the selection to Standard", row["legacy"]["dispositionEvidence"])
+        self.assertIn("Save only serializes CharacterAttrib values", row["legacy"]["dispositionEvidence"])
+        self.assertIn("Load never restores _eAttributeCategory", row["legacy"]["dispositionEvidence"])
+        self.assertFalse(row["editParityRequired"])
+        self.assertEqual("not_applicable_non_mutating", row["phone"]["status"])
+        self.assertEqual("not_applicable_non_mutating", row["tablet"]["status"])
+        self.assertEqual("not_applicable_non_mutating", row["e2e"]["phone"]["status"])
+        self.assertEqual("not_applicable_non_mutating", row["e2e"]["tablet"]["status"])
+        self.assertTrue(row["completionProven"])
+
     def test_included_in_armor_checkboxes_are_reviewed_read_only_displays(self) -> None:
         payload = json.loads(
             (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
@@ -2383,8 +2416,8 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 452,
                 "implemented_verified_api36": 79,
-                "missing": 952,
-                "not_applicable_non_mutating": 468,
+                "missing": 951,
+                "not_applicable_non_mutating": 469,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 172,
             },
@@ -2394,8 +2427,8 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 4,
                 "implemented_verified_api36": 75,
-                "missing": 1538,
-                "not_applicable_non_mutating": 468,
+                "missing": 1537,
+                "not_applicable_non_mutating": 469,
                 "partial_exact_saved_data": 144,
             },
             payload["summary"]["tabletStatusCounts"],
