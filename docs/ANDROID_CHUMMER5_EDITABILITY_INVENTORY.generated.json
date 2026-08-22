@@ -16,10 +16,10 @@
     "phoneStatusCounts": {
       "implemented_pending_emulator": 450,
       "implemented_verified_api36": 79,
-      "missing": 976,
+      "missing": 972,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
-      "partial_exact_saved_data": 150
+      "partial_exact_saved_data": 154
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
@@ -382,7 +382,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "e77cd4dc9c40a93e95185e43f5abd41ad45ddd1e5ad7eed9c9f29dccf234f82b"
+        "sha256": "e53c7ea13c68b82dc9aff1d349cc972d8a1239be46909bd093fa01a14e3b414f"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -407,7 +407,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "c7bca5934f281eb96772ea0f02ddc6b8badb9bdd362ae1e864ac46d35aacd17e"
+        "sha256": "5ce1b7e1a43f2db5c15edbaccbcad6c365f6aed3cde1eb62347ca2bbdab7628d"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1707,7 +1707,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "ec1e9a6805f926a02cf8f31bc20bfcc894cd44ec9e30ee7d60ab2f82f59acec4"
+        "sha256": "7f53c535ab294b35bb926678ee6d34552cb54ab7781a779d08ce2f52647d971f"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1917,7 +1917,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "a83523fc485735a9ef8ab85b16e1e96f0a88da9b8c677ec038f906da3f1ee14e"
+        "sha256": "31931793e51e02d81596bfa2d122f908135e6d617c8528270fab82c6c83b3e9c"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1972,7 +1972,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "05884c06061ddd26d42f66c7e39b40846e3c36d8c8577eea937c81b6de52b0fb"
+        "sha256": "b890af9a51ebdb2d33fa96bc985e043229a1116fdf34486dcadff37bdc46161f"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1982,7 +1982,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "435ac24b36647f7d947260eeb0a5791a3f4765e95fdcc3b44418ca212b91688c"
+      "sha256": "67950b0ec6548b119ea9123849b0074c705dfd5a7b6524332c9742601145341f"
     }
   },
   "coverageByFamily": {
@@ -2346,7 +2346,7 @@
     "vehicles_and_drones": {
       "rowCount": 151,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 53,
+      "phoneMissingCount": 49,
       "tabletMissingCount": 100,
       "completionProvenCount": 27
     },
@@ -21023,11 +21023,16 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Vehicles > selected stable Vehicle > Swap Data Processing / Firewall",
+        "surface": "VehicleDataProcessingFirewallSwapPage",
+        "automationId": "vehicle-dp-firewall-swap-changed-{stable-vehicle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/VehicleDataProcessingFirewallSwapPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/VehicleDataProcessingFirewallSwapEditRequest.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleMatrixSwapRules.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer cboVehicleDataProcessing root Vehicle selection only (legacy handler proven); descendant Weapon/Cyberware/Gear tree and clip-ammo parent paths, malformed/duplicate/ineligible/equal/stale state, and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -21035,12 +21040,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed root Vehicle Data Processing-or-Firewall raw permutation with exact Guid identity, Create/Career phase, CanSwapAttributes, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "two raw Vehicle Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, sensor, active/home flags, parents, costs, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery and restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_vehicle_dp_firewall_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -21080,11 +21085,16 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Vehicles > selected stable Vehicle > Swap Data Processing / Firewall",
+        "surface": "VehicleDataProcessingFirewallSwapPage",
+        "automationId": "vehicle-dp-firewall-swap-changed-{stable-vehicle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/VehicleDataProcessingFirewallSwapPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/VehicleDataProcessingFirewallSwapEditRequest.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleMatrixSwapRules.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer cboVehicleFirewall root Vehicle selection only (legacy handler proven); descendant Weapon/Cyberware/Gear tree and clip-ammo parent paths, malformed/duplicate/ineligible/equal/stale state, and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -21092,12 +21102,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed root Vehicle Data Processing-or-Firewall raw permutation with exact Guid identity, Create/Career phase, CanSwapAttributes, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "two raw Vehicle Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, sensor, active/home flags, parents, costs, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery and restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_vehicle_dp_firewall_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -63538,11 +63548,16 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Vehicles > selected stable Vehicle > Swap Data Processing / Firewall",
+        "surface": "VehicleDataProcessingFirewallSwapPage",
+        "automationId": "vehicle-dp-firewall-swap-changed-{stable-vehicle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/VehicleDataProcessingFirewallSwapPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/VehicleDataProcessingFirewallSwapEditRequest.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleMatrixSwapRules.cs"
+        ],
+        "coverageLimit": "Exact CharacterCreate cboVehicleDataProcessing root Vehicle selection only (legacy handler proven); descendant Weapon/Cyberware/Gear tree and clip-ammo parent paths, malformed/duplicate/ineligible/equal/stale state, and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -63550,12 +63565,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed root Vehicle Data Processing-or-Firewall raw permutation with exact Guid identity, Create/Career phase, CanSwapAttributes, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "two raw Vehicle Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, sensor, active/home flags, parents, costs, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery and restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_vehicle_dp_firewall_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -63595,11 +63610,16 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Vehicles > selected stable Vehicle > Swap Data Processing / Firewall",
+        "surface": "VehicleDataProcessingFirewallSwapPage",
+        "automationId": "vehicle-dp-firewall-swap-changed-{stable-vehicle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/VehicleDataProcessingFirewallSwapPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/VehicleDataProcessingFirewallSwapEditRequest.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleMatrixSwapRules.cs"
+        ],
+        "coverageLimit": "Exact CharacterCreate cboVehicleFirewall root Vehicle selection only (legacy handler proven); descendant Weapon/Cyberware/Gear tree and clip-ammo parent paths, malformed/duplicate/ineligible/equal/stale state, and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -63607,12 +63627,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed root Vehicle Data Processing-or-Firewall raw permutation with exact Guid identity, Create/Career phase, CanSwapAttributes, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "two raw Vehicle Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, sensor, active/home flags, parents, costs, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery and restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_vehicle_dp_firewall_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",
