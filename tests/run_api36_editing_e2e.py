@@ -1173,6 +1173,12 @@ def capture_launch_diagnostics(
         f"{prefix}-window.txt",
         _safe_shell(device, "dumpsys", "window", "windows"),
     )
+    _write_launch_evidence(
+        device,
+        f"{prefix}-exit-info.txt",
+        _safe_shell(device, "dumpsys", "activity", "exit-info", PACKAGE),
+    )
+    diagnostic_logs: list[str] = []
     try:
         logcat_result = device.run(
             "logcat",
@@ -1192,8 +1198,38 @@ def capture_launch_diagnostics(
     except subprocess.TimeoutExpired as error:
         logcat = f"logcat capture timed out: {error}\n{_bounded_evidence(error.stdout)}"
     _write_launch_evidence(device, f"{prefix}-logcat.txt", logcat)
+    diagnostic_logs.append(logcat)
+    for buffer_name in ("events", "crash"):
+        try:
+            buffer_result = device.run(
+                "logcat",
+                "-d",
+                "-b",
+                buffer_name,
+                "-v",
+                "threadtime",
+                timeout=60,
+                check=False,
+            )
+            buffer_log = _bounded_evidence(buffer_result.stdout)
+            if buffer_result.stderr:
+                buffer_log = (
+                    f"{buffer_log}\n[logcat stderr]\n"
+                    f"{_bounded_evidence(buffer_result.stderr)}"
+                )
+        except subprocess.TimeoutExpired as error:
+            buffer_log = (
+                f"logcat {buffer_name} capture timed out: {error}\n"
+                f"{_bounded_evidence(error.stdout)}"
+            )
+        _write_launch_evidence(
+            device,
+            f"{prefix}-logcat-{buffer_name}.txt",
+            buffer_log,
+        )
+        diagnostic_logs.append(buffer_log)
     device.capture(f"{prefix}-failure")
-    return logcat
+    return "\n".join(diagnostic_logs)
 
 
 def _start_output_matches_component(output: str, component: str) -> bool:

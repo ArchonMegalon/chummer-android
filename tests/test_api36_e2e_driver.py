@@ -190,6 +190,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 "7225",
                 f"mResumedActivity: ActivityRecord{{456 u0 {launcher} t2}}",
                 f"mCurrentFocus=Window{{456 u0 {launcher}}}",
+                "ApplicationExitInfo(timestamp=1, reason=CRASH)",
             ]
             device.run.side_effect = [
                 subprocess.CompletedProcess(args=["logcat", "-c"], returncode=0, stdout="", stderr=""),
@@ -203,6 +204,18 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     ),
                     stderr="",
                 ),
+                subprocess.CompletedProcess(
+                    args=["logcat", "-d", "-b", "events"],
+                    returncode=0,
+                    stdout="am_crash: com.myexternalbrain.chummer\n",
+                    stderr="",
+                ),
+                subprocess.CompletedProcess(
+                    args=["logcat", "-d", "-b", "crash"],
+                    returncode=0,
+                    stdout="AndroidRuntime: Process: com.myexternalbrain.chummer\n",
+                    stderr="",
+                ),
             ]
 
             with self.assertRaisesRegex(RuntimeError, "did not remain the exact resumed activity"):
@@ -212,6 +225,9 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             self.assertIn("Status: ok", (evidence / "launch-attempt-1-am-start.stdout.txt").read_text())
             self.assertIn(launcher, (evidence / "launch-attempt-1-activity.txt").read_text())
             self.assertIn("FATAL EXCEPTION", (evidence / "launch-attempt-1-logcat.txt").read_text())
+            self.assertIn("reason=CRASH", (evidence / "launch-attempt-1-exit-info.txt").read_text())
+            self.assertIn("am_crash", (evidence / "launch-attempt-1-logcat-events.txt").read_text())
+            self.assertIn("AndroidRuntime", (evidence / "launch-attempt-1-logcat-crash.txt").read_text())
             device.capture.assert_called_once_with("launch-attempt-1-failure")
 
         self.assertIn(
@@ -229,6 +245,20 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ),
             device.run.call_args_list,
         )
+        for buffer_name in ("events", "crash"):
+            self.assertIn(
+                call(
+                    "logcat",
+                    "-d",
+                    "-b",
+                    buffer_name,
+                    "-v",
+                    "threadtime",
+                    timeout=60,
+                    check=False,
+                ),
+                device.run.call_args_list,
+            )
 
     def test_launcher_component_uses_current_package_manager_result(self) -> None:
         device = Mock()
