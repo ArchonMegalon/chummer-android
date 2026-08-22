@@ -4,12 +4,28 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "api36-editing-e2e.yml"
+PREVIEW_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "preview9-arm64-aab.yml"
+COMPATIBILITY_GRAPH = {
+    "ArchonMegalon/chummer6-ui":
+        "8090e53f6dd64794145d81d7698394e4881d0c02",
+    "ArchonMegalon/chummer6-core":
+        "c75d68d2233af980dd8b1ef6116dcbdeefcf3c71",
+    "ArchonMegalon/chummer6-hub":
+        "25f4906b1b92fa286c63ec364ea33ada63ba9431",
+    "ArchonMegalon/chummer6-hub-registry":
+        "7b54afec574a9327616c4ad7566da3a7b6b906a5",
+    "ArchonMegalon/chummer6-ui-kit":
+        "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",
+    "ArchonMegalon/chummer6-media-factory":
+        "415c8163d3d90b1211e4014fef332bdec6d75f73",
+}
 
 
 class Api36EditingE2EWorkflowTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.text = WORKFLOW.read_text(encoding="utf-8")
+        cls.preview_text = PREVIEW_WORKFLOW.read_text(encoding="utf-8")
 
     def test_runs_phone_and_tablet_profiles_on_api_36(self) -> None:
         self.assertIn("api-level: 36", self.text)
@@ -27,22 +43,16 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("needs: build", self.text)
 
     def test_full_local_compatibility_tree_is_commit_pinned(self) -> None:
-        expected_repositories = {
-            "ArchonMegalon/chummer6-ui":
-                "4333e546cb22daecb6b8d042f080c6a58cfef5f5",
-            "ArchonMegalon/chummer6-core":
-                "8a736655c5d81487c3be8d87c63cef5cfcce87d4",
-            "ArchonMegalon/chummer6-hub":
-                "972311c4408a51ede76224a66ae103e75cb2e53c",
-            "ArchonMegalon/chummer6-hub-registry":
-                "7b54afec574a9327616c4ad7566da3a7b6b906a5",
-            "ArchonMegalon/chummer6-ui-kit":
-                "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",
-        }
-        for repository, commit in expected_repositories.items():
+        for repository, commit in COMPATIBILITY_GRAPH.items():
             with self.subTest(repository=repository):
                 self.assertIn(f"repository: {repository}", self.text)
                 self.assertIn(f"ref: {commit}", self.text)
+
+    def test_preview_release_uses_the_same_compiled_compatibility_graph(self) -> None:
+        for repository, commit in COMPATIBILITY_GRAPH.items():
+            with self.subTest(repository=repository):
+                self.assertIn(f"repository: {repository}", self.preview_text)
+                self.assertIn(f"ref: {commit}", self.preview_text)
 
     def test_executes_the_existing_persistence_driver(self) -> None:
         runner = (

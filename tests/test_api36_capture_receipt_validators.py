@@ -1,12 +1,14 @@
 import ast
 import importlib.util
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[1]
+WORKSPACE = Path(os.environ.get("CHUMMER_COMPLETE_ROOT", REPO.parent)).resolve()
 SCRIPT = REPO / "scripts" / "materialize_chummer5_editability_inventory.py"
 SPEC = importlib.util.spec_from_file_location("chummer5_editability_inventory_capture_receipts", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
@@ -17,8 +19,8 @@ SPEC.loader.exec_module(inventory)
 class Api36CaptureReceiptValidatorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.presentation_root = REPO.parent / "chummer-presentation"
-        cls.core_root = REPO.parent / "chummer-core-engine"
+        cls.presentation_root = WORKSPACE / "chummer-presentation"
+        cls.core_root = WORKSPACE / "chummer-core-engine"
         cls.specs = inventory._capture_only_phone_e2e_specs(
             cls.presentation_root,
             cls.core_root,
@@ -53,8 +55,8 @@ class Api36CaptureReceiptValidatorTests(unittest.TestCase):
             "journeys": {journey: "pass" for journey in spec["journeys"]},
         }
 
-    def test_all_twenty_two_driver_contracts_are_api36_arm64_package_bound(self) -> None:
-        self.assertEqual(22, len(self.specs))
+    def test_all_twenty_six_driver_contracts_are_api36_arm64_package_bound(self) -> None:
+        self.assertEqual(26, len(self.specs))
         for journey, spec in self.specs.items():
             with self.subTest(journey=journey):
                 source = spec["driver"].read_text(encoding="utf-8")
@@ -222,7 +224,7 @@ class Api36CaptureReceiptValidatorTests(unittest.TestCase):
             for spec in self.specs.values()
         }
         rows = [row for row in payload["rows"] if row["e2e"]["phone"].get("ref") in driver_refs]
-        self.assertEqual(47, len(rows))
+        self.assertEqual(57, len(rows))
         self.assertTrue(all(row["phone"]["status"] == "implemented_pending_emulator" for row in rows))
         self.assertTrue(all(row["e2e"]["phone"]["status"] == "scripted_not_executed" for row in rows))
 

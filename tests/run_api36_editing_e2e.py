@@ -17,8 +17,16 @@ from pathlib import Path
 
 
 PACKAGE = "com.myexternalbrain.chummer"
+MAIN_ACTION = "android.intent.action.MAIN"
+LAUNCHER_CATEGORY = "android.intent.category.LAUNCHER"
 BOUNDS = re.compile(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]")
 DISPLAY_SIZE = re.compile(r"(?:Physical|Override) size:\s*(\d+)x(\d+)")
+COMPONENT = re.compile(
+    r"(?P<package>[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)+)/"
+    r"(?P<activity>\.?[A-Za-z0-9_$]+(?:\.[A-Za-z0-9_$]+)*)"
+)
+PROCESS_ID = re.compile(r"[1-9][0-9]*")
+MAX_LAUNCH_EVIDENCE_CHARACTERS = 1_000_000
 
 
 @dataclass(frozen=True)
@@ -34,6 +42,13 @@ class UiNode:
         return ((left + right) // 2, (top + bottom) // 2)
 
 
+@dataclass(frozen=True)
+class LaunchState:
+    process_ids: tuple[str, ...]
+    resumed_component: str | None
+    activity_dump: str
+
+
 class Device:
     def __init__(self, adb: Path, serial: str, evidence: Path) -> None:
         self.adb = adb
@@ -42,11 +57,17 @@ class Device:
         self._display_size: tuple[int, int] | None = None
         self.evidence.mkdir(parents=True, exist_ok=True)
 
-    def run(self, *arguments: str, timeout: int = 120, text: bool = True) -> subprocess.CompletedProcess:
+    def run(
+        self,
+        *arguments: str,
+        timeout: int = 120,
+        text: bool = True,
+        check: bool = True,
+    ) -> subprocess.CompletedProcess:
         command = [str(self.adb), "-s", self.serial, *arguments]
         return subprocess.run(
             command,
-            check=True,
+            check=check,
             capture_output=True,
             text=text,
             timeout=timeout,
@@ -984,50 +1005,339 @@ def select_android_document(device: Device, filename: str) -> None:
     device.tap(filename, scroll=True)
 
 
+def normalize_component(value: str) -> str | None:
+    match = COMPONENT.fullmatch(value.strip())
+    if match is None:
+        return None
+    package = match.group("package")
+    activity = match.group("activity")
+    if activity.startswith("."):
+        activity = f"{package}{activity}"
+    return f"{package}/{activity}"
+
+
 def launcher_component(device: Device) -> str:
+    package_paths = device.shell("pm", "path", "--user", "current", PACKAGE)
+    installed_paths = [
+        line.removeprefix("package:").strip()
+        for line in package_paths.splitlines()
+        if line.startswith("package:") and line.removeprefix("package:").strip()
+    ]
+    if not installed_paths:
+        raise RuntimeError(f"The exact E2E package is not installed: {PACKAGE}")
+
     output = device.shell(
         "cmd",
         "package",
         "resolve-activity",
         "--brief",
+        "--user",
+        "current",
+        "-a",
+        MAIN_ACTION,
         "-c",
-        "android.intent.category.LAUNCHER",
+        LAUNCHER_CATEGORY,
+        "-p",
         PACKAGE,
     )
-    components = [
-        line.strip()
+    components = {
+        normalized
         for line in output.splitlines()
-        if line.strip().startswith(f"{PACKAGE}/")
+        if (normalized := normalize_component(line)) is not None
+        and normalized.startswith(f"{PACKAGE}/")
+    }
+    if len(components) != 1:
+        raise RuntimeError(
+            "Expected exactly one installed launcher activity for "
+            f"{PACKAGE}, got {sorted(components)!r}; resolver={output!r}"
+        )
+    return next(iter(components))
+
+
+def resumed_activity(activity_dump: str) -> str | None:
+    for line in activity_dump.splitlines():
+        if "ResumedActivity" not in line and "topResumedActivity" not in line:
+            continue
+        matches = [normalize_component(match.group(0)) for match in COMPONENT.finditer(line)]
+        components = [component for component in matches if component is not None]
+        if components:
+            return components[-1]
+    return None
+
+
+def _bounded_evidence(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        rendered = value.decode("utf-8", errors="replace")
+    else:
+        rendered = str(value)
+    if len(rendered) <= MAX_LAUNCH_EVIDENCE_CHARACTERS:
+        return rendered
+    return rendered[:MAX_LAUNCH_EVIDENCE_CHARACTERS] + "\n[launch evidence truncated]\n"
+
+
+def _write_launch_evidence(device: Device, name: str, value: object) -> None:
+    device.evidence.mkdir(parents=True, exist_ok=True)
+    (device.evidence / name).write_text(_bounded_evidence(value), encoding="utf-8")
+
+
+def _safe_shell(device: Device, *arguments: str, timeout: int = 30) -> str:
+    try:
+        return device.shell(*arguments, timeout=timeout)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+        return "\n".join(
+            part
+            for part in (
+                f"command failed: {error}",
+                _bounded_evidence(getattr(error, "stdout", "")),
+                _bounded_evidence(getattr(error, "stderr", "")),
+            )
+            if part
+        )
+
+
+def current_launch_state(device: Device) -> LaunchState:
+    try:
+        process_output = device.shell("pidof", PACKAGE, timeout=15)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        process_output = ""
+    process_ids = tuple(
+        token for token in process_output.split() if PROCESS_ID.fullmatch(token)
+    )
+    activity_dump = _safe_shell(device, "dumpsys", "activity", "activities")
+    return LaunchState(
+        process_ids=process_ids,
+        resumed_component=resumed_activity(activity_dump),
+        activity_dump=activity_dump,
+    )
+
+
+def _package_crash_is_visible(logcat: str) -> bool:
+    package_lines = [line for line in logcat.splitlines() if PACKAGE in line]
+    return any(
+        marker in line
+        for line in package_lines
+        for marker in (
+            "FATAL EXCEPTION",
+            "Fatal signal",
+            "Force finishing activity",
+            "ProcessRecord",
+            "has died",
+        )
+    ) or (f"Process: {PACKAGE}" in logcat and "FATAL EXCEPTION" in logcat)
+
+
+def capture_launch_diagnostics(
+    device: Device,
+    attempt: int,
+    component: str,
+    start_result: subprocess.CompletedProcess | None,
+    start_error: BaseException | None,
+    state: LaunchState,
+) -> str:
+    prefix = f"launch-attempt-{attempt}"
+    _write_launch_evidence(
+        device,
+        f"{prefix}-contract.txt",
+        "\n".join(
+            (
+                f"package={PACKAGE}",
+                f"component={component}",
+                f"process_ids={' '.join(state.process_ids)}",
+                f"resumed_component={state.resumed_component or ''}",
+            )
+        )
+        + "\n",
+    )
+    _write_launch_evidence(
+        device,
+        f"{prefix}-am-start.stdout.txt",
+        (
+            getattr(start_error, "stdout", "")
+            if start_result is None
+            else start_result.stdout
+        ),
+    )
+    error_text = "" if start_error is None else repr(start_error)
+    if start_result is None and getattr(start_error, "stderr", None):
+        error_text = (
+            f"{error_text}\n{_bounded_evidence(getattr(start_error, 'stderr', ''))}"
+        ).strip()
+    if start_result is not None and start_result.stderr:
+        error_text = f"{error_text}\n{_bounded_evidence(start_result.stderr)}".strip()
+    _write_launch_evidence(device, f"{prefix}-am-start.stderr.txt", error_text)
+    _write_launch_evidence(device, f"{prefix}-activity.txt", state.activity_dump)
+    _write_launch_evidence(
+        device,
+        f"{prefix}-window.txt",
+        _safe_shell(device, "dumpsys", "window", "windows"),
+    )
+    try:
+        logcat_result = device.run(
+            "logcat",
+            "-d",
+            "-b",
+            "all",
+            "-v",
+            "threadtime",
+            "-t",
+            "4000",
+            timeout=60,
+            check=False,
+        )
+        logcat = _bounded_evidence(logcat_result.stdout)
+        if logcat_result.stderr:
+            logcat = f"{logcat}\n[logcat stderr]\n{_bounded_evidence(logcat_result.stderr)}"
+    except subprocess.TimeoutExpired as error:
+        logcat = f"logcat capture timed out: {error}\n{_bounded_evidence(error.stdout)}"
+    _write_launch_evidence(device, f"{prefix}-logcat.txt", logcat)
+    device.capture(f"{prefix}-failure")
+    return logcat
+
+
+def _start_output_matches_component(output: str, component: str) -> bool:
+    lines = [line.strip() for line in output.splitlines()]
+    statuses = [line.partition(":")[2].strip() for line in lines if line.startswith("Status:")]
+    activities = [
+        normalize_component(line.partition(":")[2].strip())
+        for line in lines
+        if line.startswith("Activity:")
     ]
-    if not components:
-        raise RuntimeError(f"Could not resolve the installed launcher activity: {output!r}")
-    return components[-1]
+    return statuses == ["ok"] and activities == [component]
 
 
-def launch_app(device: Device, attempts: int = 3) -> None:
+def _wait_for_resumed_component(
+    device: Device,
+    component: str,
+    timeout: float,
+) -> tuple[LaunchState, bool]:
+    deadline = time.monotonic() + timeout
+    saw_process = False
+    while True:
+        state = current_launch_state(device)
+        if state.process_ids:
+            saw_process = True
+        if state.process_ids and state.resumed_component == component:
+            return state, saw_process
+        if saw_process and not state.process_ids:
+            return state, saw_process
+        if time.monotonic() >= deadline:
+            return state, saw_process
+        time.sleep(0.5)
+
+
+def launch_app(device: Device, attempts: int = 3, resume_timeout: float = 20) -> None:
+    if attempts < 1 or resume_timeout < 0:
+        raise ValueError("Launch attempts must be positive and resume timeout nonnegative")
     component = launcher_component(device)
-    for attempt in range(attempts):
+    for attempt in range(1, attempts + 1):
+        device.run("logcat", "-c", timeout=30, check=False)
+        start_result: subprocess.CompletedProcess | None = None
+        start_error: BaseException | None = None
         try:
-            device.shell(
+            start_result = device.run(
+                "shell",
                 "am",
                 "start",
+                "--user",
+                "current",
                 "-W",
+                "-S",
+                "-a",
+                MAIN_ACTION,
+                "-c",
+                LAUNCHER_CATEGORY,
                 "-n",
                 component,
                 timeout=60,
+                check=False,
             )
-            if device.shell("pidof", PACKAGE):
-                return
-            raise RuntimeError("Android returned from launcher start without an app process")
-        except (RuntimeError, subprocess.CalledProcessError):
-            try:
-                if device.shell("pidof", PACKAGE):
-                    return
-            except (RuntimeError, subprocess.CalledProcessError):
-                pass
-            if attempt + 1 == attempts:
-                raise
-            time.sleep(3)
+        except subprocess.TimeoutExpired as error:
+            start_error = error
+
+        start_stdout = (
+            _bounded_evidence(getattr(start_error, "stdout", ""))
+            if start_result is None
+            else start_result.stdout
+        )
+        start_stderr = (
+            "\n".join(
+                part
+                for part in (
+                    repr(start_error),
+                    _bounded_evidence(getattr(start_error, "stderr", "")),
+                )
+                if part
+            )
+            if start_result is None
+            else start_result.stderr
+        )
+        _write_launch_evidence(
+            device,
+            f"launch-attempt-{attempt}-am-start.stdout.txt",
+            start_stdout,
+        )
+        _write_launch_evidence(
+            device,
+            f"launch-attempt-{attempt}-am-start.stderr.txt",
+            start_stderr,
+        )
+
+        command_succeeded = (
+            start_result is not None
+            and start_result.returncode == 0
+            and _start_output_matches_component(start_result.stdout, component)
+        )
+        state, saw_process = _wait_for_resumed_component(
+            device,
+            component,
+            resume_timeout,
+        )
+        wait_timed_out = isinstance(start_error, subprocess.TimeoutExpired)
+        if (command_succeeded or wait_timed_out) \
+            and state.process_ids \
+            and state.resumed_component == component:
+            _write_launch_evidence(
+                device,
+                f"launch-attempt-{attempt}-verified.txt",
+                "\n".join(
+                    (
+                        f"package={PACKAGE}",
+                        f"component={component}",
+                        f"process_ids={' '.join(state.process_ids)}",
+                        f"resumed_component={state.resumed_component}",
+                    )
+                )
+                + "\n",
+            )
+            return
+
+        logcat = capture_launch_diagnostics(
+            device,
+            attempt,
+            component,
+            start_result,
+            start_error,
+            state,
+        )
+        if saw_process or _package_crash_is_visible(logcat):
+            raise RuntimeError(
+                "Chummer started a process but did not remain the exact resumed activity; "
+                f"component={component!r}, process_ids={state.process_ids!r}, "
+                f"resumed={state.resumed_component!r}"
+            )
+        if command_succeeded:
+            raise RuntimeError(
+                "Android reported a successful Chummer launch without an exact process/resumed "
+                f"activity match; component={component!r}, resumed={state.resumed_component!r}"
+            )
+        if attempt == attempts:
+            raise RuntimeError(
+                "Android could not launch the exact Chummer component after "
+                f"{attempts} attempts; component={component!r}"
+            )
+        time.sleep(3)
 
 
 def attach_linked_runner(
