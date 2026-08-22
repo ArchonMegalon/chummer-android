@@ -79,8 +79,11 @@ interpolated into process arguments.
 
 The release outputs are versioned and immutable. The packager fails before the
 build if the AAB, source graph, or checksum target already exists, validates the
-source graph again after packaging, and seals each output with an exclusive
-no-clobber link. A partial failed release is not overwritten automatically.
+source graph again after packaging, publishes only into a fresh unique private
+staging directory, requires exactly one new package-ID-bound signed AAB there,
+and seals each output with an exclusive no-clobber link. Persistent `bin/`
+outputs are never accepted as release input. A partial failed release is not
+overwritten automatically.
 
 If SDK API 36 and Java are absent, the guarded
 `scripts/bootstrap-build-environment.sh` uses .NET's official

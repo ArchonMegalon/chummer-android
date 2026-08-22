@@ -165,10 +165,16 @@ done
 release_tmp="$(mktemp -d "$artifact_dir/.chummer-android-$version_name.release.XXXXXX")"
 chmod 0700 "$release_tmp"
 staged_graph="$release_tmp/source-graph.json"
+staged_publish_dir="$release_tmp/publish"
+mkdir -m 0700 -- "$staged_publish_dir"
 python3 "$repo_dir/scripts/verify_release_source_graph.py" \
   --android-root "$repo_dir" \
   --workspace-root "$workspace_root" \
   --output "$staged_graph"
+python3 "$repo_dir/scripts/verify_release_publish_output.py" \
+  --publish-dir "$staged_publish_dir" \
+  --package-id "$package_id" \
+  --require-empty
 
 [[ -f "$assets_path" && ! -L "$assets_path" ]] || fail "no-restore-assets-missing"
 python3 "$repo_dir/scripts/verify_native_compile_graph.py" \
@@ -199,6 +205,7 @@ python3 -m unittest discover -s "$repo_dir/tests" -v
   --configuration "$configuration" \
   --framework "$framework" \
   --self-contained true \
+  --output "$staged_publish_dir" \
   --no-restore \
   -m:1 \
   --disable-build-servers \
@@ -209,11 +216,13 @@ python3 -m unittest discover -s "$repo_dir/tests" -v
   -p:ChummerUseLocalCompatibilityTree=true \
   -p:AndroidSdkDirectory="$AndroidSdkDirectory" \
   -p:JavaSdkDirectory="$JavaSdkDirectory" \
+  -p:PublishDir="$staged_publish_dir/" \
   -p:AndroidPackageFormats=aab
 
-publish_dir="$repo_dir/src/Chummer.Android/bin/$configuration/$framework/$runtime_id/publish"
-source_aab="$publish_dir/$package_id-Signed.aab"
-[[ -f "$source_aab" && ! -L "$source_aab" ]] || fail "signed-release-bundle-missing"
+source_aab="$(python3 "$repo_dir/scripts/verify_release_publish_output.py" \
+  --publish-dir "$staged_publish_dir" \
+  --package-id "$package_id" \
+  --resolve-exact-signed-aab)" || fail "fresh-signed-release-bundle-invalid"
 
 "$repo_dir/scripts/validate-aab.sh" "$source_aab"
 python3 "$repo_dir/scripts/verify_release_source_graph.py" \
