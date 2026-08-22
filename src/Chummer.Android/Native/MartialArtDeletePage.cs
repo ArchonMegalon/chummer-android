@@ -8,7 +8,7 @@ public sealed class MartialArtDeletePage : NativePageBase
     private sealed record TargetOption(CharacterMartialArtDeleteState State, string Label);
 
     private readonly MartialArtDeleteEditorState _editor;
-    private readonly IReadOnlyList<TargetOption> _options;
+    private readonly TargetOption[] _options;
     private readonly Picker _target;
     private readonly Label _warning;
     private readonly Button _delete;
@@ -50,7 +50,7 @@ public sealed class MartialArtDeletePage : NativePageBase
             Title = "Martial Art or Technique",
             ItemsSource = _options,
             ItemDisplayBinding = new Binding(nameof(TargetOption.Label)),
-            SelectedIndex = _options.Count == 0 ? -1 : 0,
+            SelectedIndex = _options.Length == 0 ? -1 : 0,
             AutomationId = "martial-art-delete-target",
             BackgroundColor = NativeTheme.Surface,
             TextColor = NativeTheme.Text
@@ -61,7 +61,7 @@ public sealed class MartialArtDeletePage : NativePageBase
 
         _warning = NativeTheme.Body(
             "Deletion requires confirmation and never refunds Karma or Nuyen.",
-            NativeTheme.Warning);
+            NativeTheme.Danger);
         _warning.AutomationId = "martial-art-delete-warning";
         body.Add(_warning);
 
@@ -77,7 +77,7 @@ public sealed class MartialArtDeletePage : NativePageBase
     protected override void Refresh() => RefreshEnabledState();
 
     private CharacterMartialArtDeleteState? SelectedState()
-        => _target.SelectedIndex >= 0 && _target.SelectedIndex < _options.Count
+        => _target.SelectedIndex >= 0 && _target.SelectedIndex < _options.Length
             ? _options[_target.SelectedIndex].State
             : null;
 

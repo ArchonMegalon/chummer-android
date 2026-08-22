@@ -8,7 +8,7 @@ public sealed class MartialArtNotesPage : NativePageBase
     private sealed record TargetOption(CharacterMartialArtNotesState State, string Label);
 
     private readonly MartialArtNotesEditorState _editor;
-    private readonly IReadOnlyList<TargetOption> _options;
+    private readonly TargetOption[] _options;
     private readonly Picker _target;
     private readonly Editor _notes;
     private readonly Entry _notesColor;
@@ -48,7 +48,7 @@ public sealed class MartialArtNotesPage : NativePageBase
             Title = "Martial Art or Technique",
             ItemsSource = _options,
             ItemDisplayBinding = new Binding(nameof(TargetOption.Label)),
-            SelectedIndex = _options.Count == 0 ? -1 : 0,
+            SelectedIndex = _options.Length == 0 ? -1 : 0,
             AutomationId = "martial-art-notes-target",
             BackgroundColor = NativeTheme.Surface,
             TextColor = NativeTheme.Text
@@ -92,7 +92,7 @@ public sealed class MartialArtNotesPage : NativePageBase
     protected override void Refresh() => RefreshEnabledState();
 
     private CharacterMartialArtNotesState? SelectedState()
-        => _target.SelectedIndex >= 0 && _target.SelectedIndex < _options.Count
+        => _target.SelectedIndex >= 0 && _target.SelectedIndex < _options.Length
             ? _options[_target.SelectedIndex].State
             : null;
 
