@@ -84,5 +84,32 @@ public sealed class RosterFavoritesPage : NativePageBase
             Chummer.Contracts.Api.CharacterRosterSortTarget.Recent,
             Coordinator.RosterFavorites.Revision));
         _body.Add(sortRecent);
+
+        _body.Add(NativeTheme.Title("Remove roster entry", 20));
+        _body.Add(NativeTheme.Body(
+            "Matches Chummer5’s Delete action: remove this document path from only the selected roster list.",
+            NativeTheme.Muted));
+
+        Button removeFavorite = NativeTheme.SecondaryButton("Remove from favorites");
+        removeFavorite.AutomationId = "roster-remove-favorite";
+        removeFavorite.IsEnabled = Coordinator.IsRosterEntry(
+            workspace,
+            Chummer.Contracts.Api.CharacterRosterRemoveTarget.Favorites);
+        removeFavorite.Clicked += async (_, _) => await RunAsync(() => Coordinator.RemoveRosterEntryAsync(
+            workspace,
+            Chummer.Contracts.Api.CharacterRosterRemoveTarget.Favorites,
+            Coordinator.RosterFavorites.Revision));
+        _body.Add(removeFavorite);
+
+        Button removeRecent = NativeTheme.SecondaryButton("Remove from recent");
+        removeRecent.AutomationId = "roster-remove-recent";
+        removeRecent.IsEnabled = Coordinator.IsRosterEntry(
+            workspace,
+            Chummer.Contracts.Api.CharacterRosterRemoveTarget.Recent);
+        removeRecent.Clicked += async (_, _) => await RunAsync(() => Coordinator.RemoveRosterEntryAsync(
+            workspace,
+            Chummer.Contracts.Api.CharacterRosterRemoveTarget.Recent,
+            Coordinator.RosterFavorites.Revision));
+        _body.Add(removeRecent);
     }
 }

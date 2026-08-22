@@ -291,6 +291,34 @@ public sealed class RunnerSessionCoordinator : IDisposable
         return Task.CompletedTask;
     }
 
+    public bool IsRosterEntry(OpenWorkspaceState workspace, CharacterRosterRemoveTarget target)
+    {
+        CharacterRosterDocumentIdentity identity = ResolveRosterIdentity(workspace);
+        return CharacterRosterFavoriteRules.Contains(_rosterFavorites, identity, target);
+    }
+
+    public Task RemoveRosterEntryAsync(
+        OpenWorkspaceState workspace,
+        CharacterRosterRemoveTarget target,
+        long expectedRevision,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        CharacterRosterDocumentIdentity identity = ResolveRosterIdentity(workspace);
+        _rosterFavorites = _rosterFavoritePresenter.ApplyRemove(new CharacterRosterRemoveMutation(
+            identity,
+            target,
+            expectedRevision));
+        _notice = target switch
+        {
+            CharacterRosterRemoveTarget.Favorites => $"{identity.DisplayName} removed from favorites.",
+            CharacterRosterRemoveTarget.Recent => $"{identity.DisplayName} removed from recent runners.",
+            _ => throw new ArgumentOutOfRangeException(nameof(target), "A known roster removal target is required.")
+        };
+        NotifyChanged();
+        return Task.CompletedTask;
+    }
+
     private CharacterRosterDocumentIdentity ResolveRosterIdentity(OpenWorkspaceState workspace)
     {
         string locator = Preferences.Default.Get(

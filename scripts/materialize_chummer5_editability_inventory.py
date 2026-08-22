@@ -651,6 +651,26 @@ CAPTURE_ONLY_PHONE_E2E_DEFINITIONS: dict[str, dict[str, Any]] = {
             "recentProcessRestartReadback", "backupRecovery",
         ),
     },
+    "roster-remove": {
+        "driver": "tests/run_api36_roster_remove_e2e.py",
+        "fixtures": (("runnerFixtureSha256", "tests/fixtures/roster-remove-e2e.chum5"),),
+        "sourceKeys": (
+            "rosterFavoritesPageSha256", "homePageSha256", "coordinatorSha256", "mauiProgramSha256",
+            "rosterFavoritePresenterSha256", "rosterFavoriteContractSha256",
+            "rosterFavoriteRulesSha256", "rosterFavoriteStoreSha256",
+        ),
+        "controls": ("CharacterRoster.tsDelete",),
+        "proofKeys": (
+            "stableDocumentIdentity", "favoriteTargetRemovedOnly", "recentTargetRemovedOnly",
+            "unselectedCollectionPreserved", "characterDocumentPreserved", "expectedRevisionAtomicSave",
+            "sameSessionReopened", "processRestartReadback", "backupRecoveryReadback",
+        ),
+        "journeys": (
+            "runnerImported", "favoriteEntryRemoved", "sameSessionReopened",
+            "favoriteProcessRestartReadback", "recentEntryRemoved",
+            "recentProcessRestartReadback", "backupRecovery",
+        ),
+    },
     "group-name": {
         "driver": "tests/run_api36_group_name_e2e.py",
         "fixtures": (
@@ -1592,6 +1612,7 @@ PRIMARY_ARM_CONTROLS = {
 GROUP_MEMBERSHIP_CONTROL = "chkJoinGroup"
 ROSTER_FAVORITE_CONTROL = "tsToggleFav"
 ROSTER_SORT_CONTROL = "tsSort"
+ROSTER_REMOVE_CONTROL = "tsDelete"
 GROUP_NAME_CONTROL = "txtGroupName"
 TRADITION_NAME_CONTROL = "txtTraditionName"
 TRADITION_DRAIN_CONTROL = "cboDrain"
@@ -6952,6 +6973,120 @@ def _known_phone_mapping(
             "e2e": {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_roster_sort_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "CharacterRoster" and control == ROSTER_REMOVE_CONTROL:
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RosterFavoritesPage.cs"
+        home_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "HomePage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_roster_remove_e2e.py"
+        fixture = REPO_ROOT / "tests" / "fixtures" / "roster-remove-e2e.chum5"
+        presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterRosterFavoritePresenter.cs"
+        contract = character_notes_core_root / "Chummer.Contracts" / "Api" / "CharacterRosterFavoriteContracts.cs"
+        rules = character_notes_core_root / "Chummer.Application" / "Tools" / "CharacterRosterFavoriteRules.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure" / "Files" / "FileCharacterRosterFavoriteStore.cs"
+        implemented = (
+            _contains(
+                page,
+                "class RosterFavoritesPage",
+                'AutomationId = "roster-remove-favorite"',
+                'AutomationId = "roster-remove-recent"',
+                "CharacterRosterRemoveTarget.Favorites",
+                "CharacterRosterRemoveTarget.Recent",
+                "Coordinator.RosterFavorites.Revision",
+                "Coordinator.RemoveRosterEntryAsync",
+            )
+            and _contains(home_page, 'AutomationId = "home-roster-favorites"', "new RosterFavoritesPage")
+            and _contains(
+                coordinator,
+                "IsRosterEntry",
+                "RemoveRosterEntryAsync",
+                "CharacterRosterRemoveTarget",
+                "CharacterRosterRemoveMutation",
+                "expectedRevision",
+                "_rosterFavoritePresenter.ApplyRemove",
+            )
+            and _contains(
+                presenter,
+                "CharacterRosterFavoritePresenter",
+                "CharacterRosterFavoriteRules.ApplyRemove",
+                "_store.Save(mutation.ExpectedRevision, updated)",
+            )
+            and _contains(
+                contract,
+                "CharacterRosterRemoveTarget",
+                "CharacterRosterRemoveMutation",
+                "CharacterRosterDocumentIdentity",
+                "ExpectedRevision",
+            )
+            and _contains(
+                rules,
+                "ApplyRemove",
+                "selected.RemoveAll",
+                "CharacterRosterRemoveTarget.Favorites",
+                "CharacterRosterRemoveTarget.Recent",
+                "mutation.ExpectedRevision != current.Revision",
+            )
+            and _contains(
+                store,
+                "roster-favorites.json",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                'path + ".bak"',
+                "current.Revision != expectedRevision",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                'CONTROL = "tsDelete"',
+                'api != "36"',
+                'abi != "arm64-v8a"',
+                '"profile": "phone"',
+                '"journey": "roster-remove"',
+                'device.shell("pm", "path", shared.PACKAGE)',
+                '"rosterFavoriteStoreSha256"',
+                '"runnerFixtureSha256"',
+                "current_remote_sha256 != remote_runner_sha256",
+            )
+            and fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Home > Roster metadata > Remove from favorites / Remove from recent",
+            "surface": "RosterFavoritesPage",
+            "automationId": "roster-remove-favorite / roster-remove-recent",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/RosterFavoritesPage.cs",
+                "src/Chummer.Android/Native/HomePage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterRosterFavoritePresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Api/CharacterRosterFavoriteContracts.cs",
+                "chummer-core-engine/Chummer.Application/Tools/CharacterRosterFavoriteRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Files/FileCharacterRosterFavoriteStore.cs",
+            ],
+            "presenterMutation": (
+                "CharacterRosterFavoritePresenter.ApplyRemove(CharacterRosterRemoveMutation)"
+            ),
+            "persistenceAssertion": (
+                "the selected stable document locator is removed from only Favorite or Recent after "
+                "revision-checked atomic persistence, same-session reopen, process restart, and backup "
+                "recovery; the character document remains byte-identical"
+            ),
+            "coverageLimit": (
+                "Phone current/open document roster metadata only; tablet intentionally remains missing and "
+                f"the API 36 driver is {'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_roster_remove_e2e.py" if e2e_scripted else None,
             },
             "tablet": {
                 "status": "missing",
