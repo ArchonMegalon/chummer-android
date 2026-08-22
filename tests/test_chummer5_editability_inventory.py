@@ -303,6 +303,196 @@ namespace Chummer
             self.assertEqual("not_applicable_non_mutating", row["e2e"]["phone"]["status"])
             self.assertTrue(row["completionProven"])
 
+    def test_knowledge_skill_sort_and_filter_are_source_and_callee_guarded_view_state(
+        self,
+    ) -> None:
+        legacy_root = (
+            inventory.DEFAULT_CHUMMER5_ROOT
+            if inventory.DEFAULT_CHUMMER5_ROOT.is_dir()
+            else PRESENTATION_ROOT
+        )
+        skills_source = (
+            legacy_root / "Chummer" / "Controls" / "Skills" / "SkillsTabUserControl.cs"
+        ).read_bytes().decode("utf-8-sig")
+        binding_source = (
+            legacy_root / "Chummer" / "Controls" / "Shared" / "BindingListDisplay.cs"
+        ).read_bytes().decode("utf-8-sig")
+        character_source = (
+            legacy_root / "Chummer" / "Backend" / "Characters" / "Character.cs"
+        ).read_bytes().decode("utf-8-sig")
+        settings_source = (
+            legacy_root
+            / "Chummer"
+            / "Backend"
+            / "Character Settings"
+            / "CharacterSettings.cs"
+        ).read_bytes().decode("utf-8-sig")
+        all_class_texts = {
+            ("Chummer.UI.Skills", "SkillsTabUserControl"): [skills_source],
+            ("Chummer.Controls.Shared", "BindingListDisplay"): [binding_source],
+            ("Chummer", "Character"): [character_source],
+            # CharacterSettings.cs is grouped under the file's first class declaration.
+            ("Chummer", "CharacterBuildMethodExtensions"): [settings_source],
+        }
+        expected = {
+            "cboSortKnowledge": {
+                "operation": "sort_knowledge_skill_view",
+                "events": [
+                    {
+                        "event": "SelectedIndexChanged",
+                        "handler": "cboSortKnowledge_SelectedIndexChanged",
+                    },
+                ],
+            },
+            "cboDisplayFilterKnowledge": {
+                "operation": "filter_knowledge_skill_view",
+                "events": [
+                    {
+                        "event": "SelectedIndexChanged",
+                        "handler": "cboDisplayFilterKnowledge_SelectedIndexChanged",
+                    },
+                    {
+                        "event": "TextUpdate",
+                        "handler": "cboDisplayFilterKnowledge_TextUpdate",
+                    },
+                ],
+            },
+        }
+
+        for control, expected_control in expected.items():
+            identity = ("SkillsTabUserControl", control)
+            handlers = expected_control["events"]
+            review = inventory._source_guarded_non_mutating_review(
+                identity[0],
+                identity[1],
+                handlers,
+                [skills_source],
+                all_class_texts,
+            )
+            self.assertIsNotNone(review)
+            self.assertEqual(expected_control["operation"], review[0])
+            self.assertIn("transient", review[1])
+            self.assertIn("no runner XML or persisted application preference", review[1])
+            self.assertNotIn(identity, inventory.NON_MUTATING_LEGACY_INTERACTIONS)
+            self.assertEqual(
+                ("set_value", "definite"),
+                inventory._operation(control, "direct_value_editor", handlers),
+            )
+
+            contract = inventory.SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS[identity]
+            for method_name, digest in contract["methodDigests"].items():
+                self.assertEqual(
+                    digest,
+                    inventory._legacy_method_digest([skills_source], method_name),
+                )
+            for callee_identity, method_digests in contract["calleeMethodDigests"].items():
+                for method_name, digest in method_digests.items():
+                    self.assertEqual(
+                        digest,
+                        inventory._legacy_method_digest(
+                            all_class_texts[callee_identity],
+                            method_name,
+                        ),
+                    )
+
+            self.assertIsNone(
+                inventory._source_guarded_non_mutating_review(
+                    identity[0],
+                    identity[1],
+                    [{"event": "SelectedIndexChanged", "handler": "drifted_handler"}],
+                    [skills_source],
+                    all_class_texts,
+                )
+            )
+            self.assertIsNone(
+                inventory._source_guarded_non_mutating_review(
+                    identity[0],
+                    identity[1],
+                    handlers,
+                    [skills_source],
+                )
+            )
+
+            first_method = next(iter(contract["methodDigests"]))
+            with patch.dict(
+                inventory.SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS,
+                {
+                    identity: {
+                        **contract,
+                        "methodDigests": {
+                            **contract["methodDigests"],
+                            first_method: "0" * 64,
+                        },
+                    },
+                },
+            ):
+                self.assertIsNone(
+                    inventory._source_guarded_non_mutating_review(
+                        identity[0],
+                        identity[1],
+                        handlers,
+                        [skills_source],
+                        all_class_texts,
+                    )
+                )
+
+            for callee_identity, method_digests in contract["calleeMethodDigests"].items():
+                for method_name in method_digests:
+                    drifted_callees = {
+                        key: dict(value)
+                        for key, value in contract["calleeMethodDigests"].items()
+                    }
+                    drifted_callees[callee_identity][method_name] = "0" * 64
+                    with patch.dict(
+                        inventory.SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS,
+                        {
+                            identity: {
+                                **contract,
+                                "calleeMethodDigests": drifted_callees,
+                            },
+                        },
+                    ):
+                        self.assertIsNone(
+                            inventory._source_guarded_non_mutating_review(
+                                identity[0],
+                                identity[1],
+                                handlers,
+                                [skills_source],
+                                all_class_texts,
+                            )
+                        )
+
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(
+            [
+                "Chummer/Backend/Characters/Character.cs",
+                "Chummer/Backend/Character Settings/CharacterSettings.cs",
+            ],
+            payload["generationInputs"]["chummer5"]["sourceGuardPaths"],
+        )
+        rows = {
+            row["legacy"]["controlName"]: row
+            for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == "SkillsTabUserControl"
+            and row["legacy"]["controlName"] in expected
+        }
+        self.assertEqual(set(expected), set(rows))
+        for control, expected_control in expected.items():
+            row = rows[control]
+            self.assertEqual(expected_control["operation"], row["operation"])
+            self.assertEqual("non_mutating", row["legacy"]["mutationDisposition"])
+            self.assertIn("transient", row["legacy"]["dispositionEvidence"])
+            self.assertFalse(row["editParityRequired"])
+            self.assertEqual("not_applicable_non_mutating", row["phone"]["status"])
+            self.assertEqual("not_applicable_non_mutating", row["tablet"]["status"])
+            self.assertEqual("not_applicable_non_mutating", row["e2e"]["phone"]["status"])
+            self.assertEqual("not_applicable_non_mutating", row["e2e"]["tablet"]["status"])
+            self.assertTrue(row["completionProven"])
+
     def test_create_contact_order_is_independently_source_guarded_non_mutating(self) -> None:
         legacy_root = (
             inventory.DEFAULT_CHUMMER5_ROOT
@@ -2739,8 +2929,8 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 458,
                 "implemented_verified_api36": 79,
-                "missing": 940,
-                "not_applicable_non_mutating": 474,
+                "missing": 938,
+                "not_applicable_non_mutating": 476,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 172,
             },
@@ -2750,8 +2940,8 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 4,
                 "implemented_verified_api36": 75,
-                "missing": 1532,
-                "not_applicable_non_mutating": 474,
+                "missing": 1530,
+                "not_applicable_non_mutating": 476,
                 "partial_exact_saved_data": 144,
             },
             payload["summary"]["tabletStatusCounts"],

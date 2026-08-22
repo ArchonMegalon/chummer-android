@@ -2279,10 +2279,15 @@ NON_MUTATING_LEGACY_INTERACTIONS = {
     ),
 }
 
+SOURCE_GUARDED_NON_MUTATING_CALLEE_PATHS = (
+    Path("Chummer/Backend/Characters/Character.cs"),
+    Path("Chummer/Backend/Character Settings/CharacterSettings.cs"),
+)
+
 # These controls look mutation-capable to the generic designer parser because they are writable
 # controls with mutation-shaped event handlers.  They are excluded only while the exact reviewed
-# legacy method bodies below remain unchanged.  A source change deliberately removes the override and
-# returns the row to the fail-closed mutating/missing path until the new behavior is reviewed.
+# legacy method bodies and relevant callees below remain unchanged.  A source change deliberately
+# removes the override and returns the row to the fail-closed mutating/missing path until reviewed.
 SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS: dict[
     tuple[str, str], dict[str, Any]
 ] = {
@@ -2374,6 +2379,116 @@ SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS: dict[
                 ),
                 "LoadStatBlockListsAsync": (
                     "8d1eec5bf6905b96a722c3f9a195cedcd4fc1b3697438ca2f2f1ea7f808245ac"
+                ),
+            },
+        },
+    },
+    ("SkillsTabUserControl", "cboSortKnowledge"): {
+        "operation": "sort_knowledge_skill_view",
+        "evidence": (
+            "SelectedIndexChanged installs the selected comparer on the transient "
+            "BindingListDisplay<KnowledgeSkill>; SortAsync and its guarded redraw callees only rebuild "
+            "WinForms visibility, layout, and display-index state. RealLoad always resets the selector "
+            "to alphabetical index 0, so no runner XML or persisted application preference is written"
+        ),
+        "events": (("SelectedIndexChanged", "cboSortKnowledge_SelectedIndexChanged"),),
+        "methodDigests": {
+            "SkillsTabUserControl_Load": (
+                "93b2457ab8b9b5993933d0c54b5b1cfde2c8b023c15d9e0d50395a6a902e8494"
+            ),
+            "RealLoad": (
+                "c576cfb77d4bb9b3aac88dab37865f817a26315eac8f3e964a8b6be90baf6617"
+            ),
+            "GenerateKnowledgeSortList": (
+                "ac452766dadc3935511760ce9c85c427daebae563711da511cc44f78977cc044"
+            ),
+            "cboSortKnowledge_SelectedIndexChanged": (
+                "ae2713ba064a020f6544e9e78aecb591ed84358af0a32a37dc75c3e5ecf2da89"
+            ),
+        },
+        "calleeMethodDigests": {
+            ("Chummer.Controls.Shared", "BindingListDisplay"): {
+                "SortAsync": (
+                    "19432672a62a104019269bf0cc54d7105aa585991aa221e48b4b130f39271122"
+                ),
+                "RedrawControlsAsync": (
+                    "0ece1446cbe45898c0773224cec3162b5cebb70f9d28e1a8e684479b377d9a78"
+                ),
+                "ResetDisplayPanelHeightAsync": (
+                    "54412a9de57835b94d7955ba476f7459bdb628686bf9110112fe13007fb8eff5"
+                ),
+                "ComputeDisplayIndexAsync": (
+                    "f5508b62dbf5fb308be383103928df06685acd27dad2c31e23ecc7c4f746d8d4"
+                ),
+                "LoadScreenContentAsync": (
+                    "4f3b44747ce29273dc388b49429eb70d5acb0eae0ec4adc545fc763771654ae0"
+                ),
+                "LoadRangeAsync": (
+                    "d861f633c5f148d094e745f1b77abeb8ceffcd1654cc5024c904173b3ea4acdc"
+                ),
+            },
+        },
+    },
+    ("SkillsTabUserControl", "cboDisplayFilterKnowledge"): {
+        "operation": "filter_knowledge_skill_view",
+        "evidence": (
+            "SelectedIndexChanged and TextUpdate install a predicate or search text on the transient "
+            "BindingListDisplay<KnowledgeSkill>; FilterAsync and its guarded redraw callees only rebuild "
+            "WinForms visibility, layout, and display-index state. RealLoad always resets the selector "
+            "to All index 1; the Character settings calls only read enabled custom-data paths to build "
+            "category choices, so no runner XML or persisted application preference is written"
+        ),
+        "events": (
+            ("SelectedIndexChanged", "cboDisplayFilterKnowledge_SelectedIndexChanged"),
+            ("TextUpdate", "cboDisplayFilterKnowledge_TextUpdate"),
+        ),
+        "methodDigests": {
+            "SkillsTabUserControl_Load": (
+                "93b2457ab8b9b5993933d0c54b5b1cfde2c8b023c15d9e0d50395a6a902e8494"
+            ),
+            "RealLoad": (
+                "c576cfb77d4bb9b3aac88dab37865f817a26315eac8f3e964a8b6be90baf6617"
+            ),
+            "GenerateKnowledgeDropdownFilter": (
+                "849e456f9b579964359a4c02654a6068598d8eb62f17cb0cea4b497bc5980cd5"
+            ),
+            "cboDisplayFilterKnowledge_SelectedIndexChanged": (
+                "c0ce67e752c899d3cc489fe725b99ad3fb4a0be677e2eb78d372d726799eedf0"
+            ),
+            "cboDisplayFilterKnowledge_TextUpdate": (
+                "a841de08aa2ac2ff54e1a5b3a61e3e572de9c2d54e1602935780606cbd64b336"
+            ),
+        },
+        "calleeMethodDigests": {
+            ("Chummer.Controls.Shared", "BindingListDisplay"): {
+                "FilterAsync": (
+                    "0986f3cb1dc36b45c8d03395624748c9c9f255e1385113f3a3c074f27c85d897"
+                ),
+                "RedrawControlsAsync": (
+                    "0ece1446cbe45898c0773224cec3162b5cebb70f9d28e1a8e684479b377d9a78"
+                ),
+                "ResetDisplayPanelHeightAsync": (
+                    "54412a9de57835b94d7955ba476f7459bdb628686bf9110112fe13007fb8eff5"
+                ),
+                "ComputeDisplayIndexAsync": (
+                    "f5508b62dbf5fb308be383103928df06685acd27dad2c31e23ecc7c4f746d8d4"
+                ),
+                "LoadScreenContentAsync": (
+                    "4f3b44747ce29273dc388b49429eb70d5acb0eae0ec4adc545fc763771654ae0"
+                ),
+                "LoadRangeAsync": (
+                    "d861f633c5f148d094e745f1b77abeb8ceffcd1654cc5024c904173b3ea4acdc"
+                ),
+            },
+            ("Chummer", "Character"): {
+                "GetSettingsAsync": (
+                    "3040b38e93f4e926db930e56b95be7af72f97969c2aa59fc4cda5c3526761797"
+                ),
+            },
+            # _class_identity groups this multi-class source unit under its first declaration.
+            ("Chummer", "CharacterBuildMethodExtensions"): {
+                "GetEnabledCustomDataDirectoryPathsAsync": (
+                    "2961128a4e29aa9e2709d77cd87434b82fad35187e4ba6dc268efb87f6c86ea8"
                 ),
             },
         },
@@ -5683,6 +5798,22 @@ def extract_legacy_rows(chummer5_root: Path) -> tuple[list[dict[str, Any]], dict
         units.append((path, text, identity))
         class_texts[identity].append(text)
 
+    # Some reviewed view-only handlers read model state outside the UI source roots.  Load those
+    # exact source units solely for fail-closed callee digests; do not scan their fields as UI rows.
+    for relative_path in SOURCE_GUARDED_NON_MUTATING_CALLEE_PATHS:
+        path = chummer5_root / relative_path
+        if not path.is_file():
+            continue
+        data = path.read_bytes()
+        source_fingerprint.update(relative_path.as_posix().encode("utf-8"))
+        source_fingerprint.update(b"\0")
+        source_fingerprint.update(data)
+        source_fingerprint.update(b"\0")
+        text = data.decode("utf-8-sig", errors="replace")
+        identity = _class_identity(text, path)
+        if identity is not None:
+            class_texts[identity].append(text)
+
     events_by_class = {
         identity: _event_map(texts)
         for identity, texts in class_texts.items()
@@ -5877,6 +6008,9 @@ def extract_legacy_rows(chummer5_root: Path) -> tuple[list[dict[str, Any]], dict
         "sourceFileCount": len(files),
         "designerFileCount": sum(path.name.endswith(".Designer.cs") for path in files),
         "sourceRoots": source_roots,
+        "sourceGuardPaths": [
+            path.as_posix() for path in SOURCE_GUARDED_NON_MUTATING_CALLEE_PATHS
+        ],
         "sourceFingerprintSha256": source_fingerprint.hexdigest(),
     }
 
@@ -20114,6 +20248,7 @@ def build_inventory(
                 "commitTimestamp": _git_value(chummer5_root, "show", "-s", "--format=%cI", "HEAD"),
                 "trackedTreeDirty": bool(_git_value(chummer5_root, "status", "--porcelain", "--untracked-files=no")),
                 "sourceRoots": source_summary["sourceRoots"],
+                "sourceGuardPaths": source_summary["sourceGuardPaths"],
                 "sourceFingerprintSha256": source_summary["sourceFingerprintSha256"],
             },
             "androidParityRegistry": {

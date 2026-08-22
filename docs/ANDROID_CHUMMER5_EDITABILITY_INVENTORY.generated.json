@@ -6,26 +6,26 @@
     "rowCount": 2229,
     "sourceFileCount": 300,
     "designerFileCount": 137,
-    "definiteMutationCandidateCount": 1755,
+    "definiteMutationCandidateCount": 1753,
     "reviewRequiredCount": 0,
     "legacyReviewCompleteCount": 2229,
-    "reviewedNonMutatingCount": 474,
-    "editParityRequiredCount": 1755,
+    "reviewedNonMutatingCount": 476,
+    "editParityRequiredCount": 1753,
     "unclassifiedCount": 0,
-    "completionProvenCount": 549,
+    "completionProvenCount": 551,
     "phoneStatusCounts": {
       "implemented_pending_emulator": 458,
       "implemented_verified_api36": 79,
-      "missing": 940,
-      "not_applicable_non_mutating": 474,
+      "missing": 938,
+      "not_applicable_non_mutating": 476,
       "partial_create_only": 106,
       "partial_exact_saved_data": 172
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
       "implemented_verified_api36": 75,
-      "missing": 1532,
-      "not_applicable_non_mutating": 474,
+      "missing": 1530,
+      "not_applicable_non_mutating": 476,
       "partial_exact_saved_data": 144
     }
   },
@@ -57,7 +57,11 @@
         "CrashHandler",
         "ChummerDataViewer"
       ],
-      "sourceFingerprintSha256": "d3dc0f7b65f9c5cf427479ba1ce65806190518373d07ec995cf3991922800f60"
+      "sourceGuardPaths": [
+        "Chummer/Backend/Characters/Character.cs",
+        "Chummer/Backend/Character Settings/CharacterSettings.cs"
+      ],
+      "sourceFingerprintSha256": "c471e31b30a9734a1c2be9e8f4848b6abfd92617ffb81d2ef1ec2943f7c3ac28"
     },
     "androidParityRegistry": {
       "path": "chummer-design/products/chummer/ANDROID_WINDOWS_FEATURE_PARITY.yaml",
@@ -332,7 +336,7 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerMugshotRules.cs",
         "exists": true,
-        "sha256": "071c3e921f10e1e7b14963eef01209641408062b10fa8fe552cd177689d9b1a4"
+        "sha256": "6e830bb5af65e44db31a7fd8f8ffd3c2ac23ea5971eef20cd67d32011cff0702"
       },
       {
         "path": "src/Chummer.Android/Native/VehicleEquipmentInstalledPage.cs",
@@ -2147,7 +2151,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "242f16be38b680c28b14ba01f687886648f17c820a60f77a384f9f62b5cf1d97"
+      "sha256": "c63ff3f4928e5a00a3ea00dff070592d526dde1efa484476330268ebaefe146d"
     }
   },
   "coverageByFamily": {
@@ -2462,9 +2466,9 @@
     "skills": {
       "rowCount": 36,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 25,
-      "tabletMissingCount": 26,
-      "completionProvenCount": 10
+      "phoneMissingCount": 23,
+      "tabletMissingCount": 24,
+      "completionProvenCount": 12
     },
     "sourcebook_selection": {
       "rowCount": 7,
@@ -11569,9 +11573,9 @@
         "controlName": "cboSortKnowledge",
         "controlType": "ElasticComboBox",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (cboSortKnowledge_SelectedIndexChanged)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "SelectedIndexChanged installs the selected comparer on the transient BindingListDisplay<KnowledgeSkill>; SortAsync and its guarded redraw callees only rebuild WinForms visibility, layout, and display-index state. RealLoad always resets the selector to alphabetical index 0, so no runner XML or persisted application preference is written",
         "text": null,
         "tag": null,
         "readOnlyAtDesignTime": null,
@@ -11585,16 +11589,16 @@
         ]
       },
       "mutationFamily": "skills",
-      "operation": "set_value",
+      "operation": "sort_knowledge_skill_view",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -11603,18 +11607,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Skills/SkillsTabUserControl.Designer.cs::Chummer.UI.Skills.SkillsTabUserControl::cboDisplayFilterKnowledge",
@@ -11626,9 +11630,9 @@
         "controlName": "cboDisplayFilterKnowledge",
         "controlType": "ElasticComboBox",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (cboDisplayFilterKnowledge_SelectedIndexChanged, cboDisplayFilterKnowledge_TextUpdate)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "SelectedIndexChanged and TextUpdate install a predicate or search text on the transient BindingListDisplay<KnowledgeSkill>; FilterAsync and its guarded redraw callees only rebuild WinForms visibility, layout, and display-index state. RealLoad always resets the selector to All index 1; the Character settings calls only read enabled custom-data paths to build category choices, so no runner XML or persisted application preference is written",
         "text": null,
         "tag": null,
         "readOnlyAtDesignTime": null,
@@ -11646,16 +11650,16 @@
         ]
       },
       "mutationFamily": "skills",
-      "operation": "set_value",
+      "operation": "filter_knowledge_skill_view",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -11664,18 +11668,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Controls/Skills/SkillsTabUserControl.Designer.cs::Chummer.UI.Skills.SkillsTabUserControl::cboSort",
