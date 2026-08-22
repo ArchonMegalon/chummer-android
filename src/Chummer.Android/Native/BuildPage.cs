@@ -142,11 +142,20 @@ public sealed class BuildPage : NativePageBase
         method.Add(NativeTheme.Metric("Active stage", StageLabel(snapshot, snapshot.ActiveStepId)));
         _body.Add(NativeTheme.Card(method));
 
-        if (string.Equals(snapshot.BuildMethod, CharacterCreationBuildMethods.LifeModules, StringComparison.Ordinal))
+        CharacterCreationWizardStageState? lifeModuleStage = snapshot.Steps.FirstOrDefault(candidate =>
+            string.Equals(
+                candidate.StepId,
+                CharacterCreationWizardStepIds.LifeModules,
+                StringComparison.Ordinal));
+        if (string.Equals(snapshot.BuildMethod, CharacterCreationBuildMethods.LifeModules, StringComparison.Ordinal)
+            && (lifeModuleStage is null
+                || !lifeModuleStage.IsAvailable
+                || lifeModuleStage.Blockers.Count > 0))
         {
             Label blocked = NativeTheme.Body(
-                "Life Modules are fail-closed on this phone foundation. Chummer will not substitute or claim "
-                + "the Karma workflow. Creation remains blocked until the typed staged module journey is wired.",
+                "Life Modules are blocked by the current authoritative projection. Chummer will not substitute or claim "
+                + "the Karma workflow. "
+                + (lifeModuleStage?.Blockers.FirstOrDefault() ?? "No typed Life Module authority is available."),
                 NativeTheme.Danger);
             blocked.AutomationId = "creation-wizard-life-modules-blocked";
             _body.Add(NativeTheme.Card(blocked));

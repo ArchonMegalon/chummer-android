@@ -38,6 +38,7 @@ class CreationWizardSourceContractTests(unittest.TestCase):
             '"creation-wizard-binding"',
             '"creation-wizard-life-modules-blocked"',
             "CharacterCreationBuildMethods.LifeModules",
+            "lifeModuleStage.IsAvailable",
             "will not substitute or claim",
             "No authoritative budgets are available",
         ):
