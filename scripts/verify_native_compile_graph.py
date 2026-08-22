@@ -26,6 +26,14 @@ def _is_within(path: Path, root: Path) -> bool:
         return False
 
 
+def _default_workspace_root(repo_root: Path) -> Path:
+    """Resolve the owning workspace, including its validated integration shelves."""
+    for candidate in (repo_root, *repo_root.parents):
+        if (candidate / ".integration-worktrees").is_dir():
+            return candidate.resolve()
+    return repo_root.parent.resolve()
+
+
 def _load_json(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -218,7 +226,7 @@ def main() -> int:
 
     repo_root = args.repo_root.resolve()
     project_path = (args.project or repo_root / DEFAULT_PROJECT).resolve()
-    workspace_root = (args.workspace_root or repo_root.parent).resolve()
+    workspace_root = (args.workspace_root or _default_workspace_root(repo_root)).resolve()
     compiled: list[Path] = []
     issues: list[str] = []
     if not args.assets_only:

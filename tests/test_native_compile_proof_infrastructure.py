@@ -29,6 +29,13 @@ toolchain = load_script("preflight_native_android_toolchain")
 
 
 class NativeCompileProofInfrastructureTests(unittest.TestCase):
+    def test_default_workspace_includes_validated_integration_shelves(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = Path(temporary) / "workspace"
+            repo = workspace / ".integration-worktrees/coherent/chummer-android"
+            repo.mkdir(parents=True)
+            self.assertEqual(workspace, compile_graph._default_workspace_root(repo))
+
     def test_owned_compile_inputs_cover_native_pages_and_platform_stubs(self) -> None:
         compiled, issues = compile_graph.verify_source_graph(REPO, COMPILE_PROJECT)
         self.assertEqual([], issues)
