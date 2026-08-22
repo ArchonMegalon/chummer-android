@@ -1,0 +1,131 @@
+name: Preview.9 ARM64 AAB
+
+on:
+  push:
+    branches:
+      - release/preview9-internal-20260822
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview9-arm64-aab-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build unsigned ARM64 release bundle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out the Android candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: chummer-android
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the exact presentation dependency
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-ui
+          ref: 62fb80daad52007d6846f3b6e241ca19c66da501
+          path: chummer-presentation
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the exact engine dependency
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-core
+          ref: 7eaa74839454ec1af94abc01193846780a7ec90c
+          path: chummer-core-engine
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the exact Hub contract dependencies
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-hub
+          ref: 5e4a1ac19f537e3cda79cad26eb6fa23362505cb
+          path: chummer.run-services
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the exact registry contract dependency
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-hub-registry
+          ref: 7b54afec574a9327616c4ad7566da3a7b6b906a5
+          path: chummer-hub-registry
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the exact UI kit dependency
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-ui-kit
+          ref: b0a924215b9d370e4073a6f42782dade4c03ab93
+          path: chummer-ui-kit
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the exact media contract dependency
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-media-factory
+          ref: 9bee2fecac1f4f6e9e2825b8b609ea54fc1253d4
+          path: fleet/repos/chummer-media-factory
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Install the governed .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 10.0.111
+
+      - name: Restore the MAUI Android workload
+        run: dotnet workload restore chummer-android/Chummer.Android.slnx
+
+      - name: Run the Android release tests
+        run: python3 -m unittest discover -s chummer-android/tests -v
+
+      - name: Build the unsigned ARM64 release bundle
+        env:
+          CHUMMER_COMPLETE_ROOT: ${{ github.workspace }}
+          CHUMMER_RUN_SERVICES_ROOT: ${{ github.workspace }}/chummer.run-services
+          CHUMMER_MEDIA_FACTORY_ROOT: ${{ github.workspace }}/fleet/repos/chummer-media-factory
+        run: >-
+          dotnet publish chummer-android/src/Chummer.Android/Chummer.Android.csproj
+          --configuration Release
+          --framework net10.0-android36.0
+          --self-contained true
+          -p:ChummerAndroidRuntimeIdentifier=android-arm64
+          -p:ChummerDesktopRuntimeIdentifiers=
+          -p:ChummerUseLocalCompatibilityTree=true
+          -p:AndroidPackageFormats=aab
+
+      - name: Seal the unique unsigned AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t bundles < <(
+            find chummer-android/src/Chummer.Android/bin/Release/net10.0-android36.0/android-arm64/publish \
+              -maxdepth 1 -type f -name '*.aab' -print
+          )
+          test "${#bundles[@]}" -eq 1
+          install -d -m 0755 "$RUNNER_TEMP/chummer-preview9-aab"
+          install -m 0644 "${bundles[0]}" "$RUNNER_TEMP/chummer-preview9-aab/chummer-android-0.1.0-preview.9-unsigned.aab"
+          sha256sum "$RUNNER_TEMP/chummer-preview9-aab/chummer-android-0.1.0-preview.9-unsigned.aab" \
+            >"$RUNNER_TEMP/chummer-preview9-aab/chummer-android-0.1.0-preview.9-unsigned.aab.sha256"
+
+      - name: Upload the exact unsigned candidate
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: chummer-android-preview9-arm64-unsigned-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/chummer-preview9-aab
+          if-no-files-found: error
+          retention-days: 2
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
