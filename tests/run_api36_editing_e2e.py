@@ -1443,6 +1443,7 @@ def prepare_full_editing_runner(
     device: Device,
     profile: str,
     completed_runner_name: str,
+    completed_runner_alias: str,
 ) -> None:
     device.tap_until_visible("home-new-runner", "Select Build Method")
     device.tap("dialog-action-create-character", scroll=True)
@@ -1454,6 +1455,17 @@ def prepare_full_editing_runner(
         # The unrestricted editor must remain unavailable until creation is complete.
         device.wait("creation-wizard-dashboard", timeout=90)
         device.capture("new-runner-creation-wizard")
+        # Importing another dossier is correctly blocked while the current workspace
+        # is dirty. Persist this incomplete creation draft without claiming that the
+        # creation workflow itself has completed, then switch to the signed fixture.
+        device.tap("build-save-runner")
+        device.wait(
+            "Saved.",
+            timeout=90,
+            scroll=True,
+            max_scrolls=48,
+            scroll_distance_ratio=0.22,
+        )
         device.tap("Home")
     else:
         # Tablet creation remains on Home after the modal workflow closes.
@@ -1462,6 +1474,9 @@ def prepare_full_editing_runner(
     device.wait("home-open-file", timeout=90)
     device.tap("home-open-file")
     select_android_document(device, completed_runner_name)
+    # Bind the transition to the selected career fixture. A picker dismissal or a
+    # guarded no-op can leave a generic Continue button on the prior workspace.
+    device.wait(completed_runner_alias, timeout=90)
     device.wait("Continue building", timeout=90)
 
 
@@ -1897,6 +1912,7 @@ def main() -> int:
             device,
             args.profile,
             "career-condition-monitor-e2e.chum5",
+            "ConditionMonitorE2E",
         )
 
     open_build(device, args.profile)
@@ -2123,11 +2139,15 @@ def main() -> int:
         "restartResumedComponent": restart_proof.restarted.resumed_component,
         "journeys": {
             "newRunnerCreationWorkflowStarted": "pass",
+            "newRunnerCreationDraftSaved": (
+                "pass" if args.profile == "phone" else "not-claimed-tablet-deferred"
+            ),
             "newRunnerCreationCompletion": "not-claimed",
             "phoneCreationWizardDashboard": (
                 "pass" if args.profile == "phone" else "not-applicable-tablet-deferred"
             ),
             "careerRunnerImport": "pass",
+            "careerRunnerAliasActivated": "ConditionMonitorE2E",
             "originIdentityEditPersisted": "pass",
             "originStoryEditPersisted": "pass",
             "attributeBaseEditPersisted": "pass",

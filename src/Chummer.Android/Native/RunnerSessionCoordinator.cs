@@ -498,11 +498,16 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
         try
         {
+            CharacterOverviewState previousState = State;
+            _notice = null;
             await _presenter.ImportAsync(
                 WorkspaceImportDocument.FromUtf8Bytes(document.Content, string.Empty, WorkspaceDocumentFormat.NativeXml),
                 cancellationToken);
-            RememberRosterLocator(State.WorkspaceId, document.ContentUri);
-            _notice = $"Opened {document.DisplayName}.";
+            if (ImportActivatedWorkspace(previousState, State))
+            {
+                RememberRosterLocator(State.WorkspaceId, document.ContentUri);
+                _notice = $"Opened {document.DisplayName}.";
+            }
             await SyncShellAsync(cancellationToken);
             RestorePlayState();
         }
@@ -513,6 +518,16 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
         NotifyChanged();
     }
+
+    private static bool ImportActivatedWorkspace(
+        CharacterOverviewState previous,
+        CharacterOverviewState current)
+        => current.WorkspaceId is { } currentWorkspace
+           && (previous.WorkspaceId is not { } previousWorkspace
+               || !string.Equals(previousWorkspace.Value, currentWorkspace.Value, StringComparison.Ordinal)
+               || previous.ContentRevision != current.ContentRevision
+               || previous.SavedRevision != current.SavedRevision
+               || !ReferenceEquals(previous.Session, current.Session));
 
     public async Task OpenOnlineAsync(AndroidOnlineCharacter character, CancellationToken cancellationToken = default)
     {

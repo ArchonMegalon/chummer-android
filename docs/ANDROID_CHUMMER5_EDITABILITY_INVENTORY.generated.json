@@ -564,7 +564,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "f4c5ee2b5274546090daad972557eb354f5605d13a77e41186e659d073a33b62"
+        "sha256": "61072e03063a1bcb9f5067014c0a779b7e35bd505ae4bce2ba8e2fd032b16c09"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -579,7 +579,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "7f469d2a090b5fe88307a8cf81ba21e813f75205c4d65e6c55faa7e0da760dff"
+        "sha256": "c6e657c8604c90e72db372cefcd1fd31161c6c39b0504209c480df24fcf3ca09"
       },
       {
         "path": "tests/run_api36_gear_attack_swap_e2e.py",

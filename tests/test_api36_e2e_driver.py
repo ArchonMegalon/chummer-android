@@ -559,6 +559,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 device,
                 "phone",
                 "career-condition-monitor-e2e.chum5",
+                "ConditionMonitorE2E",
             )
 
         device.assert_has_calls(
@@ -573,9 +574,18 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 call.tap("dialog-action-complete-new-character-workflow", scroll=True),
                 call.wait("creation-wizard-dashboard", timeout=90),
                 call.capture("new-runner-creation-wizard"),
+                call.tap("build-save-runner"),
+                call.wait(
+                    "Saved.",
+                    timeout=90,
+                    scroll=True,
+                    max_scrolls=48,
+                    scroll_distance_ratio=0.22,
+                ),
                 call.tap("Home"),
                 call.wait("home-open-file", timeout=90),
                 call.tap("home-open-file"),
+                call.wait("ConditionMonitorE2E", timeout=90),
                 call.wait("Continue building", timeout=90),
             ]
         )
@@ -592,6 +602,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 device,
                 "tablet",
                 "career-condition-monitor-e2e.chum5",
+                "ConditionMonitorE2E",
             )
 
         device.assert_has_calls(
@@ -607,6 +618,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 call.wait("Continue building", timeout=90),
                 call.wait("home-open-file", timeout=90),
                 call.tap("home-open-file"),
+                call.wait("ConditionMonitorE2E", timeout=90),
                 call.wait("Continue building", timeout=90),
             ]
         )
@@ -633,10 +645,49 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             '"restartProcessIds": list(restart_proof.restarted.process_ids)',
             '"restartResumedComponent": restart_proof.restarted.resumed_component',
             '"newRunnerCreationCompletion": "not-claimed"',
+            '"newRunnerCreationDraftSaved": (',
+            '"pass" if args.profile == "phone" else "not-claimed-tablet-deferred"',
             '"careerRunnerImport": "pass"',
+            '"careerRunnerAliasActivated": "ConditionMonitorE2E"',
             '"processRestartPersistence": "pass"',
         ):
             self.assertIn(marker, receipt)
+
+    def test_local_import_does_not_claim_success_for_a_guarded_workspace(self) -> None:
+        source = (
+            REPO_ROOT
+            / "src"
+            / "Chummer.Android"
+            / "Native"
+            / "RunnerSessionCoordinator.cs"
+        ).read_text(encoding="utf-8")
+        block = source[source.index("public async Task OpenLocalAsync") :]
+        block = block[: block.index("public async Task OpenOnlineAsync")]
+
+        self.assertIn("CharacterOverviewState previousState = State;", block)
+        self.assertIn("_notice = null;", block)
+        self.assertIn(
+            "if (ImportActivatedWorkspace(previousState, State))",
+            block,
+        )
+        guarded = block[block.index("if (ImportActivatedWorkspace") :]
+        self.assertIn("RememberRosterLocator", guarded)
+        self.assertIn('_notice = $"Opened {document.DisplayName}.";', guarded)
+        self.assertNotIn(
+            'await _presenter.ImportAsync(\n'
+            '                WorkspaceImportDocument.FromUtf8Bytes(document.Content, string.Empty, WorkspaceDocumentFormat.NativeXml),\n'
+            '                cancellationToken);\n'
+            '            RememberRosterLocator',
+            block,
+        )
+
+        predicate = block[block.index("private static bool ImportActivatedWorkspace") :]
+        self.assertIn("current.WorkspaceId is { } currentWorkspace", predicate)
+        self.assertIn("previous.ContentRevision != current.ContentRevision", predicate)
+        self.assertIn("previous.SavedRevision != current.SavedRevision", predicate)
+        self.assertIn("!ReferenceEquals(previous.Session, current.Session)", predicate)
+        self.assertNotIn("previous.Notice", predicate)
+        self.assertNotIn("current.Notice", predicate)
 
     def test_native_dialog_rebuilds_from_state_shape_changes_not_a_dialog_allowlist(self) -> None:
         source = (
