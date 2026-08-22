@@ -16,10 +16,10 @@
     "phoneStatusCounts": {
       "implemented_pending_emulator": 450,
       "implemented_verified_api36": 79,
-      "missing": 960,
+      "missing": 958,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
-      "partial_exact_saved_data": 166
+      "partial_exact_saved_data": 168
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
@@ -330,6 +330,21 @@
         "sha256": "261fb5d29fd1aa62f4832ea3167fdb4662c918272a921e537dbb033b4e7ce399"
       },
       {
+        "path": "src/Chummer.Android/Native/VehicleWeaponFiringModePage.cs",
+        "exists": true,
+        "sha256": "eb34c2993573008b06481090ff7ec2c82d09f13c1578074f225da5ee8460cdd3"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/VehicleWeaponFiringModeEditRequest.cs",
+        "exists": true,
+        "sha256": "9fc94bbff28ab9579d12eb974191cdad8d68dd4fdba2a1eb18536696a10cfa50"
+      },
+      {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleWeaponFiringModeRules.cs",
+        "exists": true,
+        "sha256": "d4ed7239210125667ecee4f8f689a33232218578186d47c2853ba7ed66a16412"
+      },
+      {
         "path": "src/Chummer.Android/Native/ImprovementActivePage.cs",
         "exists": true,
         "sha256": "8639d5437cf278085a3349abfd9fdb7aa55cc8938e18544ce88e51c3332a4e41"
@@ -402,7 +417,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "6abe859f14f06183bd50c1736b81caf68037805af40c826c2c8f1047cc9e753a"
+        "sha256": "13b7efc6ef2d011f16f70fba7c9474929419ac87fdf5a50a8117fca57a2fdd6d"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -427,7 +442,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "1c872f1153c619dc91c35e3b044f09d02d1907401bf4f95f0b2a8c52e3257be0"
+        "sha256": "045fcc1c4778fceec5b791cebecee0fe9e36409dc434e18eabc5a5038a721e6d"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -483,6 +498,21 @@
         "path": "tests/fixtures/career-cyberware-matrix-swap-e2e.chum5",
         "exists": true,
         "sha256": "c544207cf6137eaa0a970525ce32a83aac6da6f78f399c4063f58cde1a291b40"
+      },
+      {
+        "path": "tests/run_api36_vehicle_weapon_firing_mode_e2e.py",
+        "exists": true,
+        "sha256": "adab3dee6b33865bf49765f756a6abe27ff9cd17a5c45ef7cf70c3f8483cb80f"
+      },
+      {
+        "path": "tests/fixtures/creation-vehicle-weapon-firing-mode-e2e.chum5",
+        "exists": true,
+        "sha256": "c7f71f783cc85c2c154be97741c612f24086d51b3c05257a15532051115936a0"
+      },
+      {
+        "path": "tests/fixtures/career-vehicle-weapon-firing-mode-e2e.chum5",
+        "exists": true,
+        "sha256": "e9edb8849e151bce0c782f504b665542f37094609213b5382974297bc6190513"
       },
       {
         "path": "tests/run_api36_character_notes_e2e.py",
@@ -1742,7 +1772,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "18afdf6fa0af2c7794cf30bd6bfacae25d7f1bf126d848e96641e24b42e5e78f"
+        "sha256": "e8430dfd9410d59550967a5d60a8589e0c4d58439548d4a417f5b52752f492ba"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1952,7 +1982,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "e658104b8110db56794697e5cccba5176ec01d1287768bb3152568dd6ab6c4d4"
+        "sha256": "e15fb736ce3ba8e23c02a0a1c9f07d05feeb1f09dcdb63c383105f56e66c9e31"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2007,7 +2037,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "4157e3d310027e95bf64422b06d1030499d34e99bd6eecf8d6e6af913723b51c"
+        "sha256": "5a29b88f73e6020fb7401461649a691933da17f38dbebbec34135f7c6337d926"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -2017,7 +2047,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "3ba3287c3bcb346a250034c0b42ac72d7fdedcb5f3a2d7b7f96795e046b49a3a"
+      "sha256": "e93a844ef4100c754696c67d4081a23a007683bcae6db34478d78bca98be700c"
     }
   },
   "coverageByFamily": {
@@ -2381,7 +2411,7 @@
     "vehicles_and_drones": {
       "rowCount": 151,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 45,
+      "phoneMissingCount": 43,
       "tabletMissingCount": 100,
       "completionProvenCount": 27
     },
@@ -28158,11 +28188,16 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Vehicles > selected stable Vehicle > Vehicle Weapon firing modes > selected stable direct Vehicle Weapon",
+        "surface": "VehicleWeaponFiringModePage",
+        "automationId": "vehicle-weapon-firing-mode-picker-{stable-vehicle-guid}-{stable-vehicle-weapon-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/VehicleWeaponFiringModePage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/VehicleWeaponFiringModeEditRequest.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleWeaponFiringModeRules.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer cboVehicleWeaponFiringMode direct Vehicle/weapons/weapon selection only (legacy handler proven); hidden melee weapons without ammo, weapon mounts, underbarrel weapons, accessories, malformed/duplicate/stale identity, unsupported modes and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -28170,12 +28205,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed direct VehicleWeapon firing-mode enum mutation with exact Vehicle+Weapon Guid identity, five-value legacy allowlist, ranged/ammo-bearing-melee visibility provenance, Create/Career phase, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "only the selected direct Vehicle Weapon firingmode changes canonically while ammo, range type, weapon and vehicle state, descendants, siblings, Nuyen, Karma and unrelated XML remain exact after revision-bound atomic save/recovery, same-session reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_vehicle_weapon_firing_mode_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -63470,11 +63505,16 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Vehicles > selected stable Vehicle > Vehicle Weapon firing modes > selected stable direct Vehicle Weapon",
+        "surface": "VehicleWeaponFiringModePage",
+        "automationId": "vehicle-weapon-firing-mode-picker-{stable-vehicle-guid}-{stable-vehicle-weapon-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/VehicleWeaponFiringModePage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/VehicleWeaponFiringModeEditRequest.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleWeaponFiringModeRules.cs"
+        ],
+        "coverageLimit": "Exact CharacterCreate cboVehicleWeaponFiringMode direct Vehicle/weapons/weapon selection only (legacy handler proven); hidden melee weapons without ammo, weapon mounts, underbarrel weapons, accessories, malformed/duplicate/stale identity, unsupported modes and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -63482,12 +63522,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed direct VehicleWeapon firing-mode enum mutation with exact Vehicle+Weapon Guid identity, five-value legacy allowlist, ranged/ammo-bearing-melee visibility provenance, Create/Career phase, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "only the selected direct Vehicle Weapon firingmode changes canonically while ammo, range type, weapon and vehicle state, descendants, siblings, Nuyen, Karma and unrelated XML remain exact after revision-bound atomic save/recovery, same-session reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_vehicle_weapon_firing_mode_e2e.py"
         },
         "tablet": {
           "status": "missing",

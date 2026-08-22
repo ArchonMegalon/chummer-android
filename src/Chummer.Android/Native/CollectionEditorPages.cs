@@ -114,6 +114,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddVehicleHomeNodeAction(item);
         AddVehicleEquipmentInstalledAction(item);
         AddVehicleDataProcessingFirewallSwapAction(item);
+        AddVehicleWeaponFiringModeAction(item);
         AddCyberwareMatrixSwapAction(item);
         AddArmorHomeNodeAction(item);
         AddWeaponHomeNodeAction(item);
@@ -836,6 +837,38 @@ public sealed class CollectionItemEditorPage : NativePageBase
                     await Navigation.PushAsync(new CyberwareMatrixSwapPage(Coordinator, editor));
             },
             automationId: $"cyberware-matrix-swap-open-{cyberwareId:N}"));
+    }
+
+    private void AddVehicleWeaponFiringModeAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Vehicle || _target.NestedKind is not null
+            || Coordinator.State.WorkspaceId is null
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid vehicleId)
+            || vehicleId == Guid.Empty)
+        {
+            return;
+        }
+
+        _body.Add(NativeTheme.NavigationRow(
+            "Vehicle Weapon firing modes",
+            "Edit one direct eligible Vehicle Weapon; descendant weapons remain fail-closed",
+            async () =>
+            {
+                VehicleWeaponFiringModeEditorState? editor = await Coordinator
+                    .PrepareVehicleWeaponFiringModeEditAsync(vehicleId);
+                if (editor is null)
+                    return;
+                if (editor.Weapons.Count == 0)
+                {
+                    await DisplayAlertAsync(
+                        "No eligible direct weapons",
+                        "This vehicle has no direct ranged or ammo-bearing melee weapon with an exact saved firing mode.",
+                        "OK");
+                    return;
+                }
+                await Navigation.PushAsync(new VehicleWeaponFiringModeListPage(Coordinator, editor));
+            },
+            automationId: $"vehicle-weapon-firing-mode-list-open-{vehicleId:N}"));
     }
 
     private void AddArmorHomeNodeAction(WorkspaceCollectionItemEditorState item)

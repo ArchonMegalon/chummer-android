@@ -2291,10 +2291,10 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 450,
                 "implemented_verified_api36": 79,
-                "missing": 960,
+                "missing": 958,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
-                "partial_exact_saved_data": 166,
+                "partial_exact_saved_data": 168,
             },
             payload["summary"]["phoneStatusCounts"],
         )
@@ -4285,6 +4285,60 @@ namespace Chummer
             '"status": "partial_exact_saved_data" if implemented and legacy_exact else "missing"',
             "top-level Cyberware root selection only",
             "tests/run_api36_cyberware_matrix_swap_e2e.py",
+        ):
+            self.assertIn(marker, source)
+
+    def test_vehicle_weapon_firing_mode_mapping_is_two_row_typed_partial_and_scripted(self) -> None:
+        import inspect
+
+        source = SCRIPT.read_text(encoding="utf-8")
+        self.assertEqual(
+            "cboVehicleWeaponFiringMode",
+            inventory.VEHICLE_WEAPON_FIRING_MODE_CONTROL,
+        )
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = [
+            row for row in payload["rows"]
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.VEHICLE_WEAPON_FIRING_MODE_CONTROL
+        ]
+        self.assertEqual(2, len(rows))
+        parameters = list(inspect.signature(inventory._known_phone_mapping).parameters)
+        receipt_arguments = {
+            name: {} if name in {"condition_e2e_receipts", "contact_pet_e2e_receipts"} else None
+            for name in parameters[4:]
+        }
+        for row in rows:
+            mapping = inventory._known_phone_mapping(
+                row,
+                inventory.DEFAULT_CHUMMER5_ROOT,
+                PRESENTATION_ROOT,
+                CORE_ROOT,
+                **receipt_arguments,
+            )
+            self.assertEqual("partial_exact_saved_data", mapping["status"])
+            self.assertEqual("VehicleWeaponFiringModePage", mapping["surface"])
+            self.assertIn("typed direct VehicleWeapon", mapping["presenterMutation"])
+            self.assertIn("five-value legacy allowlist", mapping["presenterMutation"])
+            self.assertIn("zero Nuyen/Karma", mapping["presenterMutation"])
+            self.assertIn("underbarrel weapons", mapping["coverageLimit"])
+            self.assertEqual("scripted_not_executed", mapping["e2e"]["status"])
+            self.assertEqual(
+                "tests/run_api36_vehicle_weapon_firing_mode_e2e.py",
+                mapping["e2e"]["ref"],
+            )
+            self.assertEqual("missing", mapping["tablet"]["status"])
+        for marker in (
+            "VehicleWeaponFiringModePage",
+            "VehicleWeaponFiringModeEditRequest.cs",
+            "CharacterVehicleWeaponFiringModeRules.cs",
+            '"status": "partial_exact_saved_data" if implemented and legacy_exact else "missing"',
+            "direct Vehicle/weapons/weapon selection only",
+            "tests/run_api36_vehicle_weapon_firing_mode_e2e.py",
         ):
             self.assertIn(marker, source)
 

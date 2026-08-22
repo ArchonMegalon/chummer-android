@@ -1948,6 +1948,7 @@ VEHICLE_MATRIX_SWAP_CONTROLS = {
     "cboVehicleDataProcessing": "cboVehicleDataProcessing_SelectedIndexChanged",
     "cboVehicleFirewall": "cboVehicleFirewall_SelectedIndexChanged",
 }
+VEHICLE_WEAPON_FIRING_MODE_CONTROL = "cboVehicleWeaponFiringMode"
 CYBERWARE_MATRIX_SWAP_CONTROLS = {
     "cboCyberwareAttack": "cboCyberwareAttack_SelectedIndexChanged",
     "cboCyberwareSleaze": "cboCyberwareSleaze_SelectedIndexChanged",
@@ -11548,6 +11549,103 @@ def _known_phone_mapping(
             "tabletE2e": {"status": "missing", "ref": None},
         }
     if (class_name in {"CharacterCreate", "CharacterCareer"}
+            and control == VEHICLE_WEAPON_FIRING_MODE_CONTROL):
+        legacy_source = chummer5_root / "Chummer/Forms/Character Forms" / f"{class_name}.cs"
+        page = REPO_ROOT / "src/Chummer.Android/Native/VehicleWeaponFiringModePage.cs"
+        editor = REPO_ROOT / "src/Chummer.Android/Native/CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests/run_api36_vehicle_weapon_firing_mode_e2e.py"
+        overview = presentation_root / "Chummer.Presentation/Overview"
+        request = overview / "VehicleWeaponFiringModeEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        interface = overview / "ICharacterOverviewPresenter.cs"
+        rules = character_notes_core_root / "Chummer.Contracts/Characters/CharacterVehicleWeaponFiringModeRules.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        handler = "cboVehicleWeaponFiringMode_SelectedIndexChanged"
+        legacy_exact = any(event.get("handler") == handler for event in legacy.get("events", [])) \
+            and _contains(legacy_source, handler, "IsRefreshing || SkipUpdate",
+                          "treVehicles", "SelectedNode?.Tag", "is Weapon",
+                          "SelectedIndex >= 0", "FiringMode.DogBrain",
+                          "RefreshSelectedVehicle", "SetDirty(true)",
+                          "Enum.GetValues(typeof(FiringMode))", "FiringMode.NumFiringModes")
+        implemented = _contains(page, "class VehicleWeaponFiringModeListPage",
+                          "class VehicleWeaponFiringModePage",
+                          "CharacterVehicleWeaponFiringMode.DogBrain",
+                          "CharacterVehicleWeaponFiringMode.GunneryCommandDevice",
+                          "CharacterVehicleWeaponFiringMode.RemoteOperated",
+                          "CharacterVehicleWeaponFiringMode.ManualOperation",
+                          "CharacterVehicleWeaponFiringMode.Skill",
+                          'AutomationId = $"vehicle-weapon-firing-mode-page-{token}"',
+                          "TryValidateMutation") \
+            and _contains(editor, "AddVehicleWeaponFiringModeAction",
+                           'automationId: $"vehicle-weapon-firing-mode-list-open-{vehicleId:N}"') \
+            and _contains(coordinator, "PrepareVehicleWeaponFiringModeEditAsync",
+                           "ApplyVehicleWeaponFiringModeEditAsync", "ExpectedContentRevision",
+                           "_presenter.SaveAsync") \
+            and _contains(request, "CharacterVehicleWeaponFiringModeIdentity",
+                           "FindWeaponRoot", 'Elements("weapons")', 'Elements("weapon")',
+                           'ReadSingle(weapon, "firingmode"', 'ReadSingle(weapon, "type"',
+                           'ReadSingle(weapon, "ammo"', 'Descendants("weapon")') \
+            and _contains(mutation, "ApplyVehicleWeaponFiringModeEdit", "TryValidateMutation",
+                           "SavedValue(request.FiringMode)") \
+            and _contains(presenter, "PrepareVehicleWeaponFiringModeEditAsync",
+                           "ApplyVehicleWeaponFiringModeEditAsync", "ApplyWorkspaceXmlMutationAsync") \
+            and _contains(interface, "PrepareVehicleWeaponFiringModeEditAsync",
+                           "ApplyVehicleWeaponFiringModeEditAsync") \
+            and _contains(rules, "CharacterVehicleWeaponFiringModeIdentity",
+                           "CharacterVehicleWeaponFiringModePhase", "GunneryCommandDevice",
+                           "RemoteOperated", "ManualOperation", "NuyenDelta: 0m", "KarmaDelta: 0",
+                           "IsLegacyEditorVisible", "SHA256.HashData") \
+            and _contains(store, "expectedContentRevision", "Flush(flushToDisk: true)",
+                           "File.Replace", "File.Move")
+        scripted = _contains(driver, '"CharacterCreate.cboVehicleWeaponFiringMode"',
+                              '"CharacterCareer.cboVehicleWeaponFiringMode"', 'api != "36"',
+                              '"arm64-v8a" not in abi.split(",")', "shared.PACKAGE",
+                              '"journey": "vehicle-weapon-firing-mode"',
+                              '"vehicleWeaponFiringModeRulesSha256"', '"workspaceStoreSha256"',
+                              'device.shell("am", "force-stop"') \
+            and (REPO_ROOT / "tests/fixtures/creation-vehicle-weapon-firing-mode-e2e.chum5").is_file() \
+            and (REPO_ROOT / "tests/fixtures/career-vehicle-weapon-firing-mode-e2e.chum5").is_file()
+        return {
+            "status": "partial_exact_saved_data" if implemented and legacy_exact else "missing",
+            "route": (
+                "Build > Gear > Vehicles > selected stable Vehicle > Vehicle Weapon firing modes > "
+                "selected stable direct Vehicle Weapon"
+            ),
+            "surface": "VehicleWeaponFiringModePage",
+            "automationId": (
+                "vehicle-weapon-firing-mode-picker-{stable-vehicle-guid}-{stable-vehicle-weapon-guid}"
+            ),
+            "sourceRefs": [
+                "src/Chummer.Android/Native/VehicleWeaponFiringModePage.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/VehicleWeaponFiringModeEditRequest.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleWeaponFiringModeRules.cs",
+            ],
+            "presenterMutation": (
+                "typed direct VehicleWeapon firing-mode enum mutation with exact Vehicle+Weapon Guid identity, "
+                "five-value legacy allowlist, ranged/ammo-bearing-melee visibility provenance, Create/Career "
+                "phase, zero Nuyen/Karma economics, node revision and expected workspace revision"
+            ),
+            "persistenceAssertion": (
+                "only the selected direct Vehicle Weapon firingmode changes canonically while ammo, range type, "
+                "weapon and vehicle state, descendants, siblings, Nuyen, Karma and unrelated XML remain exact "
+                "after revision-bound atomic save/recovery, same-session reopen and process restart"
+            ),
+            "coverageLimit": (
+                f"Exact {class_name} cboVehicleWeaponFiringMode direct Vehicle/weapons/weapon selection only "
+                f"({'legacy handler proven' if legacy_exact else 'legacy handler proof unavailable'}); hidden "
+                "melee weapons without ammo, weapon mounts, underbarrel weapons, accessories, malformed/duplicate/"
+                "stale identity, unsupported modes and tablet fail closed."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if scripted else "missing",
+                "ref": "tests/run_api36_vehicle_weapon_firing_mode_e2e.py" if scripted else None,
+            },
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if (class_name in {"CharacterCreate", "CharacterCareer"}
             and control in CYBERWARE_MATRIX_SWAP_CONTROLS):
         legacy_source = chummer5_root / "Chummer/Forms/Character Forms" / f"{class_name}.cs"
         page = REPO_ROOT / "src/Chummer.Android/Native/CyberwareMatrixSwapPage.cs"
@@ -18374,6 +18472,9 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "CyberwareMatrixSwapEditRequest.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCyberwareMatrixSwapRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterMatrixPermutationAuthority.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "VehicleWeaponFiringModePage.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "VehicleWeaponFiringModeEditRequest.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterVehicleWeaponFiringModeRules.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementActivePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementNotesPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementGroupAddPage.cs",
@@ -18405,6 +18506,9 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_cyberware_matrix_swap_e2e.py",
         REPO_ROOT / "tests" / "fixtures" / "creation-cyberware-matrix-swap-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-cyberware-matrix-swap-e2e.chum5",
+        REPO_ROOT / "tests" / "run_api36_vehicle_weapon_firing_mode_e2e.py",
+        REPO_ROOT / "tests" / "fixtures" / "creation-vehicle-weapon-firing-mode-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-vehicle-weapon-firing-mode-e2e.chum5",
         REPO_ROOT / "tests" / "run_api36_character_notes_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_reputation_e2e.py",
         REPO_ROOT / "tests" / "run_api36_situational_modifiers_e2e.py",
