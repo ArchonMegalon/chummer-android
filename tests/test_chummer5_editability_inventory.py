@@ -2416,8 +2416,8 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 452,
                 "implemented_verified_api36": 79,
-                "missing": 951,
-                "not_applicable_non_mutating": 469,
+                "missing": 949,
+                "not_applicable_non_mutating": 471,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 172,
             },
@@ -2427,8 +2427,8 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 4,
                 "implemented_verified_api36": 75,
-                "missing": 1537,
-                "not_applicable_non_mutating": 469,
+                "missing": 1535,
+                "not_applicable_non_mutating": 471,
                 "partial_exact_saved_data": 144,
             },
             payload["summary"]["tabletStatusCounts"],
