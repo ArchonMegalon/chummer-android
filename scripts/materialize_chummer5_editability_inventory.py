@@ -432,6 +432,15 @@ CAPTURE_ONLY_PHONE_E2E_SOURCE_PATHS: dict[str, tuple[str, str]] = {
         "core",
         "Chummer.Contracts/Characters/CharacterMartialArtNotesRules.cs",
     ),
+    "martialArtDeletePageSha256": ("android", "src/Chummer.Android/Native/MartialArtDeletePage.cs"),
+    "martialArtDeleteContractSha256": (
+        "presentation",
+        "Chummer.Presentation/Overview/MartialArtDeleteRequest.cs",
+    ),
+    "martialArtDeleteRulesSha256": (
+        "core",
+        "Chummer.Contracts/Characters/CharacterMartialArtDeleteRules.cs",
+    ),
     "rosterFavoritesPageSha256": ("android", "src/Chummer.Android/Native/RosterFavoritesPage.cs"),
     "homePageSha256": ("android", "src/Chummer.Android/Native/HomePage.cs"),
     "mauiProgramSha256": ("android", "src/Chummer.Android/MauiProgram.cs"),
@@ -749,6 +758,35 @@ CAPTURE_ONLY_PHONE_E2E_DEFINITIONS: dict[str, dict[str, Any]] = {
         "journeys": (
             "creationMartialArtNotesEdited", "creationSameSessionReopen", "creationProcessRestart",
             "careerParentScopedTechniqueNotesEdited", "careerSameSessionReopen", "careerProcessRestart",
+        ),
+    },
+    "martial-art-delete": {
+        "driver": "tests/run_api36_martial_art_delete_e2e.py",
+        "fixtures": (
+            ("creationFixtureSha256", "tests/fixtures/creation-martial-art-delete-e2e.chum5"),
+            ("careerFixtureSha256", "tests/fixtures/career-martial-art-delete-e2e.chum5"),
+        ),
+        "sourceKeys": (
+            "martialArtDeletePageSha256", "buildPageSha256", "coordinatorSha256",
+            "martialArtDeleteContractSha256", "mutationCatalogSha256", "presenterMutationSha256",
+            "presenterPersistenceSha256", "presenterInterfaceSha256", "martialArtDeleteRulesSha256",
+            "workspaceStoreSha256",
+        ),
+        "controls": (
+            "CharacterCreate.cmdDeleteMartialArt",
+            "CharacterCareer.cmdDeleteMartialArt",
+        ),
+        "proofKeys": (
+            "typedStableMartialArtIdentity", "explicitConfirmationRequired", "cancelIsNoOp",
+            "qualityBackedArtProtected", "parentArtCascadeExact", "nestedTechniqueParentScoped",
+            "exactSourceGuidImprovementCleanup", "equalNamedAndUnrelatedSourcesPreserved",
+            "creationCareerZeroRefundRules", "workspaceRevisionBound", "atomicSaveRecovery",
+            "sameSessionReopened", "processRestartWorkspacePersisted", "processRestartUiReadback",
+        ),
+        "journeys": (
+            "creationCancelNoOp", "creationParentCascadeDeleted", "creationSameSessionReopen",
+            "creationProcessRestart", "careerCancelNoOp", "careerParentScopedTechniqueDeleted",
+            "careerSameSessionReopen", "careerProcessRestart",
         ),
     },
     "roster-favorite": {
@@ -1904,6 +1942,7 @@ IMPROVEMENT_NOTES_CONTROL = "tsImprovementNotes"
 IMPROVEMENT_GROUP_ADD_CONTROL = "cmdAddImprovementGroup"
 FREE_SPRITE_CONVERSION_CONTROL = "mnuSpecialConvertToFreeSprite"
 MARTIAL_ART_NOTES_CONTROL = "tsMartialArtsNotes"
+MARTIAL_ART_DELETE_CONTROL = "cmdDeleteMartialArt"
 IMPROVEMENT_GROUP_ACTIVE_CONTROLS = {
     "cmdImprovementsEnableAll": (
         "cmdImprovementsEnableAll_Click",
@@ -10347,6 +10386,209 @@ def _known_phone_mapping(
             "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name in {"CharacterCreate", "CharacterCareer"} and control == MARTIAL_ART_DELETE_CONTROL:
+        expected_handler = "cmdDeleteMartialArt_Click"
+        legacy_source = chummer5_root / "Chummer" / "Forms" / "Character Forms" / f"{class_name}.cs"
+        shared_source = chummer5_root / "Chummer" / "Forms" / "Character Forms" / "CharacterShared.cs"
+        legacy_art = chummer5_root / "Chummer" / "Backend" / "Uniques" / "MartialArt.cs"
+        legacy_technique = chummer5_root / "Chummer" / "Backend" / "Uniques" / "MartialArtTechnique.cs"
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "MartialArtDeletePage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_martial_art_delete_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-martial-art-delete-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-martial-art-delete-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "MartialArtDeleteRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterMartialArtDeleteRules.cs"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        legacy_exact = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                expected_handler,
+                "RemoveSelectedObject(",
+                "treMartialArts.DoThreadSafeFuncAsync",
+            )
+            and _contains(
+                legacy_source,
+                "RefreshSelectedMartialArt",
+                "case MartialArt objMartialArt:",
+                "x.Enabled = !objMartialArt.IsQuality",
+                "case ICanRemove _:",
+            )
+            and _contains(
+                shared_source,
+                "protected async Task RemoveSelectedObject",
+                "objSelected is ICanRemove",
+                "objRemovable.RemoveAsync",
+            )
+            and _contains(
+                legacy_art,
+                "public async Task<bool> RemoveAsync",
+                "if (IsQuality)",
+                'GetStringAsync("Message_DeleteMartialArt"',
+                "DeleteMartialArtAsync(false",
+                "Improvement.ImprovementSource.MartialArt",
+                "objTechnique.DeleteTechniqueAsync(false",
+            )
+            and _contains(
+                legacy_technique,
+                "public async Task<bool> RemoveAsync",
+                'GetStringAsync("Message_DeleteMartialArt"',
+                "DeleteTechniqueAsync",
+                "Improvement.ImprovementSource.MartialArtTechnique",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "class MartialArtDeletePage",
+                'AutomationId = "martial-art-delete-page"',
+                'AutomationId = "martial-art-delete-target"',
+                'AutomationId = "martial-art-delete-confirm"',
+                '"Delete Martial Art?"',
+                '"Cancel"',
+                "CharacterMartialArtDeleteRules.IsValidIdentity",
+                "MartialArtDeleteRequest",
+            )
+            and _contains(
+                build_page,
+                'automationId: "build-martial-art-delete"',
+                "PrepareMartialArtDeleteAsync",
+                "new MartialArtDeletePage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareMartialArtDeleteAsync",
+                "ApplyMartialArtDeleteAsync",
+                "request.Confirmed",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CharacterMartialArtDeleteIdentity",
+                "MartialArtDeleteEditorProjector",
+                "HashSet<Guid>",
+                "MartialArtSource",
+                "TechniqueSource",
+                "FindImprovements",
+                "Guid.TryParseExact",
+                "ProjectElements",
+            )
+            and _contains(
+                mutation,
+                "ApplyMartialArtDelete",
+                "CharacterMartialArtDeleteRules.CanDelete",
+                "foreach (XElement improvement in target.Improvements)",
+                "improvement.Remove()",
+                "target.Target.Remove()",
+                "MartialArtDeleteEditorProjector.ProjectElements",
+            )
+            and _contains(
+                presenter,
+                "PrepareMartialArtDeleteAsync",
+                "ApplyMartialArtDeleteAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareMartialArtDeleteAsync",
+                "ApplyMartialArtDeleteAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterMartialArtDeleteIdentity",
+                "CharacterMartialArtDeleteState",
+                "CanDelete",
+                "confirmed",
+                "KarmaDelta: 0",
+                "NuyenDelta: 0m",
+                "SHA256.HashData",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCreate.cmdDeleteMartialArt"',
+                '"CharacterCareer.cmdDeleteMartialArt"',
+                'if api != "36"',
+                'if abi != "arm64-v8a"',
+                'PACKAGE = "com.myexternalbrain.chummer"',
+                '"profile": "phone"',
+                '"journey": "martial-art-delete"',
+                '"creationCancelNoOp": "pass"',
+                '"creationParentCascadeDeleted": "pass"',
+                '"careerParentScopedTechniqueDeleted": "pass"',
+                '"martialArtDeleteRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+                '"careerFixtureSha256"',
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Delete Martial Art > selected non-quality Art or parent-scoped Technique",
+            "surface": "MartialArtDeletePage",
+            "automationId": "martial-art-delete-confirm",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/MartialArtDeletePage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/MartialArtDeleteRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterMartialArtDeleteRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyMartialArtDeleteAsync with typed Martial Art GUID plus optional "
+                "parent-scoped Technique GUID, explicit confirmation, target/cascade revision, zero-refund economics, "
+                "and expected workspace revision"
+            ),
+            "persistenceAssertion": (
+                "confirmed Art deletion removes the exact non-quality Art, every nested Technique, and only Improvements "
+                "whose improvementsource plus sourcename GUID match that cascade; confirmed Technique deletion removes "
+                "only the exact parent-scoped Technique and its source-bound Improvements, while equal-named targets, "
+                "unrelated sources, Karma, Nuyen, and unrelated XML remain exact after atomic save/recovery and restart"
+            ),
+            "coverageLimit": (
+                "Exact paired CharacterCreate/CharacterCareer cmdDeleteMartialArt semantics only; both modes use the "
+                "Message_DeleteMartialArt confirmation, Cancel is a no-op, quality-backed Arts are protected while their "
+                "Techniques remain removable, no Karma/Nuyen refund occurs, and tablet is unavailable."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_martial_art_delete_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCareer" and control == IMPROVEMENT_GROUP_ADD_CONTROL:
         expected_handler = "cmdAddImprovementGroup_Click"
         legacy_source = (
@@ -17724,6 +17966,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_improvement_group_add_e2e.py",
         REPO_ROOT / "tests" / "run_api36_free_sprite_conversion_e2e.py",
         REPO_ROOT / "tests" / "run_api36_martial_art_notes_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_martial_art_delete_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_group_active_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
         REPO_ROOT / "tests" / "run_api36_critter_power_count_e2e.py",
@@ -17807,6 +18050,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-free-sprite-conversion-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-martial-art-notes-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-martial-art-notes-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-martial-art-delete-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-martial-art-delete-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-improvement-group-active-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-improvement-group-active-negative-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-weapon-accessory-included-e2e.chum5",

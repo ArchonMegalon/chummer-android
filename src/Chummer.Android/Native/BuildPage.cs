@@ -199,6 +199,19 @@ public sealed class BuildPage : NativePageBase
                 }
             },
             automationId: "build-martial-art-notes"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Delete Martial Art",
+            "Delete a saved Martial Art or parent-scoped Technique after explicit confirmation",
+            async () =>
+            {
+                MartialArtDeleteEditorState? editor =
+                    await Coordinator.PrepareMartialArtDeleteAsync();
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new MartialArtDeletePage(Coordinator, editor));
+                }
+            },
+            automationId: "build-martial-art-delete"));
         if (Coordinator.State.Profile?.Created == true)
         {
             _body.Add(NativeTheme.NavigationRow(

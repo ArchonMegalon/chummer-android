@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Martial Art Delete E2E</name><alias>CareerMartialDelete</alias><playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype><buildmethod>Priority</buildmethod><createdversion>5.225.0</createdversion><appversion>5.225.0</appversion><created>True</created><gameedition>SR5</gameedition><settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <karma>37</karma><nuyen>8765.43</nuyen><customdatadirectorynames/>
+  <improvements>
+    <improvement><improvedname>Career selected technique target</improvedname><sourcename>a5222222-a522-a522-a522-a52222222222</sourcename><improvementsource>MartialArtTechnique</improvementsource><enabled>True</enabled></improvement>
+    <improvement><improvedname>Career selected equal-id unrelated source</improvedname><sourcename>a5222222-a522-a522-a522-a52222222222</sourcename><improvementsource>Quality</improvementsource><enabled>True</enabled></improvement>
+    <improvement><improvedname>Career other-parent same-name sentinel</improvedname><sourcename>a5444444-a544-a544-a544-a54444444444</sourcename><improvementsource>MartialArtTechnique</improvementsource><enabled>True</enabled></improvement>
+    <improvement><improvedname>Career parent art sentinel</improvedname><sourcename>a5111111-a511-a511-a511-a51111111111</sourcename><improvementsource>MartialArt</improvementsource><enabled>True</enabled></improvement>
+    <improvement><improvedname>Career quality art sentinel</improvedname><sourcename>a5555555-a555-a555-a555-a55555555555</sourcename><improvementsource>MartialArt</improvementsource><enabled>True</enabled></improvement>
+  </improvements>
+  <martialarts>
+    <martialart><name>Aikido</name><sourceid>a5100000-0000-0000-0000-000000000001</sourceid><guid>a5111111-a511-a511-a511-a51111111111</guid><source>RG</source><page>128</page><cost>7</cost><isquality>False</isquality><martialarttechniques>
+      <martialarttechnique><sourceid>a5200000-0000-0000-0000-000000000002</sourceid><guid>a5222222-a522-a522-a522-a52222222222</guid><name>Disarm</name><source>RG</source><page>129</page><notes>career selected technique</notes></martialarttechnique>
+    </martialarttechniques><notes>career parent art</notes></martialart>
+    <martialart><name>Krav Maga</name><sourceid>a5300000-0000-0000-0000-000000000003</sourceid><guid>a5333333-a533-a533-a533-a53333333333</guid><source>RG</source><page>130</page><cost>7</cost><isquality>False</isquality><martialarttechniques>
+      <martialarttechnique><sourceid>a5400000-0000-0000-0000-000000000004</sourceid><guid>a5444444-a544-a544-a544-a54444444444</guid><name>Disarm</name><source>RG</source><page>131</page><notes>career same-name other-parent technique</notes></martialarttechnique>
+    </martialarttechniques><notes>career other art</notes></martialart>
+    <martialart><name>Quality Art</name><sourceid>a5500000-0000-0000-0000-000000000005</sourceid><guid>a5555555-a555-a555-a555-a55555555555</guid><source>RF</source><page>132</page><cost>0</cost><isquality>True</isquality><martialarttechniques>
+      <martialarttechnique><sourceid>a5600000-0000-0000-0000-000000000006</sourceid><guid>a5666666-a566-a566-a566-a56666666666</guid><name>Quality Technique</name><source>RF</source><page>133</page></martialarttechnique>
+    </martialarttechniques></martialart>
+  </martialarts>
+  <customstate>Career Martial Art delete runner sentinel</customstate>
+</character>

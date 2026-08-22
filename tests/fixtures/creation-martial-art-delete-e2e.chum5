@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Martial Art Delete E2E</name><alias>CreationMartialDelete</alias><playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype><buildmethod>Priority</buildmethod><createdversion>5.225.0</createdversion><appversion>5.225.0</appversion><created>False</created><gameedition>SR5</gameedition><settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <karma>29</karma><nuyen>2345.67</nuyen><customdatadirectorynames/>
+  <improvements>
+    <improvement><improvedname>Creation art target</improvedname><sourcename>a4111111-a411-a411-a411-a41111111111</sourcename><improvementsource>MartialArt</improvementsource><enabled>True</enabled></improvement>
+    <improvement><improvedname>Creation first technique target</improvedname><sourcename>a4122222-a412-a412-a412-a41222222222</sourcename><improvementsource>MartialArtTechnique</improvementsource><enabled>True</enabled></improvement>
+    <improvement><improvedname>Creation second technique target</improvedname><sourcename>a4133333-a413-a413-a413-a41333333333</sourcename><improvementsource>MartialArtTechnique</improvementsource><enabled>True</enabled></improvement>
+    <improvement><improvedname>Creation equal-id unrelated source</improvedname><sourcename>a4111111-a411-a411-a411-a41111111111</sourcename><improvementsource>Quality</improvementsource><enabled>True</enabled></improvement>
+    <improvement><improvedname>Creation other art sentinel</improvedname><sourcename>a4144444-a414-a414-a414-a41444444444</sourcename><improvementsource>MartialArt</improvementsource><enabled>True</enabled></improvement>
+    <improvement><improvedname>Creation quality art sentinel</improvedname><sourcename>a4155555-a415-a415-a415-a41555555555</sourcename><improvementsource>MartialArt</improvementsource><enabled>True</enabled></improvement>
+  </improvements>
+  <martialarts>
+    <martialart><name>Aikido</name><sourceid>a4100000-0000-0000-0000-000000000001</sourceid><guid>a4111111-a411-a411-a411-a41111111111</guid><source>RG</source><page>128</page><cost>7</cost><isquality>False</isquality><martialarttechniques>
+      <martialarttechnique><sourceid>a4200000-0000-0000-0000-000000000002</sourceid><guid>a4122222-a412-a412-a412-a41222222222</guid><name>Disarm</name><source>RG</source><page>129</page><notes>creation cascade one</notes></martialarttechnique>
+      <martialarttechnique><sourceid>a4300000-0000-0000-0000-000000000003</sourceid><guid>a4133333-a413-a413-a413-a41333333333</guid><name>Kick Attack</name><source>RG</source><page>130</page><notes>creation cascade two</notes></martialarttechnique>
+    </martialarttechniques><notes>creation target art</notes></martialart>
+    <martialart><name>Krav Maga</name><sourceid>a4400000-0000-0000-0000-000000000004</sourceid><guid>a4144444-a414-a414-a414-a41444444444</guid><source>RG</source><page>131</page><cost>7</cost><isquality>False</isquality><martialarttechniques/><notes>creation other art</notes></martialart>
+    <martialart><name>Quality Art</name><sourceid>a4500000-0000-0000-0000-000000000005</sourceid><guid>a4155555-a415-a415-a415-a41555555555</guid><source>RF</source><page>132</page><cost>0</cost><isquality>True</isquality><martialarttechniques/></martialart>
+  </martialarts>
+  <customstate>Creation Martial Art delete runner sentinel</customstate>
+</character>

@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 444,
+      "implemented_pending_emulator": 446,
       "implemented_verified_api36": 79,
-      "missing": 984,
+      "missing": 982,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 148
@@ -77,7 +77,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "6589eb220217adaa99084ca3d5730b59af5a0ad8e56e2133a53ac4f08171b604"
+        "sha256": "9576ca3af8ac12781b180b4a6d3cbadb4b5980dd1de79948b1e9935e529f4977"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -377,7 +377,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "6afdcbb0a344948993f365d3173ffdaf60a4429165dacd3bb7cff94d4758b033"
+        "sha256": "9bb1f476a58ba4d2ec3a55f6b7b14e45c964eae1a251ec8dbf0fe7dff41bd14e"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -588,6 +588,11 @@
         "path": "tests/run_api36_martial_art_notes_e2e.py",
         "exists": true,
         "sha256": "b8651265b85ed20df943654e48f7ef595567b1686926bef63a70edb43d6a71a1"
+      },
+      {
+        "path": "tests/run_api36_martial_art_delete_e2e.py",
+        "exists": true,
+        "sha256": "b3d51709d6ff03d7c111248e7497068b2ac5475b1e8cdc406d1a2a568a39b365"
       },
       {
         "path": "tests/run_api36_improvement_group_active_e2e.py",
@@ -1005,6 +1010,16 @@
         "sha256": "df1fd6d3ba2469228c57a8781e1fa6ad483ea3901ce1cb85e9e3148ba1241858"
       },
       {
+        "path": "tests/fixtures/creation-martial-art-delete-e2e.chum5",
+        "exists": true,
+        "sha256": "cb25d467617e283f2a4a44d0ff033ecf9cdaa6cb881c2a0ee68a755935c4909f"
+      },
+      {
+        "path": "tests/fixtures/career-martial-art-delete-e2e.chum5",
+        "exists": true,
+        "sha256": "199467da3e63d1c6854a677e5fa3a2b9ca38e7cde646e38882aa2721b1ecd511"
+      },
+      {
         "path": "tests/fixtures/career-improvement-group-active-e2e.chum5",
         "exists": true,
         "sha256": "72517eaf8b95c6f1888d3899b3fb2a3183e3df61dc8377ab80ca833b5240e2d8"
@@ -1251,6 +1266,11 @@
       },
       {
         "path": "docs/editability-evidence/api36-phone-martial-art-notes/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-martial-art-delete/receipt.json",
         "exists": false,
         "sha256": null
       },
@@ -1627,7 +1647,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "815f808c9d02443ac6cbfaeec224dead128828924306424de8b803bf8cf566a3"
+        "sha256": "13b5ac5a856daf75b76d3b7e46ac0f9d0ece0543dfb0d6172827fcf9d6eb69ec"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1837,7 +1857,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "a5ead128a311c4872f0a6a5b6551bb142b6d8f3926dd0ab444b632de17380b83"
+        "sha256": "4d7292f654d9f859f2510cdac5724c108c6051b2093e02a88cf42db12abe0b80"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1892,7 +1912,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "9c0f8597f4021bbea0d8cd60f639d95dabb347e95c3bba590561bcffb69e76a4"
+        "sha256": "ce0c2acd752a4ca9e18c5b9170312705092cce2b167aed7da8fc51c37438cbd7"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1902,7 +1922,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "411ca0ad1da2f18e9e8564d3d9aabba8c56bac258b977ccdcfad7cedbe40ae94"
+      "sha256": "f842c0a3155045e144731e1c15adf24a129c6415a1c5a1e443c76d0571684cc8"
     }
   },
   "coverageByFamily": {
@@ -2203,7 +2223,7 @@
     "qualities": {
       "rowCount": 57,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 31,
+      "phoneMissingCount": 29,
       "tabletMissingCount": 49,
       "completionProvenCount": 8
     },
@@ -16100,11 +16120,23 @@
       "mutationFamily": "qualities",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Delete Martial Art > selected non-quality Art or parent-scoped Technique",
+        "surface": "MartialArtDeletePage",
+        "automationId": "martial-art-delete-confirm",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/MartialArtDeletePage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/MartialArtDeleteRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterMartialArtDeleteRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact paired CharacterCreate/CharacterCareer cmdDeleteMartialArt semantics only; both modes use the Message_DeleteMartialArt confirmation, Cancel is a no-op, quality-backed Arts are protected while their Techniques remain removable, no Karma/Nuyen refund occurs, and tablet is unavailable."
       },
       "tablet": {
         "status": "missing",
@@ -16112,12 +16144,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyMartialArtDeleteAsync with typed Martial Art GUID plus optional parent-scoped Technique GUID, explicit confirmation, target/cascade revision, zero-refund economics, and expected workspace revision",
+      "persistenceAssertion": "confirmed Art deletion removes the exact non-quality Art, every nested Technique, and only Improvements whose improvementsource plus sourcename GUID match that cascade; confirmed Technique deletion removes only the exact parent-scoped Technique and its source-bound Improvements, while equal-named targets, unrelated sources, Karma, Nuyen, and unrelated XML remain exact after atomic save/recovery and restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_martial_art_delete_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -54943,11 +54975,23 @@
       "mutationFamily": "qualities",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Delete Martial Art > selected non-quality Art or parent-scoped Technique",
+        "surface": "MartialArtDeletePage",
+        "automationId": "martial-art-delete-confirm",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/MartialArtDeletePage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/MartialArtDeleteRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterMartialArtDeleteRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact paired CharacterCreate/CharacterCareer cmdDeleteMartialArt semantics only; both modes use the Message_DeleteMartialArt confirmation, Cancel is a no-op, quality-backed Arts are protected while their Techniques remain removable, no Karma/Nuyen refund occurs, and tablet is unavailable."
       },
       "tablet": {
         "status": "missing",
@@ -54955,12 +54999,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyMartialArtDeleteAsync with typed Martial Art GUID plus optional parent-scoped Technique GUID, explicit confirmation, target/cascade revision, zero-refund economics, and expected workspace revision",
+      "persistenceAssertion": "confirmed Art deletion removes the exact non-quality Art, every nested Technique, and only Improvements whose improvementsource plus sourcename GUID match that cascade; confirmed Technique deletion removes only the exact parent-scoped Technique and its source-bound Improvements, while equal-named targets, unrelated sources, Karma, Nuyen, and unrelated XML remain exact after atomic save/recovery and restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_martial_art_delete_e2e.py"
         },
         "tablet": {
           "status": "missing",

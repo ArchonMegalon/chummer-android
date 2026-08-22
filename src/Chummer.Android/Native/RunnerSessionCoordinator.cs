@@ -1158,6 +1158,35 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<MartialArtDeleteEditorState?> PrepareMartialArtDeleteAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareMartialArtDeleteAsync(cancellationToken);
+
+    public async Task ApplyMartialArtDeleteAsync(
+        MartialArtDeleteRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (!request.Confirmed)
+        {
+            throw new InvalidOperationException("Martial Art deletion requires explicit confirmation.");
+        }
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Martial Art deletion was open. Reopen it before saving.");
+        }
+        await _presenter.ApplyMartialArtDeleteAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Martial Art or Technique deleted." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<CareerEdgeUseEditorState?> PrepareCareerEdgeUseEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareCareerEdgeUseEditAsync(cancellationToken);
