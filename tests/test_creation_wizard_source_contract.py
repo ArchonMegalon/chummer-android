@@ -53,28 +53,20 @@ class CreationWizardSourceContractTests(unittest.TestCase):
     def test_phone_foundation_pages_render_authority_and_keep_explicit_preview(self) -> None:
         selection = (NATIVE / "CreationFoundationPage.cs").read_text(encoding="utf-8")
         preview = (NATIVE / "CreationFoundationPreviewPage.cs").read_text(encoding="utf-8")
+        authority = (NATIVE / "CreationFoundationPhoneAuthority.cs").read_text(encoding="utf-8")
         dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
 
         for marker in (
             "Coordinator.LoadCreationFoundation()",
             "state.MetatypeOptions",
-            "state.NationalityOptions",
-            "nationality.Versions",
+            "AddNationalitySelection(state)",
+            "new CreationNationalityPage(Coordinator, _phoneDraft)",
+            '"creation-foundation-open-nationality"',
             "nationality.FollowUps.Concat(version?.FollowUps ?? [])",
             'string.Equals(prompt.InputKind, "select"',
             'string.Equals(prompt.InputKind, "single-select"',
             "option.SourceValue",
             "Unsupported follow-up kind:",
-            "Requires authoritative metatype evaluation in Preview",
-            "IsMetatypeEvaluationCandidate(",
-            "CanEvaluateWithSelectedMetatype(",
-            "HasExactCandidateIdentityCostAndSource(",
-            "HasOnlyEligibilityAuthorityBlocker(",
-            "CharacterCreationFoundationBlockers.CharacterEligibilityAuthorityRequired",
-            "HasOnlyTypedMetatypeRequirements(",
-            "requirement.RequiresCharacterAuthority",
-            'string.Equals(requirement.Operator, "oneof"',
-            'string.Equals(requirement.SubjectKind, "metatype"',
             "new CreationMetatypePage(Coordinator, _phoneDraft)",
             '"creation-foundation-open-metatype"',
             "Coordinator.PrepareCreationFoundation(",
@@ -87,8 +79,19 @@ class CreationWizardSourceContractTests(unittest.TestCase):
             self.assertIn(marker, selection)
         for forbidden in ('?? "Human"', "Picker", "SelectedIndex = 0"):
             self.assertNotIn(forbidden, selection)
-        self.assertIn("bool selectable = option.IsEnabled || evaluationCandidate;", selection)
-        self.assertIn("bool selectable = version.IsEnabled || evaluationCandidate;", selection)
+
+        for marker in (
+            "IsMetatypeEvaluationCandidate(",
+            "HasExactCandidateIdentityCostAndSource(",
+            "HasOnlyEligibilityAuthorityBlocker(",
+            "CharacterCreationFoundationBlockers.CharacterEligibilityAuthorityRequired",
+            "HasOnlyTypedMetatypeRequirements(",
+            "requirement.RequiresCharacterAuthority",
+            'string.Equals(requirement.Operator, "oneof"',
+            'string.Equals(requirement.SubjectKind, "metatype"',
+            "selectedMetatype.Label",
+        ):
+            self.assertIn(marker, authority)
 
         for marker in (
             "private readonly CharacterCreationFoundationPreparedPreview _prepared",
@@ -208,6 +211,117 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, combined)
 
+    def test_phone_nationality_deep_navigation_is_typed_exact_and_non_writing(self) -> None:
+        draft = (NATIVE / "CreationFoundationPhoneDraft.cs").read_text(encoding="utf-8")
+        authority = (NATIVE / "CreationFoundationPhoneAuthority.cs").read_text(encoding="utf-8")
+        options = (NATIVE / "CreationNationalityPage.cs").read_text(encoding="utf-8")
+        preview = (NATIVE / "CreationNationalityPreviewPage.cs").read_text(encoding="utf-8")
+        foundation = (NATIVE / "CreationFoundationPage.cs").read_text(encoding="utf-8")
+
+        for marker in (
+            "ConfirmedNationalityModuleId",
+            "ConfirmedNationalityVersionId",
+            "ResolveUniqueModule",
+            "ResolveUniqueVersion",
+            "TryConfirmNationality",
+            "ResolvePendingNationalitySelection",
+            "ResolvePendingFollowUpValues",
+            "pending.Selection.ModuleId",
+            "pending.Selection.VersionId",
+            "pending.RequirementEvaluations.All",
+            "!requirement.RequiresCharacterAuthority || requirement.IsMet",
+            "option.SourceValue",
+        ):
+            self.assertIn(marker, draft)
+
+        for marker in (
+            "CanOpenModule",
+            "CanReviewSelection",
+            "state.MetatypeOptions.Count",
+            "selectedMetatype.Label",
+            "module.StageOrder != LifeModuleJourneyStageOrders.Nationality",
+            "module.StageId",
+            "module.CanRepeat",
+            "module.KarmaIsExact",
+            "version.KarmaIsExact",
+            "module.SourceAnchorIds",
+            "version.SourceAnchorIds",
+            "module.AuthorityBlockers",
+            "version?.AuthorityBlockers",
+            "HasOnlyTypedMetatypeRequirements",
+            "AcceptedValues.Contains",
+        ):
+            self.assertIn(marker, authority)
+
+        for marker in (
+            'AutomationId = "creation-nationality-page"',
+            'AutomationId = "creation-nationality-version-page"',
+            'AutomationId = "creation-nationality-version-budget"',
+            "Coordinator.LoadCreationFoundation()",
+            "_draft.Matches(state)",
+            "_draft.ResolveConfirmedMetatype(state)",
+            "state.NationalityOptions",
+            "module.ModuleId",
+            "version.VersionId",
+            "module.KarmaCost",
+            "version.KarmaCost",
+            "module.AuthorityBlockers",
+            "version.AuthorityBlockers",
+            "module.SourceAnchorIds",
+            "version.SourceAnchorIds",
+            "budget.Remaining",
+            "CreationNationalityPreviewPage",
+            '"creation-nationality-option-',
+            '"creation-nationality-version-option-',
+        ):
+            self.assertIn(marker, options)
+
+        for marker in (
+            'AutomationId = "creation-nationality-preview-page"',
+            "CreationFoundationPhoneAuthority.ResolveUniqueModule",
+            "CreationFoundationPhoneAuthority.ResolveUniqueVersion",
+            "CreationFoundationPhoneAuthority.CanReviewSelection",
+            "module.IsEnabled",
+            "version.IsEnabled",
+            "module.Requirements.Concat",
+            "module.Effects.Concat",
+            "module.FollowUps.Concat",
+            "requirement.RequirementId",
+            "requirement.Operator",
+            "requirement.SubjectKind",
+            "requirement.AcceptedValues",
+            "requirement.DisableReasonArguments",
+            "effect.EffectId",
+            "effect.SourceAnchorIds",
+            'NativeTheme.PrimaryButton("Use this Nationality")',
+            'AutomationId = "creation-nationality-confirm"',
+            "_draft.TryConfirmNationality(state, _moduleId, _versionId)",
+            "Navigation.PopAsync(animated: false)",
+            "CreationNationalityPage",
+            "CreationNationalityVersionPage",
+            "No character data is written here",
+        ):
+            self.assertIn(marker, preview)
+
+        self.assertIn("_phoneDraft.ResolveConfirmedNationality(state)", foundation)
+        self.assertIn("_phoneDraft.ResolveConfirmedNationalityVersion(state)", foundation)
+        self.assertIn("SelectedNationalityVersion(state)?.VersionId", foundation)
+        combined = draft + authority + options + preview
+        for forbidden in (
+            "Picker",
+            "SelectedIndex = 0",
+            "Coordinator.PrepareCreationFoundation",
+            "Coordinator.ConfirmCreationFoundationAsync",
+            "ApplyAttributeEditAsync",
+            "AttributeEditRequest",
+            "SaveAsync(",
+            "System.Xml",
+            "XmlDocument",
+            '"Human"',
+            '"Elf"',
+        ):
+            self.assertNotIn(forbidden, combined)
+
     def test_uncreated_build_is_gated_before_exhaustive_editor(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         start = source.index("if (Coordinator.State.Profile.Created == false)")
@@ -245,23 +359,21 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         self.assertNotIn("new CharacterCreationBudgetState", source)
         self.assertNotIn("BuildNewCharacterKarmaWorkflowDialog", source)
 
-    def test_attributes_use_narrow_existing_typed_mutation_path(self) -> None:
+    def test_attributes_fail_closed_without_creation_preview_authority(self) -> None:
         dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
-        page = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
         editor = (NATIVE / "AttributeEditPage.cs").read_text(encoding="utf-8")
 
-        self.assertIn('string.Equals(tab.Id, "tab-attributes"', dashboard)
-        self.assertIn("new CreationAttributesPage(Coordinator)", dashboard)
-        self.assertIn("AttributeWorkbenchProjector.BuildRows", page)
-        self.assertIn("new AttributeEditPage(Coordinator, row)", page)
-        self.assertIn("CharacterCreationBudgetIds.NormalAttributes", page)
-        self.assertIn("if (budget.IsExact)", page)
-        self.assertIn("if (!AddBudget(snapshot))", page)
-        self.assertIn("return budget.IsExact;", page)
-        self.assertIn("will not guess", page)
+        self.assertFalse((NATIVE / "CreationAttributesPage.cs").exists())
+        self.assertIn("bool attributes = string.Equals(", dashboard)
+        self.assertIn(
+            "Rules-authoritative attribute choices, costs, and preview are not available yet",
+            dashboard,
+        )
+        self.assertNotIn("new CreationAttributesPage(Coordinator)", dashboard)
+        self.assertNotIn("OpenCreationAttributesAsync", dashboard)
+        self.assertIn("AttributeEditRequest path must never serve as a wizard fallback", dashboard)
         self.assertIn("AttributeEditRequest", editor)
-        for forbidden in ("NativeCommandPage", "AddSectionActions", "AddQuickActions"):
-            self.assertNotIn(forbidden, page)
+        self.assertIn("ApplyAttributeEditAsync", editor)
 
     def test_rook_is_workspace_revision_digest_bound_and_non_mutating(self) -> None:
         store = (NATIVE / "RookConversation.cs").read_text(encoding="utf-8")
@@ -328,7 +440,16 @@ class CreationWizardSourceContractTests(unittest.TestCase):
             'tap_first_enabled_prefix(device, "creation-metatype-option-")',
             'device.wait("creation-metatype-preview-page"',
             'device.tap("creation-metatype-confirm"',
-            'tap_first_enabled_prefix(device, "creation-foundation-nationality-")',
+            'device.tap("creation-foundation-open-nationality"',
+            'device.wait("creation-nationality-page"',
+            'tap_first_enabled_prefix(device, "creation-nationality-option-")',
+            '"creation-nationality-version-page"',
+            '"creation-nationality-preview-page"',
+            'tap_first_enabled_prefix(\n            device,\n            "creation-nationality-version-option-"',
+            'device.tap("creation-nationality-confirm"',
+            'Back navigation did not restore the confirmed Nationality selection',
+            'Pending Foundation draft did not resume its typed Nationality IDs',
+            'Process restart did not resume the typed Nationality IDs',
             'device.tap("creation-foundation-prepare-preview"',
             'device.wait("creation-foundation-preview-diff-"',
             'device.tap("creation-foundation-confirm"',
@@ -338,6 +459,10 @@ class CreationWizardSourceContractTests(unittest.TestCase):
             '"foundationDraftSaveReloadAndProcessRestart": "pass"',
             '"foundationMetatypeDeepNavigation": "pass"',
             '"foundationMetatypeBackRestoration": "pass"',
+            '"foundationNationalityDeepNavigation": "pass"',
+            '"foundationNationalityExplicitDraftConfirm": "pass"',
+            '"foundationNationalityBackRestoration": "pass"',
+            '"foundationNationalityPendingDraftResume": "pass"',
             '"foundationCharacterEffectsAppliedFalse": "pass"',
             '"foundationCompilationPending": "pass"',
             '"advancedEditorNeverExposedWhileCreatedFalse": "pass"',

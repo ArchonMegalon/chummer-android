@@ -18,9 +18,7 @@ public sealed class CreationFoundationPage : NativePageBase
         Spacing = 14
     };
     private readonly CreationFoundationPhoneDraft _phoneDraft = new();
-    private string? _observedMetatypeId;
-    private string? _selectedNationalityId;
-    private string? _selectedVersionId;
+    private string? _observedSelectionKey;
     private IReadOnlyList<string> _prepareBlockers = [];
     private readonly Dictionary<string, string> _followUpValues = new(StringComparer.Ordinal);
 
@@ -57,16 +55,24 @@ public sealed class CreationFoundationPage : NativePageBase
         }
 
         bool rebound = _phoneDraft.Bind(state);
-        string? currentMetatypeId = _phoneDraft.ConfirmedMetatypeOptionId;
-        if (rebound
-            || !string.Equals(_observedMetatypeId, currentMetatypeId, StringComparison.Ordinal))
+        string currentSelectionKey = string.Join(
+            "|",
+            _phoneDraft.ConfirmedMetatypeOptionId,
+            _phoneDraft.ConfirmedNationalityModuleId,
+            _phoneDraft.ConfirmedNationalityVersionId);
+        if (rebound)
         {
-            _selectedNationalityId = null;
-            _selectedVersionId = null;
+            _followUpValues.Clear();
+            foreach ((string promptId, string value) in _phoneDraft.ResolvePendingFollowUpValues(state))
+                _followUpValues[promptId] = value;
+            _prepareBlockers = [];
+        }
+        else if (!string.Equals(_observedSelectionKey, currentSelectionKey, StringComparison.Ordinal))
+        {
             _followUpValues.Clear();
             _prepareBlockers = [];
-            _observedMetatypeId = currentMetatypeId;
         }
+        _observedSelectionKey = currentSelectionKey;
 
         Label binding = NativeTheme.Body(
             $"Revision {state.Binding.ContentRevision} · saved {state.Binding.SavedRevision} · "
@@ -86,8 +92,7 @@ public sealed class CreationFoundationPage : NativePageBase
         }
 
         AddMetatypeOptions(state);
-        AddNationalityOptions(state);
-        AddSelectedVersionOptions(state);
+        AddNationalitySelection(state);
         AddFollowUps(state);
         AddPrepareAction(state);
 
@@ -169,7 +174,7 @@ public sealed class CreationFoundationPage : NativePageBase
             automationId: "creation-foundation-open-metatype"));
     }
 
-    private void AddNationalityOptions(CharacterCreationFoundationInteractionState state)
+    private void AddNationalitySelection(CharacterCreationFoundationInteractionState state)
     {
         _body.Add(NativeTheme.Eyebrow("Nationality Life Module"));
         if (state.NationalityOptions.Count == 0)
@@ -178,98 +183,33 @@ public sealed class CreationFoundationPage : NativePageBase
             return;
         }
 
-        foreach (LifeModuleLegalOptionDto option in state.NationalityOptions)
-        {
-            bool selected = string.Equals(_selectedNationalityId, option.ModuleId, StringComparison.Ordinal);
-            bool evaluationCandidate = IsMetatypeEvaluationCandidate(state, option);
-            bool selectable = option.IsEnabled || evaluationCandidate;
-            string detail = JoinDetails(
-                selected ? "Selected" : null,
-                option.KarmaIsExact
-                    ? FormatBudget(option.KarmaCost, "karma")
-                    : $"Karma not exact ({option.KarmaRaw})",
-                FormatSource(option.Source, option.Page, option.PageReference),
-                option.IsEnabled
-                    ? null
-                    : evaluationCandidate
-                        ? "Requires authoritative metatype evaluation in Preview"
-                        : FormatBlockers(option.AuthorityBlockers));
-            _body.Add(NativeTheme.NavigationRow(
-                option.Name,
-                detail,
-                () => SelectNationalityAsync(option),
-                selectable,
-                $"creation-foundation-nationality-{Token(option.ModuleId)}"));
-            if (selected)
-            {
-                AddStoryAndRequirements(
-                    option.StoryTemplate,
-                    option.Requirements,
-                    option.SourceAnchorIds,
-                    "creation-foundation-nationality-details");
-            }
-        }
-    }
-
-    private Task SelectNationalityAsync(LifeModuleLegalOptionDto option)
-    {
-        _selectedNationalityId = option.ModuleId;
-        _selectedVersionId = null;
-        _followUpValues.Clear();
-        _prepareBlockers = [];
-        Refresh();
-        return Task.CompletedTask;
-    }
-
-    private void AddSelectedVersionOptions(CharacterCreationFoundationInteractionState state)
-    {
+        CharacterCreationLegalOption? metatype = SelectedMetatype(state);
         LifeModuleLegalOptionDto? nationality = SelectedNationality(state);
-        if (nationality is null || nationality.Versions.Count == 0)
-        {
-            return;
-        }
-
-        _body.Add(NativeTheme.Eyebrow("Nationality version"));
-        foreach (LifeModuleVersionProjectionDto version in nationality.Versions)
-        {
-            bool selected = string.Equals(_selectedVersionId, version.VersionId, StringComparison.Ordinal);
-            bool evaluationCandidate = IsMetatypeEvaluationCandidate(state, nationality, version);
-            bool selectable = version.IsEnabled || evaluationCandidate;
-            string detail = JoinDetails(
-                selected ? "Selected" : null,
-                version.KarmaIsExact
-                    ? FormatBudget(version.KarmaCost, "karma")
-                    : $"Karma not exact ({version.KarmaRaw})",
-                FormatSource(version.Source, version.Page, version.PageReference),
-                version.IsEnabled
+        LifeModuleVersionProjectionDto? version = SelectedNationalityVersion(state);
+        bool canOpen = metatype is not null
+                       && state.NationalityOptions.Any(candidate =>
+                           CreationFoundationPhoneAuthority.CanOpenModule(
+                               state,
+                               candidate,
+                               metatype));
+        string detail = nationality is null
+            ? $"{state.NationalityOptions.Count.ToString(CultureInfo.InvariantCulture)} authoritative modules"
+            : JoinDetails(
+                $"Selected · ID {nationality.ModuleId}",
+                version is null ? null : $"Version {version.VersionId}",
+                nationality.KarmaIsExact
+                    ? FormatBudget(nationality.KarmaCost, "karma")
+                    : $"Karma not exact ({nationality.KarmaRaw})",
+                FormatSource(nationality.Source, nationality.Page, nationality.PageReference),
+                nationality.SourceAnchorIds.Count == 0
                     ? null
-                    : evaluationCandidate
-                        ? "Requires authoritative metatype evaluation in Preview"
-                        : FormatBlockers(version.AuthorityBlockers));
-            _body.Add(NativeTheme.NavigationRow(
-                version.Label,
-                detail,
-                () => SelectVersionAsync(version),
-                selectable,
-                $"creation-foundation-version-{Token(version.VersionId)}"));
-            if (selected)
-            {
-                AddStoryAndRequirements(
-                    version.StoryTemplate,
-                    version.Requirements,
-                    version.SourceAnchorIds,
-                    "creation-foundation-version-details");
-            }
-        }
-    }
-
-    private Task SelectVersionAsync(LifeModuleVersionProjectionDto version)
-    {
-        _selectedVersionId = version.VersionId;
-        _followUpValues.Clear();
-        _prepareBlockers = [];
-        Refresh();
-        return Task.CompletedTask;
+                    : $"Anchors {string.Join(" · ", nationality.SourceAnchorIds)}");
+        _body.Add(NativeTheme.NavigationRow(
+            nationality?.Name ?? (metatype is null ? "Choose metatype first" : "Choose Nationality"),
+            detail,
+            () => Navigation.PushAsync(new CreationNationalityPage(Coordinator, _phoneDraft)),
+            canOpen,
+            "creation-foundation-open-nationality"));
     }
 
     private void AddFollowUps(CharacterCreationFoundationInteractionState state)
@@ -349,7 +289,7 @@ public sealed class CreationFoundationPage : NativePageBase
                 Coordinator.PrepareCreationFoundation(new CharacterCreationFoundationSelectionInput(
                     metatype.Label,
                     nationality.ModuleId,
-                    _selectedVersionId,
+                    SelectedNationalityVersion(state)?.VersionId,
                     new Dictionary<string, string>(_followUpValues, StringComparer.Ordinal)));
             _prepareBlockers = result.Blockers;
             if (result.PreparedPreview is { } prepared)
@@ -372,17 +312,24 @@ public sealed class CreationFoundationPage : NativePageBase
             blockers.Add(FormatDisableReason(metatype.DisableReasonKey, metatype.DisableReasonArguments));
         if (nationality is null)
             blockers.Add("Select an enabled Nationality module.");
-        else if (!nationality.IsEnabled && !IsMetatypeEvaluationCandidate(state, nationality))
+        else if (!nationality.IsEnabled
+                 && !CreationFoundationPhoneAuthority.IsMetatypeEvaluationCandidate(
+                     state,
+                     nationality,
+                     metatype))
             blockers.Add(FormatBlockers(nationality.AuthorityBlockers));
 
         if (nationality is { Versions.Count: > 0 })
         {
-            LifeModuleVersionProjectionDto? version = nationality.Versions.FirstOrDefault(candidate =>
-                string.Equals(candidate.VersionId, _selectedVersionId, StringComparison.Ordinal));
+            LifeModuleVersionProjectionDto? version = SelectedNationalityVersion(state);
             if (version is null)
                 blockers.Add("Select an enabled Nationality version.");
             else if (!version.IsEnabled
-                     && !IsMetatypeEvaluationCandidate(state, nationality, version))
+                     && !CreationFoundationPhoneAuthority.IsMetatypeEvaluationCandidate(
+                         state,
+                         nationality,
+                         version,
+                         metatype))
                 blockers.Add(FormatBlockers(version.AuthorityBlockers));
         }
 
@@ -418,8 +365,11 @@ public sealed class CreationFoundationPage : NativePageBase
         => _phoneDraft.ResolveConfirmedMetatype(state);
 
     private LifeModuleLegalOptionDto? SelectedNationality(CharacterCreationFoundationInteractionState state)
-        => state.NationalityOptions.FirstOrDefault(option =>
-            string.Equals(option.ModuleId, _selectedNationalityId, StringComparison.Ordinal));
+        => _phoneDraft.ResolveConfirmedNationality(state);
+
+    private LifeModuleVersionProjectionDto? SelectedNationalityVersion(
+        CharacterCreationFoundationInteractionState state)
+        => _phoneDraft.ResolveConfirmedNationalityVersion(state);
 
     private IReadOnlyList<LifeModuleFollowUpPromptDto> SelectedFollowUps(
         CharacterCreationFoundationInteractionState state)
@@ -427,31 +377,8 @@ public sealed class CreationFoundationPage : NativePageBase
         LifeModuleLegalOptionDto? nationality = SelectedNationality(state);
         if (nationality is null)
             return [];
-        LifeModuleVersionProjectionDto? version = nationality.Versions.FirstOrDefault(candidate =>
-            string.Equals(candidate.VersionId, _selectedVersionId, StringComparison.Ordinal));
+        LifeModuleVersionProjectionDto? version = SelectedNationalityVersion(state);
         return nationality.FollowUps.Concat(version?.FollowUps ?? []).ToArray();
-    }
-
-    private void AddStoryAndRequirements(
-        string story,
-        IReadOnlyList<LifeModuleRequirementProjectionDto> requirements,
-        IReadOnlyList<string> sourceAnchors,
-        string automationId)
-    {
-        VerticalStackLayout details = new() { Spacing = 6 };
-        if (!string.IsNullOrWhiteSpace(story))
-            details.Add(NativeTheme.Body(story, NativeTheme.Muted));
-        foreach (LifeModuleRequirementProjectionDto requirement in requirements)
-        {
-            details.Add(NativeTheme.Body(
-                $"{requirement.Label} · {(requirement.IsMet ? "met" : requirement.DisableReasonKey ?? "not met")}",
-                requirement.IsMet ? NativeTheme.Muted : NativeTheme.Danger));
-        }
-        if (sourceAnchors.Count > 0)
-            details.Add(NativeTheme.Body(string.Join(" · ", sourceAnchors), NativeTheme.Muted));
-        Border card = NativeTheme.Card(details, new Thickness(14));
-        card.AutomationId = automationId;
-        _body.Add(card);
     }
 
     private void AddBlockerCard(string title, IReadOnlyList<string> blockers, string automationId)
@@ -468,162 +395,6 @@ public sealed class CreationFoundationPage : NativePageBase
     private static bool IsSelectPrompt(LifeModuleFollowUpPromptDto prompt)
         => string.Equals(prompt.InputKind, "select", StringComparison.OrdinalIgnoreCase)
            || string.Equals(prompt.InputKind, "single-select", StringComparison.OrdinalIgnoreCase);
-
-    private static bool IsMetatypeEvaluationCandidate(
-        CharacterCreationFoundationInteractionState state,
-        LifeModuleLegalOptionDto module)
-    {
-        if (module.IsEnabled)
-            return false;
-        return module.Versions.Count == 0
-            ? CanEvaluateWithSelectedMetatype(state, module, null)
-            : module.Versions.Any(version =>
-                IsMetatypeEvaluationCandidate(state, module, version));
-    }
-
-    private static bool IsMetatypeEvaluationCandidate(
-        CharacterCreationFoundationInteractionState state,
-        LifeModuleLegalOptionDto module,
-        LifeModuleVersionProjectionDto version)
-        => !version.IsEnabled && CanEvaluateWithSelectedMetatype(state, module, version);
-
-    private static bool CanEvaluateWithSelectedMetatype(
-        CharacterCreationFoundationInteractionState state,
-        LifeModuleLegalOptionDto module,
-        LifeModuleVersionProjectionDto? version)
-    {
-        if (!HasExactCandidateIdentity(state.NationalityOptions, module, version)
-            || module.StageOrder != LifeModuleJourneyStageOrders.Nationality
-            || !string.Equals(
-                module.StageId,
-                CharacterCreationLifeModuleStageIds.Nationality,
-                StringComparison.OrdinalIgnoreCase)
-            || module.CanRepeat
-            || !HasExactCandidateIdentityCostAndSource(
-                module.ModuleId,
-                module.Name,
-                module.KarmaCost,
-                module.KarmaRaw,
-                module.KarmaIsExact,
-                module.Source,
-                module.SourceAnchorIds)
-            || version is not null
-            && !HasExactCandidateIdentityCostAndSource(
-                version.VersionId,
-                version.Label,
-                version.KarmaCost,
-                version.KarmaRaw,
-                version.KarmaIsExact,
-                version.Source,
-                version.SourceAnchorIds))
-        {
-            return false;
-        }
-
-        LifeModuleRequirementProjectionDto[] requirements = module.Requirements
-            .Concat(version?.Requirements ?? [])
-            .ToArray();
-        LifeModuleRequirementProjectionDto[] unresolved = requirements
-            .Where(static requirement =>
-                !requirement.IsMet || requirement.RequiresCharacterAuthority)
-            .ToArray();
-        if (unresolved.Length == 0
-            || requirements.Any(requirement =>
-                !string.IsNullOrWhiteSpace(requirement.DisableReasonKey)
-                && !string.Equals(
-                    requirement.DisableReasonKey,
-                    CharacterCreationFoundationBlockers.CharacterEligibilityAuthorityRequired,
-                    StringComparison.Ordinal))
-            || !HasOnlyTypedMetatypeRequirements(unresolved))
-        {
-            return false;
-        }
-
-        string[] blockers = module.AuthorityBlockers
-            .Concat(version?.AuthorityBlockers ?? [])
-            .Concat(unresolved.Select(static requirement =>
-                requirement.DisableReasonKey ?? string.Empty))
-            .Where(static blocker => !string.IsNullOrWhiteSpace(blocker))
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-        return HasOnlyEligibilityAuthorityBlocker(blockers)
-               && state.MetatypeOptions
-                   .Where(static option =>
-                       option.IsEnabled
-                       && string.IsNullOrWhiteSpace(option.DisableReasonKey)
-                       && !string.IsNullOrWhiteSpace(option.OptionId)
-                       && !string.IsNullOrWhiteSpace(option.Label))
-                   .Select(static option => option.Label)
-                   .Any(label => unresolved.All(requirement =>
-                       requirement.AcceptedValues.Contains(
-                           label,
-                           StringComparer.OrdinalIgnoreCase)));
-    }
-
-    private static bool HasExactCandidateIdentity(
-        IReadOnlyList<LifeModuleLegalOptionDto> modules,
-        LifeModuleLegalOptionDto module,
-        LifeModuleVersionProjectionDto? version)
-    {
-        if (string.IsNullOrWhiteSpace(module.ModuleId)
-            || modules.Count(candidate => string.Equals(
-                candidate.ModuleId,
-                module.ModuleId,
-                StringComparison.Ordinal)) != 1)
-        {
-            return false;
-        }
-
-        if (module.Versions.Count == 0)
-            return version is null;
-        return version is not null
-               && !string.IsNullOrWhiteSpace(version.VersionId)
-               && module.Versions.Count(candidate => string.Equals(
-                   candidate.VersionId,
-                   version.VersionId,
-                   StringComparison.Ordinal)) == 1;
-    }
-
-    private static bool HasExactCandidateIdentityCostAndSource(
-        string id,
-        string label,
-        decimal karmaCost,
-        string karmaRaw,
-        bool karmaIsExact,
-        string source,
-        IReadOnlyList<string> sourceAnchorIds)
-        => !string.IsNullOrWhiteSpace(id)
-           && string.Equals(id, id.Trim(), StringComparison.Ordinal)
-           && !string.IsNullOrWhiteSpace(label)
-           && string.Equals(label, label.Trim(), StringComparison.Ordinal)
-           && karmaIsExact
-           && karmaCost >= 0
-           && !string.IsNullOrWhiteSpace(karmaRaw)
-           && string.Equals(karmaRaw, karmaRaw.Trim(), StringComparison.Ordinal)
-           && !string.IsNullOrWhiteSpace(source)
-           && string.Equals(source, source.Trim(), StringComparison.Ordinal)
-           && sourceAnchorIds.Count > 0
-           && sourceAnchorIds.All(static anchor => !string.IsNullOrWhiteSpace(anchor));
-
-    private static bool HasOnlyEligibilityAuthorityBlocker(IReadOnlyList<string> blockers)
-        => blockers.Count == 1
-           && string.Equals(
-               blockers[0],
-               CharacterCreationFoundationBlockers.CharacterEligibilityAuthorityRequired,
-               StringComparison.Ordinal);
-
-    private static bool HasOnlyTypedMetatypeRequirements(
-        IReadOnlyList<LifeModuleRequirementProjectionDto> requirements)
-        => requirements.Count > 0
-           && requirements.All(requirement =>
-               requirement.RequiresCharacterAuthority
-               && !requirement.IsMet
-               && !string.IsNullOrWhiteSpace(requirement.RequirementId)
-               && string.Equals(requirement.Operator, "oneof", StringComparison.OrdinalIgnoreCase)
-               && string.Equals(requirement.SubjectKind, "metatype", StringComparison.OrdinalIgnoreCase)
-               && requirement.AcceptedValues.Count > 0
-               && requirement.AcceptedValues.All(static value =>
-                   !string.IsNullOrWhiteSpace(value)));
 
     private static string FormatCosts(IReadOnlyList<CharacterCreationChoiceCost> costs)
         => string.Join(

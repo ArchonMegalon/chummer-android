@@ -1,4 +1,5 @@
 using Chummer.Contracts.Characters;
+using Chummer.Contracts.LifeModules;
 using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
@@ -16,6 +17,8 @@ internal sealed class CreationFoundationPhoneDraft
     private string? _foundationSnapshotDigest;
 
     public string? ConfirmedMetatypeOptionId { get; private set; }
+    public string? ConfirmedNationalityModuleId { get; private set; }
+    public string? ConfirmedNationalityVersionId { get; private set; }
 
     public bool Bind(CharacterCreationFoundationInteractionState state)
     {
@@ -28,6 +31,7 @@ internal sealed class CreationFoundationPhoneDraft
         _buildMethod = state.BuildMethod;
         _foundationSnapshotDigest = state.FoundationSnapshotDigest;
         ConfirmedMetatypeOptionId = ResolvePendingMetatypeOptionId(state);
+        ResolvePendingNationalitySelection(state);
         return true;
     }
 
@@ -54,6 +58,25 @@ internal sealed class CreationFoundationPhoneDraft
             ? ResolveUniqueOption(state, optionId)
             : null;
 
+    public LifeModuleLegalOptionDto? ResolveConfirmedNationality(
+        CharacterCreationFoundationInteractionState state)
+        => Matches(state)
+            ? CreationFoundationPhoneAuthority.ResolveUniqueModule(
+                state,
+                ConfirmedNationalityModuleId)
+            : null;
+
+    public LifeModuleVersionProjectionDto? ResolveConfirmedNationalityVersion(
+        CharacterCreationFoundationInteractionState state)
+    {
+        LifeModuleLegalOptionDto? module = ResolveConfirmedNationality(state);
+        return module is null
+            ? null
+            : CreationFoundationPhoneAuthority.ResolveUniqueVersion(
+                module,
+                ConfirmedNationalityVersionId);
+    }
+
     public bool TryConfirmMetatype(
         CharacterCreationFoundationInteractionState state,
         string optionId)
@@ -68,8 +91,91 @@ internal sealed class CreationFoundationPhoneDraft
             return false;
         }
 
+        if (!string.Equals(ConfirmedMetatypeOptionId, option.OptionId, StringComparison.Ordinal))
+        {
+            ConfirmedNationalityModuleId = null;
+            ConfirmedNationalityVersionId = null;
+        }
         ConfirmedMetatypeOptionId = option.OptionId;
         return true;
+    }
+
+    public bool TryConfirmNationality(
+        CharacterCreationFoundationInteractionState state,
+        string moduleId,
+        string? versionId)
+    {
+        CharacterCreationLegalOption? metatype = ResolveConfirmedMetatype(state);
+        LifeModuleLegalOptionDto? module = CreationFoundationPhoneAuthority.ResolveUniqueModule(
+            state,
+            moduleId);
+        LifeModuleVersionProjectionDto? version = module is null
+            ? null
+            : CreationFoundationPhoneAuthority.ResolveUniqueVersion(module, versionId);
+        if (module is null
+            || module.Versions.Count == 0 && !string.IsNullOrWhiteSpace(versionId)
+            || module.Versions.Count > 0 && version is null
+            || !CreationFoundationPhoneAuthority.CanReviewSelection(
+                state,
+                module,
+                version,
+                metatype))
+        {
+            return false;
+        }
+
+        ConfirmedNationalityModuleId = module.ModuleId;
+        ConfirmedNationalityVersionId = version?.VersionId;
+        return true;
+    }
+
+    public IReadOnlyDictionary<string, string> ResolvePendingFollowUpValues(
+        CharacterCreationFoundationInteractionState state)
+    {
+        CharacterCreationFoundationDraftLedger? pending = MatchingPendingDraft(state);
+        LifeModuleLegalOptionDto? module = ResolveConfirmedNationality(state);
+        LifeModuleVersionProjectionDto? version = ResolveConfirmedNationalityVersion(state);
+        if (pending is null
+            || module is null
+            || !string.Equals(
+                pending.Selection.ModuleId,
+                module.ModuleId,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                pending.Selection.VersionId,
+                version?.VersionId,
+                StringComparison.Ordinal))
+        {
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+        }
+
+        LifeModuleFollowUpPromptDto[] prompts = module.FollowUps
+            .Concat(version?.FollowUps ?? [])
+            .ToArray();
+        if (prompts.GroupBy(prompt => prompt.PromptId, StringComparer.Ordinal)
+            .Any(group => group.Count() != 1))
+        {
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+        }
+
+        var restored = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach ((string promptId, string value) in pending.FollowUpValues)
+        {
+            LifeModuleFollowUpPromptDto? prompt = prompts.SingleOrDefault(candidate =>
+                string.Equals(candidate.PromptId, promptId, StringComparison.Ordinal));
+            if (prompt is null
+                || prompt.Options.Count(option =>
+                    option.IsEnabled
+                    && string.Equals(option.SourceValue, value, StringComparison.Ordinal)) != 1)
+            {
+                return new Dictionary<string, string>(StringComparer.Ordinal);
+            }
+            restored[promptId] = value;
+        }
+
+        if (prompts.Any(prompt => prompt.IsRequired && !restored.ContainsKey(prompt.PromptId)))
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+        return restored;
     }
 
     private static string? ResolvePendingMetatypeOptionId(
@@ -96,6 +202,57 @@ internal sealed class CreationFoundationPhoneDraft
                     StringComparison.Ordinal))
             .ToArray();
         return matches.Length == 1 ? matches[0].OptionId : null;
+    }
+
+    private void ResolvePendingNationalitySelection(
+        CharacterCreationFoundationInteractionState state)
+    {
+        ConfirmedNationalityModuleId = null;
+        ConfirmedNationalityVersionId = null;
+        CharacterCreationFoundationDraftLedger? pending = MatchingPendingDraft(state);
+        CharacterCreationLegalOption? metatype = ResolveConfirmedMetatype(state);
+        LifeModuleLegalOptionDto? module = pending is null
+            ? null
+            : CreationFoundationPhoneAuthority.ResolveUniqueModule(
+                state,
+                pending.Selection.ModuleId);
+        LifeModuleVersionProjectionDto? version = module is null
+            ? null
+            : CreationFoundationPhoneAuthority.ResolveUniqueVersion(
+                module,
+                pending?.Selection.VersionId);
+        if (pending is null
+            || module is null
+            || module.Versions.Count == 0 && !string.IsNullOrWhiteSpace(pending.Selection.VersionId)
+            || module.Versions.Count > 0 && version is null
+            || !CreationFoundationPhoneAuthority.CanReviewSelection(
+                state,
+                module,
+                version,
+                metatype))
+        {
+            return;
+        }
+
+        ConfirmedNationalityModuleId = module.ModuleId;
+        ConfirmedNationalityVersionId = version?.VersionId;
+    }
+
+    private static CharacterCreationFoundationDraftLedger? MatchingPendingDraft(
+        CharacterCreationFoundationInteractionState state)
+    {
+        CharacterCreationFoundationDraftLedger? pending = state.PendingDraft;
+        return pending is not null
+               && !pending.CharacterEffectsApplied
+               && pending.WorkspaceId.Equals(state.Binding.WorkspaceId)
+               && string.Equals(
+                   pending.SourceDigest,
+                   state.Binding.SourceDigest,
+                   StringComparison.Ordinal)
+               && pending.RequirementEvaluations.All(requirement =>
+                   !requirement.RequiresCharacterAuthority || requirement.IsMet)
+            ? pending
+            : null;
     }
 
     private static CharacterCreationLegalOption? ResolveUniqueEnabledOption(

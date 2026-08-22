@@ -290,17 +290,17 @@ public sealed class BuildPage : NativePageBase
             bool canOpenFoundation = foundation
                                      && stage.IsAvailable
                                      && HasAuthoritativeFoundationOptions();
-            bool canOpenAttributes = attributes && stage.IsAvailable && HasEnabledAttributesTab();
-            bool canOpen = canOpenFoundation || canOpenAttributes;
+            // The current creation snapshot exposes only aggregate attribute budgets. Until Core
+            // supplies typed legal choices plus a revision-bound preview/receipt, the post-create
+            // AttributeEditRequest path must never serve as a wizard fallback.
+            bool canOpen = canOpenFoundation;
             Func<Task> selected = canOpenFoundation
                 ? OpenCreationFoundationAsync
-                : canOpenAttributes
-                    ? OpenCreationAttributesAsync
-                    : () => Task.CompletedTask;
+                : () => Task.CompletedTask;
             string detail = canOpenFoundation
                 ? "Choose an exact metatype and Nationality Life Module"
-                : canOpenAttributes
-                    ? "Open the typed creation attribute editor"
+                : attributes && stage.IsAvailable
+                    ? "Rules-authoritative attribute choices, costs, and preview are not available yet"
                 : stage.IsAvailable
                     ? "Legal in the projection · dedicated phone step is not wired yet"
                     : stage.Blockers.FirstOrDefault() ?? "Blocked by the current projection";
@@ -330,19 +330,6 @@ public sealed class BuildPage : NativePageBase
 
     private Task OpenCreationFoundationAsync()
         => Navigation.PushAsync(new CreationFoundationPage(Coordinator));
-
-    private bool HasEnabledAttributesTab()
-        => Coordinator.Surface.NavigationTabs.Any(tab =>
-            string.Equals(tab.Id, "tab-attributes", StringComparison.Ordinal)
-            && Coordinator.IsTabEnabled(tab));
-
-    private async Task OpenCreationAttributesAsync()
-    {
-        NavigationTabDefinition tab = Coordinator.Surface.NavigationTabs.First(candidate =>
-            string.Equals(candidate.Id, "tab-attributes", StringComparison.Ordinal));
-        await Coordinator.SelectTabAsync(tab.Id);
-        await Navigation.PushAsync(new CreationAttributesPage(Coordinator));
-    }
 
     private static string StageLabel(CharacterCreationWizardSnapshot snapshot, string stepId)
         => snapshot.Steps.FirstOrDefault(stage => string.Equals(stage.StepId, stepId, StringComparison.Ordinal))?.Label

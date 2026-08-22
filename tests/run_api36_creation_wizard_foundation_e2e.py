@@ -12,6 +12,7 @@ import hashlib
 import json
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -38,6 +39,8 @@ def assert_creation_editor_gated(device: shared.Device) -> None:
         "build-origin-dossier",
         "build-free-sprite-conversion",
         "build-career-create-expense",
+        "creation-wizard-attributes",
+        "attribute-save-",
     )
     shared.reset_scroll_to_top(device, swipes=18)
     for scroll_index in range(19):
@@ -87,6 +90,17 @@ def tap_first_enabled_prefix(
         device.capture(f"missing-enabled-{prefix.rstrip('-')}")
         raise RuntimeError(f"No enabled authoritative option matched {prefix!r}")
     return None
+
+
+def wait_for_any(device: shared.Device, *selectors: str, timeout: int = 60) -> str:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        for selector in selectors:
+            if device.find(selector) is not None:
+                return selector
+        time.sleep(0.25)
+    device.capture("missing-" + "-or-".join(selectors))
+    raise RuntimeError(f"None of the expected pages appeared: {selectors!r}")
 
 
 def select_projected_follow_ups(device: shared.Device) -> list[str]:
@@ -218,13 +232,68 @@ def main() -> int:
     if restored_metatype != selected_metatype:
         raise RuntimeError("Back navigation did not restore the confirmed metatype selection")
 
-    nationality_option = tap_first_enabled_prefix(device, "creation-foundation-nationality-")
+    # Nationality and its optional version use stable typed IDs and their own explicit,
+    # non-writing phone preview before returning the selection to Foundation.
+    device.tap("creation-foundation-open-nationality", scroll=True, max_scrolls=18)
+    device.wait("creation-nationality-page", timeout=60)
+    device.wait("creation-nationality-budget", timeout=45, scroll=True, max_scrolls=18)
     shared.reset_scroll_to_top(device, swipes=18)
-    version_option = tap_first_enabled_prefix(
+    nationality_option = tap_first_enabled_prefix(device, "creation-nationality-option-")
+    nationality_route = wait_for_any(
         device,
-        "creation-foundation-version-",
-        required=False,
+        "creation-nationality-version-page",
+        "creation-nationality-preview-page",
     )
+    version_option = None
+    if nationality_route == "creation-nationality-version-page":
+        version_option = tap_first_enabled_prefix(
+            device,
+            "creation-nationality-version-option-",
+        )
+        device.wait("creation-nationality-preview-page", timeout=60)
+    device.wait("creation-nationality-preview-selection", timeout=45, scroll=True, max_scrolls=18)
+    device.wait("creation-nationality-preview-budget", timeout=45, scroll=True, max_scrolls=18)
+    device.tap("creation-nationality-confirm", scroll=True, max_scrolls=22)
+    device.wait("creation-foundation-open-nationality", timeout=60, scroll=True, max_scrolls=18)
+    selected_nationality = node_text(
+        device,
+        "creation-foundation-open-nationality",
+        scroll=True,
+    )
+    if "selected" not in selected_nationality.lower():
+        raise RuntimeError(
+            "Explicit Nationality confirmation did not restore the typed selection: "
+            f"{selected_nationality!r}"
+        )
+
+    # Back from the non-writing Nationality preview leaves the previously confirmed IDs intact.
+    device.tap("creation-foundation-open-nationality", scroll=True, max_scrolls=18)
+    device.tap(nationality_option, scroll=True, max_scrolls=18)
+    nationality_route = wait_for_any(
+        device,
+        "creation-nationality-version-page",
+        "creation-nationality-preview-page",
+    )
+    if nationality_route == "creation-nationality-version-page":
+        if version_option is None:
+            raise RuntimeError("Nationality route unexpectedly gained a version after confirmation")
+        device.tap(version_option, scroll=True, max_scrolls=18)
+        device.wait("creation-nationality-preview-page", timeout=60)
+    device.back()
+    if nationality_route == "creation-nationality-version-page":
+        device.wait("creation-nationality-version-page", timeout=45)
+        device.back()
+    device.wait("creation-nationality-page", timeout=45)
+    device.back()
+    device.wait("creation-foundation-open-nationality", timeout=45, scroll=True, max_scrolls=18)
+    restored_nationality = node_text(
+        device,
+        "creation-foundation-open-nationality",
+        scroll=True,
+    )
+    if restored_nationality != selected_nationality:
+        raise RuntimeError("Back navigation did not restore the confirmed Nationality selection")
+
     selected_follow_ups = select_projected_follow_ups(device)
     device.tap("creation-foundation-prepare-preview", scroll=True, max_scrolls=22)
     device.wait("creation-foundation-preview-page", timeout=60)
@@ -269,6 +338,13 @@ def main() -> int:
     )
     device.wait("creation-foundation-pending-draft", timeout=60, scroll=True, max_scrolls=18)
     device.wait("creation-foundation-pending-compilation-status", scroll=True, max_scrolls=18)
+    resumed_nationality = node_text(
+        device,
+        "creation-foundation-open-nationality",
+        scroll=True,
+    )
+    if "selected" not in resumed_nationality.lower():
+        raise RuntimeError("Pending Foundation draft did not resume its typed Nationality IDs")
     device.back()
     device.wait("creation-wizard-dashboard", timeout=45)
 
@@ -314,6 +390,13 @@ def main() -> int:
     )
     device.wait("creation-foundation-pending-draft", timeout=60, scroll=True, max_scrolls=18)
     device.wait("creation-foundation-pending-character-effects-applied", scroll=True, max_scrolls=18)
+    restarted_nationality = node_text(
+        device,
+        "creation-foundation-open-nationality",
+        scroll=True,
+    )
+    if "selected" not in restarted_nationality.lower():
+        raise RuntimeError("Process restart did not resume the typed Nationality IDs")
     device.capture("creation-foundation-process-restart")
     device.back()
     device.wait("creation-wizard-dashboard", timeout=45)
@@ -345,6 +428,10 @@ def main() -> int:
             "foundationMetatypeDeepNavigation": "pass",
             "foundationMetatypeBackRestoration": "pass",
             "foundationMetatypeOption": metatype_option,
+            "foundationNationalityDeepNavigation": "pass",
+            "foundationNationalityExplicitDraftConfirm": "pass",
+            "foundationNationalityBackRestoration": "pass",
+            "foundationNationalityPendingDraftResume": "pass",
             "foundationNationalityOption": nationality_option,
             "foundationVersionOption": version_option,
             "foundationFollowUpSelections": selected_follow_ups,
