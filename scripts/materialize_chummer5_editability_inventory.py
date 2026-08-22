@@ -550,6 +550,38 @@ CAPTURE_ONLY_PHONE_E2E_DEFINITIONS: dict[str, dict[str, Any]] = {
             "newestValidBackupRecovery", "characterDocumentPreserved",
         ),
     },
+    "application-date-time-settings": {
+        "driver": "tests/run_api36_application_date_time_settings_e2e.py",
+        "fixtures": (
+            ("runnerFixtureSha256", "tests/fixtures/application-date-time-settings-e2e.chum5"),
+        ),
+        "sourceKeys": (
+            "applicationSettingsPageSha256", "homePageSha256", "coordinatorSha256",
+            "mauiProgramSha256", "applicationSettingsPresenterSha256",
+            "applicationSettingsContractSha256", "applicationSettingsRulesSha256",
+            "applicationSettingsStoreSha256",
+        ),
+        "controls": (
+            "EditGlobalSettings.chkCustomDateTimeFormats",
+            "EditGlobalSettings.txtDateFormat",
+            "EditGlobalSettings.txtTimeFormat",
+            "EditGlobalSettings.chkDatesIncludeTime",
+        ),
+        "proofKeys": (
+            "legacyRegistryIdentity", "cultureDefaultPhase", "customEnabledPhase",
+            "legacyErrorPreview", "disabledPhasePreservesStoredCustomValues",
+            "datesIncludeTimeIndependent", "typedSettingIdentity",
+            "wholePageExpectedRevisionCas", "singleAtomicSave", "processRestartReadback",
+            "newestValidBackupRecovery", "characterDocumentPreserved",
+        ),
+        "journeys": (
+            "legacyDefaultsAndCulturePhase", "customPhaseAndErrorPreview",
+            "draftDiscardedOnBack", "explicitWholeSnapshotSave",
+            "disabledPhasePreservesStoredCustomValues", "datesIncludeTimeIndependent",
+            "processRestartReadback", "atomicPreviousSnapshotBackup",
+            "newestValidBackupRecovery", "characterDocumentPreserved",
+        ),
+    },
     "gear-name": {
         "driver": "tests/run_api36_gear_name_e2e.py",
         "fixtures": (
@@ -1811,6 +1843,12 @@ ROSTER_SORT_CONTROL = "tsSort"
 ROSTER_REMOVE_CONTROL = "tsDelete"
 APPLICATION_CONFIRM_DELETE_CONTROLS = {"chkConfirmDelete", "cmdOK"}
 APPLICATION_CONFIRM_KARMA_EXPENSE_CONTROL = "chkConfirmKarmaExpense"
+APPLICATION_DATE_TIME_CONTROLS = {
+    "chkCustomDateTimeFormats": "settings-custom-date-time-formats",
+    "txtDateFormat": "settings-date-format",
+    "txtTimeFormat": "settings-time-format",
+    "chkDatesIncludeTime": "settings-dates-include-time",
+}
 GROUP_NAME_CONTROL = "txtGroupName"
 TRADITION_NAME_CONTROL = "txtTraditionName"
 TRADITION_DRAIN_CONTROL = "cboDrain"
@@ -7305,7 +7343,7 @@ def _known_phone_mapping(
                 'AutomationId = "settings-confirm-delete"',
                 'AutomationId = "settings-save"',
                 "_baseline.Revision",
-                "SaveApplicationConfirmationSettingsAsync",
+                "SaveApplicationSettingsAsync",
             )
             and _contains(home_page, 'AutomationId = "home-application-settings"', "new ApplicationSettingsPage")
             and _contains(
@@ -7426,7 +7464,7 @@ def _known_phone_mapping(
                 'AutomationId = "settings-confirm-karma-expense"',
                 'AutomationId = "settings-save"',
                 "_baseline.ConfirmKarmaExpense",
-                "SaveApplicationConfirmationSettingsAsync",
+                "SaveApplicationSettingsAsync",
             )
             and _contains(home_page, 'AutomationId = "home-application-settings"', "new ApplicationSettingsPage")
             and _contains(
@@ -7523,6 +7561,169 @@ def _known_phone_mapping(
             "e2e": {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_application_confirm_karma_expense_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "EditGlobalSettings" and control in APPLICATION_DATE_TIME_CONTROLS:
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ApplicationSettingsPage.cs"
+        home_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "HomePage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        maui_program = REPO_ROOT / "src" / "Chummer.Android" / "MauiProgram.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_application_date_time_settings_e2e.py"
+        fixture = REPO_ROOT / "tests" / "fixtures" / "application-date-time-settings-e2e.chum5"
+        presenter = presentation_root / "Chummer.Presentation" / "Overview" / "ApplicationDeleteConfirmationPresenter.cs"
+        contract = character_notes_core_root / "Chummer.Contracts" / "Api" / "ApplicationDeleteConfirmationContracts.cs"
+        rules = character_notes_core_root / "Chummer.Application" / "Tools" / "ApplicationDeleteConfirmationRules.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure" / "Files" / "FileApplicationDeleteConfirmationStore.cs"
+        automation_id = APPLICATION_DATE_TIME_CONTROLS[control]
+        implemented = (
+            _contains(
+                page,
+                "class ApplicationSettingsPage",
+                'AutomationId = "settings-custom-date-time-formats"',
+                'AutomationId = "settings-date-format"',
+                'AutomationId = "settings-date-format-preview"',
+                'AutomationId = "settings-time-format"',
+                'AutomationId = "settings-time-format-preview"',
+                'AutomationId = "settings-dates-include-time"',
+                "UpdateDateTimeDraft(resetCultureDefaults: !args.Value)",
+                "_culture.DateTimeFormat.ShortDatePattern",
+                "_culture.DateTimeFormat.ShortTimePattern",
+                "ApplicationDeleteConfirmationRules.PreviewDateTimeFormat",
+                "DateTime.Now",
+                "SaveApplicationSettingsAsync",
+                "_baseline.Revision",
+            )
+            and _contains(home_page, 'AutomationId = "home-application-settings"', "new ApplicationSettingsPage")
+            and _contains(
+                coordinator,
+                "SaveApplicationSettingsAsync",
+                "ApplicationSettingsSnapshotMutation",
+                "ApplicationSettingIdentity.CustomDateTimeFormats",
+                "ApplicationSettingIdentity.CustomDateFormat",
+                "ApplicationSettingIdentity.CustomTimeFormat",
+                "ApplicationSettingIdentity.DatesIncludeTime",
+                "expectedRevision",
+                "_applicationSettingsPresenter.ApplySettingsSnapshot",
+            )
+            and _contains(
+                maui_program,
+                "IApplicationDeleteConfirmationStore",
+                "FileApplicationDeleteConfirmationStore",
+                "ApplicationDeleteConfirmationPresenter",
+            )
+            and _contains(
+                presenter,
+                "ApplySettingsSnapshot",
+                "ApplicationDeleteConfirmationRules.ApplySettingsSnapshot",
+                "_store.Save(mutation.ExpectedRevision, updated)",
+            )
+            and _contains(
+                contract,
+                "ApplicationSettingIdentity",
+                "CustomDateTimeFormats",
+                "CustomDateFormat",
+                "CustomTimeFormat",
+                "DatesIncludeTime",
+                "ApplicationSettingValue<T>",
+                "ApplicationSettingsSnapshotMutation",
+                "ApplicationDateTimeFormatPhase",
+                "ExpectedRevision",
+            )
+            and _contains(
+                rules,
+                'LegacyCustomDateTimeFormatsIdentity = "usecustomdatetime"',
+                'LegacyCustomDateFormatIdentity = "customdateformat"',
+                'LegacyCustomTimeFormatIdentity = "customtimeformat"',
+                'LegacyDatesIncludeTimeIdentity = "datesincludetime"',
+                "ApplySettingsSnapshot",
+                "ApplyDateTimeSnapshot",
+                "PreviewDateTimeFormat",
+                "ApplicationDateTimeFormatPhase.CultureDefault",
+                "ApplicationDateTimeFormatPhase.Custom",
+                '"Error"',
+                "dateFormat = useCustom ? mutation.CustomDateFormat.Value : current.CustomDateFormat",
+                "timeFormat = useCustom ? mutation.CustomTimeFormat.Value : current.CustomTimeFormat",
+                "mutation.ExpectedRevision != current.Revision",
+            )
+            and _contains(
+                store,
+                "application-delete-confirmation.json",
+                'TryGetProperty("CustomDateTimeFormats"',
+                'TryGetProperty("CustomDateFormat"',
+                'TryGetProperty("CustomTimeFormat"',
+                'TryGetProperty("DatesIncludeTime"',
+                "primary.Revision >= backup.Revision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                'path + ".bak"',
+                "current.Revision != expectedRevision",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"EditGlobalSettings.chkCustomDateTimeFormats"',
+                '"EditGlobalSettings.txtDateFormat"',
+                '"EditGlobalSettings.txtTimeFormat"',
+                '"EditGlobalSettings.chkDatesIncludeTime"',
+                'api != "36"',
+                'abi != "arm64-v8a"',
+                '"profile": "phone"',
+                '"journey": "application-date-time-settings"',
+                'device.shell("pm", "path", shared.PACKAGE)',
+                '"applicationSettingsStoreSha256"',
+                '"runnerFixtureSha256"',
+                'device.shell("am", "force-stop"',
+            )
+            and fixture.is_file()
+        )
+        control_label = {
+            "chkCustomDateTimeFormats": "custom-format phase",
+            "txtDateFormat": "date-format draft and preview",
+            "txtTimeFormat": "time-format draft and preview",
+            "chkDatesIncludeTime": "dates-include-time toggle",
+        }[control]
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": f"Home > Application settings > Date and time > {control_label} > Save",
+            "surface": "ApplicationSettingsPage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+                "src/Chummer.Android/Native/HomePage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "src/Chummer.Android/MauiProgram.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+                "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs",
+            ],
+            "presenterMutation": (
+                "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)"
+            ),
+            "persistenceAssertion": (
+                "the four typed legacy date/time setting values share the page's single explicit Save, whole-page "
+                "expected-revision CAS, durable atomic replacement, and primary/.bak recovery; culture-default phase "
+                "resets the disabled UI drafts but does not overwrite stored custom strings, custom phase preserves "
+                "raw text and the legacy Error preview, datesincludetime is independent, Back performs no write, "
+                "and character XML remains byte-independent"
+            ),
+            "coverageLimit": (
+                "Phone application settings only for chkCustomDateTimeFormats, txtDateFormat, txtTimeFormat, and "
+                "chkDatesIncludeTime. No confirmation, cmdOK, other Global Settings, or character-data row is newly "
+                "claimed. Tablet intentionally remains missing and the API 36 driver is "
+                f"{'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_application_date_time_settings_e2e.py" if e2e_scripted else None,
             },
             "tablet": {
                 "status": "missing",
@@ -19196,6 +19397,14 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RosterFavoritesPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "HomePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "MauiProgram.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ApplicationSettingsPage.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "ApplicationDeleteConfirmationPresenter.cs",
+        core_engine_root / "Chummer.Contracts" / "Api" / "ApplicationDeleteConfirmationContracts.cs",
+        core_engine_root / "Chummer.Application" / "Tools" / "ApplicationDeleteConfirmationRules.cs",
+        core_engine_root / "Chummer.Application" / "Tools" / "IApplicationDeleteConfirmationStore.cs",
+        core_engine_root / "Chummer.Infrastructure" / "Files" / "FileApplicationDeleteConfirmationStore.cs",
+        REPO_ROOT / "tests" / "run_api36_application_date_time_settings_e2e.py",
+        REPO_ROOT / "tests" / "fixtures" / "application-date-time-settings-e2e.chum5",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterRosterFavoritePresenter.cs",
         core_engine_root / "Chummer.Contracts" / "Api" / "CharacterRosterFavoriteContracts.cs",
         core_engine_root / "Chummer.Application" / "Tools" / "CharacterRosterFavoriteRules.cs",

@@ -353,6 +353,31 @@ public sealed class RunnerSessionCoordinator : IDisposable
         return Task.CompletedTask;
     }
 
+    public Task SaveApplicationSettingsAsync(
+        bool confirmDelete,
+        bool confirmKarmaExpense,
+        bool customDateTimeFormats,
+        string customDateFormat,
+        string customTimeFormat,
+        bool datesIncludeTime,
+        long expectedRevision,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        _applicationSettings = _applicationSettingsPresenter.ApplySettingsSnapshot(
+            new ApplicationSettingsSnapshotMutation(
+                confirmDelete,
+                confirmKarmaExpense,
+                new(ApplicationSettingIdentity.CustomDateTimeFormats, customDateTimeFormats),
+                new(ApplicationSettingIdentity.CustomDateFormat, customDateFormat),
+                new(ApplicationSettingIdentity.CustomTimeFormat, customTimeFormat),
+                new(ApplicationSettingIdentity.DatesIncludeTime, datesIncludeTime),
+                expectedRevision));
+        _notice = "Application settings saved.";
+        NotifyChanged();
+        return Task.CompletedTask;
+    }
+
     private CharacterRosterDocumentIdentity ResolveRosterIdentity(OpenWorkspaceState workspace)
     {
         string locator = Preferences.Default.Get(

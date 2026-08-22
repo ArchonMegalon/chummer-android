@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Date Time Settings Proof</name>
+  <alias>Application Date Time Proof</alias>
+  <created>True</created>
+  <gameedition>SR6</gameedition>
+  <settings>settings.xml</settings>
+  <customstate>
+    <datetimeformats>character XML must remain unrelated</datetimeformats>
+  </customstate>
+</character>

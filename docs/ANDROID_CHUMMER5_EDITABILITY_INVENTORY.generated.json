@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 546,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 452,
+      "implemented_pending_emulator": 456,
       "implemented_verified_api36": 79,
-      "missing": 949,
+      "missing": 945,
       "not_applicable_non_mutating": 471,
       "partial_create_only": 106,
       "partial_exact_saved_data": 172
@@ -118,6 +118,46 @@
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
         "sha256": "145feae702acd8d7298de440c8a10f7f20a3ac8114ddce0c01e7ffd3bb11d626"
+      },
+      {
+        "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+        "exists": true,
+        "sha256": "49c938061dd455952b1b18aa7fc0f5a3a4ad689ea605a221170330f2c7a0bfc8"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+        "exists": true,
+        "sha256": "debb64f54042286d73c52d075b9abe4b1dbae0c49e58afb15bd5df37d65b6cbd"
+      },
+      {
+        "path": "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+        "exists": true,
+        "sha256": "56ca258f29fb711555a00d48799a652340bd730a95cac4aab0d184ffb2642fb0"
+      },
+      {
+        "path": "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+        "exists": true,
+        "sha256": "5037002ef9bacc828b70b5745f2a6549bdcdf1e06efd356b127db8abcf038cce"
+      },
+      {
+        "path": "chummer-core-engine/Chummer.Application/Tools/IApplicationDeleteConfirmationStore.cs",
+        "exists": true,
+        "sha256": "b868d8c24f9b4d3b7be5856e43ea7ac644e67d31b91bbd282f54741a9dcd79fb"
+      },
+      {
+        "path": "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs",
+        "exists": true,
+        "sha256": "132e24571d711e9b774209e12ebf637f0db0d886be2f937fed76365cbbcc88b9"
+      },
+      {
+        "path": "tests/run_api36_application_date_time_settings_e2e.py",
+        "exists": true,
+        "sha256": "d0eb4da6a54bf83064573a3ac02f33144425ae61e3863ebe397d21ad899d1ae1"
+      },
+      {
+        "path": "tests/fixtures/application-date-time-settings-e2e.chum5",
+        "exists": true,
+        "sha256": "ac27dc8da444ffb50c68b3d8793b88ded6da4fcb1aaf889ceb1565af2fa73c20"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterRosterFavoritePresenter.cs",
@@ -457,7 +497,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "98f5bc656b1f108a6435ec8fcd4536628143923f17b6f623b9d4988607dd16b0"
+        "sha256": "68d09dc87cc9e074bfb2a5382eb3d93ed066ee75252e42276705956131cb8073"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1370,6 +1410,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-application-date-time-settings/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-gear-name/receipt.json",
         "exists": false,
         "sha256": null
@@ -2077,7 +2122,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "c0e99b771d4b80084a90600be88c00bea0aef8bd619b4ceef821895b0c437ddb"
+      "sha256": "dda99fa95b4f9fba368d7c3172d9aef28f2e982a0398745b47277bc54f26cb0e"
     }
   },
   "coverageByFamily": {
@@ -2098,7 +2143,7 @@
     "application_settings": {
       "rowCount": 73,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 53,
+      "phoneMissingCount": 49,
       "tabletMissingCount": 56,
       "completionProvenCount": 17
     },
@@ -95913,11 +95958,21 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Home > Application settings > Date and time > time-format draft and preview > Save",
+        "surface": "ApplicationSettingsPage",
+        "automationId": "settings-time-format",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+          "src/Chummer.Android/Native/HomePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/MauiProgram.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+        ],
+        "coverageLimit": "Phone application settings only for chkCustomDateTimeFormats, txtDateFormat, txtTimeFormat, and chkDatesIncludeTime. No confirmation, cmdOK, other Global Settings, or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -95925,12 +95980,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
+      "persistenceAssertion": "the four typed legacy date/time setting values share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; culture-default phase resets the disabled UI drafts but does not overwrite stored custom strings, custom phase preserves raw text and the legacy Error preview, datesincludetime is independent, Back performs no write, and character XML remains byte-independent",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_application_date_time_settings_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -96364,11 +96419,21 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Home > Application settings > Date and time > dates-include-time toggle > Save",
+        "surface": "ApplicationSettingsPage",
+        "automationId": "settings-dates-include-time",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+          "src/Chummer.Android/Native/HomePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/MauiProgram.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+        ],
+        "coverageLimit": "Phone application settings only for chkCustomDateTimeFormats, txtDateFormat, txtTimeFormat, and chkDatesIncludeTime. No confirmation, cmdOK, other Global Settings, or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -96376,12 +96441,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
+      "persistenceAssertion": "the four typed legacy date/time setting values share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; culture-default phase resets the disabled UI drafts but does not overwrite stored custom strings, custom phase preserves raw text and the legacy Error preview, datesincludetime is independent, Back performs no write, and character XML remains byte-independent",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_application_date_time_settings_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -97105,11 +97170,21 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Home > Application settings > Date and time > custom-format phase > Save",
+        "surface": "ApplicationSettingsPage",
+        "automationId": "settings-custom-date-time-formats",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+          "src/Chummer.Android/Native/HomePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/MauiProgram.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+        ],
+        "coverageLimit": "Phone application settings only for chkCustomDateTimeFormats, txtDateFormat, txtTimeFormat, and chkDatesIncludeTime. No confirmation, cmdOK, other Global Settings, or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -97117,12 +97192,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
+      "persistenceAssertion": "the four typed legacy date/time setting values share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; culture-default phase resets the disabled UI drafts but does not overwrite stored custom strings, custom phase preserves raw text and the legacy Error preview, datesincludetime is independent, Back performs no write, and character XML remains byte-independent",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_application_date_time_settings_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -97690,11 +97765,21 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Home > Application settings > Date and time > date-format draft and preview > Save",
+        "surface": "ApplicationSettingsPage",
+        "automationId": "settings-date-format",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+          "src/Chummer.Android/Native/HomePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/MauiProgram.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+        ],
+        "coverageLimit": "Phone application settings only for chkCustomDateTimeFormats, txtDateFormat, txtTimeFormat, and chkDatesIncludeTime. No confirmation, cmdOK, other Global Settings, or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -97702,12 +97787,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
+      "persistenceAssertion": "the four typed legacy date/time setting values share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; culture-default phase resets the disabled UI drafts but does not overwrite stored custom strings, custom phase preserves raw text and the legacy Error preview, datesincludetime is independent, Back performs no write, and character XML remains byte-independent",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_application_date_time_settings_e2e.py"
         },
         "tablet": {
           "status": "missing",

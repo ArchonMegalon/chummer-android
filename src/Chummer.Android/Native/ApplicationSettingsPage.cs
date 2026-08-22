@@ -1,16 +1,25 @@
+using System.Globalization;
+using Chummer.Application.Tools;
 using Chummer.Contracts.Api;
 
 namespace Chummer.Android.Native;
 
 /// <summary>
-/// Phone-only Chummer5 Global Options surface for confirmation settings.
-/// The switches are local drafts; only the explicit Save action invokes persistence.
+/// Phone-only Chummer5 Global Options surface for confirmation and date/time settings.
+/// All controls are local drafts; only the explicit Save action invokes one atomic persistence boundary.
 /// </summary>
 public sealed class ApplicationSettingsPage : NativePageBase
 {
     private readonly ApplicationDeleteConfirmationState _baseline;
     private readonly Switch _confirmDelete;
     private readonly Switch _confirmKarmaExpense;
+    private readonly Switch _customDateTimeFormats;
+    private readonly Entry _dateFormat;
+    private readonly Label _datePreview;
+    private readonly Entry _timeFormat;
+    private readonly Label _timePreview;
+    private readonly Switch _datesIncludeTime;
+    private readonly CultureInfo _culture;
     private readonly Label _revision;
 
     public ApplicationSettingsPage(RunnerSessionCoordinator coordinator) : base(coordinator)
@@ -18,6 +27,7 @@ public sealed class ApplicationSettingsPage : NativePageBase
         Title = "Application settings";
         AutomationId = "application-settings-page";
         _baseline = coordinator.ApplicationSettings;
+        _culture = CultureInfo.CurrentCulture;
 
         VerticalStackLayout body = new()
         {
@@ -76,6 +86,73 @@ public sealed class ApplicationSettingsPage : NativePageBase
         karmaRow.Add(_confirmKarmaExpense, 1);
         body.Add(NativeTheme.Card(karmaRow));
 
+        body.Add(NativeTheme.Title("Date and time"));
+        body.Add(NativeTheme.Body(
+            "Matches Chummer5’s custom format phase and Dates include time option. Invalid custom text shows Error, as on desktop; Save preserves the exact draft.",
+            NativeTheme.Muted));
+
+        _customDateTimeFormats = new Switch
+        {
+            AutomationId = "settings-custom-date-time-formats",
+            IsToggled = _baseline.CustomDateTimeFormats
+        };
+        body.Add(CreateSwitchCard(
+            "Use custom date and time formats",
+            "Turning this off restores the current culture’s short date and time patterns in the draft.",
+            _customDateTimeFormats));
+
+        string initialDateFormat = _baseline.CustomDateTimeFormats
+            ? _baseline.CustomDateFormat
+            : _culture.DateTimeFormat.ShortDatePattern;
+        _dateFormat = new Entry
+        {
+            AutomationId = "settings-date-format",
+            Text = initialDateFormat,
+            IsEnabled = _baseline.CustomDateTimeFormats,
+            Placeholder = _culture.DateTimeFormat.ShortDatePattern
+        };
+        _datePreview = NativeTheme.Body(string.Empty, NativeTheme.Muted);
+        _datePreview.AutomationId = "settings-date-format-preview";
+        VerticalStackLayout dateCard = new() { Spacing = 8 };
+        dateCard.Add(NativeTheme.Title("Date format", 20));
+        dateCard.Add(_dateFormat);
+        dateCard.Add(_datePreview);
+        body.Add(NativeTheme.Card(dateCard));
+
+        string initialTimeFormat = _baseline.CustomDateTimeFormats
+            ? _baseline.CustomTimeFormat
+            : _culture.DateTimeFormat.ShortTimePattern;
+        _timeFormat = new Entry
+        {
+            AutomationId = "settings-time-format",
+            Text = initialTimeFormat,
+            IsEnabled = _baseline.CustomDateTimeFormats,
+            Placeholder = _culture.DateTimeFormat.ShortTimePattern
+        };
+        _timePreview = NativeTheme.Body(string.Empty, NativeTheme.Muted);
+        _timePreview.AutomationId = "settings-time-format-preview";
+        VerticalStackLayout timeCard = new() { Spacing = 8 };
+        timeCard.Add(NativeTheme.Title("Time format", 20));
+        timeCard.Add(_timeFormat);
+        timeCard.Add(_timePreview);
+        body.Add(NativeTheme.Card(timeCard));
+
+        _datesIncludeTime = new Switch
+        {
+            AutomationId = "settings-dates-include-time",
+            IsToggled = _baseline.DatesIncludeTime
+        };
+        body.Add(CreateSwitchCard(
+            "Dates include time",
+            "Independent of whether culture-default or custom formatting is active.",
+            _datesIncludeTime));
+
+        _customDateTimeFormats.Toggled += (_, args) =>
+            UpdateDateTimeDraft(resetCultureDefaults: !args.Value);
+        _dateFormat.TextChanged += (_, _) => UpdateDateTimePreviews();
+        _timeFormat.TextChanged += (_, _) => UpdateDateTimePreviews();
+        UpdateDateTimeDraft(resetCultureDefaults: false);
+
         _revision = NativeTheme.Body(string.Empty, NativeTheme.Muted);
         _revision.AutomationId = "settings-revision";
         body.Add(_revision);
@@ -84,9 +161,13 @@ public sealed class ApplicationSettingsPage : NativePageBase
         save.AutomationId = "settings-save";
         save.Clicked += async (_, _) => await RunAsync(async () =>
         {
-            await Coordinator.SaveApplicationConfirmationSettingsAsync(
+            await Coordinator.SaveApplicationSettingsAsync(
                 _confirmDelete.IsToggled,
                 _confirmKarmaExpense.IsToggled,
+                _customDateTimeFormats.IsToggled,
+                _dateFormat.Text ?? string.Empty,
+                _timeFormat.Text ?? string.Empty,
+                _datesIncludeTime.IsToggled,
                 _baseline.Revision);
             await Navigation.PopAsync();
         });
@@ -98,5 +179,58 @@ public sealed class ApplicationSettingsPage : NativePageBase
     protected override void Refresh()
     {
         _revision.Text = $"Settings revision {_baseline.Revision}";
+    }
+
+    private void UpdateDateTimeDraft(bool resetCultureDefaults)
+    {
+        bool custom = _customDateTimeFormats.IsToggled;
+        _dateFormat.IsEnabled = custom;
+        _timeFormat.IsEnabled = custom;
+        if (resetCultureDefaults)
+        {
+            _dateFormat.Text = _culture.DateTimeFormat.ShortDatePattern;
+            _timeFormat.Text = _culture.DateTimeFormat.ShortTimePattern;
+        }
+        UpdateDateTimePreviews();
+    }
+
+    private void UpdateDateTimePreviews()
+    {
+        DateTime sample = DateTime.Now;
+        ApplicationDateTimeFormatPreview date = ApplicationDeleteConfirmationRules.PreviewDateTimeFormat(
+            ApplicationSettingIdentity.CustomDateFormat,
+            _customDateTimeFormats.IsToggled,
+            _dateFormat.Text ?? string.Empty,
+            _culture.DateTimeFormat.ShortDatePattern,
+            sample,
+            _culture);
+        ApplicationDateTimeFormatPreview time = ApplicationDeleteConfirmationRules.PreviewDateTimeFormat(
+            ApplicationSettingIdentity.CustomTimeFormat,
+            _customDateTimeFormats.IsToggled,
+            _timeFormat.Text ?? string.Empty,
+            _culture.DateTimeFormat.ShortTimePattern,
+            sample,
+            _culture);
+        _datePreview.Text = $"{date.Phase} preview: {date.Sample}";
+        _timePreview.Text = $"{time.Phase} preview: {time.Sample}";
+    }
+
+    private static Border CreateSwitchCard(string title, string description, Switch value)
+    {
+        Grid row = new()
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto)
+            },
+            ColumnSpacing = 12
+        };
+        VerticalStackLayout labels = new() { Spacing = 3 };
+        labels.Add(NativeTheme.Title(title, 20));
+        labels.Add(NativeTheme.Body(description, NativeTheme.Muted));
+        row.Add(labels);
+        row.Add(value, 1);
+        return NativeTheme.Card(row);
     }
 }
