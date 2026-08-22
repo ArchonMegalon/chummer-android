@@ -8,7 +8,7 @@ public sealed class GearStolenPage : NativePageBase
     private sealed record NodeOption(CharacterGearStolenState State, string Label);
 
     private readonly GearStolenEditorState _editor;
-    private readonly IReadOnlyList<NodeOption> _options;
+    private readonly NodeOption[] _options;
     private readonly Picker _target;
     private readonly Switch _stolen;
     private readonly Button _save;
@@ -92,7 +92,7 @@ public sealed class GearStolenPage : NativePageBase
 
     private void LoadSelectedState()
     {
-        if (_target.SelectedIndex >= 0 && _target.SelectedIndex < _options.Count)
+        if (_target.SelectedIndex >= 0 && _target.SelectedIndex < _options.Length)
         {
             _stolen.IsToggled = _options[_target.SelectedIndex].State.Stolen;
         }
@@ -109,7 +109,7 @@ public sealed class GearStolenPage : NativePageBase
 
     private async Task SaveAsync()
     {
-        if (_target.SelectedIndex < 0 || _target.SelectedIndex >= _options.Count)
+        if (_target.SelectedIndex < 0 || _target.SelectedIndex >= _options.Length)
         {
             await DisplayAlertAsync(
                 "Gear required",

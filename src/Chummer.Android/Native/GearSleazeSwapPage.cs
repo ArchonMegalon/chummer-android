@@ -7,14 +7,14 @@ public sealed class GearSleazeSwapPage : NativePageBase
 {
     private sealed record NodeOption(CharacterGearMatrixSwapState State, string Label);
     private sealed record TargetOption(CharacterGearMatrixStat Value, string Label);
-    private static readonly IReadOnlyList<TargetOption> Targets =
+    private static readonly TargetOption[] Targets =
     [
         new(CharacterGearMatrixStat.Attack, "Attack"),
         new(CharacterGearMatrixStat.DataProcessing, "Data Processing"),
         new(CharacterGearMatrixStat.Firewall, "Firewall")
     ];
     private readonly GearSleazeSwapEditorState _editor;
-    private readonly IReadOnlyList<NodeOption> _nodes;
+    private readonly NodeOption[] _nodes;
     private readonly Picker _gear;
     private readonly Picker _target;
     private readonly Label _values;
@@ -57,7 +57,7 @@ public sealed class GearSleazeSwapPage : NativePageBase
         RefreshValues();
     }
 
-    private CharacterGearMatrixSwapState? Selected => _gear.SelectedIndex >= 0 && _gear.SelectedIndex < _nodes.Count
+    private CharacterGearMatrixSwapState? Selected => _gear.SelectedIndex >= 0 && _gear.SelectedIndex < _nodes.Length
         ? _nodes[_gear.SelectedIndex].State : null;
     protected override void Refresh() => RefreshEnabled();
     private void RefreshValues()
@@ -75,7 +75,7 @@ public sealed class GearSleazeSwapPage : NativePageBase
     }
     private async Task SaveAsync()
     {
-        if (Selected is not { } selected || _target.SelectedIndex < 0 || _target.SelectedIndex >= Targets.Count) return;
+        if (Selected is not { } selected || _target.SelectedIndex < 0 || _target.SelectedIndex >= Targets.Length) return;
         CharacterGearMatrixStat target = Targets[_target.SelectedIndex].Value;
         if (string.Equals(selected.Sleaze, CharacterGearMatrixSwapRules.Read(selected, target), StringComparison.Ordinal))
         {

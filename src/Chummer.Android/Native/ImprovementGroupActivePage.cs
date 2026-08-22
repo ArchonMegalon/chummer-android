@@ -8,7 +8,7 @@ public sealed class ImprovementGroupActivePage : NativePageBase
     private sealed record GroupOption(CharacterImprovementGroupActiveState State, string Label);
 
     private readonly ImprovementGroupActiveEditorState _editor;
-    private readonly IReadOnlyList<GroupOption> _options;
+    private readonly GroupOption[] _options;
     private readonly Picker _target;
     private readonly Label _summary;
     private readonly Button _enableAll;
@@ -51,7 +51,7 @@ public sealed class ImprovementGroupActivePage : NativePageBase
             Title = "Improvement group",
             ItemsSource = _options,
             ItemDisplayBinding = new Binding(nameof(GroupOption.Label)),
-            SelectedIndex = _options.Count == 0 ? -1 : 0,
+            SelectedIndex = _options.Length == 0 ? -1 : 0,
             AutomationId = "improvement-group-active-target",
             BackgroundColor = NativeTheme.Surface,
             TextColor = NativeTheme.Text
@@ -84,7 +84,7 @@ public sealed class ImprovementGroupActivePage : NativePageBase
         bool current = Coordinator.State.WorkspaceId == _editor.WorkspaceId
             && Coordinator.State.ContentRevision == _editor.ContentRevision;
         CharacterImprovementGroupActiveState? selected = SelectedState();
-        _target.IsEnabled = current && _options.Count != 0;
+        _target.IsEnabled = current && _options.Length != 0;
         _enableAll.IsEnabled = current && selected?.DisabledCount > 0;
         _disableAll.IsEnabled = current && selected?.EnabledCount > 0;
         _summary.Text = selected is null
@@ -93,7 +93,7 @@ public sealed class ImprovementGroupActivePage : NativePageBase
     }
 
     private CharacterImprovementGroupActiveState? SelectedState()
-        => _target.SelectedIndex >= 0 && _target.SelectedIndex < _options.Count
+        => _target.SelectedIndex >= 0 && _target.SelectedIndex < _options.Length
             ? _options[_target.SelectedIndex].State
             : null;
 

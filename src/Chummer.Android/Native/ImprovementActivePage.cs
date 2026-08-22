@@ -8,7 +8,7 @@ public sealed class ImprovementActivePage : NativePageBase
     private sealed record ImprovementOption(CharacterImprovementActiveState State, string Label);
 
     private readonly ImprovementActiveEditorState _editor;
-    private readonly IReadOnlyList<ImprovementOption> _options;
+    private readonly ImprovementOption[] _options;
     private readonly Picker _target;
     private readonly Switch _enabled;
     private readonly Button _save;
@@ -48,7 +48,7 @@ public sealed class ImprovementActivePage : NativePageBase
             Title = "Improvement",
             ItemsSource = _options,
             ItemDisplayBinding = new Binding(nameof(ImprovementOption.Label)),
-            SelectedIndex = _options.Count == 0 ? -1 : 0,
+            SelectedIndex = _options.Length == 0 ? -1 : 0,
             AutomationId = "improvement-active-target",
             BackgroundColor = NativeTheme.Surface,
             TextColor = NativeTheme.Text
@@ -88,7 +88,7 @@ public sealed class ImprovementActivePage : NativePageBase
 
     private void LoadSelectedState()
     {
-        if (_target.SelectedIndex < 0 || _target.SelectedIndex >= _options.Count)
+        if (_target.SelectedIndex < 0 || _target.SelectedIndex >= _options.Length)
         {
             _enabled.IsToggled = false;
             return;
@@ -100,7 +100,7 @@ public sealed class ImprovementActivePage : NativePageBase
     {
         bool current = Coordinator.State.WorkspaceId == _editor.WorkspaceId
             && Coordinator.State.ContentRevision == _editor.ContentRevision
-            && _options.Count != 0;
+            && _options.Length != 0;
         _target.IsEnabled = current;
         _enabled.IsEnabled = current;
         _save.IsEnabled = current;
@@ -108,7 +108,7 @@ public sealed class ImprovementActivePage : NativePageBase
 
     private async Task SaveAsync()
     {
-        if (_target.SelectedIndex < 0 || _target.SelectedIndex >= _options.Count)
+        if (_target.SelectedIndex < 0 || _target.SelectedIndex >= _options.Length)
         {
             await DisplayAlertAsync(
                 "Improvement required",
