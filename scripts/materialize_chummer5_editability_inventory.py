@@ -1736,6 +1736,7 @@ WEAPON_STOLEN_CONTROL = "chkWeaponStolen"
 GEAR_EQUIPMENT_CONTROL = "chkGearEquipped"
 IMPROVEMENT_ACTIVE_CONTROL = "chkImprovementActive"
 IMPROVEMENT_NOTES_CONTROL = "tsImprovementNotes"
+IMPROVEMENT_GROUP_ADD_CONTROL = "cmdAddImprovementGroup"
 IMPROVEMENT_GROUP_ACTIVE_CONTROLS = {
     "cmdImprovementsEnableAll": (
         "cmdImprovementsEnableAll_Click",
@@ -9464,6 +9465,187 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name == "CharacterCareer" and control == IMPROVEMENT_GROUP_ADD_CONTROL:
+        expected_handler = "cmdAddImprovementGroup_Click"
+        legacy_source = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / "CharacterCareer.cs"
+        )
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementGroupAddPage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_improvement_group_add_e2e.py"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-improvement-group-add-e2e.chum5"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-improvement-group-add-negative-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "ImprovementGroupAddRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = (
+            character_notes_core_root
+            / "Chummer.Contracts"
+            / "Characters"
+            / "CharacterImprovementGroupAddRules.cs"
+        )
+        workspace_store = (
+            character_notes_core_root
+            / "Chummer.Infrastructure"
+            / "Workspaces"
+            / "FileWorkspaceStore.cs"
+        )
+        legacy_exact = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                expected_handler,
+                "ThreadSafeForm<SelectText>",
+                "ShowDialogSafeAsync",
+                "frmPickText.MyForm.SelectedValue",
+                "string.IsNullOrEmpty(strLocation)",
+                "GetImprovementGroupsAsync",
+                "AddAsync(strLocation",
+                "SetDirty(true)",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "class ImprovementGroupAddPage",
+                'AutomationId = "improvement-group-add-page"',
+                'AutomationId = "improvement-group-add-name"',
+                'AutomationId = "improvement-group-add-save"',
+                "CharacterImprovementGroupAddRules.TryCreateIdentity",
+                "CharacterImprovementGroupInsertionIdentity",
+                "ImprovementGroupAddRequest",
+            )
+            and _contains(
+                build_page,
+                "Coordinator.State.Profile?.Created == true",
+                'automationId: "build-improvement-group-add"',
+                "PrepareImprovementGroupAddAsync",
+                "new ImprovementGroupAddPage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareImprovementGroupAddAsync",
+                "ApplyImprovementGroupAddAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CharacterImprovementGroupInsertionIdentity",
+                "ImprovementGroupAddEditorProjector",
+                "ReadRequiredCreated(root)",
+                'Elements("improvementgroup")',
+                "CharacterImprovementGroupAddRules.TryCreateState",
+                "FindContainer",
+            )
+            and _contains(
+                mutation,
+                "ApplyImprovementGroupAdd",
+                "CharacterImprovementGroupAddRules.TryValidateMutation",
+                "ImprovementGroupAddEditorProjector.FindContainer",
+                'new XElement("improvementgroup", request.Identity.Name)',
+            )
+            and _contains(
+                presenter,
+                "PrepareImprovementGroupAddAsync",
+                "ApplyImprovementGroupAddAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareImprovementGroupAddAsync",
+                "ApplyImprovementGroupAddAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterImprovementGroupInsertionIdentity",
+                "CharacterImprovementGroupAddState",
+                "ExpectedAppendIndex",
+                "IsValidNewName",
+                "TryValidateMutation",
+                "KarmaDelta: 0",
+                "NuyenDelta: 0m",
+                "SHA256.HashData",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCareer.cmdAddImprovementGroup"',
+                'if api != "36"',
+                'if abi != "arm64-v8a"',
+                'PACKAGE = "com.myexternalbrain.chummer"',
+                '"package": shared.PACKAGE',
+                '"profile": "phone"',
+                '"journey": "improvement-group-add"',
+                '"careerExactGroupAppended": "pass"',
+                '"careerDuplicateGroupAppended": "pass"',
+                '"creationActionNotExposed": "pass"',
+                '"improvementGroupAddRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"careerFixtureSha256"',
+                '"creationNegativeFixtureSha256"',
+            )
+            and career_fixture.is_file()
+            and creation_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Add Improvement Group",
+            "surface": "ImprovementGroupAddPage",
+            "automationId": "improvement-group-add-name",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/ImprovementGroupAddPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ImprovementGroupAddRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementGroupAddRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyImprovementGroupAddAsync with typed exact-name and expected-append-index "
+                "identity, ordered collection-local revision, zero Karma/Nuyen economics, and expected workspace revision"
+            ),
+            "persistenceAssertion": (
+                "one exact non-empty untrimmed value is appended to character/improvementgroups/improvementgroup; "
+                "order and duplicates are preserved while Improvements, Karma, Nuyen, and unrelated runner XML remain "
+                "exact after revision-bound atomic save/recovery, same-session reopen, and process restart"
+            ),
+            "coverageLimit": (
+                "Exact CharacterCareer cmdAddImprovementGroup semantics only: cancel or empty text is a no-op, whitespace "
+                "and duplicate names are accepted exactly, and CharacterCreate and tablet are intentionally unavailable."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_improvement_group_add_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCareer" and control in IMPROVEMENT_GROUP_ACTIVE_CONTROLS:
         expected_handler, automation_id = IMPROVEMENT_GROUP_ACTIVE_CONTROLS[control]
         legacy_source = (
@@ -16251,6 +16433,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponStolenPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementActivePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementNotesPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementGroupAddPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementGroupActivePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponAccessoryIncludedPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CritterPowerCountPage.cs",
@@ -16304,6 +16487,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_gear_equipment_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_active_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_notes_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_improvement_group_add_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_group_active_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
         REPO_ROOT / "tests" / "run_api36_critter_power_count_e2e.py",
@@ -16381,6 +16565,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-gear-stolen-negative-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-improvement-active-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-improvement-active-negative-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-improvement-group-add-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-improvement-group-add-negative-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-improvement-group-active-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-improvement-group-active-negative-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-weapon-accessory-included-e2e.chum5",
@@ -16463,6 +16649,7 @@ def build_inventory(
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterArmorTreeFlagRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterImprovementActiveRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterImprovementNotesRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterImprovementGroupAddRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterImprovementGroupActiveRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCritterPowerCountRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterSpiritFetteringRules.cs",
@@ -16518,6 +16705,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "GearStolenEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ImprovementActiveEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ImprovementNotesEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "ImprovementGroupAddRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "ImprovementGroupActiveEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "WeaponAccessoryIncludedEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CritterPowerCountEditRequest.cs",

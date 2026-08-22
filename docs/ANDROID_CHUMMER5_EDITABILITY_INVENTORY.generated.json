@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 430,
+      "implemented_pending_emulator": 431,
       "implemented_verified_api36": 79,
-      "missing": 998,
+      "missing": 997,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 148
@@ -77,7 +77,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "0df86101729ee525fa552fc13cdc3a2477bec269ec5df9d0a799d0541c3fc537"
+        "sha256": "a10a430a4b1b9d24d43fb68f1774c4aaac0aeba1910f482589e1801f266e54a1"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -275,6 +275,11 @@
         "sha256": "6d36778eb7b1433c7a796ed0a48a05e14d14f23115dfc89a031633c6b468ea84"
       },
       {
+        "path": "src/Chummer.Android/Native/ImprovementGroupAddPage.cs",
+        "exists": true,
+        "sha256": "19b527b619aba29a48980ecd3ce11f7fb31c5c6b9537e64ddb59f5acbd535e6f"
+      },
+      {
         "path": "src/Chummer.Android/Native/ImprovementGroupActivePage.cs",
         "exists": true,
         "sha256": "be2df4a3f71c121d31d677fe23b59a1ef8251b3eb51d898ff76bec2d52f4fe19"
@@ -357,7 +362,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "e7fb0280594ef24d9b4a2cbb41fd31ba10973d926438b578d959e2e4ede33dad"
+        "sha256": "2636f199505698fc0f43c517e7d356661904d7def0f5d863549c1327bd16ae56"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -538,6 +543,11 @@
         "path": "tests/run_api36_improvement_notes_e2e.py",
         "exists": true,
         "sha256": "32d6cd680e9f665916852381e2997381646310b658618227033877dbeda17d2f"
+      },
+      {
+        "path": "tests/run_api36_improvement_group_add_e2e.py",
+        "exists": true,
+        "sha256": "15a89522542c0256e0556e57c68ba4e31a9efe1d8e9668d374641c712b4c6f49"
       },
       {
         "path": "tests/run_api36_improvement_group_active_e2e.py",
@@ -923,6 +933,16 @@
         "path": "tests/fixtures/creation-improvement-active-negative-e2e.chum5",
         "exists": true,
         "sha256": "3aa9e79ada7aa0f3eee1073b80ea9196cd05bb95d60331adc59f094b662840bd"
+      },
+      {
+        "path": "tests/fixtures/career-improvement-group-add-e2e.chum5",
+        "exists": true,
+        "sha256": "ee2f626ad22498b2f95950df589316e3e64914da11a75e7b6b29bd292b31bca1"
+      },
+      {
+        "path": "tests/fixtures/creation-improvement-group-add-negative-e2e.chum5",
+        "exists": true,
+        "sha256": "15d2cfd78d113dc477ca7ca02a1530025a9b8de8e6ee726769209b7aa6590380"
       },
       {
         "path": "tests/fixtures/career-improvement-group-active-e2e.chum5",
@@ -1385,6 +1405,11 @@
         "sha256": "c5553856cd2e086a3e8acd3bd6b29f1ee225fff24635ac7658d8d8c60a6ef693"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementGroupAddRules.cs",
+        "exists": true,
+        "sha256": "c5f92c16322f074869a0ac6081542945110c833303c4a8c4f62e80bac4efa888"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementGroupActiveRules.cs",
         "exists": true,
         "sha256": "23dc170aeb3aa7eb7d7c42da54962b05a404273051ddf7f01b6a875e3c8bdf7a"
@@ -1517,7 +1542,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "c5c4b46860f9d631477f1ea18a8810865d965232b008fb9b52bc01c7bb7c3a19"
+        "sha256": "276f6364e209623fa9481ff1e8589e8f3dae96ce1d7c7f2a5d9082fbed469368"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1660,6 +1685,11 @@
         "sha256": "81fc1adba3db7a2b689401e09fd6744a00246ebdd3558da7f65cf5a61fdf80a5"
       },
       {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/ImprovementGroupAddRequest.cs",
+        "exists": true,
+        "sha256": "e91aa286105ed71269c32535eee6ca6ef20a855f4254ff442f3b856634cd71fd"
+      },
+      {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ImprovementGroupActiveEditRequest.cs",
         "exists": true,
         "sha256": "5fe6dd5e4e82de15030825d4e6d6f5149744728bfe5a9b83b060adc40cb834c6"
@@ -1722,7 +1752,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "b3556813d212c68768193dbe98ef30af8371e01714255d5357a1527f75ba4926"
+        "sha256": "bb330edaaf7f5225aa72a0ae0b11f026e729ee00d9360751efd322326b479155"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1777,7 +1807,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "7340470c9eed6b7f2e245d557a2e2aef6f92e977081e83cd6aa459ba1d9da217"
+        "sha256": "0ce159a2b4df8554ecb2bf99af96a0b2017137c51f0f94ef1684baf5202d6c92"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1787,7 +1817,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "72a761f0df8955ba62990015ad2397880233ad78474767c5c66fed1efe5f25f7"
+      "sha256": "02320e5658ef84786de2f57842b18c0628b7d033790be0c49f556e43b07e1d03"
     }
   },
   "coverageByFamily": {
@@ -1962,7 +1992,7 @@
     "improvements": {
       "rowCount": 64,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 56,
+      "phoneMissingCount": 55,
       "tabletMissingCount": 60,
       "completionProvenCount": 4
     },
@@ -26989,11 +27019,23 @@
       "mutationFamily": "improvements",
       "operation": "add",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Add Improvement Group",
+        "surface": "ImprovementGroupAddPage",
+        "automationId": "improvement-group-add-name",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ImprovementGroupAddPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ImprovementGroupAddRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementGroupAddRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer cmdAddImprovementGroup semantics only: cancel or empty text is a no-op, whitespace and duplicate names are accepted exactly, and CharacterCreate and tablet are intentionally unavailable."
       },
       "tablet": {
         "status": "missing",
@@ -27001,12 +27043,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyImprovementGroupAddAsync with typed exact-name and expected-append-index identity, ordered collection-local revision, zero Karma/Nuyen economics, and expected workspace revision",
+      "persistenceAssertion": "one exact non-empty untrimmed value is appended to character/improvementgroups/improvementgroup; order and duplicates are preserved while Improvements, Karma, Nuyen, and unrelated runner XML remain exact after revision-bound atomic save/recovery, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_improvement_group_add_e2e.py"
         },
         "tablet": {
           "status": "missing",

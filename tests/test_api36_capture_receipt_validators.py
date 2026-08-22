@@ -53,8 +53,8 @@ class Api36CaptureReceiptValidatorTests(unittest.TestCase):
             "journeys": {journey: "pass" for journey in spec["journeys"]},
         }
 
-    def test_all_fifteen_driver_contracts_are_api36_arm64_package_bound(self) -> None:
-        self.assertEqual(15, len(self.specs))
+    def test_all_sixteen_driver_contracts_are_api36_arm64_package_bound(self) -> None:
+        self.assertEqual(16, len(self.specs))
         for journey, spec in self.specs.items():
             with self.subTest(journey=journey):
                 source = spec["driver"].read_text(encoding="utf-8")
@@ -222,7 +222,7 @@ class Api36CaptureReceiptValidatorTests(unittest.TestCase):
             for spec in self.specs.values()
         }
         rows = [row for row in payload["rows"] if row["e2e"]["phone"].get("ref") in driver_refs]
-        self.assertEqual(36, len(rows))
+        self.assertEqual(37, len(rows))
         self.assertTrue(all(row["phone"]["status"] == "implemented_pending_emulator" for row in rows))
         self.assertTrue(all(row["e2e"]["phone"]["status"] == "scripted_not_executed" for row in rows))
 

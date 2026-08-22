@@ -189,6 +189,19 @@ public sealed class BuildPage : NativePageBase
                 },
                 automationId: "build-improvement-group-active"));
             _body.Add(NativeTheme.NavigationRow(
+                "Add Improvement Group",
+                "Append one exact saved custom Improvement group name",
+                async () =>
+                {
+                    ImprovementGroupAddEditorState? editor =
+                        await Coordinator.PrepareImprovementGroupAddAsync();
+                    if (editor is not null)
+                    {
+                        await Navigation.PushAsync(new ImprovementGroupAddPage(Coordinator, editor));
+                    }
+                },
+                automationId: "build-improvement-group-add"));
+            _body.Add(NativeTheme.NavigationRow(
                 "Improvements",
                 "Enable or disable one directly selected saved Improvement",
                 async () =>

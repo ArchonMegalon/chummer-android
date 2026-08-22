@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Improvement Group Add Negative E2E</name>
+  <alias>CreationImprovementGroupAddNegativeE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <karma>17</karma>
+  <nuyen>1234.56</nuyen>
+  <improvementgroups><improvementgroup>Alpha</improvementgroup></improvementgroups>
+  <improvements>
+    <improvement>
+      <improvedname>LOG</improvedname><sourcename>c6221111-6221-6221-6221-622111111111</sourcename>
+      <improvementttype>Attribute</improvementttype><improvementsource>Custom</improvementsource>
+      <custom>True</custom><customgroup>Alpha</customgroup><enabled>1</enabled><notes>Creation group add negative sentinel</notes>
+    </improvement>
+  </improvements>
+  <customstate>Creation Improvement group add runner sentinel</customstate>
+</character>

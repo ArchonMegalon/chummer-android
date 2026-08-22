@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Improvement Group Add E2E</name>
+  <alias>CareerImprovementGroupAddE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <karma>23</karma>
+  <nuyen>4567.89</nuyen>
+  <improvementgroups>
+    <improvementgroup>Alpha</improvementgroup>
+    <improvementgroup>Beta</improvementgroup>
+  </improvementgroups>
+  <improvements>
+    <improvement>
+      <improvedname>BOD</improvedname><sourcename>a6221111-6221-6221-6221-622111111111</sourcename>
+      <improvementttype>Attribute</improvementttype><improvementsource>Custom</improvementsource>
+      <custom>True</custom><customgroup>Alpha</customgroup><enabled>0</enabled><notes>Career group add sentinel</notes>
+    </improvement>
+  </improvements>
+  <customstate>Career Improvement group add runner sentinel</customstate>
+</character>
