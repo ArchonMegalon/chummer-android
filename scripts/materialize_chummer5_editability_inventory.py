@@ -414,6 +414,15 @@ CAPTURE_ONLY_PHONE_E2E_SOURCE_PATHS: dict[str, tuple[str, str]] = {
         "Chummer.Presentation/Overview/GroupMembershipEditRequest.cs",
     ),
     "groupMembershipRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterGroupMembershipRules.cs"),
+    "freeSpriteConversionPageSha256": ("android", "src/Chummer.Android/Native/FreeSpriteConversionPage.cs"),
+    "freeSpriteConversionContractSha256": (
+        "presentation",
+        "Chummer.Presentation/Overview/FreeSpriteConversionRequest.cs",
+    ),
+    "freeSpriteConversionRulesSha256": (
+        "core",
+        "Chummer.Contracts/Characters/CharacterFreeSpriteConversionRules.cs",
+    ),
     "rosterFavoritesPageSha256": ("android", "src/Chummer.Android/Native/RosterFavoritesPage.cs"),
     "homePageSha256": ("android", "src/Chummer.Android/Native/HomePage.cs"),
     "mauiProgramSha256": ("android", "src/Chummer.Android/MauiProgram.cs"),
@@ -610,6 +619,32 @@ CAPTURE_ONLY_PHONE_E2E_DEFINITIONS: dict[str, dict[str, Any]] = {
             "creationMembershipEdited", "creationProcessRestartUiReadback",
             "careerJoinKarmaAndUndoPersisted", "careerLeaveKarmaAndUndoPersisted",
             "careerProcessRestartUiReadback",
+        ),
+    },
+    "free-sprite-conversion": {
+        "driver": "tests/run_api36_free_sprite_conversion_e2e.py",
+        "fixtures": (
+            ("creationFixtureSha256", "tests/fixtures/creation-free-sprite-conversion-e2e.chum5"),
+            ("careerFixtureSha256", "tests/fixtures/career-free-sprite-conversion-e2e.chum5"),
+        ),
+        "sourceKeys": (
+            "freeSpriteConversionPageSha256", "buildPageSha256", "coordinatorSha256",
+            "freeSpriteConversionContractSha256", "mutationCatalogSha256", "presenterMutationSha256",
+            "presenterPersistenceSha256", "presenterInterfaceSha256", "freeSpriteConversionRulesSha256",
+            "workspaceStoreSha256",
+        ),
+        "controls": (
+            "CharacterCreate.mnuSpecialConvertToFreeSprite",
+            "CharacterCareer.mnuSpecialConvertToFreeSprite",
+        ),
+        "proofKeys": (
+            "typedStableCritterPowerIdentity", "exactSpriteEligibility", "exactDenialSourceIdentity",
+            "countTowardsLimitFalse", "freeSpriteCategory", "creationCareerSameRules",
+            "zeroKarmaNuyenDelta", "workspaceRevisionBound", "atomicSaveRecovery",
+            "sameSessionReopened", "processRestartWorkspacePersisted", "processRestartUiReadback",
+        ),
+        "journeys": (
+            "creationExactConversion", "careerExactConversion", "sameSessionReopen", "processRestart",
         ),
     },
     "roster-favorite": {
@@ -1759,6 +1794,7 @@ GEAR_OVERCLOCKER_CONTROL = "cboGearOverclocker"
 IMPROVEMENT_ACTIVE_CONTROL = "chkImprovementActive"
 IMPROVEMENT_NOTES_CONTROL = "tsImprovementNotes"
 IMPROVEMENT_GROUP_ADD_CONTROL = "cmdAddImprovementGroup"
+FREE_SPRITE_CONVERSION_CONTROL = "mnuSpecialConvertToFreeSprite"
 IMPROVEMENT_GROUP_ACTIVE_CONTROLS = {
     "cmdImprovementsEnableAll": (
         "cmdImprovementsEnableAll_Click",
@@ -9601,6 +9637,187 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name in {"CharacterCreate", "CharacterCareer"} and control == FREE_SPRITE_CONVERSION_CONTROL:
+        expected_handler = "mnuSpecialConvertToFreeSprite_Click"
+        legacy_source = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / f"{class_name}.cs"
+        )
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "FreeSpriteConversionPage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_free_sprite_conversion_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-free-sprite-conversion-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-free-sprite-conversion-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "FreeSpriteConversionRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = (
+            character_notes_core_root
+            / "Chummer.Contracts"
+            / "Characters"
+            / "CharacterFreeSpriteConversionRules.cs"
+        )
+        workspace_store = (
+            character_notes_core_root
+            / "Chummer.Infrastructure"
+            / "Workspaces"
+            / "FileWorkspaceStore.cs"
+        )
+        legacy_exact = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                expected_handler,
+                'LoadDataAsync("critterpowers.xml"',
+                'power[name = \\"Denial\\"]',
+                "new CritterPower(CharacterObject)",
+                "CreateAsync(objXmlPower",
+                "CountTowardsLimit = false",
+                "CritterPowers.AddAsync",
+                'SetMetatypeCategoryAsync("Free Sprite"',
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "class FreeSpriteConversionPage",
+                'AutomationId = "free-sprite-conversion-page"',
+                'AutomationId = "free-sprite-conversion-save"',
+                "CharacterFreeSpriteConversionRules.TryCreateIdentity",
+                "FreeSpriteConversionRequest",
+            )
+            and _contains(
+                build_page,
+                'automationId: "build-free-sprite-conversion"',
+                "PrepareFreeSpriteConversionAsync",
+                "new FreeSpriteConversionPage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareFreeSpriteConversionAsync",
+                "ApplyFreeSpriteConversionAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CharacterFreeSpriteConversionIdentity",
+                "FreeSpriteConversionEditorProjector",
+                'ReadRequiredBool(root, "created")',
+                'ReadRequiredSingle(root, "metatypecategory")',
+                'Elements("critterpower")',
+                "CharacterFreeSpriteConversionRules.TryCreateState",
+                "FindPowers",
+            )
+            and _contains(
+                mutation,
+                "ApplyFreeSpriteConversion",
+                "CharacterFreeSpriteConversionRules.TryValidateMutation",
+                "FreeSpriteConversionEditorProjector.FindPowers",
+                'new XElement("counttowardslimit", "False")',
+                "FreeSpriteCategory",
+            )
+            and _contains(
+                presenter,
+                "PrepareFreeSpriteConversionAsync",
+                "ApplyFreeSpriteConversionAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareFreeSpriteConversionAsync",
+                "ApplyFreeSpriteConversionAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterFreeSpriteConversionIdentity",
+                "CharacterFreeSpriteConversionState",
+                "DenialSourceId",
+                "ExpectedAppendIndex",
+                "TryValidateMutation",
+                "KarmaDelta: 0",
+                "NuyenDelta: 0m",
+                "SHA256.HashData",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCreate.mnuSpecialConvertToFreeSprite"',
+                '"CharacterCareer.mnuSpecialConvertToFreeSprite"',
+                'if api != "36"',
+                'if abi != "arm64-v8a"',
+                'PACKAGE = "com.myexternalbrain.chummer"',
+                '"profile": "phone"',
+                '"journey": "free-sprite-conversion"',
+                '"creationExactConversion": "pass"',
+                '"careerExactConversion": "pass"',
+                '"freeSpriteConversionRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+                '"careerFixtureSha256"',
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Convert to Free Sprite",
+            "surface": "FreeSpriteConversionPage",
+            "automationId": "free-sprite-conversion-save",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/FreeSpriteConversionPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/FreeSpriteConversionRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterFreeSpriteConversionRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyFreeSpriteConversionAsync with a typed fresh Critter Power GUID, "
+                "exact Denial source identity, expected append index, collection-local revision, zero Karma/Nuyen "
+                "economics, and expected workspace revision"
+            ),
+            "persistenceAssertion": (
+                "one exact Denial Critter Power with counttowardslimit False is appended and metatypecategory becomes "
+                "Free Sprite while Karma, Nuyen, existing powers, and unrelated XML remain exact after revision-bound "
+                "atomic save/recovery, same-session reopen, and process restart"
+            ),
+            "coverageLimit": (
+                "Exact paired CharacterCreate/CharacterCareer Convert to Free Sprite handler semantics only; the action "
+                "requires a non-Free Sprite category ending in Sprites, applies identical zero-cost rules in both modes, "
+                "and tablet remains intentionally unavailable."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_free_sprite_conversion_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCareer" and control == IMPROVEMENT_GROUP_ADD_CONTROL:
         expected_handler = "cmdAddImprovementGroup_Click"
         legacy_source = (
@@ -16824,6 +17041,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_improvement_active_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_notes_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_group_add_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_free_sprite_conversion_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_group_active_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
         REPO_ROOT / "tests" / "run_api36_critter_power_count_e2e.py",
@@ -16903,6 +17121,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "creation-improvement-active-negative-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-improvement-group-add-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-improvement-group-add-negative-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-free-sprite-conversion-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-free-sprite-conversion-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-improvement-group-active-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-improvement-group-active-negative-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-weapon-accessory-included-e2e.chum5",

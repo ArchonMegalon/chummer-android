@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Sprite Conversion</name>
+  <alias>Career Sprite</alias>
+  <playername>Local API 36 E2E</playername>
+  <created>True</created>
+  <metatype>Sprite</metatype>
+  <metatypecategory>Machine Sprites</metatypecategory>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <karma>31</karma>
+  <nuyen>7654.32</nuyen>
+  <improvements />
+  <critterpowers>
+    <critterpower>
+      <sourceid>21111111-2111-2111-2111-211111111111</sourceid>
+      <guid>83333333-8333-8333-8333-833333333333</guid>
+      <name>Diagnostics</name>
+      <counttowardslimit>True</counttowardslimit>
+    </critterpower>
+  </critterpowers>
+  <customstate>Career Free Sprite conversion sentinel</customstate>
+</character>

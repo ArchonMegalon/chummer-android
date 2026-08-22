@@ -173,6 +173,19 @@ public sealed class BuildPage : NativePageBase
                 }
             },
             automationId: "build-tradition-spirit-categories"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Convert to Free Sprite",
+            "Add Denial and convert an eligible non-Free Sprite",
+            async () =>
+            {
+                FreeSpriteConversionEditorState? editor =
+                    await Coordinator.PrepareFreeSpriteConversionAsync();
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new FreeSpriteConversionPage(Coordinator, editor));
+                }
+            },
+            automationId: "build-free-sprite-conversion"));
         if (Coordinator.State.Profile?.Created == true)
         {
             _body.Add(NativeTheme.NavigationRow(

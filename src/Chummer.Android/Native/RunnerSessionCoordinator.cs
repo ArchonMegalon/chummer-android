@@ -1034,6 +1034,32 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<FreeSpriteConversionEditorState?> PrepareFreeSpriteConversionAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareFreeSpriteConversionAsync(cancellationToken);
+
+    public async Task ApplyFreeSpriteConversionAsync(
+        FreeSpriteConversionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Convert to Free Sprite was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyFreeSpriteConversionAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Converted to Free Sprite." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<CareerEdgeUseEditorState?> PrepareCareerEdgeUseEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareCareerEdgeUseEditAsync(cancellationToken);

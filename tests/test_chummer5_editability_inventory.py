@@ -1273,6 +1273,30 @@ namespace Chummer
         )
         self.assertFalse(improvement_group_add["completionProven"])
 
+        free_sprite_conversion = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.FREE_SPRITE_CONVERSION_CONTROL
+        ]
+        self.assertEqual(2, len(free_sprite_conversion))
+        for row in free_sprite_conversion:
+            self.assertEqual("spirits_and_sprites", row["mutationFamily"])
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("Build > Convert to Free Sprite", row["phone"]["route"])
+            self.assertEqual("FreeSpriteConversionPage", row["phone"]["surface"])
+            self.assertEqual("free-sprite-conversion-save", row["phone"]["automationId"])
+            self.assertIn("exact Denial source identity", row["presenterMutation"])
+            self.assertIn("zero Karma/Nuyen", row["presenterMutation"])
+            self.assertIn("counttowardslimit False", row["persistenceAssertion"])
+            self.assertIn("identical zero-cost rules", row["phone"]["coverageLimit"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_free_sprite_conversion_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
         improvement_group_active = [
             row for row in rows
             if row["legacy"]["formOrControl"] == "CharacterCareer"
@@ -2133,9 +2157,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 432,
+                "implemented_pending_emulator": 435,
                 "implemented_verified_api36": 79,
-                "missing": 996,
+                "missing": 993,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 148,

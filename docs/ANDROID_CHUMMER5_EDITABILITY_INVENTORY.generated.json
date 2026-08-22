@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 432,
+      "implemented_pending_emulator": 435,
       "implemented_verified_api36": 79,
-      "missing": 996,
+      "missing": 993,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 148
@@ -77,7 +77,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "a10a430a4b1b9d24d43fb68f1774c4aaac0aeba1910f482589e1801f266e54a1"
+        "sha256": "63ce39a44165af2341c1eba6136fcd59a122f9a468b26c8146005651d145fd78"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -107,7 +107,7 @@
       {
         "path": "src/Chummer.Android/Native/RosterFavoritesPage.cs",
         "exists": true,
-        "sha256": "db03090a9cb189145f4094241fc5889e19456bc83c1c8d7253289f19c074e29f"
+        "sha256": "c7afe427c63ab7c8ed9df73ca27dba8aa85e84066184950bd29de8f2d9e9bce6"
       },
       {
         "path": "src/Chummer.Android/Native/HomePage.cs",
@@ -122,17 +122,17 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterRosterFavoritePresenter.cs",
         "exists": true,
-        "sha256": "016117592250d5918e6a4d2ceb2aeb6e258f76ad779b8f7ccff8cc88f08efa7d"
+        "sha256": "825487d5e555d0fef156d0a76027982b7c13b945f0ed236a1e16a0ee5579e9a5"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Api/CharacterRosterFavoriteContracts.cs",
         "exists": true,
-        "sha256": "aa156e1ccb1284be0bcc6c5a750ff6c05ae4a5071a5fa240e2ad495d1b1b185c"
+        "sha256": "94c493aee2ba9c57366bc1a6668df11b5a85b9aa6a48b9849fdeb409ba67a131"
       },
       {
         "path": "chummer-core-engine/Chummer.Application/Tools/CharacterRosterFavoriteRules.cs",
         "exists": true,
-        "sha256": "a2d24d5c1d65274e8c432db1a9169090bacd629a8e8cf37137f49a6d15783147"
+        "sha256": "2489649f2d7d066f7be51bfe7f1a7086907fcccbc273527d67017cc64993770a"
       },
       {
         "path": "chummer-core-engine/Chummer.Application/Tools/ICharacterRosterFavoriteStore.cs",
@@ -367,7 +367,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "409cb4c92522f8271da245c8e1fc6133621b212e78eae755f30f1adcbd50ad71"
+        "sha256": "d13ef375cde4a531ac09356db4897efb70a563de6db19128ec52e48e009818ae"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -558,6 +558,11 @@
         "path": "tests/run_api36_improvement_group_add_e2e.py",
         "exists": true,
         "sha256": "15a89522542c0256e0556e57c68ba4e31a9efe1d8e9668d374641c712b4c6f49"
+      },
+      {
+        "path": "tests/run_api36_free_sprite_conversion_e2e.py",
+        "exists": true,
+        "sha256": "6141d606b12bd53e47391318e3579c97a155588a34ee0ea8c22e6cae73241a5e"
       },
       {
         "path": "tests/run_api36_improvement_group_active_e2e.py",
@@ -955,6 +960,16 @@
         "sha256": "15d2cfd78d113dc477ca7ca02a1530025a9b8de8e6ee726769209b7aa6590380"
       },
       {
+        "path": "tests/fixtures/creation-free-sprite-conversion-e2e.chum5",
+        "exists": true,
+        "sha256": "72e8e4fd7952762d881876f6b02fcf494865c9a311dc3726def0eeab83088c8b"
+      },
+      {
+        "path": "tests/fixtures/career-free-sprite-conversion-e2e.chum5",
+        "exists": true,
+        "sha256": "6e8f7023a83d5a571ea1935ea8f852397c6e45e9e369466cc1f5c9e35e8dd954"
+      },
+      {
         "path": "tests/fixtures/career-improvement-group-active-e2e.chum5",
         "exists": true,
         "sha256": "72517eaf8b95c6f1888d3899b3fb2a3183e3df61dc8377ab80ca833b5240e2d8"
@@ -1185,12 +1200,22 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-free-sprite-conversion/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-roster-favorite/receipt.json",
         "exists": false,
         "sha256": null
       },
       {
         "path": "docs/editability-evidence/api36-phone-roster-sort/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-roster-remove/receipt.json",
         "exists": false,
         "sha256": null
       },
@@ -1552,7 +1577,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "5bc0c76b22640107ad85ad2742fab8eb08a9469e0431d14a0e4180241c2d5a5c"
+        "sha256": "4961a4519d22276cc4b5fd7502e13ae14c3020c530c7bc2a39311524d566d298"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1762,7 +1787,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "f28b850f05c7931bc74adff8832fbc53e88d0c2935f6b72efe8f4b4dc526f501"
+        "sha256": "30611ce44f6a8892e6b3f45ad33e4e9ad6f6243f4629fca0ec3df11a318eb304"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1817,7 +1842,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "a87ff38dd79e437967c5a7266cb62286d68311d5f33cfb16c32fcb6daa8a1037"
+        "sha256": "ca9a09dcc75ccf6c45df56e7e01482dfd1966cf4880a1e9929482900d6686859"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1827,7 +1852,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "3de4bb3ef3cec06e1c7c225f3f6ee49eb270596173ab2ac7271ff36291c2aa1c"
+      "sha256": "3a3967470c656b99991120eaa2247edf23c4a9bd36403c40c9437d2180761bb8"
     }
   },
   "coverageByFamily": {
@@ -1890,7 +1915,7 @@
     "character_roster": {
       "rowCount": 15,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 2,
+      "phoneMissingCount": 1,
       "tabletMissingCount": 4,
       "completionProvenCount": 11
     },
@@ -2170,7 +2195,7 @@
     "spirits_and_sprites": {
       "rowCount": 32,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 2,
+      "phoneMissingCount": 0,
       "tabletMissingCount": 28,
       "completionProvenCount": 4
     },
@@ -42377,11 +42402,23 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Convert to Free Sprite",
+        "surface": "FreeSpriteConversionPage",
+        "automationId": "free-sprite-conversion-save",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/FreeSpriteConversionPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/FreeSpriteConversionRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterFreeSpriteConversionRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact paired CharacterCreate/CharacterCareer Convert to Free Sprite handler semantics only; the action requires a non-Free Sprite category ending in Sprites, applies identical zero-cost rules in both modes, and tablet remains intentionally unavailable."
       },
       "tablet": {
         "status": "missing",
@@ -42389,12 +42426,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyFreeSpriteConversionAsync with a typed fresh Critter Power GUID, exact Denial source identity, expected append index, collection-local revision, zero Karma/Nuyen economics, and expected workspace revision",
+      "persistenceAssertion": "one exact Denial Critter Power with counttowardslimit False is appended and metatypecategory becomes Free Sprite while Karma, Nuyen, existing powers, and unrelated XML remain exact after revision-bound atomic save/recovery, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_free_sprite_conversion_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -65014,11 +65051,23 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Convert to Free Sprite",
+        "surface": "FreeSpriteConversionPage",
+        "automationId": "free-sprite-conversion-save",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/FreeSpriteConversionPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/FreeSpriteConversionRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterFreeSpriteConversionRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact paired CharacterCreate/CharacterCareer Convert to Free Sprite handler semantics only; the action requires a non-Free Sprite category ending in Sprites, applies identical zero-cost rules in both modes, and tablet remains intentionally unavailable."
       },
       "tablet": {
         "status": "missing",
@@ -65026,12 +65075,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyFreeSpriteConversionAsync with a typed fresh Critter Power GUID, exact Denial source identity, expected append index, collection-local revision, zero Karma/Nuyen economics, and expected workspace revision",
+      "persistenceAssertion": "one exact Denial Critter Power with counttowardslimit False is appended and metatypecategory becomes Free Sprite while Karma, Nuyen, existing powers, and unrelated XML remain exact after revision-bound atomic save/recovery, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_free_sprite_conversion_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -124934,11 +124983,20 @@
       "mutationFamily": "character_roster",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Home > Roster metadata > Remove from favorites / Remove from recent",
+        "surface": "RosterFavoritesPage",
+        "automationId": "roster-remove-favorite / roster-remove-recent",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/RosterFavoritesPage.cs",
+          "src/Chummer.Android/Native/HomePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterRosterFavoritePresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Api/CharacterRosterFavoriteContracts.cs",
+          "chummer-core-engine/Chummer.Application/Tools/CharacterRosterFavoriteRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Files/FileCharacterRosterFavoriteStore.cs"
+        ],
+        "coverageLimit": "Phone current/open document roster metadata only; tablet intentionally remains missing and the API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -124946,12 +125004,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "CharacterRosterFavoritePresenter.ApplyRemove(CharacterRosterRemoveMutation)",
+      "persistenceAssertion": "the selected stable document locator is removed from only Favorite or Recent after revision-checked atomic persistence, same-session reopen, process restart, and backup recovery; the character document remains byte-identical",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_roster_remove_e2e.py"
         },
         "tablet": {
           "status": "missing",
