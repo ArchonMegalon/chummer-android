@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 553,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 466,
+      "implemented_pending_emulator": 468,
       "implemented_verified_api36": 79,
-      "missing": 928,
+      "missing": 926,
       "not_applicable_non_mutating": 478,
       "partial_create_only": 106,
       "partial_exact_saved_data": 172
@@ -121,27 +121,27 @@
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "7fdad0c7c5ea43c39f532269d7b6760cb5a0a65a1b6afb2f18d9fde4851f7a6d"
+        "sha256": "679c85ebe95e2007f467a56e3d1106e21a91043fd331c17715f9175688787a57"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
         "exists": true,
-        "sha256": "b2e64148700047c939bea7f34846176cb801984504a2b7f6039d94d8ac5147de"
+        "sha256": "80d1780bcd602d7a53cbff965803b604727238e1ba051eecce7d74d5ca0e3c5e"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
         "exists": true,
-        "sha256": "1a0ab1475192171eda48e341a629433dec34f66d48d1d725f9df954c3211edde"
+        "sha256": "71320609dafe589de5488a72804a0572823183037222d2d51a6f908024dc8e62"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
         "exists": true,
-        "sha256": "7de8177f73c37f686a17e9f05f4f5fb00e5f01a31bf29fa47305a14ff0ca57d3"
+        "sha256": "f8100a6c21b10e0cbdc24b2894fbb9a90efbba1b133e9520494fb2c3f8fa9421"
       },
       {
         "path": "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
         "exists": true,
-        "sha256": "296d4676484f7e30f352c28bd4cec1d1672a708901bfe36f194eb84695cee819"
+        "sha256": "de29d2a681a3e6a0ae06e601048d206e272117bd105672a0cab0d0ecbc49b542"
       },
       {
         "path": "chummer-core-engine/Chummer.Application/Tools/IApplicationDeleteConfirmationStore.cs",
@@ -151,7 +151,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs",
         "exists": true,
-        "sha256": "0ea6b65241ba71913321d60680bb6e1e2d179554b5654cbfd81426b1e98b4721"
+        "sha256": "0b8fd29fd800be4073cf57824030edc91164c99c4a10f96fe924c0ae50b79e8b"
       },
       {
         "path": "tests/run_api36_application_date_time_settings_e2e.py",
@@ -182,6 +182,16 @@
         "path": "tests/fixtures/application-selection-behavior-settings-e2e.chum5",
         "exists": true,
         "sha256": "bea445380078ca2ce6fb34a0226aa6d99f894fa7c1b10188f435362bc169eec8"
+      },
+      {
+        "path": "tests/run_api36_application_update_settings_e2e.py",
+        "exists": true,
+        "sha256": "0f16ed82be7caefe7113c966a791a481afd552be177185245fa370490dd0f418"
+      },
+      {
+        "path": "tests/fixtures/application-update-settings-e2e.chum5",
+        "exists": true,
+        "sha256": "350c627cc9687472f2fa969fa6930511162b2d881026a41fe0fd7ee9603ca5b5"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterRosterFavoritePresenter.cs",
@@ -551,7 +561,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "9beb221822b7f0e0f585c26952f25439e7079fdc11794e454b5c0a289bf77d4d"
+        "sha256": "d486e8ecd6acc48646393fd65a9cb709f3bbe50ffe32fb789112f2cdf306993a"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1499,6 +1509,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-application-update-settings/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-gear-name/receipt.json",
         "exists": false,
         "sha256": null
@@ -2206,7 +2221,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "9d9994f83c2ced1eac033fe9b8819aeb51845f4ca9edfe1fd651742db6413e4a"
+      "sha256": "7b648fc03d9333c8843390edcb40917805142e464b601b4eae01d42577ccc7f0"
     }
   },
   "coverageByFamily": {
@@ -2227,7 +2242,7 @@
     "application_settings": {
       "rowCount": 73,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 45,
+      "phoneMissingCount": 43,
       "tabletMissingCount": 56,
       "completionProvenCount": 17
     },
@@ -96509,11 +96524,21 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Home > Application settings > Updates > Prefer Nightly builds when updating > Save",
+        "surface": "ApplicationSettingsPage",
+        "automationId": "settings-prefer-nightly-builds",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+          "src/Chummer.Android/Native/HomePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/MauiProgram.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+        ],
+        "coverageLimit": "Phone application settings only for chkPreferNightlyBuilds and chkLiveUpdateCleanCharacterFiles, authenticated against exact canonical Chummer5 revision and source/load/dirty/save/order digests. No other Global Settings or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -96521,12 +96546,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
+      "persistenceAssertion": "the two typed legacy update booleans load and save independently under prefernightlybuilds and liveupdatecleancharacterfiles; Prefer Nightly defaults to running Assembly Version.Build != 0, while live clean-file updates default false. Their only UI dependency is OptionsChanged marking the draft dirty, Boolean values need no extra validation, and both share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; Back performs no write and character XML remains byte-independent",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_application_update_settings_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -96566,11 +96591,21 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Home > Application settings > Updates > Reload unchanged open character files > Save",
+        "surface": "ApplicationSettingsPage",
+        "automationId": "settings-live-update-clean-character-files",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+          "src/Chummer.Android/Native/HomePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/MauiProgram.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+        ],
+        "coverageLimit": "Phone application settings only for chkPreferNightlyBuilds and chkLiveUpdateCleanCharacterFiles, authenticated against exact canonical Chummer5 revision and source/load/dirty/save/order digests. No other Global Settings or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -96578,12 +96613,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
+      "persistenceAssertion": "the two typed legacy update booleans load and save independently under prefernightlybuilds and liveupdatecleancharacterfiles; Prefer Nightly defaults to running Assembly Version.Build != 0, while live clean-file updates default false. Their only UI dependency is OptionsChanged marking the draft dirty, Boolean values need no extra validation, and both share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; Back performs no write and character XML remains byte-independent",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_application_update_settings_e2e.py"
         },
         "tablet": {
           "status": "missing",

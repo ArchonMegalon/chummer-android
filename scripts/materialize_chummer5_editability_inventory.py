@@ -636,6 +636,34 @@ CAPTURE_ONLY_PHONE_E2E_DEFINITIONS: dict[str, dict[str, Any]] = {
             "newestValidBackupRecovery", "characterDocumentPreserved",
         ),
     },
+    "application-update-settings": {
+        "driver": "tests/run_api36_application_update_settings_e2e.py",
+        "fixtures": (
+            ("runnerFixtureSha256", "tests/fixtures/application-update-settings-e2e.chum5"),
+        ),
+        "sourceKeys": (
+            "applicationSettingsPageSha256", "homePageSha256", "coordinatorSha256",
+            "mauiProgramSha256", "applicationSettingsPresenterSha256",
+            "applicationSettingsContractSha256", "applicationSettingsRulesSha256",
+            "applicationSettingsStoreSha256",
+        ),
+        "controls": (
+            "EditGlobalSettings.chkPreferNightlyBuilds",
+            "EditGlobalSettings.chkLiveUpdateCleanCharacterFiles",
+        ),
+        "proofKeys": (
+            "exactLegacySourceAuthority", "legacyRegistryIdentity",
+            "assemblyBuildDependentDefault", "legacyDefaultFalse",
+            "independentBooleanValues", "dirtyDraftOnly", "draftBackDoesNotPersist",
+            "typedSettingIdentity", "wholePageExpectedRevisionCas", "singleAtomicSave",
+            "processRestartReadback", "newestValidBackupRecovery", "characterDocumentPreserved",
+        ),
+        "journeys": (
+            "legacyDefaults", "draftDiscardedOnBack", "explicitWholeSnapshotSave",
+            "independentValueSave", "processRestartReadback", "atomicPreviousSnapshotBackup",
+            "newestValidBackupRecovery", "characterDocumentPreserved",
+        ),
+    },
     "gear-name": {
         "driver": "tests/run_api36_gear_name_e2e.py",
         "fixtures": (
@@ -1972,6 +2000,51 @@ APPLICATION_SELECTION_BEHAVIOR_LEGACY_AUTHORITY = {
             'LoadBoolFromRegistry(ref _blnAllowEasterEggs, "alloweastereggs");',
             'objRegistry.SetValue("searchincategoryonly", SearchInCategoryOnly.ToString(InvariantCultureInfo));',
             'objRegistry.SetValue("alloweastereggs", AllowEasterEggs.ToString(InvariantCultureInfo));',
+        ),
+    },
+}
+APPLICATION_UPDATE_SETTINGS_CONTROLS = {
+    "chkPreferNightlyBuilds": "settings-prefer-nightly-builds",
+    "chkLiveUpdateCleanCharacterFiles": "settings-live-update-clean-character-files",
+}
+APPLICATION_UPDATE_SETTINGS_LEGACY_AUTHORITY = {
+    "revision": APPLICATION_INDEX_VISIBILITY_LEGACY_AUTHORITY["revision"],
+    "fileDigests": {
+        **APPLICATION_INDEX_VISIBILITY_LEGACY_AUTHORITY["fileDigests"],
+        "Chummer/Backend/Static/Utils.cs": (
+            "418458b46a4ff1f0a1ab8baa09e24019466f50752488b5c9596a2fdd758b4e34"
+        ),
+    },
+    "methodDigests": {
+        **APPLICATION_INDEX_VISIBILITY_LEGACY_AUTHORITY["methodDigests"],
+        ("Chummer/Forms/EditGlobalSettings.cs", "OptionsChanged"): (
+            "00903de499afed97d35f8c9f4778a88b7b30cdf6b321a248c107c8573f3fe463"
+        ),
+    },
+    "sourceMarkers": {
+        "Chummer/Forms/EditGlobalSettings.Designer.cs": (
+            "this.chkPreferNightlyBuilds.CheckedChanged += new System.EventHandler(this.OptionsChanged);",
+            "this.chkLiveUpdateCleanCharacterFiles.CheckedChanged += new System.EventHandler(this.OptionsChanged);",
+        ),
+        "Chummer/Forms/EditGlobalSettings.cs": (
+            "x.Checked = GlobalSettings.PreferNightlyBuilds",
+            "x.Checked = GlobalSettings.LiveUpdateCleanCharacterFiles",
+            "GlobalSettings.LiveUpdateCleanCharacterFiles = await chkLiveUpdateCleanCharacterFiles",
+            "GlobalSettings.PreferNightlyBuilds = await chkPreferNightlyBuilds",
+            "await SaveGlobalOptions(token).ConfigureAwait(false);",
+            "await GlobalSettings.SaveOptionsToRegistry(token).ConfigureAwait(false);",
+            "_blnDirty = true;",
+        ),
+        "Chummer/Backend/Static/GlobalSettings.cs": (
+            "private static bool _blnPreferNightlyUpdates = !Utils.IsMilestoneVersion;",
+            "private static bool _blnLiveUpdateCleanCharacterFiles;",
+            'LoadBoolFromRegistry(ref _blnLiveUpdateCleanCharacterFiles, "liveupdatecleancharacterfiles");',
+            'LoadBoolFromRegistry(ref _blnPreferNightlyUpdates, "prefernightlybuilds");',
+            'objRegistry.SetValue("liveupdatecleancharacterfiles",',
+            'objRegistry.SetValue("prefernightlybuilds", PreferNightlyBuilds.ToString(InvariantCultureInfo));',
+        ),
+        "Chummer/Backend/Static/Utils.cs": (
+            "public static bool IsMilestoneVersion => CurrentChummerVersion.Build == 0;",
         ),
     },
 }
@@ -6361,6 +6434,33 @@ def _application_selection_behavior_legacy_authority(chummer5_root: Path) -> boo
     return True
 
 
+def _application_update_settings_legacy_authority(chummer5_root: Path) -> bool:
+    """Authenticate exact build default plus the load/dirty/save ordering for the update pair."""
+
+    authority = APPLICATION_UPDATE_SETTINGS_LEGACY_AUTHORITY
+    if _git_value(chummer5_root, "rev-parse", "HEAD") != authority["revision"]:
+        return False
+    if _git_value(chummer5_root, "status", "--porcelain", "--untracked-files=no"):
+        return False
+
+    source_texts: dict[str, str] = {}
+    for relative, expected_digest in authority["fileDigests"].items():
+        path = chummer5_root / relative
+        if not path.is_file() or _sha256_file(path) != expected_digest:
+            return False
+        source_texts[relative] = path.read_bytes().decode("utf-8-sig")
+
+    for (relative, method_name), expected_digest in authority["methodDigests"].items():
+        source = source_texts.get(relative)
+        if source is None or _legacy_method_digest([source], method_name) != expected_digest:
+            return False
+    for relative, markers in authority["sourceMarkers"].items():
+        source = source_texts.get(relative)
+        if source is None or not all(marker in source for marker in markers):
+            return False
+    return True
+
+
 def _known_phone_mapping(
     row: dict[str, Any],
     chummer5_root: Path,
@@ -8560,6 +8660,156 @@ def _known_phone_mapping(
             "e2e": {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_application_selection_behavior_settings_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "EditGlobalSettings" and control in APPLICATION_UPDATE_SETTINGS_CONTROLS:
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ApplicationSettingsPage.cs"
+        home_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "HomePage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        maui_program = REPO_ROOT / "src" / "Chummer.Android" / "MauiProgram.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_application_update_settings_e2e.py"
+        fixture = REPO_ROOT / "tests" / "fixtures" / "application-update-settings-e2e.chum5"
+        presenter = presentation_root / "Chummer.Presentation" / "Overview" / "ApplicationDeleteConfirmationPresenter.cs"
+        contract = character_notes_core_root / "Chummer.Contracts" / "Api" / "ApplicationDeleteConfirmationContracts.cs"
+        rules = character_notes_core_root / "Chummer.Application" / "Tools" / "ApplicationDeleteConfirmationRules.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure" / "Files" / "FileApplicationDeleteConfirmationStore.cs"
+        automation_id = APPLICATION_UPDATE_SETTINGS_CONTROLS[control]
+        legacy_authority = _application_update_settings_legacy_authority(chummer5_root)
+        implemented = (
+            legacy_authority
+            and _contains(
+                page,
+                "class ApplicationSettingsPage",
+                'AutomationId = "settings-prefer-nightly-builds"',
+                'AutomationId = "settings-live-update-clean-character-files"',
+                'AutomationId = "settings-update-default-authority"',
+                "_baseline.PreferNightlyBuilds",
+                "_baseline.LiveUpdateCleanCharacterFiles",
+                "SaveApplicationSettingsAsync",
+                "_baseline.Revision",
+            )
+            and _contains(home_page, 'AutomationId = "home-application-settings"', "new ApplicationSettingsPage")
+            and _contains(
+                coordinator,
+                "SaveApplicationSettingsAsync",
+                "ApplicationSettingsSnapshotMutation",
+                "ApplicationSettingIdentity.PreferNightlyBuilds",
+                "ApplicationSettingIdentity.LiveUpdateCleanCharacterFiles",
+                "expectedRevision",
+                "_applicationSettingsPresenter.ApplySettingsSnapshot",
+            )
+            and _contains(
+                maui_program,
+                "IApplicationDeleteConfirmationStore",
+                "FileApplicationDeleteConfirmationStore",
+                "typeof(MauiProgram).Assembly.GetName().Version",
+                "ApplicationDeleteConfirmationPresenter",
+            )
+            and _contains(
+                presenter,
+                "ApplySettingsSnapshot",
+                "ApplicationDeleteConfirmationRules.ApplySettingsSnapshot",
+                "_store.Save(mutation.ExpectedRevision, updated)",
+            )
+            and _contains(
+                contract,
+                "ApplicationSettingIdentity",
+                "PreferNightlyBuilds",
+                "LiveUpdateCleanCharacterFiles",
+                "PreferNightlyBuildsByDefault",
+                "applicationVersion.Build != 0",
+                "ApplicationSettingValue<T>",
+                "ApplicationSettingsSnapshotMutation",
+                "ExpectedRevision",
+            )
+            and _contains(
+                rules,
+                'LegacyPreferNightlyBuildsIdentity = "prefernightlybuilds"',
+                'LegacyLiveUpdateCleanCharacterFilesIdentity = "liveupdatecleancharacterfiles"',
+                "RequireIdentity(mutation.PreferNightlyBuilds, ApplicationSettingIdentity.PreferNightlyBuilds)",
+                "ApplicationSettingIdentity.LiveUpdateCleanCharacterFiles",
+                "PreferNightlyBuilds = mutation.PreferNightlyBuilds.Value",
+                "LiveUpdateCleanCharacterFiles = mutation.LiveUpdateCleanCharacterFiles.Value",
+                "mutation.ExpectedRevision != current.Revision",
+            )
+            and _contains(
+                store,
+                "application-delete-confirmation.json",
+                'TryGetProperty("PreferNightlyBuilds"',
+                '"LiveUpdateCleanCharacterFiles"',
+                "_defaultState.PreferNightlyBuilds",
+                "liveUpdateCleanCharacterFiles = false",
+                "primary.Revision >= backup.Revision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                'path + ".bak"',
+                "current.Revision != expectedRevision",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"EditGlobalSettings.chkPreferNightlyBuilds"',
+                '"EditGlobalSettings.chkLiveUpdateCleanCharacterFiles"',
+                'api != "36"',
+                'abi != "arm64-v8a"',
+                '"profile": "phone"',
+                '"journey": "application-update-settings"',
+                'device.shell("pm", "path", shared.PACKAGE)',
+                '"applicationSettingsStoreSha256"',
+                '"applicationAssemblyBuild"',
+                '"runnerFixtureSha256"',
+                'device.shell("am", "force-stop"',
+            )
+            and fixture.is_file()
+        )
+        control_label = {
+            "chkPreferNightlyBuilds": "Prefer Nightly builds when updating",
+            "chkLiveUpdateCleanCharacterFiles": "Reload unchanged open character files",
+        }[control]
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": f"Home > Application settings > Updates > {control_label} > Save",
+            "surface": "ApplicationSettingsPage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+                "src/Chummer.Android/Native/HomePage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "src/Chummer.Android/MauiProgram.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+                "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs",
+            ],
+            "presenterMutation": (
+                "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)"
+            ),
+            "persistenceAssertion": (
+                "the two typed legacy update booleans load and save independently under prefernightlybuilds and "
+                "liveupdatecleancharacterfiles; Prefer Nightly defaults to running Assembly Version.Build != 0, "
+                "while live clean-file updates default false. Their only UI dependency is OptionsChanged marking "
+                "the draft dirty, Boolean values need no extra validation, and both share the page's single explicit "
+                "Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; "
+                "Back performs no write and character XML remains byte-independent"
+            ),
+            "coverageLimit": (
+                "Phone application settings only for chkPreferNightlyBuilds and "
+                "chkLiveUpdateCleanCharacterFiles, authenticated against exact canonical Chummer5 revision and "
+                "source/load/dirty/save/order digests. No other Global Settings or character-data row is newly "
+                "claimed. Tablet intentionally remains missing and the API 36 phone driver is "
+                f"{'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_application_update_settings_e2e.py" if e2e_scripted else None,
             },
             "tablet": {
                 "status": "missing",
@@ -21233,6 +21483,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "application-index-visibility-settings-e2e.chum5",
         REPO_ROOT / "tests" / "run_api36_application_selection_behavior_settings_e2e.py",
         REPO_ROOT / "tests" / "fixtures" / "application-selection-behavior-settings-e2e.chum5",
+        REPO_ROOT / "tests" / "run_api36_application_update_settings_e2e.py",
+        REPO_ROOT / "tests" / "fixtures" / "application-update-settings-e2e.chum5",
         presentation_root / "Chummer.Presentation" / "Overview" / "CharacterRosterFavoritePresenter.cs",
         core_engine_root / "Chummer.Contracts" / "Api" / "CharacterRosterFavoriteContracts.cs",
         core_engine_root / "Chummer.Application" / "Tools" / "CharacterRosterFavoriteRules.cs",

@@ -30,7 +30,9 @@ public static class MauiProgram
             new FileCharacterRosterFavoriteStore(statePath));
         builder.Services.AddSingleton<CharacterRosterFavoritePresenter>();
         builder.Services.AddSingleton<IApplicationDeleteConfirmationStore>(
-            new FileApplicationDeleteConfirmationStore(statePath));
+            new FileApplicationDeleteConfirmationStore(
+                statePath,
+                typeof(MauiProgram).Assembly.GetName().Version ?? new Version(0, 0)));
         builder.Services.AddSingleton<ApplicationDeleteConfirmationPresenter>();
         builder.Services.AddChummerLocalRuntimeClient(
             AppContext.BaseDirectory,

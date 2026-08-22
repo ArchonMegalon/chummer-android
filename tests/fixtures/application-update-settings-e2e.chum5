@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Application Update Settings Proof</name>
+  <alias>Application Update Settings Proof</alias>
+  <created>True</created>
+  <gameedition>SR6</gameedition>
+  <settings>settings.xml</settings>
+  <customstate>
+    <applicationsupdates>character XML must remain unrelated</applicationsupdates>
+  </customstate>
+</character>

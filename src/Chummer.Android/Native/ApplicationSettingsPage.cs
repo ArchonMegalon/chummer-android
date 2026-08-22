@@ -6,7 +6,7 @@ namespace Chummer.Android.Native;
 
 /// <summary>
 /// Phone-only Chummer5 Global Options surface for confirmation, visibility, selection behavior,
-/// and date/time settings.
+/// update, and date/time settings.
 /// All controls are local drafts; only the explicit Save action invokes one atomic persistence boundary.
 /// </summary>
 public sealed class ApplicationSettingsPage : NativePageBase
@@ -18,6 +18,8 @@ public sealed class ApplicationSettingsPage : NativePageBase
     private readonly Switch _hideCharacterRoster;
     private readonly Switch _searchInCategoryOnly;
     private readonly Switch _allowEasterEggs;
+    private readonly Switch _preferNightlyBuilds;
+    private readonly Switch _liveUpdateCleanCharacterFiles;
     private readonly Switch _customDateTimeFormats;
     private readonly Entry _dateFormat;
     private readonly Label _datePreview;
@@ -141,6 +143,38 @@ public sealed class ApplicationSettingsPage : NativePageBase
             "Disabled by default. It remains independent of category-restricted searching.",
             _allowEasterEggs));
 
+        body.Add(NativeTheme.Title("Updates"));
+        body.Add(NativeTheme.Body(
+            "Matches Chummer5’s independent prefernightlybuilds and liveupdatecleancharacterfiles application options.",
+            NativeTheme.Muted));
+        Version applicationVersion = typeof(MauiProgram).Assembly.GetName().Version ?? new Version(0, 0);
+        Label updateDefaultAuthority = NativeTheme.Body(
+            $"Application assembly Build={applicationVersion.Build}; fresh Prefer Nightly default="
+            + ApplicationDeleteConfirmationState.PreferNightlyBuildsByDefault(applicationVersion),
+            NativeTheme.Muted);
+        updateDefaultAuthority.AutomationId = "settings-update-default-authority";
+        body.Add(updateDefaultAuthority);
+
+        _preferNightlyBuilds = new Switch
+        {
+            AutomationId = "settings-prefer-nightly-builds",
+            IsToggled = _baseline.PreferNightlyBuilds
+        };
+        body.Add(CreateSwitchCard(
+            "Prefer Nightly builds when updating",
+            "The fresh-install default follows the running app version: off for milestone builds, on otherwise.",
+            _preferNightlyBuilds));
+
+        _liveUpdateCleanCharacterFiles = new Switch
+        {
+            AutomationId = "settings-live-update-clean-character-files",
+            IsToggled = _baseline.LiveUpdateCleanCharacterFiles
+        };
+        body.Add(CreateSwitchCard(
+            "Reload unchanged open character files",
+            "Automatically load external save-file changes only when the open character has no pending edits.",
+            _liveUpdateCleanCharacterFiles));
+
         body.Add(NativeTheme.Title("Date and time"));
         body.Add(NativeTheme.Body(
             "Matches Chummer5’s custom format phase and Dates include time option. Invalid custom text shows Error, as on desktop; Save preserves the exact draft.",
@@ -227,6 +261,8 @@ public sealed class ApplicationSettingsPage : NativePageBase
                 _hideCharacterRoster.IsToggled,
                 _searchInCategoryOnly.IsToggled,
                 _allowEasterEggs.IsToggled,
+                _preferNightlyBuilds.IsToggled,
+                _liveUpdateCleanCharacterFiles.IsToggled,
                 _baseline.Revision);
             await Navigation.PopAsync();
         });

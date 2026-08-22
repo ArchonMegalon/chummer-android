@@ -364,6 +364,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         bool hideCharacterRoster,
         bool searchInCategoryOnly,
         bool allowEasterEggs,
+        bool preferNightlyBuilds,
+        bool liveUpdateCleanCharacterFiles,
         long expectedRevision,
         CancellationToken cancellationToken = default)
     {
@@ -380,6 +382,10 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 new(ApplicationSettingIdentity.HideCharacterRoster, hideCharacterRoster),
                 new(ApplicationSettingIdentity.SearchInCategoryOnly, searchInCategoryOnly),
                 new(ApplicationSettingIdentity.AllowEasterEggs, allowEasterEggs),
+                new(ApplicationSettingIdentity.PreferNightlyBuilds, preferNightlyBuilds),
+                new(
+                    ApplicationSettingIdentity.LiveUpdateCleanCharacterFiles,
+                    liveUpdateCleanCharacterFiles),
                 expectedRevision));
         _notice = "Application settings saved.";
         NotifyChanged();
