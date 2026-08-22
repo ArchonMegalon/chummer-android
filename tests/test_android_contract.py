@@ -66,8 +66,8 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("<ApplicationId>com.myexternalbrain.chummer</ApplicationId>", project)
         self.assertIn("<TargetSdkVersion>36</TargetSdkVersion>", project)
         self.assertIn("<AndroidMinSdkVersion>24</AndroidMinSdkVersion>", project)
-        self.assertIn("<ApplicationDisplayVersion>0.1.0-preview.8</ApplicationDisplayVersion>", project)
-        self.assertIn("<ApplicationVersion>8</ApplicationVersion>", project)
+        self.assertIn("<ApplicationDisplayVersion>0.1.0-preview.9</ApplicationDisplayVersion>", project)
+        self.assertIn("<ApplicationVersion>9</ApplicationVersion>", project)
         self.assertIn("<AndroidPackageFormats Condition=\"'$(Configuration)' == 'Release'\">aab</AndroidPackageFormats>", project)
         self.assertIn('<ChummerAndroidRuntimeIdentifier Condition="\'$(ChummerAndroidRuntimeIdentifier)\' == \'\'">android-arm64</ChummerAndroidRuntimeIdentifier>', project)
         self.assertIn('<RuntimeIdentifier Condition="\'$(RuntimeIdentifier)\' == \'\'">$(ChummerAndroidRuntimeIdentifier)</RuntimeIdentifier>', project)
@@ -1464,7 +1464,7 @@ class AndroidContractTests(unittest.TestCase):
         spec.loader.exec_module(module)
 
         self.assertEqual(
-            ("0.1.0-preview.8", "8"),
+            ("0.1.0-preview.9", "9"),
             module.read_project_version(PROJECT / "Chummer.Android.csproj"),
         )
 
@@ -1473,7 +1473,7 @@ class AndroidContractTests(unittest.TestCase):
         title = (listing / "title.txt").read_text(encoding="utf-8").strip()
         short_description = (listing / "short-description.txt").read_text(encoding="utf-8").strip()
         full_description = (listing / "full-description.txt").read_text(encoding="utf-8").strip()
-        release_notes = (listing / "release-notes-8.txt").read_text(encoding="utf-8").strip()
+        release_notes = (listing / "release-notes-9.txt").read_text(encoding="utf-8").strip()
         self.assertLessEqual(len(title), 30)
         self.assertLessEqual(len(short_description), 80)
         self.assertLessEqual(len(full_description), 4000)

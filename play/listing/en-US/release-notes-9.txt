@@ -1,0 +1,1 @@
+Preview.9 adds guarded phone editors for vehicle and cyberware Matrix attributes, vehicle active commlink, and vehicle weapon firing mode. Saves remain identity-, revision-, and restart-bound. This is an internal test build; full phone and tablet parity and physical API-36 execution are not yet claimed.
