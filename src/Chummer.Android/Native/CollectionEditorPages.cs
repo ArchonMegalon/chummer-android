@@ -112,6 +112,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddMoveAndDeleteActions(item);
         AddNestedActions(item);
         AddVehicleHomeNodeAction(item);
+        AddVehicleActiveCommlinkAction(item);
         AddVehicleEquipmentInstalledAction(item);
         AddVehicleDataProcessingFirewallSwapAction(item);
         AddVehicleWeaponFiringModeAction(item);
@@ -1047,6 +1048,38 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 semantics)),
             automationId: $"cyberware-active-commlink-open-{cyberwareId:N}"));
+    }
+
+    private void AddVehicleActiveCommlinkAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Vehicle
+            || _target.NestedKind is not null
+            || item.VehicleActiveCommlink is not
+                { IsCommlink: true, Visible: true, Enabled: true,
+                  Economics: { NuyenDelta: 0m, KarmaDelta: 0 } } semantics
+            || Coordinator.State.WorkspaceId is not { } workspaceId
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid vehicleId)
+            || vehicleId == Guid.Empty
+            || semantics.VehicleId != vehicleId)
+        {
+            return;
+        }
+
+        long contentRevision = Coordinator.State.ContentRevision;
+        _body.Add(NativeTheme.Eyebrow("Matrix identity"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Vehicle Active Commlink",
+            semantics.ActiveCommlink
+                ? "This Vehicle is the runner's active commlink"
+                : "This Vehicle is not the runner's active commlink",
+            () => Navigation.PushAsync(new VehicleActiveCommlinkPage(
+                Coordinator,
+                workspaceId,
+                contentRevision,
+                vehicleId,
+                item.Label,
+                semantics)),
+            automationId: $"vehicle-active-commlink-open-{vehicleId:N}"));
     }
 
     private void AddPrototypeTranshumanAction(WorkspaceCollectionItemEditorState item)

@@ -2289,9 +2289,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 450,
+                "implemented_pending_emulator": 452,
                 "implemented_verified_api36": 79,
-                "missing": 958,
+                "missing": 956,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 168,
@@ -2318,6 +2318,155 @@ namespace Chummer
                 if row["editParityRequired"] and row["id"] not in mapped_ids
             )
         )
+
+    def test_vehicle_active_commlink_phone_mapping_is_exact_phone_only_and_scripted(self) -> None:
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = [
+            row for row in payload["rows"]
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.VEHICLE_ACTIVE_COMMLINK_CONTROL
+        ]
+        self.assertEqual(2, len(rows))
+        for row in rows:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Gear > Vehicles > selected stable top-level persona-capable Vehicle > Vehicle Active Commlink",
+                row["phone"]["route"],
+            )
+            self.assertEqual("VehicleActiveCommlinkPage", row["phone"]["surface"])
+            self.assertEqual(
+                "vehicle-active-commlink-toggle-{stable-vehicle-guid}",
+                row["phone"]["automationId"],
+            )
+            self.assertIn("phase/persona/enabled/zero-economics", row["presenterMutation"])
+            self.assertIn("revision-checked atomic save", row["persistenceAssertion"])
+            self.assertIn("process restart recovery", row["persistenceAssertion"])
+            self.assertIn("descendants fail closed", row["phone"]["coverageLimit"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_vehicle_active_commlink_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
+    def test_vehicle_active_commlink_receipt_is_strict_full_graph_fixture_and_proof_bound(self) -> None:
+        presentation_root = PRESENTATION_ROOT
+        core_root = CORE_ROOT
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        native_root = REPO / "src" / "Chummer.Android" / "Native"
+        driver = REPO / "tests" / "run_api36_vehicle_active_commlink_e2e.py"
+        shared_driver = REPO / "tests" / "run_api36_editing_e2e.py"
+        creation_fixture = REPO / "tests" / "fixtures" / "creation-vehicle-active-commlink-e2e.chum5"
+        career_fixture = REPO / "tests" / "fixtures" / "career-vehicle-active-commlink-e2e.chum5"
+        source_paths = {
+            "vehicleActiveCommlinkPageSha256": native_root / "VehicleActiveCommlinkPage.cs",
+            "collectionEditorPagesSha256": native_root / "CollectionEditorPages.cs",
+            "coordinatorSha256": native_root / "RunnerSessionCoordinator.cs",
+            "vehicleActiveCommlinkContractSha256": overview / "VehicleActiveCommlinkEditRequest.cs",
+            "collectionEditorStateSha256": overview / "WorkspaceCollectionEditorState.cs",
+            "collectionEditorProjectorSha256": overview / "WorkspaceCollectionEditorProjector.cs",
+            "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+            "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+            "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+            "presenterPersistenceSha256": overview / "CharacterOverviewPresenter.Persistence.cs",
+            "vehicleActiveCommlinkRulesSha256": core_root / "Chummer.Contracts" / "Characters" / "CharacterVehicleActiveCommlinkRules.cs",
+            "weaponHomeNodeRulesSha256": core_root / "Chummer.Contracts" / "Characters" / "CharacterWeaponHomeNodeRules.cs",
+            "characterSectionModelsSha256": core_root / "Chummer.Contracts" / "Characters" / "CharacterSectionModels.cs",
+            "characterSectionServiceSha256": core_root / "Chummer.Infrastructure" / "Xml" / "CharacterSectionService.cs",
+            "workspaceStoreSha256": core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs",
+            "legacyCreateHandlerSha256": presentation_root / "Chummer" / "Forms" / "Character Forms" / "CharacterCreate.cs",
+            "legacyCareerHandlerSha256": presentation_root / "Chummer" / "Forms" / "Character Forms" / "CharacterCareer.cs",
+            "legacyMatrixAttributesSha256": presentation_root / "Chummer" / "Backend" / "Interfaces" / "IHasMatrixAttributes.cs",
+            "legacyVehicleRulesSha256": presentation_root / "Chummer" / "Backend" / "Equipment" / "Vehicle.cs",
+        }
+        controls = {
+            f"{form}.{inventory.VEHICLE_ACTIVE_COMMLINK_CONTROL}": {
+                key: "pass"
+                for key in inventory.VEHICLE_ACTIVE_COMMLINK_CONTROL_E2E_PROOF_KEYS
+            }
+            for form in ("CharacterCreate", "CharacterCareer")
+        }
+        receipt = {
+            "schema": "chummer.android.editing-e2e/v1",
+            "status": "pass",
+            "profile": "phone",
+            "journey": "vehicle-active-commlink",
+            "apiLevel": 36,
+            "abi": inventory.PHONE_E2E_ABI,
+            "package": inventory.PHONE_E2E_PACKAGE,
+            "apkSha256": "a" * 64,
+            "driverSha256": inventory._sha256_file(driver),
+            "sharedDriverSha256": inventory._sha256_file(shared_driver),
+            "creationFixtureSha256": inventory._sha256_file(creation_fixture),
+            "careerFixtureSha256": inventory._sha256_file(career_fixture),
+            "controlCount": len(controls),
+            "controls": controls,
+            **{key: inventory._sha256_file(path) for key, path in source_paths.items()},
+        }
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            receipt_path = Path(temporary) / "receipt.json"
+            with patch.object(
+                inventory,
+                "VEHICLE_ACTIVE_COMMLINK_PHONE_E2E_RECEIPT",
+                receipt_path,
+            ):
+                self.assertIsNone(
+                    inventory._validated_vehicle_active_commlink_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
+                receipt_path.write_text("{", encoding="utf-8")
+                self.assertIsNone(
+                    inventory._validated_vehicle_active_commlink_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
+                receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+                self.assertIsNotNone(
+                    inventory._validated_vehicle_active_commlink_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
+                for key, value in (
+                    ("abi", "x86_64"),
+                    ("package", "invalid.package"),
+                    ("apiLevel", 35),
+                    ("apkSha256", "invalid"),
+                    ("driverSha256", "0" * 64),
+                    ("careerFixtureSha256", "0" * 64),
+                    ("vehicleActiveCommlinkRulesSha256", "0" * 64),
+                    ("workspaceStoreSha256", "0" * 64),
+                    ("legacyMatrixAttributesSha256", "0" * 64),
+                ):
+                    stale = json.loads(json.dumps(receipt))
+                    stale[key] = value
+                    receipt_path.write_text(json.dumps(stale), encoding="utf-8")
+                    self.assertIsNone(
+                        inventory._validated_vehicle_active_commlink_phone_e2e_receipt(
+                            presentation_root,
+                            core_root,
+                        ),
+                        key,
+                    )
+                stale = json.loads(json.dumps(receipt))
+                stale["controls"]["CharacterCreate.chkVehicleActiveCommlink"].pop(
+                    inventory.VEHICLE_ACTIVE_COMMLINK_CONTROL_E2E_PROOF_KEYS[0]
+                )
+                receipt_path.write_text(json.dumps(stale), encoding="utf-8")
+                self.assertIsNone(
+                    inventory._validated_vehicle_active_commlink_phone_e2e_receipt(
+                        presentation_root,
+                        core_root,
+                    )
+                )
 
     def test_cyberware_active_commlink_phone_mapping_is_exact_phone_only_and_scripted(self) -> None:
         payload = json.loads(

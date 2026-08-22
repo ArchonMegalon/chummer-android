@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 450,
+      "implemented_pending_emulator": 452,
       "implemented_verified_api36": 79,
-      "missing": 958,
+      "missing": 956,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 168
@@ -417,7 +417,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "13b7efc6ef2d011f16f70fba7c9474929419ac87fdf5a50a8117fca57a2fdd6d"
+        "sha256": "a1df3ff04e23b40ebda2380095bdb68571a66aa78bdf4feecc93d046a76c0da5"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -442,7 +442,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "045fcc1c4778fceec5b791cebecee0fe9e36409dc434e18eabc5a5038a721e6d"
+        "sha256": "524321ebdeefef44ae3b2eba3ed91fdd260afef78e85273b977abbbbd8fcf15f"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1515,6 +1515,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-vehicle-active-commlink/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-armor-damage/receipt.json",
         "exists": false,
         "sha256": null
@@ -1572,7 +1577,7 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
         "exists": true,
-        "sha256": "a054d37ec9dd600dbd40b5a9bf9370962ebf8dbfdad630fa5d242d4900a4c7cd"
+        "sha256": "6bbc73a9d7cf952c4d6d6dde9ecf74751acf3163d8eaecbdc89ff6cf6d33261e"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponHomeNodeRules.cs",
@@ -1593,6 +1598,11 @@
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareActiveCommlinkRules.cs",
         "exists": true,
         "sha256": "6b1403a542ec1c4caef3a7b4ed65725b7a9f73e1546f8ea6fffc6c7f500480be"
+      },
+      {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleActiveCommlinkRules.cs",
+        "exists": true,
+        "sha256": "9f534da227ae613db7f11eeb269dbbbe0b29da5f04a35d96f51fd1e35fb80d9d"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterPrototypeTranshumanRules.cs",
@@ -1742,7 +1752,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "dd7ab6ba2dabab586dc1cb9f6ed3bcbd9ae652b4e793d60d3dff466373264488"
+        "sha256": "4e8cc5add8d59af24783ab9c7d170a3111356592d4dfe2c8a2b465956211aeaf"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
@@ -1772,7 +1782,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "e8430dfd9410d59550967a5d60a8589e0c4d58439548d4a417f5b52752f492ba"
+        "sha256": "435578b17028a6841b34a824a3ab3d14b0fc8e5220a25306dbb5dbcf7631bed6"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1982,7 +1992,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "e15fb736ce3ba8e23c02a0a1c9f07d05feeb1f09dcdb63c383105f56e66c9e31"
+        "sha256": "ee7b3122058cbd08318a483d2083a87a9412ebd03ff7016b29c6ab31414a8310"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2022,12 +2032,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "69fde969b5686f59984201c760760a1ee4a1ab2242f73a63bbf3a2104a29e90a"
+        "sha256": "49380c0352fa638888e607ebfd7c62197844e94a5ccde1f0db1e96f549d276a1"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
         "exists": true,
-        "sha256": "364554caa6073957eeb8832719180a6ca4a0fed925a8e58370bc851161c1998c"
+        "sha256": "36c7d6160bf738cc713aef5bde0430f5cd6236dd65f10a232c595f1a9beb7878"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
@@ -2037,7 +2047,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "5a29b88f73e6020fb7401461649a691933da17f38dbebbec34135f7c6337d926"
+        "sha256": "568e2aec8947fb2b3d2874b62990a846de8ae06c0d19fe17234aab019d989434"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -2047,7 +2057,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "e93a844ef4100c754696c67d4081a23a007683bcae6db34478d78bca98be700c"
+      "sha256": "d033c1077630f94bd825e6a7553fcdd37275f37b5b68249691a019fa84ab87f4"
     }
   },
   "coverageByFamily": {
@@ -2411,7 +2421,7 @@
     "vehicles_and_drones": {
       "rowCount": 151,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 43,
+      "phoneMissingCount": 41,
       "tabletMissingCount": 100,
       "completionProvenCount": 27
     },
@@ -39726,11 +39736,26 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Vehicles > selected stable top-level persona-capable Vehicle > Vehicle Active Commlink",
+        "surface": "VehicleActiveCommlinkPage",
+        "automationId": "vehicle-active-commlink-toggle-{stable-vehicle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/VehicleActiveCommlinkPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/VehicleActiveCommlinkEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleActiveCommlinkRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponHomeNodeRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 selected stable top-level persona-capable Vehicle Active Commlink checkbox only. Vehicle-tree descendants fail closed until separately typed; Vehicle mod source-dependent persona state also fails closed. Tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -39738,12 +39763,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyVehicleActiveCommlinkEditAsync(VehicleActiveCommlinkEditRequest) with one stable top-level Vehicle Guid, full expected Core phase/persona/enabled/zero-economics semantics, and expected content revision",
+      "persistenceAssertion": "enabling selected persona-capable top-level vehicle[stable Guid]/active revalidates the exact Core semantics, sets it True, and normalizes every other recognized saved matrix-device active False; disabling requires and clears the selected active Vehicle only; Nuyen, Karma, descendants, unrelated active XML, and other fields remain exact after revision-checked atomic save, same-session reopen, and process restart recovery",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_vehicle_active_commlink_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -63885,11 +63910,26 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Vehicles > selected stable top-level persona-capable Vehicle > Vehicle Active Commlink",
+        "surface": "VehicleActiveCommlinkPage",
+        "automationId": "vehicle-active-commlink-toggle-{stable-vehicle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/VehicleActiveCommlinkPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/VehicleActiveCommlinkEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleActiveCommlinkRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponHomeNodeRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterSectionModels.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs"
+        ],
+        "coverageLimit": "Exact Chummer5 selected stable top-level persona-capable Vehicle Active Commlink checkbox only. Vehicle-tree descendants fail closed until separately typed; Vehicle mod source-dependent persona state also fails closed. Tablet is deferred."
       },
       "tablet": {
         "status": "missing",
@@ -63897,12 +63937,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyVehicleActiveCommlinkEditAsync(VehicleActiveCommlinkEditRequest) with one stable top-level Vehicle Guid, full expected Core phase/persona/enabled/zero-economics semantics, and expected content revision",
+      "persistenceAssertion": "enabling selected persona-capable top-level vehicle[stable Guid]/active revalidates the exact Core semantics, sets it True, and normalizes every other recognized saved matrix-device active False; disabling requires and clears the selected active Vehicle only; Nuyen, Karma, descendants, unrelated active XML, and other fields remain exact after revision-checked atomic save, same-session reopen, and process restart recovery",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_vehicle_active_commlink_e2e.py"
         },
         "tablet": {
           "status": "missing",

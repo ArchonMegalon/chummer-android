@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Vehicle Active Commlink E2E</name>
+  <alias>CreationVehicleActiveCommlinkE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <nuyen>4321</nuyen>
+  <karma>7</karma>
+  <customdatadirectorynames />
+  <customstate><active>Creation unrelated active text</active></customstate>
+  <gears>
+    <gear>
+      <guid>a1111111-1111-4111-8111-111111111111</guid>
+      <name>Creation Prior Active Gear E2E</name>
+      <category>Commlinks</category>
+      <rating>2</rating>
+      <qty>1</qty>
+      <cost>500</cost>
+      <equipped>True</equipped>
+      <active>True</active>
+      <canformpersona>Self</canformpersona>
+      <notes>Creation gear must remain intact</notes>
+      <children />
+    </gear>
+  </gears>
+  <vehicles>
+    <vehicle>
+      <guid>a1222222-1222-4222-8222-222222222222</guid>
+      <name>Creation Persona Vehicle E2E</name>
+      <category>Groundcraft</category>
+      <body>8</body>
+      <pilot>3</pilot>
+      <active>False</active>
+      <cost>50000</cost>
+      <notes>Creation target notes must remain intact</notes>
+      <locations />
+      <mods />
+      <weapons />
+      <gears>
+        <gear>
+          <guid>a1444444-1444-4444-8444-444444444444</guid>
+          <name>Creation Vehicle Persona Module</name>
+          <equipped>True</equipped>
+          <canformpersona>Parent</canformpersona>
+          <notes>Creation persona child must remain intact</notes>
+          <children />
+        </gear>
+      </gears>
+    </vehicle>
+    <vehicle>
+      <guid>a1333333-1333-4333-8333-333333333333</guid>
+      <name>Creation Untouched Vehicle E2E</name>
+      <category>Groundcraft</category>
+      <body>2</body>
+      <pilot>1</pilot>
+      <active>False</active>
+      <notes>Creation untouched notes</notes>
+      <locations />
+      <mods />
+      <weapons />
+      <gears />
+    </vehicle>
+  </vehicles>
+</character>
