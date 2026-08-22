@@ -216,7 +216,7 @@ public sealed class BuildPage : NativePageBase
         {
             _body.Add(NativeTheme.NavigationRow(
                 "Mugshots",
-                "Browse existing portraits and choose or clear the exact Main Mugshot",
+                "Browse existing portraits, choose or clear the exact Main Mugshot, or delete the selected portrait",
                 async () =>
                 {
                     CareerMugshotEditorState? editor = await Coordinator.PrepareCareerMugshotEditAsync();

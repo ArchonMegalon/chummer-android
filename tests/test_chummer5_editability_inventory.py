@@ -3053,9 +3053,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 458,
+                "implemented_pending_emulator": 459,
                 "implemented_verified_api36": 79,
-                "missing": 936,
+                "missing": 935,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 172,
@@ -5363,6 +5363,59 @@ namespace Chummer
         drifted_digests["nudMugshotIndex_ValueChanged"] = "0" * 64
         with patch.dict(
             inventory.CAREER_MUGSHOT_LEGACY_METHOD_DIGESTS,
+            drifted_digests,
+            clear=True,
+        ):
+            drifted = inventory._known_phone_mapping(
+                rows[0],
+                inventory.DEFAULT_CHUMMER5_ROOT,
+                PRESENTATION_ROOT,
+                CORE_ROOT,
+                **receipt_arguments,
+            )
+        self.assertEqual("missing", drifted["status"])
+
+    def test_career_mugshot_delete_is_source_guarded_typed_and_scripted(self) -> None:
+        import inspect
+
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = [
+            row for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] == inventory.CAREER_MUGSHOT_DELETE_CONTROL
+        ]
+        self.assertEqual(1, len(rows))
+        parameters = list(inspect.signature(inventory._known_phone_mapping).parameters)
+        receipt_arguments = {
+            name: {} if name in {"condition_e2e_receipts", "contact_pet_e2e_receipts"} else None
+            for name in parameters[4:]
+        }
+        mapping = inventory._known_phone_mapping(
+            rows[0],
+            inventory.DEFAULT_CHUMMER5_ROOT,
+            PRESENTATION_ROOT,
+            CORE_ROOT,
+            **receipt_arguments,
+        )
+        self.assertEqual("implemented_pending_emulator", mapping["status"])
+        self.assertEqual("CareerMugshotPage", mapping["surface"])
+        self.assertEqual("Build > Runner > Mugshots (Career only)", mapping["route"])
+        self.assertEqual("career-mugshot-delete", mapping["automationId"])
+        self.assertIn("position-and-image-digest", mapping["presenterMutation"])
+        self.assertIn("deleting main clears to -1", mapping["presenterMutation"])
+        self.assertIn("Add/import", mapping["coverageLimit"])
+        self.assertEqual("scripted_not_executed", mapping["e2e"]["status"])
+        self.assertEqual("tests/run_api36_career_mugshot_state_e2e.py", mapping["e2e"]["ref"])
+        self.assertEqual("missing", mapping["tablet"]["status"])
+
+        drifted_digests = dict(inventory.CAREER_MUGSHOT_DELETE_LEGACY_METHOD_DIGESTS)
+        drifted_digests["RemoveMugshot"] = "0" * 64
+        with patch.dict(
+            inventory.CAREER_MUGSHOT_DELETE_LEGACY_METHOD_DIGESTS,
             drifted_digests,
             clear=True,
         ):

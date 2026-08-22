@@ -13,6 +13,7 @@ BUILD_PAGE = REPO / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
 CONTROLS = (
     "CharacterCareer.nudMugshotIndex",
     "CharacterCareer.chkIsMainMugshot",
+    "CharacterCareer.cmdDeleteMugshot",
 )
 
 
@@ -37,6 +38,10 @@ class Api36CareerMugshotStateE2EDriverTests(unittest.TestCase):
             '"oneBasedWrapSelection": "pass"',
             '"mainIndexSetFromSelected": "pass"',
             '"mainIndexClearedFromSelected": "pass"',
+            '"selectedMugshotDeleted": "pass"',
+            '"mainIndexAdjustedAfterEarlierDelete": "pass"',
+            '"sameSessionReopenAfterDelete": "pass"',
+            '"processRestartDeletePersistence": "pass"',
             '"sameSessionReopenCareer": "pass"',
             '"processRestartCareer": "pass"',
         ):
@@ -65,7 +70,10 @@ class Api36CareerMugshotStateE2EDriverTests(unittest.TestCase):
             "CharacterCareerMugshotRules.IsSelectedMain",
             'AutomationId = "career-mugshot-index"',
             'AutomationId = "career-mugshot-main"',
+            'AutomationId = "career-mugshot-delete"',
             'AutomationId = "career-mugshot-save"',
+            "CareerMugshotDeleteRequest",
+            "CharacterCareerMugshotRules.TryValidateDelete",
         ):
             self.assertIn(marker, page)
         self.assertIn("Coordinator.State.Profile?.Created == true", build)

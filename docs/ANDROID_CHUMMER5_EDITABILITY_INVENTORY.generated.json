@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 553,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 458,
+      "implemented_pending_emulator": 459,
       "implemented_verified_api36": 79,
-      "missing": 936,
+      "missing": 935,
       "not_applicable_non_mutating": 478,
       "partial_create_only": 106,
       "partial_exact_saved_data": 172
@@ -81,7 +81,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "c7f2fea82146ba0aba6b7c1c8f06056b2918b38ecb4dc9be6904dfc1c2c8d15b"
+        "sha256": "79cf183a10fa73e3869a105ca55bd5fb980631bed2bc25f2281cf5cb3a02e97e"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -326,17 +326,17 @@
       {
         "path": "src/Chummer.Android/Native/CareerMugshotPage.cs",
         "exists": true,
-        "sha256": "d8339576be36464855accbe51b9c3d2ddd6f8f3c56cd0bd81f0a3a55f750e6e4"
+        "sha256": "5a8f6c3b9e2855b7b3fcb2316fa23d55daede0476d67e6c2e5aed8a5caac07b2"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerMugshotEditRequest.cs",
         "exists": true,
-        "sha256": "a8a80ee6353a27d6e81930b2cf7295fe149e3f256ab8e0191b32e718b42efeae"
+        "sha256": "e97501e896493e9614e86ee526322142e71f2e68f54c8b658d9c1f649e5f24c4"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerMugshotRules.cs",
         "exists": true,
-        "sha256": "6e830bb5af65e44db31a7fd8f8ffd3c2ac23ea5971eef20cd67d32011cff0702"
+        "sha256": "5004dc195f03d02507a2b1fb9ab92517c725da01b54da9186d8b2b1579e7966b"
       },
       {
         "path": "src/Chummer.Android/Native/VehicleEquipmentInstalledPage.cs",
@@ -516,7 +516,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "d6373a3017e18b8ab6667f694fb39f3c770479e339f0298bdab5beeb215e5733"
+        "sha256": "5d7cf9f641e51de8c9dde08975e1129321c2a3313a708f0925b0c52be8021c61"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -766,7 +766,7 @@
       {
         "path": "tests/run_api36_career_mugshot_state_e2e.py",
         "exists": true,
-        "sha256": "c28aa23d5b661552280efa3fe05896c2e1b856028c865077e24cc7fa94f73278"
+        "sha256": "bf79f85518f0de6b5533ff9ed8ab7f6e6a0d1a889543493b7b906fbc97ea236a"
       },
       {
         "path": "tests/run_api36_gear_overclocker_e2e.py",
@@ -1876,7 +1876,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "5edfcee510c2d891ab03a194bb09eeaa77fc3ebda1faa5f91068ec8ff3d1b816"
+        "sha256": "05066217610b0dea830833dedaf51c08893d3702af401da8e22013e1336e630e"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -2086,7 +2086,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "930f0e85cdba33a309d039d32f7176705e02716a4e9f5e67bca0bf150d17011a"
+        "sha256": "99f669e70d5e0c33cb88a81d96ecc0ace605dda05d2d6628988c4ed1b90d83a4"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2141,7 +2141,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "236d080fd1657fbcf690fe786c2fad243ed2677d9be2eebab97ec289c8902402"
+        "sha256": "3e6aa67f1c148742e4f5da5dd28dabced03d6c9f050510d98a0c9b3fdc431b07"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -2151,7 +2151,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "5085e20eaa12074dd264f48e79289cd1f346cc26aa461af07ea8857cdee36c6d"
+      "sha256": "1fb8591994014400aacfc952ec21a5c771cc81e80f8f789803f3e3245138cabe"
     }
   },
   "coverageByFamily": {
@@ -2403,7 +2403,7 @@
     "mugshots": {
       "rowCount": 8,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 6,
+      "phoneMissingCount": 5,
       "tabletMissingCount": 8,
       "completionProvenCount": 0
     },
@@ -26364,11 +26364,23 @@
       "mutationFamily": "mugshots",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Mugshots (Career only)",
+        "surface": "CareerMugshotPage",
+        "automationId": "career-mugshot-delete",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerMugshotPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerMugshotEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerMugshotRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer.cmdDeleteMugshot against an existing saved mugshot only. Add/import uses a platform image picker and decoded image validation that is not implemented in this slice; CharacterCreate, empty/malformed/ambiguous state, and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -26376,12 +26388,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerMugshotDeleteAsync removes one exact position-and-image-digest identity under an ordered-collection revision and expected workspace content revision; deleting main clears to -1, deleting before main decrements, and deleting after main preserves the saved zero-based index",
+      "persistenceAssertion": "the exact selected ordered Base64 mugshot is removed and mainmugshotindex applies Chummer5's three adjustment cases while remaining mugshot bytes/order and unrelated runner XML stay exact after revision-bound atomic save/recovery, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_mugshot_state_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -27743,7 +27755,7 @@
           "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerMugshotRules.cs",
           "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
         ],
-        "coverageLimit": "Exact CharacterCareer controls against existing saved mugshots only. The spinner is transient view selection; add, delete, import and CharacterCreate mugshot controls are not widened into this claim. Empty/malformed/ambiguous state and tablet fail closed."
+        "coverageLimit": "Exact CharacterCareer controls against existing saved mugshots only. The spinner is transient view selection; deletion has its own separately bound row, while add/import and CharacterCreate mugshot controls are not widened into this claim. Empty/malformed/ambiguous state and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -27812,7 +27824,7 @@
           "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerMugshotRules.cs",
           "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
         ],
-        "coverageLimit": "Exact CharacterCareer controls against existing saved mugshots only. The spinner is transient view selection; add, delete, import and CharacterCreate mugshot controls are not widened into this claim. Empty/malformed/ambiguous state and tablet fail closed."
+        "coverageLimit": "Exact CharacterCareer controls against existing saved mugshots only. The spinner is transient view selection; deletion has its own separately bound row, while add/import and CharacterCreate mugshot controls are not widened into this claim. Empty/malformed/ambiguous state and tablet fail closed."
       },
       "tablet": {
         "status": "missing",

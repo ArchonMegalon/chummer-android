@@ -1994,10 +1994,18 @@ WEAPON_STOLEN_CONTROL = "chkWeaponStolen"
 GEAR_EQUIPMENT_CONTROL = "chkGearEquipped"
 GEAR_WIRELESS_CONTROL = "chkGearWireless"
 CAREER_MUGSHOT_CONTROLS = {"nudMugshotIndex", "chkIsMainMugshot"}
+CAREER_MUGSHOT_DELETE_CONTROL = "cmdDeleteMugshot"
 CAREER_MUGSHOT_LEGACY_METHOD_DIGESTS = {
     "nudMugshotIndex_ValueChanged": "15588f520898ec95056301d7df68efabbc0ec79ca5a68ad0c8716224ca716c9b",
     "chkIsMainMugshot_CheckedChanged": "07a4b679eafcf13bd5621ea2ea42a77a440d7941ed0bed706ad05f2cd366eb79",
     "SetMainMugshotIndexAsync": "2cd93fdaed50ab69c627352e6920e97a1efee69527b79c1c7b90b3dee1682139",
+    "SaveMugshotsCore": "d26f4f9ca249c751c642fd153c6a848d15fde8cf047b7a32e6614b127637829b",
+    "LoadMugshots": "3430ca0d3ada9fd00b25449eaa2fb93ce3622187db7d242353c77c2962c75b11",
+    "LoadMugshotsAsync": "ecd9b03166f6fef1fadc41eeaf215ab73382a21d560837c2c03b928ad8940a46",
+}
+CAREER_MUGSHOT_DELETE_LEGACY_METHOD_DIGESTS = {
+    "cmdDeleteMugshot_Click": "00b95c3a1927a7e97879dbd022e2f6904a1f3a13edfb1f362617377c4d52ae5f",
+    "RemoveMugshot": "dfdf8436d79cfe3030d4aaed874299a5d907f0a6ab00668423a5bdd7adaf2525",
     "SaveMugshotsCore": "d26f4f9ca249c751c642fd153c6a848d15fde8cf047b7a32e6614b127637829b",
     "LoadMugshots": "3430ca0d3ada9fd00b25449eaa2fb93ce3622187db7d242353c77c2962c75b11",
     "LoadMugshotsAsync": "ecd9b03166f6fef1fadc41eeaf215ab73382a21d560837c2c03b928ad8940a46",
@@ -12675,8 +12683,207 @@ def _known_phone_mapping(
             ),
             "coverageLimit": (
                 "Exact CharacterCareer controls against existing saved mugshots only. The spinner is transient "
-                "view selection; add, delete, import and CharacterCreate mugshot controls are not widened into this "
-                "claim. Empty/malformed/ambiguous state and tablet fail closed."
+                "view selection; deletion has its own separately bound row, while add/import and CharacterCreate "
+                "mugshot controls are not widened into this claim. Empty/malformed/ambiguous state and tablet fail closed."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_career_mugshot_state_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "CharacterCareer" and control == CAREER_MUGSHOT_DELETE_CONTROL:
+        legacy_source = chummer5_root / "Chummer/Forms/Character Forms/CharacterCareer.cs"
+        shared_source = chummer5_root / "Chummer/Forms/Character Forms/CharacterShared.cs"
+        character_source = chummer5_root / "Chummer/Backend/Characters/Character.cs"
+        page = REPO_ROOT / "src/Chummer.Android/Native/CareerMugshotPage.cs"
+        build_page = REPO_ROOT / "src/Chummer.Android/Native/BuildPage.cs"
+        coordinator = REPO_ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests/run_api36_career_mugshot_state_e2e.py"
+        fixture = REPO_ROOT / "tests/fixtures/career-mugshot-state-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation/Overview"
+        request = overview / "CareerMugshotEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        interface = overview / "ICharacterOverviewPresenter.cs"
+        persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        rules = character_notes_core_root / "Chummer.Contracts/Characters/CharacterCareerMugshotRules.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        legacy_text = _read_text(legacy_source) if legacy_source.is_file() else ""
+        shared_text = _read_text(shared_source) if shared_source.is_file() else ""
+        character_text = _read_text(character_source) if character_source.is_file() else ""
+        legacy_exact = (
+            any(
+                event.get("handler") == "cmdDeleteMugshot_Click"
+                for event in legacy.get("events", [])
+            )
+            and _legacy_method_digest(
+                [legacy_text], "cmdDeleteMugshot_Click"
+            ) == CAREER_MUGSHOT_DELETE_LEGACY_METHOD_DIGESTS["cmdDeleteMugshot_Click"]
+            and _legacy_method_digest(
+                [shared_text], "RemoveMugshot"
+            ) == CAREER_MUGSHOT_DELETE_LEGACY_METHOD_DIGESTS["RemoveMugshot"]
+            and all(
+                _legacy_method_digest([character_text], method_name) == expected_digest
+                for method_name, expected_digest in CAREER_MUGSHOT_DELETE_LEGACY_METHOD_DIGESTS.items()
+                if method_name not in {"cmdDeleteMugshot_Click", "RemoveMugshot"}
+            )
+            and _contains(
+                legacy_source,
+                "cmdDeleteMugshot_Click",
+                "if (intMugshotCount == 0)",
+                "await RemoveMugshot",
+                "x.ValueAsInt",
+                "--intMugshotCount",
+                "--x.Maximum",
+                "x.Value = x.Maximum",
+                "SetDirty(true)",
+            )
+            and _contains(
+                shared_source,
+                "RemoveMugshot",
+                "if (intCurrentMugshotIndexInList < 0)",
+                "RemoveAtAsync(intCurrentMugshotIndexInList",
+                "intCurrentMugshotIndexInList == intMainMugshotIndex",
+                "SetMainMugshotIndexAsync(-1",
+                "intCurrentMugshotIndexInList < intMainMugshotIndex",
+                "ModifyMainMugshotIndexAsync(-1",
+            )
+            and _contains(
+                character_source,
+                'objWriter.WriteElementString("mainmugshotindex"',
+                'objWriter.StartElement("mugshots")',
+                '"mugshot", GlobalSettings.ImageToBase64StringForStorage',
+                'TryGetInt32FieldQuickly("mainmugshotindex"',
+                'SelectAndCacheExpression("mugshots/mugshot"',
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "class CareerMugshotPage",
+                'AutomationId = "career-mugshot-page"',
+                'AutomationId = "career-mugshot-delete"',
+                "CharacterCareerMugshotRules.ResolveSelection",
+                "CharacterCareerMugshotRules.TryValidateDelete",
+                "CareerMugshotDeleteRequest",
+                "ApplyCareerMugshotDeleteAsync",
+            )
+            and _contains(
+                build_page,
+                "Coordinator.State.Profile?.Created == true",
+                'automationId: "build-career-mugshots"',
+                "PrepareCareerMugshotEditAsync",
+                "new CareerMugshotPage",
+            )
+            and _contains(
+                coordinator,
+                "ApplyCareerMugshotDeleteAsync",
+                "ExpectedContentRevision",
+                "_presenter.ApplyCareerMugshotDeleteAsync",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CareerMugshotDeleteRequest",
+                "CharacterMugshotIdentity SelectedIdentity",
+                "string ExpectedMugshotRevision",
+                "CareerMugshotEditorProjector",
+                'RequiredBoolean(root, "created")',
+                'containers[0].Elements("mugshot")',
+            )
+            and _contains(
+                mutation,
+                "ApplyCareerMugshotDelete",
+                "CharacterCareerMugshotRules.ApplyDeleteMainIndex",
+                'root.Elements("mainmugshotindex")',
+                'root.Elements("mugshots")',
+                "imageTargets[matches[0].ZeroBasedIndex].Remove()",
+            )
+            and _contains(
+                presenter,
+                "ApplyCareerMugshotDeleteAsync",
+                "Reopen it before deleting",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(interface, "ApplyCareerMugshotDeleteAsync")
+            and _contains(
+                persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                rules,
+                "TryValidateDelete",
+                "ApplyDeleteMainIndex",
+                "selectedIdentity.ZeroBasedIndex == current.MainMugshotIndex",
+                "selectedIdentity.ZeroBasedIndex < current.MainMugshotIndex",
+            )
+            and _contains(
+                store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCareer.cmdDeleteMugshot"',
+                'device.tap("career-mugshot-delete"',
+                'if api != "36"',
+                '"arm64-v8a" not in abi_list.split(",")',
+                '"package": shared.PACKAGE',
+                '"profile": "phone"',
+                '"journey": "career-mugshot-state"',
+                '"selectedMugshotDeleted": "pass"',
+                '"mainIndexAdjustedAfterEarlierDelete": "pass"',
+                '"sameSessionReopenAfterDelete": "pass"',
+                '"processRestartDeletePersistence": "pass"',
+                '"careerMugshotRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"careerFixtureSha256"',
+            )
+            and fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Runner > Mugshots (Career only)",
+            "surface": "CareerMugshotPage",
+            "automationId": "career-mugshot-delete",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CareerMugshotPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CareerMugshotEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerMugshotRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCareerMugshotDeleteAsync removes one exact "
+                "position-and-image-digest identity under an ordered-collection revision and expected "
+                "workspace content revision; deleting main clears to -1, deleting before main decrements, "
+                "and deleting after main preserves the saved zero-based index"
+            ),
+            "persistenceAssertion": (
+                "the exact selected ordered Base64 mugshot is removed and mainmugshotindex applies Chummer5's "
+                "three adjustment cases while remaining mugshot bytes/order and unrelated runner XML stay exact "
+                "after revision-bound atomic save/recovery, same-session reopen, and process restart"
+            ),
+            "coverageLimit": (
+                "Exact CharacterCareer.cmdDeleteMugshot against an existing saved mugshot only. Add/import uses "
+                "a platform image picker and decoded image validation that is not implemented in this slice; "
+                "CharacterCreate, empty/malformed/ambiguous state, and tablet fail closed."
             ),
             "e2e": {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
