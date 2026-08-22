@@ -11,6 +11,7 @@ public sealed class CreationMugshotPage : NativePageBase
     private readonly Button _previous;
     private readonly Button _next;
     private readonly CheckBox _isMain;
+    private readonly Button _delete;
     private readonly Button _save;
     private int _selectedOneBasedIndex;
 
@@ -39,7 +40,7 @@ public sealed class CreationMugshotPage : NativePageBase
         body.Add(NativeTheme.Eyebrow("Creation runner portraits"));
         body.Add(NativeTheme.Title("Mugshots"));
         body.Add(NativeTheme.Body(
-            "Browse the existing ordered Creation mugshot collection. Only the Main Mugshot checkbox is saved; adding, deleting and importing portraits are separate controls.",
+            "Browse the existing ordered Creation mugshot collection, choose or clear the Main Mugshot, or delete the exact selected portrait. Adding and importing portraits remain unavailable until Android image-picker validation is complete.",
             NativeTheme.Muted));
 
         _preview = new Image
@@ -93,6 +94,11 @@ public sealed class CreationMugshotPage : NativePageBase
         mainRow.Add(NativeTheme.FieldLabel("Is Main Mugshot"), 0, 0);
         mainRow.Add(_isMain, 1, 0);
         body.Add(NativeTheme.Card(mainRow));
+
+        _delete = NativeTheme.SecondaryButton("Delete selected mugshot");
+        _delete.AutomationId = "creation-mugshot-delete";
+        _delete.Clicked += async (_, _) => await RunAsync(DeleteAsync);
+        body.Add(_delete);
 
         _save = NativeTheme.PrimaryButton("Save Main Mugshot state");
         _save.AutomationId = "creation-mugshot-save";
@@ -148,6 +154,12 @@ public sealed class CreationMugshotPage : NativePageBase
         _previous.IsEnabled = current && hasSelection;
         _next.IsEnabled = current && hasSelection;
         _isMain.IsEnabled = current && hasSelection;
+        _delete.IsEnabled = current
+            && selected is not null
+            && CharacterCreationMugshotRules.TryValidateDelete(
+                _editor.MugshotState,
+                selected,
+                _editor.MugshotState.Revision);
         _save.IsEnabled = current
             && selected is not null
             && CharacterCreationMugshotRules.TryValidateMainMutation(
@@ -186,6 +198,39 @@ public sealed class CreationMugshotPage : NativePageBase
             selected,
             _editor.MugshotState.Revision,
             _isMain.IsChecked));
+        if (Coordinator.State.Error is null)
+        {
+            await Navigation.PopAsync();
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        CharacterMugshotIdentity? selected = CharacterCreationMugshotRules.ResolveSelection(
+            _editor.MugshotState,
+            _selectedOneBasedIndex);
+        if (selected is null)
+        {
+            await DisplayAlertAsync(
+                "No mugshots",
+                "This Creation runner has no existing mugshots to delete.",
+                "OK");
+            return;
+        }
+        if (!CharacterCreationMugshotRules.TryValidateDelete(
+                _editor.MugshotState,
+                selected,
+                _editor.MugshotState.Revision))
+        {
+            await Navigation.PopAsync();
+            return;
+        }
+
+        await Coordinator.ApplyCreationMugshotDeleteAsync(new CreationMugshotDeleteRequest(
+            _editor.WorkspaceId,
+            _editor.ContentRevision,
+            selected,
+            _editor.MugshotState.Revision));
         if (Coordinator.State.Error is null)
         {
             await Navigation.PopAsync();

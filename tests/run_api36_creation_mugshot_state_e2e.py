@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prove exact Creation mugshot selection/main-index persistence on an API 36 phone."""
+"""Prove exact Creation mugshot selection/main/delete persistence on an API 36 phone."""
 
 from __future__ import annotations
 
@@ -17,13 +17,26 @@ import run_api36_editing_e2e as shared
 CONTROLS = (
     "CharacterCreate.nudMugshotIndex",
     "CharacterCreate.chkIsMainMugshot",
+    "CharacterCreate.cmdDeleteMugshot",
 )
+DELETE_CONTROL = "CharacterCreate.cmdDeleteMugshot"
 PROOF_KEYS = (
     "legacyOneBasedWrapSelection",
     "stablePositionAndImageDigestIdentity",
     "mainIndexZeroBasedOrMinusOne",
     "mainIndexClearedToMinusOne",
     "mugshotBytesAndOrderPreserved",
+    "unrelatedXmlPreserved",
+    "revisionBoundAtomicSaveRecovery",
+    "sameSessionReopened",
+    "processRestartWorkspacePersisted",
+    "processRestartUiReadback",
+)
+DELETE_PROOF_KEYS = (
+    "stablePositionAndImageDigestIdentity",
+    "selectedMugshotRemoved",
+    "mainIndexAdjustedAfterEarlierDelete",
+    "remainingMugshotBytesAndOrderPreserved",
     "unrelatedXmlPreserved",
     "revisionBoundAtomicSaveRecovery",
     "sameSessionReopened",
@@ -205,6 +218,34 @@ def main() -> int:
     assert_index(device, "1 of 2")
     assert_main(device, False)
     device.capture("creation-mugshot-cleared-process-restart")
+    device.tap("creation-mugshot-next")
+    assert_index(device, "2 of 2")
+    device.tap("creation-mugshot-main")
+    assert_main(device, True)
+    device.tap("creation-mugshot-save", timeout=180)
+    device.wait("Build", timeout=180)
+    assert_workspace(device, expected_images, "1")
+    open_mugshots(device)
+    assert_index(device, "2 of 2")
+    assert_main(device, True)
+    device.tap("creation-mugshot-previous")
+    assert_index(device, "1 of 2")
+    assert_main(device, False)
+    device.tap("creation-mugshot-delete", timeout=180)
+    device.wait("Build", timeout=180)
+    assert_workspace(device, expected_images[1:], "0")
+    open_mugshots(device)
+    assert_index(device, "1 of 1")
+    assert_main(device, True)
+    device.capture("creation-mugshot-delete-same-session")
+    device.shell("am", "force-stop", shared.PACKAGE)
+    shared.launch_app(device)
+    device.wait("Continue building", timeout=120)
+    assert_workspace(device, expected_images[1:], "0")
+    open_mugshots(device)
+    assert_index(device, "1 of 1")
+    assert_main(device, True)
+    device.capture("creation-mugshot-delete-process-restart")
 
     receipt = {
         "schema": "chummer.android.editing-e2e/v1",
@@ -222,11 +263,21 @@ def main() -> int:
         **{key: shared.sha256(path) for key, path in source_paths.items()},
         "creationFixtureSha256": shared.sha256(creation_fixture),
         "controlCount": len(CONTROLS),
-        "controls": {control: {key: "pass" for key in PROOF_KEYS} for control in CONTROLS},
+        "controls": {
+            control: {
+                key: "pass"
+                for key in (DELETE_PROOF_KEYS if control == DELETE_CONTROL else PROOF_KEYS)
+            }
+            for control in CONTROLS
+        },
         "journeys": {
             "oneBasedWrapSelection": "pass",
             "mainIndexSetFromSelected": "pass",
             "mainIndexClearedFromSelected": "pass",
+            "selectedMugshotDeleted": "pass",
+            "mainIndexAdjustedAfterEarlierDelete": "pass",
+            "sameSessionReopenAfterDelete": "pass",
+            "processRestartDeletePersistence": "pass",
             "sameSessionReopenCreation": "pass",
             "processRestartCreation": "pass",
         },
