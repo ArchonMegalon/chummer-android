@@ -1993,6 +1993,15 @@ GEAR_STOLEN_CONTROL = "chkGearStolen"
 WEAPON_STOLEN_CONTROL = "chkWeaponStolen"
 GEAR_EQUIPMENT_CONTROL = "chkGearEquipped"
 GEAR_WIRELESS_CONTROL = "chkGearWireless"
+CAREER_MUGSHOT_CONTROLS = {"nudMugshotIndex", "chkIsMainMugshot"}
+CAREER_MUGSHOT_LEGACY_METHOD_DIGESTS = {
+    "nudMugshotIndex_ValueChanged": "15588f520898ec95056301d7df68efabbc0ec79ca5a68ad0c8716224ca716c9b",
+    "chkIsMainMugshot_CheckedChanged": "07a4b679eafcf13bd5621ea2ea42a77a440d7941ed0bed706ad05f2cd366eb79",
+    "SetMainMugshotIndexAsync": "2cd93fdaed50ab69c627352e6920e97a1efee69527b79c1c7b90b3dee1682139",
+    "SaveMugshotsCore": "d26f4f9ca249c751c642fd153c6a848d15fde8cf047b7a32e6614b127637829b",
+    "LoadMugshots": "3430ca0d3ada9fd00b25449eaa2fb93ce3622187db7d242353c77c2962c75b11",
+    "LoadMugshotsAsync": "ecd9b03166f6fef1fadc41eeaf215ab73382a21d560837c2c03b928ad8940a46",
+}
 VEHICLE_EQUIPMENT_INSTALLED_CONTROL = "chkVehicleWeaponAccessoryInstalled"
 GEAR_OVERCLOCKER_CONTROL = "cboGearOverclocker"
 GEAR_ATTACK_SWAP_CONTROL = "cboGearAttack"
@@ -12263,6 +12272,216 @@ def _known_phone_mapping(
             "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name == "CharacterCareer" and control in CAREER_MUGSHOT_CONTROLS:
+        legacy_source = chummer5_root / "Chummer/Forms/Character Forms/CharacterCareer.cs"
+        character_source = chummer5_root / "Chummer/Backend/Characters/Character.cs"
+        page = REPO_ROOT / "src/Chummer.Android/Native/CareerMugshotPage.cs"
+        build_page = REPO_ROOT / "src/Chummer.Android/Native/BuildPage.cs"
+        coordinator = REPO_ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests/run_api36_career_mugshot_state_e2e.py"
+        fixture = REPO_ROOT / "tests/fixtures/career-mugshot-state-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation/Overview"
+        request = overview / "CareerMugshotEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        interface = overview / "ICharacterOverviewPresenter.cs"
+        persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        rules = character_notes_core_root / "Chummer.Contracts/Characters/CharacterCareerMugshotRules.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        handler = (
+            "nudMugshotIndex_ValueChanged"
+            if control == "nudMugshotIndex"
+            else "chkIsMainMugshot_CheckedChanged"
+        )
+        legacy_text = _read_text(legacy_source) if legacy_source.is_file() else ""
+        character_text = _read_text(character_source) if character_source.is_file() else ""
+        legacy_exact = (
+            any(event.get("handler") == handler for event in legacy.get("events", []))
+            and all(
+                _legacy_method_digest([legacy_text], method_name) == expected_digest
+                for method_name, expected_digest in CAREER_MUGSHOT_LEGACY_METHOD_DIGESTS.items()
+                if method_name in {"nudMugshotIndex_ValueChanged", "chkIsMainMugshot_CheckedChanged"}
+            )
+            and all(
+                _legacy_method_digest([character_text], method_name) == expected_digest
+                for method_name, expected_digest in CAREER_MUGSHOT_LEGACY_METHOD_DIGESTS.items()
+                if method_name not in {"nudMugshotIndex_ValueChanged", "chkIsMainMugshot_CheckedChanged"}
+            )
+            and _contains(
+                legacy_source,
+                "nudMugshotIndex_ValueChanged",
+                "x.Minimum = 0",
+                "x.Maximum = 0",
+                "x.Minimum = 1",
+                "x.Value = x.Maximum",
+                "x.Value = x.Minimum",
+                "intCurrentMugshotIndex - 1 == intMainMugshotIndex",
+                "UpdateMugshot(picMugshot, intCurrentMugshotIndex - 1",
+                "chkIsMainMugshot_CheckedChanged",
+                "CharacterObject.MainMugshotIndex = intSelectedIndex - 1",
+                "CharacterObject.MainMugshotIndex = -1",
+                "SetDirty(true)",
+            )
+            and _contains(
+                character_source,
+                "private readonly ThreadSafeList<Image> _lstMugshots",
+                "private int _intMainMugshotIndex = -1",
+                "public int MainMugshotIndex",
+                "if (value < -1)",
+                "if (value >= Mugshots.Count)",
+                'objWriter.WriteElementString("mainmugshotindex"',
+                'objWriter.StartElement("mugshots")',
+                'TryGetInt32FieldQuickly("mainmugshotindex"',
+                'SelectAndCacheExpression("mugshots/mugshot"',
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "class CareerMugshotPage",
+                'AutomationId = "career-mugshot-page"',
+                'AutomationId = "career-mugshot-index"',
+                'AutomationId = "career-mugshot-main"',
+                'AutomationId = "career-mugshot-save"',
+                "CharacterCareerMugshotRules.WrapSelection",
+                "CharacterCareerMugshotRules.ResolveSelection",
+                "CharacterCareerMugshotRules.IsSelectedMain",
+                "CareerMugshotMainEditRequest",
+            )
+            and _contains(
+                build_page,
+                "Coordinator.State.Profile?.Created == true",
+                'automationId: "build-career-mugshots"',
+                "PrepareCareerMugshotEditAsync",
+                "new CareerMugshotPage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareCareerMugshotEditAsync",
+                "ApplyCareerMugshotMainEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CareerMugshotEditorProjector",
+                'RequiredInteger(root, "mainmugshotindex")',
+                'RequiredBoolean(root, "created")',
+                'root.Elements("mugshots")',
+                'containers[0].Elements("mugshot")',
+                "Convert.FromBase64String",
+                "CharacterCareerMugshotRules.TryCreateIdentity",
+                "CharacterCareerMugshotRules.TryCreateState",
+            )
+            and _contains(
+                mutation,
+                "ApplyCareerMugshotMainEdit",
+                "CharacterCareerMugshotRules.ApplyMainMutation",
+                'root.Elements("mainmugshotindex")',
+            )
+            and _contains(
+                presenter,
+                "PrepareCareerMugshotEditAsync",
+                "ApplyCareerMugshotMainEditAsync",
+                "Open a saved Career runner before editing mugshot state",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                interface,
+                "PrepareCareerMugshotEditAsync",
+                "ApplyCareerMugshotMainEditAsync",
+            )
+            and _contains(
+                persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                rules,
+                "CharacterMugshotIdentity",
+                "CharacterCareerMugshotState",
+                "DefaultSelectedOneBasedIndex",
+                "WrapSelection",
+                "TryValidateMainMutation",
+                "ApplyMainMutation",
+                "SHA256.HashData",
+            )
+            and _contains(
+                store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCareer.nudMugshotIndex"',
+                '"CharacterCareer.chkIsMainMugshot"',
+                'if api != "36"',
+                '"arm64-v8a" not in abi_list.split(",")',
+                '"package": shared.PACKAGE',
+                '"profile": "phone"',
+                '"journey": "career-mugshot-state"',
+                '"oneBasedWrapSelection": "pass"',
+                '"mainIndexSetFromSelected": "pass"',
+                '"processRestartCareer": "pass"',
+                '"careerMugshotRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"careerFixtureSha256"',
+            )
+            and fixture.is_file()
+        )
+        selector = control == "nudMugshotIndex"
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Runner > Mugshots (Career only)",
+            "surface": "CareerMugshotPage",
+            "automationId": "career-mugshot-index" if selector else "career-mugshot-main",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CareerMugshotPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CareerMugshotEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerMugshotRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "CharacterCareerMugshotRules.WrapSelection keeps the exact transient one-based, zero-when-empty "
+                "selector without writing the dossier; the selected typed identity feeds the separate Main mutation"
+                if selector else
+                "ICharacterOverviewPresenter.ApplyCareerMugshotMainEditAsync with exact position-and-image-digest "
+                "identity, ordered-collection revision, main-index state, and expected workspace content revision"
+            ),
+            "persistenceAssertion": (
+                "selection wraps from first to last and last to first without changing mainmugshotindex, mugshot "
+                "bytes/order, or unrelated runner XML"
+                if selector else
+                "the exact saved mainmugshotindex becomes selected one-based index minus one, or -1 when the "
+                "selected main is cleared, while mugshot bytes/order and unrelated runner XML remain exact after "
+                "revision-bound atomic save/recovery, same-session reopen, and process restart"
+            ),
+            "coverageLimit": (
+                "Exact CharacterCareer controls against existing saved mugshots only. The spinner is transient "
+                "view selection; add, delete, import and CharacterCreate mugshot controls are not widened into this "
+                "claim. Empty/malformed/ambiguous state and tablet fail closed."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_career_mugshot_state_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCareer" and control == GEAR_WIRELESS_CONTROL:
         legacy_source = chummer5_root / "Chummer/Forms/Character Forms/CharacterCareer.cs"
         page = REPO_ROOT / "src/Chummer.Android/Native/GearWirelessPage.cs"
@@ -19510,6 +19729,9 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearWirelessPage.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GearWirelessEditRequest.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGearWirelessRules.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerMugshotPage.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CareerMugshotEditRequest.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerMugshotRules.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "VehicleEquipmentInstalledPage.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "VehicleEquipmentInstalledEditRequest.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterVehicleEquipmentInstalledRules.cs",
@@ -19595,6 +19817,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-vehicle-equipment-installed-e2e.chum5",
         REPO_ROOT / "tests" / "run_api36_gear_equipment_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_wireless_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_career_mugshot_state_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_overclocker_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_active_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_notes_e2e.py",
@@ -19677,6 +19900,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "career-armor-tree-flags-negative-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-gear-stolen-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-stolen-negative-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-mugshot-state-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-improvement-active-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-improvement-active-negative-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-improvement-group-add-e2e.chum5",

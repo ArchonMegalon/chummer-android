@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Mugshot E2E</name><alias>CareerMugshotE2E</alias>
+  <playername>Local API 36 E2E</playername><metatype>Human</metatype><buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion><appversion>5.225.0</appversion>
+  <created>True</created><gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <nuyen>3141</nuyen><karma>27</karma>
+  <mainmugshotindex>-1</mainmugshotindex>
+  <mugshots>
+    <mugshot>iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=</mugshot>
+    <mugshot>iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl0sWQAAAAASUVORK5CYII=</mugshot>
+  </mugshots>
+  <customstate>Career Mugshot runner sentinel</customstate>
+</character>

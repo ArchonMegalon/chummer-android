@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 549,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 456,
+      "implemented_pending_emulator": 458,
       "implemented_verified_api36": 79,
-      "missing": 942,
+      "missing": 940,
       "not_applicable_non_mutating": 474,
       "partial_create_only": 106,
       "partial_exact_saved_data": 172
@@ -77,7 +77,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "9576ca3af8ac12781b180b4a6d3cbadb4b5980dd1de79948b1e9935e529f4977"
+        "sha256": "c7f2fea82146ba0aba6b7c1c8f06056b2918b38ecb4dc9be6904dfc1c2c8d15b"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -320,6 +320,21 @@
         "sha256": "30c6c78431d32c88df698bce6bd006c940cf9f9115a690e3eaf1a840edf0c565"
       },
       {
+        "path": "src/Chummer.Android/Native/CareerMugshotPage.cs",
+        "exists": true,
+        "sha256": "d8339576be36464855accbe51b9c3d2ddd6f8f3c56cd0bd81f0a3a55f750e6e4"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/CareerMugshotEditRequest.cs",
+        "exists": true,
+        "sha256": "a8a80ee6353a27d6e81930b2cf7295fe149e3f256ab8e0191b32e718b42efeae"
+      },
+      {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerMugshotRules.cs",
+        "exists": true,
+        "sha256": "071c3e921f10e1e7b14963eef01209641408062b10fa8fe552cd177689d9b1a4"
+      },
+      {
         "path": "src/Chummer.Android/Native/VehicleEquipmentInstalledPage.cs",
         "exists": true,
         "sha256": "2564821979f41edbbd626f87c7d9121d92d91cd280c975b7997e126475bf34bb"
@@ -497,7 +512,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "68d09dc87cc9e074bfb2a5382eb3d93ed066ee75252e42276705956131cb8073"
+        "sha256": "d6373a3017e18b8ab6667f694fb39f3c770479e339f0298bdab5beeb215e5733"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -743,6 +758,11 @@
         "path": "tests/run_api36_gear_wireless_e2e.py",
         "exists": true,
         "sha256": "d2ec12bd8c076f70d942e7c0f3ffc912c4d1481701d2766ec75a1cf5d746c582"
+      },
+      {
+        "path": "tests/run_api36_career_mugshot_state_e2e.py",
+        "exists": true,
+        "sha256": "c28aa23d5b661552280efa3fe05896c2e1b856028c865077e24cc7fa94f73278"
       },
       {
         "path": "tests/run_api36_gear_overclocker_e2e.py",
@@ -1153,6 +1173,11 @@
         "path": "tests/fixtures/career-gear-stolen-negative-e2e.chum5",
         "exists": true,
         "sha256": "2a488ce1febe52953612cd8498d8904f70db1e5c1525ccc44074455b930ac0a9"
+      },
+      {
+        "path": "tests/fixtures/career-mugshot-state-e2e.chum5",
+        "exists": true,
+        "sha256": "3ec71b8abd43cba180df217b98251b25886527cb5ad2bbd177ba81c63c2b46ca"
       },
       {
         "path": "tests/fixtures/career-improvement-active-e2e.chum5",
@@ -1847,7 +1872,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "cdd384660e78aeb6432a482ef3df41eb16728c1d6bf1c3c13504a0bb5012c463"
+        "sha256": "5edfcee510c2d891ab03a194bb09eeaa77fc3ebda1faa5f91068ec8ff3d1b816"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -2057,7 +2082,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "ad45ef2951176bdc8aa84bb73a545a7abb40deba624f272817f734d94de67ec4"
+        "sha256": "930f0e85cdba33a309d039d32f7176705e02716a4e9f5e67bca0bf150d17011a"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2112,7 +2137,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "7b5045fdc48b5c517c69132868fe3dd5214332a5a0c298e5e579ad727a89eb04"
+        "sha256": "236d080fd1657fbcf690fe786c2fad243ed2677d9be2eebab97ec289c8902402"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -2122,7 +2147,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "33d0fec929ab6d35ffb0fd5252730a447ca7a70574dadade3eb93416719f70b3"
+      "sha256": "242f16be38b680c28b14ba01f687886648f17c820a60f77a384f9f62b5cf1d97"
     }
   },
   "coverageByFamily": {
@@ -2374,7 +2399,7 @@
     "mugshots": {
       "rowCount": 8,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 8,
+      "phoneMissingCount": 6,
       "tabletMissingCount": 8,
       "completionProvenCount": 0
     },
@@ -27698,11 +27723,23 @@
       "mutationFamily": "mugshots",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Mugshots (Career only)",
+        "surface": "CareerMugshotPage",
+        "automationId": "career-mugshot-index",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerMugshotPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerMugshotEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerMugshotRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer controls against existing saved mugshots only. The spinner is transient view selection; add, delete, import and CharacterCreate mugshot controls are not widened into this claim. Empty/malformed/ambiguous state and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -27710,12 +27747,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "CharacterCareerMugshotRules.WrapSelection keeps the exact transient one-based, zero-when-empty selector without writing the dossier; the selected typed identity feeds the separate Main mutation",
+      "persistenceAssertion": "selection wraps from first to last and last to first without changing mainmugshotindex, mugshot bytes/order, or unrelated runner XML",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_mugshot_state_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -27755,11 +27792,23 @@
       "mutationFamily": "mugshots",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Runner > Mugshots (Career only)",
+        "surface": "CareerMugshotPage",
+        "automationId": "career-mugshot-main",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerMugshotPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerMugshotEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerMugshotRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer controls against existing saved mugshots only. The spinner is transient view selection; add, delete, import and CharacterCreate mugshot controls are not widened into this claim. Empty/malformed/ambiguous state and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -27767,12 +27816,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerMugshotMainEditAsync with exact position-and-image-digest identity, ordered-collection revision, main-index state, and expected workspace content revision",
+      "persistenceAssertion": "the exact saved mainmugshotindex becomes selected one-based index minus one, or -1 when the selected main is cleared, while mugshot bytes/order and unrelated runner XML remain exact after revision-bound atomic save/recovery, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_mugshot_state_e2e.py"
         },
         "tablet": {
           "status": "missing",

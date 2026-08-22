@@ -724,6 +724,32 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<CareerMugshotEditorState?> PrepareCareerMugshotEditAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCareerMugshotEditAsync(cancellationToken);
+
+    public async Task ApplyCareerMugshotMainEditAsync(
+        CareerMugshotMainEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Mugshots was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyCareerMugshotMainEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Main Mugshot state saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<GroupMembershipEditorState?> PrepareGroupMembershipEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareGroupMembershipEditAsync(cancellationToken);

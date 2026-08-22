@@ -215,6 +215,18 @@ public sealed class BuildPage : NativePageBase
         if (Coordinator.State.Profile?.Created == true)
         {
             _body.Add(NativeTheme.NavigationRow(
+                "Mugshots",
+                "Browse existing portraits and choose or clear the exact Main Mugshot",
+                async () =>
+                {
+                    CareerMugshotEditorState? editor = await Coordinator.PrepareCareerMugshotEditAsync();
+                    if (editor is not null)
+                    {
+                        await Navigation.PushAsync(new CareerMugshotPage(Coordinator, editor));
+                    }
+                },
+                automationId: "build-career-mugshots"));
+            _body.Add(NativeTheme.NavigationRow(
                 "Improvement groups",
                 "Enable or disable every custom Improvement in one saved group",
                 async () =>
