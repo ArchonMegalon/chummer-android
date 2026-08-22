@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <created>True</created><alias>CareerGearAttackSwapE2E</alias><nuyen>8765</nuyen><karma>9</karma>
+  <customstate>Career Gear Attack swap sentinel</customstate>
+  <gears>
+    <gear><guid>c9251111-1511-4511-8511-151111111111</guid><name>Career Attack Root</name><category>Commlinks</category>
+      <attack>0</attack><sleaze>0</sleaze><dataprocessing>3</dataprocessing><firewall>3</firewall>
+      <attributearray></attributearray><canswapattributes>False</canswapattributes><cost>200</cost>
+      <children><gear><guid>d9251111-1511-4511-8511-151111111111</guid><name>Career Attack Target</name><category>Cyberdecks</category>
+        <attack>{Rating}</attack><sleaze>8</sleaze><dataprocessing>6</dataprocessing><firewall>5</firewall>
+        <attributearray>{Rating},8,6,5</attributearray><canswapattributes>True</canswapattributes>
+        <modattack>9</modattack><modsleaze>10</modsleaze><moddataprocessing>11</moddataprocessing><modfirewall>12</modfirewall>
+        <cost>54321</cost><active>False</active><homenode>True</homenode><equipped>False</equipped><stolen>True</stolen>
+        <notes>Career Gear Attack target sentinel</notes>
+      </gear></children>
+    </gear>
+  </gears>
+</character>

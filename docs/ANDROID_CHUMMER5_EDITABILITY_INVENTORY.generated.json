@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 435,
+      "implemented_pending_emulator": 437,
       "implemented_verified_api36": 79,
-      "missing": 993,
+      "missing": 991,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 148
@@ -270,6 +270,11 @@
         "sha256": "566b146cae5317790ec7b5716d7e9f7312e326a8b94bb40260bfcbd2501ec3e7"
       },
       {
+        "path": "src/Chummer.Android/Native/GearAttackSwapPage.cs",
+        "exists": true,
+        "sha256": "5f684d564f7f955ad9e177df8c91d029ffe39b26c3641834a29c3b451ec32ab8"
+      },
+      {
         "path": "src/Chummer.Android/Native/ImprovementActivePage.cs",
         "exists": true,
         "sha256": "e3ff46925801dbf8b6595378ef06bafa79bdee847f02af29c0843e3c066dd641"
@@ -342,7 +347,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "cc67916fa22321fd2037d1ce066d390ca984749fb62561c9fb55cafaa77ca7b0"
+        "sha256": "d4b47f3085b555a54d04ea46efaf273c913aadf30f17ff31bffceced42ee23e5"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -367,7 +372,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "d13ef375cde4a531ac09356db4897efb70a563de6db19128ec52e48e009818ae"
+        "sha256": "f86ca6c0ce318cb4c1d325cd775c22a4dda9ff3ae92a9fc8bb4238c95c5aa16c"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -383,6 +388,11 @@
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
         "sha256": "38ad82e00c5f8ea66d667123222ea916006e690620b6fb4f9314f46716eec2f5"
+      },
+      {
+        "path": "tests/run_api36_gear_attack_swap_e2e.py",
+        "exists": true,
+        "sha256": "cc44628ac67da2528a6787ef0535f4e82ba4680bd5c251424185d84356006c83"
       },
       {
         "path": "tests/run_api36_character_notes_e2e.py",
@@ -1577,7 +1587,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "4961a4519d22276cc4b5fd7502e13ae14c3020c530c7bc2a39311524d566d298"
+        "sha256": "00efc2d24bbd561a4f9233f7134665502bde1843433db7ba27ce6f357bbd8107"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1787,7 +1797,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "30611ce44f6a8892e6b3f45ad33e4e9ad6f6243f4629fca0ec3df11a318eb304"
+        "sha256": "1f65dc49b4b8d741191e47480a21ef9d52072a181557044fd23cb0773d7f7ec3"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1842,7 +1852,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "ca9a09dcc75ccf6c45df56e7e01482dfd1966cf4880a1e9929482900d6686859"
+        "sha256": "d3f0192b3d6b1278dab2b0f077012b08169600c6a04afb602c7c5fcf135a72bf"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1852,7 +1862,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "3a3967470c656b99991120eaa2247edf23c4a9bd36403c40c9437d2180761bb8"
+      "sha256": "3dcb1938fd6c1ce118a5afb07bd700a8f555c87062c3395131d1c7a55c8568be"
     }
   },
   "coverageByFamily": {
@@ -2006,7 +2016,7 @@
     "gear": {
       "rowCount": 84,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 29,
+      "phoneMissingCount": 27,
       "tabletMissingCount": 56,
       "completionProvenCount": 4
     },
@@ -37323,11 +37333,23 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Gear > selected stable root Gear > Matrix Gear Swap Attack",
+        "surface": "GearAttackSwapPage",
+        "automationId": "gear-attack-swap-attribute-{stable-root-gear-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/GearAttackSwapPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/GearAttackSwapEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearAttackSwapRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer cboGearAttack semantics for eligible IHasMatrixAttributes Gear under one stable top-level Gear root. Only an Attack swap with Sleaze, Data Processing, or Firewall is exposed; equal raw values, malformed state, duplicate identity, ineligible Gear, and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -37335,12 +37357,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyGearAttackSwapEditAsync with exact recursive Gear Guid identity, Create/Career phase, CanSwapAttributes eligibility, raw saved base Matrix strings, zero Nuyen/Karma economics, duplicate/ambiguity rejection, node-local revision, and expected workspace content revision",
+      "persistenceAssertion": "the selected Gear raw attack value is exchanged atomically with the selected raw sleaze, dataprocessing, or firewall value while bonuses, attributearray/canswapattributes provenance, cost, active/home/equipped/stolen state, siblings, Nuyen, Karma, and unrelated XML remain exact after revision-bound atomic save/recovery, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_gear_attack_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -59787,11 +59809,23 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Gear > selected stable root Gear > Matrix Gear Swap Attack",
+        "surface": "GearAttackSwapPage",
+        "automationId": "gear-attack-swap-attribute-{stable-root-gear-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/GearAttackSwapPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/GearAttackSwapEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearAttackSwapRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCreate cboGearAttack semantics for eligible IHasMatrixAttributes Gear under one stable top-level Gear root. Only an Attack swap with Sleaze, Data Processing, or Firewall is exposed; equal raw values, malformed state, duplicate identity, ineligible Gear, and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -59799,12 +59833,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyGearAttackSwapEditAsync with exact recursive Gear Guid identity, Create/Career phase, CanSwapAttributes eligibility, raw saved base Matrix strings, zero Nuyen/Karma economics, duplicate/ambiguity rejection, node-local revision, and expected workspace content revision",
+      "persistenceAssertion": "the selected Gear raw attack value is exchanged atomically with the selected raw sleaze, dataprocessing, or firewall value while bonuses, attributearray/canswapattributes provenance, cost, active/home/equipped/stolen state, siblings, Nuyen, Karma, and unrelated XML remain exact after revision-bound atomic save/recovery, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_gear_attack_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",

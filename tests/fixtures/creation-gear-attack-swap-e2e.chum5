@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <created>False</created><alias>CreationGearAttackSwapE2E</alias><nuyen>4321</nuyen><karma>7</karma>
+  <customstate>Creation Gear Attack swap sentinel</customstate>
+  <gears>
+    <gear><guid>a9251111-1511-4511-8511-151111111111</guid><name>Attack Root</name><category>Commlinks</category>
+      <attack>0</attack><sleaze>0</sleaze><dataprocessing>3</dataprocessing><firewall>3</firewall>
+      <attributearray></attributearray><canswapattributes>False</canswapattributes><cost>100</cost>
+      <children><gear><guid>b9251111-1511-4511-8511-151111111111</guid><name>Attack Target Cyberdeck</name><category>Cyberdecks</category>
+        <attack>7</attack><sleaze>6</sleaze><dataprocessing>5</dataprocessing><firewall>4</firewall>
+        <attributearray>7,6,5,4</attributearray><canswapattributes>True</canswapattributes>
+        <modattack>2</modattack><modsleaze>3</modsleaze><moddataprocessing>4</moddataprocessing><modfirewall>5</modfirewall>
+        <cost>12345</cost><active>True</active><homenode>False</homenode><equipped>True</equipped><stolen>False</stolen>
+        <notes>Creation Gear Attack target sentinel</notes>
+      </gear></children>
+    </gear>
+  </gears>
+</character>

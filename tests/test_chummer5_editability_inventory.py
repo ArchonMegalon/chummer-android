@@ -1157,6 +1157,36 @@ namespace Chummer
             )
             self.assertFalse(row["completionProven"])
 
+        gear_attack_swap = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.GEAR_ATTACK_SWAP_CONTROL
+        ]
+        self.assertEqual(2, len(gear_attack_swap))
+        self.assertEqual(
+            {"CharacterCreate", "CharacterCareer"},
+            {row["legacy"]["formOrControl"] for row in gear_attack_swap},
+        )
+        for row in gear_attack_swap:
+            self.assertEqual("gear", row["mutationFamily"])
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("GearAttackSwapPage", row["phone"]["surface"])
+            self.assertEqual(
+                "gear-attack-swap-attribute-{stable-root-gear-guid}",
+                row["phone"]["automationId"],
+            )
+            self.assertIn("Create/Career phase", row["presenterMutation"])
+            self.assertIn("raw saved base Matrix strings", row["presenterMutation"])
+            self.assertIn("zero Nuyen/Karma economics", row["presenterMutation"])
+            self.assertIn("attributearray/canswapattributes provenance", row["persistenceAssertion"])
+            self.assertIn("bonuses", row["persistenceAssertion"])
+            self.assertIn("revision-bound atomic save/recovery", row["persistenceAssertion"])
+            self.assertIn("equal raw values", row["phone"]["coverageLimit"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual("tests/run_api36_gear_attack_swap_e2e.py", row["e2e"]["phone"]["ref"])
+            self.assertFalse(row["completionProven"])
+
         gear_overclocker = [
             row for row in rows
             if row["legacy"]["formOrControl"] == "CharacterCareer"
@@ -2157,9 +2187,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 435,
+                "implemented_pending_emulator": 437,
                 "implemented_verified_api36": 79,
-                "missing": 993,
+                "missing": 991,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 148,

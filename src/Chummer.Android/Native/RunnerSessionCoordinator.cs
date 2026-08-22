@@ -930,6 +930,29 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<GearAttackSwapEditorState?> PrepareGearAttackSwapEditAsync(
+        Guid rootGearId,
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareGearAttackSwapEditAsync(rootGearId, cancellationToken);
+
+    public async Task ApplyGearAttackSwapEditAsync(
+        GearAttackSwapEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+            throw new InvalidOperationException(
+                "This runner changed while Gear Attack was open. Reopen it before saving.");
+
+        await _presenter.ApplyGearAttackSwapEditAsync(request, cancellationToken);
+        if (State.Error is null)
+            await _presenter.SaveAsync(cancellationToken);
+        _notice = State.Error is null ? "Gear Attack value swapped." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<ImprovementActiveEditorState?> PrepareImprovementActiveEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareImprovementActiveEditAsync(cancellationToken);

@@ -126,6 +126,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddWeaponStolenAction(item);
         AddGearEquipmentAction(item);
         AddGearOverclockerAction(item);
+        AddGearAttackSwapAction(item);
         AddLifestyleIncrementAction(item);
         AddWeaponAccessoryIncludedAction(item);
         AddCritterPowerCountAction(item);
@@ -1136,6 +1137,28 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 }
             },
             automationId: $"gear-overclocker-open-{gearId:N}"));
+    }
+
+    private void AddGearAttackSwapAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Gear
+            || _target.NestedKind is not null
+            || Coordinator.State.WorkspaceId is null
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid gearId)
+            || gearId == Guid.Empty)
+            return;
+
+        _body.Add(NativeTheme.Eyebrow("Matrix Gear"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Swap Attack",
+            "Swap the saved raw Attack value with Sleaze, Data Processing, or Firewall on eligible Gear",
+            async () =>
+            {
+                GearAttackSwapEditorState? editor = await Coordinator.PrepareGearAttackSwapEditAsync(gearId);
+                if (editor is not null)
+                    await Navigation.PushAsync(new GearAttackSwapPage(Coordinator, editor));
+            },
+            automationId: $"gear-attack-swap-open-{gearId:N}"));
     }
 
     private void AddWeaponStolenAction(WorkspaceCollectionItemEditorState item)
