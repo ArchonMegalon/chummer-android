@@ -94,11 +94,13 @@ jobs:
           CHUMMER_MEDIA_FACTORY_ROOT: ${{ github.workspace }}/fleet/repos/chummer-media-factory
         run: >-
           dotnet publish chummer-android/src/Chummer.Android/Chummer.Android.csproj
+          -m:1
           --configuration Release
           --framework net10.0-android36.0
           --self-contained true
           -p:ChummerAndroidRuntimeIdentifier=android-arm64
           -p:ChummerDesktopRuntimeIdentifiers=
+          -p:BuildInParallel=false
           -p:ChummerUseLocalCompatibilityTree=true
           -p:AndroidPackageFormats=aab
 
