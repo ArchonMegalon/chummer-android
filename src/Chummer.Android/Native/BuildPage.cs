@@ -212,6 +212,21 @@ public sealed class BuildPage : NativePageBase
                 }
             },
             automationId: "build-martial-art-delete"));
+        if (Coordinator.State.Profile?.Created == false)
+        {
+            _body.Add(NativeTheme.NavigationRow(
+                "Creation Mugshots",
+                "Browse existing portraits and choose or clear the exact Main Mugshot",
+                async () =>
+                {
+                    CreationMugshotEditorState? editor = await Coordinator.PrepareCreationMugshotEditAsync();
+                    if (editor is not null)
+                    {
+                        await Navigation.PushAsync(new CreationMugshotPage(Coordinator, editor));
+                    }
+                },
+                automationId: "build-creation-mugshots"));
+        }
         if (Coordinator.State.Profile?.Created == true)
         {
             _body.Add(NativeTheme.NavigationRow(

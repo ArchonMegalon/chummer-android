@@ -2072,6 +2072,14 @@ CAREER_MUGSHOT_DELETE_LEGACY_METHOD_DIGESTS = {
     "LoadMugshots": "3430ca0d3ada9fd00b25449eaa2fb93ce3622187db7d242353c77c2962c75b11",
     "LoadMugshotsAsync": "ecd9b03166f6fef1fadc41eeaf215ab73382a21d560837c2c03b928ad8940a46",
 }
+CREATION_MUGSHOT_CONTROLS = {"nudMugshotIndex", "chkIsMainMugshot"}
+CREATION_MUGSHOT_LEGACY_METHOD_DIGESTS = {
+    "nudMugshotIndex_ValueChanged": "15588f520898ec95056301d7df68efabbc0ec79ca5a68ad0c8716224ca716c9b",
+    "chkIsMainMugshot_CheckedChanged": "5b831e192b14053f23df1cf64ac6247fcfc583280fdca59eceb1720504e3c9c9",
+    "SaveMugshotsCore": "d26f4f9ca249c751c642fd153c6a848d15fde8cf047b7a32e6614b127637829b",
+    "LoadMugshots": "3430ca0d3ada9fd00b25449eaa2fb93ce3622187db7d242353c77c2962c75b11",
+    "LoadMugshotsAsync": "ecd9b03166f6fef1fadc41eeaf215ab73382a21d560837c2c03b928ad8940a46",
+}
 VEHICLE_EQUIPMENT_INSTALLED_CONTROL = "chkVehicleWeaponAccessoryInstalled"
 GEAR_OVERCLOCKER_CONTROL = "cboGearOverclocker"
 GEAR_ATTACK_SWAP_CONTROL = "cboGearAttack"
@@ -12711,6 +12719,216 @@ def _known_phone_mapping(
             "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name == "CharacterCreate" and control in CREATION_MUGSHOT_CONTROLS:
+        legacy_source = chummer5_root / "Chummer/Forms/Character Forms/CharacterCreate.cs"
+        character_source = chummer5_root / "Chummer/Backend/Characters/Character.cs"
+        page = REPO_ROOT / "src/Chummer.Android/Native/CreationMugshotPage.cs"
+        build_page = REPO_ROOT / "src/Chummer.Android/Native/BuildPage.cs"
+        coordinator = REPO_ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests/run_api36_creation_mugshot_state_e2e.py"
+        fixture = REPO_ROOT / "tests/fixtures/creation-mugshot-state-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation/Overview"
+        request = overview / "CreationMugshotEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        interface = overview / "ICharacterOverviewPresenter.cs"
+        persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        rules = character_notes_core_root / "Chummer.Contracts/Characters/CharacterCreationMugshotRules.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        handler = (
+            "nudMugshotIndex_ValueChanged"
+            if control == "nudMugshotIndex"
+            else "chkIsMainMugshot_CheckedChanged"
+        )
+        legacy_text = _read_text(legacy_source) if legacy_source.is_file() else ""
+        character_text = _read_text(character_source) if character_source.is_file() else ""
+        legacy_exact = (
+            any(event.get("handler") == handler for event in legacy.get("events", []))
+            and all(
+                _legacy_method_digest([legacy_text], method_name) == expected_digest
+                for method_name, expected_digest in CREATION_MUGSHOT_LEGACY_METHOD_DIGESTS.items()
+                if method_name in {"nudMugshotIndex_ValueChanged", "chkIsMainMugshot_CheckedChanged"}
+            )
+            and all(
+                _legacy_method_digest([character_text], method_name) == expected_digest
+                for method_name, expected_digest in CREATION_MUGSHOT_LEGACY_METHOD_DIGESTS.items()
+                if method_name not in {"nudMugshotIndex_ValueChanged", "chkIsMainMugshot_CheckedChanged"}
+            )
+            and _contains(
+                legacy_source,
+                "nudMugshotIndex_ValueChanged",
+                "x.Minimum = 0",
+                "x.Maximum = 0",
+                "x.Minimum = 1",
+                "x.Value = x.Maximum",
+                "x.Value = x.Minimum",
+                "intCurrentMugshotIndex - 1 == intMainMugshotIndex",
+                "UpdateMugshot(picMugshot, intCurrentMugshotIndex - 1",
+                "chkIsMainMugshot_CheckedChanged",
+                "CharacterObject.MainMugshotIndex = intSelectedIndex - 1",
+                "CharacterObject.MainMugshotIndex = -1",
+                "SetDirty(true)",
+            )
+            and _contains(
+                character_source,
+                "private readonly ThreadSafeList<Image> _lstMugshots",
+                "private int _intMainMugshotIndex = -1",
+                "public int MainMugshotIndex",
+                "if (value < -1)",
+                "if (value >= Mugshots.Count)",
+                'objWriter.WriteElementString("mainmugshotindex"',
+                'objWriter.StartElement("mugshots")',
+                'TryGetInt32FieldQuickly("mainmugshotindex"',
+                'SelectAndCacheExpression("mugshots/mugshot"',
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "class CreationMugshotPage",
+                'AutomationId = "creation-mugshot-page"',
+                'AutomationId = "creation-mugshot-index"',
+                'AutomationId = "creation-mugshot-main"',
+                'AutomationId = "creation-mugshot-save"',
+                "CharacterCreationMugshotRules.WrapSelection",
+                "CharacterCreationMugshotRules.ResolveSelection",
+                "CharacterCreationMugshotRules.IsSelectedMain",
+                "CreationMugshotMainEditRequest",
+            )
+            and _contains(
+                build_page,
+                "Coordinator.State.Profile?.Created == false",
+                'automationId: "build-creation-mugshots"',
+                "PrepareCreationMugshotEditAsync",
+                "new CreationMugshotPage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareCreationMugshotEditAsync",
+                "ApplyCreationMugshotMainEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CreationMugshotEditorProjector",
+                'RequiredInteger(root, "mainmugshotindex")',
+                'RequiredBoolean(root, "created")',
+                'root.Elements("mugshots")',
+                'containers[0].Elements("mugshot")',
+                "Convert.FromBase64String",
+                "CharacterCreationMugshotRules.TryCreateIdentity",
+                "CharacterCreationMugshotRules.TryCreateState",
+            )
+            and _contains(
+                mutation,
+                "ApplyCreationMugshotMainEdit",
+                "CharacterCreationMugshotRules.ApplyMainMutation",
+                'root.Elements("mainmugshotindex")',
+            )
+            and _contains(
+                presenter,
+                "PrepareCreationMugshotEditAsync",
+                "ApplyCreationMugshotMainEditAsync",
+                "Open a saved Creation runner before editing mugshot state",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                interface,
+                "PrepareCreationMugshotEditAsync",
+                "ApplyCreationMugshotMainEditAsync",
+            )
+            and _contains(
+                persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                rules,
+                "CharacterMugshotIdentity",
+                "CharacterCreationMugshotState",
+                "DefaultSelectedOneBasedIndex",
+                "WrapSelection",
+                "TryValidateMainMutation",
+                "ApplyMainMutation",
+                "SHA256.HashData",
+            )
+            and _contains(
+                store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCreate.nudMugshotIndex"',
+                '"CharacterCreate.chkIsMainMugshot"',
+                'if api != "36"',
+                '"arm64-v8a" not in abi_list.split(",")',
+                '"package": shared.PACKAGE',
+                '"profile": "phone"',
+                '"journey": "creation-mugshot-state"',
+                '"oneBasedWrapSelection": "pass"',
+                '"mainIndexSetFromSelected": "pass"',
+                '"processRestartCreation": "pass"',
+                '"creationMugshotRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+            )
+            and fixture.is_file()
+        )
+        selector = control == "nudMugshotIndex"
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Runner > Creation Mugshots (Creation only)",
+            "surface": "CreationMugshotPage",
+            "automationId": "creation-mugshot-index" if selector else "creation-mugshot-main",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CreationMugshotPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CreationMugshotEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterCreationMugshotRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "CharacterCreationMugshotRules.WrapSelection keeps the exact transient one-based, zero-when-empty "
+                "Creation selector without writing the dossier; the selected typed identity feeds the separate Main mutation"
+                if selector else
+                "ICharacterOverviewPresenter.ApplyCreationMugshotMainEditAsync with exact position-and-image-digest "
+                "identity, ordered-collection revision, main-index state, and expected workspace content revision"
+            ),
+            "persistenceAssertion": (
+                "Creation selection wraps from first to last and last to first without changing mainmugshotindex, "
+                "mugshot bytes/order, or unrelated runner XML"
+                if selector else
+                "the exact Creation mainmugshotindex becomes selected one-based index minus one, or -1 when the "
+                "selected main is cleared, while mugshot bytes/order and unrelated runner XML remain exact after "
+                "revision-bound atomic save/recovery, same-session reopen, and process restart"
+            ),
+            "coverageLimit": (
+                "Exact CharacterCreate selector/main-state controls against existing saved mugshots only. Add, delete, "
+                "import and CharacterCareer mugshot controls remain separate claims. Empty/malformed/ambiguous state "
+                "and tablet fail closed."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_creation_mugshot_state_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCareer" and control in CAREER_MUGSHOT_CONTROLS:
         legacy_source = chummer5_root / "Chummer/Forms/Character Forms/CharacterCareer.cs"
         character_source = chummer5_root / "Chummer/Backend/Characters/Character.cs"
@@ -12911,8 +13129,9 @@ def _known_phone_mapping(
             ),
             "coverageLimit": (
                 "Exact CharacterCareer controls against existing saved mugshots only. The spinner is transient "
-                "view selection; deletion has its own separately bound row, while add/import and CharacterCreate "
-                "mugshot controls are not widened into this claim. Empty/malformed/ambiguous state and tablet fail closed."
+                "view selection; deletion has its own separately bound row, add/import remains separate, and "
+                "CharacterCreate selector/main-state controls have their own separately bound rows. "
+                "Empty/malformed/ambiguous state and tablet fail closed."
             ),
             "e2e": {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
@@ -13111,7 +13330,8 @@ def _known_phone_mapping(
             "coverageLimit": (
                 "Exact CharacterCareer.cmdDeleteMugshot against an existing saved mugshot only. Add/import uses "
                 "a platform image picker and decoded image validation that is not implemented in this slice; "
-                "CharacterCreate, empty/malformed/ambiguous state, and tablet fail closed."
+                "CharacterCreate selector/main state is separately bound; empty/malformed/ambiguous state and "
+                "tablet fail closed."
             ),
             "e2e": {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
@@ -20372,6 +20592,9 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerMugshotPage.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerMugshotEditRequest.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerMugshotRules.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationMugshotPage.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CreationMugshotEditRequest.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCreationMugshotRules.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "VehicleEquipmentInstalledPage.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "VehicleEquipmentInstalledEditRequest.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterVehicleEquipmentInstalledRules.cs",
@@ -20458,6 +20681,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_gear_equipment_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_wireless_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_mugshot_state_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_creation_mugshot_state_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_overclocker_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_active_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_notes_e2e.py",
@@ -20541,6 +20765,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "creation-gear-stolen-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-stolen-negative-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-mugshot-state-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-mugshot-state-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-improvement-active-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-improvement-active-negative-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-improvement-group-add-e2e.chum5",

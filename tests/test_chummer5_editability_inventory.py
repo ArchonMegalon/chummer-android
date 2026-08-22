@@ -3053,9 +3053,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 461,
+                "implemented_pending_emulator": 463,
                 "implemented_verified_api36": 79,
-                "missing": 933,
+                "missing": 931,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 172,
@@ -5353,7 +5353,7 @@ namespace Chummer
             self.assertEqual("Build > Runner > Mugshots (Career only)", mapping["route"])
             self.assertEqual("scripted_not_executed", mapping["e2e"]["status"])
             self.assertEqual("tests/run_api36_career_mugshot_state_e2e.py", mapping["e2e"]["ref"])
-            self.assertIn("CharacterCreate mugshot controls", mapping["coverageLimit"])
+            self.assertIn("CharacterCreate selector/main-state controls", mapping["coverageLimit"])
             self.assertEqual("missing", mapping["tablet"]["status"])
         self.assertEqual("career-mugshot-index", mappings["nudMugshotIndex"]["automationId"])
         self.assertIn("transient one-based", mappings["nudMugshotIndex"]["presenterMutation"])
@@ -5363,6 +5363,62 @@ namespace Chummer
         drifted_digests["nudMugshotIndex_ValueChanged"] = "0" * 64
         with patch.dict(
             inventory.CAREER_MUGSHOT_LEGACY_METHOD_DIGESTS,
+            drifted_digests,
+            clear=True,
+        ):
+            drifted = inventory._known_phone_mapping(
+                rows[0],
+                inventory.DEFAULT_CHUMMER5_ROOT,
+                PRESENTATION_ROOT,
+                CORE_ROOT,
+                **receipt_arguments,
+            )
+        self.assertEqual("missing", drifted["status"])
+
+    def test_creation_mugshot_mapping_is_two_row_creation_only_typed_and_scripted(self) -> None:
+        import inspect
+
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = [
+            row for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == "CharacterCreate"
+            and row["legacy"]["controlName"] in inventory.CREATION_MUGSHOT_CONTROLS
+        ]
+        self.assertEqual(2, len(rows))
+        parameters = list(inspect.signature(inventory._known_phone_mapping).parameters)
+        receipt_arguments = {
+            name: {} if name in {"condition_e2e_receipts", "contact_pet_e2e_receipts"} else None
+            for name in parameters[4:]
+        }
+        mappings = {}
+        for row in rows:
+            mapping = inventory._known_phone_mapping(
+                row,
+                inventory.DEFAULT_CHUMMER5_ROOT,
+                PRESENTATION_ROOT,
+                CORE_ROOT,
+                **receipt_arguments,
+            )
+            mappings[row["legacy"]["controlName"]] = mapping
+            self.assertEqual("implemented_pending_emulator", mapping["status"])
+            self.assertEqual("CreationMugshotPage", mapping["surface"])
+            self.assertEqual("Build > Runner > Creation Mugshots (Creation only)", mapping["route"])
+            self.assertEqual("scripted_not_executed", mapping["e2e"]["status"])
+            self.assertEqual("tests/run_api36_creation_mugshot_state_e2e.py", mapping["e2e"]["ref"])
+            self.assertIn("CharacterCareer mugshot controls remain separate claims", mapping["coverageLimit"])
+            self.assertEqual("missing", mapping["tablet"]["status"])
+        self.assertEqual("creation-mugshot-index", mappings["nudMugshotIndex"]["automationId"])
+        self.assertIn("transient one-based", mappings["nudMugshotIndex"]["presenterMutation"])
+        self.assertEqual("creation-mugshot-main", mappings["chkIsMainMugshot"]["automationId"])
+        self.assertIn("position-and-image-digest", mappings["chkIsMainMugshot"]["presenterMutation"])
+        drifted_digests = dict(inventory.CREATION_MUGSHOT_LEGACY_METHOD_DIGESTS)
+        drifted_digests["chkIsMainMugshot_CheckedChanged"] = "0" * 64
+        with patch.dict(
+            inventory.CREATION_MUGSHOT_LEGACY_METHOD_DIGESTS,
             drifted_digests,
             clear=True,
         ):
