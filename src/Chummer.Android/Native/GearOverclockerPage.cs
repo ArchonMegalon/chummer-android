@@ -6,15 +6,15 @@ namespace Chummer.Android.Native;
 public sealed class GearOverclockerPage : NativePageBase
 {
     private sealed record NodeOption(CharacterGearOverclockerState State, string Label);
-    private sealed record AttributeOption(CharacterGearOverclockerAttribute Value, string Label);
+    private sealed record AttributeOption(CharacterGearOverclockerTarget Value, string Label);
 
     private static readonly IReadOnlyList<AttributeOption> AttributeOptions =
     [
-        new(CharacterGearOverclockerAttribute.None, "None"),
-        new(CharacterGearOverclockerAttribute.Attack, "Attack"),
-        new(CharacterGearOverclockerAttribute.Sleaze, "Sleaze"),
-        new(CharacterGearOverclockerAttribute.DataProcessing, "Data Processing"),
-        new(CharacterGearOverclockerAttribute.Firewall, "Firewall")
+        new(CharacterGearOverclockerTarget.None, "None"),
+        new(CharacterGearOverclockerTarget.Attack, "Attack"),
+        new(CharacterGearOverclockerTarget.Sleaze, "Sleaze"),
+        new(CharacterGearOverclockerTarget.DataProcessing, "Data Processing"),
+        new(CharacterGearOverclockerTarget.Firewall, "Firewall")
     ];
 
     private readonly GearOverclockerEditorState _editor;
@@ -135,7 +135,7 @@ public sealed class GearOverclockerPage : NativePageBase
             return;
         }
 
-        CharacterGearOverclockerAttribute attribute =
+        CharacterGearOverclockerTarget attribute =
             AttributeOptions[_attribute.SelectedIndex].Value;
         if (attribute == selected.Attribute)
         {

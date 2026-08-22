@@ -11379,7 +11379,7 @@ def _known_phone_mapping(
             and _contains(core_rules, "CharacterGearAttackSwapIdentity", "CharacterGearAttackSwapTarget",
                           "CharacterGearAttackSwapPhase", "CharacterGearAttackSwapEconomics",
                           "TryValidateMutation", "CharacterGearMatrixSwapRules")
-            and _contains(shared_rules, "CharacterGearMatrixAttribute", "NuyenDelta: 0m", "KarmaDelta: 0",
+            and _contains(shared_rules, "CharacterGearMatrixStat", "NuyenDelta: 0m", "KarmaDelta: 0",
                           "TryValidateMutation", "SHA256.HashData")
             and _contains(workspace_store, "expectedContentRevision", "Flush(flushToDisk: true)", "File.Replace", "File.Move")
         )
@@ -11448,18 +11448,18 @@ def _known_phone_mapping(
             and _contains(legacy_source, "cboGearSleaze_SelectedIndexChanged", "IHasMatrixAttributes objTarget",
                           "ProcessMatrixAttributeComboBoxChangeAsync", "cboGearAttack", "cboGearDataProcessing", "cboGearFirewall")
         implemented = legacy_exact \
-            and _contains(page, "class GearSleazeSwapPage", "CharacterGearMatrixAttribute.Sleaze",
+            and _contains(page, "class GearSleazeSwapPage", "CharacterGearMatrixStat.Sleaze",
                           'AutomationId = $"gear-sleaze-swap-page-{token}"', "selected.Revision") \
             and _contains(editor, "AddGearSleazeSwapAction", 'automationId: $"gear-sleaze-swap-open-{gearId:N}"', "new GearSleazeSwapPage") \
             and _contains(coordinator, "PrepareGearSleazeSwapEditAsync", "ApplyGearSleazeSwapEditAsync", "ExpectedContentRevision", "_presenter.SaveAsync") \
             and _contains(request, "CharacterGearMatrixSwapIdentity", "GearSleazeSwapEditorProjector",
-                          "GearAttackSwapEditorProjector.ProjectValue", "CharacterGearMatrixAttribute ChangedAttribute") \
+                          "GearAttackSwapEditorProjector.ProjectValue", "CharacterGearMatrixStat ChangedAttribute") \
             and _contains(attack_request, 'ReadRequiredBoolean(root, "created"', '"canswapattributes"', "seenIds.Add(gearId)", "FindUniqueDirectByGuid") \
             and _contains(mutation, "ApplyGearSleazeSwapEdit", "CharacterGearMatrixSwapRules.TryValidateMutation",
-                          "request.ChangedAttribute != CharacterGearMatrixAttribute.Sleaze", "SetElementValue(target, changedElement") \
+                          "request.ChangedAttribute != CharacterGearMatrixStat.Sleaze", "SetElementValue(target, changedElement") \
             and _contains(presenter, "PrepareGearSleazeSwapEditAsync", "ApplyGearSleazeSwapEditAsync", "ApplyWorkspaceXmlMutationAsync") \
             and _contains(interface, "PrepareGearSleazeSwapEditAsync", "ApplyGearSleazeSwapEditAsync") \
-            and _contains(shared_rules, "CharacterGearMatrixAttribute", "CharacterGearMatrixSwapIdentity", "NuyenDelta: 0m",
+            and _contains(shared_rules, "CharacterGearMatrixStat", "CharacterGearMatrixSwapIdentity", "NuyenDelta: 0m",
                           "KarmaDelta: 0", "TryValidateMutation", "SHA256.HashData") \
             and _contains(store, "expectedContentRevision", "Flush(flushToDisk: true)", "File.Replace", "File.Move")
         scripted = _contains(driver, '"CharacterCreate.cboGearSleaze"', '"CharacterCareer.cboGearSleaze"',
@@ -11596,7 +11596,7 @@ def _known_phone_mapping(
             and _contains(
                 core_rules,
                 "CharacterGearOverclockerIdentity",
-                "CharacterGearOverclockerAttribute",
+                "CharacterGearOverclockerTarget",
                 "CharacterGearOverclockerPhase",
                 "CharacterGearOverclockerEconomics",
                 "NuyenDelta: 0m",

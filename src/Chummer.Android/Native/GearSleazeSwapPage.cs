@@ -6,12 +6,12 @@ namespace Chummer.Android.Native;
 public sealed class GearSleazeSwapPage : NativePageBase
 {
     private sealed record NodeOption(CharacterGearMatrixSwapState State, string Label);
-    private sealed record TargetOption(CharacterGearMatrixAttribute Value, string Label);
+    private sealed record TargetOption(CharacterGearMatrixStat Value, string Label);
     private static readonly IReadOnlyList<TargetOption> Targets =
     [
-        new(CharacterGearMatrixAttribute.Attack, "Attack"),
-        new(CharacterGearMatrixAttribute.DataProcessing, "Data Processing"),
-        new(CharacterGearMatrixAttribute.Firewall, "Firewall")
+        new(CharacterGearMatrixStat.Attack, "Attack"),
+        new(CharacterGearMatrixStat.DataProcessing, "Data Processing"),
+        new(CharacterGearMatrixStat.Firewall, "Firewall")
     ];
     private readonly GearSleazeSwapEditorState _editor;
     private readonly IReadOnlyList<NodeOption> _nodes;
@@ -76,13 +76,13 @@ public sealed class GearSleazeSwapPage : NativePageBase
     private async Task SaveAsync()
     {
         if (Selected is not { } selected || _target.SelectedIndex < 0 || _target.SelectedIndex >= Targets.Count) return;
-        CharacterGearMatrixAttribute target = Targets[_target.SelectedIndex].Value;
+        CharacterGearMatrixStat target = Targets[_target.SelectedIndex].Value;
         if (string.Equals(selected.Sleaze, CharacterGearMatrixSwapRules.Read(selected, target), StringComparison.Ordinal))
         {
             await DisplayAlertAsync("Values already match", "Choose a different saved raw value.", "OK"); return;
         }
         await Coordinator.ApplyGearSleazeSwapEditAsync(new(_editor.WorkspaceId, _editor.ContentRevision,
-            selected.Identity, selected.Revision, CharacterGearMatrixAttribute.Sleaze, target));
+            selected.Identity, selected.Revision, CharacterGearMatrixStat.Sleaze, target));
         if (Coordinator.State.Error is null) await Navigation.PopAsync();
     }
 }
