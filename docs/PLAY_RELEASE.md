@@ -66,9 +66,21 @@ CHUMMER_BUNDLETOOL_JAR=/secure/tools/bundletool-all-1.18.3.jar \
   scripts/build-release.sh
 ```
 
-Run `scripts/build-release.sh` with `CHUMMER_BUNDLETOOL_JAR` and, when signing,
-the four signing properties above supplied through the secure environment. The
-script does not interpolate passwords into process arguments.
+Run `scripts/build-release.sh` only from a complete coherent workspace whose
+`chummer-android` sibling is accompanied by exact clean Presentation, Core, UI
+Kit, Hub, Hub Registry, Media Factory, and Design checkouts. Set
+`CHUMMER_COMPLETE_ROOT` to that workspace and supply all eight exact
+`CHUMMER_*_REVISION` variables required by `verify_release_source_graph.py`.
+The packager requires already-materialized arm64 assets and explicit canonical
+`AndroidSdkDirectory` and `JavaSdkDirectory` paths; it never restores or installs
+tooling. It also requires the pinned bundletool JAR and all five signing/certificate
+environment values. Passwords remain in the environment and are never printed or
+interpolated into process arguments.
+
+The release outputs are versioned and immutable. The packager fails before the
+build if the AAB, source graph, or checksum target already exists, validates the
+source graph again after packaging, and seals each output with an exclusive
+no-clobber link. A partial failed release is not overwritten automatically.
 
 If SDK API 36 and Java are absent, the guarded
 `scripts/bootstrap-build-environment.sh` uses .NET's official

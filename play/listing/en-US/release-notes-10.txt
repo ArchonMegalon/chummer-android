@@ -1,0 +1,1 @@
+Preview.10 adds a rules-authoritative phone creation flow for metatype, nationality, and version selection, including exact budgets and blockers, explicit preview and confirmation, resumable drafts, and Back restoration. Creation attributes remain unavailable until their backend authority exists. Tablet parity and physical API-36 execution are not yet claimed.
