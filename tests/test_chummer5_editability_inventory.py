@@ -219,6 +219,90 @@ namespace Chummer
                 self.assertEqual("non_mutating", by_name[control]["legacy"]["mutationDisposition"])
                 self.assertIn("writes no runner", by_name[control]["legacy"]["dispositionEvidence"])
 
+    def test_career_nuyen_view_toggles_are_source_guarded_non_mutating(self) -> None:
+        source = (
+            PRESENTATION_ROOT / "Chummer" / "Forms" / "Character Forms" / "CharacterCareer.cs"
+        ).read_bytes().decode("utf-8-sig")
+        expected = {
+            "chkShowFreeNuyen": (
+                "filter_view",
+                "chkShowFreeNuyen_CheckedChanged",
+                "1db5fd83dd0928161f45bc06e68d22c7d27e4c52f6d00c23945d207f0040fd1a",
+            ),
+            "chkShowNuyenChart": (
+                "toggle_view",
+                "chkShowNuyenChart_CheckedChanged",
+                "2803637b7ca09a8b988e2593ce62a3bb9d5a6b1a01185d38d423d35203ff3321",
+            ),
+        }
+
+        for control, (operation, handler, handler_digest) in expected.items():
+            handlers = [{"event": "CheckedChanged", "handler": handler}]
+            review = inventory._source_guarded_non_mutating_review(
+                "CharacterCareer",
+                control,
+                handlers,
+                [source],
+            )
+            self.assertIsNotNone(review)
+            self.assertEqual(operation, review[0])
+            self.assertIn("neither", review[1])
+            self.assertEqual(handler_digest, inventory._legacy_method_digest([source], handler))
+
+            identity = ("CharacterCareer", control)
+            self.assertNotIn(identity, inventory.NON_MUTATING_LEGACY_INTERACTIONS)
+            self.assertEqual(
+                ("set_value", "definite"),
+                inventory._operation(control, "direct_value_editor", handlers),
+            )
+            contract = inventory.SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS[identity]
+            drifted_contract = {
+                **contract,
+                "methodDigests": {
+                    **contract["methodDigests"],
+                    handler: "0" * 64,
+                },
+            }
+            with patch.dict(
+                inventory.SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS,
+                {identity: drifted_contract},
+            ):
+                self.assertIsNone(
+                    inventory._source_guarded_non_mutating_review(
+                        "CharacterCareer",
+                        control,
+                        handlers,
+                        [source],
+                    )
+                )
+
+        self.assertEqual(
+            "0cd86a6f7d33dbbb4ffd7f504f187c04fc31914a94bac191025341b7912d55cf",
+            inventory._legacy_method_digest([source], "RepopulateNuyenExpenseList"),
+        )
+
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = {
+            row["legacy"]["controlName"]: row
+            for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] in expected
+        }
+        self.assertEqual(set(expected), set(rows))
+        for control, (operation, _, _) in expected.items():
+            row = rows[control]
+            self.assertEqual(operation, row["operation"])
+            self.assertEqual("non_mutating", row["legacy"]["mutationDisposition"])
+            self.assertFalse(row["editParityRequired"])
+            self.assertEqual("not_applicable_non_mutating", row["phone"]["status"])
+            self.assertEqual("not_applicable_non_mutating", row["tablet"]["status"])
+            self.assertEqual("not_applicable_non_mutating", row["e2e"]["phone"]["status"])
+            self.assertTrue(row["completionProven"])
+
     def test_included_in_armor_checkboxes_are_reviewed_read_only_displays(self) -> None:
         payload = json.loads(
             (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(

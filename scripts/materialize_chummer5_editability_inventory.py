@@ -2224,6 +2224,45 @@ NON_MUTATING_LEGACY_INTERACTIONS = {
     ),
 }
 
+# These expense-view controls look mutation-capable to the generic designer parser because they are
+# writable checkboxes with CheckedChanged handlers.  They are excluded only while the exact reviewed
+# legacy method bodies below remain unchanged.  A source change deliberately removes the override and
+# returns the row to the fail-closed mutating/missing path until the new behavior is reviewed.
+SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS: dict[
+    tuple[str, str], dict[str, Any]
+] = {
+    ("CharacterCareer", "chkShowFreeNuyen"): {
+        "operation": "filter_view",
+        "evidence": (
+            "CheckedChanged only checks for zero-value Nuyen expense entries and repopulates the Nuyen "
+            "list/chart; RepopulateNuyenExpenseList only reads expense data and updates WinForms view "
+            "objects, so neither method writes runner XML or persisted application preferences"
+        ),
+        "events": (("CheckedChanged", "chkShowFreeNuyen_CheckedChanged"),),
+        "methodDigests": {
+            "chkShowFreeNuyen_CheckedChanged": (
+                "1db5fd83dd0928161f45bc06e68d22c7d27e4c52f6d00c23945d207f0040fd1a"
+            ),
+            "RepopulateNuyenExpenseList": (
+                "0cd86a6f7d33dbbb4ffd7f504f187c04fc31914a94bac191025341b7912d55cf"
+            ),
+        },
+    },
+    ("CharacterCareer", "chkShowNuyenChart"): {
+        "operation": "toggle_view",
+        "evidence": (
+            "CheckedChanged only assigns chtNuyen.Visible from the checkbox; it writes neither runner "
+            "XML nor persisted application preferences"
+        ),
+        "events": (("CheckedChanged", "chkShowNuyenChart_CheckedChanged"),),
+        "methodDigests": {
+            "chkShowNuyenChart_CheckedChanged": (
+                "2803637b7ca09a8b988e2593ce62a3bb9d5a6b1a01185d38d423d35203ff3321"
+            ),
+        },
+    },
+}
+
 MATRIX_CONDITION_CONTROL_RE = re.compile(
     r"^chk(?P<kind>Cyberware|Gear|Armor|Weapon|Vehicle)MatrixCM(?P<box>[1-9]|1[0-9]|2[0-4])$"
 )
@@ -5455,6 +5494,49 @@ def _source_files(chummer5_root: Path) -> tuple[list[Path], list[str]]:
     )
 
 
+def _legacy_method_digest(texts: Iterable[str], method_name: str) -> str | None:
+    """Hash one exact legacy method declaration through its body, normalized only for line endings."""
+
+    declaration = re.compile(
+        rf"(?m)^\s{{8}}(?:private|protected|public|internal)\s+[^\n]*\b{re.escape(method_name)}\s*\("
+    )
+    next_declaration = re.compile(
+        r"(?m)^\s{8}(?:private|protected|public|internal)\s+[^\n]*(?:\(|=>|\{)"
+    )
+    matches: list[str] = []
+    for text in texts:
+        match = declaration.search(text)
+        if match is None:
+            continue
+        following = next_declaration.search(text, match.end())
+        end = following.start() if following is not None else len(text)
+        source = text[match.start():end].rstrip().replace("\r\n", "\n")
+        matches.append(source)
+    if len(matches) != 1:
+        return None
+    return hashlib.sha256(matches[0].encode("utf-8")).hexdigest()
+
+
+def _source_guarded_non_mutating_review(
+    class_name: str,
+    control: str,
+    handlers: list[dict[str, str]],
+    texts: Iterable[str],
+) -> tuple[str, str] | None:
+    review = SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS.get((class_name, control))
+    if review is None:
+        return None
+    actual_events = tuple((row["event"], row["handler"]) for row in handlers)
+    if actual_events != review["events"]:
+        return None
+    if any(
+        _legacy_method_digest(texts, method_name) != expected_digest
+        for method_name, expected_digest in review["methodDigests"].items()
+    ):
+        return None
+    return review["operation"], review["evidence"]
+
+
 def extract_legacy_rows(chummer5_root: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     files, source_roots = _source_files(chummer5_root)
     units: list[tuple[Path, str, tuple[str, str]]] = []
@@ -5520,7 +5602,16 @@ def extract_legacy_rows(chummer5_root: Path) -> tuple[list[dict[str, Any]], dict
             control_properties = properties.get(control, {})
             inert_evidence = INERT_LEGACY_DESIGNER_FIELDS.get((class_name, control))
             reviewed_non_mutating = NON_MUTATING_LEGACY_INTERACTIONS.get((class_name, control))
-            if reviewed_non_mutating is not None:
+            source_guarded_non_mutating = _source_guarded_non_mutating_review(
+                class_name,
+                control,
+                handlers,
+                texts,
+            )
+            if source_guarded_non_mutating is not None:
+                operation, inert_evidence = source_guarded_non_mutating
+                confidence = "non_mutating"
+            elif reviewed_non_mutating is not None:
                 operation, inert_evidence = reviewed_non_mutating
                 confidence = "non_mutating"
             elif inert_evidence is not None:
