@@ -31,6 +31,10 @@ public sealed class CareerCreateExpenseMenuPage : NativePageBase
         Content = new ScrollView { Content = body };
     }
 
+    protected override void Refresh()
+    {
+    }
+
     private void AddOperation(
         VerticalStackLayout body,
         string label,

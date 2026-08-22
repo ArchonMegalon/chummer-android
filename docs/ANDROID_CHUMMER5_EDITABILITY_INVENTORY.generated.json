@@ -256,7 +256,7 @@
       {
         "path": "src/Chummer.Android/Native/CareerCreateExpensePage.cs",
         "exists": true,
-        "sha256": "fdc1d58d3e99294c529f24a82083572c42eed54a3dad1126ff747a122e339740"
+        "sha256": "dc698201d9328629218a99fba996dc98ed863b7ba00d1cb0f314e4fdb42c1d97"
       },
       {
         "path": "src/Chummer.Android/Native/CareerNuyenExpensePage.cs",
