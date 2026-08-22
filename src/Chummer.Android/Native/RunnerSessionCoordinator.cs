@@ -362,6 +362,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         bool datesIncludeTime,
         bool hideMasterIndex,
         bool hideCharacterRoster,
+        bool searchInCategoryOnly,
+        bool allowEasterEggs,
         long expectedRevision,
         CancellationToken cancellationToken = default)
     {
@@ -376,6 +378,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 new(ApplicationSettingIdentity.DatesIncludeTime, datesIncludeTime),
                 new(ApplicationSettingIdentity.HideMasterIndex, hideMasterIndex),
                 new(ApplicationSettingIdentity.HideCharacterRoster, hideCharacterRoster),
+                new(ApplicationSettingIdentity.SearchInCategoryOnly, searchInCategoryOnly),
+                new(ApplicationSettingIdentity.AllowEasterEggs, allowEasterEggs),
                 expectedRevision));
         _notice = "Application settings saved.";
         NotifyChanged();

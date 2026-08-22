@@ -5,7 +5,8 @@ using Chummer.Contracts.Api;
 namespace Chummer.Android.Native;
 
 /// <summary>
-/// Phone-only Chummer5 Global Options surface for confirmation, index visibility, and date/time settings.
+/// Phone-only Chummer5 Global Options surface for confirmation, visibility, selection behavior,
+/// and date/time settings.
 /// All controls are local drafts; only the explicit Save action invokes one atomic persistence boundary.
 /// </summary>
 public sealed class ApplicationSettingsPage : NativePageBase
@@ -15,6 +16,8 @@ public sealed class ApplicationSettingsPage : NativePageBase
     private readonly Switch _confirmKarmaExpense;
     private readonly Switch _hideMasterIndex;
     private readonly Switch _hideCharacterRoster;
+    private readonly Switch _searchInCategoryOnly;
+    private readonly Switch _allowEasterEggs;
     private readonly Switch _customDateTimeFormats;
     private readonly Entry _dateFormat;
     private readonly Label _datePreview;
@@ -113,6 +116,31 @@ public sealed class ApplicationSettingsPage : NativePageBase
             "Stored independently as hidecharacterroster. Back discards both visibility drafts.",
             _hideCharacterRoster));
 
+        body.Add(NativeTheme.Title("Selection behavior"));
+        body.Add(NativeTheme.Body(
+            "Matches Chummer5’s independent searchincategoryonly and alloweastereggs application options.",
+            NativeTheme.Muted));
+
+        _searchInCategoryOnly = new Switch
+        {
+            AutomationId = "settings-search-in-category-only",
+            IsToggled = _baseline.SearchInCategoryOnly
+        };
+        body.Add(CreateSwitchCard(
+            "Search only in the current category",
+            "Enabled by default, matching Chummer5 selection forms.",
+            _searchInCategoryOnly));
+
+        _allowEasterEggs = new Switch
+        {
+            AutomationId = "settings-allow-easter-eggs",
+            IsToggled = _baseline.AllowEasterEggs
+        };
+        body.Add(CreateSwitchCard(
+            "Allow Easter Eggs",
+            "Disabled by default. It remains independent of category-restricted searching.",
+            _allowEasterEggs));
+
         body.Add(NativeTheme.Title("Date and time"));
         body.Add(NativeTheme.Body(
             "Matches Chummer5’s custom format phase and Dates include time option. Invalid custom text shows Error, as on desktop; Save preserves the exact draft.",
@@ -197,6 +225,8 @@ public sealed class ApplicationSettingsPage : NativePageBase
                 _datesIncludeTime.IsToggled,
                 _hideMasterIndex.IsToggled,
                 _hideCharacterRoster.IsToggled,
+                _searchInCategoryOnly.IsToggled,
+                _allowEasterEggs.IsToggled,
                 _baseline.Revision);
             await Navigation.PopAsync();
         });

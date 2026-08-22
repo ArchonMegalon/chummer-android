@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 553,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 463,
+      "implemented_pending_emulator": 465,
       "implemented_verified_api36": 79,
-      "missing": 931,
+      "missing": 929,
       "not_applicable_non_mutating": 478,
       "partial_create_only": 106,
       "partial_exact_saved_data": 172
@@ -126,22 +126,22 @@
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
         "exists": true,
-        "sha256": "f2886a3f33344e34d8aabfd9e2398ad2daf4a0ae614426f770201d848021601a"
+        "sha256": "b2e64148700047c939bea7f34846176cb801984504a2b7f6039d94d8ac5147de"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
         "exists": true,
-        "sha256": "20f0009df50c5dd0dfc9b7b81e98ec4a4f09de6a4828de78b2f7af18f945674a"
+        "sha256": "1a0ab1475192171eda48e341a629433dec34f66d48d1d725f9df954c3211edde"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
         "exists": true,
-        "sha256": "941e17264d4cbfbda1c3870ae376d931cf37eb6e76794e1251d17c29cb2b7cbf"
+        "sha256": "7de8177f73c37f686a17e9f05f4f5fb00e5f01a31bf29fa47305a14ff0ca57d3"
       },
       {
         "path": "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
         "exists": true,
-        "sha256": "e86de8cd24d951b3531eeae1de3bf94fdcdc79ab72f00e5e578bce51c6e5c53f"
+        "sha256": "296d4676484f7e30f352c28bd4cec1d1672a708901bfe36f194eb84695cee819"
       },
       {
         "path": "chummer-core-engine/Chummer.Application/Tools/IApplicationDeleteConfirmationStore.cs",
@@ -151,7 +151,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs",
         "exists": true,
-        "sha256": "cb52a6f42c318b499b350d974b0e4be030c270e369aa8ff8950ea63ed766fd9c"
+        "sha256": "0ea6b65241ba71913321d60680bb6e1e2d179554b5654cbfd81426b1e98b4721"
       },
       {
         "path": "tests/run_api36_application_date_time_settings_e2e.py",
@@ -172,6 +172,16 @@
         "path": "tests/fixtures/application-index-visibility-settings-e2e.chum5",
         "exists": true,
         "sha256": "1e0fbbecf51d53219a36e25d439d4c34852a6b0bcbcd95154997c5d22712431a"
+      },
+      {
+        "path": "tests/run_api36_application_selection_behavior_settings_e2e.py",
+        "exists": true,
+        "sha256": "43847411cb2c00c106b828f9775b1dad55b9a6255aebb092813437a7872c1f64"
+      },
+      {
+        "path": "tests/fixtures/application-selection-behavior-settings-e2e.chum5",
+        "exists": true,
+        "sha256": "bea445380078ca2ce6fb34a0226aa6d99f894fa7c1b10188f435362bc169eec8"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterRosterFavoritePresenter.cs",
@@ -541,7 +551,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "7e0851dcf60bb21b440efca90034d9d23df79e72428428dd7707538b1259e1ea"
+        "sha256": "69303da6ded88ebfab31ba4535393ce59763378ca44a39e3110db20af6b4fe11"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1484,6 +1494,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-application-selection-behavior-settings/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-gear-name/receipt.json",
         "exists": false,
         "sha256": null
@@ -2191,7 +2206,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "7e2bf9050df67be454461dc70da5ce4bc54f36d68063883c4eefdaaaae4ea623"
+      "sha256": "ef48d64da3f4c828572bec371d672561275a13d157c87c28d4971ff5200dbb2b"
     }
   },
   "coverageByFamily": {
@@ -2212,7 +2227,7 @@
     "application_settings": {
       "rowCount": 73,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 47,
+      "phoneMissingCount": 45,
       "tabletMissingCount": 56,
       "completionProvenCount": 17
     },
@@ -96226,11 +96241,21 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Home > Application settings > Selection behavior > Search only in the current category > Save",
+        "surface": "ApplicationSettingsPage",
+        "automationId": "settings-search-in-category-only",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+          "src/Chummer.Android/Native/HomePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/MauiProgram.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+        ],
+        "coverageLimit": "Phone application settings only for chkSearchInCategoryOnly and chkAllowEasterEggs, authenticated against exact canonical Chummer5 revision and source/load/dirty/save digests. No other Global Settings or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -96238,12 +96263,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
+      "persistenceAssertion": "the two typed legacy booleans default true/false, load and save independently under searchincategoryonly and alloweastereggs, and share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; their only legacy UI dependency is OptionsChanged marking the dialog draft dirty, Boolean values need no further validation, Back performs no write, and character XML remains byte-independent",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_application_selection_behavior_settings_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -96283,11 +96308,21 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Home > Application settings > Selection behavior > Allow Easter Eggs > Save",
+        "surface": "ApplicationSettingsPage",
+        "automationId": "settings-allow-easter-eggs",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+          "src/Chummer.Android/Native/HomePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/MauiProgram.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+        ],
+        "coverageLimit": "Phone application settings only for chkSearchInCategoryOnly and chkAllowEasterEggs, authenticated against exact canonical Chummer5 revision and source/load/dirty/save digests. No other Global Settings or character-data row is newly claimed. Tablet intentionally remains missing and the API 36 phone driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -96295,12 +96330,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySettingsSnapshot(ApplicationSettingsSnapshotMutation)",
+      "persistenceAssertion": "the two typed legacy booleans default true/false, load and save independently under searchincategoryonly and alloweastereggs, and share the page's single explicit Save, whole-page expected-revision CAS, durable atomic replacement, and primary/.bak recovery; their only legacy UI dependency is OptionsChanged marking the dialog draft dirty, Boolean values need no further validation, Back performs no write, and character XML remains byte-independent",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_application_selection_behavior_settings_e2e.py"
         },
         "tablet": {
           "status": "missing",
