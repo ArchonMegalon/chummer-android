@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Gear Overclocker E2E</name>
+  <alias>CareerGearOverclockerE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion><appversion>5.225.0</appversion>
+  <created>True</created><gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <nuyen>4321</nuyen><karma>7</karma>
+  <improvements>
+    <improvement>
+      <improvementttype>Overclocker</improvementttype><enabled>1</enabled>
+      <notes>Career Overclocker eligibility sentinel</notes>
+    </improvement>
+  </improvements>
+  <gears>
+    <gear>
+      <guid>a9151111-1511-4511-8511-151111111111</guid>
+      <name>Overclocker Root</name><category>Electronics</category><rating>1</rating><qty>1</qty><cost>100</cost>
+      <overclocked>None</overclocked><active>False</active><homenode>False</homenode>
+      <notes>Career Overclocker root sentinel</notes>
+      <children>
+        <gear>
+          <guid>b9151111-1511-4511-8511-151111111111</guid>
+          <name>Overclocker Target Cyberdeck</name><category>Cyberdecks</category><rating>3</rating><qty>1</qty><cost>45000</cost>
+          <overclocked>Attack</overclocked><attack>7</attack><sleaze>6</sleaze><dataprocessing>5</dataprocessing><firewall>4</firewall>
+          <active>True</active><homenode>True</homenode><equipped>True</equipped><stolen>False</stolen>
+          <notes>Career Overclocker target sentinel</notes><children />
+        </gear>
+      </children>
+    </gear>
+    <gear>
+      <guid>c9151111-1511-4511-8511-151111111111</guid>
+      <name>Untouched Cyberdeck</name><category>Cyberdecks</category><rating>2</rating><qty>1</qty><cost>25000</cost>
+      <overclocked>Firewall</overclocked><active>False</active><homenode>False</homenode>
+      <notes>Career Overclocker untouched sentinel</notes><children />
+    </gear>
+  </gears>
+  <customstate>Career Gear Overclocker runner sentinel</customstate>
+</character>

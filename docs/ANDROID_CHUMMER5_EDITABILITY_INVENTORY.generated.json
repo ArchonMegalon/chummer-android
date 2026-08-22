@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 431,
+      "implemented_pending_emulator": 432,
       "implemented_verified_api36": 79,
-      "missing": 997,
+      "missing": 996,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 148
@@ -265,6 +265,11 @@
         "sha256": "63d9f9af64224537ef8da22830e5797aadb7ca389344a20e2431bb6fbe53bca0"
       },
       {
+        "path": "src/Chummer.Android/Native/GearOverclockerPage.cs",
+        "exists": true,
+        "sha256": "566b146cae5317790ec7b5716d7e9f7312e326a8b94bb40260bfcbd2501ec3e7"
+      },
+      {
         "path": "src/Chummer.Android/Native/ImprovementActivePage.cs",
         "exists": true,
         "sha256": "e3ff46925801dbf8b6595378ef06bafa79bdee847f02af29c0843e3c066dd641"
@@ -337,7 +342,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "04afa7dde0de2c57f77b60cd065fffa5af0229a401fdc4de427d3575e1a6d20f"
+        "sha256": "cc67916fa22321fd2037d1ce066d390ca984749fb62561c9fb55cafaa77ca7b0"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -362,7 +367,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "2636f199505698fc0f43c517e7d356661904d7def0f5d863549c1327bd16ae56"
+        "sha256": "409cb4c92522f8271da245c8e1fc6133621b212e78eae755f30f1adcbd50ad71"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -533,6 +538,11 @@
         "path": "tests/run_api36_gear_equipment_e2e.py",
         "exists": true,
         "sha256": "91b56200e97e187b667966c73e9a928c8748f9173a8f6eb4a868f91db3bd7bd7"
+      },
+      {
+        "path": "tests/run_api36_gear_overclocker_e2e.py",
+        "exists": true,
+        "sha256": "96e383e5130de1da8f0c9ebedef6a0e50b9a06b1e83b587d1561c24ecb7addeb"
       },
       {
         "path": "tests/run_api36_improvement_active_e2e.py",
@@ -1542,7 +1552,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "276f6364e209623fa9481ff1e8589e8f3dae96ce1d7c7f2a5d9082fbed469368"
+        "sha256": "5bc0c76b22640107ad85ad2742fab8eb08a9469e0431d14a0e4180241c2d5a5c"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1752,7 +1762,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "bb330edaaf7f5225aa72a0ae0b11f026e729ee00d9360751efd322326b479155"
+        "sha256": "f28b850f05c7931bc74adff8832fbc53e88d0c2935f6b72efe8f4b4dc526f501"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1807,7 +1817,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "0ce159a2b4df8554ecb2bf99af96a0b2017137c51f0f94ef1684baf5202d6c92"
+        "sha256": "a87ff38dd79e437967c5a7266cb62286d68311d5f33cfb16c32fcb6daa8a1037"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1817,7 +1827,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "02320e5658ef84786de2f57842b18c0628b7d033790be0c49f556e43b07e1d03"
+      "sha256": "3de4bb3ef3cec06e1c7c225f3f6ee49eb270596173ab2ac7271ff36291c2aa1c"
     }
   },
   "coverageByFamily": {
@@ -1971,7 +1981,7 @@
     "gear": {
       "rowCount": 84,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 30,
+      "phoneMissingCount": 29,
       "tabletMissingCount": 56,
       "completionProvenCount": 4
     },
@@ -37219,11 +37229,23 @@
       "mutationFamily": "gear",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Gear > selected stable root Gear > Career Cyberdeck Overclocker",
+        "surface": "GearOverclockerPage",
+        "automationId": "gear-overclocker-attribute-{stable-root-gear-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/GearOverclockerPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/GearOverclockerEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearOverclockerRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer cboGearOverclocker semantics for Cyberdecks-category Gear under one stable top-level Gear root with an enabled Overclocker Improvement. Only the five legacy choices are accepted; malformed values, duplicate identity, CharacterCreate, non-Cyberdeck Gear, missing/disabled eligibility, and tablet fail closed. Active/home flags are preserved; their derived initiative refresh remains the consumer of the saved value."
       },
       "tablet": {
         "status": "missing",
@@ -37231,12 +37253,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyGearOverclockerEditAsync with exact recursive Gear Guid identity, Career phase, active Overclocker Improvement and Cyberdecks-category eligibility, fixed None/Attack/Sleaze/Data Processing/Firewall values, zero Nuyen/Karma economics, duplicate/ambiguity rejection, node-local revision, and expected workspace content revision",
+      "persistenceAssertion": "the exact selected top-level or recursively nested character/gears/.../overclocked value is updated while Nuyen, Karma, active/home/equipped/stolen flags, siblings, Improvements, and unrelated runner XML remain exact after revision-bound atomic save/recovery, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_gear_overclocker_e2e.py"
         },
         "tablet": {
           "status": "missing",

@@ -1734,6 +1734,7 @@ ARMOR_TREE_FLAG_CONTROLS = {
 GEAR_STOLEN_CONTROL = "chkGearStolen"
 WEAPON_STOLEN_CONTROL = "chkWeaponStolen"
 GEAR_EQUIPMENT_CONTROL = "chkGearEquipped"
+GEAR_OVERCLOCKER_CONTROL = "cboGearOverclocker"
 IMPROVEMENT_ACTIVE_CONTROL = "chkImprovementActive"
 IMPROVEMENT_NOTES_CONTROL = "tsImprovementNotes"
 IMPROVEMENT_GROUP_ADD_CONTROL = "cmdAddImprovementGroup"
@@ -10207,6 +10208,204 @@ def _known_phone_mapping(
             "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name == "CharacterCareer" and control == GEAR_OVERCLOCKER_CONTROL:
+        legacy_source = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / "CharacterCareer.cs"
+        )
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearOverclockerPage.cs"
+        editor = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_gear_overclocker_e2e.py"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-gear-overclocker-e2e.chum5"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-gear-overclocker-negative-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "GearOverclockerEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = (
+            character_notes_core_root / "Chummer.Contracts" / "Characters" /
+            "CharacterGearOverclockerRules.cs"
+        )
+        workspace_store = (
+            character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" /
+            "FileWorkspaceStore.cs"
+        )
+        legacy_exact = (
+            any(
+                event.get("handler") == "cboGearOverclocker_SelectedIndexChanged"
+                for event in legacy.get("events", [])
+            )
+            and _contains(
+                legacy_source,
+                "cboGearOverclocker_SelectedIndexChanged",
+                "GetOverclockerAsync",
+                "treGear.DoThreadSafeFuncAsync",
+                "is Gear objCommlink",
+                "objCommlink.Overclocked",
+                "cboGearOverclocker.DoThreadSafeFuncAsync",
+                "RefreshMatrixAttributeComboBoxesAsync",
+                'strOldOverClocked == "Data Processing"',
+                "MakeDirtyWithCharacterUpdate",
+                'objGear.Category == "Cyberdecks"',
+                '"Attack",',
+                '"Sleaze",',
+                '"Firewall",',
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "class GearOverclockerPage",
+                'AutomationId = $"gear-overclocker-page-{rootToken}"',
+                'AutomationId = $"gear-overclocker-target-{rootToken}"',
+                'AutomationId = $"gear-overclocker-attribute-{rootToken}"',
+                'AutomationId = $"gear-overclocker-save-{rootToken}"',
+                "CharacterGearOverclockerRules.IsValidIdentity",
+                "CharacterGearOverclockerPhase.Career",
+                "selected.Revision",
+                "GearOverclockerEditRequest",
+            )
+            and _contains(
+                editor,
+                "AddGearOverclockerAction",
+                "Coordinator.State.Profile?.Created != true",
+                'automationId: $"gear-overclocker-open-{gearId:N}"',
+                "PrepareGearOverclockerEditAsync",
+                "new GearOverclockerPage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareGearOverclockerEditAsync",
+                "ApplyGearOverclockerEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CharacterGearOverclockerIdentity",
+                "GearOverclockerEditorProjector",
+                'ReadRequiredBoolean(root, "created"',
+                "HasActiveOverclockerImprovement(root)",
+                '"Overclocker"',
+                '"Cyberdecks"',
+                'ReadOptionalSingleText(gear, "overclocked")',
+                'ReadOptionalContainer(gear, "children")',
+                "seenIds.Add(gearId)",
+                "FindUniqueDirectByGuid",
+            )
+            and _contains(
+                mutation,
+                "ApplyGearOverclockerEdit",
+                "CharacterGearOverclockerRules.TryValidateMutation",
+                "GearOverclockerEditorProjector.FindNode",
+                '"overclocked"',
+                "CharacterGearOverclockerRules.ToSavedValue",
+            )
+            and _contains(
+                presenter,
+                "PrepareGearOverclockerEditAsync",
+                "ApplyGearOverclockerEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareGearOverclockerEditAsync",
+                "ApplyGearOverclockerEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterGearOverclockerIdentity",
+                "CharacterGearOverclockerAttribute",
+                "CharacterGearOverclockerPhase",
+                "CharacterGearOverclockerEconomics",
+                "NuyenDelta: 0m",
+                "KarmaDelta: 0",
+                "TryValidateMutation",
+                "SHA256.HashData",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCareer.cboGearOverclocker"',
+                'if api != "36"',
+                '"arm64-v8a" not in abi_list.split(",")',
+                '"package": shared.PACKAGE',
+                '"profile": "phone"',
+                '"journey": "gear-overclocker"',
+                '"careerEligibleNestedCyberdeckEdited": "pass"',
+                '"creationActionNotExposed": "pass"',
+                '"zeroNuyenKarmaEconomics"',
+                '"activeHomeAndUnrelatedXmlPreserved"',
+                '"gearOverclockerRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"careerFixtureSha256"',
+                '"creationNegativeFixtureSha256"',
+            )
+            and career_fixture.is_file()
+            and creation_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Gear > Gear > selected stable root Gear > Career Cyberdeck Overclocker",
+            "surface": "GearOverclockerPage",
+            "automationId": "gear-overclocker-attribute-{stable-root-gear-guid}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/GearOverclockerPage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/GearOverclockerEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearOverclockerRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyGearOverclockerEditAsync with exact recursive Gear Guid "
+                "identity, Career phase, active Overclocker Improvement and Cyberdecks-category eligibility, "
+                "fixed None/Attack/Sleaze/Data Processing/Firewall values, zero Nuyen/Karma economics, "
+                "duplicate/ambiguity rejection, node-local revision, and expected workspace content revision"
+            ),
+            "persistenceAssertion": (
+                "the exact selected top-level or recursively nested character/gears/.../overclocked value is "
+                "updated while Nuyen, Karma, active/home/equipped/stolen flags, siblings, Improvements, and "
+                "unrelated runner XML remain exact after revision-bound atomic save/recovery, same-session "
+                "reopen, and process restart"
+            ),
+            "coverageLimit": (
+                "Exact CharacterCareer cboGearOverclocker semantics for Cyberdecks-category Gear under one "
+                "stable top-level Gear root with an enabled Overclocker Improvement. Only the five legacy "
+                "choices are accepted; malformed values, duplicate identity, CharacterCreate, non-Cyberdeck "
+                "Gear, missing/disabled eligibility, and tablet fail closed. Active/home flags are preserved; "
+                "their derived initiative refresh remains the consumer of the saved value."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_gear_overclocker_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCareer" and control == IMPROVEMENT_NOTES_CONTROL:
         expected_handler = "tsImprovementNotes_Click"
         legacy_source = (
@@ -16431,6 +16630,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorTreeFlagPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearStolenPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponStolenPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearOverclockerPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementActivePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementNotesPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementGroupAddPage.cs",
@@ -16485,6 +16685,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_gear_stolen_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_stolen_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_equipment_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_gear_overclocker_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_active_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_notes_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_group_add_e2e.py",

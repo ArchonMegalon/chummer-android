@@ -875,6 +875,33 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<GearOverclockerEditorState?> PrepareGearOverclockerEditAsync(
+        Guid rootGearId,
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareGearOverclockerEditAsync(rootGearId, cancellationToken);
+
+    public async Task ApplyGearOverclockerEditAsync(
+        GearOverclockerEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Gear Overclocker was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyGearOverclockerEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Gear Overclocker attribute saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<ImprovementActiveEditorState?> PrepareImprovementActiveEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareImprovementActiveEditAsync(cancellationToken);

@@ -1157,6 +1157,43 @@ namespace Chummer
             )
             self.assertFalse(row["completionProven"])
 
+        gear_overclocker = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] == inventory.GEAR_OVERCLOCKER_CONTROL
+        ]
+        self.assertEqual(1, len(gear_overclocker))
+        row = gear_overclocker[0]
+        self.assertEqual("gear", row["mutationFamily"])
+        self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+        self.assertEqual(
+            "Build > Gear > Gear > selected stable root Gear > Career Cyberdeck Overclocker",
+            row["phone"]["route"],
+        )
+        self.assertEqual("GearOverclockerPage", row["phone"]["surface"])
+        self.assertEqual(
+            "gear-overclocker-attribute-{stable-root-gear-guid}",
+            row["phone"]["automationId"],
+        )
+        self.assertIn("exact recursive Gear Guid identity", row["presenterMutation"])
+        self.assertIn("Career phase", row["presenterMutation"])
+        self.assertIn("Overclocker Improvement", row["presenterMutation"])
+        self.assertIn("Cyberdecks-category eligibility", row["presenterMutation"])
+        self.assertIn("Data Processing", row["presenterMutation"])
+        self.assertIn("zero Nuyen/Karma economics", row["presenterMutation"])
+        self.assertIn("character/gears/.../overclocked", row["persistenceAssertion"])
+        self.assertIn("active/home/equipped/stolen flags", row["persistenceAssertion"])
+        self.assertIn("revision-bound atomic save/recovery", row["persistenceAssertion"])
+        self.assertIn("CharacterCreate", row["phone"]["coverageLimit"])
+        self.assertIn("missing/disabled eligibility", row["phone"]["coverageLimit"])
+        self.assertEqual("missing", row["tablet"]["status"])
+        self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+        self.assertEqual(
+            "tests/run_api36_gear_overclocker_e2e.py",
+            row["e2e"]["phone"]["ref"],
+        )
+        self.assertFalse(row["completionProven"])
+
         improvement_active = [
             row for row in rows
             if row["legacy"]["formOrControl"] == "CharacterCareer"
@@ -2096,9 +2133,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 431,
+                "implemented_pending_emulator": 432,
                 "implemented_verified_api36": 79,
-                "missing": 997,
+                "missing": 996,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 148,

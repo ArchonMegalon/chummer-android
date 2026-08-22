@@ -125,6 +125,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddGearStolenAction(item);
         AddWeaponStolenAction(item);
         AddGearEquipmentAction(item);
+        AddGearOverclockerAction(item);
         AddLifestyleIncrementAction(item);
         AddWeaponAccessoryIncludedAction(item);
         AddCritterPowerCountAction(item);
@@ -1107,6 +1108,34 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 }
             },
             automationId: $"gear-equipment-open-{gearId:N}"));
+    }
+
+    private void AddGearOverclockerAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Gear
+            || _target.NestedKind is not null
+            || Coordinator.State.Profile?.Created != true
+            || Coordinator.State.WorkspaceId is null
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid gearId)
+            || gearId == Guid.Empty)
+        {
+            return;
+        }
+
+        _body.Add(NativeTheme.Eyebrow("Career Cyberdeck Gear"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Overclocker",
+            "Choose the boosted Matrix attribute for an eligible Cyberdeck in this saved Gear tree",
+            async () =>
+            {
+                GearOverclockerEditorState? editor = await Coordinator
+                    .PrepareGearOverclockerEditAsync(gearId);
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new GearOverclockerPage(Coordinator, editor));
+                }
+            },
+            automationId: $"gear-overclocker-open-{gearId:N}"));
     }
 
     private void AddWeaponStolenAction(WorkspaceCollectionItemEditorState item)
