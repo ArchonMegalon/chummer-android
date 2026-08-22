@@ -129,11 +129,14 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _source_label(path: Path) -> str:
-    try:
+def _source_label(path: Path, chummer5_root: Path) -> str:
+    if path.is_relative_to(REPO_ROOT):
         return path.relative_to(REPO_ROOT).as_posix()
-    except ValueError:
-        return str(path)
+    if path.is_relative_to(chummer5_root):
+        return (
+            Path("chummer5a") / path.relative_to(chummer5_root)
+        ).as_posix()
+    raise ValueError(f"source input is outside the governed roots: {path}")
 
 
 def _balanced_end(text: str, opening: int, opener: str, closer: str) -> int:
@@ -426,7 +429,10 @@ def build_contract(chummer5_root: Path, inventory_path: Path) -> dict[str, objec
         },
         "unresolvedControls": sorted(unresolved),
         "sourceInputs": [
-            {"path": _source_label(path), "sha256": _sha256(path)}
+            {
+                "path": _source_label(path, chummer5_root),
+                "sha256": _sha256(path),
+            }
             for path in (form_path, character_settings_path, settings_xml_path, inventory_path)
         ],
         "controls": controls,

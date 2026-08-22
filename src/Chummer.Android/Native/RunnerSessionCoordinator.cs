@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Chummer.Android.Platform;
+using Chummer.Application.Characters;
 using Chummer.Application.Tools;
 using Chummer.Contracts.Api;
 using Chummer.Contracts.Characters;
@@ -34,6 +35,12 @@ public sealed record CharacterNotesEditRequest(
     string GameNotes,
     string GroupNotes);
 
+public sealed record CreationPrerequisitePhoneConfirmResult(
+    string Outcome,
+    CharacterCreationPrerequisiteReceipt? Receipt,
+    CharacterCreationPrerequisiteState? RefreshedState,
+    IReadOnlyList<string> Blockers);
+
 public sealed class RunnerSessionCoordinator : IDisposable
 {
     private const string SelectedGroupPreferenceKey = "chummer.android.selected-group.v1";
@@ -42,6 +49,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private const string RosterLocatorPreferencePrefix = "chummer.android.roster-locator.v1.";
     private readonly ICharacterOverviewPresenter _presenter;
     private readonly ICharacterCreationFoundationInteractionPresenter _foundationInteractionPresenter;
+    private readonly ICharacterCreationPrerequisiteService _creationPrerequisiteService;
     private readonly IShellPresenter _shellPresenter;
     private readonly IShellSurfaceResolver _surfaceResolver;
     private readonly ICommandAvailabilityEvaluator _availability;
@@ -78,6 +86,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     public RunnerSessionCoordinator(
         ICharacterOverviewPresenter presenter,
         ICharacterCreationFoundationInteractionPresenter foundationInteractionPresenter,
+        ICharacterCreationPrerequisiteService creationPrerequisiteService,
         IShellPresenter shellPresenter,
         IShellSurfaceResolver surfaceResolver,
         ICommandAvailabilityEvaluator availability,
@@ -90,6 +99,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     {
         _presenter = presenter;
         _foundationInteractionPresenter = foundationInteractionPresenter;
+        _creationPrerequisiteService = creationPrerequisiteService;
         _shellPresenter = shellPresenter;
         _surfaceResolver = surfaceResolver;
         _availability = availability;
@@ -161,6 +171,149 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     public bool IsBusy => State.IsBusy || Surface.IsBusy;
 
+    public CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>
+        LoadCreationPrerequisite()
+    {
+        if (State.Profile?.Created != false || State.WorkspaceId is not { } workspaceId)
+        {
+            return new CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>(
+                CharacterCreationFoundationOutcomes.Blocked,
+                null,
+                [CharacterCreationPrerequisiteBlockers.WorkspaceUnavailable]);
+        }
+
+        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> result =
+            _creationPrerequisiteService.Load(
+                new CharacterCreationPrerequisiteLoadRequest(workspaceId));
+        if (result.Value is { } state
+            && !CreationPrerequisitePhoneAuthority.MatchesOverview(state, State))
+        {
+            return new CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>(
+                CharacterCreationFoundationOutcomes.Conflict,
+                null,
+                [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
+        }
+        return result;
+    }
+
+    public CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>
+        PreviewCreationPrerequisite(
+            CharacterCreationPrerequisiteBinding binding,
+            IReadOnlyDictionary<string, string> assignments)
+    {
+        ArgumentNullException.ThrowIfNull(binding);
+        ArgumentNullException.ThrowIfNull(assignments);
+        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> load =
+            LoadCreationPrerequisite();
+        if (load.Value is not { } state
+            || !CreationPrerequisitePhoneAuthority.BindingEquals(binding, state.Binding))
+        {
+            return new CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>(
+                CharacterCreationFoundationOutcomes.Conflict,
+                null,
+                [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
+        }
+        if (!CreationPrerequisitePhoneAuthority.IsReady(state, State))
+        {
+            return new CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>(
+                CharacterCreationFoundationOutcomes.Blocked,
+                null,
+                state.Blockers.Count > 0
+                    ? state.Blockers
+                    : [CharacterCreationPrerequisiteBlockers.AuthorityUnavailable]);
+        }
+
+        return _creationPrerequisiteService.Preview(
+            new CharacterCreationPrerequisitePreviewRequest(
+                binding,
+                new Dictionary<string, string>(assignments, StringComparer.Ordinal)));
+    }
+
+    public async Task<CreationPrerequisitePhoneConfirmResult>
+        ConfirmCreationPrerequisiteAsync(
+            CharacterCreationPrerequisitePreview preview,
+            IReadOnlyDictionary<string, string> assignments,
+            CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(preview);
+        ArgumentNullException.ThrowIfNull(assignments);
+        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> before =
+            LoadCreationPrerequisite();
+        if (before.Value is not { } state
+            || !CreationPrerequisitePhoneAuthority.BindingEquals(preview.Binding, state.Binding))
+        {
+            return new CreationPrerequisitePhoneConfirmResult(
+                CharacterCreationFoundationOutcomes.Conflict,
+                null,
+                null,
+                [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
+        }
+        if (!CreationPrerequisitePhoneAuthority.IsReady(state, State)
+            || !PreviewMatchesAssignments(preview, assignments, state)
+            || !preview.RequiresExplicitConfirmation
+            || !preview.CanConfirm
+            || preview.Blockers.Count != 0
+            || !CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(preview.PreviewDigest))
+        {
+            return new CreationPrerequisitePhoneConfirmResult(
+                CharacterCreationFoundationOutcomes.Conflict,
+                null,
+                null,
+                [CharacterCreationPrerequisiteBlockers.PreviewDigestMismatch]);
+        }
+
+        CharacterCreationFoundationResult<CharacterCreationPrerequisiteReceipt> result =
+            _creationPrerequisiteService.Confirm(
+                new CharacterCreationPrerequisiteConfirmRequest(
+                    preview.Binding,
+                    new Dictionary<string, string>(assignments, StringComparer.Ordinal),
+                    preview.PreviewDigest,
+                    ExplicitlyConfirmed: true));
+        if (!string.Equals(
+                result.Outcome,
+                CharacterCreationFoundationOutcomes.Success,
+                StringComparison.Ordinal)
+            || result.Value is not { } receipt)
+        {
+            return new CreationPrerequisitePhoneConfirmResult(
+                result.Outcome,
+                result.Value,
+                null,
+                result.Blockers);
+        }
+
+        await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken);
+        await SyncShellAsync(cancellationToken);
+        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> refreshed =
+            LoadCreationPrerequisite();
+        if (refreshed.Value is not { } refreshedState
+            || !CreationPrerequisitePhoneAuthority.ReceiptMatches(
+                receipt,
+                refreshedState,
+                State))
+        {
+            _notice = null;
+            NotifyChanged();
+            return new CreationPrerequisitePhoneConfirmResult(
+                CharacterCreationFoundationOutcomes.Conflict,
+                receipt,
+                null,
+                refreshed.Blockers
+                    .Append(CharacterCreationPrerequisiteBlockers.DraftConflict)
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(static blocker => blocker, StringComparer.Ordinal)
+                    .ToArray());
+        }
+
+        _notice = "Creation-method draft saved. Attributes remain blocked until metatype adjustment.";
+        NotifyChanged();
+        return new CreationPrerequisitePhoneConfirmResult(
+            CharacterCreationFoundationOutcomes.Success,
+            receipt,
+            refreshedState,
+            []);
+    }
+
     public CharacterCreationFoundationInteractionLoadResult LoadCreationFoundation()
         => _foundationInteractionPresenter.Load(State);
 
@@ -204,6 +357,58 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _notice = "Foundation draft saved. Character effects remain pending compilation.";
         NotifyChanged();
         return result;
+    }
+
+    private static bool PreviewMatchesAssignments(
+        CharacterCreationPrerequisitePreview preview,
+        IReadOnlyDictionary<string, string> assignments,
+        CharacterCreationPrerequisiteState state)
+    {
+        if (!string.Equals(
+                preview.Schema,
+                CharacterCreationPrerequisiteSchemas.PreviewV1,
+                StringComparison.Ordinal)
+            || !CreationPrerequisitePhoneAuthority.BindingEquals(preview.Binding, state.Binding)
+            || assignments.Count != CharacterCreationPriorityCategoryIds.Ordered.Count
+            || preview.Assignments.Count != CharacterCreationPriorityCategoryIds.Ordered.Count)
+        {
+            return false;
+        }
+
+        for (int index = 0; index < CharacterCreationPriorityCategoryIds.Ordered.Count; index++)
+        {
+            string category = CharacterCreationPriorityCategoryIds.Ordered[index];
+            CharacterCreationPriorityAssignment assignment = preview.Assignments[index];
+            CharacterCreationPriorityOptionProjection? option =
+                CreationPrerequisitePhoneAuthority.ResolveUniqueOption(
+                    state,
+                    category,
+                    assignment.Rank);
+            if (!assignments.TryGetValue(category, out string? rank)
+                || assignment.Order != index
+                || !string.Equals(assignment.CategoryId, category, StringComparison.Ordinal)
+                || !string.Equals(assignment.Rank, rank, StringComparison.Ordinal)
+                || option is null
+                || !CreationPrerequisitePhoneAuthority.AssignmentMatchesOption(
+                    assignment,
+                    option))
+            {
+                return false;
+            }
+        }
+
+        return preview.CreationKarmaBudget.IsExact
+               && string.Equals(
+                   preview.CreationKarmaBudget.BudgetId,
+                   CharacterCreationBudgetIds.Karma,
+                   StringComparison.Ordinal)
+               && preview.CreationKarmaBudget.Blockers.Count == 0
+               && preview.CreationKarmaBudget.Total == state.CreationKarmaBudget.Total
+               && preview.CreationKarmaBudget.Used == state.CreationKarmaBudget.Used
+               && preview.CreationKarmaBudget.Remaining == state.CreationKarmaBudget.Remaining
+               && preview.SumToTenTarget == state.Authority.SumToTenTarget
+               && preview.BaseNormalAttributePoints >= 0
+               && preview.RequiresMetatypeAttributeAdjustment;
     }
 
     public void AskRook(string question)

@@ -8,6 +8,11 @@ public sealed class App : Microsoft.Maui.Controls.Application
         => new(new ContentPage());
 }
 
+public static class AndroidBundledContentMaterializer
+{
+    public static string Materialize() => FileSystem.AppDataDirectory;
+}
+
 public sealed class AndroidDocumentService : IAndroidDocumentService
 {
     public Task<AndroidDocument?> OpenAsync(CancellationToken cancellationToken)

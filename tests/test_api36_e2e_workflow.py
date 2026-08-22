@@ -4,12 +4,34 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "api36-editing-e2e.yml"
+PREVIEW_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "preview9-arm64-aab.yml"
+COMPATIBILITY_GRAPH = {
+    "ArchonMegalon/chummer6-ui":
+        "1c492202ac708f302b59f47c2bb1e4c67e352328",
+    "ArchonMegalon/chummer6-core":
+        "d1f3ec8b13d1359fa383a000770cec30ae1a20fe",
+    "ArchonMegalon/chummer6-hub":
+        "fce73dea2d5b2cb48fe74e1b33d9f1dbe13b8e31",
+    "ArchonMegalon/chummer6-hub-registry":
+        "7b54afec574a9327616c4ad7566da3a7b6b906a5",
+    "ArchonMegalon/chummer6-ui-kit":
+        "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",
+    "ArchonMegalon/chummer6-media-factory":
+        "415c8163d3d90b1211e4014fef332bdec6d75f73",
+}
+INVENTORY_AUTHORITIES = {
+    "ArchonMegalon/chummer6-design":
+        "a833259208c92e75620850f104bff8718077e0d3",
+    "ArchonMegalon/chummer5a":
+        "fe4355d06c98cd9b7feade89f5fc1a0e438f7ce3",
+}
 
 
 class Api36EditingE2EWorkflowTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.text = WORKFLOW.read_text(encoding="utf-8")
+        cls.preview_text = PREVIEW_WORKFLOW.read_text(encoding="utf-8")
 
     def test_runs_phone_and_tablet_profiles_on_api_36(self) -> None:
         self.assertIn("api-level: 36", self.text)
@@ -24,25 +46,76 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("scripts/build-debug.sh", self.text)
         self.assertIn("test \"${#apks[@]}\" -eq 1", self.text)
         self.assertIn("chummer-android-x64-debug.apk.sha256", self.text)
+        content_check = "python3 chummer-android/scripts/verify_android_content_bundle.py"
+        self.assertEqual(2, self.text.count(content_check))
+        self.assertEqual(2, self.text.count("--core-root chummer-core-engine"))
+        self.assertIn(
+            '--apk "$RUNNER_TEMP/chummer-android-apk/chummer-android-x64-debug.apk"',
+            self.text,
+        )
+        self.assertIn(
+            '--receipt "$RUNNER_TEMP/chummer-android-apk/chummer-android-content-bundle-receipt.json"',
+            self.text,
+        )
+        self.assertLess(
+            self.text.index("Seal the unique signed debug APK"),
+            self.text.rindex(content_check),
+        )
+        self.assertLess(
+            self.text.rindex(content_check),
+            self.text.index("Upload the exact APK under test"),
+        )
+        self.assertLess(
+            self.text.index(content_check),
+            self.text.index("Install the governed .NET SDK"),
+        )
         self.assertIn("needs: build", self.text)
 
     def test_full_local_compatibility_tree_is_commit_pinned(self) -> None:
-        expected_repositories = {
-            "ArchonMegalon/chummer6-ui":
-                "4333e546cb22daecb6b8d042f080c6a58cfef5f5",
-            "ArchonMegalon/chummer6-core":
-                "8a736655c5d81487c3be8d87c63cef5cfcce87d4",
-            "ArchonMegalon/chummer6-hub":
-                "972311c4408a51ede76224a66ae103e75cb2e53c",
-            "ArchonMegalon/chummer6-hub-registry":
-                "7b54afec574a9327616c4ad7566da3a7b6b906a5",
-            "ArchonMegalon/chummer6-ui-kit":
-                "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",
-        }
-        for repository, commit in expected_repositories.items():
+        for repository, commit in COMPATIBILITY_GRAPH.items():
             with self.subTest(repository=repository):
                 self.assertIn(f"repository: {repository}", self.text)
                 self.assertIn(f"ref: {commit}", self.text)
+
+    def test_phone_and_tablet_paths_fail_closed_on_stale_inventory(self) -> None:
+        for repository, commit in INVENTORY_AUTHORITIES.items():
+            with self.subTest(repository=repository):
+                self.assertIn(f"repository: {repository}", self.text)
+                self.assertIn(f"ref: {commit}", self.text)
+
+        check = "python3 scripts/materialize_chummer5_editability_inventory.py --check"
+        self.assertEqual(1, self.text.count(check))
+        settings_check = (
+            "python3 scripts/materialize_chummer5_character_settings_contract.py --check"
+        )
+        self.assertEqual(1, self.text.count(settings_check))
+        self.assertIn("CHUMMER_COMPLETE_ROOT: ${{ github.workspace }}", self.text)
+        self.assertIn("CHUMMER5A_ROOT: ${{ github.workspace }}/chummer5a", self.text)
+        self.assertLess(self.text.index(check), self.text.index("actions/setup-dotnet@"))
+        self.assertLess(self.text.index(settings_check), self.text.index("actions/setup-dotnet@"))
+        self.assertLess(self.text.index(check), self.text.index(settings_check))
+        self.assertLess(self.text.index(check), self.text.index("run: scripts/build-debug.sh"))
+        self.assertIn("needs: build", self.text)
+
+    def test_inventory_inputs_trigger_the_phone_and_tablet_gate(self) -> None:
+        self.assertEqual(
+            2,
+            self.text.count(
+                '"docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"'
+            ),
+        )
+        self.assertEqual(
+            2,
+            self.text.count('"docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json"'),
+        )
+        self.assertEqual(2, self.text.count('"docs/editability-evidence/**"'))
+        self.assertEqual(2, self.text.count('"scripts/**"'))
+
+    def test_preview_release_uses_the_same_compiled_compatibility_graph(self) -> None:
+        for repository, commit in COMPATIBILITY_GRAPH.items():
+            with self.subTest(repository=repository):
+                self.assertIn(f"repository: {repository}", self.preview_text)
+                self.assertIn(f"ref: {commit}", self.preview_text)
 
     def test_executes_the_existing_persistence_driver(self) -> None:
         runner = (
@@ -56,9 +129,17 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("--serial emulator-5554", runner)
         self.assertIn('--profile "$profile"', runner)
         self.assertIn('--receipt "$evidence_root/receipt.json"', runner)
+        self.assertIn('if [[ "$profile" == "phone" ]]; then', runner)
+        self.assertIn("tests/run_api36_creation_prerequisite_e2e.py", runner)
+        self.assertIn('--evidence "$prerequisite_root/screenshots"', runner)
+        self.assertIn('--receipt "$prerequisite_root/receipt.json"', runner)
         self.assertLess(
             runner.index('install -d -m 0755 "$evidence_root"'),
             runner.index("python3 chummer-android/tests/run_api36_editing_e2e.py"),
+        )
+        self.assertLess(
+            runner.index("python3 chummer-android/tests/run_api36_editing_e2e.py"),
+            runner.index("tests/run_api36_creation_prerequisite_e2e.py"),
         )
 
     def test_actions_are_commit_pinned_and_evidence_survives_failure(self) -> None:

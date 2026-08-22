@@ -1,12 +1,14 @@
 from pathlib import Path
+import os
 import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+WORKSPACE = Path(os.environ.get("CHUMMER_COMPLETE_ROOT", ROOT.parent)).resolve()
 COLLECTION_PAGE = ROOT / "src/Chummer.Android/Native/CollectionEditorPages.cs"
 COORDINATOR = ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs"
-PROJECTOR = ROOT.parent / "chummer-presentation/Chummer.Presentation/Overview/CreationLifestyleDeleteRequest.cs"
-MUTATION = ROOT.parent / "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
+PROJECTOR = WORKSPACE / "chummer-presentation/Chummer.Presentation/Overview/CreationLifestyleDeleteRequest.cs"
+MUTATION = WORKSPACE / "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
 
 
 class CreationLifestyleDeleteContractTests(unittest.TestCase):
@@ -28,7 +30,10 @@ class CreationLifestyleDeleteContractTests(unittest.TestCase):
             self.assertIn(token, source)
 
     def test_generic_lifestyle_delete_stays_fail_closed_and_dedicated_cas_is_used(self) -> None:
-        generic = (ROOT.parent / "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs").read_text(encoding="utf-8")
+        generic = (
+            WORKSPACE
+            / "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs"
+        ).read_text(encoding="utf-8")
         self.assertIn("CanDelete: schema.Kind != WorkspaceCollectionKind.Lifestyle", generic)
         coordinator = COORDINATOR.read_text(encoding="utf-8")
         for token in (

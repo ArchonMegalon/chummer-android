@@ -36,6 +36,7 @@ class FakeDevice(DRIVER.Device):
         *arguments: str,
         timeout: int = 120,
         text: bool = True,
+        check: bool = True,
     ) -> subprocess.CompletedProcess:
         return subprocess.CompletedProcess(
             args=list(arguments),
@@ -90,61 +91,230 @@ class RecordingDevice(DRIVER.Device):
 
 
 class Api36EditingE2EDriverTests(unittest.TestCase):
-    def test_launch_app_retries_transient_android_launcher_failure(self) -> None:
-        device = Mock()
-        device.shell.side_effect = [
-            "com.myexternalbrain.chummer/crc-current.MainActivity",
-            subprocess.CalledProcessError(137, ["adb", "shell", "monkey"]),
-            "",
-            "",
-            "7225",
-        ]
+    @staticmethod
+    def successful_am_start(component: str) -> subprocess.CompletedProcess:
+        return subprocess.CompletedProcess(
+            args=["adb", "shell", "am", "start"],
+            returncode=0,
+            stdout=(
+                "Starting: Intent { act=android.intent.action.MAIN "
+                f"cat=[android.intent.category.LAUNCHER] cmp={component} }}\n"
+                "Status: ok\n"
+                "LaunchState: COLD\n"
+                f"Activity: {component}\n"
+                "Complete\n"
+            ),
+            stderr="",
+        )
 
-        with patch.object(DRIVER.time, "sleep") as sleep:
-            DRIVER.launch_app(device)
+    def test_launch_app_uses_exact_main_launcher_and_requires_resumed_activity(self) -> None:
+        component = "com.myexternalbrain.chummer/crccurrent.MainActivity"
+        with tempfile.TemporaryDirectory() as temporary:
+            device = Mock(spec=DRIVER.Device)
+            device.evidence = Path(temporary)
+            device.shell.side_effect = [
+                "package:/data/app/exact/base.apk",
+                component,
+                "7225",
+                f"mResumedActivity: ActivityRecord{{123 u0 {component} t9}}",
+            ]
+            device.run.side_effect = [
+                subprocess.CompletedProcess(args=["logcat", "-c"], returncode=0, stdout="", stderr=""),
+                self.successful_am_start(component),
+            ]
 
-        self.assertEqual(5, device.shell.call_count)
+            DRIVER.launch_app(device, resume_timeout=0)
+
+            verified = Path(temporary) / "launch-attempt-1-verified.txt"
+            self.assertTrue(verified.is_file())
+            self.assertIn("process_ids=7225", verified.read_text(encoding="utf-8"))
+            self.assertIn(f"resumed_component={component}", verified.read_text(encoding="utf-8"))
+
         self.assertEqual(
             call(
+                "shell",
                 "am",
                 "start",
+                "--user",
+                "current",
                 "-W",
+                "-a",
+                DRIVER.MAIN_ACTION,
+                "-c",
+                DRIVER.LAUNCHER_CATEGORY,
                 "-n",
-                "com.myexternalbrain.chummer/crc-current.MainActivity",
+                component,
                 timeout=60,
+                check=False,
             ),
-            device.shell.call_args_list[1],
+            device.run.call_args_list[1],
         )
-        self.assertEqual(
-            call("pidof", "com.myexternalbrain.chummer"),
-            device.shell.call_args_list[-1],
+        self.assertNotIn("-S", device.run.call_args_list[1].args)
+
+    def test_launch_app_accepts_am_wait_timeout_only_with_exact_process_and_resume(self) -> None:
+        component = "com.myexternalbrain.chummer/crccurrent.MainActivity"
+        timeout = subprocess.TimeoutExpired(
+            ["adb", "shell", "am", "start", "-W"],
+            60,
+            output="Status: ok\n",
+            stderr="",
         )
-        sleep.assert_called_once_with(3)
+        with tempfile.TemporaryDirectory() as temporary:
+            device = Mock(spec=DRIVER.Device)
+            device.evidence = Path(temporary)
+            device.shell.side_effect = [
+                "package:/data/app/exact/base.apk",
+                component,
+                "7225",
+                f"topResumedActivity=ActivityRecord{{123 u0 {component} t9}}",
+            ]
+            device.run.side_effect = [
+                subprocess.CompletedProcess(args=["logcat", "-c"], returncode=0, stdout="", stderr=""),
+                timeout,
+            ]
 
-    def test_launch_app_accepts_am_wait_timeout_only_with_a_live_process(self) -> None:
-        device = Mock()
-        device.shell.side_effect = [
-            "com.myexternalbrain.chummer/crc-current.MainActivity",
-            subprocess.CalledProcessError(1, ["adb", "shell", "am", "start", "-W"]),
-            "7225",
-        ]
+            DRIVER.launch_app(device, resume_timeout=0)
 
-        with patch.object(DRIVER.time, "sleep") as sleep:
-            DRIVER.launch_app(device)
+        self.assertEqual(2, device.run.call_count)
 
-        self.assertEqual(3, device.shell.call_count)
-        sleep.assert_not_called()
+    def test_launch_failure_captures_command_activity_window_and_all_log_buffers(self) -> None:
+        component = "com.myexternalbrain.chummer/crccurrent.MainActivity"
+        launcher = "com.google.android.apps.nexuslauncher/.NexusLauncherActivity"
+        with tempfile.TemporaryDirectory() as temporary:
+            device = Mock(spec=DRIVER.Device)
+            device.evidence = Path(temporary)
+            device.capture.return_value = None
+            device.shell.side_effect = [
+                "package:/data/app/exact/base.apk",
+                component,
+                "7225",
+                f"mResumedActivity: ActivityRecord{{456 u0 {launcher} t2}}",
+                f"mCurrentFocus=Window{{456 u0 {launcher}}}",
+                "ApplicationExitInfo(timestamp=1, reason=CRASH)",
+            ]
+            device.run.side_effect = [
+                subprocess.CompletedProcess(args=["logcat", "-c"], returncode=0, stdout="", stderr=""),
+                self.successful_am_start(component),
+                subprocess.CompletedProcess(
+                    args=["logcat", "-d"],
+                    returncode=0,
+                    stdout=(
+                        "AndroidRuntime: FATAL EXCEPTION: main\n"
+                        "AndroidRuntime: Process: com.myexternalbrain.chummer, PID: 7225\n"
+                    ),
+                    stderr="",
+                ),
+                subprocess.CompletedProcess(
+                    args=["logcat", "-d", "-b", "events"],
+                    returncode=0,
+                    stdout="am_crash: com.myexternalbrain.chummer\n",
+                    stderr="",
+                ),
+                subprocess.CompletedProcess(
+                    args=["logcat", "-d", "-b", "crash"],
+                    returncode=0,
+                    stdout="AndroidRuntime: Process: com.myexternalbrain.chummer\n",
+                    stderr="",
+                ),
+            ]
+
+            with self.assertRaisesRegex(RuntimeError, "did not remain the exact resumed activity"):
+                DRIVER.launch_app(device, resume_timeout=0)
+
+            evidence = Path(temporary)
+            self.assertIn("Status: ok", (evidence / "launch-attempt-1-am-start.stdout.txt").read_text())
+            self.assertIn(launcher, (evidence / "launch-attempt-1-activity.txt").read_text())
+            self.assertIn("FATAL EXCEPTION", (evidence / "launch-attempt-1-logcat.txt").read_text())
+            self.assertIn("reason=CRASH", (evidence / "launch-attempt-1-exit-info.txt").read_text())
+            self.assertIn("am_crash", (evidence / "launch-attempt-1-logcat-events.txt").read_text())
+            self.assertIn("AndroidRuntime", (evidence / "launch-attempt-1-logcat-crash.txt").read_text())
+            device.capture.assert_called_once_with("launch-attempt-1-failure")
+
+        self.assertIn(
+            call(
+                "logcat",
+                "-d",
+                "-b",
+                "all",
+                "-v",
+                "threadtime",
+                "-t",
+                "4000",
+                timeout=60,
+                check=False,
+            ),
+            device.run.call_args_list,
+        )
+        for buffer_name in ("events", "crash"):
+            self.assertIn(
+                call(
+                    "logcat",
+                    "-d",
+                    "-b",
+                    buffer_name,
+                    "-v",
+                    "threadtime",
+                    timeout=60,
+                    check=False,
+                ),
+                device.run.call_args_list,
+            )
 
     def test_launcher_component_uses_current_package_manager_result(self) -> None:
         device = Mock()
-        device.shell.return_value = (
-            "priority=0\n"
-            "com.myexternalbrain.chummer/crc-current.MainActivity\n"
-        )
+        device.shell.side_effect = [
+            "package:/data/app/exact/base.apk",
+            "priority=0\ncom.myexternalbrain.chummer/crccurrent.MainActivity\n",
+        ]
 
         self.assertEqual(
-            "com.myexternalbrain.chummer/crc-current.MainActivity",
+            "com.myexternalbrain.chummer/crccurrent.MainActivity",
             DRIVER.launcher_component(device),
+        )
+        self.assertEqual(
+            call(
+                "cmd",
+                "package",
+                "resolve-activity",
+                "--brief",
+                "--user",
+                "current",
+                "-a",
+                DRIVER.MAIN_ACTION,
+                "-c",
+                DRIVER.LAUNCHER_CATEGORY,
+                "-p",
+                DRIVER.PACKAGE,
+            ),
+            device.shell.call_args_list[1],
+        )
+
+    def test_launcher_component_rejects_missing_package_or_ambiguous_component(self) -> None:
+        missing = Mock()
+        missing.shell.return_value = ""
+        with self.assertRaisesRegex(RuntimeError, "not installed"):
+            DRIVER.launcher_component(missing)
+
+        ambiguous = Mock()
+        ambiguous.shell.side_effect = [
+            "package:/data/app/exact/base.apk",
+            (
+                "com.myexternalbrain.chummer/crc.one.MainActivity\n"
+                "com.myexternalbrain.chummer/crc.two.MainActivity\n"
+            ),
+        ]
+        with self.assertRaisesRegex(RuntimeError, "exactly one"):
+            DRIVER.launcher_component(ambiguous)
+
+    def test_resumed_activity_parser_normalizes_short_activity_and_ignores_focus(self) -> None:
+        dump = (
+            "mCurrentFocus=Window{123 u0 com.example/.Other}\n"
+            "topResumedActivity=ActivityRecord{456 u0 "
+            "com.myexternalbrain.chummer/.MainActivity t4}\n"
+        )
+        self.assertEqual(
+            "com.myexternalbrain.chummer/com.myexternalbrain.chummer.MainActivity",
+            DRIVER.resumed_activity(dump),
         )
 
     def test_hierarchy_ignores_uiautomator_preamble(self) -> None:

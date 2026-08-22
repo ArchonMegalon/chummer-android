@@ -26,6 +26,7 @@
     <AndroidEnableProfiledAot Condition="'$(Configuration)' == 'Release'">true</AndroidEnableProfiledAot>
     <AndroidKeyStore Condition="'$(AndroidSigningKeyStore)' != ''">true</AndroidKeyStore>
     <ChummerPresentationRoot Condition="'$(ChummerPresentationRoot)' == ''">../../../chummer-presentation</ChummerPresentationRoot>
+    <ChummerCoreEngineRoot Condition="'$(ChummerCoreEngineRoot)' == ''">$(ChummerPresentationRoot)/../chummer-core-engine</ChummerCoreEngineRoot>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(AndroidSigningKeyStore)' != ''">
@@ -38,6 +39,12 @@
     <MauiIcon Include="Resources/AppIcon/appicon.svg" ForegroundFile="Resources/AppIcon/appiconfg.svg" Color="#102426" />
     <MauiSplashScreen Include="Resources/Splash/splash.svg" Color="#102426" BaseSize="512,512" />
     <MauiAsset Include="Resources/Raw/**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+    <AndroidAsset Include="$(ChummerCoreEngineRoot)/Chummer/data/**"
+                  LogicalName="chummer-content/data/%(RecursiveDir)%(Filename)%(Extension)" />
+    <AndroidAsset Include="$(ChummerCoreEngineRoot)/Chummer/lang/**"
+                  LogicalName="chummer-content/lang/%(RecursiveDir)%(Filename)%(Extension)" />
+    <AndroidAsset Include="Content/chummer-content-manifest.json"
+                  LogicalName="chummer-content/manifest.json" />
   </ItemGroup>
 
   <ItemGroup>

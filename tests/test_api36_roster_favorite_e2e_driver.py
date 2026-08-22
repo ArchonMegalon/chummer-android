@@ -1,6 +1,7 @@
 import ast
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -8,6 +9,7 @@ import xml.etree.ElementTree as ET
 
 
 REPO = Path(__file__).resolve().parents[1]
+WORKSPACE = Path(os.environ.get("CHUMMER_COMPLETE_ROOT", REPO.parent)).resolve()
 DRIVER = REPO / "tests/run_api36_roster_favorite_e2e.py"
 FIXTURE = REPO / "tests/fixtures/roster-favorite-e2e.chum5"
 INVENTORY_SCRIPT = REPO / "scripts/materialize_chummer5_editability_inventory.py"
@@ -39,8 +41,8 @@ class Api36RosterFavoriteDriverTests(unittest.TestCase):
         assert spec is not None and spec.loader is not None
         inventory = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(inventory)
-        presentation = REPO.parent / "presentation"
-        core = REPO.parent / "core"
+        presentation = WORKSPACE / "chummer-presentation"
+        core = WORKSPACE / "chummer-core-engine"
         specs = inventory._capture_only_phone_e2e_specs(presentation, core)
         roster = specs["roster-favorite"]
         self.assertIsNone(inventory._validated_capture_only_phone_e2e_receipt(roster))
