@@ -193,7 +193,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     def test_api36_driver_covers_phone_back_resume_and_receipt_without_running(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         ast.parse(source)
-        self.assertIn('SCRIPT_STATUS = "scripted_not_executed"', source)
+        self.assertNotIn('"status": "scripted_not_executed"', source)
+        self.assertIn('"status": "pass"', source)
+        self.assertIn('"executionStatus": "pass"', source)
         self.assertIn('"profile": "phone"', source)
         self.assertIn('api != "36"', source)
         self.assertIn('"creation-stage-method"', source)
@@ -212,6 +214,20 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('"characterDocumentChangedFalse": "pass"', source)
         self.assertIn('"buildGhostCurrentAndNonMutating": "pass"', source)
         self.assertIn('"advancedEditorNeverExposedWhileCreatedFalse": "pass"', source)
+
+    def test_api36_ci_runs_the_prerequisite_only_on_phone_after_generic_e2e(self) -> None:
+        runner = (
+            REPO / "scripts" / "run-api36-editing-e2e-ci.sh"
+        ).read_text(encoding="utf-8")
+        generic = "python3 chummer-android/tests/run_api36_editing_e2e.py"
+        prerequisite = "python3 chummer-android/tests/run_api36_creation_prerequisite_e2e.py"
+        self.assertIn('if [[ "$profile" == "phone" ]]; then', runner)
+        self.assertIn(generic, runner)
+        self.assertIn(prerequisite, runner)
+        self.assertLess(runner.index(generic), runner.index(prerequisite))
+        self.assertIn('prerequisite_root="$evidence_root/creation-prerequisite"', runner)
+        self.assertIn('--evidence "$prerequisite_root/screenshots"', runner)
+        self.assertIn('--receipt "$prerequisite_root/receipt.json"', runner)
 
 
 if __name__ == "__main__":

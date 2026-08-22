@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Scripted API-36 phone proof for the authoritative Priority/Sum-to-Ten prerequisite.
+"""API-36 phone proof for the authoritative Priority/Sum-to-Ten prerequisite.
 
-The driver is committed as ``scripted_not_executed``. It requires an operator-provided API-36
-phone/emulator and reviewed APK; unit tests only parse and inspect this contract.
+The source remains an unexecuted contract until CI or an operator runs it against a reviewed APK.
+A successfully completed invocation emits a pass receipt bound to that APK and this driver.
 """
 
 from __future__ import annotations
@@ -20,7 +20,6 @@ import run_api36_creation_wizard_foundation_e2e as foundation
 import run_api36_editing_e2e as shared
 
 
-SCRIPT_STATUS = "scripted_not_executed"
 CATEGORIES = ("heritage", "talent", "attributes", "skills", "resources")
 
 
@@ -190,7 +189,7 @@ def main() -> int:
 
     receipt = {
         "schema": "chummer.android.creation-prerequisite-e2e/v1",
-        "status": SCRIPT_STATUS,
+        "status": "pass",
         "executionStatus": "pass",
         "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
         "serial": args.serial,

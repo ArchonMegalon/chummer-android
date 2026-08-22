@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,6 +8,7 @@ from unittest.mock import patch
 
 
 REPO = Path(__file__).resolve().parents[1]
+WORKSPACE = Path(os.environ.get("CHUMMER_COMPLETE_ROOT", REPO.parent)).resolve()
 SCRIPT = REPO / "scripts" / "materialize_chummer5_editability_inventory.py"
 SPEC = importlib.util.spec_from_file_location("chummer5_editability_inventory", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
@@ -15,8 +17,8 @@ SPEC.loader.exec_module(inventory)
 
 
 def _sibling_repo(canonical_name: str, coherent_name: str) -> Path:
-    canonical = REPO.parent / canonical_name
-    return canonical if canonical.is_dir() else REPO.parent / coherent_name
+    canonical = WORKSPACE / canonical_name
+    return canonical if canonical.is_dir() else WORKSPACE / coherent_name
 
 
 PRESENTATION_ROOT = _sibling_repo("chummer-presentation", "presentation")
@@ -3892,40 +3894,58 @@ namespace Chummer
 
     def test_condition_receipts_fail_closed_when_a_driver_hash_is_stale(self) -> None:
         self.assertEqual(
-            {"phone", "tablet"},
-            set(inventory._validated_condition_e2e_receipts()),
+            {},
+            inventory._validated_condition_e2e_receipts(),
+            "Checked-in device receipts must fail closed after shared launch-driver drift.",
         )
         with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
             temporary_root = Path(temporary)
             receipt_paths = {}
             for profile, source in inventory.CONDITION_E2E_RECEIPTS.items():
                 receipt = json.loads(source.read_text(encoding="utf-8"))
-                if profile == "phone":
-                    receipt["driverSha256"] = "0" * 64
+                receipt["driverSha256"] = inventory._sha256_file(
+                    REPO / "tests" / "run_api36_editing_e2e.py"
+                )
                 target = temporary_root / f"{profile}.json"
                 target.write_text(json.dumps(receipt), encoding="utf-8")
                 receipt_paths[profile] = target
 
             with patch.dict(inventory.CONDITION_E2E_RECEIPTS, receipt_paths, clear=True):
+                self.assertEqual(
+                    {"phone", "tablet"},
+                    set(inventory._validated_condition_e2e_receipts()),
+                )
+                receipt = json.loads(receipt_paths["phone"].read_text(encoding="utf-8"))
+                receipt["driverSha256"] = "0" * 64
+                receipt_paths["phone"].write_text(json.dumps(receipt), encoding="utf-8")
                 self.assertEqual({}, inventory._validated_condition_e2e_receipts())
 
     def test_contact_pet_receipts_fail_closed_when_a_driver_hash_is_stale(self) -> None:
         self.assertEqual(
-            {"phone", "tablet"},
-            set(inventory._validated_contact_pet_e2e_receipts()),
+            {},
+            inventory._validated_contact_pet_e2e_receipts(),
+            "Checked-in device receipts must fail closed after shared launch-driver drift.",
         )
         with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
             temporary_root = Path(temporary)
             receipt_paths = {}
             for profile, source in inventory.CONTACT_PET_E2E_RECEIPTS.items():
                 receipt = json.loads(source.read_text(encoding="utf-8"))
-                if profile == "tablet":
-                    receipt["driverSha256"] = "0" * 64
+                receipt["driverSha256"] = inventory._sha256_file(
+                    REPO / "tests" / "run_api36_editing_e2e.py"
+                )
                 target = temporary_root / f"{profile}.json"
                 target.write_text(json.dumps(receipt), encoding="utf-8")
                 receipt_paths[profile] = target
 
             with patch.dict(inventory.CONTACT_PET_E2E_RECEIPTS, receipt_paths, clear=True):
+                self.assertEqual(
+                    {"phone", "tablet"},
+                    set(inventory._validated_contact_pet_e2e_receipts()),
+                )
+                receipt = json.loads(receipt_paths["tablet"].read_text(encoding="utf-8"))
+                receipt["driverSha256"] = "0" * 64
+                receipt_paths["tablet"].write_text(json.dumps(receipt), encoding="utf-8")
                 self.assertEqual({}, inventory._validated_contact_pet_e2e_receipts())
 
     def test_attribute_receipt_is_phone_only_and_driver_hash_bound(self) -> None:
@@ -3956,16 +3976,25 @@ namespace Chummer
                 self.assertIsNone(inventory._validated_attribute_phone_e2e_receipt())
 
     def test_career_attribute_receipt_is_fixture_and_driver_hash_bound(self) -> None:
-        validated = inventory._validated_attribute_career_phone_e2e_receipt()
-        self.assertIsNotNone(validated)
+        self.assertIsNone(
+            inventory._validated_attribute_career_phone_e2e_receipt(),
+            "The checked-in device receipt must fail closed after shared launch-driver drift.",
+        )
 
         source = inventory.ATTRIBUTE_CAREER_PHONE_E2E_RECEIPT
         receipt = json.loads(source.read_text(encoding="utf-8"))
-        receipt["inputFixtureSha256"] = "0" * 64
+        receipt["sharedDriverSha256"] = inventory._sha256_file(
+            REPO / "tests" / "run_api36_editing_e2e.py"
+        )
         with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
             receipt_path = Path(temporary) / "receipt.json"
             receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
             with patch.object(inventory, "ATTRIBUTE_CAREER_PHONE_E2E_RECEIPT", receipt_path):
+                self.assertIsNotNone(
+                    inventory._validated_attribute_career_phone_e2e_receipt()
+                )
+                receipt["inputFixtureSha256"] = "0" * 64
+                receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
                 self.assertIsNone(inventory._validated_attribute_career_phone_e2e_receipt())
 
     def test_new_character_settings_receipt_is_source_hash_bound(self) -> None:

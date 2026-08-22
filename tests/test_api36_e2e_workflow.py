@@ -66,9 +66,17 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("--serial emulator-5554", runner)
         self.assertIn('--profile "$profile"', runner)
         self.assertIn('--receipt "$evidence_root/receipt.json"', runner)
+        self.assertIn('if [[ "$profile" == "phone" ]]; then', runner)
+        self.assertIn("tests/run_api36_creation_prerequisite_e2e.py", runner)
+        self.assertIn('--evidence "$prerequisite_root/screenshots"', runner)
+        self.assertIn('--receipt "$prerequisite_root/receipt.json"', runner)
         self.assertLess(
             runner.index('install -d -m 0755 "$evidence_root"'),
             runner.index("python3 chummer-android/tests/run_api36_editing_e2e.py"),
+        )
+        self.assertLess(
+            runner.index("python3 chummer-android/tests/run_api36_editing_e2e.py"),
+            runner.index("tests/run_api36_creation_prerequisite_e2e.py"),
         )
 
     def test_actions_are_commit_pinned_and_evidence_survives_failure(self) -> None:

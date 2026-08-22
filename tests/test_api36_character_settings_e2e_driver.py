@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+import inspect
 import subprocess
 import sys
 import tempfile
@@ -82,7 +83,7 @@ class Api36CharacterSettingsE2EDriverTests(unittest.TestCase):
         self.assertIn("timeout = min(timeout, 30)", source)
         self.assertNotIn(
             "except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:",
-            SHARED_DRIVER.read_text(encoding="utf-8"),
+            inspect.getsource(shared.Device.hierarchy),
         )
         with tempfile.TemporaryDirectory() as temporary:
             device = driver.CharacterSettingsDevice(

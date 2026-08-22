@@ -1,6 +1,7 @@
 import ast
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -8,12 +9,15 @@ import xml.etree.ElementTree as ET
 
 
 REPO = Path(__file__).resolve().parents[1]
+WORKSPACE = Path(os.environ.get("CHUMMER_COMPLETE_ROOT", REPO.parent)).resolve()
 DRIVER = REPO / "tests/run_api36_roster_sort_e2e.py"
 FIXTURE = REPO / "tests/fixtures/roster-sort-e2e.chum5"
 INVENTORY_SCRIPT = REPO / "scripts/materialize_chummer5_editability_inventory.py"
 
 
 def _resolve_repository_sibling(parent: Path, label: str, names: tuple[str, ...]) -> Path:
+    if parent == REPO.parent:
+        parent = WORKSPACE
     matches = [parent / name for name in names if (parent / name).is_dir()]
     if len(matches) != 1:
         raise RuntimeError(
