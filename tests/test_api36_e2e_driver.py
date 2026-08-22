@@ -689,6 +689,35 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertNotIn("previous.Notice", predicate)
         self.assertNotIn("current.Notice", predicate)
 
+    def test_online_import_uses_the_same_guarded_activation_contract(self) -> None:
+        source = (
+            REPO_ROOT
+            / "src"
+            / "Chummer.Android"
+            / "Native"
+            / "RunnerSessionCoordinator.cs"
+        ).read_text(encoding="utf-8")
+        block = source[source.index("public async Task OpenOnlineAsync") :]
+        block = block[: block.index("public async Task CreateRunnerAsync")]
+
+        self.assertIn("CharacterOverviewState previousState = State;", block)
+        self.assertIn("_notice = null;", block)
+        self.assertIn(
+            "if (ImportActivatedWorkspace(previousState, State))",
+            block,
+        )
+        guarded = block[block.index("if (ImportActivatedWorkspace") :]
+        self.assertIn("RememberRosterLocator", guarded)
+        self.assertIn(
+            '_notice = $"Opened {DisplayName(character.Name, character.Alias)}.";',
+            guarded,
+        )
+        self.assertNotIn(
+            'cancellationToken);\n'
+            '            RememberRosterLocator(',
+            block,
+        )
+
     def test_native_dialog_rebuilds_from_state_shape_changes_not_a_dialog_allowlist(self) -> None:
         source = (
             REPO_ROOT / "src" / "Chummer.Android" / "Native" / "NativeDialogPage.cs"

@@ -535,13 +535,18 @@ public sealed class RunnerSessionCoordinator : IDisposable
         byte[] payload = Encoding.UTF8.GetBytes(character.Payload);
         try
         {
+            CharacterOverviewState previousState = State;
+            _notice = null;
             await _presenter.ImportAsync(
                 WorkspaceImportDocument.FromUtf8Bytes(payload, character.RulesetId, ParseFormat(character.Format)),
                 cancellationToken);
-            RememberRosterLocator(
-                State.WorkspaceId,
-                $"chummer-run://workspace/{Uri.EscapeDataString(character.WorkspaceId)}");
-            _notice = $"Opened {DisplayName(character.Name, character.Alias)}.";
+            if (ImportActivatedWorkspace(previousState, State))
+            {
+                RememberRosterLocator(
+                    State.WorkspaceId,
+                    $"chummer-run://workspace/{Uri.EscapeDataString(character.WorkspaceId)}");
+                _notice = $"Opened {DisplayName(character.Name, character.Alias)}.";
+            }
             await SyncShellAsync(cancellationToken);
             RestorePlayState();
         }
