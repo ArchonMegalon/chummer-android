@@ -318,11 +318,23 @@ class Device:
         forward_scrolls: int = 24,
         scroll_distance_ratio: float = 0.22,
     ) -> None:
-        """Find a preserved list position without assuming which side owns the target."""
-        deadline = time.monotonic() + timeout
-        backward = 0
-        forward = 0
+        """Reset a preserved list position, then scan forward with bounded dumps."""
+        # A uiautomator hierarchy dump can take several seconds on the full Build
+        # page. Resetting to the known top does not need a dump between gestures;
+        # spending the search deadline on those probes can prevent the forward
+        # phase from ever starting on a long runner dossier.
         x_ratio = self._scroll_x_ratio(selector)
+        for _ in range(backward_scrolls):
+            self.swipe_down(
+                x_ratio=x_ratio,
+                distance_ratio=scroll_distance_ratio,
+            )
+            time.sleep(0.2)
+        if backward_scrolls > 0:
+            time.sleep(0.75)
+
+        deadline = time.monotonic() + timeout
+        forward = 0
         while time.monotonic() < deadline:
             candidate = self.find(selector)
             if candidate is not None and self.node_has_tappable_bounds(candidate):
@@ -332,13 +344,7 @@ class Device:
             if self.dismiss_system_ui_anr():
                 time.sleep(2)
                 continue
-            if backward < backward_scrolls:
-                self.swipe_down(
-                    x_ratio=x_ratio,
-                    distance_ratio=scroll_distance_ratio,
-                )
-                backward += 1
-            elif forward < forward_scrolls:
+            if forward < forward_scrolls:
                 self.swipe_up(
                     x_ratio=x_ratio,
                     distance_ratio=scroll_distance_ratio,

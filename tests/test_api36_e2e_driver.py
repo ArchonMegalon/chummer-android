@@ -489,7 +489,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             device.commands[-1],
         )
 
-    def test_bidirectional_tap_finds_an_early_section_from_a_preserved_late_offset(self) -> None:
+    def test_bidirectional_tap_resets_without_hierarchy_probes(self) -> None:
         target = DRIVER.UiNode(
             {
                 "resource-id": "build-section-tab-attributes",
@@ -498,7 +498,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             }
         )
         device = Mock(spec=DRIVER.Device)
-        device.find.side_effect = [None, None, target]
+        device.find.return_value = target
         device.dismiss_system_ui_anr.return_value = False
         device._scroll_x_ratio.return_value = 0.5
         device.node_has_tappable_bounds.return_value = True
@@ -512,9 +512,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             )
 
         self.assertEqual(
-            [call(x_ratio=0.5, distance_ratio=0.22)] * 2,
+            [call(x_ratio=0.5, distance_ratio=0.22)] * 4,
             device.swipe_down.call_args_list,
         )
+        device.find.assert_called_once_with("build-section-tab-attributes")
         device.swipe_up.assert_not_called()
         device.shell.assert_called_once_with("input", "tap", "500", "460")
 
@@ -537,11 +538,85 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 device,
                 "build-section-tab-attributes",
                 backward_scrolls=1,
-                forward_scrolls=1,
+                forward_scrolls=2,
             )
 
         device.swipe_down.assert_called_once_with(x_ratio=0.5, distance_ratio=0.22)
-        device.swipe_up.assert_called_once_with(x_ratio=0.5, distance_ratio=0.22)
+        self.assertEqual(
+            [call(x_ratio=0.5, distance_ratio=0.22)] * 2,
+            device.swipe_up.call_args_list,
+        )
+
+    def test_bidirectional_tap_reaches_hidden_target_with_expensive_hierarchy_dumps(self) -> None:
+        target = DRIVER.UiNode(
+            {
+                "resource-id": "build-section-tab-attributes",
+                "clickable": "true",
+                "bounds": "[100,400][900,520]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        device._scroll_x_ratio.return_value = 0.5
+        device.node_has_tappable_bounds.return_value = True
+        elapsed = [0.0]
+        down_find_counts: list[int] = []
+
+        def expensive_find(selector: str) -> DRIVER.UiNode | None:
+            elapsed[0] += 4.0
+            if (
+                selector == "build-section-tab-attributes"
+                and device.swipe_up.call_count >= 12
+            ):
+                return target
+            return None
+
+        device.find.side_effect = expensive_find
+        device.swipe_down.side_effect = lambda **_kwargs: down_find_counts.append(
+            device.find.call_count
+        )
+        device.dismiss_system_ui_anr.side_effect = (
+            lambda: DRIVER.Device.dismiss_system_ui_anr(device)
+        )
+
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=lambda: elapsed[0]),
+            patch.object(DRIVER.time, "sleep"),
+        ):
+            DRIVER.Device.tap_bidirectional(
+                device,
+                "build-section-tab-attributes",
+                timeout=120,
+                backward_scrolls=24,
+                forward_scrolls=24,
+            )
+
+        self.assertEqual([0] * 24, down_find_counts)
+        self.assertEqual(25, device.find.call_count)
+        self.assertEqual(12, device.dismiss_system_ui_anr.call_count)
+        self.assertEqual(24, device.swipe_down.call_count)
+        self.assertEqual(12, device.swipe_up.call_count)
+        device.shell.assert_called_once_with("input", "tap", "500", "460")
+
+    def test_bidirectional_tap_keeps_forward_search_bounded_when_target_is_absent(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.find.return_value = None
+        device.dismiss_system_ui_anr.return_value = False
+        device._scroll_x_ratio.return_value = 0.5
+
+        with patch.object(DRIVER.time, "sleep"):
+            with self.assertRaisesRegex(RuntimeError, "bounded bidirectional search"):
+                DRIVER.Device.tap_bidirectional(
+                    device,
+                    "build-section-tab-attributes",
+                    timeout=120,
+                    backward_scrolls=3,
+                    forward_scrolls=2,
+                )
+
+        self.assertEqual(3, device.swipe_down.call_count)
+        self.assertEqual(2, device.swipe_up.call_count)
+        self.assertEqual(3, device.find.call_count)
+        device.capture.assert_called_once_with("failure")
 
     def test_fixture_transport_verifies_the_exact_remote_bytes(self) -> None:
         expected = "a" * 64
