@@ -267,7 +267,7 @@
       {
         "path": "src/Chummer.Android/Native/GearOverclockerPage.cs",
         "exists": true,
-        "sha256": "566b146cae5317790ec7b5716d7e9f7312e326a8b94bb40260bfcbd2501ec3e7"
+        "sha256": "69901b3fb006eae444db5d12b3fc38f265fd692d797dba26d0c5e2df7be56be7"
       },
       {
         "path": "src/Chummer.Android/Native/GearAttackSwapPage.cs",
@@ -277,7 +277,7 @@
       {
         "path": "src/Chummer.Android/Native/GearSleazeSwapPage.cs",
         "exists": true,
-        "sha256": "4ce0db48288ccbcbf1ab6e97adefaa05e550b9e7e12b6189a106459f3cd63fde"
+        "sha256": "cfcd5f1db1847f69904a293bf99c6e1ba196d20f7333403ead2dd833faa947a6"
       },
       {
         "path": "src/Chummer.Android/Native/ImprovementActivePage.cs",
@@ -1512,7 +1512,7 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementGroupAddRules.cs",
         "exists": true,
-        "sha256": "c5f92c16322f074869a0ac6081542945110c833303c4a8c4f62e80bac4efa888"
+        "sha256": "7b7629abdc748a1e171804d148e7e430e0e41f5ac4aff42bc241478c51b96273"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterImprovementGroupActiveRules.cs",
@@ -1532,7 +1532,7 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterSpiritNameChoiceRules.cs",
         "exists": true,
-        "sha256": "a52869a51129ce1c7841263c1a0e425cffac7bfee62a72a8a858d5efc3ae25af"
+        "sha256": "90072aac32af90c6ea3476fd9d1149e929735b95af5d483513a6d7f006204a26"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearStolenRules.cs",
@@ -1912,7 +1912,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "ce0c2acd752a4ca9e18c5b9170312705092cce2b167aed7da8fc51c37438cbd7"
+        "sha256": "8df538f7df4e96c903656fa25964f1df4867671d7606380bec203d110393f627"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1922,7 +1922,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "f842c0a3155045e144731e1c15adf24a129c6415a1c5a1e443c76d0571684cc8"
+      "sha256": "0ba8bc5e664a671c1e9913a5227ecdfc17d95eb5f5cd3e731d2993813816e2d3"
     }
   },
   "coverageByFamily": {
