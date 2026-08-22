@@ -2307,6 +2307,20 @@ SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS: dict[
             ),
         },
     },
+    ("CharacterCareer", "cmdSwapContactOrder"): {
+        "operation": "toggle_view",
+        "evidence": (
+            "Click only toggles the current WinForms panContacts.FlowDirection between LeftToRight and "
+            "TopDown; it calls no character or contact model, dirty-state, save/recovery, or persisted "
+            "application-settings API"
+        ),
+        "events": (("Click", "cmdSwapContactOrder_Click"),),
+        "methodDigests": {
+            "cmdSwapContactOrder_Click": (
+                "cf9933134fa9de0dbaea61a70982844b3eaec1a086f6765d20db521d32f35bf3"
+            ),
+        },
+    },
 }
 
 MATRIX_CONDITION_CONTROL_RE = re.compile(

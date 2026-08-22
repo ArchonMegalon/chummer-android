@@ -303,6 +303,90 @@ namespace Chummer
             self.assertEqual("not_applicable_non_mutating", row["e2e"]["phone"]["status"])
             self.assertTrue(row["completionProven"])
 
+    def test_career_contact_order_is_source_guarded_non_mutating(self) -> None:
+        legacy_root = (
+            inventory.DEFAULT_CHUMMER5_ROOT
+            if inventory.DEFAULT_CHUMMER5_ROOT.is_dir()
+            else PRESENTATION_ROOT
+        )
+        source = (
+            legacy_root
+            / "Chummer"
+            / "Forms"
+            / "Character Forms"
+            / "CharacterCareer.cs"
+        ).read_bytes().decode("utf-8-sig")
+        identity = ("CharacterCareer", "cmdSwapContactOrder")
+        handler = "cmdSwapContactOrder_Click"
+        handler_digest = "cf9933134fa9de0dbaea61a70982844b3eaec1a086f6765d20db521d32f35bf3"
+        handlers = [{"event": "Click", "handler": handler}]
+
+        review = inventory._source_guarded_non_mutating_review(
+            identity[0],
+            identity[1],
+            handlers,
+            [source],
+        )
+        self.assertIsNotNone(review)
+        self.assertEqual("toggle_view", review[0])
+        self.assertIn("panContacts.FlowDirection", review[1])
+        self.assertIn("no character or contact model", review[1])
+        self.assertEqual(handler_digest, inventory._legacy_method_digest([source], handler))
+        self.assertNotIn(identity, inventory.NON_MUTATING_LEGACY_INTERACTIONS)
+        self.assertEqual(
+            ("mutating_action", "definite"),
+            inventory._operation(identity[1], "action", handlers),
+        )
+        self.assertIsNone(
+            inventory._source_guarded_non_mutating_review(
+                identity[0],
+                identity[1],
+                [{"event": "Click", "handler": "drifted_handler"}],
+                [source],
+            )
+        )
+
+        contract = inventory.SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS[identity]
+        drifted_contract = {
+            **contract,
+            "methodDigests": {handler: "0" * 64},
+        }
+        with patch.dict(
+            inventory.SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS,
+            {identity: drifted_contract},
+        ):
+            self.assertIsNone(
+                inventory._source_guarded_non_mutating_review(
+                    identity[0],
+                    identity[1],
+                    handlers,
+                    [source],
+                )
+            )
+
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = [
+            row
+            for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == identity[0]
+            and row["legacy"]["controlName"] == identity[1]
+        ]
+        self.assertEqual(1, len(rows))
+        row = rows[0]
+        self.assertEqual("toggle_view", row["operation"])
+        self.assertEqual("non_mutating", row["legacy"]["mutationDisposition"])
+        self.assertIn("panContacts.FlowDirection", row["legacy"]["dispositionEvidence"])
+        self.assertFalse(row["editParityRequired"])
+        self.assertEqual("not_applicable_non_mutating", row["phone"]["status"])
+        self.assertEqual("not_applicable_non_mutating", row["tablet"]["status"])
+        self.assertEqual("not_applicable_non_mutating", row["e2e"]["phone"]["status"])
+        self.assertEqual("not_applicable_non_mutating", row["e2e"]["tablet"]["status"])
+        self.assertTrue(row["completionProven"])
+
     def test_career_attribute_category_is_reviewed_as_transient_shapeshifter_view(self) -> None:
         payload = json.loads(
             (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
@@ -2416,8 +2500,8 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 456,
                 "implemented_verified_api36": 79,
-                "missing": 945,
-                "not_applicable_non_mutating": 471,
+                "missing": 944,
+                "not_applicable_non_mutating": 472,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 172,
             },
@@ -2427,8 +2511,8 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 4,
                 "implemented_verified_api36": 75,
-                "missing": 1535,
-                "not_applicable_non_mutating": 471,
+                "missing": 1534,
+                "not_applicable_non_mutating": 472,
                 "partial_exact_saved_data": 144,
             },
             payload["summary"]["tabletStatusCounts"],

@@ -6,26 +6,26 @@
     "rowCount": 2229,
     "sourceFileCount": 300,
     "designerFileCount": 137,
-    "definiteMutationCandidateCount": 1758,
+    "definiteMutationCandidateCount": 1757,
     "reviewRequiredCount": 0,
     "legacyReviewCompleteCount": 2229,
-    "reviewedNonMutatingCount": 471,
-    "editParityRequiredCount": 1758,
+    "reviewedNonMutatingCount": 472,
+    "editParityRequiredCount": 1757,
     "unclassifiedCount": 0,
-    "completionProvenCount": 546,
+    "completionProvenCount": 547,
     "phoneStatusCounts": {
       "implemented_pending_emulator": 456,
       "implemented_verified_api36": 79,
-      "missing": 945,
-      "not_applicable_non_mutating": 471,
+      "missing": 944,
+      "not_applicable_non_mutating": 472,
       "partial_create_only": 106,
       "partial_exact_saved_data": 172
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
       "implemented_verified_api36": 75,
-      "missing": 1535,
-      "not_applicable_non_mutating": 471,
+      "missing": 1534,
+      "not_applicable_non_mutating": 472,
       "partial_exact_saved_data": 144
     }
   },
@@ -2122,7 +2122,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "dda99fa95b4f9fba368d7c3172d9aef28f2e982a0398745b47277bc54f26cb0e"
+      "sha256": "bd70cf05268f6e49bbf1da6512a1230da39cf2ef87c1973d600e8fd73cfc7577"
     }
   },
   "coverageByFamily": {
@@ -2213,9 +2213,9 @@
     "contacts": {
       "rowCount": 63,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 14,
-      "tabletMissingCount": 20,
-      "completionProvenCount": 39
+      "phoneMissingCount": 13,
+      "tabletMissingCount": 19,
+      "completionProvenCount": 40
     },
     "crash_report_and_diagnostics": {
       "rowCount": 10,
@@ -28188,9 +28188,9 @@
         "controlName": "cmdSwapContactOrder",
         "controlType": "Button",
         "candidateKind": "action",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "action accepts a value or invokes mutation-capable source wiring (cmdSwapContactOrder_Click)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "Click only toggles the current WinForms panContacts.FlowDirection between LeftToRight and TopDown; it calls no character or contact model, dirty-state, save/recovery, or persisted application-settings API",
         "text": "&Swap Ordering",
         "tag": "Button_SwapOrdering",
         "readOnlyAtDesignTime": null,
@@ -28204,16 +28204,16 @@
         ]
       },
       "mutationFamily": "contacts",
-      "operation": "mutating_action",
+      "operation": "toggle_view",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -28222,18 +28222,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::cboVehicleWeaponFiringMode",
