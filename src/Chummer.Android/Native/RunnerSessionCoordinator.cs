@@ -987,6 +987,22 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<GearSleazeSwapEditorState?> PrepareGearSleazeSwapEditAsync(Guid rootGearId,
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareGearSleazeSwapEditAsync(rootGearId, cancellationToken);
+
+    public async Task ApplyGearSleazeSwapEditAsync(GearSleazeSwapEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId || State.ContentRevision != request.ExpectedContentRevision)
+            throw new InvalidOperationException("This runner changed while Gear Sleaze was open. Reopen it.");
+        await _presenter.ApplyGearSleazeSwapEditAsync(request, cancellationToken);
+        if (State.Error is null) await _presenter.SaveAsync(cancellationToken);
+        _notice = State.Error is null ? "Gear Sleaze value swapped." : null;
+        await SyncShellAsync(cancellationToken); NotifyChanged();
+    }
+
     public Task<ImprovementActiveEditorState?> PrepareImprovementActiveEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareImprovementActiveEditAsync(cancellationToken);

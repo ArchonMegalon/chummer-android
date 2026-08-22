@@ -127,6 +127,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddGearEquipmentAction(item);
         AddGearOverclockerAction(item);
         AddGearAttackSwapAction(item);
+        AddGearSleazeSwapAction(item);
         AddLifestyleIncrementAction(item);
         AddWeaponAccessoryIncludedAction(item);
         AddCritterPowerCountAction(item);
@@ -1159,6 +1160,20 @@ public sealed class CollectionItemEditorPage : NativePageBase
                     await Navigation.PushAsync(new GearAttackSwapPage(Coordinator, editor));
             },
             automationId: $"gear-attack-swap-open-{gearId:N}"));
+    }
+
+    private void AddGearSleazeSwapAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Gear || _target.NestedKind is not null
+            || Coordinator.State.WorkspaceId is null
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid gearId) || gearId == Guid.Empty) return;
+        _body.Add(NativeTheme.NavigationRow("Swap Sleaze",
+            "Swap the saved raw Sleaze value with Attack, Data Processing, or Firewall on eligible Gear",
+            async () =>
+            {
+                GearSleazeSwapEditorState? editor = await Coordinator.PrepareGearSleazeSwapEditAsync(gearId);
+                if (editor is not null) await Navigation.PushAsync(new GearSleazeSwapPage(Coordinator, editor));
+            }, automationId: $"gear-sleaze-swap-open-{gearId:N}"));
     }
 
     private void AddWeaponStolenAction(WorkspaceCollectionItemEditorState item)

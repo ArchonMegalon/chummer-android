@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character><created>False</created><alias>CreationGearSleazeSwap</alias><nuyen>4321</nuyen><karma>7</karma><customstate>Creation Sleaze sentinel</customstate><gears>
+<gear><guid>a9351111-1511-4511-8511-151111111111</guid><name>Sleaze Root</name><category>Commlinks</category><attack>0</attack><sleaze>0</sleaze><dataprocessing>3</dataprocessing><firewall>3</firewall><canswapattributes>False</canswapattributes><children>
+<gear><guid>b9351111-1511-4511-8511-151111111111</guid><name>Sleaze Target</name><category>Cyberdecks</category><attack>7</attack><sleaze>{Rating}</sleaze><dataprocessing>5</dataprocessing><firewall>4</firewall><attributearray>7,6,5,4</attributearray><canswapattributes>True</canswapattributes><modattack>2</modattack><modsleaze>3</modsleaze><moddataprocessing>9</moddataprocessing><modfirewall>5</modfirewall><cost>12345</cost><active>True</active><homenode>True</homenode><equipped>True</equipped><stolen>False</stolen><notes>Creation Sleaze target sentinel</notes></gear>
+</children></gear></gears></character>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character><created>True</created><alias>CareerGearSleazeSwap</alias><nuyen>8765</nuyen><karma>9</karma><customstate>Career Sleaze sentinel</customstate><gears>
+<gear><guid>c9351111-1511-4511-8511-151111111111</guid><name>Career Sleaze Root</name><category>Commlinks</category><attack>0</attack><sleaze>0</sleaze><dataprocessing>3</dataprocessing><firewall>3</firewall><canswapattributes>False</canswapattributes><children>
+<gear><guid>d9351111-1511-4511-8511-151111111111</guid><name>Career Sleaze Target</name><category>Cyberdecks</category><attack>8</attack><sleaze>7</sleaze><dataprocessing>{Rating}</dataprocessing><firewall>5</firewall><attributearray>8,7,6,5</attributearray><canswapattributes>True</canswapattributes><modattack>6</modattack><modsleaze>10</modsleaze><moddataprocessing>11</moddataprocessing><modfirewall>12</modfirewall><cost>54321</cost><active>False</active><homenode>True</homenode><equipped>False</equipped><stolen>True</stolen><notes>Career Sleaze target sentinel</notes></gear>
+</children></gear></gears></character>

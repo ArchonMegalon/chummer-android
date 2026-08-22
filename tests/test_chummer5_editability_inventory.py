@@ -1187,6 +1187,25 @@ namespace Chummer
             self.assertEqual("tests/run_api36_gear_attack_swap_e2e.py", row["e2e"]["phone"]["ref"])
             self.assertFalse(row["completionProven"])
 
+        gear_sleaze_swap = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.GEAR_SLEAZE_SWAP_CONTROL
+        ]
+        self.assertEqual(2, len(gear_sleaze_swap))
+        self.assertEqual({"CharacterCreate", "CharacterCareer"},
+            {row["legacy"]["formOrControl"] for row in gear_sleaze_swap})
+        for row in gear_sleaze_swap:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("GearSleazeSwapPage", row["phone"]["surface"])
+            self.assertIn("explicit Sleaze-to-target raw Matrix swap", row["presenterMutation"])
+            self.assertIn("zero Nuyen/Karma economics", row["presenterMutation"])
+            self.assertIn("active/home notification consumers", row["persistenceAssertion"])
+            self.assertIn("bonuses", row["persistenceAssertion"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual("tests/run_api36_gear_sleaze_swap_e2e.py", row["e2e"]["phone"]["ref"])
+            self.assertEqual("missing", row["tablet"]["status"])
+
         gear_overclocker = [
             row for row in rows
             if row["legacy"]["formOrControl"] == "CharacterCareer"
@@ -2213,9 +2232,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 442,
+                "implemented_pending_emulator": 444,
                 "implemented_verified_api36": 79,
-                "missing": 986,
+                "missing": 984,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 148,

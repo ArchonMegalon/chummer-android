@@ -1898,6 +1898,7 @@ WEAPON_STOLEN_CONTROL = "chkWeaponStolen"
 GEAR_EQUIPMENT_CONTROL = "chkGearEquipped"
 GEAR_OVERCLOCKER_CONTROL = "cboGearOverclocker"
 GEAR_ATTACK_SWAP_CONTROL = "cboGearAttack"
+GEAR_SLEAZE_SWAP_CONTROL = "cboGearSleaze"
 IMPROVEMENT_ACTIVE_CONTROL = "chkImprovementActive"
 IMPROVEMENT_NOTES_CONTROL = "tsImprovementNotes"
 IMPROVEMENT_GROUP_ADD_CONTROL = "cmdAddImprovementGroup"
@@ -11103,6 +11104,7 @@ def _known_phone_mapping(
         presenter_interface = overview / "ICharacterOverviewPresenter.cs"
         presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
         core_rules = character_notes_core_root / "Chummer.Contracts/Characters/CharacterGearAttackSwapRules.cs"
+        shared_rules = character_notes_core_root / "Chummer.Contracts/Characters/CharacterGearMatrixSwapRules.cs"
         workspace_store = character_notes_core_root / "Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
         legacy_exact = (
             any(event.get("handler") == "cboGearAttack_SelectedIndexChanged" for event in legacy.get("events", []))
@@ -11133,8 +11135,10 @@ def _known_phone_mapping(
             and _contains(presenter_persistence, "SaveAsync", "expectedContentRevision", "TryBeginCaptureIntent",
                           "_workspacePersistenceService.SaveAsync")
             and _contains(core_rules, "CharacterGearAttackSwapIdentity", "CharacterGearAttackSwapTarget",
-                          "CharacterGearAttackSwapPhase", "CharacterGearAttackSwapEconomics", "NuyenDelta: 0m",
-                          "KarmaDelta: 0", "TryValidateMutation", "SHA256.HashData")
+                          "CharacterGearAttackSwapPhase", "CharacterGearAttackSwapEconomics",
+                          "TryValidateMutation", "CharacterGearMatrixSwapRules")
+            and _contains(shared_rules, "CharacterGearMatrixAttribute", "NuyenDelta: 0m", "KarmaDelta: 0",
+                          "TryValidateMutation", "SHA256.HashData")
             and _contains(workspace_store, "expectedContentRevision", "Flush(flushToDisk: true)", "File.Replace", "File.Move")
         )
         e2e_scripted = (
@@ -11160,6 +11164,7 @@ def _known_phone_mapping(
                 "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
                 "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
                 "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearAttackSwapRules.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearMatrixSwapRules.cs",
                 "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
             ],
             "presenterMutation": (
@@ -11183,6 +11188,55 @@ def _known_phone_mapping(
             "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name in {"CharacterCreate", "CharacterCareer"} and control == GEAR_SLEAZE_SWAP_CONTROL:
+        legacy_source = presentation_root / "Chummer/Forms/Character Forms" / f"{class_name}.cs"
+        page = REPO_ROOT / "src/Chummer.Android/Native/GearSleazeSwapPage.cs"
+        editor = REPO_ROOT / "src/Chummer.Android/Native/CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests/run_api36_gear_sleaze_swap_e2e.py"
+        overview = presentation_root / "Chummer.Presentation/Overview"
+        request = overview / "GearSleazeSwapEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        interface = overview / "ICharacterOverviewPresenter.cs"
+        attack_request = overview / "GearAttackSwapEditRequest.cs"
+        shared_rules = character_notes_core_root / "Chummer.Contracts/Characters/CharacterGearMatrixSwapRules.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        legacy_exact = any(e.get("handler") == "cboGearSleaze_SelectedIndexChanged" for e in legacy.get("events", [])) \
+            and _contains(legacy_source, "cboGearSleaze_SelectedIndexChanged", "IHasMatrixAttributes objTarget",
+                          "ProcessMatrixAttributeComboBoxChangeAsync", "cboGearAttack", "cboGearDataProcessing", "cboGearFirewall")
+        implemented = legacy_exact \
+            and _contains(page, "class GearSleazeSwapPage", "CharacterGearMatrixAttribute.Sleaze",
+                          'AutomationId = $"gear-sleaze-swap-page-{token}"', "selected.Revision") \
+            and _contains(editor, "AddGearSleazeSwapAction", 'automationId: $"gear-sleaze-swap-open-{gearId:N}"', "new GearSleazeSwapPage") \
+            and _contains(coordinator, "PrepareGearSleazeSwapEditAsync", "ApplyGearSleazeSwapEditAsync", "ExpectedContentRevision", "_presenter.SaveAsync") \
+            and _contains(request, "CharacterGearMatrixSwapIdentity", "GearSleazeSwapEditorProjector",
+                          "GearAttackSwapEditorProjector.ProjectValue", "CharacterGearMatrixAttribute ChangedAttribute") \
+            and _contains(attack_request, 'ReadRequiredBoolean(root, "created"', '"canswapattributes"', "seenIds.Add(gearId)", "FindUniqueDirectByGuid") \
+            and _contains(mutation, "ApplyGearSleazeSwapEdit", "CharacterGearMatrixSwapRules.TryValidateMutation",
+                          "request.ChangedAttribute != CharacterGearMatrixAttribute.Sleaze", "SetElementValue(target, changedElement") \
+            and _contains(presenter, "PrepareGearSleazeSwapEditAsync", "ApplyGearSleazeSwapEditAsync", "ApplyWorkspaceXmlMutationAsync") \
+            and _contains(interface, "PrepareGearSleazeSwapEditAsync", "ApplyGearSleazeSwapEditAsync") \
+            and _contains(shared_rules, "CharacterGearMatrixAttribute", "CharacterGearMatrixSwapIdentity", "NuyenDelta: 0m",
+                          "KarmaDelta: 0", "TryValidateMutation", "SHA256.HashData") \
+            and _contains(store, "expectedContentRevision", "Flush(flushToDisk: true)", "File.Replace", "File.Move")
+        scripted = _contains(driver, '"CharacterCreate.cboGearSleaze"', '"CharacterCareer.cboGearSleaze"',
+                             'api != "36"', '"arm64-v8a" not in abi.split(",")', "shared.PACKAGE",
+                             '"journey":"gear-sleaze-swap"', '"dataProcessingNotificationOnly"',
+                             '"activeHomeStatePreserved"', '"gearMatrixSwapRulesSha256"') \
+            and (REPO_ROOT / "tests/fixtures/creation-gear-sleaze-swap-e2e.chum5").is_file() \
+            and (REPO_ROOT / "tests/fixtures/career-gear-sleaze-swap-e2e.chum5").is_file()
+        return {"status":"implemented_pending_emulator" if implemented else "missing",
+            "route":"Build > Gear > Gear > selected stable root Gear > Matrix Gear Swap Sleaze",
+            "surface":"GearSleazeSwapPage", "automationId":"gear-sleaze-swap-attribute-{stable-root-gear-guid}",
+            "sourceRefs":["src/Chummer.Android/Native/GearSleazeSwapPage.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/GearSleazeSwapEditRequest.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearMatrixSwapRules.cs"],
+            "presenterMutation":"typed explicit Sleaze-to-target raw Matrix swap with recursive Gear Guid identity, Create/Career phase, zero Nuyen/Karma economics, node revision and expected workspace content revision",
+            "persistenceAssertion":"raw sleaze and target values exchange atomically while bonuses, active/home notification consumers, attributearray/canswapattributes, cost, Nuyen, Karma and unrelated XML remain exact after atomic recovery, reopen, and restart",
+            "coverageLimit":f"Exact {class_name} cboGearSleaze only; equal raw values, malformed/ineligible/duplicate Gear and tablet fail closed.",
+            "e2e":{"status":"scripted_not_executed" if scripted else "missing", "ref":"tests/run_api36_gear_sleaze_swap_e2e.py" if scripted else None},
+            "tablet":{"status":"missing","surface":None,"automationId":None,"sourceRefs":[]}, "tabletE2e":{"status":"missing","ref":None}}
     if class_name == "CharacterCareer" and control == GEAR_OVERCLOCKER_CONTROL:
         legacy_source = (
             presentation_root / "Chummer" / "Forms" / "Character Forms" / "CharacterCareer.cs"
@@ -17607,6 +17661,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponStolenPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearOverclockerPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearAttackSwapPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearSleazeSwapPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementActivePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementNotesPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementGroupAddPage.cs",
@@ -17631,6 +17686,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs",
         REPO_ROOT / "tests" / "run_api36_editing_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_attack_swap_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_gear_sleaze_swap_e2e.py",
         REPO_ROOT / "tests" / "run_api36_character_notes_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_reputation_e2e.py",
         REPO_ROOT / "tests" / "run_api36_situational_modifiers_e2e.py",
