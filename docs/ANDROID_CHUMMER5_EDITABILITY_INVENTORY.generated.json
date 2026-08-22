@@ -81,7 +81,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "deac77a2c400778e687d589a8c496965a955153fa6e34ff7a38645313babea34"
+        "sha256": "94f31b679480a2908b946f8c21e19c6e7e5405c0bfbdf8dbddb0fe05db1967f8"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -1921,7 +1921,7 @@
       {
         "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "f4a6519a527d9b84b80cc45de45d053a083ebe4b18026ce80ba2ef4c45ceb793"
+        "sha256": "45bb1afa0ccf9f2c76d1dd02e4ad09c9e89b06cfbfaa9031e1e3d210ad0f0ed5"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
@@ -1941,7 +1941,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "787c53c846ea50eb1a5e0d2f60d9e1693691a1a210ce79b264c9ebcf2a8dca01"
+        "sha256": "92518570f1c8022dade333456d048f2277b034fa362ec2878edf605aa2659704"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
