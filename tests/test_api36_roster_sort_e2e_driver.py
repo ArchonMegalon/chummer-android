@@ -11,11 +11,47 @@ REPO = Path(__file__).resolve().parents[1]
 DRIVER = REPO / "tests/run_api36_roster_sort_e2e.py"
 FIXTURE = REPO / "tests/fixtures/roster-sort-e2e.chum5"
 INVENTORY_SCRIPT = REPO / "scripts/materialize_chummer5_editability_inventory.py"
-PRESENTATION = REPO.parent / "presentation"
-CORE = REPO.parent / "core"
+
+
+def _resolve_repository_sibling(parent: Path, label: str, names: tuple[str, ...]) -> Path:
+    matches = [parent / name for name in names if (parent / name).is_dir()]
+    if len(matches) != 1:
+        raise RuntimeError(
+            f"Expected exactly one {label} sibling repository named {names!r}; found {matches!r}"
+        )
+    return matches[0]
+
+
+PRESENTATION = _resolve_repository_sibling(
+    REPO.parent,
+    "presentation",
+    ("presentation", "chummer-presentation"),
+)
+CORE = _resolve_repository_sibling(
+    REPO.parent,
+    "core",
+    ("core", "chummer-core-engine"),
+)
 
 
 class Api36RosterSortDriverTests(unittest.TestCase):
+    def test_repository_sibling_resolution_accepts_one_layout_and_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            with self.assertRaises(RuntimeError):
+                _resolve_repository_sibling(parent, "core", ("core", "chummer-core-engine"))
+
+            isolated = parent / "core"
+            isolated.mkdir()
+            self.assertEqual(
+                isolated,
+                _resolve_repository_sibling(parent, "core", ("core", "chummer-core-engine")),
+            )
+
+            (parent / "chummer-core-engine").mkdir()
+            with self.assertRaises(RuntimeError):
+                _resolve_repository_sibling(parent, "core", ("core", "chummer-core-engine"))
+
     def test_driver_is_phone_only_api36_arm64_package_and_digest_bound(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         ast.parse(source)
