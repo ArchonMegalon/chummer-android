@@ -2072,9 +2072,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 429,
+                "implemented_pending_emulator": 430,
                 "implemented_verified_api36": 79,
-                "missing": 999,
+                "missing": 998,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 148,

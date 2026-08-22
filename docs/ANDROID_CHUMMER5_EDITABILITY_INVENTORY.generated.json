@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 429,
+      "implemented_pending_emulator": 430,
       "implemented_verified_api36": 79,
-      "missing": 999,
+      "missing": 998,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 148
@@ -107,12 +107,12 @@
       {
         "path": "src/Chummer.Android/Native/RosterFavoritesPage.cs",
         "exists": true,
-        "sha256": "89623ad1e926467ce423fed46790c0326112194f7bbe4002eb603a812870f656"
+        "sha256": "db03090a9cb189145f4094241fc5889e19456bc83c1c8d7253289f19c074e29f"
       },
       {
         "path": "src/Chummer.Android/Native/HomePage.cs",
         "exists": true,
-        "sha256": "33dffe3bf376b7261bf79867ae659be1b6da89a095ac7c71ae03758460a67ef0"
+        "sha256": "474ed9646a2366813a6dcd4c91e202f6a67a9eaef307f10170311ca3844b6826"
       },
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
@@ -122,17 +122,17 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterRosterFavoritePresenter.cs",
         "exists": true,
-        "sha256": "82e9cd791cab8f829703825ba3ff825a2c2b513c7817e34bb0c6c3a2158ed792"
+        "sha256": "016117592250d5918e6a4d2ceb2aeb6e258f76ad779b8f7ccff8cc88f08efa7d"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Api/CharacterRosterFavoriteContracts.cs",
         "exists": true,
-        "sha256": "d244baa4b2106e677fdafc9351dd396c61addbd2e6f2b82e0e3ca294c40329cd"
+        "sha256": "aa156e1ccb1284be0bcc6c5a750ff6c05ae4a5071a5fa240e2ad495d1b1b185c"
       },
       {
         "path": "chummer-core-engine/Chummer.Application/Tools/CharacterRosterFavoriteRules.cs",
         "exists": true,
-        "sha256": "10bca7aeb7a90e1809cbb87cfea18c683eb08d7d06dafa412f83f3636762efed"
+        "sha256": "a2d24d5c1d65274e8c432db1a9169090bacd629a8e8cf37137f49a6d15783147"
       },
       {
         "path": "chummer-core-engine/Chummer.Application/Tools/ICharacterRosterFavoriteStore.cs",
@@ -357,7 +357,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "faf4f4cbbd367236771baa785b35ee2e406c3a87d6cc09d7e3612b68d639c791"
+        "sha256": "e7fb0280594ef24d9b4a2cbb41fd31ba10973d926438b578d959e2e4ede33dad"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1160,6 +1160,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-roster-sort/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-group-name/receipt.json",
         "exists": false,
         "sha256": null
@@ -1782,7 +1787,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "226c47aaa9f41cedf75d52e5df4b12243c28e8f7e63d410c3e31c91554eb5016"
+      "sha256": "72a761f0df8955ba62990015ad2397880233ad78474767c5c66fed1efe5f25f7"
     }
   },
   "coverageByFamily": {
@@ -1845,7 +1850,7 @@
     "character_roster": {
       "rowCount": 15,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 3,
+      "phoneMissingCount": 2,
       "tabletMissingCount": 4,
       "completionProvenCount": 11
     },
@@ -124628,11 +124633,20 @@
       "mutationFamily": "character_roster",
       "operation": "reorder",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Home > Roster metadata > Sort favorites / Sort recent",
+        "surface": "RosterFavoritesPage",
+        "automationId": "roster-sort-favorites / roster-sort-recent",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/RosterFavoritesPage.cs",
+          "src/Chummer.Android/Native/HomePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterRosterFavoritePresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Api/CharacterRosterFavoriteContracts.cs",
+          "chummer-core-engine/Chummer.Application/Tools/CharacterRosterFavoriteRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Files/FileCharacterRosterFavoriteStore.cs"
+        ],
+        "coverageLimit": "Phone application roster metadata only; tablet intentionally remains missing and the API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -124640,12 +124654,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "CharacterRosterFavoritePresenter.ApplySort(CharacterRosterSortMutation)",
+      "persistenceAssertion": "only the selected Favorite or Recent locator collection is sorted in Chummer5 default string order after revision-checked atomic persistence, same-session reopen, process restart, and backup recovery; character XML remains byte-independent",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_roster_sort_e2e.py"
         },
         "tablet": {
           "status": "missing",

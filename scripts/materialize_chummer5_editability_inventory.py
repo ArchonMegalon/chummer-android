@@ -631,6 +631,26 @@ CAPTURE_ONLY_PHONE_E2E_DEFINITIONS: dict[str, dict[str, Any]] = {
             "unfavoritePersisted", "unfavoriteProcessRestartReadback", "backupRecovery",
         ),
     },
+    "roster-sort": {
+        "driver": "tests/run_api36_roster_sort_e2e.py",
+        "fixtures": (("runnerFixtureSha256", "tests/fixtures/roster-sort-e2e.chum5"),),
+        "sourceKeys": (
+            "rosterFavoritesPageSha256", "homePageSha256", "coordinatorSha256", "mauiProgramSha256",
+            "rosterFavoritePresenterSha256", "rosterFavoriteContractSha256",
+            "rosterFavoriteRulesSha256", "rosterFavoriteStoreSha256",
+        ),
+        "controls": ("CharacterRoster.tsSort",),
+        "proofKeys": (
+            "favoriteTargetSelected", "recentTargetSelected", "defaultLocatorOrder",
+            "unselectedCollectionPreserved", "expectedRevisionAtomicSave", "sameSessionReopened",
+            "processRestartReadback", "backupRecoveryReadback", "characterXmlUnchanged",
+        ),
+        "journeys": (
+            "runnerImported", "favoriteCollectionSorted", "sameSessionReopened",
+            "favoriteProcessRestartReadback", "recentCollectionSorted",
+            "recentProcessRestartReadback", "backupRecovery",
+        ),
+    },
     "group-name": {
         "driver": "tests/run_api36_group_name_e2e.py",
         "fixtures": (
@@ -1571,6 +1591,7 @@ PRIMARY_ARM_CONTROLS = {
 }
 GROUP_MEMBERSHIP_CONTROL = "chkJoinGroup"
 ROSTER_FAVORITE_CONTROL = "tsToggleFav"
+ROSTER_SORT_CONTROL = "tsSort"
 GROUP_NAME_CONTROL = "txtGroupName"
 TRADITION_NAME_CONTROL = "txtTraditionName"
 TRADITION_DRAIN_CONTROL = "cboDrain"
@@ -6818,6 +6839,117 @@ def _known_phone_mapping(
             "e2e": phone_e2e or {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_career_nuyen_expense_edit_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "CharacterRoster" and control == ROSTER_SORT_CONTROL:
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RosterFavoritesPage.cs"
+        home_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "HomePage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_roster_sort_e2e.py"
+        fixture = REPO_ROOT / "tests" / "fixtures" / "roster-sort-e2e.chum5"
+        presenter = presentation_root / "Chummer.Presentation" / "Overview" / "CharacterRosterFavoritePresenter.cs"
+        contract = character_notes_core_root / "Chummer.Contracts" / "Api" / "CharacterRosterFavoriteContracts.cs"
+        rules = character_notes_core_root / "Chummer.Application" / "Tools" / "CharacterRosterFavoriteRules.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure" / "Files" / "FileCharacterRosterFavoriteStore.cs"
+        implemented = (
+            _contains(
+                page,
+                "class RosterFavoritesPage",
+                'AutomationId = "roster-sort-favorites"',
+                'AutomationId = "roster-sort-recent"',
+                "CharacterRosterSortTarget.Favorites",
+                "CharacterRosterSortTarget.Recent",
+                "Coordinator.RosterFavorites.Revision",
+                "Coordinator.SortRosterAsync",
+            )
+            and _contains(home_page, 'AutomationId = "home-roster-favorites"', "new RosterFavoritesPage")
+            and _contains(
+                coordinator,
+                "SortRosterAsync",
+                "CharacterRosterSortTarget",
+                "CharacterRosterSortMutation",
+                "expectedRevision",
+                "_rosterFavoritePresenter.ApplySort",
+            )
+            and _contains(
+                presenter,
+                "CharacterRosterFavoritePresenter",
+                "CharacterRosterFavoriteRules.ApplySort",
+                "_store.Save(mutation.ExpectedRevision, updated)",
+            )
+            and _contains(
+                contract,
+                "CharacterRosterSortTarget",
+                "CharacterRosterSortMutation",
+                "ExpectedRevision",
+            )
+            and _contains(
+                rules,
+                "ApplySort",
+                "Comparer<string>.Default.Compare",
+                "CharacterRosterSortTarget.Favorites",
+                "CharacterRosterSortTarget.Recent",
+                "mutation.ExpectedRevision != current.Revision",
+            )
+            and _contains(
+                store,
+                "roster-favorites.json",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                'path + ".bak"',
+                "current.Revision != expectedRevision",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                'CONTROL = "tsSort"',
+                'api != "36"',
+                'abi != "arm64-v8a"',
+                '"profile": "phone"',
+                '"journey": "roster-sort"',
+                'device.shell("pm", "path", shared.PACKAGE)',
+                '"rosterFavoriteStoreSha256"',
+                '"runnerFixtureSha256"',
+            )
+            and fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Home > Roster metadata > Sort favorites / Sort recent",
+            "surface": "RosterFavoritesPage",
+            "automationId": "roster-sort-favorites / roster-sort-recent",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/RosterFavoritesPage.cs",
+                "src/Chummer.Android/Native/HomePage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterRosterFavoritePresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Api/CharacterRosterFavoriteContracts.cs",
+                "chummer-core-engine/Chummer.Application/Tools/CharacterRosterFavoriteRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Files/FileCharacterRosterFavoriteStore.cs",
+            ],
+            "presenterMutation": (
+                "CharacterRosterFavoritePresenter.ApplySort(CharacterRosterSortMutation)"
+            ),
+            "persistenceAssertion": (
+                "only the selected Favorite or Recent locator collection is sorted in Chummer5 default "
+                "string order after revision-checked atomic persistence, same-session reopen, process restart, "
+                "and backup recovery; character XML remains byte-independent"
+            ),
+            "coverageLimit": (
+                "Phone application roster metadata only; tablet intentionally remains missing and the API 36 "
+                f"driver is {'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_roster_sort_e2e.py" if e2e_scripted else None,
             },
             "tablet": {
                 "status": "missing",

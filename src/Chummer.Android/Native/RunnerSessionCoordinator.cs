@@ -272,6 +272,25 @@ public sealed class RunnerSessionCoordinator : IDisposable
         return Task.CompletedTask;
     }
 
+    public Task SortRosterAsync(
+        CharacterRosterSortTarget target,
+        long expectedRevision,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        _rosterFavorites = _rosterFavoritePresenter.ApplySort(new CharacterRosterSortMutation(
+            target,
+            expectedRevision));
+        _notice = target switch
+        {
+            CharacterRosterSortTarget.Favorites => "Favorite runners sorted by document locator.",
+            CharacterRosterSortTarget.Recent => "Recent runners sorted by document locator.",
+            _ => throw new ArgumentOutOfRangeException(nameof(target), "A known roster sort target is required.")
+        };
+        NotifyChanged();
+        return Task.CompletedTask;
+    }
+
     private CharacterRosterDocumentIdentity ResolveRosterIdentity(OpenWorkspaceState workspace)
     {
         string locator = Preferences.Default.Get(

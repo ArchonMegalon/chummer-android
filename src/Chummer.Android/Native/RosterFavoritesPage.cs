@@ -22,7 +22,7 @@ public sealed class RosterFavoritesPage : NativePageBase
         Label marker = NativeTheme.Eyebrow("Character roster");
         marker.AutomationId = "roster-favorites-page";
         _body.Add(marker);
-        _body.Add(NativeTheme.Title("Favorite runner"));
+        _body.Add(NativeTheme.Title("Roster metadata"));
         _body.Add(NativeTheme.Body(
             "Matches Chummer5’s Toggle Favorite action. Removing a favorite moves it to the front of Recent.",
             NativeTheme.Muted));
@@ -65,5 +65,24 @@ public sealed class RosterFavoritesPage : NativePageBase
         row.Add(labels);
         row.Add(favorite, 1);
         _body.Add(NativeTheme.Card(row));
+
+        _body.Add(NativeTheme.Title("Sort roster lists", 20));
+        _body.Add(NativeTheme.Body(
+            "Matches Chummer5’s Sort action for the selected Favorite or Recent collection.",
+            NativeTheme.Muted));
+
+        Button sortFavorites = NativeTheme.SecondaryButton("Sort favorites");
+        sortFavorites.AutomationId = "roster-sort-favorites";
+        sortFavorites.Clicked += async (_, _) => await RunAsync(() => Coordinator.SortRosterAsync(
+            Chummer.Contracts.Api.CharacterRosterSortTarget.Favorites,
+            Coordinator.RosterFavorites.Revision));
+        _body.Add(sortFavorites);
+
+        Button sortRecent = NativeTheme.SecondaryButton("Sort recent");
+        sortRecent.AutomationId = "roster-sort-recent";
+        sortRecent.Clicked += async (_, _) => await RunAsync(() => Coordinator.SortRosterAsync(
+            Chummer.Contracts.Api.CharacterRosterSortTarget.Recent,
+            Coordinator.RosterFavorites.Revision));
+        _body.Add(sortRecent);
     }
 }
