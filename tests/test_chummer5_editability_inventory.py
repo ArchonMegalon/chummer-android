@@ -4210,12 +4210,14 @@ namespace Chummer
                     )
                 )
 
-    def test_vehicle_data_processing_firewall_source_mapping_is_four_row_partial(self) -> None:
+    def test_vehicle_matrix_source_mapping_is_eight_row_partial(self) -> None:
         source = SCRIPT.read_text(encoding="utf-8")
         self.assertEqual({
+            "cboVehicleAttack": "cboVehicleAttack_SelectedIndexChanged",
+            "cboVehicleSleaze": "cboVehicleSleaze_SelectedIndexChanged",
             "cboVehicleDataProcessing": "cboVehicleDataProcessing_SelectedIndexChanged",
             "cboVehicleFirewall": "cboVehicleFirewall_SelectedIndexChanged",
-        }, inventory.VEHICLE_DATA_PROCESSING_FIREWALL_SWAP_CONTROLS)
+        }, inventory.VEHICLE_MATRIX_SWAP_CONTROLS)
         for marker in (
             "VehicleDataProcessingFirewallSwapPage",
             "VehicleDataProcessingFirewallSwapEditRequest.cs",

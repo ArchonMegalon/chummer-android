@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Digest-bound API 36 arm64 phone proof for root Vehicle DP/Firewall swaps."""
+"""Digest-bound API 36 arm64 phone proof for all four root Vehicle Matrix swaps."""
 from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
@@ -13,8 +13,12 @@ import run_api36_editing_e2e as shared
 import run_api36_gear_attack_swap_e2e as matrix_shared
 
 CONTROLS = (
+    "CharacterCreate.cboVehicleAttack",
+    "CharacterCreate.cboVehicleSleaze",
     "CharacterCreate.cboVehicleDataProcessing",
     "CharacterCreate.cboVehicleFirewall",
+    "CharacterCareer.cboVehicleAttack",
+    "CharacterCareer.cboVehicleSleaze",
     "CharacterCareer.cboVehicleDataProcessing",
     "CharacterCareer.cboVehicleFirewall",
 )
@@ -26,12 +30,24 @@ PROOF_KEYS = (
     "processRestartUiReadback", "descendantTargetsFailClosedCoverage",
 )
 JOURNEYS = (
+    dict(phase="creation-attack", fixture="creation-vehicle-dp-firewall-swap-e2e.chum5",
+         vehicle="91111111-1111-4111-8111-111111111111", changed="Attack", other="Sleaze",
+         attack="{Pilot}", sleaze="7", dp="5", firewall="4", nuyen="4321", karma="7"),
+    dict(phase="creation-sleaze", fixture="creation-vehicle-dp-firewall-swap-e2e.chum5",
+         vehicle="91111111-1111-4111-8111-111111111111", changed="Sleaze", other="Data Processing",
+         attack="7", sleaze="5", dp="{Pilot}", firewall="4", nuyen="4321", karma="7"),
     dict(phase="creation-dp", fixture="creation-vehicle-dp-firewall-swap-e2e.chum5",
          vehicle="91111111-1111-4111-8111-111111111111", changed="Data Processing", other="Attack",
          attack="5", sleaze="{Pilot}", dp="7", firewall="4", nuyen="4321", karma="7"),
     dict(phase="creation-firewall", fixture="creation-vehicle-dp-firewall-swap-e2e.chum5",
          vehicle="91111111-1111-4111-8111-111111111111", changed="Firewall", other="Sleaze",
          attack="7", sleaze="4", dp="5", firewall="{Pilot}", nuyen="4321", karma="7"),
+    dict(phase="career-attack", fixture="career-vehicle-dp-firewall-swap-e2e.chum5",
+         vehicle="92222222-2222-4222-8222-222222222222", changed="Attack", other="Firewall",
+         attack="5", sleaze="7", dp="{Pilot}", firewall="8", nuyen="8765", karma="19"),
+    dict(phase="career-sleaze", fixture="career-vehicle-dp-firewall-swap-e2e.chum5",
+         vehicle="92222222-2222-4222-8222-222222222222", changed="Sleaze", other="Data Processing",
+         attack="8", sleaze="{Pilot}", dp="7", firewall="5", nuyen="8765", karma="19"),
     dict(phase="career-dp", fixture="career-vehicle-dp-firewall-swap-e2e.chum5",
          vehicle="92222222-2222-4222-8222-222222222222", changed="Data Processing", other="Attack",
          attack="{Pilot}", sleaze="7", dp="8", firewall="5", nuyen="8765", karma="19"),
@@ -129,7 +145,7 @@ def main() -> int:
     for journey in JOURNEYS: run_journey(device, journey)
     receipt = {"schema": "chummer.android.editing-e2e/v1", "status": "pass",
                "generatedAtUtc": datetime.now(timezone.utc).isoformat(), "profile": "phone",
-               "journey": "vehicle-data-processing-firewall-swap", "apiLevel": 36, "abi": "arm64-v8a",
+               "journey": "vehicle-matrix-swap", "apiLevel": 36, "abi": "arm64-v8a",
                "package": shared.PACKAGE, "driverSha256": shared.sha256(driver),
                **{key: shared.sha256(path) for key, path in sources.items()},
                "controls": {control: {key: "pass" for key in PROOF_KEYS} for control in CONTROLS}}

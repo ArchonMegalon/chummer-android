@@ -1942,7 +1942,9 @@ GEAR_DATA_PROCESSING_FIREWALL_SWAP_CONTROLS = {
     "cboGearDataProcessing": "cboGearDataProcessing_SelectedIndexChanged",
     "cboGearFirewall": "cboGearFirewall_SelectedIndexChanged",
 }
-VEHICLE_DATA_PROCESSING_FIREWALL_SWAP_CONTROLS = {
+VEHICLE_MATRIX_SWAP_CONTROLS = {
+    "cboVehicleAttack": "cboVehicleAttack_SelectedIndexChanged",
+    "cboVehicleSleaze": "cboVehicleSleaze_SelectedIndexChanged",
     "cboVehicleDataProcessing": "cboVehicleDataProcessing_SelectedIndexChanged",
     "cboVehicleFirewall": "cboVehicleFirewall_SelectedIndexChanged",
 }
@@ -11540,7 +11542,7 @@ def _known_phone_mapping(
             "tabletE2e": {"status": "missing", "ref": None},
         }
     if (class_name in {"CharacterCreate", "CharacterCareer"}
-            and control in VEHICLE_DATA_PROCESSING_FIREWALL_SWAP_CONTROLS):
+            and control in VEHICLE_MATRIX_SWAP_CONTROLS):
         legacy_source = presentation_root / "Chummer/Forms/Character Forms" / f"{class_name}.cs"
         page = REPO_ROOT / "src/Chummer.Android/Native/VehicleDataProcessingFirewallSwapPage.cs"
         editor = REPO_ROOT / "src/Chummer.Android/Native/CollectionEditorPages.cs"
@@ -11553,12 +11555,13 @@ def _known_phone_mapping(
         interface = overview / "ICharacterOverviewPresenter.cs"
         rules = character_notes_core_root / "Chummer.Contracts/Characters/CharacterVehicleMatrixSwapRules.cs"
         store = character_notes_core_root / "Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
-        handler = VEHICLE_DATA_PROCESSING_FIREWALL_SWAP_CONTROLS[control]
+        handler = VEHICLE_MATRIX_SWAP_CONTROLS[control]
         legacy_exact = any(event.get("handler") == handler for event in legacy.get("events", [])) \
             and _contains(legacy_source, handler, "treVehicles.SelectedNode?.Tag",
                           "IHasMatrixAttributes", "ProcessMatrixAttributeComboBoxChangeAsync",
                           "cboVehicleAttack", "cboVehicleSleaze", "cboVehicleDataProcessing", "cboVehicleFirewall")
         implemented = _contains(page, "class VehicleDataProcessingFirewallSwapPage",
+                          "CharacterVehicleMatrixStat.Attack", "CharacterVehicleMatrixStat.Sleaze",
                           "CharacterVehicleMatrixStat.DataProcessing", "CharacterVehicleMatrixStat.Firewall",
                           'AutomationId = $"vehicle-dp-firewall-swap-page-{token}"', "TryValidateMutation") \
             and _contains(editor, "AddVehicleDataProcessingFirewallSwapAction",
@@ -11576,24 +11579,28 @@ def _known_phone_mapping(
             and _contains(rules, "CharacterVehicleMatrixSwapIdentity", "CharacterVehicleMatrixSwapPhase",
                           "NuyenDelta: 0m", "KarmaDelta: 0", "RequiresMatrixInitiativeNotification", "SHA256.HashData") \
             and _contains(store, "expectedContentRevision", "Flush(flushToDisk: true)", "File.Replace", "File.Move")
-        scripted = _contains(driver, '"CharacterCreate.cboVehicleDataProcessing"',
+        scripted = _contains(driver, '"CharacterCreate.cboVehicleAttack"',
+                             '"CharacterCreate.cboVehicleSleaze"',
+                             '"CharacterCreate.cboVehicleDataProcessing"',
                              '"CharacterCreate.cboVehicleFirewall"',
+                             '"CharacterCareer.cboVehicleAttack"',
+                             '"CharacterCareer.cboVehicleSleaze"',
                              '"CharacterCareer.cboVehicleDataProcessing"',
                              '"CharacterCareer.cboVehicleFirewall"', 'api != "36"',
                              '"arm64-v8a" not in abi.split(",")', "shared.PACKAGE",
-                             '"journey": "vehicle-data-processing-firewall-swap"',
+                             '"journey": "vehicle-matrix-swap"',
                              '"vehicleMatrixRulesSha256"', '"workspaceStoreSha256"') \
             and (REPO_ROOT / "tests/fixtures/creation-vehicle-dp-firewall-swap-e2e.chum5").is_file() \
             and (REPO_ROOT / "tests/fixtures/career-vehicle-dp-firewall-swap-e2e.chum5").is_file()
         return {
             "status": "partial_exact_saved_data" if implemented else "missing",
-            "route": "Build > Gear > Vehicles > selected stable Vehicle > Swap Data Processing / Firewall",
+            "route": "Build > Gear > Vehicles > selected stable Vehicle > Swap Vehicle Matrix values",
             "surface": "VehicleDataProcessingFirewallSwapPage",
             "automationId": "vehicle-dp-firewall-swap-changed-{stable-vehicle-guid}",
             "sourceRefs": ["src/Chummer.Android/Native/VehicleDataProcessingFirewallSwapPage.cs",
                            "chummer-presentation/Chummer.Presentation/Overview/VehicleDataProcessingFirewallSwapEditRequest.cs",
                            "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleMatrixSwapRules.cs"],
-            "presenterMutation": "typed root Vehicle Data Processing-or-Firewall raw permutation with exact Guid identity, Create/Career phase, CanSwapAttributes, zero Nuyen/Karma economics, node revision and expected workspace revision",
+            "presenterMutation": "typed root Vehicle Attack/Sleaze/Data Processing/Firewall raw permutation with exact Guid identity, Create/Career phase, CanSwapAttributes, zero Nuyen/Karma economics, node revision and expected workspace revision",
             "persistenceAssertion": "two raw Vehicle Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, sensor, active/home flags, parents, costs, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery and restart",
             "coverageLimit": f"Exact {class_name} {control} root Vehicle selection only ({'legacy handler proven' if legacy_exact else 'legacy handler proof unavailable'}); descendant Weapon/Cyberware/Gear tree and clip-ammo parent paths, malformed/duplicate/ineligible/equal/stale state, and tablet fail closed.",
             "e2e": {"status": "scripted_not_executed" if scripted else "missing",

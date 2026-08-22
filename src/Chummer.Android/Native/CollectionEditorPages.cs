@@ -802,8 +802,8 @@ public sealed class CollectionItemEditorPage : NativePageBase
             || Coordinator.State.WorkspaceId is null
             || !Guid.TryParseExact(_target.ItemId, "D", out Guid vehicleId) || vehicleId == Guid.Empty) return;
         _body.Add(NativeTheme.NavigationRow(
-            "Swap Data Processing / Firewall",
-            "Swap raw Matrix values on an eligible Vehicle root; descendant Matrix items remain fail-closed",
+            "Swap Vehicle Matrix values",
+            "Swap raw Attack, Sleaze, Data Processing, or Firewall on an eligible Vehicle root; descendants remain fail-closed",
             async () =>
             {
                 VehicleDataProcessingFirewallSwapEditorState? editor = await Coordinator

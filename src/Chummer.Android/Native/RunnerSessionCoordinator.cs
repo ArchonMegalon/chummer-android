@@ -980,7 +980,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 "This runner changed while Vehicle Matrix swapping was open. Reopen it.");
         await _presenter.ApplyVehicleDataProcessingFirewallSwapEditAsync(request, cancellationToken);
         if (State.Error is null) await _presenter.SaveAsync(cancellationToken);
-        _notice = State.Error is null ? "Vehicle Data Processing or Firewall value swapped." : null;
+        _notice = State.Error is null ? "Vehicle Matrix values swapped." : null;
         await SyncShellAsync(cancellationToken);
         NotifyChanged();
     }

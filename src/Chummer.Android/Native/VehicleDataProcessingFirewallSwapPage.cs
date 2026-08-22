@@ -8,6 +8,8 @@ public sealed class VehicleDataProcessingFirewallSwapPage : NativePageBase
     private sealed record StatOption(CharacterVehicleMatrixStat Value, string Label);
     private static readonly StatOption[] ChangedOptions =
     [
+        new(CharacterVehicleMatrixStat.Attack, "Attack"),
+        new(CharacterVehicleMatrixStat.Sleaze, "Sleaze"),
         new(CharacterVehicleMatrixStat.DataProcessing, "Data Processing"),
         new(CharacterVehicleMatrixStat.Firewall, "Firewall")
     ];
@@ -37,13 +39,13 @@ public sealed class VehicleDataProcessingFirewallSwapPage : NativePageBase
             throw new ArgumentException("Vehicle Matrix swapping requires an exact eligible root Vehicle.", nameof(editor));
 
         string token = vehicle.Identity.VehicleId.ToString("N");
-        Title = "Vehicle Data Processing & Firewall";
+        Title = "Vehicle Matrix values";
         AutomationId = $"vehicle-dp-firewall-swap-page-{token}";
         var body = new VerticalStackLayout { Padding = new Thickness(20, 18, 20, 40), Spacing = 14 };
         body.Add(NativeTheme.Eyebrow("Create + Career Vehicle Matrix"));
         body.Add(NativeTheme.Title(vehicle.DisplayName));
         body.Add(NativeTheme.Body(
-            "Swap one saved raw Vehicle Matrix value. Bonuses, sensor, active/home state, parents, and costs remain unchanged.",
+            "Swap one saved raw Attack, Sleaze, Data Processing, or Firewall value. Bonuses, sensor, active/home state, parents, and costs remain unchanged.",
             NativeTheme.Muted));
         Label values = NativeTheme.Body(
             $"Saved raw values · Attack {vehicle.Attack} · Sleaze {vehicle.Sleaze} · Data Processing {vehicle.DataProcessing} · Firewall {vehicle.Firewall}",
@@ -93,7 +95,7 @@ public sealed class VehicleDataProcessingFirewallSwapPage : NativePageBase
         bool current = Coordinator.State.WorkspaceId == _editor.WorkspaceId
             && Coordinator.State.ContentRevision == _editor.ContentRevision;
         _changed.IsEnabled = current;
-        _target.IsEnabled = current && _targets.Length == 3;
+        _target.IsEnabled = current && _targets.Length == AllTargets.Length - 1;
         _save.IsEnabled = _target.IsEnabled;
     }
 
