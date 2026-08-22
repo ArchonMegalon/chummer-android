@@ -564,7 +564,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "b07ea709aebde8901d0d28b3f44b2169cd82f84a4b33d82af46f3ead6a4019db"
+        "sha256": "96695f9f79f295019bb266b5c006cec8be81c95f72e30a40a0e4b91b1811f54c"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",

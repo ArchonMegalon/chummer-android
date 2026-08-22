@@ -860,6 +860,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         self.assertIn("IChummerClient client", coordinator)
+        self.assertIn("using Chummer.Presentation;", coordinator)
         self.assertIn("_client = client;", coordinator)
         self.assertIn("await _client.GetWorkspaceAsync(workspaceId, cancellationToken)", coordinator)
         self.assertEqual(2, coordinator.count("await _client.GetWorkspaceAsync(workspaceId, cancellationToken)"))
