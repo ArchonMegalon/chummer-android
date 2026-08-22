@@ -366,12 +366,13 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         self.assertFalse((NATIVE / "CreationAttributesPage.cs").exists())
         self.assertIn("bool attributes = string.Equals(", dashboard)
         self.assertIn(
-            "Rules-authoritative attribute choices, costs, and preview are not available yet",
+            "Rules-authoritative Attribute increments and metatype adjustment are not available yet",
             dashboard,
         )
+        self.assertIn("halveattributepoints adjustment required", dashboard)
         self.assertNotIn("new CreationAttributesPage(Coordinator)", dashboard)
         self.assertNotIn("OpenCreationAttributesAsync", dashboard)
-        self.assertIn("AttributeEditRequest path must never serve as a wizard fallback", dashboard)
+        self.assertIn("AttributeEditRequest path must", dashboard)
         self.assertIn("AttributeEditRequest", editor)
         self.assertIn("ApplyAttributeEditAsync", editor)
 

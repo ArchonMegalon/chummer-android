@@ -162,9 +162,14 @@ public sealed class BuildPage : NativePageBase
         }
 
         AddBudgetRibbon(snapshot);
-        AddWizardStages(snapshot);
+        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite =
+            snapshot.BuildMethod is (CharacterCreationBuildMethods.Priority
+                or CharacterCreationBuildMethods.SumToTen)
+                ? Coordinator.LoadCreationPrerequisite()
+                : null;
+        AddWizardStages(snapshot, prerequisite);
         AddCompletionBlockers(snapshot);
-        AddLegalNextSteps(snapshot);
+        AddLegalNextSteps(snapshot, prerequisite);
     }
 
     private void AddBudgetRibbon(CharacterCreationWizardSnapshot snapshot)
@@ -213,19 +218,36 @@ public sealed class BuildPage : NativePageBase
         _body.Add(ribbon);
     }
 
-    private void AddWizardStages(CharacterCreationWizardSnapshot snapshot)
+    private void AddWizardStages(
+        CharacterCreationWizardSnapshot snapshot,
+        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite)
     {
         _body.Add(NativeTheme.Eyebrow("Generation steps"));
         foreach (CharacterCreationWizardStageState stage in snapshot.Steps)
         {
             bool foundation = IsFoundationStage(stage.StepId);
-            bool canOpen = foundation
-                           && stage.IsAvailable
-                           && HasAuthoritativeFoundationOptions();
-            Func<Task> selected = canOpen ? OpenCreationFoundationAsync : () => Task.CompletedTask;
-            string detail = canOpen
-                ? "Choose an exact metatype and Nationality Life Module"
-                : HumanizeStatus(stage.Status);
+            bool priorityPrerequisite = IsPrerequisiteStage(stage.StepId, snapshot.BuildMethod);
+            bool canOpenFoundation = foundation
+                                     && stage.IsAvailable
+                                     && HasAuthoritativeFoundationOptions();
+            bool canOpenPrerequisite = priorityPrerequisite
+                                       && stage.IsAvailable
+                                       && HasAuthoritativePrerequisiteOptions(prerequisite);
+            bool canOpen = canOpenFoundation || canOpenPrerequisite;
+            Func<Task> selected = canOpenPrerequisite
+                ? OpenCreationPrerequisiteAsync
+                : canOpenFoundation
+                    ? OpenCreationFoundationAsync
+                    : () => Task.CompletedTask;
+            string detail = canOpenPrerequisite
+                ? PrerequisiteStageDetail(prerequisite!.Value!)
+                : canOpenFoundation
+                    ? "Choose an exact metatype and Nationality Life Module"
+                    : priorityPrerequisite && prerequisite is not null
+                        ? prerequisite.Blockers.FirstOrDefault()
+                          ?? prerequisite.Value?.Blockers.FirstOrDefault()
+                          ?? HumanizeStatus(stage.Status)
+                        : HumanizeStatus(stage.Status);
             if (stage.Blockers.Count > 0)
             {
                 detail += $" · {stage.Blockers[0]}";
@@ -258,7 +280,9 @@ public sealed class BuildPage : NativePageBase
         _body.Add(card);
     }
 
-    private void AddLegalNextSteps(CharacterCreationWizardSnapshot snapshot)
+    private void AddLegalNextSteps(
+        CharacterCreationWizardSnapshot snapshot,
+        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite)
     {
         CharacterCreationWizardStageState? active = snapshot.Steps.FirstOrDefault(stage =>
             string.Equals(stage.StepId, snapshot.ActiveStepId, StringComparison.Ordinal));
@@ -290,17 +314,19 @@ public sealed class BuildPage : NativePageBase
             bool canOpenFoundation = foundation
                                      && stage.IsAvailable
                                      && HasAuthoritativeFoundationOptions();
-            // The current creation snapshot exposes only aggregate attribute budgets. Until Core
-            // supplies typed legal choices plus a revision-bound preview/receipt, the post-create
-            // AttributeEditRequest path must never serve as a wizard fallback.
+            // Core exposes the raw Priority Attribute grant, but Heritage/metatype authority must
+            // still apply halveattributepoints. The post-create AttributeEditRequest path must
+            // never serve as a wizard fallback.
             bool canOpen = canOpenFoundation;
             Func<Task> selected = canOpenFoundation
                 ? OpenCreationFoundationAsync
                 : () => Task.CompletedTask;
             string detail = canOpenFoundation
                 ? "Choose an exact metatype and Nationality Life Module"
+                : attributes && prerequisite?.Value is { } prerequisiteState
+                    ? AttributeGateDetail(prerequisiteState)
                 : attributes && stage.IsAvailable
-                    ? "Rules-authoritative attribute choices, costs, and preview are not available yet"
+                    ? "Rules-authoritative Attribute increments and metatype adjustment are not available yet"
                 : stage.IsAvailable
                     ? "Legal in the projection · dedicated phone step is not wired yet"
                     : stage.Blockers.FirstOrDefault() ?? "Blocked by the current projection";
@@ -324,12 +350,48 @@ public sealed class BuildPage : NativePageBase
            && foundation.MetatypeOptions.Count > 0
            && foundation.NationalityOptions.Count > 0;
 
+    private bool HasAuthoritativePrerequisiteOptions(
+        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? result)
+        => result is
+           {
+               Outcome: CharacterCreationFoundationOutcomes.Success,
+               Value: { } state
+           }
+           && CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State);
+
+    private static bool IsPrerequisiteStage(string stepId, string buildMethod)
+        => string.Equals(stepId, CharacterCreationWizardStepIds.Method, StringComparison.Ordinal)
+           && buildMethod is (CharacterCreationBuildMethods.Priority
+               or CharacterCreationBuildMethods.SumToTen);
+
     private static bool IsFoundationStage(string stepId)
         => string.Equals(stepId, CharacterCreationWizardStepIds.Foundation, StringComparison.Ordinal)
            || string.Equals(stepId, CharacterCreationWizardStepIds.LifeModules, StringComparison.Ordinal);
 
     private Task OpenCreationFoundationAsync()
         => Navigation.PushAsync(new CreationFoundationPage(Coordinator));
+
+    private Task OpenCreationPrerequisiteAsync()
+        => Navigation.PushAsync(new CreationPrerequisitePage(Coordinator));
+
+    private static string PrerequisiteStageDetail(CharacterCreationPrerequisiteState state)
+    {
+        string method = string.Equals(
+            state.BuildMethod,
+            CharacterCreationBuildMethods.SumToTen,
+            StringComparison.Ordinal)
+            ? "Sum-to-Ten"
+            : state.BuildMethod;
+        return state.PendingDraft is null
+            ? $"Choose five ordered {method} ranks from exact Core authority"
+            : $"Resume saved {method} draft · raw Attribute grant "
+              + (state.BaseNormalAttributePoints?.ToString(CultureInfo.InvariantCulture) ?? "unavailable");
+    }
+
+    private static string AttributeGateDetail(CharacterCreationPrerequisiteState state)
+        => $"Raw normal Attribute grant "
+           + (state.BaseNormalAttributePoints?.ToString(CultureInfo.InvariantCulture) ?? "not selected")
+           + " · Heritage/metatype halveattributepoints adjustment required · Attributes remain disabled";
 
     private static string StageLabel(CharacterCreationWizardSnapshot snapshot, string stepId)
         => snapshot.Steps.FirstOrDefault(stage => string.Equals(stage.StepId, stepId, StringComparison.Ordinal))?.Label

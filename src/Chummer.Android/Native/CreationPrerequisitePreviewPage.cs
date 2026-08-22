@@ -1,0 +1,295 @@
+using System.Globalization;
+using Chummer.Contracts.Characters;
+
+namespace Chummer.Android.Native;
+
+/// <summary>
+/// Renders one immutable Core preview and requires a separate explicit confirmation using the
+/// exact preview digest. The confirmed write is auxiliary draft state only.
+/// </summary>
+public sealed class CreationPrerequisitePreviewPage : NativePageBase
+{
+    private readonly CharacterCreationPrerequisitePreview _preview;
+    private readonly IReadOnlyDictionary<string, string> _assignments;
+    private readonly string _buildMethod;
+    private readonly VerticalStackLayout _body = new()
+    {
+        Padding = new Thickness(20, 18, 20, 40),
+        Spacing = 14
+    };
+    private CreationPrerequisitePhoneConfirmResult? _confirmation;
+
+    internal CreationPrerequisitePreviewPage(
+        RunnerSessionCoordinator coordinator,
+        CharacterCreationPrerequisitePreview preview,
+        IReadOnlyDictionary<string, string> assignments,
+        string buildMethod) : base(coordinator)
+    {
+        _preview = preview ?? throw new ArgumentNullException(nameof(preview));
+        _assignments = new Dictionary<string, string>(
+            assignments ?? throw new ArgumentNullException(nameof(assignments)),
+            StringComparer.Ordinal);
+        _buildMethod = buildMethod is (CharacterCreationBuildMethods.Priority
+            or CharacterCreationBuildMethods.SumToTen)
+            ? buildMethod
+            : throw new ArgumentException(
+                "A supported authoritative build method is required.",
+                nameof(buildMethod));
+        Title = "Review assignments";
+        AutomationId = "creation-prerequisite-preview-page";
+        ToolbarItems.Add(new ToolbarItem
+        {
+            Text = "Build Ghost",
+            AutomationId = "creation-prerequisite-preview-build-ghost",
+            Command = new Command(async () =>
+                await Navigation.PushAsync(new RookConversationPage(Coordinator)))
+        });
+        Content = new ScrollView { Content = _body };
+    }
+
+    protected override void Refresh()
+    {
+        _body.Clear();
+        _body.Add(NativeTheme.Eyebrow("Explicit review"));
+        _body.Add(NativeTheme.Title(
+            string.Equals(
+                _buildMethod,
+                CharacterCreationBuildMethods.SumToTen,
+                StringComparison.Ordinal)
+                ? "Sum-to-Ten draft"
+                : "Priority draft"));
+
+        Label binding = NativeTheme.Body(
+            $"Revision {_preview.Binding.ContentRevision} · saved {_preview.Binding.SavedRevision} · "
+            + $"preview {ShortDigest(_preview.PreviewDigest)}",
+            NativeTheme.Muted);
+        binding.AutomationId = "creation-prerequisite-preview-binding";
+        _body.Add(binding);
+
+        AddAssignments();
+        AddBudget();
+        AddSumToTen();
+        AddAttributeGrant();
+        AddBlockers();
+        AddConfirmation();
+        AddReceipt();
+    }
+
+    private void AddAssignments()
+    {
+        _body.Add(NativeTheme.Eyebrow("Five ordered assignments"));
+        for (int index = 0; index < _preview.Assignments.Count; index++)
+        {
+            CharacterCreationPriorityAssignment assignment = _preview.Assignments[index];
+            VerticalStackLayout card = new() { Spacing = 6 };
+            card.Add(NativeTheme.Title(
+                $"{assignment.Order + 1}. {RunnerSessionCoordinator.HumanizeId(assignment.CategoryId)}",
+                18));
+            card.Add(NativeTheme.Metric("Rank", assignment.Rank));
+            card.Add(NativeTheme.Metric("Source ID", assignment.SourceId));
+            card.Add(NativeTheme.Metric("Source node", assignment.SourceNodeDigest));
+            card.Add(NativeTheme.Metric(
+                "Sum-to-Ten value",
+                assignment.SumToTenValue.ToString(CultureInfo.InvariantCulture)));
+            if (assignment.BaseNormalAttributePoints is int raw)
+            {
+                card.Add(NativeTheme.Metric(
+                    "Raw normal Attribute grant",
+                    raw.ToString(CultureInfo.InvariantCulture)));
+            }
+            foreach (string anchor in assignment.SourceAnchorIds)
+                card.Add(NativeTheme.Body($"Source anchor · {anchor}", NativeTheme.Muted));
+            Border border = NativeTheme.Card(card, new Thickness(14));
+            border.AutomationId =
+                $"creation-prerequisite-preview-assignment-{Token(assignment.CategoryId)}";
+            _body.Add(border);
+        }
+    }
+
+    private void AddBudget()
+    {
+        CharacterCreationBudgetState budget = _preview.CreationKarmaBudget;
+        VerticalStackLayout card = new() { Spacing = 7 };
+        card.Add(NativeTheme.Eyebrow("Global Creation Karma"));
+        card.Add(NativeTheme.Metric("Total", FormatBudget(budget.Total, budget.Unit)));
+        card.Add(NativeTheme.Metric("Used", FormatBudget(budget.Used, budget.Unit)));
+        card.Add(NativeTheme.Metric("Remaining", FormatBudget(budget.Remaining, budget.Unit)));
+        card.Add(NativeTheme.Body(
+            budget.IsExact ? "Exact authoritative budget" : "Budget is not exact",
+            budget.IsExact ? NativeTheme.Muted : NativeTheme.Danger));
+        Border border = NativeTheme.Card(card);
+        border.AutomationId = "creation-prerequisite-preview-karma-budget";
+        _body.Add(border);
+    }
+
+    private void AddSumToTen()
+    {
+        if (!string.Equals(
+                _buildMethod,
+                CharacterCreationBuildMethods.SumToTen,
+                StringComparison.Ordinal)
+            || _preview.SumToTenTarget is not int target)
+            return;
+        VerticalStackLayout card = new() { Spacing = 6 };
+        card.Add(NativeTheme.Eyebrow("Sum-to-Ten"));
+        card.Add(NativeTheme.Metric(
+            "Used / target",
+            $"{_preview.SumToTenUsed.ToString(CultureInfo.InvariantCulture)} / "
+            + target.ToString(CultureInfo.InvariantCulture)));
+        Border border = NativeTheme.Card(card);
+        border.AutomationId = "creation-prerequisite-preview-sum-to-ten";
+        _body.Add(border);
+    }
+
+    private void AddAttributeGrant()
+    {
+        VerticalStackLayout card = new() { Spacing = 6 };
+        card.Add(NativeTheme.Eyebrow("Attributes prerequisite"));
+        card.Add(NativeTheme.Metric(
+            "Raw normal Attribute grant",
+            _preview.BaseNormalAttributePoints.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Body(
+            _preview.RequiresMetatypeAttributeAdjustment
+                ? "Heritage/metatype halveattributepoints adjustment is still required. Attributes remain disabled."
+                : "Attributes remain disabled until a later rules-authoritative stage opens them.",
+            NativeTheme.Danger));
+        Border border = NativeTheme.Card(card);
+        border.AutomationId = "creation-prerequisite-preview-attributes-disabled";
+        _body.Add(border);
+    }
+
+    private void AddBlockers()
+    {
+        string[] blockers = _preview.Blockers
+            .Concat(_preview.CreationKarmaBudget.Blockers)
+            .Concat(_confirmation?.Blockers ?? [])
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (blockers.Length == 0)
+            return;
+
+        VerticalStackLayout card = new() { Spacing = 6 };
+        card.Add(NativeTheme.Eyebrow("Blockers"));
+        foreach (string blocker in blockers)
+            card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
+        Border border = NativeTheme.Card(card);
+        border.AutomationId = "creation-prerequisite-preview-blockers";
+        _body.Add(border);
+    }
+
+    private void AddConfirmation()
+    {
+        bool confirmed = string.Equals(
+            _confirmation?.Outcome,
+            CharacterCreationFoundationOutcomes.Success,
+            StringComparison.Ordinal);
+        if (confirmed)
+        {
+            Label complete = NativeTheme.Body(
+                "Creation-method draft confirmed and authoritative state reloaded.");
+            complete.AutomationId = "creation-prerequisite-confirmed";
+            _body.Add(NativeTheme.Card(complete));
+            return;
+        }
+
+        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> live =
+            Coordinator.LoadCreationPrerequisite();
+        bool exactLiveBinding = live.Value is { } state
+                                && CreationPrerequisitePhoneAuthority.BindingEquals(
+                                    _preview.Binding,
+                                    state.Binding);
+        Button confirm = NativeTheme.PrimaryButton("Confirm assignments draft");
+        confirm.AutomationId = "creation-prerequisite-confirm";
+        confirm.IsEnabled = exactLiveBinding
+                            && _preview.RequiresExplicitConfirmation
+                            && _preview.CanConfirm
+                            && _preview.Blockers.Count == 0
+                            && _preview.CreationKarmaBudget.IsExact
+                            && _preview.CreationKarmaBudget.Blockers.Count == 0
+                            && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(
+                                _preview.PreviewDigest);
+        confirm.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            _confirmation = await Coordinator.ConfirmCreationPrerequisiteAsync(
+                _preview,
+                _assignments);
+        });
+        _body.Add(confirm);
+
+        Label explicitAction = NativeTheme.Body(
+            _preview.RequiresExplicitConfirmation
+                ? "Confirmation is a separate explicit action bound to this exact preview digest."
+                : "The authority did not request explicit confirmation.",
+            NativeTheme.Muted);
+        explicitAction.AutomationId = "creation-prerequisite-explicit-confirmation";
+        _body.Add(explicitAction);
+    }
+
+    private void AddReceipt()
+    {
+        if (_confirmation is not
+            {
+                Outcome: CharacterCreationFoundationOutcomes.Success,
+                Receipt: { } receipt,
+                RefreshedState: { } refreshed
+            })
+        {
+            return;
+        }
+
+        VerticalStackLayout card = new() { Spacing = 6 };
+        card.Add(NativeTheme.Eyebrow("Atomic draft receipt"));
+        card.Add(NativeTheme.Metric(
+            "Previous revision",
+            receipt.PreviousContentRevision.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            "Content revision",
+            receipt.ContentRevision.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            "Saved revision",
+            receipt.SavedRevision.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            "Draft revision",
+            receipt.DraftRevision.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric("Draft digest", receipt.DraftDigest));
+        card.Add(NativeTheme.Metric(
+            "Creation Karma remaining",
+            receipt.CreationKarmaRemaining.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            "Raw normal Attribute grant",
+            receipt.BaseNormalAttributePoints.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            "Character document changed",
+            receipt.CharacterDocumentChanged.ToString().ToLowerInvariant()));
+        card.Add(NativeTheme.Body(
+            refreshed.RequiresMetatypeAttributeAdjustment
+                ? "Attributes remain disabled: Heritage/metatype halveattributepoints adjustment is required."
+                : "Attributes remain disabled until their rules-authoritative stage opens.",
+            NativeTheme.Danger));
+        Border border = NativeTheme.Card(card);
+        border.AutomationId = "creation-prerequisite-confirm-receipt";
+        _body.Add(border);
+
+        Button back = NativeTheme.SecondaryButton("Back to Build");
+        back.AutomationId = "creation-prerequisite-back-to-build";
+        back.Clicked += async (_, _) => await BackToBuildAsync();
+        _body.Add(back);
+    }
+
+    private async Task BackToBuildAsync()
+    {
+        await Navigation.PopAsync(animated: false);
+        if (Navigation.NavigationStack.LastOrDefault() is CreationPrerequisitePage)
+            await Navigation.PopAsync();
+    }
+
+    private static string FormatBudget(decimal value, string unit)
+        => $"{value.ToString("0.##", CultureInfo.InvariantCulture)} {unit}".TrimEnd();
+
+    private static string ShortDigest(string digest)
+        => string.IsNullOrWhiteSpace(digest) ? "unavailable" : digest[..Math.Min(12, digest.Length)];
+
+    private static string Token(string value)
+        => new(value.Trim().ToLowerInvariant().Select(character =>
+            char.IsLetterOrDigit(character) ? character : '-').ToArray());
+}
