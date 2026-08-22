@@ -81,7 +81,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "94f31b679480a2908b946f8c21e19c6e7e5405c0bfbdf8dbddb0fe05db1967f8"
+        "sha256": "c608c7c3efecd4b8fa5594053ec3a64f9eee4b2c18ed6e284962296b3ba08f2f"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -121,7 +121,7 @@
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "679c85ebe95e2007f467a56e3d1106e21a91043fd331c17715f9175688787a57"
+        "sha256": "a26f74b1a32c157d68bf23c0d60cef2da401f9170644edf5fe611c70a0e7bbc1"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -566,7 +566,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "32f6aeb289e1529f3a4af182b1d00866a6b861ea99e83f0dbce050ef7a3e22ac"
+        "sha256": "346fbe82b016204f3707ed501bc76c8d4cf48290093afbb483470240553155d8"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1916,12 +1916,12 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Workspaces/CharacterWorkspaceModels.cs",
         "exists": true,
-        "sha256": "35fe5e3f251c43484efde07535b4c168d14ca9e37be71e101c121c363aaf82f8"
+        "sha256": "eeb593e72da728f41dc06c6c005240dc169ab072e5458ae58a92c293c3324efc"
       },
       {
         "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "45bb1afa0ccf9f2c76d1dd02e4ad09c9e89b06cfbfaa9031e1e3d210ad0f0ed5"
+        "sha256": "70105539e22d89ccaa710ca87c8241b9f5dab605d09367bc91f75f4a8609f113"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
@@ -1936,12 +1936,12 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
         "exists": true,
-        "sha256": "ca21bc20efdec00d783875c3df1c69abe141010ccd380bf029a00765674ccaa5"
+        "sha256": "b19d276ebcdb3615960f7f131188d105fac858c8a22fc59ef88d7a9f6d350294"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "92518570f1c8022dade333456d048f2277b034fa362ec2878edf605aa2659704"
+        "sha256": "c16df6ca808e77587fb66f521c65e4d2b954aab39ee3afbfa0afd93c15b8c501"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -2166,7 +2166,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewState.cs",
         "exists": true,
-        "sha256": "3c530b256a45728395420b32325cc2dca60f41137ec7e5e838293b17452df98a"
+        "sha256": "48f9c6c86d3d79d4b49ca515137a6cf8aa2d7ae91c66e4f4b41267f066f981be"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
