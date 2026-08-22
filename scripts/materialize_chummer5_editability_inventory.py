@@ -13082,7 +13082,7 @@ def _known_phone_mapping(
                 "BitmapFactory.DecodeByteArray",
                 "Bitmap.Config.Argb8888",
                 "InPremultiplied = true",
-                "decoded.Config != Bitmap.Config.Argb8888",
+                "decoded.GetConfig() != Bitmap.Config.Argb8888",
                 "!decoded.IsPremultiplied",
                 "CryptographicOperations.ZeroMemory(encodedBytes)",
             )

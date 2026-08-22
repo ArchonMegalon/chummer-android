@@ -2206,7 +2206,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "1cf925aaaf57be572b4330b6c1b1e071ab57db7acdce0734bee2725ce75fc946"
+      "sha256": "0fba9b6e8d00d9963720cc0a9affd53028a5394823e683919b9377b51ce82b88"
     }
   },
   "coverageByFamily": {

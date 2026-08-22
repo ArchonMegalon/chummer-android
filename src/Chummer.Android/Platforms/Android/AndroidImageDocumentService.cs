@@ -108,7 +108,7 @@ public sealed class AndroidImageDocumentService : IAndroidImageDocumentService
         if (decoded is null
             || decoded.Width != bounds.OutWidth
             || decoded.Height != bounds.OutHeight
-            || decoded.Config != Bitmap.Config.Argb8888
+            || decoded.GetConfig() != Bitmap.Config.Argb8888
             || !decoded.IsPremultiplied
             || !AndroidImageDocumentValidation.IsAllowedPixelSize(decoded.Width, decoded.Height))
         {
