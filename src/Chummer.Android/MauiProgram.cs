@@ -1,5 +1,6 @@
 using Chummer.Android.Platform;
 using Chummer.Android.Native;
+using Chummer.Application.Characters;
 using Chummer.Application.Tools;
 using Chummer.Desktop.Runtime;
 using Chummer.Infrastructure.Files;
@@ -44,6 +45,9 @@ public static class MauiProgram
             Timeout = TimeSpan.FromSeconds(20)
         });
         builder.Services.AddSingleton<IShellBootstrapDataProvider, ShellBootstrapDataProvider>();
+        builder.Services.AddSingleton<IWorkspaceOverviewStateFactory>(provider =>
+            new WorkspaceOverviewStateFactory(
+                provider.GetRequiredService<ICharacterCreationFoundationService>()));
         builder.Services.AddSingleton<ICharacterOverviewPresenter, CharacterOverviewPresenter>();
         builder.Services.AddSingleton<IShellPresenter, ShellPresenter>();
         builder.Services.AddSingleton<ICommandAvailabilityEvaluator, DefaultCommandAvailabilityEvaluator>();

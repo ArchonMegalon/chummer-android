@@ -5,10 +5,28 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 NATIVE = REPO / "src" / "Chummer.Android" / "Native"
+MAUI_PROGRAM = REPO / "src" / "Chummer.Android" / "MauiProgram.cs"
 DRIVER = REPO / "tests" / "run_api36_creation_wizard_foundation_e2e.py"
 
 
 class CreationWizardSourceContractTests(unittest.TestCase):
+    def test_android_injects_authoritative_foundation_into_overview_state_factory(self) -> None:
+        source = MAUI_PROGRAM.read_text(encoding="utf-8")
+        runtime_registration = source.index("builder.Services.AddChummerLocalRuntimeClient(")
+        factory_registration = source.index(
+            "builder.Services.AddSingleton<IWorkspaceOverviewStateFactory>(provider =>"
+        )
+        presenter_registration = source.index(
+            "builder.Services.AddSingleton<ICharacterOverviewPresenter, CharacterOverviewPresenter>();"
+        )
+
+        self.assertLess(runtime_registration, factory_registration)
+        self.assertLess(factory_registration, presenter_registration)
+        self.assertIn(
+            "provider.GetRequiredService<ICharacterCreationFoundationService>()",
+            source[factory_registration:presenter_registration],
+        )
+
     def test_uncreated_build_is_gated_before_exhaustive_editor(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         start = source.index("if (Coordinator.State.Profile.Created == false)")
