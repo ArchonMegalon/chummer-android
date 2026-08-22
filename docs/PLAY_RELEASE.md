@@ -95,6 +95,11 @@ worktree compiles before writing its path-only environment file. Merely running
 
 ## Required gates
 
+The pull-request API 36 beta gate is currently phone-only. Tablet acceptance is
+explicitly deferred: that lane does not start a tablet emulator, and a passing
+phone receipt is not a tablet-readiness claim or a substitute for the tablet
+journeys required before a general Play release.
+
 1. parity and privacy contract tests pass;
 2. Release AAB builds from a clean, pinned source graph;
 3. bundle inspection confirms package id, version, SDK bounds, app links, and

@@ -85,7 +85,7 @@ class AndroidContentBundleTests(unittest.TestCase):
         self.assertNotIn("Directory.Delete(destinationRoot", materializer)
         self.assertNotIn("SearchOption.AllDirectories", materializer)
 
-    def test_committed_manifest_is_exact_d1f3_catalog_inventory(self) -> None:
+    def test_committed_manifest_is_exact_pinned_core_catalog_inventory(self) -> None:
         manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
         self.assertEqual([], validate_manifest(manifest))
         self.assertEqual(CORE_REVISION, manifest["coreRevision"])

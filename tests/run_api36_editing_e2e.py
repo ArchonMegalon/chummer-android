@@ -19,6 +19,7 @@ from pathlib import Path
 PACKAGE = "com.myexternalbrain.chummer"
 MAIN_ACTION = "android.intent.action.MAIN"
 LAUNCHER_CATEGORY = "android.intent.category.LAUNCHER"
+E2E_AUTHORITY_EXTRA = "com.myexternalbrain.chummer.extra.E2E_AUTHORITY"
 BOUNDS = re.compile(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]")
 DISPLAY_SIZE = re.compile(r"(?:Physical|Override) size:\s*(\d+)x(\d+)")
 COMPONENT = re.compile(
@@ -26,6 +27,7 @@ COMPONENT = re.compile(
     r"(?P<activity>\.?[A-Za-z0-9_$]+(?:\.[A-Za-z0-9_$]+)*)"
 )
 PROCESS_ID = re.compile(r"[1-9][0-9]*")
+SHA256_TEXT = re.compile(r"[0-9a-f]{64}")
 MAX_LAUNCH_EVIDENCE_CHARACTERS = 1_000_000
 
 
@@ -54,6 +56,15 @@ class ProcessRestartProof:
     before_force_stop: LaunchState
     after_force_stop: LaunchState
     restarted: LaunchState
+
+
+@dataclass(frozen=True)
+class WorkspaceAuthority:
+    workspace_id: str
+    content_revision: int
+    saved_revision: int
+    payload_sha256: str
+    document_sha256: str
 
 
 class Device:
@@ -85,6 +96,25 @@ class Device:
 
     def push(self, local_path: Path, remote_path: str) -> None:
         self.run("push", str(local_path.resolve()), remote_path, timeout=120)
+
+    def push_verified(
+        self,
+        local_path: Path,
+        remote_path: str,
+        expected_sha256: str,
+    ) -> str:
+        if SHA256_TEXT.fullmatch(expected_sha256) is None:
+            raise RuntimeError(f"Invalid expected fixture SHA-256: {expected_sha256!r}")
+        self.push(local_path, remote_path)
+        output = self.shell("sha256sum", remote_path)
+        fields = output.split()
+        actual = fields[0].lower() if fields else ""
+        if SHA256_TEXT.fullmatch(actual) is None or actual != expected_sha256:
+            raise RuntimeError(
+                f"Fixture transport digest mismatch for {remote_path!r}: "
+                f"expected {expected_sha256}, got {actual or 'unavailable'}"
+            )
+        return actual
 
     def hierarchy(self) -> list[UiNode]:
         try:
@@ -278,6 +308,50 @@ class Device:
             if match is not None:
                 x = max(1, int(match.group(1)) - text_leading_offset)
         self.shell("input", "tap", str(x), str(y))
+
+    def tap_bidirectional(
+        self,
+        selector: str,
+        *,
+        timeout: int = 90,
+        backward_scrolls: int = 24,
+        forward_scrolls: int = 24,
+        scroll_distance_ratio: float = 0.22,
+    ) -> None:
+        """Find a preserved list position without assuming which side owns the target."""
+        deadline = time.monotonic() + timeout
+        backward = 0
+        forward = 0
+        x_ratio = self._scroll_x_ratio(selector)
+        while time.monotonic() < deadline:
+            candidate = self.find(selector)
+            if candidate is not None and self.node_has_tappable_bounds(candidate):
+                x, y = candidate.center
+                self.shell("input", "tap", str(x), str(y))
+                return
+            if self.dismiss_system_ui_anr():
+                time.sleep(2)
+                continue
+            if backward < backward_scrolls:
+                self.swipe_down(
+                    x_ratio=x_ratio,
+                    distance_ratio=scroll_distance_ratio,
+                )
+                backward += 1
+            elif forward < forward_scrolls:
+                self.swipe_up(
+                    x_ratio=x_ratio,
+                    distance_ratio=scroll_distance_ratio,
+                )
+                forward += 1
+            else:
+                break
+            time.sleep(0.75)
+        self.capture("failure")
+        raise RuntimeError(
+            f"Timed out waiting for tappable UI node {selector!r} "
+            "after a bounded bidirectional search"
+        )
 
     def node_has_tappable_bounds(self, node: UiNode) -> bool:
         match = BOUNDS.fullmatch(node.attributes.get("bounds", ""))
@@ -475,11 +549,16 @@ class Device:
             "300",
         )
 
-    def swipe_down(self, *, x_ratio: float = 0.5) -> None:
+    def swipe_down(
+        self,
+        *,
+        x_ratio: float = 0.5,
+        distance_ratio: float = 0.52,
+    ) -> None:
         width, height = self.display_size()
         x = int(round(width * x_ratio))
         start_y = int(round(height * 0.30))
-        end_y = int(round(height * 0.82))
+        end_y = int(round(height * min(0.90, 0.30 + distance_ratio)))
         self.shell(
             "input",
             "swipe",
@@ -531,6 +610,129 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _authority_value(device: Device, automation_id: str) -> str:
+    node = device.wait(automation_id, timeout=90, scroll=True, max_scrolls=12)
+    value = node.attributes.get("text", "").strip()
+    if not value:
+        device.capture("workspace-authority-empty")
+        raise RuntimeError(f"Workspace authority node {automation_id!r} is empty")
+    return value
+
+
+def _read_workspace_authority_once(device: Device) -> WorkspaceAuthority:
+    workspace_id = _authority_value(device, "home-e2e-workspace-id")
+    try:
+        content_revision = int(_authority_value(device, "home-e2e-content-revision"))
+        saved_revision = int(_authority_value(device, "home-e2e-saved-revision"))
+    except ValueError as error:
+        device.capture("workspace-authority-revision-invalid")
+        raise RuntimeError("Workspace authority revisions are not integers") from error
+    payload_sha256 = _authority_value(device, "home-e2e-payload-sha256")
+    document_sha256 = _authority_value(device, "home-e2e-document-sha256")
+    if not workspace_id or content_revision <= 0 or saved_revision < 0:
+        raise RuntimeError("Workspace authority identity or revisions are invalid")
+    if SHA256_TEXT.fullmatch(payload_sha256) is None:
+        raise RuntimeError("Workspace authority payload SHA-256 is not canonical")
+    if SHA256_TEXT.fullmatch(document_sha256) is None:
+        raise RuntimeError("Workspace authority document SHA-256 is not canonical")
+    return WorkspaceAuthority(
+        workspace_id,
+        content_revision,
+        saved_revision,
+        payload_sha256,
+        document_sha256,
+    )
+
+
+def read_workspace_authority(device: Device) -> WorkspaceAuthority:
+    reset_scroll_to_top(device, swipes=12)
+    first = _read_workspace_authority_once(device)
+    reset_scroll_to_top(device, swipes=12)
+    verified = _read_workspace_authority_once(device)
+    if verified != first:
+        device.capture("workspace-authority-surface-changed")
+        raise RuntimeError(
+            "Workspace authority accessibility surface changed during verification: "
+            f"first={first!r}, verified={verified!r}"
+        )
+    return verified
+
+
+def require_import_authority(
+    authority: WorkspaceAuthority,
+    expected_payload_sha256: str,
+    previous_workspace_id: str | None = None,
+) -> None:
+    if authority.payload_sha256 != expected_payload_sha256:
+        raise RuntimeError(
+            "Imported workspace payload does not match the exact verified fixture bytes: "
+            f"expected {expected_payload_sha256}, got {authority.payload_sha256}"
+        )
+    if previous_workspace_id is not None and authority.workspace_id == previous_workspace_id:
+        raise RuntimeError("Fixture import did not activate a new target workspace")
+
+
+def require_saved_authority(authority: WorkspaceAuthority) -> None:
+    if authority.content_revision != authority.saved_revision:
+        raise RuntimeError(
+            "Workspace authority is not durably checkpointed: "
+            f"content revision {authority.content_revision}, "
+            f"saved revision {authority.saved_revision}"
+        )
+
+
+def require_restored_authority(
+    persisted: WorkspaceAuthority,
+    restored: WorkspaceAuthority,
+) -> None:
+    require_saved_authority(restored)
+    if restored != persisted:
+        raise RuntimeError(
+            "Fresh-process workspace authority does not match the exact saved document: "
+            f"before={persisted!r}, after={restored!r}"
+        )
+
+
+def workspace_authority_json(authority: WorkspaceAuthority) -> dict[str, object]:
+    return {
+        "workspaceId": authority.workspace_id,
+        "contentRevision": authority.content_revision,
+        "savedRevision": authority.saved_revision,
+        "payloadSha256": authority.payload_sha256,
+        "documentSha256": authority.document_sha256,
+    }
+
+
+def optional_workspace_authority_json(
+    authority: WorkspaceAuthority | None,
+) -> dict[str, object] | None:
+    return None if authority is None else workspace_authority_json(authority)
+
+
+def save_and_read_workspace_authority(
+    device: Device,
+    profile: str,
+) -> WorkspaceAuthority:
+    if profile != "phone":
+        raise RuntimeError("The API 36 beta authority gate is phone-only; tablet proof is deferred")
+    device.tap("Home")
+    device.wait("Continue building", timeout=90)
+    open_build(device, profile)
+    device.tap("build-save-runner")
+    device.wait(
+        "Saved.",
+        timeout=90,
+        scroll=True,
+        max_scrolls=48,
+        scroll_distance_ratio=0.22,
+    )
+    device.tap("Home")
+    device.wait("Continue building", timeout=90)
+    authority = read_workspace_authority(device)
+    require_saved_authority(authority)
+    return authority
 
 
 def open_build(device: Device, profile: str) -> None:
@@ -597,8 +799,13 @@ def open_attribute_section(device: Device, profile: str) -> None:
         device.tap("tablet-attribute-body")
         device.wait("tablet-attribute-base-body", timeout=45)
         return
-    reset_scroll_to_top(device, swipes=12)
-    device.tap("build-section-tab-attributes", scroll=True)
+    device.tap_bidirectional(
+        "build-section-tab-attributes",
+        timeout=120,
+        backward_scrolls=24,
+        forward_scrolls=24,
+        scroll_distance_ratio=0.22,
+    )
     reset_scroll_to_top(device)
     device.wait("attribute-body", timeout=45, scroll=True)
 
@@ -1293,6 +1500,9 @@ def launch_app(device: Device, attempts: int = 3, resume_timeout: float = 20) ->
                 MAIN_ACTION,
                 "-c",
                 LAUNCHER_CATEGORY,
+                "--ez",
+                E2E_AUTHORITY_EXTRA,
+                "true",
                 "-n",
                 component,
                 timeout=60,
@@ -1444,12 +1654,14 @@ def prepare_full_editing_runner(
     profile: str,
     completed_runner_name: str,
     completed_runner_alias: str,
-) -> None:
+    completed_runner_sha256: str,
+) -> WorkspaceAuthority | None:
     device.tap_until_visible("home-new-runner", "Select Build Method")
     device.tap("dialog-action-create-character", scroll=True)
     device.wait("dialog-action-complete-new-character-workflow", timeout=45, scroll=True)
     device.tap("dialog-action-complete-new-character-workflow", scroll=True)
 
+    creation_authority: WorkspaceAuthority | None = None
     if profile == "phone":
         # A new creation-mode runner now routes directly to the fail-closed wizard.
         # The unrestricted editor must remain unavailable until creation is complete.
@@ -1468,16 +1680,29 @@ def prepare_full_editing_runner(
         )
         device.tap("Home")
     else:
-        # Tablet creation remains on Home after the modal workflow closes.
+        # Tablet remains a standalone deferred journey and is not launched by the
+        # authoritative phone beta lane.
         device.wait("Continue building", timeout=90)
 
     device.wait("home-open-file", timeout=90)
+    if profile == "phone":
+        creation_authority = read_workspace_authority(device)
+        require_saved_authority(creation_authority)
     device.tap("home-open-file")
     select_android_document(device, completed_runner_name)
     # Bind the transition to the selected career fixture. A picker dismissal or a
     # guarded no-op can leave a generic Continue button on the prior workspace.
     device.wait(completed_runner_alias, timeout=90)
     device.wait("Continue building", timeout=90)
+    if profile == "phone":
+        imported_authority = read_workspace_authority(device)
+        require_import_authority(
+            imported_authority,
+            completed_runner_sha256,
+            creation_authority.workspace_id if creation_authority is not None else None,
+        )
+        return imported_authority
+    return None
 
 
 def attach_linked_runner(
@@ -1880,6 +2105,25 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    fixture_inputs = (
+        (args.linked_runner.resolve(), "/sdcard/Download/linked-runner-e2e.chum5"),
+        (
+            args.invalid_linked_runner.resolve(),
+            "/sdcard/Download/invalid-linked-runner-e2e.chum5",
+        ),
+        (
+            args.condition_runner.resolve(),
+            "/sdcard/Download/career-condition-monitor-e2e.chum5",
+        ),
+        (
+            args.contact_pet_runner.resolve(),
+            "/sdcard/Download/creation-contact-pet-e2e.chum5",
+        ),
+    )
+    fixture_sha256 = {local_path: sha256(local_path) for local_path, _ in fixture_inputs}
+    condition_runner_sha256 = fixture_sha256[args.condition_runner.resolve()]
+    contact_pet_runner_sha256 = fixture_sha256[args.contact_pet_runner.resolve()]
+
     device = Device(args.adb.resolve(), args.serial, args.evidence.resolve())
     api = device.shell("getprop", "ro.build.version.sdk")
     if api != "36":
@@ -1891,13 +2135,36 @@ def main() -> int:
         timeout=300,
     )
     device.shell("pm", "clear", PACKAGE)
-    device.push(args.linked_runner, "/sdcard/Download/linked-runner-e2e.chum5")
-    device.push(args.invalid_linked_runner, "/sdcard/Download/invalid-linked-runner-e2e.chum5")
-    device.push(args.condition_runner, "/sdcard/Download/career-condition-monitor-e2e.chum5")
-    device.push(args.contact_pet_runner, "/sdcard/Download/creation-contact-pet-e2e.chum5")
+    transport_receipt: list[dict[str, str]] = []
+    verified_remote_sha256: dict[Path, str] = {}
+    for local_path, remote_path in fixture_inputs:
+        captured_sha256 = fixture_sha256[local_path]
+        remote_sha256 = device.push_verified(local_path, remote_path, captured_sha256)
+        verified_remote_sha256[local_path] = remote_sha256
+        transport_receipt.append(
+            {
+                "localPath": str(local_path),
+                "remotePath": remote_path,
+                "capturedLocalSha256": captured_sha256,
+                "verifiedRemoteSha256": remote_sha256,
+            }
+        )
+    (device.evidence / "fixture-transport-receipt.json").write_text(
+        json.dumps(
+            {
+                "schema": "chummer.android.fixture-transport/v1",
+                "status": "pass",
+                "fixtures": transport_receipt,
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     initial_launch_state = launch_app(device)
     device.wait("Your runners", timeout=90)
 
+    imported_authority: WorkspaceAuthority | None
     if args.journey in {"condition-monitor", "contact-pet"}:
         device.tap("home-open-file")
         fixture_name = (
@@ -1905,14 +2172,29 @@ def main() -> int:
             if args.journey == "contact-pet"
             else "career-condition-monitor-e2e.chum5"
         )
+        fixture_alias = (
+            "ContactPetE2E" if args.journey == "contact-pet" else "ConditionMonitorE2E"
+        )
+        expected_fixture_sha256 = (
+            contact_pet_runner_sha256
+            if args.journey == "contact-pet"
+            else condition_runner_sha256
+        )
         select_android_document(device, fixture_name)
+        device.wait(fixture_alias, timeout=90)
         device.wait("Continue building", timeout=90)
+        if args.profile == "phone":
+            imported_authority = read_workspace_authority(device)
+            require_import_authority(imported_authority, expected_fixture_sha256)
+        else:
+            imported_authority = None
     else:
-        prepare_full_editing_runner(
+        imported_authority = prepare_full_editing_runner(
             device,
             args.profile,
             "career-condition-monitor-e2e.chum5",
             "ConditionMonitorE2E",
+            condition_runner_sha256,
         )
 
     open_build(device, args.profile)
@@ -1921,6 +2203,11 @@ def main() -> int:
         if args.profile == "phone":
             device.back()
         add_and_edit_pet(device, args.profile, create_items=False)
+        persisted_authority = (
+            save_and_read_workspace_authority(device, args.profile)
+            if args.profile == "phone"
+            else None
+        )
         device.capture("contact-pet-persisted")
 
         restart_proof = force_stop_and_launch_new_process(
@@ -1928,6 +2215,11 @@ def main() -> int:
             initial_launch_state,
         )
         device.wait("Continue building", timeout=90)
+        restored_authority = (
+            read_workspace_authority(device) if args.profile == "phone" else None
+        )
+        if persisted_authority is not None and restored_authority is not None:
+            require_restored_authority(persisted_authority, restored_authority)
         open_build(device, args.profile)
         assert_contact_persisted(device, args.profile)
         if args.profile == "phone":
@@ -1947,7 +2239,27 @@ def main() -> int:
             "apkSha256": sha256(args.apk.resolve()),
             "driverSha256": sha256(Path(__file__).resolve()),
             "inputFixture": str(args.contact_pet_runner.resolve()),
-            "inputFixtureSha256": sha256(args.contact_pet_runner.resolve()),
+            "inputFixtureSha256": contact_pet_runner_sha256,
+            "verifiedRemoteInputFixtureSha256": verified_remote_sha256[
+                args.contact_pet_runner.resolve()
+            ],
+            "importAuthority": optional_workspace_authority_json(imported_authority),
+            "preRestartAuthority": optional_workspace_authority_json(persisted_authority),
+            "postRestartAuthority": optional_workspace_authority_json(restored_authority),
+            "authorityProofStages": {
+                "status": (
+                    "pass" if args.profile == "phone" else "not-claimed-tablet-deferred"
+                ),
+                "import": {
+                    "frozenFixtureSha256": contact_pet_runner_sha256,
+                    "verifiedRemoteFixtureSha256": verified_remote_sha256[
+                        args.contact_pet_runner.resolve()
+                    ],
+                    "workspace": optional_workspace_authority_json(imported_authority),
+                },
+                "preRestartSaved": optional_workspace_authority_json(persisted_authority),
+                "postRestartRestored": optional_workspace_authority_json(restored_authority),
+            },
             "initialLaunchProcessIds": list(initial_launch_state.process_ids),
             "initialLaunchResumedComponent": initial_launch_state.resumed_component,
             "preForceStopProcessIds": list(restart_proof.before_force_stop.process_ids),
@@ -1977,6 +2289,11 @@ def main() -> int:
         edit_condition_damage(device, args.profile, "stun", 1)
         assert_condition_damage(device, args.profile, "physical", 2)
         assert_condition_damage(device, args.profile, "stun", 1)
+        persisted_authority = (
+            save_and_read_workspace_authority(device, args.profile)
+            if args.profile == "phone"
+            else None
+        )
         device.capture("condition-monitor-persisted")
 
         restart_proof = force_stop_and_launch_new_process(
@@ -1984,6 +2301,11 @@ def main() -> int:
             initial_launch_state,
         )
         device.wait("Continue building", timeout=90)
+        restored_authority = (
+            read_workspace_authority(device) if args.profile == "phone" else None
+        )
+        if persisted_authority is not None and restored_authority is not None:
+            require_restored_authority(persisted_authority, restored_authority)
         open_build(device, args.profile)
         assert_condition_damage(device, args.profile, "physical", 2)
         assert_condition_damage(device, args.profile, "stun", 1)
@@ -2001,7 +2323,27 @@ def main() -> int:
             "apkSha256": sha256(args.apk.resolve()),
             "driverSha256": sha256(Path(__file__).resolve()),
             "inputFixture": str(args.condition_runner.resolve()),
-            "inputFixtureSha256": sha256(args.condition_runner.resolve()),
+            "inputFixtureSha256": condition_runner_sha256,
+            "verifiedRemoteInputFixtureSha256": verified_remote_sha256[
+                args.condition_runner.resolve()
+            ],
+            "importAuthority": optional_workspace_authority_json(imported_authority),
+            "preRestartAuthority": optional_workspace_authority_json(persisted_authority),
+            "postRestartAuthority": optional_workspace_authority_json(restored_authority),
+            "authorityProofStages": {
+                "status": (
+                    "pass" if args.profile == "phone" else "not-claimed-tablet-deferred"
+                ),
+                "import": {
+                    "frozenFixtureSha256": condition_runner_sha256,
+                    "verifiedRemoteFixtureSha256": verified_remote_sha256[
+                        args.condition_runner.resolve()
+                    ],
+                    "workspace": optional_workspace_authority_json(imported_authority),
+                },
+                "preRestartSaved": optional_workspace_authority_json(persisted_authority),
+                "postRestartRestored": optional_workspace_authority_json(restored_authority),
+            },
             "initialLaunchProcessIds": list(initial_launch_state.process_ids),
             "initialLaunchResumedComponent": initial_launch_state.resumed_component,
             "preForceStopProcessIds": list(restart_proof.before_force_stop.process_ids),
@@ -2058,6 +2400,11 @@ def main() -> int:
     assert_body_base(device, args.profile, 2)
     if args.profile == "phone":
         device.back()
+    persisted_authority = (
+        save_and_read_workspace_authority(device, args.profile)
+        if args.profile == "phone"
+        else None
+    )
     device.capture("editing-persisted")
 
     restart_proof = force_stop_and_launch_new_process(
@@ -2065,6 +2412,11 @@ def main() -> int:
         initial_launch_state,
     )
     device.wait("Continue building", timeout=90)
+    restored_authority = (
+        read_workspace_authority(device) if args.profile == "phone" else None
+    )
+    if persisted_authority is not None and restored_authority is not None:
+        require_restored_authority(persisted_authority, restored_authority)
     open_build(device, args.profile)
     open_origin_dossier(device, args.profile)
     device.tap("origin-dossier-identity")
@@ -2129,7 +2481,27 @@ def main() -> int:
         "apkSha256": sha256(args.apk.resolve()),
         "driverSha256": sha256(Path(__file__).resolve()),
         "inputFixture": str(args.condition_runner.resolve()),
-        "inputFixtureSha256": sha256(args.condition_runner.resolve()),
+        "inputFixtureSha256": condition_runner_sha256,
+        "verifiedRemoteInputFixtureSha256": verified_remote_sha256[
+            args.condition_runner.resolve()
+        ],
+        "importAuthority": optional_workspace_authority_json(imported_authority),
+        "preRestartAuthority": optional_workspace_authority_json(persisted_authority),
+        "postRestartAuthority": optional_workspace_authority_json(restored_authority),
+        "authorityProofStages": {
+            "status": (
+                "pass" if args.profile == "phone" else "not-claimed-tablet-deferred"
+            ),
+            "import": {
+                "frozenFixtureSha256": condition_runner_sha256,
+                "verifiedRemoteFixtureSha256": verified_remote_sha256[
+                    args.condition_runner.resolve()
+                ],
+                "workspace": optional_workspace_authority_json(imported_authority),
+            },
+            "preRestartSaved": optional_workspace_authority_json(persisted_authority),
+            "postRestartRestored": optional_workspace_authority_json(restored_authority),
+        },
         "initialLaunchProcessIds": list(initial_launch_state.process_ids),
         "initialLaunchResumedComponent": initial_launch_state.resumed_component,
         "preForceStopProcessIds": list(restart_proof.before_force_stop.process_ids),

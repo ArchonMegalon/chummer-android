@@ -4,6 +4,7 @@ using Android.Content.PM;
 using Android.OS;
 using Android.Window;
 using Android.Gms.Extensions;
+using Chummer.Android.Native;
 using Chummer.Android.Platform;
 using Microsoft.Maui;
 using Xamarin.Google.Android.Play.Core.AppUpdate;
@@ -38,6 +39,8 @@ namespace Chummer.Android;
 public sealed class MainActivity : MauiAppCompatActivity
 {
     private const int InAppUpdateRequestCode = 9201;
+    private const string E2EAuthorityIntentExtra =
+        "com.myexternalbrain.chummer.extra.E2E_AUTHORITY";
 
     private IOnBackInvokedCallback? _backInvokedCallback;
     private IAppUpdateManager? _appUpdateManager;
@@ -54,6 +57,10 @@ public sealed class MainActivity : MauiAppCompatActivity
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
+#if DEBUG
+        AndroidE2EAuthority.ConfigureForCurrentProcess(
+            Intent?.GetBooleanExtra(E2EAuthorityIntentExtra, false) == true);
+#endif
         base.OnCreate(savedInstanceState);
         HandleAccountLinkIntent(Intent);
         _googlePlayManaged = IsInstalledByGooglePlay();
@@ -75,6 +82,10 @@ public sealed class MainActivity : MauiAppCompatActivity
         base.OnNewIntent(intent);
         if (intent is not null)
         {
+#if DEBUG
+            AndroidE2EAuthority.ConfigureForCurrentProcess(
+                intent.GetBooleanExtra(E2EAuthorityIntentExtra, false));
+#endif
             HandleAccountLinkIntent(intent);
         }
     }

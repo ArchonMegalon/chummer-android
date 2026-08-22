@@ -215,16 +215,23 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('"buildGhostCurrentAndNonMutating": "pass"', source)
         self.assertIn('"advancedEditorNeverExposedWhileCreatedFalse": "pass"', source)
 
-    def test_api36_ci_runs_the_prerequisite_only_on_phone_after_generic_e2e(self) -> None:
+    def test_api36_phone_only_ci_runs_the_prerequisite_after_generic_e2e(self) -> None:
         runner = (
             REPO / "scripts" / "run-api36-editing-e2e-ci.sh"
         ).read_text(encoding="utf-8")
         generic = "python3 chummer-android/tests/run_api36_editing_e2e.py"
         prerequisite = "python3 chummer-android/tests/run_api36_creation_prerequisite_e2e.py"
-        self.assertIn('if [[ "$profile" == "phone" ]]; then', runner)
+        self.assertIn('if [[ "$profile" != "phone" ]]; then', runner)
+        self.assertIn("tablet beta proof is deferred", runner)
         self.assertIn(generic, runner)
         self.assertIn(prerequisite, runner)
+        guard = runner.index('if [[ "$profile" != "phone" ]]; then')
+        self.assertLess(guard, runner.index(generic))
         self.assertLess(runner.index(generic), runner.index(prerequisite))
+        self.assertNotIn(
+            'if [[ "$profile"',
+            runner[runner.index(generic) : runner.index(prerequisite)],
+        )
         self.assertIn('prerequisite_root="$evidence_root/creation-prerequisite"', runner)
         self.assertIn('--evidence "$prerequisite_root/screenshots"', runner)
         self.assertIn('--receipt "$prerequisite_root/receipt.json"', runner)

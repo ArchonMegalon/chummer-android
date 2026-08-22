@@ -2,13 +2,10 @@
 set -euo pipefail
 
 profile="${CHUMMER_E2E_PROFILE:?CHUMMER_E2E_PROFILE is required}"
-case "$profile" in
-  phone|tablet) ;;
-  *)
-    echo "CHUMMER_E2E_PROFILE must be phone or tablet." >&2
-    exit 64
-    ;;
-esac
+if [[ "$profile" != "phone" ]]; then
+  echo "CHUMMER_E2E_PROFILE must be phone; tablet beta proof is deferred." >&2
+  exit 64
+fi
 
 android_home="${ANDROID_HOME:?ANDROID_HOME is required}"
 adb_path="$android_home/platform-tools/adb"
@@ -31,13 +28,11 @@ python3 chummer-android/tests/run_api36_editing_e2e.py \
   --evidence "$evidence_root/screenshots" \
   --receipt "$evidence_root/receipt.json"
 
-if [[ "$profile" == "phone" ]]; then
-  prerequisite_root="$evidence_root/creation-prerequisite"
-  install -d -m 0755 "$prerequisite_root"
-  python3 chummer-android/tests/run_api36_creation_prerequisite_e2e.py \
-    --adb "$adb_path" \
-    --apk "$apk_path" \
-    --serial emulator-5554 \
-    --evidence "$prerequisite_root/screenshots" \
-    --receipt "$prerequisite_root/receipt.json"
-fi
+prerequisite_root="$evidence_root/creation-prerequisite"
+install -d -m 0755 "$prerequisite_root"
+python3 chummer-android/tests/run_api36_creation_prerequisite_e2e.py \
+  --adb "$adb_path" \
+  --apk "$apk_path" \
+  --serial emulator-5554 \
+  --evidence "$prerequisite_root/screenshots" \
+  --receipt "$prerequisite_root/receipt.json"

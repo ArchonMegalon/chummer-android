@@ -1,4 +1,4 @@
-name: API 36 phone and tablet editing E2E
+name: API 36 phone beta editing E2E
 
 on:
   pull_request:
@@ -58,7 +58,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-core
-          ref: d1f3ec8b13d1359fa383a000770cec30ae1a20fe
+          ref: e8d221cde98525b68234201a8bee68bf976cc304
           path: chummer-core-engine
           persist-credentials: false
           fetch-depth: 1
@@ -117,7 +117,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Verify phone and tablet editability inventory truth
+      - name: Verify phone editability inventory truth
         working-directory: chummer-android
         env:
           CHUMMER_COMPLETE_ROOT: ${{ github.workspace }}
@@ -188,21 +188,14 @@ jobs:
           overwrite: false
           include-hidden-files: false
 
-  editing-e2e:
-    name: ${{ matrix.profile }} API 36 persistence
+  phone-editing-e2e:
+    # Tablet acceptance is deferred; this lane launches only pixel_6 and makes no tablet-readiness claim.
+    name: phone API 36 persistence
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - profile: phone
-            avd_profile: pixel_6
-          - profile: tablet
-            avd_profile: pixel_c
     env:
-      CHUMMER_E2E_PROFILE: ${{ matrix.profile }}
+      CHUMMER_E2E_PROFILE: phone
     steps:
       - name: Check out the exact E2E driver
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -235,19 +228,19 @@ jobs:
           api-level: 36
           target: google_apis
           arch: x86_64
-          profile: ${{ matrix.avd_profile }}
+          profile: pixel_6
           emulator-options: >-
             -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
             -camera-back none -camera-front none -no-snapshot-save
           disable-animations: true
           script: bash chummer-android/scripts/run-api36-editing-e2e-ci.sh
 
-      - name: Upload phone or tablet receipts and screenshots
+      - name: Upload phone receipts and screenshots
         if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: chummer-android-api36-${{ matrix.profile }}-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/chummer-api36-evidence/${{ matrix.profile }}
+          name: chummer-android-api36-phone-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/chummer-api36-evidence/phone
           if-no-files-found: warn
           retention-days: 30
           compression-level: 0

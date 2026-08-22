@@ -114,12 +114,12 @@
       {
         "path": "src/Chummer.Android/Native/HomePage.cs",
         "exists": true,
-        "sha256": "c651b9b804bdcd91370ecf5aef84061dc9b479bb3230ab74d2ef4a5ee9d4a6ea"
+        "sha256": "1c57ee69593a848285629219f25bc31e03beb36f990fb183d9bf2e3bd981d552"
       },
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "b2f09b1fd7560a52a0f57f23550a3f1f908672fc0b01e560b1ec055d7cfe3197"
+        "sha256": "6758b3d1164c6dbe073595163c4e2643a65642844a015d48c670a074913f08c0"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -564,7 +564,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "6febf4fde1ad7fcb3d669f390f8101bb634ba34110545c3fa95b5af05e00ae3b"
+        "sha256": "b07ea709aebde8901d0d28b3f44b2169cd82f84a4b33d82af46f3ead6a4019db"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -579,7 +579,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "c6e657c8604c90e72db372cefcd1fd31161c6c39b0504209c480df24fcf3ca09"
+        "sha256": "40e102871b8dd7c8326ce7fc90f0f3560d3a1c0b3ca781b93a417498da1b5019"
       },
       {
         "path": "tests/run_api36_gear_attack_swap_e2e.py",
@@ -1939,7 +1939,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "afc1fc6be791cbd26786a461a24a60cf51a05fdddfd9b6d281cd778d77e712b2"
+        "sha256": "ff44568e91dfc039dbb417416afbc6d8eb9dee905d58664b662ffd6ac6879e44"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",

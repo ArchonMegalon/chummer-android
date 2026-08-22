@@ -144,6 +144,9 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 DRIVER.MAIN_ACTION,
                 "-c",
                 DRIVER.LAUNCHER_CATEGORY,
+                "--ez",
+                DRIVER.E2E_AUTHORITY_EXTRA,
+                "true",
                 "-n",
                 component,
                 timeout=60,
@@ -486,6 +489,92 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             device.commands[-1],
         )
 
+    def test_bidirectional_tap_finds_an_early_section_from_a_preserved_late_offset(self) -> None:
+        target = DRIVER.UiNode(
+            {
+                "resource-id": "build-section-tab-attributes",
+                "clickable": "true",
+                "bounds": "[100,400][900,520]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        device.find.side_effect = [None, None, target]
+        device.dismiss_system_ui_anr.return_value = False
+        device._scroll_x_ratio.return_value = 0.5
+        device.node_has_tappable_bounds.return_value = True
+
+        with patch.object(DRIVER.time, "sleep"):
+            DRIVER.Device.tap_bidirectional(
+                device,
+                "build-section-tab-attributes",
+                backward_scrolls=4,
+                forward_scrolls=4,
+            )
+
+        self.assertEqual(
+            [call(x_ratio=0.5, distance_ratio=0.22)] * 2,
+            device.swipe_down.call_args_list,
+        )
+        device.swipe_up.assert_not_called()
+        device.shell.assert_called_once_with("input", "tap", "500", "460")
+
+    def test_bidirectional_tap_has_bounded_forward_fallback(self) -> None:
+        target = DRIVER.UiNode(
+            {
+                "resource-id": "build-section-tab-attributes",
+                "clickable": "true",
+                "bounds": "[100,400][900,520]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        device.find.side_effect = [None, None, target]
+        device.dismiss_system_ui_anr.return_value = False
+        device._scroll_x_ratio.return_value = 0.5
+        device.node_has_tappable_bounds.return_value = True
+
+        with patch.object(DRIVER.time, "sleep"):
+            DRIVER.Device.tap_bidirectional(
+                device,
+                "build-section-tab-attributes",
+                backward_scrolls=1,
+                forward_scrolls=1,
+            )
+
+        device.swipe_down.assert_called_once_with(x_ratio=0.5, distance_ratio=0.22)
+        device.swipe_up.assert_called_once_with(x_ratio=0.5, distance_ratio=0.22)
+
+    def test_fixture_transport_verifies_the_exact_remote_bytes(self) -> None:
+        expected = "a" * 64
+        device = Mock(spec=DRIVER.Device)
+        device.shell.return_value = f"{expected}  /sdcard/Download/runner.chum5"
+        local = Path("runner.chum5")
+
+        actual = DRIVER.Device.push_verified(
+            device,
+            local,
+            "/sdcard/Download/runner.chum5",
+            expected,
+        )
+
+        self.assertEqual(expected, actual)
+        device.push.assert_called_once_with(local, "/sdcard/Download/runner.chum5")
+        device.shell.assert_called_once_with(
+            "sha256sum",
+            "/sdcard/Download/runner.chum5",
+        )
+
+    def test_fixture_transport_rejects_changed_remote_bytes(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.shell.return_value = f"{'b' * 64}  /sdcard/Download/runner.chum5"
+
+        with self.assertRaisesRegex(RuntimeError, "transport digest mismatch"):
+            DRIVER.Device.push_verified(
+                device,
+                Path("runner.chum5"),
+                "/sdcard/Download/runner.chum5",
+                "a" * 64,
+            )
+
     def test_collection_tap_uses_card_gutter_and_overlapping_scrolls(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
@@ -553,13 +642,21 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
     def test_full_phone_journey_proves_wizard_then_imports_completed_runner(self) -> None:
         device = Mock()
+        fixture_sha256 = "a" * 64
+        creation = DRIVER.WorkspaceAuthority("creation", 1, 1, "b" * 64, "c" * 64)
+        imported = DRIVER.WorkspaceAuthority("imported", 2, 2, fixture_sha256, "d" * 64)
 
-        with patch.object(DRIVER, "select_android_document") as select_document:
-            DRIVER.prepare_full_editing_runner(
+        with patch.object(DRIVER, "select_android_document") as select_document, patch.object(
+            DRIVER,
+            "read_workspace_authority",
+            side_effect=[creation, imported],
+        ):
+            result = DRIVER.prepare_full_editing_runner(
                 device,
                 "phone",
                 "career-condition-monitor-e2e.chum5",
                 "ConditionMonitorE2E",
+                fixture_sha256,
             )
 
         device.assert_has_calls(
@@ -593,16 +690,18 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             device,
             "career-condition-monitor-e2e.chum5",
         )
+        self.assertEqual(imported, result)
 
-    def test_full_tablet_journey_returns_home_then_imports_completed_runner(self) -> None:
+    def test_full_tablet_journey_remains_available_outside_the_phone_beta_lane(self) -> None:
         device = Mock()
 
         with patch.object(DRIVER, "select_android_document") as select_document:
-            DRIVER.prepare_full_editing_runner(
+            result = DRIVER.prepare_full_editing_runner(
                 device,
                 "tablet",
                 "career-condition-monitor-e2e.chum5",
                 "ConditionMonitorE2E",
+                "a" * 64,
             )
 
         device.assert_has_calls(
@@ -622,13 +721,17 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 call.wait("Continue building", timeout=90),
             ]
         )
+        self.assertIsNone(result)
         device.capture.assert_not_called()
-        device.tap.assert_any_call("home-open-file")
         self.assertNotIn(call.tap("Home"), device.mock_calls)
         select_document.assert_called_once_with(
             device,
             "career-condition-monitor-e2e.chum5",
         )
+
+    def test_generic_driver_keeps_the_deferred_tablet_profile(self) -> None:
+        source = Path(DRIVER.__file__).read_text(encoding="utf-8")
+        self.assertIn('choices=("phone", "tablet")', source)
 
     def test_full_receipt_binds_completed_fixture_and_exact_restart_identity(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
@@ -636,7 +739,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         for marker in (
             '"inputFixture": str(args.condition_runner.resolve())',
-            '"inputFixtureSha256": sha256(args.condition_runner.resolve())',
+            '"inputFixtureSha256": condition_runner_sha256',
+            '"verifiedRemoteInputFixtureSha256": verified_remote_sha256[',
+            '"importAuthority": optional_workspace_authority_json(imported_authority)',
+            '"preRestartAuthority": optional_workspace_authority_json(persisted_authority)',
+            '"postRestartAuthority": optional_workspace_authority_json(restored_authority)',
+            '"frozenFixtureSha256": condition_runner_sha256',
             '"initialLaunchProcessIds": list(initial_launch_state.process_ids)',
             '"initialLaunchResumedComponent": initial_launch_state.resumed_component',
             '"preForceStopProcessIds": list(restart_proof.before_force_stop.process_ids)',
@@ -647,6 +755,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             '"newRunnerCreationCompletion": "not-claimed"',
             '"newRunnerCreationDraftSaved": (',
             '"pass" if args.profile == "phone" else "not-claimed-tablet-deferred"',
+            '"phoneCreationWizardDashboard": (',
+            '"pass" if args.profile == "phone" else "not-applicable-tablet-deferred"',
             '"careerRunnerImport": "pass"',
             '"careerRunnerAliasActivated": "ConditionMonitorE2E"',
             '"processRestartPersistence": "pass"',
@@ -666,11 +776,14 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         self.assertIn("CharacterOverviewState previousState = State;", block)
         self.assertIn("_notice = null;", block)
+        self.assertIn("ComputeExactImportPayloadSha256(document.Content)", block)
         self.assertIn(
-            "if (ImportActivatedWorkspace(previousState, State))",
+            "if (ActivatedNewWorkspace(previousState, State)",
             block,
         )
-        guarded = block[block.index("if (ImportActivatedWorkspace") :]
+        guarded = block[block.index("if (ActivatedNewWorkspace") :]
+        self.assertIn("TryRefreshWorkspaceAuthorityAsync", guarded)
+        self.assertIn("if (authority is not null)", guarded)
         self.assertIn("RememberRosterLocator", guarded)
         self.assertIn('_notice = $"Opened {document.DisplayName}.";', guarded)
         self.assertNotIn(
@@ -681,13 +794,132 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             block,
         )
 
-        predicate = block[block.index("private static bool ImportActivatedWorkspace") :]
+        predicate = block[block.index("private static bool ActivatedNewWorkspace") :]
         self.assertIn("current.WorkspaceId is { } currentWorkspace", predicate)
-        self.assertIn("previous.ContentRevision != current.ContentRevision", predicate)
-        self.assertIn("previous.SavedRevision != current.SavedRevision", predicate)
-        self.assertIn("!ReferenceEquals(previous.Session, current.Session)", predicate)
-        self.assertNotIn("previous.Notice", predicate)
-        self.assertNotIn("current.Notice", predicate)
+        self.assertIn("!string.Equals(previousWorkspace.Value, currentWorkspace.Value", predicate)
+        self.assertNotIn("ContentRevision", predicate)
+        self.assertNotIn("SavedRevision", predicate)
+
+    def test_authoritative_import_and_restart_contracts_fail_closed(self) -> None:
+        imported = DRIVER.WorkspaceAuthority("new", 4, 4, "a" * 64, "b" * 64)
+        DRIVER.require_import_authority(imported, "a" * 64, "old")
+        DRIVER.require_saved_authority(imported)
+        DRIVER.require_restored_authority(imported, imported)
+
+        with self.assertRaisesRegex(RuntimeError, "exact verified fixture bytes"):
+            DRIVER.require_import_authority(imported, "c" * 64, "old")
+        with self.assertRaisesRegex(RuntimeError, "new target workspace"):
+            DRIVER.require_import_authority(imported, "a" * 64, "new")
+        with self.assertRaisesRegex(RuntimeError, "durably checkpointed"):
+            DRIVER.require_saved_authority(imported.__class__("new", 5, 4, "a" * 64, "b" * 64))
+        with self.assertRaisesRegex(RuntimeError, "does not match"):
+            DRIVER.require_restored_authority(
+                imported,
+                imported.__class__("new", 4, 4, "a" * 64, "c" * 64),
+            )
+
+    def test_workspace_authority_surface_requires_two_identical_reads(self) -> None:
+        authority = DRIVER.WorkspaceAuthority("new", 4, 4, "a" * 64, "b" * 64)
+        device = Mock()
+        with patch.object(
+            DRIVER,
+            "_read_workspace_authority_once",
+            side_effect=[authority, authority],
+        ), patch.object(DRIVER, "reset_scroll_to_top") as reset:
+            self.assertEqual(authority, DRIVER.read_workspace_authority(device))
+        self.assertEqual(2, reset.call_count)
+
+        changed = authority.__class__("new", 5, 5, "c" * 64, "d" * 64)
+        with patch.object(
+            DRIVER,
+            "_read_workspace_authority_once",
+            side_effect=[authority, changed],
+        ), patch.object(DRIVER, "reset_scroll_to_top"):
+            with self.assertRaisesRegex(RuntimeError, "changed during verification"):
+                DRIVER.read_workspace_authority(device)
+        device.capture.assert_called_with("workspace-authority-surface-changed")
+
+    def test_workspace_authority_is_runtime_opt_in_and_epoch_bound(self) -> None:
+        coordinator = (
+            REPO_ROOT
+            / "src"
+            / "Chummer.Android"
+            / "Native"
+            / "RunnerSessionCoordinator.cs"
+        ).read_text(encoding="utf-8")
+        home = (
+            REPO_ROOT / "src" / "Chummer.Android" / "Native" / "HomePage.cs"
+        ).read_text(encoding="utf-8")
+        activity = (
+            REPO_ROOT
+            / "src"
+            / "Chummer.Android"
+            / "Platforms"
+            / "Android"
+            / "MainActivity.cs"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("IChummerClient client", coordinator)
+        self.assertIn("_client = client;", coordinator)
+        self.assertIn("await _client.GetWorkspaceAsync(workspaceId, cancellationToken)", coordinator)
+        self.assertEqual(2, coordinator.count("await _client.GetWorkspaceAsync(workspaceId, cancellationToken)"))
+        self.assertIn("AuthoritySnapshotsMatch(first, verified)", coordinator)
+        self.assertIn("authorityEpoch != _workspaceAuthorityEpoch", coordinator)
+        self.assertIn("!authority.Matches(State)", coordinator)
+        self.assertIn("public static long Generation", coordinator)
+        self.assertIn("_workspaceAuthorityOptInGeneration == AndroidE2EAuthority.Generation", coordinator)
+        self.assertIn("optInGeneration == AndroidE2EAuthority.Generation", coordinator)
+        self.assertIn("ClearWorkspaceAuthority();\n            return null;", coordinator)
+        self.assertIn("WriteInt64BigEndian", coordinator)
+        self.assertNotIn("WriteInt32BigEndian", coordinator)
+        self.assertIn("if (!AndroidE2EAuthority.Enabled", coordinator)
+        self.assertIn("public static event EventHandler? Changed;", coordinator)
+        self.assertIn("AndroidE2EAuthority.Changed += OnE2EAuthorityChanged;", coordinator)
+        self.assertIn("AndroidE2EAuthority.Changed -= OnE2EAuthorityChanged;", coordinator)
+        for resource in (
+            "_workspaceActivationGate",
+            "_initializeGate",
+            "_outputGate",
+            "_shellSyncGate",
+            "_lifetime",
+        ):
+            self.assertNotIn(f"{resource}.Dispose();", coordinator)
+        self.assertIn("turn an otherwise safe shutdown race into ObjectDisposedException", coordinator)
+        self.assertIn("#if DEBUG\n    public NativeWorkspaceAuthoritySnapshot?", coordinator)
+        self.assertIn("#if DEBUG\n        AddDebugWorkspaceAuthority();", home)
+        debug_surface = home[home.index("private void AddDebugWorkspaceAuthority") :]
+        debug_surface = debug_surface[: debug_surface.index("private void AddOnlineSection")]
+        self.assertNotIn("ContentUri", debug_surface)
+        self.assertNotIn("document.Content", debug_surface)
+        self.assertNotIn(".Alias", debug_surface)
+        self.assertIn("#if DEBUG", activity)
+        self.assertIn(DRIVER.E2E_AUTHORITY_EXTRA, activity)
+
+    def test_proof_refresh_failure_cannot_create_a_false_open_notice_or_locator(self) -> None:
+        source = (
+            REPO_ROOT
+            / "src"
+            / "Chummer.Android"
+            / "Native"
+            / "RunnerSessionCoordinator.cs"
+        ).read_text(encoding="utf-8")
+        local = source[source.index("public async Task OpenLocalAsync") :]
+        local = local[: local.index("public async Task OpenOnlineAsync")]
+        save = source[source.index("public async Task SaveAsync") :]
+        save = save[: save.index("public async Task ExportAsync")]
+        refresh = source[source.index("private async Task<NativeWorkspaceAuthoritySnapshot?>") :]
+        refresh = refresh[: refresh.index("private void ClearWorkspaceAuthority")]
+
+        self.assertLess(local.index("await _presenter.ImportAsync"), local.index("TryRefreshWorkspaceAuthorityAsync"))
+        guarded = local[local.index("if (authority is not null)") :]
+        self.assertLess(guarded.index("if (authority is not null)"), guarded.index("RememberRosterLocator"))
+        self.assertLess(guarded.index("if (authority is not null)"), guarded.index('_notice = $"Opened'))
+        self.assertIn("else\n                {\n                    _notice = WorkspaceVerificationUnavailableNotice;", guarded)
+        self.assertIn("public string? Notice => _notice ?? State.Notice", source)
+        self.assertLess(save.index("await _presenter.SaveAsync"), save.index("TryRefreshWorkspaceAuthorityAsync"))
+        self.assertIn("catch (Exception exception) when (exception is not OutOfMemoryException)", refresh)
+        self.assertIn("ClearWorkspaceAuthority();", refresh)
+        self.assertIn("return null;", refresh)
 
     def test_online_import_uses_the_same_guarded_activation_contract(self) -> None:
         source = (
@@ -702,21 +934,168 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         self.assertIn("CharacterOverviewState previousState = State;", block)
         self.assertIn("_notice = null;", block)
+        self.assertIn("await _workspaceActivationGate.WaitAsync(cancellationToken);", block)
+        self.assertIn("string expectedPayloadSha256 = Sha256Hex(payload);", block)
         self.assertIn(
-            "if (ImportActivatedWorkspace(previousState, State))",
+            "if (ActivatedNewWorkspace(previousState, State)",
             block,
         )
-        guarded = block[block.index("if (ImportActivatedWorkspace") :]
+        guarded = block[block.index("if (ActivatedNewWorkspace") :]
+        self.assertIn("TryRefreshWorkspaceAuthorityAsync", guarded)
+        self.assertIn("if (authority is not null)", guarded)
         self.assertIn("RememberRosterLocator", guarded)
         self.assertIn(
             '_notice = $"Opened {DisplayName(character.Name, character.Alias)}.";',
             guarded,
         )
+        self.assertIn(
+            "else\n                {\n                    _notice = WorkspaceVerificationUnavailableNotice;",
+            guarded,
+        )
+        self.assertEqual(2, source.count("_notice = WorkspaceVerificationUnavailableNotice;"))
         self.assertNotIn(
             'cancellationToken);\n'
             '            RememberRosterLocator(',
             block,
         )
+
+    def test_import_buffers_are_allocated_only_after_the_shared_activation_gate(self) -> None:
+        source = (
+            REPO_ROOT
+            / "src"
+            / "Chummer.Android"
+            / "Native"
+            / "RunnerSessionCoordinator.cs"
+        ).read_text(encoding="utf-8")
+        local = source[source.index("public async Task OpenLocalAsync") :]
+        local = local[: local.index("private static bool ActivatedNewWorkspace")]
+        online = source[source.index("public async Task OpenOnlineAsync") :]
+        online = online[: online.index("public async Task CreateRunnerAsync")]
+
+        self.assertLess(local.index("_workspaceActivationGate.WaitAsync"), local.index("_documents.OpenAsync"))
+        self.assertLess(local.index("_documents.OpenAsync"), local.index("ComputeExactImportPayloadSha256"))
+        self.assertLess(local.index("CryptographicOperations.ZeroMemory"), local.index("_workspaceActivationGate.Release"))
+        self.assertLess(online.index("_workspaceActivationGate.WaitAsync"), online.index("StrictUtf8.GetBytes"))
+        self.assertLess(online.index("StrictUtf8.GetBytes"), online.index("Sha256Hex(payload)"))
+        self.assertLess(online.index("CryptographicOperations.ZeroMemory"), online.index("_workspaceActivationGate.Release"))
+
+    def test_explicit_android_activation_entrypoints_share_one_gate(self) -> None:
+        source = (
+            REPO_ROOT
+            / "src"
+            / "Chummer.Android"
+            / "Native"
+            / "RunnerSessionCoordinator.cs"
+        ).read_text(encoding="utf-8")
+
+        for method_name, start_marker, next_method in (
+            ("ConfirmCreationPrerequisiteAsync", "ConfirmCreationPrerequisiteAsync(", "ConfirmCreationPrerequisiteCoreAsync"),
+            ("ConfirmCreationFoundationAsync", "public async Task<CharacterCreationFoundationInteractionConfirmResult> ConfirmCreationFoundationAsync(", "ConfirmCreationFoundationCoreAsync"),
+            ("SwitchWorkspaceAsync", "public async Task SwitchWorkspaceAsync", "CloseWorkspaceAsync"),
+            ("CloseWorkspaceAsync", "public async Task CloseWorkspaceAsync", "private async Task WithWorkspaceActivationGateAsync"),
+            ("EraseAccountAsync", "public async Task<NativeAccountErasureResult> EraseAccountAsync", "EraseAccountCoreAsync"),
+            ("ExecuteCommandAsync", "public async Task ExecuteCommandAsync", "ExecuteCommandCoreAsync"),
+            ("ExecuteDialogActionAsync", "public async Task ExecuteDialogActionAsync", "ExecuteDialogActionCoreAsync"),
+            ("ExecuteWorkspaceActionAsync", "public async Task ExecuteWorkspaceActionAsync", "ExecuteWorkspaceActionCoreAsync"),
+            ("ApplyAttributeEditAsync", "public async Task ApplyAttributeEditAsync", "ApplyAttributeEditCoreAsync"),
+            ("ApplyOriginDossierEditAsync", "public async Task ApplyOriginDossierEditAsync", "ApplyOriginDossierEditCoreAsync"),
+            ("ApplyCollectionMutationAsync", "public async Task ApplyCollectionMutationAsync", "ApplyCollectionMutationCoreAsync"),
+            ("ApplyConditionMonitorEditAsync", "public async Task ApplyConditionMonitorEditAsync", "ApplyConditionMonitorEditCoreAsync"),
+            ("ApplyPrimaryArmEditAsync", "public async Task ApplyPrimaryArmEditAsync", "ApplyPrimaryArmEditCoreAsync"),
+        ):
+            block = source[source.index(start_marker) :]
+            block = block[: block.index(next_method, len(method_name))]
+            self.assertIn("WithWorkspaceActivationGateAsync", block, method_name)
+
+        create = source[source.index("public async Task CreateRunnerAsync") :]
+        create = create[: create.index("public async Task SwitchWorkspaceAsync")]
+        self.assertIn('ExecuteCommandAsync("new_character", cancellationToken)', create)
+        self.assertNotIn("WithWorkspaceActivationGateAsync", create)
+
+        initialize = source[source.index("public async Task InitializeAsync") :]
+        initialize = initialize[: initialize.index("public async Task OpenLocalAsync")]
+        self.assertLess(
+            initialize.index("_workspaceActivationGate.WaitAsync"),
+            initialize.index("_presenter.InitializeAsync"),
+        )
+        helper = source[source.index("private async Task WithWorkspaceActivationGateAsync") :]
+        helper = helper[: helper.index("public bool IsRosterFavorite")]
+        self.assertIn("finally", helper)
+        self.assertIn("_workspaceActivationGate.Release();", helper)
+
+    def test_authority_capture_uses_the_shared_presentation_operation_coordinator(self) -> None:
+        source = (
+            REPO_ROOT
+            / "src"
+            / "Chummer.Android"
+            / "Native"
+            / "RunnerSessionCoordinator.cs"
+        ).read_text(encoding="utf-8")
+        maui = (
+            REPO_ROOT / "src" / "Chummer.Android" / "MauiProgram.cs"
+        ).read_text(encoding="utf-8")
+        refresh = source[source.index("private async Task<NativeWorkspaceAuthoritySnapshot?>") :]
+        refresh = refresh[: refresh.index("private void ClearWorkspaceAuthority")]
+
+        registration = (
+            "builder.Services.AddSingleton<IWorkspaceOperationCoordinator, "
+            "WorkspaceOperationCoordinator>();"
+        )
+        self.assertIn(registration, maui)
+        self.assertLess(
+            maui.index(registration),
+            maui.index("AddSingleton<ICharacterOverviewPresenter, CharacterOverviewPresenter>()"),
+        )
+        self.assertLess(
+            maui.index(registration),
+            maui.index("AddSingleton<RunnerSessionCoordinator>()"),
+        )
+        self.assertIn("IWorkspaceOperationCoordinator workspaceOperationCoordinator", source)
+        self.assertIn("_workspaceOperationCoordinator = workspaceOperationCoordinator;", source)
+        self.assertIn("_workspaceOperationCoordinator.RunCurrentAsync(", refresh)
+        run_current = refresh[refresh.index("_workspaceOperationCoordinator.RunCurrentAsync(") :]
+        self.assertLess(run_current.index("ReadWorkspaceAuthorityAsync"), run_current.index("RequirePayloadDigest"))
+        self.assertLess(run_current.index("RequirePayloadDigest"), run_current.index("linked.Token"))
+        self.assertIn("|| !execution.HasValue", run_current)
+        self.assertIn("|| execution.Value is not { } authority", run_current)
+        self.assertLess(run_current.index("!execution.CanPublish"), run_current.index("execution.Value"))
+        self.assertIn("ClearWorkspaceAuthority();\n                return null;", run_current)
+
+        for method_name, presenter_operation in (
+            ("InitializeAsync", "_presenter.InitializeAsync"),
+            ("OpenLocalAsync", "_presenter.ImportAsync"),
+            ("OpenOnlineAsync", "_presenter.ImportAsync"),
+            ("SwitchWorkspaceAsync", "_presenter.SwitchWorkspaceAsync"),
+            ("CloseWorkspaceAsync", "_presenter.CloseWorkspaceAsync"),
+            ("SaveAsync", "_presenter.SaveAsync"),
+        ):
+            block = source[source.index(f"public async Task {method_name}") :]
+            next_public = block.find("\n    public ", 10)
+            if next_public >= 0:
+                block = block[:next_public]
+            self.assertLess(
+                block.index(presenter_operation),
+                block.index("TryRefreshWorkspaceAuthorityAsync"),
+                method_name,
+            )
+
+    def test_opt_in_changes_clear_then_rerender_and_refresh_without_static_leaks(self) -> None:
+        source = (
+            REPO_ROOT
+            / "src"
+            / "Chummer.Android"
+            / "Native"
+            / "RunnerSessionCoordinator.cs"
+        ).read_text(encoding="utf-8")
+        handler = source[source.index("private void OnE2EAuthorityChanged") :]
+        handler = handler[: handler.index("private void NotifyChanged")]
+
+        self.assertLess(handler.index("ClearWorkspaceAuthority();"), handler.index("NotifyChanged();"))
+        self.assertIn("if (AndroidE2EAuthority.Enabled && !_disposed)", handler)
+        self.assertIn("RefreshWorkspaceAuthorityForOptInAsync", handler)
+        self.assertIn("expectedWorkspaceId: State.WorkspaceId", handler)
+        self.assertIn("_lifetime.Token", handler)
+        self.assertIn("catch (Exception exception) when (exception is not OutOfMemoryException)", handler)
 
     def test_native_dialog_rebuilds_from_state_shape_changes_not_a_dialog_allowlist(self) -> None:
         source = (
@@ -1302,7 +1681,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             "force_stop_and_launch_new_process(",
             "assert_contact_persisted(device, args.profile)",
             "assert_pet_persisted(device, args.profile)",
-            '"inputFixtureSha256": sha256(args.contact_pet_runner.resolve())',
+            '"inputFixtureSha256": contact_pet_runner_sha256',
+            '"verifiedRemoteInputFixtureSha256": verified_remote_sha256[',
+            '"preRestartAuthority": optional_workspace_authority_json(persisted_authority)',
+            '"postRestartAuthority": optional_workspace_authority_json(restored_authority)',
             '"processRestartContactPersistence": "pass"',
             '"processRestartPetPersistence": "pass"',
         ):

@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
 using Chummer.Android.Platform;
@@ -24,6 +25,40 @@ public sealed record NativePlaySnapshot(
     public static NativePlaySnapshot Empty { get; } = new(0, 0, 6, [], 0, false, string.Empty);
 }
 
+public sealed record NativeWorkspaceAuthoritySnapshot(
+    string WorkspaceId,
+    long ContentRevision,
+    long SavedRevision,
+    string PayloadSha256,
+    string DocumentSha256)
+{
+    public bool Matches(CharacterOverviewState state)
+        => state.WorkspaceId is { } workspaceId
+           && string.Equals(WorkspaceId, workspaceId.Value, StringComparison.Ordinal)
+           && ContentRevision == state.ContentRevision
+           && SavedRevision == state.SavedRevision;
+}
+
+public static class AndroidE2EAuthority
+{
+    private static int _enabled;
+    private static long _generation;
+
+    public static bool Enabled => Volatile.Read(ref _enabled) != 0;
+    public static long Generation => Volatile.Read(ref _generation);
+    public static event EventHandler? Changed;
+
+    internal static void ConfigureForCurrentProcess(bool enabled)
+    {
+        int requested = enabled ? 1 : 0;
+        if (Interlocked.Exchange(ref _enabled, requested) != requested)
+        {
+            Interlocked.Increment(ref _generation);
+            Changed?.Invoke(null, EventArgs.Empty);
+        }
+    }
+}
+
 public sealed record NativeAccountErasureResult(
     AndroidAccountErasureReceipt Receipt,
     bool LocalRunnersRemoved);
@@ -43,11 +78,20 @@ public sealed record CreationPrerequisitePhoneConfirmResult(
 
 public sealed class RunnerSessionCoordinator : IDisposable
 {
+    private const string WorkspaceAuthorityDigestSchema =
+        "chummer.android.workspace-document-authority/v1";
+    private const string WorkspaceVerificationUnavailableNotice =
+        "Workspace verification unavailable. Recent-file attribution was not recorded.";
+    private static readonly UTF8Encoding StrictUtf8 = new(
+        encoderShouldEmitUTF8Identifier: false,
+        throwOnInvalidBytes: true);
     private const string SelectedGroupPreferenceKey = "chummer.android.selected-group.v1";
     private const string SelectedWorkspacePreferenceKey = "chummer.android.selected-workspace.v1";
     private const string CharacterSettingsCatalogPreferenceKey = "chummer.android.character-settings-catalog.v1";
     private const string RosterLocatorPreferencePrefix = "chummer.android.roster-locator.v1.";
     private readonly ICharacterOverviewPresenter _presenter;
+    private readonly IChummerClient _client;
+    private readonly IWorkspaceOperationCoordinator _workspaceOperationCoordinator;
     private readonly ICharacterCreationFoundationInteractionPresenter _foundationInteractionPresenter;
     private readonly ICharacterCreationPrerequisiteService _creationPrerequisiteService;
     private readonly IShellPresenter _shellPresenter;
@@ -61,8 +105,11 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly ApplicationDeleteConfirmationPresenter _applicationSettingsPresenter;
     private readonly RookConversationStore _rookConversations = new();
     private readonly SemaphoreSlim _initializeGate = new(1, 1);
+    private readonly SemaphoreSlim _workspaceActivationGate = new(1, 1);
     private readonly SemaphoreSlim _outputGate = new(1, 1);
     private readonly SemaphoreSlim _shellSyncGate = new(1, 1);
+    private readonly CancellationTokenSource _lifetime = new();
+    private readonly object _workspaceAuthoritySync = new();
     private bool _initialized;
     private bool _disposed;
     private long _handledDownloadVersion;
@@ -74,6 +121,9 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private IReadOnlyList<AndroidLinkedGroup> _groups = [];
     private IReadOnlyList<AndroidChronicleProject> _chronicles = [];
     private NativePlaySnapshot _play = NativePlaySnapshot.Empty;
+    private NativeWorkspaceAuthoritySnapshot? _workspaceAuthority;
+    private long _workspaceAuthorityOptInGeneration;
+    private long _workspaceAuthorityEpoch;
     private ShellSurfaceState _surface = ShellSurfaceState.Empty;
     private CharacterWorkspaceId? _characterNotesWorkspaceId;
     private long _characterNotesRevision;
@@ -85,6 +135,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     public RunnerSessionCoordinator(
         ICharacterOverviewPresenter presenter,
+        IChummerClient client,
+        IWorkspaceOperationCoordinator workspaceOperationCoordinator,
         ICharacterCreationFoundationInteractionPresenter foundationInteractionPresenter,
         ICharacterCreationPrerequisiteService creationPrerequisiteService,
         IShellPresenter shellPresenter,
@@ -98,6 +150,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         ApplicationDeleteConfirmationPresenter applicationSettingsPresenter)
     {
         _presenter = presenter;
+        _client = client;
+        _workspaceOperationCoordinator = workspaceOperationCoordinator;
         _foundationInteractionPresenter = foundationInteractionPresenter;
         _creationPrerequisiteService = creationPrerequisiteService;
         _shellPresenter = shellPresenter;
@@ -112,6 +166,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _presenter.StateChanged += OnPresenterStateChanged;
         _shellPresenter.StateChanged += OnShellStateChanged;
         _account.Changed += OnAccountChanged;
+        AndroidE2EAuthority.Changed += OnE2EAuthorityChanged;
     }
 
     public event EventHandler? Changed;
@@ -139,6 +194,27 @@ public sealed class RunnerSessionCoordinator : IDisposable
     }
 
     public NativePlaySnapshot Play => _play;
+
+#if DEBUG
+    public NativeWorkspaceAuthoritySnapshot? DebugWorkspaceAuthority
+    {
+        get
+        {
+            if (!AndroidE2EAuthority.Enabled)
+            {
+                return null;
+            }
+
+            lock (_workspaceAuthoritySync)
+            {
+                return _workspaceAuthority is { } authority && authority.Matches(State)
+                    && _workspaceAuthorityOptInGeneration == AndroidE2EAuthority.Generation
+                    ? authority
+                    : null;
+            }
+        }
+    }
+#endif
 
     public CharacterRosterFavoriteState RosterFavorites => _rosterFavorites;
 
@@ -234,6 +310,15 @@ public sealed class RunnerSessionCoordinator : IDisposable
             CharacterCreationPrerequisitePreview preview,
             IReadOnlyDictionary<string, string> assignments,
             CancellationToken cancellationToken = default)
+        => await WithWorkspaceActivationGateAsync(
+            () => ConfirmCreationPrerequisiteCoreAsync(preview, assignments, cancellationToken),
+            cancellationToken);
+
+    private async Task<CreationPrerequisitePhoneConfirmResult>
+        ConfirmCreationPrerequisiteCoreAsync(
+            CharacterCreationPrerequisitePreview preview,
+            IReadOnlyDictionary<string, string> assignments,
+            CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(preview);
         ArgumentNullException.ThrowIfNull(assignments);
@@ -324,6 +409,13 @@ public sealed class RunnerSessionCoordinator : IDisposable
     public async Task<CharacterCreationFoundationInteractionConfirmResult> ConfirmCreationFoundationAsync(
         CharacterCreationFoundationConfirmation confirmation,
         CancellationToken cancellationToken = default)
+        => await WithWorkspaceActivationGateAsync(
+            () => ConfirmCreationFoundationCoreAsync(confirmation, cancellationToken),
+            cancellationToken);
+
+    private async Task<CharacterCreationFoundationInteractionConfirmResult> ConfirmCreationFoundationCoreAsync(
+        CharacterCreationFoundationConfirmation confirmation,
+        CancellationToken cancellationToken)
     {
         CharacterCreationFoundationInteractionConfirmResult result =
             _foundationInteractionPresenter.Confirm(State, confirmation);
@@ -472,10 +564,22 @@ public sealed class RunnerSessionCoordinator : IDisposable
             _rosterFavorites = _rosterFavoritePresenter.Load();
             _applicationSettings = _applicationSettingsPresenter.Load();
             await _shellPresenter.InitializeAsync(cancellationToken);
-            await _presenter.InitializeAsync(cancellationToken);
-            await RestoreSelectedWorkspaceAsync(cancellationToken);
-            await _account.InitializeAsync(cancellationToken);
-            await SyncShellAsync(cancellationToken);
+            await _workspaceActivationGate.WaitAsync(cancellationToken);
+            try
+            {
+                await _presenter.InitializeAsync(cancellationToken);
+                await RestoreSelectedWorkspaceAsync(cancellationToken);
+                await _account.InitializeAsync(cancellationToken);
+                await SyncShellAsync(cancellationToken);
+                _ = await TryRefreshWorkspaceAuthorityAsync(
+                    expectedWorkspaceId: State.WorkspaceId,
+                    expectedPayloadSha256: null,
+                    cancellationToken);
+            }
+            finally
+            {
+                _workspaceActivationGate.Release();
+            }
             _surface = _surfaceResolver.Resolve(State, _shellPresenter.State);
             RestorePlayState();
             _initialized = true;
@@ -490,69 +594,103 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     public async Task OpenLocalAsync(CancellationToken cancellationToken = default)
     {
-        AndroidDocument? document = await _documents.OpenAsync(cancellationToken);
-        if (document is null)
-        {
-            return;
-        }
-
+        await _workspaceActivationGate.WaitAsync(cancellationToken);
+        AndroidDocument? document = null;
         try
         {
+            document = await _documents.OpenAsync(cancellationToken);
+            if (document is null)
+            {
+                return;
+            }
             CharacterOverviewState previousState = State;
+            string expectedPayloadSha256 = ComputeExactImportPayloadSha256(document.Content);
             _notice = null;
             await _presenter.ImportAsync(
                 WorkspaceImportDocument.FromUtf8Bytes(document.Content, string.Empty, WorkspaceDocumentFormat.NativeXml),
                 cancellationToken);
-            if (ImportActivatedWorkspace(previousState, State))
+            if (ActivatedNewWorkspace(previousState, State)
+                && State.WorkspaceId is { } importedWorkspaceId)
             {
-                RememberRosterLocator(State.WorkspaceId, document.ContentUri);
-                _notice = $"Opened {document.DisplayName}.";
+                NativeWorkspaceAuthoritySnapshot? authority = await TryRefreshWorkspaceAuthorityAsync(
+                    importedWorkspaceId,
+                    expectedPayloadSha256,
+                    cancellationToken);
+                if (authority is not null)
+                {
+                    RememberRosterLocator(importedWorkspaceId, document.ContentUri);
+                    _notice = $"Opened {document.DisplayName}.";
+                }
+                else
+                {
+                    _notice = WorkspaceVerificationUnavailableNotice;
+                }
             }
             await SyncShellAsync(cancellationToken);
             RestorePlayState();
         }
         finally
         {
-            CryptographicOperations.ZeroMemory(document.Content);
+            if (document is not null)
+            {
+                CryptographicOperations.ZeroMemory(document.Content);
+            }
+            _workspaceActivationGate.Release();
         }
 
         NotifyChanged();
     }
 
-    private static bool ImportActivatedWorkspace(
+    private static bool ActivatedNewWorkspace(
         CharacterOverviewState previous,
         CharacterOverviewState current)
         => current.WorkspaceId is { } currentWorkspace
            && (previous.WorkspaceId is not { } previousWorkspace
-               || !string.Equals(previousWorkspace.Value, currentWorkspace.Value, StringComparison.Ordinal)
-               || previous.ContentRevision != current.ContentRevision
-               || previous.SavedRevision != current.SavedRevision
-               || !ReferenceEquals(previous.Session, current.Session));
+               || !string.Equals(previousWorkspace.Value, currentWorkspace.Value, StringComparison.Ordinal));
 
     public async Task OpenOnlineAsync(AndroidOnlineCharacter character, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(character);
-        byte[] payload = Encoding.UTF8.GetBytes(character.Payload);
+        await _workspaceActivationGate.WaitAsync(cancellationToken);
+        byte[]? payload = null;
         try
         {
+            payload = StrictUtf8.GetBytes(character.Payload);
             CharacterOverviewState previousState = State;
+            string expectedPayloadSha256 = Sha256Hex(payload);
             _notice = null;
             await _presenter.ImportAsync(
                 WorkspaceImportDocument.FromUtf8Bytes(payload, character.RulesetId, ParseFormat(character.Format)),
                 cancellationToken);
-            if (ImportActivatedWorkspace(previousState, State))
+            if (ActivatedNewWorkspace(previousState, State)
+                && State.WorkspaceId is { } importedWorkspaceId)
             {
-                RememberRosterLocator(
-                    State.WorkspaceId,
-                    $"chummer-run://workspace/{Uri.EscapeDataString(character.WorkspaceId)}");
-                _notice = $"Opened {DisplayName(character.Name, character.Alias)}.";
+                NativeWorkspaceAuthoritySnapshot? authority = await TryRefreshWorkspaceAuthorityAsync(
+                    importedWorkspaceId,
+                    expectedPayloadSha256,
+                    cancellationToken);
+                if (authority is not null)
+                {
+                    RememberRosterLocator(
+                        importedWorkspaceId,
+                        $"chummer-run://workspace/{Uri.EscapeDataString(character.WorkspaceId)}");
+                    _notice = $"Opened {DisplayName(character.Name, character.Alias)}.";
+                }
+                else
+                {
+                    _notice = WorkspaceVerificationUnavailableNotice;
+                }
             }
             await SyncShellAsync(cancellationToken);
             RestorePlayState();
         }
         finally
         {
-            CryptographicOperations.ZeroMemory(payload);
+            if (payload is not null)
+            {
+                CryptographicOperations.ZeroMemory(payload);
+            }
+            _workspaceActivationGate.Release();
         }
 
         NotifyChanged();
@@ -563,16 +701,64 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     public async Task SwitchWorkspaceAsync(OpenWorkspaceState workspace, CancellationToken cancellationToken = default)
     {
-        await _presenter.SwitchWorkspaceAsync(workspace.Id, cancellationToken);
-        await SyncShellAsync(cancellationToken);
-        RestorePlayState();
+        await WithWorkspaceActivationGateAsync(
+            async () =>
+            {
+                await _presenter.SwitchWorkspaceAsync(workspace.Id, cancellationToken);
+                await SyncShellAsync(cancellationToken);
+                _ = await TryRefreshWorkspaceAuthorityAsync(
+                    expectedWorkspaceId: State.WorkspaceId,
+                    expectedPayloadSha256: null,
+                    cancellationToken);
+                RestorePlayState();
+            },
+            cancellationToken);
     }
 
     public async Task CloseWorkspaceAsync(OpenWorkspaceState workspace, CancellationToken cancellationToken = default)
     {
-        await _presenter.CloseWorkspaceAsync(workspace.Id, cancellationToken);
-        await SyncShellAsync(cancellationToken);
-        RestorePlayState();
+        await WithWorkspaceActivationGateAsync(
+            async () =>
+            {
+                await _presenter.CloseWorkspaceAsync(workspace.Id, cancellationToken);
+                await SyncShellAsync(cancellationToken);
+                _ = await TryRefreshWorkspaceAuthorityAsync(
+                    expectedWorkspaceId: State.WorkspaceId,
+                    expectedPayloadSha256: null,
+                    cancellationToken);
+                RestorePlayState();
+            },
+            cancellationToken);
+    }
+
+    private async Task WithWorkspaceActivationGateAsync(
+        Func<Task> action,
+        CancellationToken cancellationToken)
+    {
+        await _workspaceActivationGate.WaitAsync(cancellationToken);
+        try
+        {
+            await action();
+        }
+        finally
+        {
+            _workspaceActivationGate.Release();
+        }
+    }
+
+    private async Task<T> WithWorkspaceActivationGateAsync<T>(
+        Func<Task<T>> action,
+        CancellationToken cancellationToken)
+    {
+        await _workspaceActivationGate.WaitAsync(cancellationToken);
+        try
+        {
+            return await action();
+        }
+        finally
+        {
+            _workspaceActivationGate.Release();
+        }
     }
 
     public bool IsRosterFavorite(OpenWorkspaceState workspace)
@@ -743,6 +929,11 @@ public sealed class RunnerSessionCoordinator : IDisposable
     }
 
     public async Task ExecuteCommandAsync(string commandId, CancellationToken cancellationToken = default)
+        => await WithWorkspaceActivationGateAsync(
+            () => ExecuteCommandCoreAsync(commandId, cancellationToken),
+            cancellationToken);
+
+    private async Task ExecuteCommandCoreAsync(string commandId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(commandId);
         _notice = null;
@@ -763,6 +954,13 @@ public sealed class RunnerSessionCoordinator : IDisposable
     public async Task ExecuteWorkspaceActionAsync(
         WorkspaceSurfaceActionDefinition action,
         CancellationToken cancellationToken = default)
+        => await WithWorkspaceActivationGateAsync(
+            () => ExecuteWorkspaceActionCoreAsync(action, cancellationToken),
+            cancellationToken);
+
+    private async Task ExecuteWorkspaceActionCoreAsync(
+        WorkspaceSurfaceActionDefinition action,
+        CancellationToken cancellationToken)
     {
         await _presenter.ExecuteWorkspaceActionAsync(action, cancellationToken);
         await SyncShellAsync(cancellationToken);
@@ -781,6 +979,13 @@ public sealed class RunnerSessionCoordinator : IDisposable
     public async Task ApplyAttributeEditAsync(
         AttributeEditRequest request,
         CancellationToken cancellationToken = default)
+        => await WithWorkspaceActivationGateAsync(
+            () => ApplyAttributeEditCoreAsync(request, cancellationToken),
+            cancellationToken);
+
+    private async Task ApplyAttributeEditCoreAsync(
+        AttributeEditRequest request,
+        CancellationToken cancellationToken)
     {
         await _presenter.ApplyAttributeEditAsync(request, cancellationToken);
         _notice = State.Error is null ? "Attribute updated." : null;
@@ -791,6 +996,13 @@ public sealed class RunnerSessionCoordinator : IDisposable
     public async Task ApplyOriginDossierEditAsync(
         OriginDossierEditRequest request,
         CancellationToken cancellationToken = default)
+        => await WithWorkspaceActivationGateAsync(
+            () => ApplyOriginDossierEditCoreAsync(request, cancellationToken),
+            cancellationToken);
+
+    private async Task ApplyOriginDossierEditCoreAsync(
+        OriginDossierEditRequest request,
+        CancellationToken cancellationToken)
     {
         await _presenter.ApplyOriginDossierEditAsync(request, cancellationToken);
         _notice = State.Error is null ? "Dossier updated." : null;
@@ -841,6 +1053,13 @@ public sealed class RunnerSessionCoordinator : IDisposable
     public async Task ApplyCollectionMutationAsync(
         WorkspaceCollectionMutationRequest request,
         CancellationToken cancellationToken = default)
+        => await WithWorkspaceActivationGateAsync(
+            () => ApplyCollectionMutationCoreAsync(request, cancellationToken),
+            cancellationToken);
+
+    private async Task ApplyCollectionMutationCoreAsync(
+        WorkspaceCollectionMutationRequest request,
+        CancellationToken cancellationToken)
     {
         await _presenter.ApplyCollectionMutationAsync(request, cancellationToken);
         _notice = State.Error is null ? "Runner item updated." : null;
@@ -952,6 +1171,13 @@ public sealed class RunnerSessionCoordinator : IDisposable
     public async Task ApplyConditionMonitorEditAsync(
         ConditionMonitorEditRequest request,
         CancellationToken cancellationToken = default)
+        => await WithWorkspaceActivationGateAsync(
+            () => ApplyConditionMonitorEditCoreAsync(request, cancellationToken),
+            cancellationToken);
+
+    private async Task ApplyConditionMonitorEditCoreAsync(
+        ConditionMonitorEditRequest request,
+        CancellationToken cancellationToken)
     {
         await _presenter.ApplyConditionMonitorEditAsync(request, cancellationToken);
         _notice = State.Error is null ? "Damage track updated." : null;
@@ -1040,6 +1266,13 @@ public sealed class RunnerSessionCoordinator : IDisposable
     public async Task ApplyPrimaryArmEditAsync(
         PrimaryArmEditRequest request,
         CancellationToken cancellationToken = default)
+        => await WithWorkspaceActivationGateAsync(
+            () => ApplyPrimaryArmEditCoreAsync(request, cancellationToken),
+            cancellationToken);
+
+    private async Task ApplyPrimaryArmEditCoreAsync(
+        PrimaryArmEditRequest request,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (State.WorkspaceId != request.WorkspaceId
@@ -2547,6 +2780,11 @@ public sealed class RunnerSessionCoordinator : IDisposable
     }
 
     public async Task ExecuteDialogActionAsync(string actionId, CancellationToken cancellationToken = default)
+        => await WithWorkspaceActivationGateAsync(
+            () => ExecuteDialogActionCoreAsync(actionId, cancellationToken),
+            cancellationToken);
+
+    private async Task ExecuteDialogActionCoreAsync(string actionId, CancellationToken cancellationToken)
     {
         long contentRevision = State.ContentRevision;
         WorkspaceSurfaceActionDefinition? activeSectionAction = _surface.WorkspaceActions.FirstOrDefault(action =>
@@ -2570,6 +2808,13 @@ public sealed class RunnerSessionCoordinator : IDisposable
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
         await _presenter.SaveAsync(cancellationToken);
+        if (State.Error is null)
+        {
+            _ = await TryRefreshWorkspaceAuthorityAsync(
+                expectedWorkspaceId: State.WorkspaceId,
+                expectedPayloadSha256: null,
+                cancellationToken);
+        }
         _notice = State.Error is null ? "Saved." : null;
         NotifyChanged();
     }
@@ -2607,6 +2852,13 @@ public sealed class RunnerSessionCoordinator : IDisposable
     public async Task<NativeAccountErasureResult> EraseAccountAsync(
         bool removeLocalRunners,
         CancellationToken cancellationToken = default)
+        => await WithWorkspaceActivationGateAsync(
+            () => EraseAccountCoreAsync(removeLocalRunners, cancellationToken),
+            cancellationToken);
+
+    private async Task<NativeAccountErasureResult> EraseAccountCoreAsync(
+        bool removeLocalRunners,
+        CancellationToken cancellationToken)
     {
         OpenWorkspaceState[] openWorkspaces = State.OpenWorkspaces.ToArray();
         AndroidLinkedGroup[] linkedGroups = _groups.ToArray();
@@ -2872,6 +3124,272 @@ public sealed class RunnerSessionCoordinator : IDisposable
         return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(value);
     }
 
+    private async Task<NativeWorkspaceAuthoritySnapshot?> TryRefreshWorkspaceAuthorityAsync(
+        CharacterWorkspaceId? expectedWorkspaceId,
+        string? expectedPayloadSha256,
+        CancellationToken cancellationToken)
+    {
+        if (!AndroidE2EAuthority.Enabled && expectedPayloadSha256 is null)
+        {
+            ClearWorkspaceAuthority();
+            return null;
+        }
+        if (expectedWorkspaceId is not { } workspaceId)
+        {
+            ClearWorkspaceAuthority();
+            return null;
+        }
+
+        long authorityEpoch;
+        long optInGeneration = AndroidE2EAuthority.Generation;
+        lock (_workspaceAuthoritySync)
+        {
+            if (_disposed)
+            {
+                _workspaceAuthority = null;
+                _workspaceAuthorityOptInGeneration = 0;
+                return null;
+            }
+            authorityEpoch = _workspaceAuthorityEpoch;
+        }
+
+        try
+        {
+            using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken,
+                _lifetime.Token);
+            WorkspaceOperationExecution<NativeWorkspaceAuthoritySnapshot> execution =
+                await _workspaceOperationCoordinator.RunCurrentAsync(
+                    workspaceId,
+                    async token =>
+                    {
+                        NativeWorkspaceAuthoritySnapshot candidate =
+                            await ReadWorkspaceAuthorityAsync(workspaceId, token);
+                        if (expectedPayloadSha256 is not null)
+                        {
+                            RequirePayloadDigest(candidate, expectedPayloadSha256);
+                        }
+                        return candidate;
+                    },
+                    linked.Token);
+            if (!execution.CanPublish
+                || !execution.HasValue
+                || execution.Value is not { } authority)
+            {
+                ClearWorkspaceAuthority();
+                return null;
+            }
+
+            lock (_workspaceAuthoritySync)
+            {
+                if (_disposed
+                    || authorityEpoch != _workspaceAuthorityEpoch
+                    || !authority.Matches(State))
+                {
+                    _workspaceAuthority = null;
+                    _workspaceAuthorityOptInGeneration = 0;
+                    return null;
+                }
+                if (AndroidE2EAuthority.Enabled
+                    && optInGeneration == AndroidE2EAuthority.Generation)
+                {
+                    _workspaceAuthority = authority;
+                    _workspaceAuthorityOptInGeneration = optInGeneration;
+                }
+                else
+                {
+                    _workspaceAuthority = null;
+                    _workspaceAuthorityOptInGeneration = 0;
+                }
+            }
+            if (AndroidE2EAuthority.Enabled
+                && optInGeneration == AndroidE2EAuthority.Generation)
+            {
+                NotifyChanged();
+            }
+            return authority;
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            ClearWorkspaceAuthority();
+            return null;
+        }
+    }
+
+    private void ClearWorkspaceAuthority()
+    {
+        lock (_workspaceAuthoritySync)
+        {
+            _workspaceAuthority = null;
+            _workspaceAuthorityOptInGeneration = 0;
+        }
+    }
+
+    private async Task<NativeWorkspaceAuthoritySnapshot> ReadWorkspaceAuthorityAsync(
+        CharacterWorkspaceId workspaceId,
+        CancellationToken cancellationToken)
+    {
+        WorkspaceDocumentSnapshot first = RequireWorkspaceSnapshot(
+            await _client.GetWorkspaceAsync(workspaceId, cancellationToken),
+            workspaceId);
+        WorkspaceDocumentSnapshot verified = RequireWorkspaceSnapshot(
+            await _client.GetWorkspaceAsync(workspaceId, cancellationToken),
+            workspaceId);
+        if (!AuthoritySnapshotsMatch(first, verified))
+        {
+            throw new InvalidOperationException(
+                $"Dossier '{workspaceId.Value}' changed while Android was capturing its authority proof.");
+        }
+        return new NativeWorkspaceAuthoritySnapshot(
+            workspaceId.Value,
+            verified.ContentRevision,
+            verified.SavedRevision,
+            Sha256Hex(verified.Document.Content),
+            ComputeDocumentAuthoritySha256(verified.Document));
+    }
+
+    private static WorkspaceDocumentSnapshot RequireWorkspaceSnapshot(
+        CommandResult<WorkspaceDocumentSnapshot> result,
+        CharacterWorkspaceId expectedWorkspaceId)
+    {
+        WorkspaceDocumentSnapshot snapshot = result.Success && result.Value is not null
+            ? result.Value
+            : throw new InvalidOperationException(
+                result.Error ?? $"Dossier '{expectedWorkspaceId.Value}' could not be read for Android authority proof.");
+        if (!string.Equals(snapshot.Id.Value, expectedWorkspaceId.Value, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Android authority read returned '{snapshot.Id.Value}' while '{expectedWorkspaceId.Value}' was requested.");
+        }
+
+        return snapshot;
+    }
+
+    private static bool AuthoritySnapshotsMatch(
+        WorkspaceDocumentSnapshot first,
+        WorkspaceDocumentSnapshot verified)
+        => string.Equals(first.Id.Value, verified.Id.Value, StringComparison.Ordinal)
+           && first.LastUpdatedUtc == verified.LastUpdatedUtc
+           && first.ContentRevision == verified.ContentRevision
+           && first.SavedRevision == verified.SavedRevision
+           && first.Document.Format == verified.Document.Format
+           && string.Equals(first.Document.RulesetId, verified.Document.RulesetId, StringComparison.Ordinal)
+           && first.Document.SchemaVersion == verified.Document.SchemaVersion
+           && string.Equals(first.Document.PayloadKind, verified.Document.PayloadKind, StringComparison.Ordinal)
+           && string.Equals(first.Document.Content, verified.Document.Content, StringComparison.Ordinal)
+           && string.Equals(
+               first.Document.AuxiliaryStateDigest,
+               verified.Document.AuxiliaryStateDigest,
+               StringComparison.Ordinal);
+
+    private static string ComputeDocumentAuthoritySha256(WorkspaceDocument document)
+    {
+        using IncrementalHash digest = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        AppendAuthorityField(digest, "schema", WorkspaceAuthorityDigestSchema);
+        AppendAuthorityField(
+            digest,
+            "format",
+            ((int)document.Format).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        AppendAuthorityField(digest, "rulesetId", document.RulesetId);
+        AppendAuthorityField(
+            digest,
+            "schemaVersion",
+            document.SchemaVersion.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        AppendAuthorityField(digest, "payloadKind", document.PayloadKind);
+        AppendAuthorityField(digest, "content", document.Content);
+        AppendAuthorityField(digest, "auxiliaryStateDigest", document.AuxiliaryStateDigest);
+        return Convert.ToHexString(digest.GetHashAndReset()).ToLowerInvariant();
+    }
+
+    private static void AppendAuthorityField(
+        IncrementalHash digest,
+        string tag,
+        string? value)
+    {
+        byte[] tagBytes = StrictUtf8.GetBytes(tag);
+        byte[]? valueBytes = value is null ? null : StrictUtf8.GetBytes(value);
+        try
+        {
+            Span<byte> length = stackalloc byte[sizeof(long)];
+            BinaryPrimitives.WriteInt64BigEndian(length, tagBytes.LongLength);
+            digest.AppendData(length);
+            digest.AppendData(tagBytes);
+            Span<byte> nullMarker = stackalloc byte[1];
+            nullMarker[0] = value is null ? (byte)0 : (byte)1;
+            digest.AppendData(nullMarker);
+            if (valueBytes is not null)
+            {
+                BinaryPrimitives.WriteInt64BigEndian(length, valueBytes.LongLength);
+                digest.AppendData(length);
+                digest.AppendData(valueBytes);
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(tagBytes);
+            if (valueBytes is not null)
+            {
+                CryptographicOperations.ZeroMemory(valueBytes);
+            }
+        }
+    }
+
+    private static string Sha256Hex(byte[] bytes)
+        => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+
+    private static string Sha256Hex(string value)
+    {
+        byte[] bytes = StrictUtf8.GetBytes(value);
+        try
+        {
+            return Sha256Hex(bytes);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(bytes);
+        }
+    }
+
+    private static string ComputeExactImportPayloadSha256(byte[] input)
+    {
+        string decoded = StrictUtf8.GetString(input);
+        byte[] canonical = StrictUtf8.GetBytes(decoded);
+        try
+        {
+            if (!CryptographicOperations.FixedTimeEquals(input, canonical))
+            {
+                throw new InvalidDataException(
+                    "The selected dossier changed bytes during strict UTF-8 decoding.");
+            }
+            return Sha256Hex(input);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(canonical);
+        }
+    }
+
+    private static void RequirePayloadDigest(
+        NativeWorkspaceAuthoritySnapshot authority,
+        string expectedPayloadSha256)
+    {
+        byte[] actual = Convert.FromHexString(authority.PayloadSha256);
+        byte[] expected = Convert.FromHexString(expectedPayloadSha256);
+        try
+        {
+            if (!CryptographicOperations.FixedTimeEquals(actual, expected))
+            {
+                throw new InvalidOperationException(
+                    $"Dossier '{authority.WorkspaceId}' did not activate the exact selected input bytes.");
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(actual);
+            CryptographicOperations.ZeroMemory(expected);
+        }
+    }
+
     private async Task SyncShellAsync(CancellationToken cancellationToken)
     {
         await _shellSyncGate.WaitAsync(cancellationToken);
@@ -3071,6 +3589,15 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     private void OnPresenterStateChanged(object? sender, EventArgs e)
     {
+        lock (_workspaceAuthoritySync)
+        {
+            unchecked
+            {
+                _workspaceAuthorityEpoch++;
+            }
+            _workspaceAuthority = null;
+            _workspaceAuthorityOptInGeneration = 0;
+        }
         PersistCharacterSettingsCatalog();
         RefreshSurface();
         NotifyChanged();
@@ -3120,6 +3647,31 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     private void OnAccountChanged(object? sender, EventArgs e) => NotifyChanged();
 
+    private void OnE2EAuthorityChanged(object? sender, EventArgs e)
+    {
+        ClearWorkspaceAuthority();
+        NotifyChanged();
+        if (AndroidE2EAuthority.Enabled && !_disposed)
+        {
+            _ = RefreshWorkspaceAuthorityForOptInAsync();
+        }
+    }
+
+    private async Task RefreshWorkspaceAuthorityForOptInAsync()
+    {
+        try
+        {
+            _ = await TryRefreshWorkspaceAuthorityAsync(
+                expectedWorkspaceId: State.WorkspaceId,
+                expectedPayloadSha256: null,
+                _lifetime.Token);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            ClearWorkspaceAuthority();
+        }
+    }
+
     private void NotifyChanged()
     {
         if (!_disposed)
@@ -3139,11 +3691,22 @@ public sealed class RunnerSessionCoordinator : IDisposable
         }
 
         _disposed = true;
+        _lifetime.Cancel();
+        lock (_workspaceAuthoritySync)
+        {
+            unchecked
+            {
+                _workspaceAuthorityEpoch++;
+            }
+            _workspaceAuthority = null;
+            _workspaceAuthorityOptInGeneration = 0;
+        }
         _presenter.StateChanged -= OnPresenterStateChanged;
         _shellPresenter.StateChanged -= OnShellStateChanged;
         _account.Changed -= OnAccountChanged;
-        _initializeGate.Dispose();
-        _outputGate.Dispose();
-        _shellSyncGate.Dispose();
+        AndroidE2EAuthority.Changed -= OnE2EAuthorityChanged;
+        // Await continuations may still release these process-scoped gates or read
+        // the canceled lifetime token. Disposing them synchronously here would
+        // turn an otherwise safe shutdown race into ObjectDisposedException.
     }
 }

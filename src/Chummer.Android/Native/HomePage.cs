@@ -46,6 +46,10 @@ public sealed class HomePage : NativePageBase
         }
         _body.Add(NativeTheme.Card(current));
 
+#if DEBUG
+        AddDebugWorkspaceAuthority();
+#endif
+
         Grid quick = new()
         {
             ColumnDefinitions =
@@ -98,6 +102,41 @@ public sealed class HomePage : NativePageBase
             _body.Add(NativeTheme.Body(Coordinator.Notice, NativeTheme.Muted));
         }
     }
+
+#if DEBUG
+    private void AddDebugWorkspaceAuthority()
+    {
+        if (Coordinator.DebugWorkspaceAuthority is not { } authority)
+        {
+            return;
+        }
+
+        VerticalStackLayout proof = new() { Spacing = 5 };
+        proof.Add(NativeTheme.Eyebrow("Diagnostic workspace authority"));
+        AddProofValue(proof, "home-e2e-workspace-id", authority.WorkspaceId);
+        AddProofValue(
+            proof,
+            "home-e2e-content-revision",
+            authority.ContentRevision.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        AddProofValue(
+            proof,
+            "home-e2e-saved-revision",
+            authority.SavedRevision.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        AddProofValue(proof, "home-e2e-payload-sha256", authority.PayloadSha256);
+        AddProofValue(proof, "home-e2e-document-sha256", authority.DocumentSha256);
+        _body.Add(NativeTheme.Card(proof));
+    }
+
+    private static void AddProofValue(
+        VerticalStackLayout proof,
+        string automationId,
+        string value)
+    {
+        Label label = NativeTheme.Body(value, NativeTheme.Muted);
+        label.AutomationId = automationId;
+        proof.Add(label);
+    }
+#endif
 
     private void AddOnlineSection()
     {

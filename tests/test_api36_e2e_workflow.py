@@ -9,7 +9,7 @@ COMPATIBILITY_GRAPH = {
     "ArchonMegalon/chummer6-ui":
         "1c492202ac708f302b59f47c2bb1e4c67e352328",
     "ArchonMegalon/chummer6-core":
-        "d1f3ec8b13d1359fa383a000770cec30ae1a20fe",
+        "e8d221cde98525b68234201a8bee68bf976cc304",
     "ArchonMegalon/chummer6-hub":
         "fce73dea2d5b2cb48fe74e1b33d9f1dbe13b8e31",
     "ArchonMegalon/chummer6-hub-registry":
@@ -33,13 +33,14 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         cls.text = WORKFLOW.read_text(encoding="utf-8")
         cls.preview_text = PREVIEW_WORKFLOW.read_text(encoding="utf-8")
 
-    def test_runs_phone_and_tablet_profiles_on_api_36(self) -> None:
+    def test_runs_only_the_phone_beta_profile_on_api_36(self) -> None:
         self.assertIn("api-level: 36", self.text)
-        self.assertIn("profile: phone", self.text)
-        self.assertIn("avd_profile: pixel_6", self.text)
-        self.assertIn("profile: tablet", self.text)
-        self.assertIn("avd_profile: pixel_c", self.text)
-        self.assertIn("fail-fast: false", self.text)
+        self.assertIn("CHUMMER_E2E_PROFILE: phone", self.text)
+        self.assertIn("profile: pixel_6", self.text)
+        self.assertNotIn("profile: pixel_c", self.text)
+        self.assertNotIn("matrix.profile", self.text)
+        self.assertIn("launches only pixel_6", self.text)
+        self.assertIn("makes no tablet-readiness claim", self.text)
 
     def test_builds_the_native_x64_candidate_once(self) -> None:
         self.assertIn("CHUMMER_ANDROID_RUNTIME_ID: android-x64", self.text)
@@ -93,7 +94,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
                 self.assertIn(f"repository: {repository}", self.text)
                 self.assertIn(f"ref: {commit}", self.text)
 
-    def test_phone_and_tablet_paths_fail_closed_on_stale_inventory(self) -> None:
+    def test_phone_path_fails_closed_on_stale_inventory(self) -> None:
         for repository, commit in INVENTORY_AUTHORITIES.items():
             with self.subTest(repository=repository):
                 self.assertIn(f"repository: {repository}", self.text)
@@ -113,7 +114,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertLess(self.text.index(check), self.text.index("run: scripts/build-debug.sh"))
         self.assertIn("needs: build", self.text)
 
-    def test_inventory_inputs_trigger_the_phone_and_tablet_gate(self) -> None:
+    def test_inventory_inputs_trigger_the_phone_gate(self) -> None:
         self.assertEqual(
             2,
             self.text.count(
@@ -145,7 +146,9 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("--serial emulator-5554", runner)
         self.assertIn('--profile "$profile"', runner)
         self.assertIn('--receipt "$evidence_root/receipt.json"', runner)
-        self.assertIn('if [[ "$profile" == "phone" ]]; then', runner)
+        self.assertIn('if [[ "$profile" != "phone" ]]; then', runner)
+        self.assertIn("tablet beta proof is deferred", runner)
+        self.assertNotIn('phone|tablet', runner)
         self.assertIn("tests/run_api36_creation_prerequisite_e2e.py", runner)
         self.assertIn('--evidence "$prerequisite_root/screenshots"', runner)
         self.assertIn('--receipt "$prerequisite_root/receipt.json"', runner)
