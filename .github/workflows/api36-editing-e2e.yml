@@ -5,10 +5,10 @@ on:
     paths:
       - ".github/workflows/api36-editing-e2e.yml"
       - "docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
+      - "docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json"
       - "docs/editability-evidence/**"
       - "global.json"
-      - "scripts/build-debug.sh"
-      - "scripts/materialize_chummer5_editability_inventory.py"
+      - "scripts/**"
       - "src/**"
       - "tests/**"
   push:
@@ -17,10 +17,10 @@ on:
     paths:
       - ".github/workflows/api36-editing-e2e.yml"
       - "docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
+      - "docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json"
       - "docs/editability-evidence/**"
       - "global.json"
-      - "scripts/build-debug.sh"
-      - "scripts/materialize_chummer5_editability_inventory.py"
+      - "scripts/**"
       - "src/**"
       - "tests/**"
   workflow_dispatch:
@@ -103,7 +103,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-design
-          ref: 14e78a8585354341841c2ea05794d06d5c58c2dc
+          ref: a833259208c92e75620850f104bff8718077e0d3
           path: chummer-design
           persist-credentials: false
           fetch-depth: 1
@@ -122,7 +122,9 @@ jobs:
         env:
           CHUMMER_COMPLETE_ROOT: ${{ github.workspace }}
           CHUMMER5A_ROOT: ${{ github.workspace }}/chummer5a
-        run: python3 scripts/materialize_chummer5_editability_inventory.py --check
+        run: |
+          python3 scripts/materialize_chummer5_editability_inventory.py --check
+          python3 scripts/materialize_chummer5_character_settings_contract.py --check
 
       - name: Install the governed .NET SDK
         uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4

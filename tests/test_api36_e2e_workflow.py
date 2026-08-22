@@ -21,7 +21,7 @@ COMPATIBILITY_GRAPH = {
 }
 INVENTORY_AUTHORITIES = {
     "ArchonMegalon/chummer6-design":
-        "14e78a8585354341841c2ea05794d06d5c58c2dc",
+        "a833259208c92e75620850f104bff8718077e0d3",
     "ArchonMegalon/chummer5a":
         "fe4355d06c98cd9b7feade89f5fc1a0e438f7ce3",
 }
@@ -62,9 +62,15 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
 
         check = "python3 scripts/materialize_chummer5_editability_inventory.py --check"
         self.assertEqual(1, self.text.count(check))
+        settings_check = (
+            "python3 scripts/materialize_chummer5_character_settings_contract.py --check"
+        )
+        self.assertEqual(1, self.text.count(settings_check))
         self.assertIn("CHUMMER_COMPLETE_ROOT: ${{ github.workspace }}", self.text)
         self.assertIn("CHUMMER5A_ROOT: ${{ github.workspace }}/chummer5a", self.text)
         self.assertLess(self.text.index(check), self.text.index("actions/setup-dotnet@"))
+        self.assertLess(self.text.index(settings_check), self.text.index("actions/setup-dotnet@"))
+        self.assertLess(self.text.index(check), self.text.index(settings_check))
         self.assertLess(self.text.index(check), self.text.index("run: scripts/build-debug.sh"))
         self.assertIn("needs: build", self.text)
 
@@ -77,9 +83,10 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         )
         self.assertEqual(
             2,
-            self.text.count('"scripts/materialize_chummer5_editability_inventory.py"'),
+            self.text.count('"docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json"'),
         )
         self.assertEqual(2, self.text.count('"docs/editability-evidence/**"'))
+        self.assertEqual(2, self.text.count('"scripts/**"'))
 
     def test_preview_release_uses_the_same_compiled_compatibility_graph(self) -> None:
         for repository, commit in COMPATIBILITY_GRAPH.items():

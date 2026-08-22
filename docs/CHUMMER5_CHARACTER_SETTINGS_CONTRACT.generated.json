@@ -12,15 +12,15 @@
   "unresolvedControls": [],
   "sourceInputs": [
     {
-      "path": "/docker/chummer5a/Chummer/Forms/EditCharacterSettings.cs",
+      "path": "chummer5a/Chummer/Forms/EditCharacterSettings.cs",
       "sha256": "f9a969ae64ef12693d428377ab96f41caa1e1e68e6e3fb38f2ce7e408fffbfa9"
     },
     {
-      "path": "/docker/chummer5a/Chummer/Backend/Character Settings/CharacterSettings.cs",
+      "path": "chummer5a/Chummer/Backend/Character Settings/CharacterSettings.cs",
       "sha256": "5fae3d58aa0b0c30920bc4180430ab56250521e5b8db21097b0b9460f74ef943"
     },
     {
-      "path": "/docker/chummer5a/Chummer/data/settings.xml",
+      "path": "chummer5a/Chummer/data/settings.xml",
       "sha256": "fcc5551d18e571b6519b79b909ac953710dde4dafd79697911f239e1819b573c"
     },
     {
