@@ -2291,10 +2291,10 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 450,
                 "implemented_verified_api36": 79,
-                "missing": 978,
+                "missing": 976,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
-                "partial_exact_saved_data": 148,
+                "partial_exact_saved_data": 150,
             },
             payload["summary"]["phoneStatusCounts"],
         )

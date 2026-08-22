@@ -16,10 +16,10 @@
     "phoneStatusCounts": {
       "implemented_pending_emulator": 450,
       "implemented_verified_api36": 79,
-      "missing": 978,
+      "missing": 976,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
-      "partial_exact_saved_data": 148
+      "partial_exact_saved_data": 150
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
@@ -265,6 +265,21 @@
         "sha256": "e54e3d34e1638fda1c6d52ea79ddd17be3611e521f259921c51d5b806e866d11"
       },
       {
+        "path": "src/Chummer.Android/Native/VehicleEquipmentInstalledPage.cs",
+        "exists": true,
+        "sha256": "2564821979f41edbbd626f87c7d9121d92d91cd280c975b7997e126475bf34bb"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/VehicleEquipmentInstalledEditRequest.cs",
+        "exists": true,
+        "sha256": "7f33f0ee6d804c4e6ef393ee8ce39473ef247ee57f1ae11a6c253f7c388e7897"
+      },
+      {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleEquipmentInstalledRules.cs",
+        "exists": true,
+        "sha256": "38c318ad826df8c337b50679aa64739b9589523aee9c29aeda94f2519530f734"
+      },
+      {
         "path": "src/Chummer.Android/Native/GearOverclockerPage.cs",
         "exists": true,
         "sha256": "1342592679eaae00e0e273e6b1e803fd6db97c1d2a37a589135bfc67dfe2ef3d"
@@ -367,7 +382,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "fb3f17d13cc9e9625fa1be040aba2fb8c71d8138581c04be4fe5ef9704130de2"
+        "sha256": "e77cd4dc9c40a93e95185e43f5abd41ad45ddd1e5ad7eed9c9f29dccf234f82b"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -392,7 +407,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "61b21951bff0cc4f8b28a1c71951b667d1cade6eee74c9664cd1998d1914eac7"
+        "sha256": "c7bca5934f281eb96772ea0f02ddc6b8badb9bdd362ae1e864ac46d35aacd17e"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -583,6 +598,21 @@
         "path": "tests/run_api36_weapon_stolen_e2e.py",
         "exists": true,
         "sha256": "5b323cd5ca9ad4f6ff25604ddfe983167d1b8a1dfa50997bd1cfb91a857f4a3d"
+      },
+      {
+        "path": "tests/run_api36_vehicle_equipment_installed_e2e.py",
+        "exists": true,
+        "sha256": "8aea9a4d4316ea8f05506d1f8919ef3d6d8a8c5afce8f2cc8f3c524bd373bcfe"
+      },
+      {
+        "path": "tests/fixtures/creation-vehicle-equipment-installed-e2e.chum5",
+        "exists": true,
+        "sha256": "aed6060687ac9383079b1875433d95157345cecd0950824191537c2d1107ec9f"
+      },
+      {
+        "path": "tests/fixtures/career-vehicle-equipment-installed-e2e.chum5",
+        "exists": true,
+        "sha256": "eb22e42ee7537f99bdd043b9fb9c2ca40fa80cb4dba7b8bbb97532e935bab7a4"
       },
       {
         "path": "tests/run_api36_gear_equipment_e2e.py",
@@ -1677,7 +1707,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "6eb4971bb25e8ea6e089f4a8ed584248e2e243af07d18702aaac02fd6d672f09"
+        "sha256": "ec1e9a6805f926a02cf8f31bc20bfcc894cd44ec9e30ee7d60ab2f82f59acec4"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1887,7 +1917,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "6e5a690016852647d5a898554abc9ebfed97e92e99759f8c53525bec9fba945c"
+        "sha256": "a83523fc485735a9ef8ab85b16e1e96f0a88da9b8c677ec038f906da3f1ee14e"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1942,7 +1972,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "90f0eb9df777bb2e97b35430fda035e0476d3fbdf08adcc5229aa6cd06033680"
+        "sha256": "05884c06061ddd26d42f66c7e39b40846e3c36d8c8577eea937c81b6de52b0fb"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1952,7 +1982,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "40dae54e2d025668abb89b08a8fcb3881f551deb51f5dc4da7216abc5b2cf77d"
+      "sha256": "435ac24b36647f7d947260eeb0a5791a3f4765e95fdcc3b44418ca212b91688c"
     }
   },
   "coverageByFamily": {
@@ -2316,7 +2346,7 @@
     "vehicles_and_drones": {
       "rowCount": 151,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 55,
+      "phoneMissingCount": 53,
       "tabletMissingCount": 100,
       "completionProvenCount": 27
     },
@@ -24865,11 +24895,23 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Vehicles > selected stable Vehicle > Installed equipment",
+        "surface": "VehicleEquipmentInstalledPage",
+        "automationId": "vehicle-equipment-installed-toggle-{stable-vehicle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/VehicleEquipmentInstalledPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/VehicleEquipmentInstalledEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleEquipmentInstalledRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "WeaponMount, non-sensor VehicleMod, Weapon, and WeaponAccessory equipped values use exact legacy identity and enable rules; enabled VehicleMods whose bonus or active wirelessbonus contains sensor remain fail-closed because Chummer5 also recalculates the saved Vehicle Sensor Array rating"
       },
       "tablet": {
         "status": "missing",
@@ -24877,12 +24919,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyVehicleEquipmentInstalledEditAsync with exact typed Vehicle > WeaponMount|VehicleMod|Weapon|WeaponAccessory identity, per-kind legacy enable rules, zero Nuyen/Karma economics, duplicate rejection, node-local revision, expected workspace content revision, and fail-closed sensor-affecting VehicleMod provenance",
+      "persistenceAssertion": "the exact selected saved Vehicle-tree equipped value persists after revision-bound atomic save, same-session reopen, and process restart while unrelated Vehicle/economic XML remains byte-semantic",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_vehicle_equipment_installed_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -63147,11 +63189,23 @@
       "mutationFamily": "vehicles_and_drones",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Vehicles > selected stable Vehicle > Installed equipment",
+        "surface": "VehicleEquipmentInstalledPage",
+        "automationId": "vehicle-equipment-installed-toggle-{stable-vehicle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/VehicleEquipmentInstalledPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/VehicleEquipmentInstalledEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleEquipmentInstalledRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "WeaponMount, non-sensor VehicleMod, Weapon, and WeaponAccessory equipped values use exact legacy identity and enable rules; enabled VehicleMods whose bonus or active wirelessbonus contains sensor remain fail-closed because Chummer5 also recalculates the saved Vehicle Sensor Array rating"
       },
       "tablet": {
         "status": "missing",
@@ -63159,12 +63213,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyVehicleEquipmentInstalledEditAsync with exact typed Vehicle > WeaponMount|VehicleMod|Weapon|WeaponAccessory identity, per-kind legacy enable rules, zero Nuyen/Karma economics, duplicate rejection, node-local revision, expected workspace content revision, and fail-closed sensor-affecting VehicleMod provenance",
+      "persistenceAssertion": "the exact selected saved Vehicle-tree equipped value persists after revision-bound atomic save, same-session reopen, and process restart while unrelated Vehicle/economic XML remains byte-semantic",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_vehicle_equipment_installed_e2e.py"
         },
         "tablet": {
           "status": "missing",
