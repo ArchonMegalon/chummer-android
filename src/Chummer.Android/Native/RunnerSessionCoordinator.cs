@@ -1502,6 +1502,35 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<CreationLifestyleDeleteEditorState?> PrepareCreationLifestyleDeleteAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCreationLifestyleDeleteAsync(cancellationToken);
+
+    public async Task ApplyCreationLifestyleDeleteAsync(
+        CreationLifestyleDeleteRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (!request.Confirmed)
+        {
+            throw new InvalidOperationException("Lifestyle deletion requires explicit confirmation authority.");
+        }
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Lifestyle deletion was open. Reopen it before deleting.");
+        }
+        await _presenter.ApplyCreationLifestyleDeleteAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Lifestyle deleted." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<CareerEdgeUseEditorState?> PrepareCareerEdgeUseEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareCareerEdgeUseEditAsync(cancellationToken);

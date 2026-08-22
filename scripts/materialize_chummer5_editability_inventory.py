@@ -2075,6 +2075,41 @@ LIFESTYLE_INCREMENT_CONTROLS = {
         "lifestyle-increments-decrease-{stable-lifestyle-guid}",
     ),
 }
+CREATION_LIFESTYLE_DELETE_CONTROL = "cmdDeleteLifestyle"
+CREATION_LIFESTYLE_DELETE_LEGACY_METHOD_DIGESTS = {
+    "cmdDeleteLifestyle_Click": "c59cb3bf4a0b5c72645a391a20d3c7bf66294ed48ae4078f9dc62e02322e40ca",
+    "RemoveSelectedObject": "9408ee51a387a9252228b7ac163e048c4760fc1f5c17625c74d822c671c88e0c",
+    "Lifestyle.RemoveAsync": "e2894ad6aeec779cbc7b5f5fbf072160682119af5bfa7693796fc03fa477e875",
+    "RemoveImprovementsCoreAsync": "d026e66b03d801daa9f6517b1185254848042509cec5d99fc668144de95726c1",
+}
+CREATION_LIFESTYLE_DELETE_IMPROVEMENT_OVERLOAD_DIGESTS = (
+    "51c90b93e1f8141e4ed2baac01b9da576ab0bbe1f65440fc955b47730dd2a611",
+    "1c861ca3888dcc7638814cc45deff78d111501d7a8a273c76dc143f61e833697",
+    "963a69d1061d2b355afc0e2c5ba4db8adce84bdd8a576eb50d8f48eb04b51d28",
+    "497c7dbb1c824d6b5eba6df66da42c2d96073197294bcc38abb77aaf1618bd07",
+    "609d0566c460ff36a4674c22f618309abdfcaf2112c9f08b1af2b0da6512ec02",
+)
+CREATION_LIFESTYLE_DELETE_HANDLER_ORDER = (
+    "RemoveSelectedObject(",
+    "treLifestyles.DoThreadSafeFuncAsync",
+    "x.SelectedNode?.Tag",
+)
+CREATION_LIFESTYLE_DELETE_SHARED_CALLEE_ORDER = (
+    "objSelected is ICanRemove",
+    "CharacterObject.LockObject.EnterUpgradeableReadLockAsync",
+    "if (objRemovable is VehicleMod",
+    "objRemovable.RemoveAsync",
+)
+CREATION_LIFESTYLE_DELETE_LIFESTYLE_CALLEE_ORDER = (
+    'GetStringAsync("Message_DeleteLifestyle"',
+    "_objCharacter.Lifestyles.LockObject.EnterUpgradeableReadLockAsync",
+    "_objCharacter.Lifestyles.ContainsAsync(this",
+    "_objCharacter.Lifestyles.RemoveAsync(this",
+    "LifestyleQualities.GetCountAsync",
+    "x.InternalId",
+    "RemoveImprovementsAsync(CharacterObject, Improvement.ImprovementSource.Quality, lstIds",
+    "DisposeAsync",
+)
 CAREER_EDGE_USE_CONTROLS = {
     "cmdEdgeSpent": (
         "cmdEdgeSpent_Click",
@@ -19248,6 +19283,220 @@ def _known_phone_mapping(
             "e2e": {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_gear_name_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "CharacterCreate" and control == CREATION_LIFESTYLE_DELETE_CONTROL:
+        legacy_source = chummer5_root / "Chummer/Forms/Character Forms/CharacterCreate.cs"
+        shared_source = chummer5_root / "Chummer/Forms/Character Forms/CharacterShared.cs"
+        lifestyle_source = chummer5_root / "Chummer/Backend/Equipment/Lifestyle.cs"
+        improvement_source = chummer5_root / "Chummer/Backend/Static/Managers/ImprovementManager.cs"
+        collection_page = REPO_ROOT / "src/Chummer.Android/Native/CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests/run_api36_creation_lifestyle_delete_e2e.py"
+        fixture = REPO_ROOT / "tests/fixtures/creation-lifestyle-delete-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation/Overview"
+        request = overview / "CreationLifestyleDeleteRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = (
+            character_notes_core_root
+            / "Chummer.Contracts/Characters/CharacterCreationLifestyleDeleteRules.cs"
+        )
+        workspace_store = (
+            character_notes_core_root / "Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        )
+        legacy_text = _read_text(legacy_source) if legacy_source.is_file() else ""
+        shared_text = _read_text(shared_source) if shared_source.is_file() else ""
+        lifestyle_text = _read_text(lifestyle_source) if lifestyle_source.is_file() else ""
+        improvement_text = _read_text(improvement_source) if improvement_source.is_file() else ""
+        legacy_exact = (
+            any(
+                event.get("handler") == "cmdDeleteLifestyle_Click"
+                for event in legacy.get("events", [])
+            )
+            and _legacy_method_digest(
+                [legacy_text], "cmdDeleteLifestyle_Click"
+            ) == CREATION_LIFESTYLE_DELETE_LEGACY_METHOD_DIGESTS["cmdDeleteLifestyle_Click"]
+            and _legacy_method_digest(
+                [shared_text], "RemoveSelectedObject"
+            ) == CREATION_LIFESTYLE_DELETE_LEGACY_METHOD_DIGESTS["RemoveSelectedObject"]
+            and _legacy_method_digest(
+                [lifestyle_text], "RemoveAsync"
+            ) == CREATION_LIFESTYLE_DELETE_LEGACY_METHOD_DIGESTS["Lifestyle.RemoveAsync"]
+            and _legacy_method_digest(
+                [improvement_text], "RemoveImprovementsCoreAsync"
+            ) == CREATION_LIFESTYLE_DELETE_LEGACY_METHOD_DIGESTS["RemoveImprovementsCoreAsync"]
+            and _legacy_method_overload_digests(
+                [improvement_text], "RemoveImprovementsAsync"
+            ) == CREATION_LIFESTYLE_DELETE_IMPROVEMENT_OVERLOAD_DIGESTS
+            and _legacy_method_markers_in_order(
+                [legacy_text],
+                "cmdDeleteLifestyle_Click",
+                CREATION_LIFESTYLE_DELETE_HANDLER_ORDER,
+            )
+            and _legacy_method_markers_in_order(
+                [shared_text],
+                "RemoveSelectedObject",
+                CREATION_LIFESTYLE_DELETE_SHARED_CALLEE_ORDER,
+            )
+            and _legacy_method_markers_in_order(
+                [lifestyle_text],
+                "RemoveAsync",
+                CREATION_LIFESTYLE_DELETE_LIFESTYLE_CALLEE_ORDER,
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                collection_page,
+                "AddCreationLifestyleDeleteAction",
+                "WorkspaceCollectionKind.Lifestyle",
+                "Coordinator.State.Profile?.Created != false",
+                'Guid.TryParseExact(_target.ItemId, "D"',
+                'creation-lifestyle-delete-{lifestyleId:N}',
+                "PrepareCreationLifestyleDeleteAsync",
+                "candidate.Identity.LifestyleId == lifestyleId",
+                "Coordinator.ApplicationSettings.ConfirmDelete",
+                '"Delete Lifestyle?"',
+                '"Cancel"',
+                "CreationLifestyleDeleteRequest",
+            )
+            and _contains(
+                coordinator,
+                "PrepareCreationLifestyleDeleteAsync",
+                "ApplyCreationLifestyleDeleteAsync",
+                "request.ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CharacterCreationLifestyleDeleteIdentity",
+                "CreationLifestyleDeleteEditorProjector",
+                'FindSingleContainer(root, "lifestyles")',
+                'FindSingleContainer(root, "improvements")',
+                'FindSingleContainer(lifestyle, "lifestylequalities")',
+                "Lifestyle Quality GUIDs must be unique",
+                "FindImprovements",
+                'sourceName.StartsWith(source + " "',
+                "PersistedCascadeImprovementTypes",
+                "ImprovementManager persisted-object cascade",
+            )
+            and _contains(
+                mutation,
+                "ApplyCreationLifestyleDelete",
+                "CharacterCreationLifestyleDeleteRules.CanDelete",
+                "foreach (XElement improvement in target.Improvements)",
+                "improvement.Remove()",
+                "target.Lifestyle.Remove()",
+                "CreationLifestyleDeleteEditorProjector.ProjectElements(document.Root!)",
+            )
+            and _contains(
+                presenter,
+                "PrepareCreationLifestyleDeleteAsync",
+                "ApplyCreationLifestyleDeleteAsync",
+                "Lifestyle deletion is available only during Creation",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareCreationLifestyleDeleteAsync",
+                "ApplyCreationLifestyleDeleteAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterCreationLifestyleDeleteIdentity",
+                "CharacterCreationLifestyleDeleteState",
+                "public bool CanDelete => !Created",
+                "NuyenDelta: 0m",
+                "ExpenseRecordDelta: 0",
+                "RemovesLifestyleCost: true",
+                "SHA256.HashData",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                'CONTROL = "CharacterCreate.cmdDeleteLifestyle"',
+                'if api != "36"',
+                'if abi != "arm64-v8a"',
+                'PACKAGE = "com.myexternalbrain.chummer"',
+                '"profile": "phone"',
+                '"journey": "creation-lifestyle-delete"',
+                '"creationCancelNoOp": "pass"',
+                '"creationLifestyleAndQualityImprovementsDeleted": "pass"',
+                '"creationZeroRefundAndExpenseDelta": "pass"',
+                '"creationSameSessionReopen": "pass"',
+                '"creationProcessRestart": "pass"',
+                '"lifestyleDeleteRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+            )
+            and fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Delete Lifestyle",
+            "surface": "CollectionItemEditorPage",
+            "automationId": "creation-lifestyle-delete-{stable-lifestyle-guid}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CreationLifestyleDeleteRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterCreationLifestyleDeleteRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCreationLifestyleDeleteAsync with typed selected Lifestyle GUID, "
+                "Lifestyle-local cascade revision, explicit deletion authority, Creation-phase gate, zero-refund "
+                "economics, and expected workspace content revision"
+            ),
+            "persistenceAssertion": (
+                "confirmed deletion removes only the exact selected character/lifestyles/lifestyle and Improvements "
+                "whose Quality sourcename equals or uses the legacy spaced-prefix form of a contained "
+                "LifestyleQuality GUID; the deleted element carries all of its raw/derived cost inputs out of the "
+                "runner while Nuyen, expenses, sibling Lifestyles, unrelated Improvements, and unrelated XML remain "
+                "exact after revision-bound atomic save/recovery, same-session reopen, and process restart"
+            ),
+            "coverageLimit": (
+                "Exact CharacterCreate.cmdDeleteLifestyle only. Selection is the stable Lifestyle node identity; "
+                "Message_DeleteLifestyle confirmation follows the application Confirm Delete setting, Cancel/back "
+                "is a no-op, no Nuyen refund or expense is written, and contained LifestyleQuality source-bound "
+                "Improvements are removed. Saved custom improvements that require ImprovementManager persisted-object "
+                "cascades fail closed; the minimum prerequisite is a typed port of that shared removal authority. "
+                "Career, add/import/edit/move, malformed or ambiguous GUID/container state, and tablet fail closed. The API 36 driver is "
+                f"{'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_creation_lifestyle_delete_e2e.py" if e2e_scripted else None,
             },
             "tablet": {
                 "status": "missing",

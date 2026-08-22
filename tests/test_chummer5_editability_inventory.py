@@ -5565,6 +5565,54 @@ namespace Chummer
             )
         self.assertEqual("missing", drifted["status"])
 
+    def test_creation_lifestyle_delete_is_source_guarded_phone_only_and_scripted(self) -> None:
+        import inspect
+
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = [
+            row for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == "CharacterCreate"
+            and row["legacy"]["controlName"] == inventory.CREATION_LIFESTYLE_DELETE_CONTROL
+        ]
+        self.assertEqual(1, len(rows))
+        row = rows[0]
+        self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+        self.assertEqual(
+            "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Delete Lifestyle",
+            row["phone"]["route"],
+        )
+        self.assertEqual("creation-lifestyle-delete-{stable-lifestyle-guid}", row["phone"]["automationId"])
+        self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+        self.assertEqual("missing", row["tablet"]["status"])
+        self.assertIn("zero-refund economics", row["presenterMutation"])
+        self.assertIn("legacy spaced-prefix form", row["persistenceAssertion"])
+        self.assertIn("Cancel/back is a no-op", row["phone"]["coverageLimit"])
+
+        parameters = list(inspect.signature(inventory._known_phone_mapping).parameters)
+        receipt_arguments = {
+            name: {} if name in {"condition_e2e_receipts", "contact_pet_e2e_receipts"} else None
+            for name in parameters[4:]
+        }
+        drifted_digests = dict(inventory.CREATION_LIFESTYLE_DELETE_LEGACY_METHOD_DIGESTS)
+        drifted_digests["Lifestyle.RemoveAsync"] = "0" * 64
+        with patch.dict(
+            inventory.CREATION_LIFESTYLE_DELETE_LEGACY_METHOD_DIGESTS,
+            drifted_digests,
+            clear=True,
+        ):
+            drifted = inventory._known_phone_mapping(
+                row,
+                inventory.DEFAULT_CHUMMER5_ROOT,
+                PRESENTATION_ROOT,
+                CORE_ROOT,
+                **receipt_arguments,
+            )
+        self.assertEqual("missing", drifted["status"])
+
     def test_career_mugshot_add_stays_missing_behind_exact_codec_gate(self) -> None:
         import inspect
 

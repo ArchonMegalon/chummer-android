@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Lifestyle Delete E2E</name>
+  <alias>CreationLifestyleDeleteE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <nuyen>8123.45</nuyen>
+  <expenses><expense><guid>d1111111-1111-1111-1111-111111111111</guid><reason>Unrelated expense sentinel</reason><amount>-25</amount></expense></expenses>
+  <lifestyles>
+    <lifestyle>
+      <guid>71111111-1111-1111-1111-111111111111</guid>
+      <name>Low</name><baselifestyle>Low</baselifestyle><extra>Delete Home</extra>
+      <notes>Deleted Lifestyle raw cost sentinel</notes><cost>2000</cost><percentage>100</percentage><months>2</months>
+      <lifestylequalities>
+        <lifestylequality><guid>72111111-1111-1111-1111-111111111111</guid><name>Grid Subscription</name><extra>Public Grid</extra></lifestylequality>
+      </lifestylequalities>
+    </lifestyle>
+    <lifestyle>
+      <guid>73333333-3333-3333-3333-333333333333</guid>
+      <name>Medium</name><baselifestyle>Medium</baselifestyle><extra>Keep Home</extra>
+      <notes>Keep Lifestyle sentinel</notes><cost>5000</cost><percentage>100</percentage><months>1</months>
+      <lifestylequalities />
+    </lifestyle>
+  </lifestyles>
+  <improvements>
+    <improvement><improvementsource>Quality</improvementsource><sourcename>72111111-1111-1111-1111-111111111111</sourcename><improvementttype>Attribute</improvementttype><improvedname>BOD</improvedname><marker>remove-exact</marker></improvement>
+    <improvement><improvementsource>Quality</improvementsource><sourcename>72111111-1111-1111-1111-111111111111 Public Grid</sourcename><improvementttype>Attribute</improvementttype><improvedname>AGI</improvedname><marker>remove-legacy-prefix</marker></improvement>
+    <improvement><improvementsource>Quality</improvementsource><sourcename>74444444-4444-4444-4444-444444444444</sourcename><improvementttype>Attribute</improvementttype><improvedname>REA</improvedname><marker>keep-quality</marker></improvement>
+    <improvement><improvementsource>Custom</improvementsource><sourcename>72111111-1111-1111-1111-111111111111</sourcename><improvementttype>Attribute</improvementttype><improvedname>LOG</improvedname><marker>keep-custom</marker></improvement>
+  </improvements>
+  <customstate>Creation Lifestyle delete unrelated state</customstate>
+</character>

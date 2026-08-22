@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 553,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 468,
+      "implemented_pending_emulator": 469,
       "implemented_verified_api36": 79,
-      "missing": 926,
+      "missing": 925,
       "not_applicable_non_mutating": 478,
       "partial_create_only": 106,
       "partial_exact_saved_data": 172
@@ -536,7 +536,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "812ec5816f6054f9eee2cb452cf2e69a3dc2111a809fcff5d7803e8ea94af442"
+        "sha256": "c47ad867c5bb7e2870490392b3717631d6cb461cca092d13182dab094042d412"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -561,7 +561,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "d486e8ecd6acc48646393fd65a9cb709f3bbe50ffe32fb789112f2cdf306993a"
+        "sha256": "486ae8011dbe529f6de9c3796f3053af41a48ff724acc671d3dd812f22d907fc"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1946,7 +1946,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "7e1800ddd672f0f00926836acfff2c37b4e9ae567cea01b2e90e301891d9eedc"
+        "sha256": "b61c3d4388584249556ffe0be25b379072cf413f86b251537297046f65d09142"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -2156,7 +2156,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "5e28bf7a46ceaf104ee58f7c0dd4b233c8b403828a85d1a1a80d4ac2a978c846"
+        "sha256": "9bd52bd6d2df8f468de1cb08606048931725618ea1b1612c70cf538bd87c055c"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2211,7 +2211,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "577c17132e482fed63f7b7e2a0312f8c09624f3ff259e6815da6cda6440a98da"
+        "sha256": "3bee65d02c90a1944cca28f5b5040ce19a3358e19181a14e6774f2ccc90a160c"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -2221,7 +2221,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "7b648fc03d9333c8843390edcb40917805142e464b601b4eae01d42577ccc7f0"
+      "sha256": "906b97480a438361904fd3a5b747cbd7e24e42342019ffa2a728f826e39807e7"
     }
   },
   "coverageByFamily": {
@@ -2431,7 +2431,7 @@
     "lifestyles": {
       "rowCount": 58,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 41,
+      "phoneMissingCount": 40,
       "tabletMissingCount": 50,
       "completionProvenCount": 8
     },
@@ -54729,11 +54729,22 @@
       "mutationFamily": "lifestyles",
       "operation": "delete",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Lifestyle > Lifestyles > selected stable Lifestyle > Delete Lifestyle",
+        "surface": "CollectionItemEditorPage",
+        "automationId": "creation-lifestyle-delete-{stable-lifestyle-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CreationLifestyleDeleteRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCreationLifestyleDeleteRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCreate.cmdDeleteLifestyle only. Selection is the stable Lifestyle node identity; Message_DeleteLifestyle confirmation follows the application Confirm Delete setting, Cancel/back is a no-op, no Nuyen refund or expense is written, and contained LifestyleQuality source-bound Improvements are removed. Saved custom improvements that require ImprovementManager persisted-object cascades fail closed; the minimum prerequisite is a typed port of that shared removal authority. Career, add/import/edit/move, malformed or ambiguous GUID/container state, and tablet fail closed. The API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -54741,12 +54752,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCreationLifestyleDeleteAsync with typed selected Lifestyle GUID, Lifestyle-local cascade revision, explicit deletion authority, Creation-phase gate, zero-refund economics, and expected workspace content revision",
+      "persistenceAssertion": "confirmed deletion removes only the exact selected character/lifestyles/lifestyle and Improvements whose Quality sourcename equals or uses the legacy spaced-prefix form of a contained LifestyleQuality GUID; the deleted element carries all of its raw/derived cost inputs out of the runner while Nuyen, expenses, sibling Lifestyles, unrelated Improvements, and unrelated XML remain exact after revision-bound atomic save/recovery, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_creation_lifestyle_delete_e2e.py"
         },
         "tablet": {
           "status": "missing",

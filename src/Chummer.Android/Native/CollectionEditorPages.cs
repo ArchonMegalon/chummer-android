@@ -143,6 +143,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddGearSleazeSwapAction(item);
         AddGearDataProcessingFirewallSwapAction(item);
         AddLifestyleIncrementAction(item);
+        AddCreationLifestyleDeleteAction(item);
         AddWeaponAccessoryIncludedAction(item);
         AddCritterPowerCountAction(item);
         AddSpiritFetteredAction(item);
@@ -1523,6 +1524,70 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 increment)),
             automationId: $"lifestyle-increments-open-{lifestyleId:N}"));
+    }
+
+    private void AddCreationLifestyleDeleteAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Lifestyle
+            || _target.NestedKind is not null
+            || Coordinator.State.Profile?.Created != false
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid lifestyleId)
+            || lifestyleId == Guid.Empty)
+        {
+            return;
+        }
+
+        _body.Add(NativeTheme.Eyebrow("Creation Lifestyle removal"));
+        Button delete = NativeTheme.SecondaryButton("Delete Lifestyle");
+        delete.AutomationId = $"creation-lifestyle-delete-{lifestyleId:N}";
+        delete.TextColor = NativeTheme.Danger;
+        delete.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            CreationLifestyleDeleteEditorState? editor =
+                await Coordinator.PrepareCreationLifestyleDeleteAsync();
+            if (editor is null)
+            {
+                return;
+            }
+
+            CharacterCreationLifestyleDeleteState[] matches = editor.Lifestyles
+                .Where(candidate => candidate.Identity.LifestyleId == lifestyleId)
+                .Take(2)
+                .ToArray();
+            if (matches.Length != 1 || !matches[0].CanDelete)
+            {
+                await DisplayAlertAsync(
+                    "Lifestyle unavailable",
+                    "The selected Lifestyle no longer has one exact removable Creation identity. Reopen it before deleting.",
+                    "OK");
+                return;
+            }
+
+            CharacterCreationLifestyleDeleteState selected = matches[0];
+            bool confirmed = !Coordinator.ApplicationSettings.ConfirmDelete
+                || await DisplayAlertAsync(
+                    "Delete Lifestyle?",
+                    $"Delete {selected.DisplayName}? Its Lifestyle Qualities and exact source-bound Improvements will also be removed. Nuyen is not refunded.",
+                    "Delete",
+                    "Cancel");
+            if (!confirmed)
+            {
+                return;
+            }
+
+            await Coordinator.ApplyCreationLifestyleDeleteAsync(
+                new CreationLifestyleDeleteRequest(
+                    editor.WorkspaceId,
+                    editor.ContentRevision,
+                    selected.Identity,
+                    selected.Revision,
+                    Confirmed: true));
+            if (Coordinator.State.Error is null)
+            {
+                await Navigation.PopAsync();
+            }
+        });
+        _body.Add(delete);
     }
 
     private void AddQualityLevelAction(WorkspaceCollectionItemEditorState item)
