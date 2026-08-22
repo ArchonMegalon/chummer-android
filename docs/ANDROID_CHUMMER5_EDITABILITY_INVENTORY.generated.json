@@ -16,10 +16,10 @@
     "phoneStatusCounts": {
       "implemented_pending_emulator": 450,
       "implemented_verified_api36": 79,
-      "missing": 968,
+      "missing": 960,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
-      "partial_exact_saved_data": 158
+      "partial_exact_saved_data": 166
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
@@ -310,6 +310,26 @@
         "sha256": "e6466d00e60d960626a1ffa2397b156170c471928ab7635b06edf999a6dca865"
       },
       {
+        "path": "src/Chummer.Android/Native/CyberwareMatrixSwapPage.cs",
+        "exists": true,
+        "sha256": "500220ee037bab9437342d6892b5e7600c18c7f62f772270206566fdf89931db"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/CyberwareMatrixSwapEditRequest.cs",
+        "exists": true,
+        "sha256": "d54c728b47b0b325e2209d58aad6569d7672b1b67db7f60cfc828c4e14772a28"
+      },
+      {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareMatrixSwapRules.cs",
+        "exists": true,
+        "sha256": "22afdd4498c7bec7e9eea914da1aad616344131f4caec547f7734d216d0a2616"
+      },
+      {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs",
+        "exists": true,
+        "sha256": "261fb5d29fd1aa62f4832ea3167fdb4662c918272a921e537dbb033b4e7ce399"
+      },
+      {
         "path": "src/Chummer.Android/Native/ImprovementActivePage.cs",
         "exists": true,
         "sha256": "8639d5437cf278085a3349abfd9fdb7aa55cc8938e18544ce88e51c3332a4e41"
@@ -382,7 +402,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "d629260d2d687e10517c51de57f95131692295b63561a9e24e739dd6a51897a5"
+        "sha256": "6abe859f14f06183bd50c1736b81caf68037805af40c826c2c8f1047cc9e753a"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -407,7 +427,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "fe5264fa516dc8aa2cf91905337955b2829a97a04ccbac59b1fe70739e230c82"
+        "sha256": "1c872f1153c619dc91c35e3b044f09d02d1907401bf4f95f0b2a8c52e3257be0"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -448,6 +468,21 @@
         "path": "tests/fixtures/career-gear-dp-firewall-swap-e2e.chum5",
         "exists": true,
         "sha256": "a11b9c5e5fbe614818f5d5b439c983c61c8e925bd9a8716f423522a43e0a1862"
+      },
+      {
+        "path": "tests/run_api36_cyberware_matrix_swap_e2e.py",
+        "exists": true,
+        "sha256": "a45f16b255032f569d3a470ec8b7fb4bf3bafdd0a9a05740fac8c8d2f51a410c"
+      },
+      {
+        "path": "tests/fixtures/creation-cyberware-matrix-swap-e2e.chum5",
+        "exists": true,
+        "sha256": "6de9cc3fee62dda85e71315ca6aca8758d339f61972e894df6d8d5a9cac04470"
+      },
+      {
+        "path": "tests/fixtures/career-cyberware-matrix-swap-e2e.chum5",
+        "exists": true,
+        "sha256": "c544207cf6137eaa0a970525ce32a83aac6da6f78f399c4063f58cde1a291b40"
       },
       {
         "path": "tests/run_api36_character_notes_e2e.py",
@@ -1707,7 +1742,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "cc5f4e512dcf3f1e9faf8ad9b1e53bb89d7d5cbf86ac3f17219da7d2e1ec8bd0"
+        "sha256": "18afdf6fa0af2c7794cf30bd6bfacae25d7f1bf126d848e96641e24b42e5e78f"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1917,7 +1952,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "31931793e51e02d81596bfa2d122f908135e6d617c8528270fab82c6c83b3e9c"
+        "sha256": "e658104b8110db56794697e5cccba5176ec01d1287768bb3152568dd6ab6c4d4"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1972,7 +2007,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "b890af9a51ebdb2d33fa96bc985e043229a1116fdf34486dcadff37bdc46161f"
+        "sha256": "4157e3d310027e95bf64422b06d1030499d34e99bd6eecf8d6e6af913723b51c"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1982,7 +2017,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "06d559a5b64ba463bad70a69583412bfa2faaba29e52502562a9b845b730f730"
+      "sha256": "3ba3287c3bcb346a250034c0b42ac72d7fdedcb5f3a2d7b7f96795e046b49a3a"
     }
   },
   "coverageByFamily": {
@@ -2094,7 +2129,7 @@
     "cyberware": {
       "rowCount": 94,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 45,
+      "phoneMissingCount": 37,
       "tabletMissingCount": 66,
       "completionProvenCount": 4
     },
@@ -18677,11 +18712,17 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Cyberware > selected stable Cyberware > Swap Cyberware Matrix values",
+        "surface": "CyberwareMatrixSwapPage",
+        "automationId": "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CyberwareMatrixSwapPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CyberwareMatrixSwapEditRequest.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareMatrixSwapRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer cboCyberwareDataProcessing top-level Cyberware root selection only (legacy handler proven); descendant Cyberware and child Gear IHasMatrixAttributes targets, malformed/duplicate/ineligible/equal/stale state, and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -18689,12 +18730,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed root Cyberware Attack/Sleaze/Data Processing/Firewall raw permutation with exact Guid identity, Create/Career phase, AttributeArray/CanSwapAttributes provenance, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "two raw root Cyberware Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, descendants, active/home state, grade, rating, cost, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery and restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_cyberware_matrix_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -18734,11 +18775,17 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Cyberware > selected stable Cyberware > Swap Cyberware Matrix values",
+        "surface": "CyberwareMatrixSwapPage",
+        "automationId": "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CyberwareMatrixSwapPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CyberwareMatrixSwapEditRequest.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareMatrixSwapRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer cboCyberwareFirewall top-level Cyberware root selection only (legacy handler proven); descendant Cyberware and child Gear IHasMatrixAttributes targets, malformed/duplicate/ineligible/equal/stale state, and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -18746,12 +18793,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed root Cyberware Attack/Sleaze/Data Processing/Firewall raw permutation with exact Guid identity, Create/Career phase, AttributeArray/CanSwapAttributes provenance, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "two raw root Cyberware Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, descendants, active/home state, grade, rating, cost, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery and restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_cyberware_matrix_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -18791,11 +18838,17 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Cyberware > selected stable Cyberware > Swap Cyberware Matrix values",
+        "surface": "CyberwareMatrixSwapPage",
+        "automationId": "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CyberwareMatrixSwapPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CyberwareMatrixSwapEditRequest.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareMatrixSwapRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer cboCyberwareSleaze top-level Cyberware root selection only (legacy handler proven); descendant Cyberware and child Gear IHasMatrixAttributes targets, malformed/duplicate/ineligible/equal/stale state, and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -18803,12 +18856,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed root Cyberware Attack/Sleaze/Data Processing/Firewall raw permutation with exact Guid identity, Create/Career phase, AttributeArray/CanSwapAttributes provenance, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "two raw root Cyberware Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, descendants, active/home state, grade, rating, cost, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery and restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_cyberware_matrix_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -18848,11 +18901,17 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Cyberware > selected stable Cyberware > Swap Cyberware Matrix values",
+        "surface": "CyberwareMatrixSwapPage",
+        "automationId": "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CyberwareMatrixSwapPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CyberwareMatrixSwapEditRequest.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareMatrixSwapRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer cboCyberwareAttack top-level Cyberware root selection only (legacy handler proven); descendant Cyberware and child Gear IHasMatrixAttributes targets, malformed/duplicate/ineligible/equal/stale state, and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -18860,12 +18919,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed root Cyberware Attack/Sleaze/Data Processing/Firewall raw permutation with exact Guid identity, Create/Career phase, AttributeArray/CanSwapAttributes provenance, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "two raw root Cyberware Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, descendants, active/home state, grade, rating, cost, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery and restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_cyberware_matrix_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -61660,11 +61719,17 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Cyberware > selected stable Cyberware > Swap Cyberware Matrix values",
+        "surface": "CyberwareMatrixSwapPage",
+        "automationId": "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CyberwareMatrixSwapPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CyberwareMatrixSwapEditRequest.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareMatrixSwapRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs"
+        ],
+        "coverageLimit": "Exact CharacterCreate cboCyberwareAttack top-level Cyberware root selection only (legacy handler proven); descendant Cyberware and child Gear IHasMatrixAttributes targets, malformed/duplicate/ineligible/equal/stale state, and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -61672,12 +61737,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed root Cyberware Attack/Sleaze/Data Processing/Firewall raw permutation with exact Guid identity, Create/Career phase, AttributeArray/CanSwapAttributes provenance, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "two raw root Cyberware Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, descendants, active/home state, grade, rating, cost, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery and restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_cyberware_matrix_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -61717,11 +61782,17 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Cyberware > selected stable Cyberware > Swap Cyberware Matrix values",
+        "surface": "CyberwareMatrixSwapPage",
+        "automationId": "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CyberwareMatrixSwapPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CyberwareMatrixSwapEditRequest.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareMatrixSwapRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs"
+        ],
+        "coverageLimit": "Exact CharacterCreate cboCyberwareSleaze top-level Cyberware root selection only (legacy handler proven); descendant Cyberware and child Gear IHasMatrixAttributes targets, malformed/duplicate/ineligible/equal/stale state, and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -61729,12 +61800,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed root Cyberware Attack/Sleaze/Data Processing/Firewall raw permutation with exact Guid identity, Create/Career phase, AttributeArray/CanSwapAttributes provenance, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "two raw root Cyberware Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, descendants, active/home state, grade, rating, cost, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery and restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_cyberware_matrix_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -61774,11 +61845,17 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Cyberware > selected stable Cyberware > Swap Cyberware Matrix values",
+        "surface": "CyberwareMatrixSwapPage",
+        "automationId": "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CyberwareMatrixSwapPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CyberwareMatrixSwapEditRequest.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareMatrixSwapRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs"
+        ],
+        "coverageLimit": "Exact CharacterCreate cboCyberwareDataProcessing top-level Cyberware root selection only (legacy handler proven); descendant Cyberware and child Gear IHasMatrixAttributes targets, malformed/duplicate/ineligible/equal/stale state, and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -61786,12 +61863,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed root Cyberware Attack/Sleaze/Data Processing/Firewall raw permutation with exact Guid identity, Create/Career phase, AttributeArray/CanSwapAttributes provenance, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "two raw root Cyberware Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, descendants, active/home state, grade, rating, cost, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery and restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_cyberware_matrix_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -61831,11 +61908,17 @@
       "mutationFamily": "cyberware",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Cyberware > selected stable Cyberware > Swap Cyberware Matrix values",
+        "surface": "CyberwareMatrixSwapPage",
+        "automationId": "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CyberwareMatrixSwapPage.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CyberwareMatrixSwapEditRequest.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareMatrixSwapRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs"
+        ],
+        "coverageLimit": "Exact CharacterCreate cboCyberwareFirewall top-level Cyberware root selection only (legacy handler proven); descendant Cyberware and child Gear IHasMatrixAttributes targets, malformed/duplicate/ineligible/equal/stale state, and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -61843,12 +61926,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed root Cyberware Attack/Sleaze/Data Processing/Firewall raw permutation with exact Guid identity, Create/Career phase, AttributeArray/CanSwapAttributes provenance, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "two raw root Cyberware Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, descendants, active/home state, grade, rating, cost, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery and restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_cyberware_matrix_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",
