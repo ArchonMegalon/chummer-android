@@ -117,6 +117,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddVehicleDataProcessingFirewallSwapAction(item);
         AddVehicleWeaponFiringModeAction(item);
         AddCyberwareMatrixSwapAction(item);
+        AddWeaponMatrixSwapAction(item);
         AddArmorHomeNodeAction(item);
         AddWeaponHomeNodeAction(item);
         AddWeaponActiveCommlinkAction(item);
@@ -838,6 +839,33 @@ public sealed class CollectionItemEditorPage : NativePageBase
                     await Navigation.PushAsync(new CyberwareMatrixSwapPage(Coordinator, editor));
             },
             automationId: $"cyberware-matrix-swap-open-{cyberwareId:N}"));
+    }
+
+    private void AddWeaponMatrixSwapAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Weapon
+            || _target.NestedKind is not null
+            || Coordinator.State.Profile?.Created != true
+            || Coordinator.State.WorkspaceId is null
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid weaponId)
+            || weaponId == Guid.Empty)
+        {
+            return;
+        }
+
+        _body.Add(NativeTheme.NavigationRow(
+            "Swap Weapon Matrix values",
+            "Swap raw Attack, Sleaze, Data Processing, or Firewall on an eligible direct Career Weapon; descendants remain fail-closed",
+            async () =>
+            {
+                WeaponMatrixSwapEditorState? editor = await Coordinator
+                    .PrepareWeaponMatrixSwapEditAsync(weaponId);
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new WeaponMatrixSwapPage(Coordinator, editor));
+                }
+            },
+            automationId: $"weapon-matrix-swap-open-{weaponId:N}"));
     }
 
     private void AddVehicleWeaponFiringModeAction(WorkspaceCollectionItemEditorState item)

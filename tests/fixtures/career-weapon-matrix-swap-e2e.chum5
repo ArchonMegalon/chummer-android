@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Weapon Matrix Swap E2E</name>
+  <alias>CareerWeaponMatrixSwapE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <nuyen>8765</nuyen>
+  <karma>19</karma>
+  <customstate>Career Weapon Matrix sentinel</customstate>
+  <weapons>
+    <weapon>
+      <guid>d7111111-1711-4711-8711-171111111111</guid>
+      <name>Career Matrix Weapon</name>
+      <category>Cyberweapons</category>
+      <rating>4</rating>
+      <attack>8</attack>
+      <sleaze>7</sleaze>
+      <dataprocessing>6</dataprocessing>
+      <firewall>5</firewall>
+      <attributearray>8,7,6,5</attributearray>
+      <canswapattributes>True</canswapattributes>
+      <modattack>2</modattack>
+      <modsleaze>3</modsleaze>
+      <moddataprocessing>4</moddataprocessing>
+      <modfirewall>1</modfirewall>
+      <cost>54321</cost>
+      <active>True</active>
+      <homenode>False</homenode>
+      <notes>Career root Weapon sentinel</notes>
+      <underbarrel>
+        <weapon>
+          <guid>d7222222-1722-4722-8722-172222222222</guid>
+          <name>Career underbarrel Matrix sentinel</name>
+          <attack>4</attack><sleaze>3</sleaze><dataprocessing>2</dataprocessing><firewall>1</firewall>
+          <attributearray>4,3,2,1</attributearray><canswapattributes>True</canswapattributes>
+        </weapon>
+      </underbarrel>
+      <accessories>
+        <accessory>
+          <guid>d7333333-1733-4733-8733-173333333333</guid>
+          <name>Career accessory sentinel</name>
+          <gears>
+            <gear>
+              <guid>d7444444-1744-4744-8744-174444444444</guid>
+              <name>Career child Gear Matrix sentinel</name>
+              <attack>4</attack><sleaze>3</sleaze><dataprocessing>2</dataprocessing><firewall>1</firewall>
+              <attributearray>4,3,2,1</attributearray><canswapattributes>True</canswapattributes>
+            </gear>
+          </gears>
+        </accessory>
+      </accessories>
+    </weapon>
+    <weapon>
+      <guid>d7555555-1755-4755-8755-175555555555</guid>
+      <name>Career untouched Weapon</name>
+      <category>Pistols</category>
+      <attack>4</attack><sleaze>3</sleaze><dataprocessing>2</dataprocessing><firewall>1</firewall>
+      <attributearray>4,3,2,1</attributearray><canswapattributes>False</canswapattributes>
+      <notes>Career sibling sentinel</notes>
+    </weapon>
+  </weapons>
+  <gears />
+  <vehicles />
+</character>

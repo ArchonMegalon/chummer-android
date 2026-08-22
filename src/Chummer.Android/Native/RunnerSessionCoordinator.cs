@@ -1010,6 +1010,34 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<WeaponMatrixSwapEditorState?> PrepareWeaponMatrixSwapEditAsync(
+        Guid weaponId,
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareWeaponMatrixSwapEditAsync(weaponId, cancellationToken);
+
+    public async Task ApplyWeaponMatrixSwapEditAsync(
+        WeaponMatrixSwapEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.Profile?.Created != true
+            || State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This Career runner changed while Weapon Matrix swapping was open. Reopen it.");
+        }
+
+        await _presenter.ApplyWeaponMatrixSwapEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Weapon Matrix values swapped." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<VehicleWeaponFiringModeEditorState?> PrepareVehicleWeaponFiringModeEditAsync(
         Guid vehicleId,
         CancellationToken cancellationToken = default)

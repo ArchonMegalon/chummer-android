@@ -16,10 +16,10 @@
     "phoneStatusCounts": {
       "implemented_pending_emulator": 452,
       "implemented_verified_api36": 79,
-      "missing": 956,
+      "missing": 952,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
-      "partial_exact_saved_data": 168
+      "partial_exact_saved_data": 172
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
@@ -417,7 +417,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "a1df3ff04e23b40ebda2380095bdb68571a66aa78bdf4feecc93d046a76c0da5"
+        "sha256": "3ba5262224f5d3ba9b9fcff407bd3f4ff544dab48e5dfd8e0f6f74020bfc0145"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -442,7 +442,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "524321ebdeefef44ae3b2eba3ed91fdd260afef78e85273b977abbbbd8fcf15f"
+        "sha256": "71ce46efc5345372bea3c34e897dc6c43b7165f40184323068ec8ee2dab15dd1"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1782,7 +1782,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "435578b17028a6841b34a824a3ab3d14b0fc8e5220a25306dbb5dbcf7631bed6"
+        "sha256": "8536e1da50bce17457410e96df5e7e3eaf77a08b25c3b1b1c525696ad43b3a98"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1992,7 +1992,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "ee7b3122058cbd08318a483d2083a87a9412ebd03ff7016b29c6ab31414a8310"
+        "sha256": "e1e0c9deb8cb4337a4b4f9ba2d658e3d6424d38955aa77861de6c4ea9de717a7"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2047,7 +2047,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "568e2aec8947fb2b3d2874b62990a846de8ae06c0d19fe17234aab019d989434"
+        "sha256": "6cf7b040fb8c8aace9794d08c7031d516fbf9f6b03a5955859194adac97dbb88"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -2057,7 +2057,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "d033c1077630f94bd825e6a7553fcdd37275f37b5b68249691a019fa84ab87f4"
+      "sha256": "7d60c2c19a3d4c6b9068ade5618496eed4da5c15283e844c079c8e5030682a3f"
     }
   },
   "coverageByFamily": {
@@ -2435,7 +2435,7 @@
     "weapons": {
       "rowCount": 119,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 45,
+      "phoneMissingCount": 41,
       "tabletMissingCount": 72,
       "completionProvenCount": 23
     },
@@ -30950,11 +30950,24 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Weapons > selected stable direct Weapon > Swap Weapon Matrix values",
+        "surface": "WeaponMatrixSwapPage",
+        "automationId": "weapon-matrix-swap-changed-{stable-weapon-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/WeaponMatrixSwapPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WeaponMatrixSwapEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponMatrixSwapRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer cboWeaponGearDataProcessing direct top-level character/weapons/weapon selection only (legacy handler proven); CharacterCreate exposes no corresponding mutable controls. Underbarrel and other descendant Weapons, accessory child Gear, Vehicle-owned Weapons, malformed/duplicate/ineligible/equal/stale state, hidden cases and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -30962,12 +30975,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed direct root Weapon Attack/Sleaze/Data Processing/Firewall raw permutation with exact Guid identity, CharacterCareer.treWeapons source binding, Career-only phase, AttributeArray/CanSwapAttributes provenance, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "two raw direct Weapon Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, underbarrel Weapon, accessory child Gear, siblings, active/home state, rating, category, cost, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery, same-session reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_weapon_matrix_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -31007,11 +31020,24 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Weapons > selected stable direct Weapon > Swap Weapon Matrix values",
+        "surface": "WeaponMatrixSwapPage",
+        "automationId": "weapon-matrix-swap-changed-{stable-weapon-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/WeaponMatrixSwapPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WeaponMatrixSwapEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponMatrixSwapRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer cboWeaponGearFirewall direct top-level character/weapons/weapon selection only (legacy handler proven); CharacterCreate exposes no corresponding mutable controls. Underbarrel and other descendant Weapons, accessory child Gear, Vehicle-owned Weapons, malformed/duplicate/ineligible/equal/stale state, hidden cases and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -31019,12 +31045,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed direct root Weapon Attack/Sleaze/Data Processing/Firewall raw permutation with exact Guid identity, CharacterCareer.treWeapons source binding, Career-only phase, AttributeArray/CanSwapAttributes provenance, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "two raw direct Weapon Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, underbarrel Weapon, accessory child Gear, siblings, active/home state, rating, category, cost, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery, same-session reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_weapon_matrix_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -31064,11 +31090,24 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Weapons > selected stable direct Weapon > Swap Weapon Matrix values",
+        "surface": "WeaponMatrixSwapPage",
+        "automationId": "weapon-matrix-swap-changed-{stable-weapon-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/WeaponMatrixSwapPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WeaponMatrixSwapEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponMatrixSwapRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer cboWeaponGearSleaze direct top-level character/weapons/weapon selection only (legacy handler proven); CharacterCreate exposes no corresponding mutable controls. Underbarrel and other descendant Weapons, accessory child Gear, Vehicle-owned Weapons, malformed/duplicate/ineligible/equal/stale state, hidden cases and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -31076,12 +31115,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed direct root Weapon Attack/Sleaze/Data Processing/Firewall raw permutation with exact Guid identity, CharacterCareer.treWeapons source binding, Career-only phase, AttributeArray/CanSwapAttributes provenance, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "two raw direct Weapon Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, underbarrel Weapon, accessory child Gear, siblings, active/home state, rating, category, cost, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery, same-session reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_weapon_matrix_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -31121,11 +31160,24 @@
       "mutationFamily": "weapons",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "partial_exact_saved_data",
+        "route": "Build > Gear > Weapons > selected stable direct Weapon > Swap Weapon Matrix values",
+        "surface": "WeaponMatrixSwapPage",
+        "automationId": "weapon-matrix-swap-changed-{stable-weapon-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/WeaponMatrixSwapPage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WeaponMatrixSwapEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponMatrixSwapRules.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer cboWeaponGearAttack direct top-level character/weapons/weapon selection only (legacy handler proven); CharacterCreate exposes no corresponding mutable controls. Underbarrel and other descendant Weapons, accessory child Gear, Vehicle-owned Weapons, malformed/duplicate/ineligible/equal/stale state, hidden cases and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -31133,12 +31185,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "typed direct root Weapon Attack/Sleaze/Data Processing/Firewall raw permutation with exact Guid identity, CharacterCareer.treWeapons source binding, Career-only phase, AttributeArray/CanSwapAttributes provenance, zero Nuyen/Karma economics, node revision and expected workspace revision",
+      "persistenceAssertion": "two raw direct Weapon Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, underbarrel Weapon, accessory child Gear, siblings, active/home state, rating, category, cost, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery, same-session reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_weapon_matrix_swap_e2e.py"
         },
         "tablet": {
           "status": "missing",

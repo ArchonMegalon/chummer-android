@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Weapon Matrix Negative E2E</name>
+  <alias>CreationWeaponMatrixNegativeE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <nuyen>4321</nuyen>
+  <karma>7</karma>
+  <customstate>Creation Weapon Matrix negative sentinel</customstate>
+  <weapons>
+    <weapon>
+      <guid>d7666666-1766-4766-8766-176666666666</guid>
+      <name>Creation eligible-looking Matrix Weapon</name>
+      <category>Cyberweapons</category>
+      <rating>3</rating>
+      <attack>7</attack><sleaze>6</sleaze><dataprocessing>5</dataprocessing><firewall>4</firewall>
+      <attributearray>7,6,5,4</attributearray><canswapattributes>True</canswapattributes>
+      <modattack>1</modattack><modsleaze>2</modsleaze><moddataprocessing>3</moddataprocessing><modfirewall>4</modfirewall>
+      <cost>12345</cost><active>False</active><homenode>False</homenode>
+      <notes>Creation target must remain unchanged</notes>
+      <underbarrel />
+      <accessories />
+    </weapon>
+  </weapons>
+  <gears />
+  <vehicles />
+</character>

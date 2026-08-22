@@ -1975,6 +1975,12 @@ CYBERWARE_MATRIX_SWAP_CONTROLS = {
     "cboCyberwareDataProcessing": "cboCyberwareDataProcessing_SelectedIndexChanged",
     "cboCyberwareFirewall": "cboCyberwareFirewall_SelectedIndexChanged",
 }
+WEAPON_MATRIX_SWAP_CONTROLS = {
+    "cboWeaponGearAttack": "cboWeaponGearAttack_SelectedIndexChanged",
+    "cboWeaponGearSleaze": "cboWeaponGearSleaze_SelectedIndexChanged",
+    "cboWeaponGearDataProcessing": "cboWeaponGearDataProcessing_SelectedIndexChanged",
+    "cboWeaponGearFirewall": "cboWeaponGearFirewall_SelectedIndexChanged",
+}
 IMPROVEMENT_ACTIVE_CONTROL = "chkImprovementActive"
 IMPROVEMENT_NOTES_CONTROL = "tsImprovementNotes"
 IMPROVEMENT_GROUP_ADD_CONTROL = "cmdAddImprovementGroup"
@@ -12050,6 +12056,173 @@ def _known_phone_mapping(
             "coverageLimit": f"Exact {class_name} {control} top-level Cyberware root selection only ({'legacy handler proven' if legacy_exact else 'legacy handler proof unavailable'}); descendant Cyberware and child Gear IHasMatrixAttributes targets, malformed/duplicate/ineligible/equal/stale state, and tablet fail closed.",
             "e2e": {"status": "scripted_not_executed" if scripted else "missing",
                     "ref": "tests/run_api36_cyberware_matrix_swap_e2e.py" if scripted else None},
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "CharacterCareer" and control in WEAPON_MATRIX_SWAP_CONTROLS:
+        legacy_source = chummer5_root / "Chummer/Forms/Character Forms/CharacterCareer.cs"
+        legacy_matrix_authority = chummer5_root / "Chummer/Backend/Interfaces/IHasMatrixAttributes.cs"
+        page = REPO_ROOT / "src/Chummer.Android/Native/WeaponMatrixSwapPage.cs"
+        editor = REPO_ROOT / "src/Chummer.Android/Native/CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests/run_api36_weapon_matrix_swap_e2e.py"
+        career_fixture = REPO_ROOT / "tests/fixtures/career-weapon-matrix-swap-e2e.chum5"
+        creation_fixture = REPO_ROOT / "tests/fixtures/creation-weapon-matrix-swap-negative-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation/Overview"
+        request = overview / "WeaponMatrixSwapEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        interface = overview / "ICharacterOverviewPresenter.cs"
+        rules = character_notes_core_root / "Chummer.Contracts/Characters/CharacterWeaponMatrixSwapRules.cs"
+        shared_authority = character_notes_core_root / "Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        handler = WEAPON_MATRIX_SWAP_CONTROLS[control]
+        legacy_exact = (
+            any(event.get("handler") == handler for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                handler,
+                "treWeapons.DoThreadSafeFuncAsync",
+                "IHasMatrixAttributes",
+                "ProcessMatrixAttributeComboBoxChangeAsync",
+                "cboWeaponGearAttack",
+                "cboWeaponGearSleaze",
+                "cboWeaponGearDataProcessing",
+                "cboWeaponGearFirewall",
+            )
+            and _contains(
+                legacy_matrix_authority,
+                "CanSwapAttributes",
+                "AttributeArray",
+                "RefreshMatrixAttributeComboBoxesAsync",
+                "ProcessMatrixAttributeComboBoxChangeAsync",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "class WeaponMatrixSwapPage",
+                "CharacterWeaponMatrixStat.Attack",
+                "CharacterWeaponMatrixStat.Sleaze",
+                "CharacterWeaponMatrixStat.DataProcessing",
+                "CharacterWeaponMatrixStat.Firewall",
+                'AutomationId = $"weapon-matrix-swap-page-{token}"',
+                "CharacterWeaponMatrixSwapPhase.Career",
+                "TryValidateMutation",
+            )
+            and _contains(
+                editor,
+                "AddWeaponMatrixSwapAction",
+                "Coordinator.State.Profile?.Created != true",
+                'automationId: $"weapon-matrix-swap-open-{weaponId:N}"',
+            )
+            and _contains(
+                coordinator,
+                "PrepareWeaponMatrixSwapEditAsync",
+                "ApplyWeaponMatrixSwapEditAsync",
+                "ExpectedContentRevision",
+                "State.Profile?.Created != true",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CharacterWeaponMatrixSwapIdentity",
+                "FindWeaponRoot",
+                'root.Descendants("weapon")',
+                'containers[0].Elements("weapon")',
+                "attributearray",
+                "canswapattributes",
+                'ReadSingle(weapon, "dataprocessing")',
+            )
+            and _contains(
+                mutation,
+                "ApplyWeaponMatrixSwapEdit",
+                "CharacterWeaponMatrixSwapRules.TryValidateMutation",
+                "changed.Value",
+                "target.Value",
+            )
+            and _contains(
+                presenter,
+                "PrepareWeaponMatrixSwapEditAsync",
+                "ApplyWeaponMatrixSwapEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(interface, "PrepareWeaponMatrixSwapEditAsync", "ApplyWeaponMatrixSwapEditAsync")
+            and _contains(
+                rules,
+                "CharacterWeaponMatrixSwapIdentity",
+                "CharacterWeaponMatrixSwapPhase.Career",
+                'LegacySurface = "CharacterCareer.treWeapons"',
+                "NuyenDelta: 0m",
+                "KarmaDelta: 0",
+                "RequiresMatrixInitiativeNotification",
+                "CharacterMatrixPermutationAuthority",
+                "SHA256.HashData",
+            )
+            and _contains(shared_authority, "HasExactRawState", "TryValidatePermutation", "SHA256.HashData")
+            and _contains(store, "expectedContentRevision", "Flush(flushToDisk: true)", "File.Replace", "File.Move")
+        )
+        scripted = (
+            _contains(
+                driver,
+                '"CharacterCareer.cboWeaponGearAttack"',
+                '"CharacterCareer.cboWeaponGearSleaze"',
+                '"CharacterCareer.cboWeaponGearDataProcessing"',
+                '"CharacterCareer.cboWeaponGearFirewall"',
+                'if api != "36"',
+                '"arm64-v8a" not in abi.split(",")',
+                "shared.PACKAGE",
+                '"profile": "phone"',
+                '"journey": "weapon-matrix-swap"',
+                '"creationActionNotExposed": "pass"',
+                '"descendantAndOtherOwnerTargetsFailClosedCoverage": "pass"',
+                '"weaponMatrixRulesSha256"',
+                '"workspaceStoreSha256"',
+            )
+            and career_fixture.is_file()
+            and creation_fixture.is_file()
+        )
+        return {
+            "status": "partial_exact_saved_data" if implemented else "missing",
+            "route": "Build > Gear > Weapons > selected stable direct Weapon > Swap Weapon Matrix values",
+            "surface": "WeaponMatrixSwapPage",
+            "automationId": "weapon-matrix-swap-changed-{stable-weapon-guid}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/WeaponMatrixSwapPage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WeaponMatrixSwapEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponMatrixSwapRules.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "typed direct root Weapon Attack/Sleaze/Data Processing/Firewall raw permutation with exact Guid "
+                "identity, CharacterCareer.treWeapons source binding, Career-only phase, AttributeArray/"
+                "CanSwapAttributes provenance, zero Nuyen/Karma economics, node revision and expected workspace revision"
+            ),
+            "persistenceAssertion": (
+                "two raw direct Weapon Matrix strings exchange atomically while bonuses, attributearray/"
+                "canswapattributes, underbarrel Weapon, accessory child Gear, siblings, active/home state, rating, "
+                "category, cost, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery, "
+                "same-session reopen and process restart"
+            ),
+            "coverageLimit": (
+                f"Exact CharacterCareer {control} direct top-level character/weapons/weapon selection only "
+                f"({'legacy handler proven' if legacy_exact else 'legacy handler proof unavailable'}); "
+                "CharacterCreate exposes no corresponding mutable controls. Underbarrel and other descendant "
+                "Weapons, accessory child Gear, Vehicle-owned Weapons, malformed/duplicate/ineligible/equal/stale "
+                "state, hidden cases and tablet fail closed."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if scripted else "missing",
+                "ref": "tests/run_api36_weapon_matrix_swap_e2e.py" if scripted else None,
+            },
             "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
             "tabletE2e": {"status": "missing", "ref": None},
         }

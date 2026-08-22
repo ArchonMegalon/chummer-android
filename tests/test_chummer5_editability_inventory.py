@@ -2291,10 +2291,10 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 452,
                 "implemented_verified_api36": 79,
-                "missing": 956,
+                "missing": 952,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
-                "partial_exact_saved_data": 168,
+                "partial_exact_saved_data": 172,
             },
             payload["summary"]["phoneStatusCounts"],
         )
@@ -4488,6 +4488,70 @@ namespace Chummer
             '"status": "partial_exact_saved_data" if implemented and legacy_exact else "missing"',
             "direct Vehicle/weapons/weapon selection only",
             "tests/run_api36_vehicle_weapon_firing_mode_e2e.py",
+        ):
+            self.assertIn(marker, source)
+
+    def test_weapon_matrix_source_mapping_is_four_row_career_only_typed_partial_and_scripted(self) -> None:
+        import inspect
+
+        source = SCRIPT.read_text(encoding="utf-8")
+        self.assertEqual({
+            "cboWeaponGearAttack": "cboWeaponGearAttack_SelectedIndexChanged",
+            "cboWeaponGearSleaze": "cboWeaponGearSleaze_SelectedIndexChanged",
+            "cboWeaponGearDataProcessing": "cboWeaponGearDataProcessing_SelectedIndexChanged",
+            "cboWeaponGearFirewall": "cboWeaponGearFirewall_SelectedIndexChanged",
+        }, inventory.WEAPON_MATRIX_SWAP_CONTROLS)
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = [
+            row for row in payload["rows"]
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] in inventory.WEAPON_MATRIX_SWAP_CONTROLS
+        ]
+        self.assertEqual(4, len(rows))
+        self.assertEqual({"CharacterCareer"}, {
+            row["legacy"]["formOrControl"] for row in rows
+        })
+        parameters = list(inspect.signature(inventory._known_phone_mapping).parameters)
+        receipt_arguments = {
+            name: {} if name in {"condition_e2e_receipts", "contact_pet_e2e_receipts"} else None
+            for name in parameters[4:]
+        }
+        for row in rows:
+            mapping = inventory._known_phone_mapping(
+                row,
+                inventory.DEFAULT_CHUMMER5_ROOT,
+                PRESENTATION_ROOT,
+                CORE_ROOT,
+                **receipt_arguments,
+            )
+            self.assertEqual("partial_exact_saved_data", mapping["status"])
+            self.assertEqual("WeaponMatrixSwapPage", mapping["surface"])
+            self.assertEqual(
+                "weapon-matrix-swap-changed-{stable-weapon-guid}",
+                mapping["automationId"],
+            )
+            self.assertIn("typed direct root Weapon", mapping["presenterMutation"])
+            self.assertIn("Career-only phase", mapping["presenterMutation"])
+            self.assertIn("CharacterCreate exposes no corresponding", mapping["coverageLimit"])
+            self.assertIn("Vehicle-owned Weapons", mapping["coverageLimit"])
+            self.assertEqual("scripted_not_executed", mapping["e2e"]["status"])
+            self.assertEqual(
+                "tests/run_api36_weapon_matrix_swap_e2e.py",
+                mapping["e2e"]["ref"],
+            )
+            self.assertEqual("missing", mapping["tablet"]["status"])
+        for marker in (
+            "WeaponMatrixSwapPage",
+            "WeaponMatrixSwapEditRequest.cs",
+            "CharacterWeaponMatrixSwapRules.cs",
+            'LegacySurface = "CharacterCareer.treWeapons"',
+            '"status": "partial_exact_saved_data" if implemented else "missing"',
+            "CharacterCreate exposes no corresponding mutable controls",
+            "tests/run_api36_weapon_matrix_swap_e2e.py",
         ):
             self.assertIn(marker, source)
 
