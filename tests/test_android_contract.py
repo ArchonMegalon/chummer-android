@@ -75,6 +75,27 @@ class AndroidContractTests(unittest.TestCase):
         self.assertEqual(2, project.count('AdditionalProperties="RuntimeIdentifier=;RuntimeIdentifiers=;SelfContained=false"'))
         self.assertIn("<EmbedAssembliesIntoApk Condition=\"'$(Configuration)' == 'Debug'\">true</EmbedAssembliesIntoApk>", project)
 
+    def test_api36_e2e_workflow_pins_the_coherent_dependency_graph(self) -> None:
+        workflow = (REPO / ".github" / "workflows" / "api36-editing-e2e.yml").read_text(
+            encoding="utf-8"
+        )
+
+        for dependency, commit in (
+            ("ArchonMegalon/chummer6-ui", "8090e53f6dd64794145d81d7698394e4881d0c02"),
+            ("ArchonMegalon/chummer6-core", "b6c64fda939479e1aada77b46f15d477fb817759"),
+            ("ArchonMegalon/chummer6-hub", "25f4906b1b92fa286c63ec364ea33ada63ba9431"),
+            ("ArchonMegalon/chummer6-ui-kit", "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61"),
+            ("ArchonMegalon/chummer6-hub-registry", "7b54afec574a9327616c4ad7566da3a7b6b906a5"),
+            ("ArchonMegalon/chummer6-media-factory", "415c8163d3d90b1211e4014fef332bdec6d75f73"),
+        ):
+            checkout = f"repository: {dependency}\n"
+            self.assertEqual(1, workflow.count(checkout), dependency)
+            dependency_block = workflow[workflow.index(checkout) :]
+            dependency_block = dependency_block[: dependency_block.index("fetch-depth: 1")]
+            self.assertIn(f"ref: {commit}", dependency_block, dependency)
+
+        self.assertIn("path: fleet/repos/chummer-media-factory", workflow)
+
     def test_android_uses_play_updates_and_verified_links(self) -> None:
         project = (PROJECT / "Chummer.Android.csproj").read_text(encoding="utf-8")
         system_service = (PROJECT / "Platforms" / "Android" / "AndroidSystemService.cs").read_text(encoding="utf-8")
