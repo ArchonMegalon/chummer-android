@@ -21,6 +21,13 @@ public sealed class AndroidDocumentService : IAndroidDocumentService
         => Task.FromResult(false);
 }
 
+public sealed class AndroidImageDocumentService : IAndroidImageDocumentService
+{
+    public Task<AndroidImageDocumentCandidate?> OpenValidatedAsync(
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<AndroidImageDocumentCandidate?>(null);
+}
+
 public sealed class AndroidSystemService : IAndroidSystemService
 {
     public Task<bool> OpenUriAsync(Uri uri) => Task.FromResult(false);

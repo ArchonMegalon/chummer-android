@@ -5,6 +5,7 @@ repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
 solution_path="$repo_dir/Chummer.Android.slnx"
 compile_check_path="$repo_dir/tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj"
+compile_graph_verifier="$repo_dir/scripts/verify_native_compile_graph.py"
 framework="net10.0-android36.0"
 # The Play release lane is arm64-only. A single RID also keeps the shared
 # net10.0 project-reference restore graph deterministic on clean hosts.
@@ -62,6 +63,15 @@ mkdir -p "$android_sdk_dir" "$java_sdk_dir"
   -p:ChummerUseLocalCompatibilityTree=true \
   -p:AndroidSdkDirectory="$android_sdk_dir" \
   -p:JavaSdkDirectory="$java_sdk_dir"
+
+python3 "$compile_graph_verifier" \
+  --repo-root "$repo_dir" \
+  --project "$compile_check_path" \
+  --require-assets
+python3 "$compile_graph_verifier" \
+  --repo-root "$repo_dir" \
+  --project "$project_path" \
+  --assets-only
 
 "$dotnet_command" build "$project_path" \
   -t:InstallAndroidDependencies \

@@ -1531,17 +1531,28 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("CryptographicOperations.ZeroMemory(buffer)", print_service)
         self.assertIn("Interlocked.CompareExchange", broker)
 
-    def test_native_compile_gate_includes_linked_character_service(self) -> None:
-        compile_project = (
+    def test_native_compile_gate_owns_platform_dependencies_and_preflight(self) -> None:
+        compile_root = (
             REPO
             / "tests"
             / "Chummer.Android.Native.CompileCheck"
-            / "Chummer.Android.Native.CompileCheck.csproj"
-        ).read_text(encoding="utf-8")
+        )
+        compile_project = (compile_root / "Chummer.Android.Native.CompileCheck.csproj").read_text(
+            encoding="utf-8"
+        )
+        inputs = (compile_root / "NativeCompileInputs.props").read_text(encoding="utf-8")
+        stubs = (compile_root / "CompileStubs.cs").read_text(encoding="utf-8")
+        self.assertIn('<Import Project="NativeCompileInputs.props" />', compile_project)
+        self.assertIn("VerifyNativeCompileGraph", compile_project)
         self.assertIn(
             "../../src/Chummer.Android/Platform/"
             "IAndroidLinkedCharacterFileService.cs",
-            compile_project,
+            inputs,
+        )
+        self.assertIn("IAndroidImageDocumentService.cs", inputs)
+        self.assertIn(
+            "class AndroidImageDocumentService : IAndroidImageDocumentService",
+            stubs,
         )
 
     def test_phone_gear_quantity_lifecycle_is_stable_revision_bound_and_career_exact(self) -> None:

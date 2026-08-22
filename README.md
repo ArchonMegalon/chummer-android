@@ -92,11 +92,27 @@ keeps the selected Android runtime aligned across the MAUI app and the shared
 restore boundary.
 
 When Android SDK 36 is not available, the platform-neutral native compile gate
-still checks all Shell/pages and shared-presenter calls without an Android SDK:
+still checks all Shell/pages and shared-presenter calls without an Android SDK.
+Its checked-in input manifest explicitly owns every source outside the native
+page directory, including platform-neutral service stubs, and rejects generated
+assets that point at deleted or out-of-workspace worktrees:
 
 ```sh
 dotnet build tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj
 ```
+
+For an already provisioned SDK 36 host, the read-only Release compile wrapper
+performs the pinned .NET/Android/JDK preflight, validates the no-restore asset
+graph, and runs only the native `Compile` target:
+
+```sh
+scripts/compile-native-release-no-package.sh
+```
+
+The preflight exits `78` when the SDK/workload/JDK is unavailable and `64` for
+an invalid repository pin. A later nonzero exit is a C# compile failure after
+the toolchain passed. The wrapper does not restore, download, package, publish,
+or start an emulator.
 
 On a clean Linux host, `scripts/bootstrap-build-environment.sh` can use the
 official .NET `InstallAndroidDependencies` target to install the exact Android

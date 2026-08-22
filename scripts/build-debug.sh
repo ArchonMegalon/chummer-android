@@ -5,6 +5,7 @@ repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 solution_path="$repo_dir/Chummer.Android.slnx"
 project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
 compile_check_path="$repo_dir/tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj"
+compile_graph_verifier="$repo_dir/scripts/verify_native_compile_graph.py"
 dotnet_command="${CHUMMER_DOTNET:-dotnet}"
 framework="net10.0-android36.0"
 runtime_identifier="${CHUMMER_ANDROID_RUNTIME_ID:-android-arm64}"
@@ -22,6 +23,15 @@ esac
   -p:ChummerAndroidRuntimeIdentifier="$runtime_identifier" \
   -p:ChummerDesktopRuntimeIdentifiers= \
   -p:ChummerUseLocalCompatibilityTree=true
+
+python3 "$compile_graph_verifier" \
+  --repo-root "$repo_dir" \
+  --project "$compile_check_path" \
+  --require-assets
+python3 "$compile_graph_verifier" \
+  --repo-root "$repo_dir" \
+  --project "$project_path" \
+  --assets-only
 
 "$dotnet_command" build "$project_path" \
   --configuration Debug \

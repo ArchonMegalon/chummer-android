@@ -14,16 +14,8 @@
     <ProjectReference Include="$(ChummerPresentationRoot)/Chummer.Presentation/Chummer.Presentation.csproj" />
     <ProjectReference Include="$(ChummerPresentationRoot)/Chummer.Desktop.Runtime/Chummer.Desktop.Runtime.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="../../src/Chummer.Android/Native/*.cs" Link="Native/%(Filename)%(Extension)" />
-    <Compile Include="../../src/Chummer.Android/MainShell.cs" Link="MainShell.cs" />
-    <Compile Include="../../src/Chummer.Android/MauiProgram.cs" Link="MauiProgram.cs" />
-    <Compile Include="../../src/Chummer.Android/Platform/IAndroidAccountLinkService.cs" Link="Platform/IAndroidAccountLinkService.cs" />
-    <Compile Include="../../src/Chummer.Android/Platform/IAndroidDocumentService.cs" Link="Platform/IAndroidDocumentService.cs" />
-    <Compile Include="../../src/Chummer.Android/Platform/IAndroidLinkedCharacterFileService.cs" Link="Platform/IAndroidLinkedCharacterFileService.cs" />
-    <Compile Include="../../src/Chummer.Android/Platform/IAndroidSystemService.cs" Link="Platform/IAndroidSystemService.cs" />
-    <Compile Include="../../src/Chummer.Android/Platform/AndroidAccountLinkService.cs" Link="Platform/AndroidAccountLinkService.cs" />
-    <Compile Include="../../src/Chummer.Android/Platform/ChummerWebRoutes.cs" Link="Platform/ChummerWebRoutes.cs" />
-    <Compile Include="CompileStubs.cs" />
-  </ItemGroup>
+  <Import Project="NativeCompileInputs.props" />
+  <Target Name="VerifyNativeCompileGraph" BeforeTargets="PrepareForBuild">
+    <Exec Command="python3 &quot;$(MSBuildProjectDirectory)/../../scripts/verify_native_compile_graph.py&quot; --repo-root &quot;$(MSBuildProjectDirectory)/../..&quot; --project &quot;$(MSBuildProjectFullPath)&quot; --require-assets" />
+  </Target>
 </Project>
