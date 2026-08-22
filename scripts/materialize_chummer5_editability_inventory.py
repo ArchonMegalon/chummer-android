@@ -1937,6 +1937,10 @@ GEAR_EQUIPMENT_CONTROL = "chkGearEquipped"
 GEAR_OVERCLOCKER_CONTROL = "cboGearOverclocker"
 GEAR_ATTACK_SWAP_CONTROL = "cboGearAttack"
 GEAR_SLEAZE_SWAP_CONTROL = "cboGearSleaze"
+GEAR_DATA_PROCESSING_FIREWALL_SWAP_CONTROLS = {
+    "cboGearDataProcessing": "cboGearDataProcessing_SelectedIndexChanged",
+    "cboGearFirewall": "cboGearFirewall_SelectedIndexChanged",
+}
 IMPROVEMENT_ACTIVE_CONTROL = "chkImprovementActive"
 IMPROVEMENT_NOTES_CONTROL = "tsImprovementNotes"
 IMPROVEMENT_GROUP_ADD_CONTROL = "cmdAddImprovementGroup"
@@ -11479,6 +11483,106 @@ def _known_phone_mapping(
             "coverageLimit":f"Exact {class_name} cboGearSleaze only; equal raw values, malformed/ineligible/duplicate Gear and tablet fail closed.",
             "e2e":{"status":"scripted_not_executed" if scripted else "missing", "ref":"tests/run_api36_gear_sleaze_swap_e2e.py" if scripted else None},
             "tablet":{"status":"missing","surface":None,"automationId":None,"sourceRefs":[]}, "tabletE2e":{"status":"missing","ref":None}}
+    if (class_name in {"CharacterCreate", "CharacterCareer"}
+            and control in GEAR_DATA_PROCESSING_FIREWALL_SWAP_CONTROLS):
+        legacy_source = presentation_root / "Chummer/Forms/Character Forms" / f"{class_name}.cs"
+        page = REPO_ROOT / "src/Chummer.Android/Native/GearDataProcessingFirewallSwapPage.cs"
+        editor = REPO_ROOT / "src/Chummer.Android/Native/CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests/run_api36_gear_dp_firewall_swap_e2e.py"
+        overview = presentation_root / "Chummer.Presentation/Overview"
+        request = overview / "GearDataProcessingFirewallSwapEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        interface = overview / "ICharacterOverviewPresenter.cs"
+        sleaze_request = overview / "GearSleazeSwapEditRequest.cs"
+        shared_rules = character_notes_core_root / "Chummer.Contracts/Characters/CharacterGearMatrixSwapRules.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        expected_handler = GEAR_DATA_PROCESSING_FIREWALL_SWAP_CONTROLS[control]
+        legacy_exact = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(legacy_source, expected_handler, "IHasMatrixAttributes objTarget",
+                          "ProcessMatrixAttributeComboBoxChangeAsync", "cboGearAttack", "cboGearSleaze",
+                          "cboGearDataProcessing", "cboGearFirewall")
+        )
+        implemented = (
+            legacy_exact
+            and _contains(page, "class GearDataProcessingFirewallSwapPage",
+                          "CharacterGearMatrixStat.DataProcessing", "CharacterGearMatrixStat.Firewall",
+                          'AutomationId = $"gear-dp-firewall-swap-page-{token}"',
+                          'AutomationId = $"gear-dp-firewall-swap-changed-{token}"',
+                          "TryValidateDataProcessingOrFirewallMutation", "selected.Revision")
+            and _contains(editor, "AddGearDataProcessingFirewallSwapAction",
+                          'automationId: $"gear-dp-firewall-swap-open-{gearId:N}"',
+                          "new GearDataProcessingFirewallSwapPage")
+            and _contains(coordinator, "PrepareGearDataProcessingFirewallSwapEditAsync",
+                          "ApplyGearDataProcessingFirewallSwapEditAsync", "ExpectedContentRevision",
+                          "_presenter.SaveAsync")
+            and _contains(request, "CharacterGearMatrixSwapIdentity",
+                          "GearDataProcessingFirewallSwapEditorProjector",
+                          "GearSleazeSwapEditorProjector.ProjectValue",
+                          "CharacterGearMatrixStat ChangedAttribute")
+            and _contains(sleaze_request, "GearAttackSwapEditorProjector.ProjectValue",
+                          "CharacterGearMatrixSwapState")
+            and _contains(mutation, "ApplyGearDataProcessingFirewallSwapEdit",
+                          "TryValidateDataProcessingOrFirewallMutation",
+                          "SetElementValue(target, changedElement", "SetElementValue(target, targetElement")
+            and _contains(presenter, "PrepareGearDataProcessingFirewallSwapEditAsync",
+                          "ApplyGearDataProcessingFirewallSwapEditAsync", "ApplyWorkspaceXmlMutationAsync")
+            and _contains(interface, "PrepareGearDataProcessingFirewallSwapEditAsync",
+                          "ApplyGearDataProcessingFirewallSwapEditAsync")
+            and _contains(shared_rules, "CharacterGearMatrixStat", "CharacterGearMatrixSwapIdentity",
+                          "NuyenDelta: 0m", "KarmaDelta: 0",
+                          "TryValidateDataProcessingOrFirewallMutation",
+                          "RequiresMatrixInitiativeNotification", "SHA256.HashData")
+            and _contains(store, "expectedContentRevision", "Flush(flushToDisk: true)",
+                          "File.Replace", "File.Move")
+        )
+        scripted = (
+            _contains(driver, '"CharacterCreate.cboGearDataProcessing"',
+                      '"CharacterCreate.cboGearFirewall"',
+                      '"CharacterCareer.cboGearDataProcessing"',
+                      '"CharacterCareer.cboGearFirewall"', 'api != "36"',
+                      '"arm64-v8a" not in abi.split(",")', "shared.PACKAGE",
+                      '"journey":"gear-data-processing-firewall-swap"',
+                      '"dataProcessingNotificationOnly"', '"activeHomeStatePreserved"',
+                      '"gearMatrixSwapRulesSha256"', '"workspaceStoreSha256"')
+            and (REPO_ROOT / "tests/fixtures/creation-gear-dp-firewall-swap-e2e.chum5").is_file()
+            and (REPO_ROOT / "tests/fixtures/career-gear-dp-firewall-swap-e2e.chum5").is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Gear > Gear > selected stable root Gear > Matrix Gear Swap Data Processing / Firewall",
+            "surface": "GearDataProcessingFirewallSwapPage",
+            "automationId": "gear-dp-firewall-swap-changed-{stable-root-gear-guid}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/GearDataProcessingFirewallSwapPage.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/GearDataProcessingFirewallSwapEditRequest.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearMatrixSwapRules.cs",
+            ],
+            "presenterMutation": (
+                "typed explicit Data Processing-or-Firewall-to-target raw Matrix permutation with recursive Gear "
+                "Guid identity, Create/Career phase, CanSwapAttributes eligibility, zero Nuyen/Karma economics, "
+                "node revision, expected workspace content revision, and Data Processing notification classification"
+            ),
+            "persistenceAssertion": (
+                "the chosen raw dataprocessing or firewall value and one target exchange atomically while bonuses, "
+                "active/home notification consumers and flags, attributearray/canswapattributes provenance, cost, "
+                "Nuyen, Karma, siblings, and unrelated XML remain exact after revision-bound atomic save/recovery, "
+                "same-session reopen, and process restart"
+            ),
+            "coverageLimit": (
+                f"Exact {class_name} {control} semantics for eligible recursive Gear only; equal raw values, "
+                "malformed/ineligible/duplicate Gear, stale node/workspace revision, unrelated changed attributes, "
+                "and tablet fail closed."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if scripted else "missing",
+                "ref": "tests/run_api36_gear_dp_firewall_swap_e2e.py" if scripted else None,
+            },
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCareer" and control == GEAR_OVERCLOCKER_CONTROL:
         legacy_source = (
             presentation_root / "Chummer" / "Forms" / "Character Forms" / "CharacterCareer.cs"
@@ -17904,6 +18008,9 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearOverclockerPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearAttackSwapPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearSleazeSwapPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearDataProcessingFirewallSwapPage.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "GearDataProcessingFirewallSwapEditRequest.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGearMatrixSwapRules.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementActivePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementNotesPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementGroupAddPage.cs",
@@ -17929,6 +18036,9 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_editing_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_attack_swap_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_sleaze_swap_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_gear_dp_firewall_swap_e2e.py",
+        REPO_ROOT / "tests" / "fixtures" / "creation-gear-dp-firewall-swap-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-gear-dp-firewall-swap-e2e.chum5",
         REPO_ROOT / "tests" / "run_api36_character_notes_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_reputation_e2e.py",
         REPO_ROOT / "tests" / "run_api36_situational_modifiers_e2e.py",

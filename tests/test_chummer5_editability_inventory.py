@@ -1206,6 +1206,37 @@ namespace Chummer
             self.assertEqual("tests/run_api36_gear_sleaze_swap_e2e.py", row["e2e"]["phone"]["ref"])
             self.assertEqual("missing", row["tablet"]["status"])
 
+        gear_data_processing_firewall_swap = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"]
+                in inventory.GEAR_DATA_PROCESSING_FIREWALL_SWAP_CONTROLS
+        ]
+        self.assertEqual(4, len(gear_data_processing_firewall_swap))
+        self.assertEqual(
+            {
+                ("CharacterCreate", "cboGearDataProcessing"),
+                ("CharacterCreate", "cboGearFirewall"),
+                ("CharacterCareer", "cboGearDataProcessing"),
+                ("CharacterCareer", "cboGearFirewall"),
+            },
+            {(row["legacy"]["formOrControl"], row["legacy"]["controlName"])
+             for row in gear_data_processing_firewall_swap},
+        )
+        for row in gear_data_processing_firewall_swap:
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("GearDataProcessingFirewallSwapPage", row["phone"]["surface"])
+            self.assertIn("Data Processing-or-Firewall-to-target", row["presenterMutation"])
+            self.assertIn("zero Nuyen/Karma economics", row["presenterMutation"])
+            self.assertIn("active/home notification consumers and flags", row["persistenceAssertion"])
+            self.assertIn("revision-bound atomic save/recovery", row["persistenceAssertion"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_gear_dp_firewall_swap_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertEqual("missing", row["tablet"]["status"])
+
         gear_overclocker = [
             row for row in rows
             if row["legacy"]["formOrControl"] == "CharacterCareer"

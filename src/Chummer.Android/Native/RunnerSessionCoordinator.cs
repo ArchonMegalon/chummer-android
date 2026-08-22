@@ -1003,6 +1003,33 @@ public sealed class RunnerSessionCoordinator : IDisposable
         await SyncShellAsync(cancellationToken); NotifyChanged();
     }
 
+    public Task<GearDataProcessingFirewallSwapEditorState?> PrepareGearDataProcessingFirewallSwapEditAsync(
+        Guid rootGearId,
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareGearDataProcessingFirewallSwapEditAsync(rootGearId, cancellationToken);
+
+    public async Task ApplyGearDataProcessingFirewallSwapEditAsync(
+        GearDataProcessingFirewallSwapEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Gear Data Processing or Firewall was open. Reopen it.");
+        }
+
+        await _presenter.ApplyGearDataProcessingFirewallSwapEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Gear Data Processing or Firewall value swapped." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<ImprovementActiveEditorState?> PrepareImprovementActiveEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareImprovementActiveEditAsync(cancellationToken);
