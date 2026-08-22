@@ -1327,6 +1327,32 @@ namespace Chummer
             )
             self.assertFalse(row["completionProven"])
 
+        martial_art_notes = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.MARTIAL_ART_NOTES_CONTROL
+        ]
+        self.assertEqual(2, len(martial_art_notes))
+        for row in martial_art_notes:
+            self.assertEqual("qualities", row["mutationFamily"])
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Martial Arts Notes > selected Martial Art or parent-scoped Technique",
+                row["phone"]["route"],
+            )
+            self.assertEqual("MartialArtNotesPage", row["phone"]["surface"])
+            self.assertEqual("martial-art-notes-save", row["phone"]["automationId"])
+            self.assertIn("parent-scoped Technique", row["presenterMutation"])
+            self.assertIn("all non-notes target fields", row["persistenceAssertion"])
+            self.assertIn("zero Karma/Nuyen", row["phone"]["coverageLimit"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "tests/run_api36_martial_art_notes_e2e.py",
+                row["e2e"]["phone"]["ref"],
+            )
+            self.assertFalse(row["completionProven"])
+
         improvement_group_active = [
             row for row in rows
             if row["legacy"]["formOrControl"] == "CharacterCareer"
@@ -2187,9 +2213,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 439,
+                "implemented_pending_emulator": 441,
                 "implemented_verified_api36": 79,
-                "missing": 989,
+                "missing": 987,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 148,

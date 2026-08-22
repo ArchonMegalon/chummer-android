@@ -423,6 +423,15 @@ CAPTURE_ONLY_PHONE_E2E_SOURCE_PATHS: dict[str, tuple[str, str]] = {
         "core",
         "Chummer.Contracts/Characters/CharacterFreeSpriteConversionRules.cs",
     ),
+    "martialArtNotesPageSha256": ("android", "src/Chummer.Android/Native/MartialArtNotesPage.cs"),
+    "martialArtNotesContractSha256": (
+        "presentation",
+        "Chummer.Presentation/Overview/MartialArtNotesEditRequest.cs",
+    ),
+    "martialArtNotesRulesSha256": (
+        "core",
+        "Chummer.Contracts/Characters/CharacterMartialArtNotesRules.cs",
+    ),
     "rosterFavoritesPageSha256": ("android", "src/Chummer.Android/Native/RosterFavoritesPage.cs"),
     "homePageSha256": ("android", "src/Chummer.Android/Native/HomePage.cs"),
     "mauiProgramSha256": ("android", "src/Chummer.Android/MauiProgram.cs"),
@@ -688,6 +697,34 @@ CAPTURE_ONLY_PHONE_E2E_DEFINITIONS: dict[str, dict[str, Any]] = {
         ),
         "journeys": (
             "creationExactConversion", "careerExactConversion", "sameSessionReopen", "processRestart",
+        ),
+    },
+    "martial-art-notes": {
+        "driver": "tests/run_api36_martial_art_notes_e2e.py",
+        "fixtures": (
+            ("creationFixtureSha256", "tests/fixtures/creation-martial-art-notes-e2e.chum5"),
+            ("careerFixtureSha256", "tests/fixtures/career-martial-art-notes-e2e.chum5"),
+        ),
+        "sourceKeys": (
+            "martialArtNotesPageSha256", "buildPageSha256", "coordinatorSha256",
+            "martialArtNotesContractSha256", "mutationCatalogSha256", "presenterMutationSha256",
+            "presenterPersistenceSha256", "presenterInterfaceSha256", "martialArtNotesRulesSha256",
+            "workspaceStoreSha256",
+        ),
+        "controls": (
+            "CharacterCreate.tsMartialArtsNotes",
+            "CharacterCareer.tsMartialArtsNotes",
+        ),
+        "proofKeys": (
+            "typedStableMartialArtIdentity", "parentArtScopedTechniqueIdentity",
+            "duplicateAmbiguousGuidsRejected", "notesAndColorAtomicMutation",
+            "creationCareerSameZeroCostRules", "nonNotesXmlPreserved", "workspaceRevisionBound",
+            "atomicSaveRecovery", "sameSessionReopened", "processRestartWorkspacePersisted",
+            "processRestartUiReadback",
+        ),
+        "journeys": (
+            "creationMartialArtNotesEdited", "creationSameSessionReopen", "creationProcessRestart",
+            "careerParentScopedTechniqueNotesEdited", "careerSameSessionReopen", "careerProcessRestart",
         ),
     },
     "roster-favorite": {
@@ -1840,6 +1877,7 @@ IMPROVEMENT_ACTIVE_CONTROL = "chkImprovementActive"
 IMPROVEMENT_NOTES_CONTROL = "tsImprovementNotes"
 IMPROVEMENT_GROUP_ADD_CONTROL = "cmdAddImprovementGroup"
 FREE_SPRITE_CONVERSION_CONTROL = "mnuSpecialConvertToFreeSprite"
+MARTIAL_ART_NOTES_CONTROL = "tsMartialArtsNotes"
 IMPROVEMENT_GROUP_ACTIVE_CONTROLS = {
     "cmdImprovementsEnableAll": (
         "cmdImprovementsEnableAll_Click",
@@ -9983,6 +10021,180 @@ def _known_phone_mapping(
             "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name in {"CharacterCreate", "CharacterCareer"} and control == MARTIAL_ART_NOTES_CONTROL:
+        expected_handler = "tsMartialArtsNotes_Click"
+        legacy_source = chummer5_root / "Chummer" / "Forms" / "Character Forms" / f"{class_name}.cs"
+        shared_source = chummer5_root / "Chummer" / "Forms" / "Character Forms" / "CharacterShared.cs"
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "MartialArtNotesPage.cs"
+        build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_martial_art_notes_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-martial-art-notes-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-martial-art-notes-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "MartialArtNotesEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterMartialArtNotesRules.cs"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        legacy_exact = (
+            any(event.get("handler") == expected_handler for event in legacy.get("events", []))
+            and _contains(
+                legacy_source,
+                expected_handler,
+                "WriteNotes(",
+                "treMartialArts.DoThreadSafeFuncAsync",
+            )
+            and _contains(
+                shared_source,
+                "protected async Task WriteNotes",
+                "treNode?.Tag is IHasNotes",
+                "new EditNotes(strNotes, objColor",
+                "DialogResult.OK",
+                "SetNotesAsync",
+                "SetNotesColorAsync",
+                "SetDirty(true",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "class MartialArtNotesPage",
+                'AutomationId = "martial-art-notes-page"',
+                'AutomationId = "martial-art-notes-target"',
+                'AutomationId = "martial-art-notes-save"',
+                "CharacterMartialArtNotesRules.IsValidIdentity",
+                "MartialArtNotesEditRequest",
+            )
+            and _contains(
+                build_page,
+                'automationId: "build-martial-art-notes"',
+                "PrepareMartialArtNotesEditAsync",
+                "new MartialArtNotesPage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareMartialArtNotesEditAsync",
+                "ApplyMartialArtNotesEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CharacterMartialArtNotesIdentity",
+                "MartialArtNotesEditorProjector",
+                'Elements("martialart")',
+                'Elements("martialarttechnique")',
+                "HashSet<Guid>",
+                "FindNode",
+                "Technique identity is missing, ambiguous, or outside its parent Martial Art",
+            )
+            and _contains(
+                mutation,
+                "ApplyMartialArtNotesEdit",
+                "CharacterMartialArtNotesRules.TryValidateMutation",
+                "MartialArtNotesEditorProjector.FindNode",
+                'SetElementValue(target, "notes"',
+                'SetElementValue(target, "notesColor"',
+            )
+            and _contains(
+                presenter,
+                "PrepareMartialArtNotesEditAsync",
+                "ApplyMartialArtNotesEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareMartialArtNotesEditAsync",
+                "ApplyMartialArtNotesEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterMartialArtNotesIdentity",
+                "TechniqueId",
+                "CharacterMartialArtNotesState",
+                "TryValidateMutation",
+                "KarmaDelta: 0",
+                "NuyenDelta: 0m",
+                "SHA256.HashData",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCreate.tsMartialArtsNotes"',
+                '"CharacterCareer.tsMartialArtsNotes"',
+                'if api != "36"',
+                'if abi != "arm64-v8a"',
+                'PACKAGE = "com.myexternalbrain.chummer"',
+                '"profile": "phone"',
+                '"journey": "martial-art-notes"',
+                '"creationMartialArtNotesEdited": "pass"',
+                '"careerParentScopedTechniqueNotesEdited": "pass"',
+                '"martialArtNotesRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"creationFixtureSha256"',
+                '"careerFixtureSha256"',
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Martial Arts Notes > selected Martial Art or parent-scoped Technique",
+            "surface": "MartialArtNotesPage",
+            "automationId": "martial-art-notes-save",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/MartialArtNotesPage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/MartialArtNotesEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterMartialArtNotesRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyMartialArtNotesEditAsync with typed Martial Art GUID plus optional "
+                "parent-scoped Technique GUID, target-local revision, zero Karma/Nuyen economics, and expected workspace revision"
+            ),
+            "persistenceAssertion": (
+                "exact notes and notesColor are replaced together only on the selected Martial Art or parent-scoped "
+                "Technique; all non-notes target fields, sibling arts/techniques, Karma, Nuyen, and unrelated XML remain "
+                "exact after revision-bound atomic save/recovery, same-session reopen, and process restart"
+            ),
+            "coverageLimit": (
+                "Exact paired CharacterCreate/CharacterCareer tsMartialArtsNotes semantics with zero Karma/Nuyen only; "
+                "category/non-IHasNotes nodes and Cancel are no-ops, duplicate or ambiguous GUID topology fails closed, "
+                "and tablet is unavailable."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_martial_art_notes_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCareer" and control == IMPROVEMENT_GROUP_ADD_CONTROL:
         expected_handler = "cmdAddImprovementGroup_Click"
         legacy_source = (
@@ -17304,6 +17516,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_improvement_notes_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_group_add_e2e.py",
         REPO_ROOT / "tests" / "run_api36_free_sprite_conversion_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_martial_art_notes_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_group_active_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_accessory_included_e2e.py",
         REPO_ROOT / "tests" / "run_api36_critter_power_count_e2e.py",
@@ -17385,6 +17598,8 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "creation-improvement-group-add-negative-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-free-sprite-conversion-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-free-sprite-conversion-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "creation-martial-art-notes-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-martial-art-notes-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-improvement-group-active-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-improvement-group-active-negative-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-weapon-accessory-included-e2e.chum5",

@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 439,
+      "implemented_pending_emulator": 441,
       "implemented_verified_api36": 79,
-      "missing": 989,
+      "missing": 987,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 148
@@ -77,7 +77,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "63ce39a44165af2341c1eba6136fcd59a122f9a468b26c8146005651d145fd78"
+        "sha256": "6589eb220217adaa99084ca3d5730b59af5a0ad8e56e2133a53ac4f08171b604"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -372,7 +372,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "e3a0ef0c2184034b3eeb01575868ad77d1e72d1382ebc6fe341ca12f2c9e6419"
+        "sha256": "f902c56a62c87dcc17d136eaad5926a6bbd4c319d0320ecd15b46c10968b61da"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -573,6 +573,11 @@
         "path": "tests/run_api36_free_sprite_conversion_e2e.py",
         "exists": true,
         "sha256": "6141d606b12bd53e47391318e3579c97a155588a34ee0ea8c22e6cae73241a5e"
+      },
+      {
+        "path": "tests/run_api36_martial_art_notes_e2e.py",
+        "exists": true,
+        "sha256": "b8651265b85ed20df943654e48f7ef595567b1686926bef63a70edb43d6a71a1"
       },
       {
         "path": "tests/run_api36_improvement_group_active_e2e.py",
@@ -980,6 +985,16 @@
         "sha256": "6e8f7023a83d5a571ea1935ea8f852397c6e45e9e369466cc1f5c9e35e8dd954"
       },
       {
+        "path": "tests/fixtures/creation-martial-art-notes-e2e.chum5",
+        "exists": true,
+        "sha256": "5dc092ca200ccc970d89dd095d09df4fdd6dc34b40d98c0c6f1129c602cb91b0"
+      },
+      {
+        "path": "tests/fixtures/career-martial-art-notes-e2e.chum5",
+        "exists": true,
+        "sha256": "df1fd6d3ba2469228c57a8781e1fa6ad483ea3901ce1cb85e9e3148ba1241858"
+      },
+      {
         "path": "tests/fixtures/career-improvement-group-active-e2e.chum5",
         "exists": true,
         "sha256": "72517eaf8b95c6f1888d3899b3fb2a3183e3df61dc8377ab80ca833b5240e2d8"
@@ -1216,6 +1231,11 @@
       },
       {
         "path": "docs/editability-evidence/api36-phone-free-sprite-conversion/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-martial-art-notes/receipt.json",
         "exists": false,
         "sha256": null
       },
@@ -1592,7 +1612,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "00efc2d24bbd561a4f9233f7134665502bde1843433db7ba27ce6f357bbd8107"
+        "sha256": "612d7a88d7c939e768fe5994f9fb7eae07733cfd21e3197d751c7af405cbd9f8"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1802,7 +1822,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "1f65dc49b4b8d741191e47480a21ef9d52072a181557044fd23cb0773d7f7ec3"
+        "sha256": "2451c8516beedd04e6745eeda43bb913c2bb3f015bdb6a78a8b644b2900ef588"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -1857,7 +1877,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "d3f0192b3d6b1278dab2b0f077012b08169600c6a04afb602c7c5fcf135a72bf"
+        "sha256": "6a7a11c8dd2ef11c182a7edddf817f588630f00c0bd1077db4b250cd21033bd1"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -1867,7 +1887,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "5e305061e324589bb3074f6c808741de93821d6f951c44d9c41746eb866b169b"
+      "sha256": "6d3c84ed39bc4f59ec01d421b87aca61b708aceda02622d4a1c6062d6a748f4a"
     }
   },
   "coverageByFamily": {
@@ -2168,7 +2188,7 @@
     "qualities": {
       "rowCount": 57,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 33,
+      "phoneMissingCount": 31,
       "tabletMissingCount": 49,
       "completionProvenCount": 8
     },
@@ -45153,11 +45173,23 @@
       "mutationFamily": "qualities",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Martial Arts Notes > selected Martial Art or parent-scoped Technique",
+        "surface": "MartialArtNotesPage",
+        "automationId": "martial-art-notes-save",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/MartialArtNotesPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/MartialArtNotesEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterMartialArtNotesRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact paired CharacterCreate/CharacterCareer tsMartialArtsNotes semantics with zero Karma/Nuyen only; category/non-IHasNotes nodes and Cancel are no-ops, duplicate or ambiguous GUID topology fails closed, and tablet is unavailable."
       },
       "tablet": {
         "status": "missing",
@@ -45165,12 +45197,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyMartialArtNotesEditAsync with typed Martial Art GUID plus optional parent-scoped Technique GUID, target-local revision, zero Karma/Nuyen economics, and expected workspace revision",
+      "persistenceAssertion": "exact notes and notesColor are replaced together only on the selected Martial Art or parent-scoped Technique; all non-notes target fields, sibling arts/techniques, Karma, Nuyen, and unrelated XML remain exact after revision-bound atomic save/recovery, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_martial_art_notes_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -66889,11 +66921,23 @@
       "mutationFamily": "qualities",
       "operation": "edit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Martial Arts Notes > selected Martial Art or parent-scoped Technique",
+        "surface": "MartialArtNotesPage",
+        "automationId": "martial-art-notes-save",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/MartialArtNotesPage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/MartialArtNotesEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterMartialArtNotesRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact paired CharacterCreate/CharacterCareer tsMartialArtsNotes semantics with zero Karma/Nuyen only; category/non-IHasNotes nodes and Cancel are no-ops, duplicate or ambiguous GUID topology fails closed, and tablet is unavailable."
       },
       "tablet": {
         "status": "missing",
@@ -66901,12 +66945,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyMartialArtNotesEditAsync with typed Martial Art GUID plus optional parent-scoped Technique GUID, target-local revision, zero Karma/Nuyen economics, and expected workspace revision",
+      "persistenceAssertion": "exact notes and notesColor are replaced together only on the selected Martial Art or parent-scoped Technique; all non-notes target fields, sibling arts/techniques, Karma, Nuyen, and unrelated XML remain exact after revision-bound atomic save/recovery, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_martial_art_notes_e2e.py"
         },
         "tablet": {
           "status": "missing",

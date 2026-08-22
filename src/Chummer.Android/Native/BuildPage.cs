@@ -186,6 +186,19 @@ public sealed class BuildPage : NativePageBase
                 }
             },
             automationId: "build-free-sprite-conversion"));
+        _body.Add(NativeTheme.NavigationRow(
+            "Martial Arts Notes",
+            "Edit notes and color for a saved Martial Art or parent-scoped Technique",
+            async () =>
+            {
+                MartialArtNotesEditorState? editor =
+                    await Coordinator.PrepareMartialArtNotesEditAsync();
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new MartialArtNotesPage(Coordinator, editor));
+                }
+            },
+            automationId: "build-martial-art-notes"));
         if (Coordinator.State.Profile?.Created == true)
         {
             _body.Add(NativeTheme.NavigationRow(

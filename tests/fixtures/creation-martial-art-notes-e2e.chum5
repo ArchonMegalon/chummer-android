@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Martial Art Notes E2E</name><alias>CreationMartialNotes</alias><playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype><buildmethod>Priority</buildmethod><createdversion>5.225.0</createdversion><appversion>5.225.0</appversion><created>False</created><gameedition>SR5</gameedition><settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <karma>19</karma><nuyen>1234.56</nuyen><customdatadirectorynames/><improvements/>
+  <martialarts>
+    <martialart>
+      <name>Aikido</name><sourceid>94100000-0000-0000-0000-000000000001</sourceid><guid>94111111-9411-9411-9411-941111111111</guid><source>RG</source><page>128</page><cost>7</cost><isquality>False</isquality>
+      <martialarttechniques><martialarttechnique><sourceid>94200000-0000-0000-0000-000000000002</sourceid><guid>94222222-9422-9422-9422-942222222222</guid><name>Disarm</name><notes>Creation untouched technique</notes><notesColor>#223344</notesColor><source>RG</source><page>129</page></martialarttechnique></martialarttechniques>
+      <notes>Creation selected art note</notes><notesColor>#112233</notesColor>
+    </martialart>
+  </martialarts>
+  <customstate>Creation Martial Arts notes runner sentinel</customstate>
+</character>

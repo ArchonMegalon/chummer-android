@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Martial Art Notes E2E</name><alias>CareerMartialNotes</alias><playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype><buildmethod>Priority</buildmethod><createdversion>5.225.0</createdversion><appversion>5.225.0</appversion><created>True</created><gameedition>SR5</gameedition><settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <karma>27</karma><nuyen>7654.32</nuyen><customdatadirectorynames/><improvements/>
+  <martialarts>
+    <martialart>
+      <name>Aikido</name><sourceid>95100000-0000-0000-0000-000000000001</sourceid><guid>95111111-9511-9511-9511-951111111111</guid><source>RG</source><page>128</page><cost>7</cost><isquality>False</isquality>
+      <martialarttechniques><martialarttechnique><sourceid>95200000-0000-0000-0000-000000000002</sourceid><guid>95222222-9522-9522-9522-952222222222</guid><name>Disarm</name><notes>Career selected technique note</notes><notesColor>#334455</notesColor><source>RG</source><page>129</page></martialarttechnique></martialarttechniques>
+      <notes>Career untouched art note</notes><notesColor>#112233</notesColor>
+    </martialart>
+    <martialart>
+      <name>Krav Maga</name><sourceid>95300000-0000-0000-0000-000000000003</sourceid><guid>95333333-9533-9533-9533-953333333333</guid><source>RG</source><page>130</page><cost>7</cost><isquality>True</isquality>
+      <martialarttechniques><martialarttechnique><sourceid>95400000-0000-0000-0000-000000000004</sourceid><guid>95444444-9544-9544-9544-954444444444</guid><name>Disarm</name><notes>Career same-name other-parent technique</notes><notesColor>#556677</notesColor><source>RG</source><page>131</page></martialarttechnique></martialarttechniques>
+      <notes>Career second art note</notes><notesColor>#223344</notesColor>
+    </martialart>
+  </martialarts>
+  <customstate>Career Martial Arts notes runner sentinel</customstate>
+</character>
