@@ -169,8 +169,9 @@ def main() -> int:
     binding_before = node_text(device, "creation-wizard-binding", scroll=True)
     assert_creation_editor_gated(device)
 
-    # Foundation and Nationality remain a phone-only, authority-rendered route. The driver uses
-    # only enabled option IDs present in the rendered projection and never supplies defaults.
+    # Foundation and Nationality remain a phone-only, authority-rendered route. Metatype uses a
+    # separate typed-ID selection preview and explicit local confirmation before the combined
+    # authoritative Foundation preview. The driver never supplies defaults.
     shared.reset_scroll_to_top(device, swipes=18)
     device.tap_until_visible(
         "creation-stage-foundation",
@@ -180,7 +181,43 @@ def main() -> int:
     )
     device.wait("creation-foundation-budget", timeout=60, scroll=True, max_scrolls=18)
     shared.reset_scroll_to_top(device, swipes=18)
-    metatype_option = tap_first_enabled_prefix(device, "creation-foundation-metatype-")
+    device.tap("creation-foundation-open-metatype", scroll=True, max_scrolls=18)
+    device.wait("creation-metatype-page", timeout=60)
+    device.wait("creation-metatype-budget", timeout=45, scroll=True, max_scrolls=18)
+    shared.reset_scroll_to_top(device, swipes=18)
+    metatype_option = tap_first_enabled_prefix(device, "creation-metatype-option-")
+    device.wait("creation-metatype-preview-page", timeout=60)
+    device.wait("creation-metatype-preview-selection", timeout=45, scroll=True, max_scrolls=18)
+    device.wait("creation-metatype-preview-budget", timeout=45, scroll=True, max_scrolls=18)
+    device.tap("creation-metatype-confirm", scroll=True, max_scrolls=18)
+    device.wait("creation-foundation-open-metatype", timeout=60, scroll=True, max_scrolls=18)
+    selected_metatype = node_text(
+        device,
+        "creation-foundation-open-metatype",
+        scroll=True,
+    )
+    if "selected" not in selected_metatype.lower():
+        raise RuntimeError(
+            "Explicit metatype confirmation did not restore the typed selection on Foundation: "
+            f"{selected_metatype!r}"
+        )
+
+    # A normal Back from the non-writing preview must preserve the previously confirmed typed ID.
+    device.tap("creation-foundation-open-metatype", scroll=True, max_scrolls=18)
+    device.tap(metatype_option, scroll=True, max_scrolls=18)
+    device.wait("creation-metatype-preview-page", timeout=60)
+    device.back()
+    device.wait("creation-metatype-page", timeout=45)
+    device.back()
+    device.wait("creation-foundation-open-metatype", timeout=45, scroll=True, max_scrolls=18)
+    restored_metatype = node_text(
+        device,
+        "creation-foundation-open-metatype",
+        scroll=True,
+    )
+    if restored_metatype != selected_metatype:
+        raise RuntimeError("Back navigation did not restore the confirmed metatype selection")
+
     nationality_option = tap_first_enabled_prefix(device, "creation-foundation-nationality-")
     shared.reset_scroll_to_top(device, swipes=18)
     version_option = tap_first_enabled_prefix(
@@ -305,6 +342,8 @@ def main() -> int:
             "exhaustiveCreationActionsHidden": "pass",
             "advancedEditorNeverExposedWhileCreatedFalse": "pass",
             "foundationExactOptionSelection": "pass",
+            "foundationMetatypeDeepNavigation": "pass",
+            "foundationMetatypeBackRestoration": "pass",
             "foundationMetatypeOption": metatype_option,
             "foundationNationalityOption": nationality_option,
             "foundationVersionOption": version_option,

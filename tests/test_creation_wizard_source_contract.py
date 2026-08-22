@@ -75,6 +75,8 @@ class CreationWizardSourceContractTests(unittest.TestCase):
             "requirement.RequiresCharacterAuthority",
             'string.Equals(requirement.Operator, "oneof"',
             'string.Equals(requirement.SubjectKind, "metatype"',
+            "new CreationMetatypePage(Coordinator, _phoneDraft)",
+            '"creation-foundation-open-metatype"',
             "Coordinator.PrepareCreationFoundation(",
             "new CreationFoundationPreviewPage(Coordinator, prepared)",
             '"creation-foundation-prepare-preview"',
@@ -118,6 +120,93 @@ class CreationWizardSourceContractTests(unittest.TestCase):
             "!foundation.CharacterCreated",
         ):
             self.assertIn(marker, dashboard)
+
+    def test_phone_metatype_deep_navigation_is_typed_exact_and_non_writing(self) -> None:
+        draft = (NATIVE / "CreationFoundationPhoneDraft.cs").read_text(encoding="utf-8")
+        options = (NATIVE / "CreationMetatypePage.cs").read_text(encoding="utf-8")
+        preview = (NATIVE / "CreationMetatypePreviewPage.cs").read_text(encoding="utf-8")
+        foundation = (NATIVE / "CreationFoundationPage.cs").read_text(encoding="utf-8")
+
+        for marker in (
+            "ConfirmedMetatypeOptionId",
+            "BindingEquals(_binding, state.Binding)",
+            "left.WorkspaceId.Equals(right.WorkspaceId)",
+            "left.ContentRevision == right.ContentRevision",
+            "left.SavedRevision == right.SavedRevision",
+            "left.RawCharacterXmlDigest",
+            "left.SourceDigest",
+            "left.EnabledSources.SequenceEqual",
+            "state.FoundationSnapshotDigest",
+            "ResolveUniqueEnabledOption",
+            "ResolveUniqueOption",
+            "option.OptionId",
+            "matches.Length == 1",
+            "pending.RequestedMetatype",
+            "pending.CharacterEffectsApplied",
+            "pending.WorkspaceId.Equals(state.Binding.WorkspaceId)",
+            "pending.SourceDigest",
+        ):
+            self.assertIn(marker, draft)
+
+        for marker in (
+            'AutomationId = "creation-metatype-page"',
+            "Coordinator.LoadCreationFoundation()",
+            "Coordinator.State.Profile?.Created != false",
+            "_draft.Matches(state)",
+            "state.MetatypeOptions",
+            "option.OptionId",
+            "option.IsEnabled",
+            "option.DisableReasonKey",
+            "option.DisableReasonArguments",
+            "option.Costs",
+            "cost.BudgetId",
+            "option.SourceId",
+            "option.SourcePage",
+            "option.SourceAnchorIds",
+            "budget.Remaining",
+            "budget.IsExact",
+            "new CreationMetatypePreviewPage(",
+            '"creation-metatype-option-',
+        ):
+            self.assertIn(marker, options)
+
+        for marker in (
+            'AutomationId = "creation-metatype-preview-page"',
+            "_draft.ResolveCandidate(state, _candidateOptionId)",
+            "state.AuthorityBlockers",
+            "state.LifeModuleBudget.Blockers",
+            "state.LifeModuleBudget.IsExact",
+            "option.Consequences",
+            "consequence.SourceAnchorIds",
+            "option.SourceAnchorIds",
+            "option.DisableReasonArguments",
+            'NativeTheme.PrimaryButton("Use this metatype")',
+            'AutomationId = "creation-metatype-confirm"',
+            "_draft.TryConfirmMetatype(state, _candidateOptionId)",
+            "Navigation.PopAsync(animated: false)",
+            "Navigation.NavigationStack.LastOrDefault() is CreationMetatypePage",
+            "No character data is written here",
+        ):
+            self.assertIn(marker, preview)
+
+        self.assertIn("_phoneDraft.Bind(state)", foundation)
+        self.assertIn("_phoneDraft.ResolveConfirmedMetatype(state)", foundation)
+        self.assertIn("metatype.Label", foundation)
+        combined = draft + options + preview
+        for forbidden in (
+            '"Human"',
+            '"Elf"',
+            "Picker",
+            "Coordinator.PrepareCreationFoundation",
+            "Coordinator.ConfirmCreationFoundationAsync",
+            "SaveAsync(",
+            "System.Xml",
+            "XmlDocument",
+            "NativeCommandPage",
+            "AddSectionActions",
+            "AddQuickActions",
+        ):
+            self.assertNotIn(forbidden, combined)
 
     def test_uncreated_build_is_gated_before_exhaustive_editor(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
@@ -235,7 +324,10 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         self.assertGreaterEqual(source.count("assert_creation_editor_gated(device)"), 3)
         for marker in (
             'device.tap_until_visible(\n        "creation-stage-foundation"',
-            'tap_first_enabled_prefix(device, "creation-foundation-metatype-")',
+            'device.tap("creation-foundation-open-metatype"',
+            'tap_first_enabled_prefix(device, "creation-metatype-option-")',
+            'device.wait("creation-metatype-preview-page"',
+            'device.tap("creation-metatype-confirm"',
             'tap_first_enabled_prefix(device, "creation-foundation-nationality-")',
             'device.tap("creation-foundation-prepare-preview"',
             'device.wait("creation-foundation-preview-diff-"',
@@ -244,6 +336,8 @@ class CreationWizardSourceContractTests(unittest.TestCase):
             'device.tap("creation-foundation-save"',
             'device.wait("creation-foundation-pending-draft"',
             '"foundationDraftSaveReloadAndProcessRestart": "pass"',
+            '"foundationMetatypeDeepNavigation": "pass"',
+            '"foundationMetatypeBackRestoration": "pass"',
             '"foundationCharacterEffectsAppliedFalse": "pass"',
             '"foundationCompilationPending": "pass"',
             '"advancedEditorNeverExposedWhileCreatedFalse": "pass"',

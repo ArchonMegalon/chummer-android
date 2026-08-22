@@ -17,10 +17,10 @@ public sealed class CreationFoundationPage : NativePageBase
         Padding = new Thickness(20, 18, 20, 40),
         Spacing = 14
     };
-    private string? _selectedMetatypeId;
+    private readonly CreationFoundationPhoneDraft _phoneDraft = new();
+    private string? _observedMetatypeId;
     private string? _selectedNationalityId;
     private string? _selectedVersionId;
-    private string? _loadedSnapshotDigest;
     private IReadOnlyList<string> _prepareBlockers = [];
     private readonly Dictionary<string, string> _followUpValues = new(StringComparer.Ordinal);
 
@@ -56,14 +56,16 @@ public sealed class CreationFoundationPage : NativePageBase
             return;
         }
 
-        if (!string.Equals(_loadedSnapshotDigest, state.FoundationSnapshotDigest, StringComparison.Ordinal))
+        bool rebound = _phoneDraft.Bind(state);
+        string? currentMetatypeId = _phoneDraft.ConfirmedMetatypeOptionId;
+        if (rebound
+            || !string.Equals(_observedMetatypeId, currentMetatypeId, StringComparison.Ordinal))
         {
-            _selectedMetatypeId = null;
             _selectedNationalityId = null;
             _selectedVersionId = null;
             _followUpValues.Clear();
             _prepareBlockers = [];
-            _loadedSnapshotDigest = state.FoundationSnapshotDigest;
+            _observedMetatypeId = currentMetatypeId;
         }
 
         Label binding = NativeTheme.Body(
@@ -150,33 +152,21 @@ public sealed class CreationFoundationPage : NativePageBase
             return;
         }
 
-        foreach (CharacterCreationLegalOption option in state.MetatypeOptions)
-        {
-            bool selected = string.Equals(_selectedMetatypeId, option.OptionId, StringComparison.Ordinal);
-            string detail = JoinDetails(
-                selected ? "Selected" : null,
-                FormatCosts(option.Costs),
-                FormatSource(option.SourceId, option.SourcePage, null),
-                option.IsEnabled ? null : FormatDisableReason(
-                    option.DisableReasonKey,
-                    option.DisableReasonArguments));
-            _body.Add(NativeTheme.NavigationRow(
-                option.Label,
-                detail,
-                () => SelectMetatypeAsync(option),
-                option.IsEnabled,
-                $"creation-foundation-metatype-{Token(option.OptionId)}"));
-        }
-    }
-
-    private Task SelectMetatypeAsync(CharacterCreationLegalOption option)
-    {
-        _selectedMetatypeId = option.OptionId;
-        _selectedVersionId = null;
-        _followUpValues.Clear();
-        _prepareBlockers = [];
-        Refresh();
-        return Task.CompletedTask;
+        CharacterCreationLegalOption? selected = _phoneDraft.ResolveConfirmedMetatype(state);
+        string detail = selected is null
+            ? $"{state.MetatypeOptions.Count} authoritative options"
+            : JoinDetails(
+                $"Selected · ID {selected.OptionId}",
+                FormatCosts(selected.Costs),
+                FormatSource(selected.SourceId, selected.SourcePage, null),
+                selected.SourceAnchorIds.Count == 0
+                    ? null
+                    : $"Anchors {string.Join(" · ", selected.SourceAnchorIds)}");
+        _body.Add(NativeTheme.NavigationRow(
+            selected?.Label ?? "Choose metatype",
+            detail,
+            () => Navigation.PushAsync(new CreationMetatypePage(Coordinator, _phoneDraft)),
+            automationId: "creation-foundation-open-metatype"));
     }
 
     private void AddNationalityOptions(CharacterCreationFoundationInteractionState state)
@@ -425,8 +415,7 @@ public sealed class CreationFoundationPage : NativePageBase
     }
 
     private CharacterCreationLegalOption? SelectedMetatype(CharacterCreationFoundationInteractionState state)
-        => state.MetatypeOptions.FirstOrDefault(option =>
-            string.Equals(option.OptionId, _selectedMetatypeId, StringComparison.Ordinal));
+        => _phoneDraft.ResolveConfirmedMetatype(state);
 
     private LifeModuleLegalOptionDto? SelectedNationality(CharacterCreationFoundationInteractionState state)
         => state.NationalityOptions.FirstOrDefault(option =>
