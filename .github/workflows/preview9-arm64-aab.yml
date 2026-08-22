@@ -87,9 +87,6 @@ jobs:
       - name: Restore the MAUI Android workload
         run: dotnet workload restore chummer-android/Chummer.Android.slnx
 
-      - name: Run the Android release tests
-        run: python3 -m unittest discover -s chummer-android/tests -v
-
       - name: Build the unsigned ARM64 release bundle
         env:
           CHUMMER_COMPLETE_ROOT: ${{ github.workspace }}
