@@ -1954,6 +1954,7 @@ ARMOR_TREE_FLAG_CONTROLS = {
 GEAR_STOLEN_CONTROL = "chkGearStolen"
 WEAPON_STOLEN_CONTROL = "chkWeaponStolen"
 GEAR_EQUIPMENT_CONTROL = "chkGearEquipped"
+GEAR_WIRELESS_CONTROL = "chkGearWireless"
 VEHICLE_EQUIPMENT_INSTALLED_CONTROL = "chkVehicleWeaponAccessoryInstalled"
 GEAR_OVERCLOCKER_CONTROL = "cboGearOverclocker"
 GEAR_ATTACK_SWAP_CONTROL = "cboGearAttack"
@@ -11889,6 +11890,159 @@ def _known_phone_mapping(
             "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name == "CharacterCareer" and control == GEAR_WIRELESS_CONTROL:
+        legacy_source = chummer5_root / "Chummer/Forms/Character Forms/CharacterCareer.cs"
+        page = REPO_ROOT / "src/Chummer.Android/Native/GearWirelessPage.cs"
+        editor = REPO_ROOT / "src/Chummer.Android/Native/CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests/run_api36_gear_wireless_e2e.py"
+        fixture = REPO_ROOT / "tests/fixtures/career-gear-equipment-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation/Overview"
+        request = overview / "GearWirelessEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        interface = overview / "ICharacterOverviewPresenter.cs"
+        persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        rules = character_notes_core_root / "Chummer.Contracts/Characters/CharacterGearWirelessRules.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        legacy_exact = (
+            any(
+                event.get("handler") == "chkGearWireless_CheckedChanged"
+                for event in legacy.get("events", [])
+            )
+            and _contains(
+                legacy_source,
+                "chkGearWireless_CheckedChanged",
+                "treGear.SelectedNode?.Tag is IHasWirelessBonus obj",
+                "obj.WirelessOn = chkGearWireless.Checked",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "class GearWirelessPage",
+                'AutomationId = $"gear-wireless-page-{rootToken}"',
+                'AutomationId = $"gear-wireless-target-{rootToken}"',
+                'AutomationId = $"gear-wireless-toggle-{rootToken}"',
+                'AutomationId = $"gear-wireless-save-{rootToken}"',
+                "selected.CanChangeWireless",
+                "selected.Revision",
+                "GearWirelessEditRequest",
+            )
+            and _contains(
+                editor,
+                "AddGearWirelessAction",
+                "Coordinator.State.Profile?.Created != true",
+                'automationId: $"gear-wireless-open-{gearId:N}"',
+                "PrepareGearWirelessEditAsync",
+                "new GearWirelessPage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareGearWirelessEditAsync",
+                "ApplyGearWirelessEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "GearWirelessEditorProjector",
+                "GearEquipmentEditorProjector.ProjectValue",
+                'gear.Elements("wirelesson")',
+                "CharacterGearWirelessRules.TryCreateState",
+            )
+            and _contains(
+                mutation,
+                "ApplyGearWirelessEdit",
+                "CharacterGearWirelessRules.TryValidateMutation",
+                "GearEquipmentEditorProjector.FindNode",
+                'SetElementValue(target, "wirelesson"',
+            )
+            and _contains(
+                presenter,
+                "PrepareGearWirelessEditAsync",
+                "ApplyGearWirelessEditAsync",
+                "Chummer5 exposes Gear Wireless only after the runner enters Career mode",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(interface, "PrepareGearWirelessEditAsync", "ApplyGearWirelessEditAsync")
+            and _contains(
+                persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                rules,
+                "CharacterGearWirelessState",
+                "CharacterGearEquipmentIdentity",
+                "CanChangeWireless: created",
+                "CharacterGearEquipmentPhase.Career",
+                "NuyenDelta: 0m",
+                "KarmaDelta: 0",
+                "TryValidateMutation",
+                "SHA256.HashData",
+            )
+            and _contains(store, "expectedContentRevision", "Flush(flushToDisk: true)", "File.Replace", "File.Move")
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCareer.chkGearWireless"',
+                'if api != "36"',
+                '"arm64-v8a" not in abi_list.split(",")',
+                '"package": shared.PACKAGE',
+                '"profile": "phone"',
+                '"journey": "gear-wireless"',
+                '"zeroEconomicDeltaCareer": "pass"',
+                '"processRestartCareer": "pass"',
+                '"gearWirelessRulesSha256"',
+                '"presenterPersistenceSha256"',
+                '"workspaceStoreSha256"',
+                '"careerFixtureSha256"',
+            )
+            and fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Gear > Gear > selected stable root Career Gear > Wireless",
+            "surface": "GearWirelessPage",
+            "automationId": "gear-wireless-toggle-{stable-root-gear-guid}",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/GearWirelessPage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/GearWirelessEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearWirelessRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyGearWirelessEditAsync with exact typed recursive Gear "
+                "identity, Career-only phase authority, zero Nuyen/Karma economics, duplicate/ambiguity "
+                "rejection, node-local revision, and expected workspace content revision"
+            ),
+            "persistenceAssertion": (
+                "the exact selected top-level or recursively nested character/gears/.../wirelesson value is "
+                "updated while equipped, Nuyen, Karma, parent, child, sibling, and unrelated runner XML "
+                "remains exact after revision-bound atomic save/recovery, same-session reopen, and process restart"
+            ),
+            "coverageLimit": (
+                "Exact CharacterCareer.chkGearWireless only. Chummer5 has no CharacterCreate Gear Wireless "
+                "control, so Creation remains read-only and exposes no phone route; malformed state and tablet fail closed."
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_gear_wireless_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if (class_name in {"CharacterCreate", "CharacterCareer"}
             and control == VEHICLE_WEAPON_FIRING_MODE_CONTROL):
         legacy_source = chummer5_root / "Chummer/Forms/Character Forms" / f"{class_name}.cs"
@@ -18972,6 +19126,9 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorTreeFlagPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearStolenPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponStolenPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearWirelessPage.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "GearWirelessEditRequest.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGearWirelessRules.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "VehicleEquipmentInstalledPage.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "VehicleEquipmentInstalledEditRequest.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterVehicleEquipmentInstalledRules.cs",
@@ -19056,6 +19213,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "fixtures" / "creation-vehicle-equipment-installed-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-vehicle-equipment-installed-e2e.chum5",
         REPO_ROOT / "tests" / "run_api36_gear_equipment_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_gear_wireless_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_overclocker_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_active_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_notes_e2e.py",

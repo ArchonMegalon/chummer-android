@@ -1995,7 +1995,11 @@ namespace Chummer
             row for row in rows
             if row["legacy"]["controlName"] in inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS
             and row["legacy"]["controlName"]
-                not in {"chkArmorEquipped", inventory.GEAR_EQUIPMENT_CONTROL}
+                not in {
+                    "chkArmorEquipped",
+                    inventory.GEAR_EQUIPMENT_CONTROL,
+                    inventory.GEAR_WIRELESS_CONTROL,
+                }
             and row["legacy"]["formOrControl"]
                 in inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS[
                     row["legacy"]["controlName"]
@@ -2005,7 +2009,11 @@ namespace Chummer
             (form_name, control)
             for control, (_, _, _, _, form_names)
                 in inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS.items()
-            if control not in {"chkArmorEquipped", inventory.GEAR_EQUIPMENT_CONTROL}
+            if control not in {
+                "chkArmorEquipped",
+                inventory.GEAR_EQUIPMENT_CONTROL,
+                inventory.GEAR_WIRELESS_CONTROL,
+            }
             for form_name in form_names
         }
         self.assertEqual(
@@ -2015,7 +2023,7 @@ namespace Chummer
                 for row in character_collection_toggle_rows
             },
         )
-        self.assertEqual(16, len(character_collection_toggle_rows))
+        self.assertEqual(15, len(character_collection_toggle_rows))
         for row in character_collection_toggle_rows:
             kind, section_label, field, xml_element, _ = (
                 inventory.LEGACY_CHARACTER_COLLECTION_TOGGLE_CONTROLS[

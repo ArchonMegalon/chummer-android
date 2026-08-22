@@ -265,6 +265,21 @@
         "sha256": "e54e3d34e1638fda1c6d52ea79ddd17be3611e521f259921c51d5b806e866d11"
       },
       {
+        "path": "src/Chummer.Android/Native/GearWirelessPage.cs",
+        "exists": true,
+        "sha256": "4d06742e4174bfc9681a91e8908a6a6823d269e590b4b63fff2e12552fe017d5"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/GearWirelessEditRequest.cs",
+        "exists": true,
+        "sha256": "ba64ea0d3c2a929d4fe621dd57716a1c57446afe69f4a41b40c1e96eb1818c4e"
+      },
+      {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearWirelessRules.cs",
+        "exists": true,
+        "sha256": "30c6c78431d32c88df698bce6bd006c940cf9f9115a690e3eaf1a840edf0c565"
+      },
+      {
         "path": "src/Chummer.Android/Native/VehicleEquipmentInstalledPage.cs",
         "exists": true,
         "sha256": "2564821979f41edbbd626f87c7d9121d92d91cd280c975b7997e126475bf34bb"
@@ -417,7 +432,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "3ba5262224f5d3ba9b9fcff407bd3f4ff544dab48e5dfd8e0f6f74020bfc0145"
+        "sha256": "812ec5816f6054f9eee2cb452cf2e69a3dc2111a809fcff5d7803e8ea94af442"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -442,7 +457,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "71ce46efc5345372bea3c34e897dc6c43b7165f40184323068ec8ee2dab15dd1"
+        "sha256": "98f5bc656b1f108a6435ec8fcd4536628143923f17b6f623b9d4988607dd16b0"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -682,7 +697,12 @@
       {
         "path": "tests/run_api36_gear_equipment_e2e.py",
         "exists": true,
-        "sha256": "91b56200e97e187b667966c73e9a928c8748f9173a8f6eb4a868f91db3bd7bd7"
+        "sha256": "b1f75c833dcc4b6551515415aed9e425fd6401c066fac29ac3388a487c65ac68"
+      },
+      {
+        "path": "tests/run_api36_gear_wireless_e2e.py",
+        "exists": true,
+        "sha256": "d2ec12bd8c076f70d942e7c0f3ffc912c4d1481701d2766ec75a1cf5d746c582"
       },
       {
         "path": "tests/run_api36_gear_overclocker_e2e.py",
@@ -1782,7 +1802,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "8536e1da50bce17457410e96df5e7e3eaf77a08b25c3b1b1c525696ad43b3a98"
+        "sha256": "cdd384660e78aeb6432a482ef3df41eb16728c1d6bf1c3c13504a0bb5012c463"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -1992,7 +2012,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "e1e0c9deb8cb4337a4b4f9ba2d658e3d6424d38955aa77861de6c4ea9de717a7"
+        "sha256": "ad45ef2951176bdc8aa84bb73a545a7abb40deba624f272817f734d94de67ec4"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2032,7 +2052,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
         "exists": true,
-        "sha256": "49380c0352fa638888e607ebfd7c62197844e94a5ccde1f0db1e96f549d276a1"
+        "sha256": "6b4ac0980e93f3ca1fcb0f1072be529664165e985869a474e95ae4a67367ed59"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorState.cs",
@@ -2047,7 +2067,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "6cf7b040fb8c8aace9794d08c7031d516fbf9f6b03a5955859194adac97dbb88"
+        "sha256": "7b5045fdc48b5c517c69132868fe3dd5214332a5a0c298e5e579ad727a89eb04"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -2057,7 +2077,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "7d60c2c19a3d4c6b9068ade5618496eed4da5c15283e844c079c8e5030682a3f"
+      "sha256": "5c45b3379e86ad4267b910f0dd7fc595ede91da80969f00538586847478dc673"
     }
   },
   "coverageByFamily": {
@@ -40707,17 +40727,22 @@
       "operation": "set_value",
       "phone": {
         "status": "implemented_pending_emulator",
-        "route": "Build > Gear > selected item > WirelessEnabled",
-        "surface": "CollectionItemEditorPage",
-        "automationId": "collection-toggle-wirelessenabled-{stable-target}",
+        "route": "Build > Gear > Gear > selected stable root Career Gear > Wireless",
+        "surface": "GearWirelessPage",
+        "automationId": "gear-wireless-toggle-{stable-root-gear-guid}",
         "sourceRefs": [
-          "src/Chummer.Android/Native/BuildFlowPages.cs",
+          "src/Chummer.Android/Native/GearWirelessPage.cs",
           "src/Chummer.Android/Native/CollectionEditorPages.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionEditorProjector.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceCollectionMutationRequest.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs"
-        ]
+          "chummer-presentation/Chummer.Presentation/Overview/GearWirelessEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterGearWirelessRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Exact CharacterCareer.chkGearWireless only. Chummer5 has no CharacterCreate Gear Wireless control, so Creation remains read-only and exposes no phone route; malformed state and tablet fail closed."
       },
       "tablet": {
         "status": "missing",
@@ -40725,12 +40750,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "ICharacterOverviewPresenter.ApplyCollectionMutationAsync / WorkspaceCollectionToggleField.WirelessEnabled on WorkspaceCollectionKind.Gear",
-      "persistenceAssertion": "selected stable Gear guid retains wirelesson after save, reopen, and process restart",
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyGearWirelessEditAsync with exact typed recursive Gear identity, Career-only phase authority, zero Nuyen/Karma economics, duplicate/ambiguity rejection, node-local revision, and expected workspace content revision",
+      "persistenceAssertion": "the exact selected top-level or recursively nested character/gears/.../wirelesson value is updated while equipped, Nuyen, Karma, parent, child, sibling, and unrelated runner XML remains exact after revision-bound atomic save/recovery, same-session reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_gear_wireless_e2e.py"
         },
         "tablet": {
           "status": "missing",

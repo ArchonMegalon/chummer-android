@@ -32,6 +32,7 @@ class Api36GearEquipmentE2EDriverTests(unittest.TestCase):
             '"profile": "phone"',
             '"journey": "gear-equipment"',
             'device.shell("am", "force-stop"',
+            "read_only_label: str | None = None",
             '"creationRecursiveGearEdited": "pass"',
             '"creationIncludedNodeReadOnly": "pass"',
             '"careerRecursiveGearEdited": "pass"',

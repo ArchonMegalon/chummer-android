@@ -157,6 +157,7 @@ def run_phase(
     expected_nuyen: str,
     expected_karma: str,
     sentinel: str,
+    read_only_label: str | None = None,
 ) -> None:
     device.shell("pm", "clear", shared.PACKAGE)
     prepare_runner(device, fixture.name)

@@ -100,6 +100,12 @@ public sealed class CollectionItemEditorPage : NativePageBase
 
         foreach (WorkspaceCollectionToggleValueState value in item.ToggleValues)
         {
+            if (_target.Kind == WorkspaceCollectionKind.Gear
+                && value.Field is WorkspaceCollectionToggleField.Equipped
+                    or WorkspaceCollectionToggleField.WirelessEnabled)
+            {
+                continue;
+            }
             AddToggle(value);
         }
 
@@ -131,6 +137,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddGearStolenAction(item);
         AddWeaponStolenAction(item);
         AddGearEquipmentAction(item);
+        AddGearWirelessAction(item);
         AddGearOverclockerAction(item);
         AddGearAttackSwapAction(item);
         AddGearSleazeSwapAction(item);
@@ -490,7 +497,11 @@ public sealed class CollectionItemEditorPage : NativePageBase
         Dictionary<WorkspaceCollectionToggleField, bool> toggleChanges = [];
         foreach (WorkspaceCollectionToggleValueState original in item.ToggleValues)
         {
-            bool value = _toggleInputs[original.Field].IsToggled;
+            if (!_toggleInputs.TryGetValue(original.Field, out Switch? input))
+            {
+                continue;
+            }
+            bool value = input.IsToggled;
             if (original.IsEnabled && value != original.Value)
             {
                 toggleChanges[original.Field] = value;
@@ -1275,6 +1286,36 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 }
             },
             automationId: $"gear-equipment-open-{gearId:N}"));
+    }
+
+    private void AddGearWirelessAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Gear
+            || _target.NestedKind is not null
+            || Coordinator.State.Profile?.Created != true
+            || Coordinator.State.WorkspaceId is null
+            || !item.ToggleValues.Any(value =>
+                value.Field == WorkspaceCollectionToggleField.WirelessEnabled
+                && value.IsEnabled)
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid gearId)
+            || gearId == Guid.Empty)
+        {
+            return;
+        }
+
+        _body.Add(NativeTheme.NavigationRow(
+            "Wireless",
+            "Edit the exact selected Career Gear or recursively nested child with zero cost",
+            async () =>
+            {
+                GearWirelessEditorState? editor = await Coordinator
+                    .PrepareGearWirelessEditAsync(gearId);
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new GearWirelessPage(Coordinator, editor));
+                }
+            },
+            automationId: $"gear-wireless-open-{gearId:N}"));
     }
 
     private void AddGearOverclockerAction(WorkspaceCollectionItemEditorState item)

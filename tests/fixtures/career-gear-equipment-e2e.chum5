@@ -10,17 +10,17 @@
     <gear>
       <guid>e9121111-9111-4111-8111-911111111111</guid>
       <name>Career Equipment Root</name><category>Electronics</category><rating>1</rating><qty>1</qty><cost>200</cost>
-      <parentid></parentid><equipped>False</equipped><notes>Career root sentinel</notes>
+      <parentid></parentid><equipped>False</equipped><wirelesson>True</wirelesson><notes>Career root sentinel</notes>
       <children><gear>
         <guid>f9121111-9111-4111-8111-911111111111</guid>
         <name>Career Equipment Target</name><category>Electronics</category><rating>1</rating><qty>1</qty><cost>80</cost>
-        <equipped>True</equipped><notes>Career target sentinel</notes><children />
+        <equipped>True</equipped><wirelesson>False</wirelesson><notes>Career target sentinel</notes><children />
       </gear></children>
     </gear>
     <gear>
       <guid>09121111-9111-4111-8111-911111111111</guid>
       <name>Career Untouched</name><category>Electronics</category><rating>1</rating><qty>1</qty><cost>90</cost>
-      <equipped>True</equipped><notes>Career untouched sentinel</notes><children />
+      <equipped>True</equipped><wirelesson>False</wirelesson><notes>Career untouched sentinel</notes><children />
     </gear>
   </gears>
   <customstate>Career Gear Equipped runner sentinel</customstate>
