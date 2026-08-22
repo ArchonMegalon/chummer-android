@@ -330,12 +330,23 @@ public sealed class RunnerSessionCoordinator : IDisposable
         bool confirmDelete,
         long expectedRevision,
         CancellationToken cancellationToken = default)
+        => SaveApplicationConfirmationSettingsAsync(
+            confirmDelete,
+            _applicationSettings.ConfirmKarmaExpense,
+            expectedRevision,
+            cancellationToken);
+
+    public Task SaveApplicationConfirmationSettingsAsync(
+        bool confirmDelete,
+        bool confirmKarmaExpense,
+        long expectedRevision,
+        CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        _applicationSettings = _applicationSettingsPresenter.Apply(
-            new ApplicationDeleteConfirmationMutation(
-                ApplicationSettingIdentity.ConfirmDelete,
+        _applicationSettings = _applicationSettingsPresenter.ApplySnapshot(
+            new ApplicationConfirmationSettingsMutation(
                 confirmDelete,
+                confirmKarmaExpense,
                 expectedRevision));
         _notice = "Application settings saved.";
         NotifyChanged();

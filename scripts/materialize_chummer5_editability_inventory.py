@@ -517,6 +517,30 @@ CAPTURE_ONLY_PHONE_E2E_DEFINITIONS: dict[str, dict[str, Any]] = {
             "newestValidBackupRecovery", "characterDocumentPreserved",
         ),
     },
+    "application-confirm-karma-expense": {
+        "driver": "tests/run_api36_application_confirm_karma_expense_e2e.py",
+        "fixtures": (
+            ("runnerFixtureSha256", "tests/fixtures/application-confirm-karma-expense-e2e.chum5"),
+        ),
+        "sourceKeys": (
+            "applicationSettingsPageSha256", "homePageSha256", "coordinatorSha256",
+            "mauiProgramSha256", "applicationSettingsPresenterSha256",
+            "applicationSettingsContractSha256", "applicationSettingsRulesSha256",
+            "applicationSettingsStoreSha256",
+        ),
+        "controls": ("EditGlobalSettings.chkConfirmKarmaExpense",),
+        "proofKeys": (
+            "legacyDefaultTrue", "legacyMissingFieldMigratesTrue", "draftBackDoesNotPersist",
+            "explicitSaveOnly", "typedSettingIdentity", "wholeSnapshotExpectedRevisionCas",
+            "singleAtomicSave", "processRestartReadback", "newestValidBackupRecovery",
+            "characterDocumentPreserved",
+        ),
+        "journeys": (
+            "legacyDefaultsAndMigration", "draftDiscardedOnBack", "explicitWholeSnapshotSave",
+            "processRestartReadback", "atomicPreviousSnapshotBackup",
+            "newestValidBackupRecovery", "characterDocumentPreserved",
+        ),
+    },
     "gear-name": {
         "driver": "tests/run_api36_gear_name_e2e.py",
         "fixtures": (
@@ -1729,6 +1753,7 @@ ROSTER_FAVORITE_CONTROL = "tsToggleFav"
 ROSTER_SORT_CONTROL = "tsSort"
 ROSTER_REMOVE_CONTROL = "tsDelete"
 APPLICATION_CONFIRM_DELETE_CONTROLS = {"chkConfirmDelete", "cmdOK"}
+APPLICATION_CONFIRM_KARMA_EXPENSE_CONTROL = "chkConfirmKarmaExpense"
 GROUP_NAME_CONTROL = "txtGroupName"
 TRADITION_NAME_CONTROL = "txtTraditionName"
 TRADITION_DRAIN_CONTROL = "cboDrain"
@@ -7009,16 +7034,17 @@ def _known_phone_mapping(
                 'AutomationId = "settings-confirm-delete"',
                 'AutomationId = "settings-save"',
                 "_baseline.Revision",
-                "SaveDeleteConfirmationSettingAsync",
+                "SaveApplicationConfirmationSettingsAsync",
             )
             and _contains(home_page, 'AutomationId = "home-application-settings"', "new ApplicationSettingsPage")
             and _contains(
                 coordinator,
                 "ApplicationDeleteConfirmationState",
                 "SaveDeleteConfirmationSettingAsync",
-                "ApplicationSettingIdentity.ConfirmDelete",
+                "SaveApplicationConfirmationSettingsAsync",
+                "ApplicationConfirmationSettingsMutation",
                 "expectedRevision",
-                "_applicationSettingsPresenter.Apply",
+                "_applicationSettingsPresenter.ApplySnapshot",
             )
             and _contains(
                 maui_program,
@@ -7101,6 +7127,131 @@ def _known_phone_mapping(
             "e2e": {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_application_confirm_delete_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "EditGlobalSettings" and control == APPLICATION_CONFIRM_KARMA_EXPENSE_CONTROL:
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ApplicationSettingsPage.cs"
+        home_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "HomePage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        maui_program = REPO_ROOT / "src" / "Chummer.Android" / "MauiProgram.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_application_confirm_karma_expense_e2e.py"
+        fixture = REPO_ROOT / "tests" / "fixtures" / "application-confirm-karma-expense-e2e.chum5"
+        presenter = presentation_root / "Chummer.Presentation" / "Overview" / "ApplicationDeleteConfirmationPresenter.cs"
+        contract = character_notes_core_root / "Chummer.Contracts" / "Api" / "ApplicationDeleteConfirmationContracts.cs"
+        rules = character_notes_core_root / "Chummer.Application" / "Tools" / "ApplicationDeleteConfirmationRules.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure" / "Files" / "FileApplicationDeleteConfirmationStore.cs"
+        implemented = (
+            _contains(
+                page,
+                "class ApplicationSettingsPage",
+                'AutomationId = "settings-confirm-delete"',
+                'AutomationId = "settings-confirm-karma-expense"',
+                'AutomationId = "settings-save"',
+                "_baseline.ConfirmKarmaExpense",
+                "SaveApplicationConfirmationSettingsAsync",
+            )
+            and _contains(home_page, 'AutomationId = "home-application-settings"', "new ApplicationSettingsPage")
+            and _contains(
+                coordinator,
+                "ApplicationDeleteConfirmationState",
+                "SaveApplicationConfirmationSettingsAsync",
+                "ApplicationConfirmationSettingsMutation",
+                "confirmKarmaExpense",
+                "expectedRevision",
+                "_applicationSettingsPresenter.ApplySnapshot",
+            )
+            and _contains(
+                maui_program,
+                "IApplicationDeleteConfirmationStore",
+                "FileApplicationDeleteConfirmationStore",
+                "ApplicationDeleteConfirmationPresenter",
+            )
+            and _contains(
+                presenter,
+                "ApplicationDeleteConfirmationPresenter",
+                "ApplicationDeleteConfirmationRules.ApplySnapshot",
+                "_store.Save(mutation.ExpectedRevision, updated)",
+            )
+            and _contains(
+                contract,
+                "ApplicationSettingIdentity",
+                "ConfirmKarmaExpense",
+                "ApplicationConfirmationSettingsMutation",
+                "ConfirmKarmaExpense: true",
+                "ExpectedRevision",
+            )
+            and _contains(
+                rules,
+                'LegacyKarmaExpenseIdentity = "confirmkarmaexpense"',
+                "ApplySnapshot",
+                "ApplicationSettingIdentity.ConfirmKarmaExpense",
+                "mutation.ExpectedRevision != current.Revision",
+            )
+            and _contains(
+                store,
+                "application-delete-confirmation.json",
+                "confirmKarmaExpense = true",
+                'TryGetProperty("ConfirmKarmaExpense"',
+                "primary.Revision >= backup.Revision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                'path + ".bak"',
+                "current.Revision != expectedRevision",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                'CONTROL = "chkConfirmKarmaExpense"',
+                'api != "36"',
+                'abi != "arm64-v8a"',
+                '"profile": "phone"',
+                '"journey": "application-confirm-karma-expense"',
+                'device.shell("pm", "path", shared.PACKAGE)',
+                '"applicationSettingsStoreSha256"',
+                '"runnerFixtureSha256"',
+            )
+            and fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Home > Application settings > Karma expense confirmation > Save",
+            "surface": "ApplicationSettingsPage",
+            "automationId": "settings-confirm-karma-expense",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+                "src/Chummer.Android/Native/HomePage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "src/Chummer.Android/MauiProgram.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+                "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs",
+            ],
+            "presenterMutation": (
+                "ApplicationDeleteConfirmationPresenter.ApplySnapshot(ApplicationConfirmationSettingsMutation)"
+            ),
+            "persistenceAssertion": (
+                "the confirmdelete and confirmkarmaexpense drafts are committed together once by explicit Save "
+                "with whole-snapshot expected-revision CAS, atomic replacement, backward-compatible missing-field "
+                "default true, process-restart readback, and newest-valid primary/.bak recovery; Back performs no "
+                "write and character XML remains byte-independent"
+            ),
+            "coverageLimit": (
+                "Phone application setting confirmkarmaexpense only. The already-covered shared Save is reused and "
+                "no cmdOK or unrelated Global Settings row is newly claimed. Tablet intentionally remains missing "
+                f"and the API 36 driver is {'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_application_confirm_karma_expense_e2e.py" if e2e_scripted else None,
             },
             "tablet": {
                 "status": "missing",

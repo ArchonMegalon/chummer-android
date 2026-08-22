@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Karma Settings Proof</name>
+  <alias>Confirm Karma Expense Proof</alias>
+  <created>True</created>
+  <gameedition>SR6</gameedition>
+  <settings>settings.xml</settings>
+  <customstate>
+    <confirmkarmaexpense>character XML must remain unrelated</confirmkarmaexpense>
+  </customstate>
+</character>

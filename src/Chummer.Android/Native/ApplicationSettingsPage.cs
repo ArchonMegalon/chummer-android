@@ -3,13 +3,14 @@ using Chummer.Contracts.Api;
 namespace Chummer.Android.Native;
 
 /// <summary>
-/// Phone-only Chummer5 Global Options surface for the confirmdelete setting.
-/// The switch is a local draft; only the explicit Save action invokes persistence.
+/// Phone-only Chummer5 Global Options surface for confirmation settings.
+/// The switches are local drafts; only the explicit Save action invokes persistence.
 /// </summary>
 public sealed class ApplicationSettingsPage : NativePageBase
 {
     private readonly ApplicationDeleteConfirmationState _baseline;
     private readonly Switch _confirmDelete;
+    private readonly Switch _confirmKarmaExpense;
     private readonly Label _revision;
 
     public ApplicationSettingsPage(RunnerSessionCoordinator coordinator) : base(coordinator)
@@ -24,9 +25,9 @@ public sealed class ApplicationSettingsPage : NativePageBase
             Spacing = 18
         };
         body.Add(NativeTheme.Eyebrow("Global options"));
-        body.Add(NativeTheme.Title("Delete confirmation"));
+        body.Add(NativeTheme.Title("Confirmations"));
         body.Add(NativeTheme.Body(
-            "Matches Chummer5’s confirmdelete option. This setting does not modify runner XML.",
+            "Matches Chummer5’s confirmdelete and confirmkarmaexpense options. These settings do not modify runner XML.",
             NativeTheme.Muted));
 
         _confirmDelete = new Switch
@@ -52,6 +53,29 @@ public sealed class ApplicationSettingsPage : NativePageBase
         row.Add(_confirmDelete, 1);
         body.Add(NativeTheme.Card(row));
 
+        _confirmKarmaExpense = new Switch
+        {
+            AutomationId = "settings-confirm-karma-expense",
+            IsToggled = _baseline.ConfirmKarmaExpense
+        };
+        Grid karmaRow = new()
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto)
+            },
+            ColumnSpacing = 12
+        };
+        VerticalStackLayout karmaLabels = new() { Spacing = 3 };
+        karmaLabels.Add(NativeTheme.Title("Ask before Karma expenses", 20));
+        karmaLabels.Add(NativeTheme.Body(
+            "Changes remain a draft until Save. Back discards both confirmation drafts.",
+            NativeTheme.Muted));
+        karmaRow.Add(karmaLabels);
+        karmaRow.Add(_confirmKarmaExpense, 1);
+        body.Add(NativeTheme.Card(karmaRow));
+
         _revision = NativeTheme.Body(string.Empty, NativeTheme.Muted);
         _revision.AutomationId = "settings-revision";
         body.Add(_revision);
@@ -60,8 +84,9 @@ public sealed class ApplicationSettingsPage : NativePageBase
         save.AutomationId = "settings-save";
         save.Clicked += async (_, _) => await RunAsync(async () =>
         {
-            await Coordinator.SaveDeleteConfirmationSettingAsync(
+            await Coordinator.SaveApplicationConfirmationSettingsAsync(
                 _confirmDelete.IsToggled,
+                _confirmKarmaExpense.IsToggled,
                 _baseline.Revision);
             await Navigation.PopAsync();
         });

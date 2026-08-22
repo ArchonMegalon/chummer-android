@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 441,
+      "implemented_pending_emulator": 442,
       "implemented_verified_api36": 79,
-      "missing": 987,
+      "missing": 986,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 148
@@ -372,7 +372,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "f902c56a62c87dcc17d136eaad5926a6bbd4c319d0320ecd15b46c10968b61da"
+        "sha256": "d84cc35da756e1eebb6b50135fbe4aef58ed7c2eaae64765648d549eec49bac5"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1195,6 +1195,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-application-confirm-karma-expense/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-gear-name/receipt.json",
         "exists": false,
         "sha256": null
@@ -1887,7 +1892,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "6d3c84ed39bc4f59ec01d421b87aca61b708aceda02622d4a1c6062d6a748f4a"
+      "sha256": "c0d4a1082d81a2066f4ff2f15700c9436e31aecec9661e5a1d9aceb33e899312"
     }
   },
   "coverageByFamily": {
@@ -1908,7 +1913,7 @@
     "application_settings": {
       "rowCount": 73,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 54,
+      "phoneMissingCount": 53,
       "tabletMissingCount": 56,
       "completionProvenCount": 17
     },
@@ -96707,11 +96712,21 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Home > Application settings > Karma expense confirmation > Save",
+        "surface": "ApplicationSettingsPage",
+        "automationId": "settings-confirm-karma-expense",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+          "src/Chummer.Android/Native/HomePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/MauiProgram.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+        ],
+        "coverageLimit": "Phone application setting confirmkarmaexpense only. The already-covered shared Save is reused and no cmdOK or unrelated Global Settings row is newly claimed. Tablet intentionally remains missing and the API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -96719,12 +96734,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ApplicationDeleteConfirmationPresenter.ApplySnapshot(ApplicationConfirmationSettingsMutation)",
+      "persistenceAssertion": "the confirmdelete and confirmkarmaexpense drafts are committed together once by explicit Save with whole-snapshot expected-revision CAS, atomic replacement, backward-compatible missing-field default true, process-restart readback, and newest-valid primary/.bak recovery; Back performs no write and character XML remains byte-independent",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_application_confirm_karma_expense_e2e.py"
         },
         "tablet": {
           "status": "missing",
