@@ -22,6 +22,7 @@ public static class MauiProgram
             .UseMauiApp<App>();
 
         builder.Services.AddSingleton<IAndroidDocumentService, AndroidDocumentService>();
+        builder.Services.AddSingleton<IAndroidImageDocumentService, AndroidImageDocumentService>();
         builder.Services.AddSingleton<IAndroidLinkedCharacterFileService, AndroidLinkedCharacterFileService>();
         builder.Services.AddSingleton<IAndroidSystemService, AndroidSystemService>();
         builder.Services.AddSingleton<IAndroidAccountLinkService, AndroidAccountLinkService>();

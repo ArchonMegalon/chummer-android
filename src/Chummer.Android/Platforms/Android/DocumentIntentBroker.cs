@@ -7,6 +7,7 @@ internal static class DocumentIntentBroker
 {
     internal const int OpenRequestCode = 6411;
     internal const int CreateRequestCode = 6412;
+    internal const int ImageOpenRequestCode = 6413;
     private static TaskCompletionSource<global::Android.Net.Uri?>? _pending;
 
     public static Task<global::Android.Net.Uri?> LaunchAsync(Activity activity, Intent intent, int requestCode, CancellationToken cancellationToken)

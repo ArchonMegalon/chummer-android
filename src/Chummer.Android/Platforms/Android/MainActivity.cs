@@ -188,7 +188,9 @@ public sealed class MainActivity : MauiAppCompatActivity
             return;
         }
 
-        if (requestCode is Platform.DocumentIntentBroker.OpenRequestCode or Platform.DocumentIntentBroker.CreateRequestCode)
+        if (requestCode is Platform.DocumentIntentBroker.OpenRequestCode
+            or Platform.DocumentIntentBroker.CreateRequestCode
+            or Platform.DocumentIntentBroker.ImageOpenRequestCode)
         {
             Platform.DocumentIntentBroker.Complete(resultCode == Result.Ok ? data?.Data : null);
         }

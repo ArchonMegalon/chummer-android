@@ -121,7 +121,7 @@
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "145feae702acd8d7298de440c8a10f7f20a3ac8114ddce0c01e7ffd3bb11d626"
+        "sha256": "7fdad0c7c5ea43c39f532269d7b6760cb5a0a65a1b6afb2f18d9fde4851f7a6d"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -2206,7 +2206,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "ef48d64da3f4c828572bec371d672561275a13d157c87c28d4971ff5200dbb2b"
+      "sha256": "1cf925aaaf57be572b4330b6c1b1e071ab57db7acdce0734bee2725ce75fc946"
     }
   },
   "coverageByFamily": {
@@ -26492,7 +26492,15 @@
         "route": null,
         "surface": null,
         "automationId": null,
-        "sourceRefs": []
+        "sourceRefs": [
+          "src/Chummer.Android/Platform/IAndroidImageDocumentService.cs",
+          "src/Chummer.Android/Platforms/Android/AndroidImageDocumentService.cs",
+          "src/Chummer.Android/Platforms/Android/DocumentIntentBroker.cs",
+          "src/Chummer.Android/Platforms/Android/MainActivity.cs",
+          "src/Chummer.Android/MauiProgram.cs",
+          "tests/test_android_image_document_service_contract.py"
+        ],
+        "coverageLimit": "Missing after reusable picker validation: Chummer5 converts through GDI+ Format32bppPArgb, then persists PNG or GDI+ JPEG according to mutable SavedImageQuality (including automatic pixel-count quality and first-launch/veteran defaults). Android has no equivalent settings authority or byte-equivalent GDI+ encoder, so raw or Android-reencoded bytes are not appended. Career add/save/reopen/restart proof and tablet remain missing."
       },
       "tablet": {
         "status": "missing",
@@ -26500,8 +26508,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "none: validated content-URI bytes expose immutable Base64 and SHA-256 candidate identity, but the fail-closed AndroidMugshotStorageCodecParity gate forbids passing them to persistence",
+      "persistenceAssertion": "not claimed: no mugshot XML, mainmugshotindex, workspace revision, or runner data is changed",
       "e2e": {
         "phone": {
           "status": "missing",

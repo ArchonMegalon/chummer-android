@@ -5484,6 +5484,66 @@ namespace Chummer
             )
         self.assertEqual("missing", drifted["status"])
 
+    def test_career_mugshot_add_stays_missing_behind_exact_codec_gate(self) -> None:
+        import inspect
+
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = [
+            row for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] == inventory.CAREER_MUGSHOT_ADD_CONTROL
+        ]
+        self.assertEqual(1, len(rows))
+        parameters = list(inspect.signature(inventory._known_phone_mapping).parameters)
+        receipt_arguments = {
+            name: {} if name in {"condition_e2e_receipts", "contact_pet_e2e_receipts"} else None
+            for name in parameters[4:]
+        }
+        mapping = inventory._known_phone_mapping(
+            rows[0],
+            inventory.DEFAULT_CHUMMER5_ROOT,
+            PRESENTATION_ROOT,
+            CORE_ROOT,
+            **receipt_arguments,
+        )
+        self.assertEqual("missing", mapping["status"])
+        self.assertIsNone(mapping["route"])
+        self.assertIsNone(mapping["surface"])
+        self.assertIsNone(mapping["automationId"])
+        self.assertIn(
+            "src/Chummer.Android/Platform/IAndroidImageDocumentService.cs",
+            mapping["sourceRefs"],
+        )
+        self.assertIn("immutable Base64 and SHA-256 candidate identity", mapping["presenterMutation"])
+        self.assertIn("no mugshot XML", mapping["persistenceAssertion"])
+        self.assertIn("GDI+ Format32bppPArgb", mapping["coverageLimit"])
+        self.assertIn("mutable SavedImageQuality", mapping["coverageLimit"])
+        self.assertIn("raw or Android-reencoded bytes are not appended", mapping["coverageLimit"])
+        self.assertEqual("missing", mapping["e2e"]["status"])
+        self.assertEqual("missing", mapping["tablet"]["status"])
+
+        drifted_digests = dict(inventory.CAREER_MUGSHOT_ADD_LEGACY_METHOD_DIGESTS)
+        drifted_digests["AddMugshot"] = "0" * 64
+        with patch.dict(
+            inventory.CAREER_MUGSHOT_ADD_LEGACY_METHOD_DIGESTS,
+            drifted_digests,
+            clear=True,
+        ):
+            drifted = inventory._known_phone_mapping(
+                rows[0],
+                inventory.DEFAULT_CHUMMER5_ROOT,
+                PRESENTATION_ROOT,
+                CORE_ROOT,
+                **receipt_arguments,
+            )
+        self.assertEqual("missing", drifted["status"])
+        self.assertEqual([], drifted["sourceRefs"])
+        self.assertIn("authority drifted", drifted["coverageLimit"])
+
 
 if __name__ == "__main__":
     unittest.main()

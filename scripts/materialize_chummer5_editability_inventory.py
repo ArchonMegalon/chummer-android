@@ -2120,6 +2120,7 @@ WEAPON_STOLEN_CONTROL = "chkWeaponStolen"
 GEAR_EQUIPMENT_CONTROL = "chkGearEquipped"
 GEAR_WIRELESS_CONTROL = "chkGearWireless"
 CAREER_MUGSHOT_CONTROLS = {"nudMugshotIndex", "chkIsMainMugshot"}
+CAREER_MUGSHOT_ADD_CONTROL = "cmdAddMugshot"
 CAREER_MUGSHOT_DELETE_CONTROL = "cmdDeleteMugshot"
 CAREER_MUGSHOT_LEGACY_METHOD_DIGESTS = {
     "nudMugshotIndex_ValueChanged": "15588f520898ec95056301d7df68efabbc0ec79ca5a68ad0c8716224ca716c9b",
@@ -2132,6 +2133,17 @@ CAREER_MUGSHOT_LEGACY_METHOD_DIGESTS = {
 CAREER_MUGSHOT_DELETE_LEGACY_METHOD_DIGESTS = {
     "cmdDeleteMugshot_Click": "00b95c3a1927a7e97879dbd022e2f6904a1f3a13edfb1f362617377c4d52ae5f",
     "RemoveMugshot": "dfdf8436d79cfe3030d4aaed874299a5d907f0a6ab00668423a5bdd7adaf2525",
+    "SaveMugshotsCore": "d26f4f9ca249c751c642fd153c6a848d15fde8cf047b7a32e6614b127637829b",
+    "LoadMugshots": "3430ca0d3ada9fd00b25449eaa2fb93ce3622187db7d242353c77c2962c75b11",
+    "LoadMugshotsAsync": "ecd9b03166f6fef1fadc41eeaf215ab73382a21d560837c2c03b928ad8940a46",
+}
+CAREER_MUGSHOT_ADD_LEGACY_METHOD_DIGESTS = {
+    "cmdAddMugshot_Click": "7c8ddd0290e7c6da28c28c81bc0b1ef80a6741ee7f9f6a0ffbb406a36c57c057",
+    "AddMugshot": "3046e66fc341fa3ae8ffb8cb362ab537b94899219fbd57a3f204822d1404f106",
+    "ConvertPixelFormat": "0f82f995b085c04c0e8f130813f27f5d0cdc27ce5c4d55a9fc9e16ada6d2489d",
+    "ImageToBase64StringForStorage": "9d11888b176cd111aad712e6bf516b5843c5eeede94fe7be0640bb8f9a6a99c9",
+    "ImageToBase64StringForStorageAsync": "3b55fa660ddc85a47418e7bf77e4cc04d166498579951db99669c9bf1f9f92a5",
+    "ProcessJpegQualitySetting": "ab506806e2e27c8ecad03bfba6de6cd36914d3cb33197bcb07ee32ad016e108f",
     "SaveMugshotsCore": "d26f4f9ca249c751c642fd153c6a848d15fde8cf047b7a32e6614b127637829b",
     "LoadMugshots": "3430ca0d3ada9fd00b25449eaa2fb93ce3622187db7d242353c77c2962c75b11",
     "LoadMugshotsAsync": "ecd9b03166f6fef1fadc41eeaf215ab73382a21d560837c2c03b928ad8940a46",
@@ -12950,6 +12962,184 @@ def _known_phone_mapping(
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_gear_equipment_e2e.py" if e2e_scripted else None,
             },
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "CharacterCareer" and control == CAREER_MUGSHOT_ADD_CONTROL:
+        legacy_source = chummer5_root / "Chummer/Forms/Character Forms/CharacterCareer.cs"
+        shared_source = chummer5_root / "Chummer/Forms/Character Forms/CharacterShared.cs"
+        character_source = chummer5_root / "Chummer/Backend/Characters/Character.cs"
+        settings_source = chummer5_root / "Chummer/Backend/Static/GlobalSettings.cs"
+        image_source = chummer5_root / "Chummer/Backend/Static/Extensions/ImageExtensions.cs"
+        contract = REPO_ROOT / "src/Chummer.Android/Platform/IAndroidImageDocumentService.cs"
+        implementation = REPO_ROOT / "src/Chummer.Android/Platforms/Android/AndroidImageDocumentService.cs"
+        runner_documents = REPO_ROOT / "src/Chummer.Android/Platforms/Android/AndroidDocumentService.cs"
+        broker = REPO_ROOT / "src/Chummer.Android/Platforms/Android/DocumentIntentBroker.cs"
+        activity = REPO_ROOT / "src/Chummer.Android/Platforms/Android/MainActivity.cs"
+        bootstrap = REPO_ROOT / "src/Chummer.Android/MauiProgram.cs"
+        picker_tests = REPO_ROOT / "tests/test_android_image_document_service_contract.py"
+        legacy_text = _read_text(legacy_source) if legacy_source.is_file() else ""
+        shared_text = _read_text(shared_source) if shared_source.is_file() else ""
+        character_text = _read_text(character_source) if character_source.is_file() else ""
+        settings_text = _read_text(settings_source) if settings_source.is_file() else ""
+        image_text = _read_text(image_source) if image_source.is_file() else ""
+        legacy_exact = (
+            any(
+                event.get("handler") == "cmdAddMugshot_Click"
+                for event in legacy.get("events", [])
+            )
+            and _legacy_method_digest(
+                [legacy_text], "cmdAddMugshot_Click"
+            ) == CAREER_MUGSHOT_ADD_LEGACY_METHOD_DIGESTS["cmdAddMugshot_Click"]
+            and _legacy_method_digest(
+                [shared_text], "AddMugshot"
+            ) == CAREER_MUGSHOT_ADD_LEGACY_METHOD_DIGESTS["AddMugshot"]
+            and _legacy_method_digest(
+                [image_text], "ConvertPixelFormat"
+            ) == CAREER_MUGSHOT_ADD_LEGACY_METHOD_DIGESTS["ConvertPixelFormat"]
+            and _legacy_method_digest(
+                [settings_text], "ImageToBase64StringForStorage"
+            ) == CAREER_MUGSHOT_ADD_LEGACY_METHOD_DIGESTS["ImageToBase64StringForStorage"]
+            and _legacy_method_digest(
+                [settings_text], "ImageToBase64StringForStorageAsync"
+            ) == CAREER_MUGSHOT_ADD_LEGACY_METHOD_DIGESTS["ImageToBase64StringForStorageAsync"]
+            and _legacy_method_digest(
+                [image_text], "ProcessJpegQualitySetting"
+            ) == CAREER_MUGSHOT_ADD_LEGACY_METHOD_DIGESTS["ProcessJpegQualitySetting"]
+            and all(
+                _legacy_method_digest([character_text], method_name) == expected_digest
+                for method_name, expected_digest in CAREER_MUGSHOT_ADD_LEGACY_METHOD_DIGESTS.items()
+                if method_name in {"SaveMugshotsCore", "LoadMugshots", "LoadMugshotsAsync"}
+            )
+            and _contains(
+                legacy_source,
+                "cmdAddMugshot_Click",
+                "if (!await AddMugshot",
+                "x.ValueAsInt = intMugshotCount",
+                "SetDirty(true)",
+            )
+            and _contains(
+                shared_source,
+                "protected async Task<bool> AddMugshot",
+                "new Bitmap(strFileName, true)",
+                "new Bitmap(strFileName, false)",
+                "PixelFormat.Format32bppPArgb",
+                "bmpMugshot.ConvertPixelFormat",
+                "GetMainMugshotIndexAsync(token)",
+                "== -1",
+                "GetCountAsync(token)",
+                "- 1, token",
+            )
+            and _contains(
+                settings_source,
+                "private static int _intSavedImageQuality = -1",
+                "public static int SavedImageQuality",
+                "SavedImageQuality == int.MaxValue",
+                "ToBase64StringAsJpeg(SavedImageQuality",
+                "ToBase64StringAsJpegAsync(SavedImageQuality",
+            )
+            and _contains(
+                image_source,
+                "ConvertPixelFormat(this Bitmap bmpToConvert",
+                "ProcessJpegQualitySetting",
+                "dblPixelCount <= 1024",
+            )
+            and _contains(
+                character_source,
+                'objWriter.WriteElementString("mainmugshotindex"',
+                'objWriter.StartElement("mugshots")',
+                '"mugshot", GlobalSettings.ImageToBase64StringForStorage',
+                'TryGetInt32FieldQuickly("mainmugshotindex"',
+                'SelectAndCacheExpression("mugshots/mugshot"',
+            )
+        )
+        picker_ready = (
+            _contains(
+                contract,
+                "interface IAndroidImageDocumentService",
+                "AndroidImageDocumentCandidate",
+                "MaximumEncodedBytes",
+                "MaximumPixelCount",
+                "TryCreateCandidate",
+                'string.Equals(uri.Scheme, "content"',
+                'normalized.StartsWith("image/"',
+                "Convert.ToBase64String(encodedBytes)",
+                "SHA256.HashData(encodedBytes)",
+                "IsExactChummer5StorageEncodingAvailable = false",
+                "SavedImageQuality",
+                "GDI+ PNG/JPEG encoding",
+            )
+            and _contains(
+                implementation,
+                "class AndroidImageDocumentService",
+                "Intent.ActionOpenDocument",
+                'intent.SetType("image/*")',
+                "DocumentIntentBroker.ImageOpenRequestCode",
+                "resolver.GetType(uri)",
+                "ResolveDeclaredSize",
+                "ReadBoundedAsync",
+                "InJustDecodeBounds = true",
+                "BitmapFactory.DecodeByteArray",
+                "Bitmap.Config.Argb8888",
+                "InPremultiplied = true",
+                "decoded.Config != Bitmap.Config.Argb8888",
+                "!decoded.IsPremultiplied",
+                "CryptographicOperations.ZeroMemory(encodedBytes)",
+            )
+            and _contains(broker, "ImageOpenRequestCode = 6413")
+            and _contains(activity, "DocumentIntentBroker.ImageOpenRequestCode")
+            and _contains(
+                bootstrap,
+                "AddSingleton<IAndroidImageDocumentService, AndroidImageDocumentService>()",
+            )
+            and _contains(
+                picker_tests,
+                "test_image_picker_is_distinct_content_uri_and_image_mime_only",
+                "test_bytes_pixels_decode_and_identity_all_fail_closed",
+                "test_unresolved_chummer5_codec_gate_prevents_false_add_claim",
+            )
+            and not _contains(runner_documents, "IAndroidImageDocumentService")
+        )
+        if not legacy_exact:
+            coverage_limit = (
+                "Missing: canonical CharacterCareer.cmdAddMugshot handler, pixel conversion, storage codec, "
+                "or ordered save/load authority drifted from the pinned Chummer5 digests."
+            )
+        elif not picker_ready:
+            coverage_limit = (
+                "Missing: the distinct Android content-URI image picker or its MIME/byte/pixel/decode/identity "
+                "validation contract is incomplete or drifted."
+            )
+        else:
+            coverage_limit = (
+                "Missing after reusable picker validation: Chummer5 converts through GDI+ Format32bppPArgb, "
+                "then persists PNG or GDI+ JPEG according to mutable SavedImageQuality (including automatic "
+                "pixel-count quality and first-launch/veteran defaults). Android has no equivalent settings "
+                "authority or byte-equivalent GDI+ encoder, so raw or Android-reencoded bytes are not appended. "
+                "Career add/save/reopen/restart proof and tablet remain missing."
+            )
+        return {
+            "status": "missing",
+            "route": None,
+            "surface": None,
+            "automationId": None,
+            "sourceRefs": [
+                "src/Chummer.Android/Platform/IAndroidImageDocumentService.cs",
+                "src/Chummer.Android/Platforms/Android/AndroidImageDocumentService.cs",
+                "src/Chummer.Android/Platforms/Android/DocumentIntentBroker.cs",
+                "src/Chummer.Android/Platforms/Android/MainActivity.cs",
+                "src/Chummer.Android/MauiProgram.cs",
+                "tests/test_android_image_document_service_contract.py",
+            ] if legacy_exact and picker_ready else [],
+            "presenterMutation": (
+                "none: validated content-URI bytes expose immutable Base64 and SHA-256 candidate identity, but "
+                "the fail-closed AndroidMugshotStorageCodecParity gate forbids passing them to persistence"
+            ),
+            "persistenceAssertion": (
+                "not claimed: no mugshot XML, mainmugshotindex, workspace revision, or runner data is changed"
+            ),
+            "coverageLimit": coverage_limit,
+            "e2e": {"status": "missing", "ref": None},
             "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
             "tabletE2e": {"status": "missing", "ref": None},
         }
