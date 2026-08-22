@@ -31,7 +31,8 @@ python3 -m unittest discover -s "$repo_dir/tests" -v
   -p:ChummerUseLocalCompatibilityTree=true \
   -p:AndroidPackageFormats=aab
 
-publish_dir="$repo_dir/src/Chummer.Android/bin/$configuration/$framework/$runtime_id/publish"
+default_publish_dir="$repo_dir/src/Chummer.Android/bin/$configuration/$framework/$runtime_id/publish"
+publish_dir="${CHUMMER_ANDROID_PUBLISH_DIR:-$default_publish_dir}"
 if [[ -n "${AndroidSigningKeyStore:-}" ]]; then
   : "${CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH:?Signed releases require CHUMMER_ANDROID_UPLOAD_CERTIFICATE_PATH}"
   source_aab="$publish_dir/$package_id-Signed.aab"
