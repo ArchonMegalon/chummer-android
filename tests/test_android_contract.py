@@ -1172,7 +1172,7 @@ class AndroidContractTests(unittest.TestCase):
         self.assertGreater(inventory["summary"]["reviewedNonMutatingCount"], 0)
         self.assertEqual(0, inventory["summary"]["unclassifiedCount"])
         self.assertEqual(
-            inventory["summary"]["reviewedNonMutatingCount"] + 75,
+            inventory["summary"]["reviewedNonMutatingCount"],
             inventory["summary"]["completionProvenCount"],
         )
         required_fields = set(inventory["requiredRowFields"])

@@ -1048,7 +1048,7 @@ namespace Chummer
         self.assertGreater(payload["summary"]["reviewedNonMutatingCount"], 0)
         self.assertEqual(0, payload["summary"]["unclassifiedCount"])
         self.assertEqual(
-            payload["summary"]["reviewedNonMutatingCount"] + 75,
+            payload["summary"]["reviewedNonMutatingCount"],
             payload["summary"]["completionProvenCount"],
         )
         self.assertEqual(len(rows), len({row["id"] for row in rows}))
@@ -2567,11 +2567,11 @@ namespace Chummer
         self.assertEqual(4, len(pet_rows))
         dynamic_condition = dynamic_character_condition_rows[0]
         self.assertEqual(
-            "implemented_verified_api36",
+            "implemented_pending_emulator",
             dynamic_condition["phone"]["status"],
         )
         self.assertEqual(
-            "implemented_verified_api36",
+            "implemented_pending_emulator",
             dynamic_condition["tablet"]["status"],
         )
         self.assertEqual(
@@ -2582,13 +2582,13 @@ namespace Chummer
             "tablet-condition-filled-{physical|stun}",
             dynamic_condition["tablet"]["automationId"],
         )
-        self.assertEqual("executed_api36", dynamic_condition["e2e"]["phone"]["status"])
-        self.assertEqual("executed_api36", dynamic_condition["e2e"]["tablet"]["status"])
+        self.assertEqual("scripted_not_executed", dynamic_condition["e2e"]["phone"]["status"])
+        self.assertEqual("scripted_not_executed", dynamic_condition["e2e"]["tablet"]["status"])
         self.assertIn("Physical / Stun", dynamic_condition["phone"]["route"])
         self.assertIn("physicalcmfilled", dynamic_condition["persistenceAssertion"])
         self.assertIn("stuncmfilled", dynamic_condition["persistenceAssertion"])
         self.assertIn("single synthetic Chummer5 runtime row", dynamic_condition["phone"]["coverageLimit"])
-        self.assertTrue(dynamic_condition["completionProven"])
+        self.assertFalse(dynamic_condition["completionProven"])
         linked_character_rows = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"ContactControl", "PetControl"}
@@ -2918,15 +2918,15 @@ namespace Chummer
         attribute_by_name = {row["legacy"]["controlName"]: row for row in attribute_rows}
         for control_name in ("nudBase", "nudKarma"):
             row = attribute_by_name[control_name]
-            self.assertEqual("implemented_verified_api36", row["phone"]["status"])
-            self.assertEqual("executed_api36", row["e2e"]["phone"]["status"])
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
             self.assertEqual("missing", row["tablet"]["status"])
             self.assertEqual("missing", row["e2e"]["tablet"]["status"])
             self.assertFalse(row["completionProven"])
         for control_name in ("cmdBurnEdge", "cmdImproveATT"):
             row = attribute_by_name[control_name]
-            self.assertEqual("implemented_verified_api36", row["phone"]["status"])
-            self.assertEqual("executed_api36", row["e2e"]["phone"]["status"])
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
             self.assertEqual("missing", row["tablet"]["status"])
             self.assertEqual("missing", row["e2e"]["tablet"]["status"])
             self.assertFalse(row["completionProven"])
@@ -2946,13 +2946,13 @@ namespace Chummer
         )
         self.assertTrue(
             all(
-                row["phone"]["status"] == "implemented_verified_api36"
+                row["phone"]["status"] == "implemented_pending_emulator"
                 for row in character_condition_rows + dashboard_condition_rows
             )
         )
         self.assertTrue(
             all(
-                row["tablet"]["status"] == "implemented_verified_api36"
+                row["tablet"]["status"] == "implemented_pending_emulator"
                 for row in character_condition_rows + dashboard_condition_rows
             )
         )
@@ -2986,44 +2986,50 @@ namespace Chummer
             + dashboard_condition_rows
         )
         self.assertTrue(
-            all(row["e2e"]["phone"]["status"] == "executed_api36" for row in scripted_condition_rows)
+            all(
+                row["e2e"]["phone"]["status"] == "scripted_not_executed"
+                for row in scripted_condition_rows
+            )
         )
         self.assertTrue(
-            all(row["e2e"]["tablet"]["status"] == "executed_api36" for row in scripted_condition_rows)
+            all(
+                row["e2e"]["tablet"]["status"] == "scripted_not_executed"
+                for row in scripted_condition_rows
+            )
         )
-        self.assertTrue(all(row["completionProven"] for row in scripted_condition_rows))
-        self.assertTrue(all(row["overallStatus"] == "complete" for row in scripted_condition_rows))
+        self.assertTrue(all(not row["completionProven"] for row in scripted_condition_rows))
+        self.assertTrue(all(row["overallStatus"] == "missing" for row in scripted_condition_rows))
         self.assertTrue(all(row["e2e"]["phone"]["status"] == "missing" for row in vehicle_physical_rows))
         self.assertTrue(all(row["e2e"]["tablet"]["status"] == "missing" for row in vehicle_physical_rows))
         self.assertTrue(all(row["presenterMutation"] for row in contact_rows))
         self.assertTrue(all(row["persistenceAssertion"] for row in contact_rows))
         self.assertTrue(
-            all(row["phone"]["status"] == "implemented_verified_api36" for row in contact_rows)
+            all(row["phone"]["status"] == "implemented_pending_emulator" for row in contact_rows)
         )
         self.assertTrue(
-            all(row["tablet"]["status"] == "implemented_verified_api36" for row in contact_rows)
+            all(row["tablet"]["status"] == "implemented_pending_emulator" for row in contact_rows)
         )
         self.assertTrue(
             all(
-                row["e2e"]["phone"]["status"] == "executed_api36"
-                and row["e2e"]["tablet"]["status"] == "executed_api36"
-                and row["completionProven"]
+                row["e2e"]["phone"]["status"] == "scripted_not_executed"
+                and row["e2e"]["tablet"]["status"] == "scripted_not_executed"
+                and not row["completionProven"]
                 for row in contact_rows
             )
         )
         self.assertTrue(all(row["presenterMutation"] for row in pet_rows))
         self.assertTrue(all(row["persistenceAssertion"] for row in pet_rows))
         self.assertTrue(
-            all(row["phone"]["status"] == "implemented_verified_api36" for row in pet_rows)
+            all(row["phone"]["status"] == "implemented_pending_emulator" for row in pet_rows)
         )
         self.assertTrue(
-            all(row["tablet"]["status"] == "implemented_verified_api36" for row in pet_rows)
+            all(row["tablet"]["status"] == "implemented_pending_emulator" for row in pet_rows)
         )
         self.assertTrue(
             all(
-                row["e2e"]["phone"]["status"] == "executed_api36"
-                and row["e2e"]["tablet"]["status"] == "executed_api36"
-                and row["completionProven"]
+                row["e2e"]["phone"]["status"] == "scripted_not_executed"
+                and row["e2e"]["tablet"]["status"] == "scripted_not_executed"
+                and not row["completionProven"]
                 for row in pet_rows
             )
         )
@@ -3055,8 +3061,7 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 477,
-                "implemented_verified_api36": 79,
+                "implemented_pending_emulator": 556,
                 "missing": 917,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
@@ -3066,8 +3071,7 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 4,
-                "implemented_verified_api36": 75,
+                "implemented_pending_emulator": 79,
                 "missing": 1528,
                 "not_applicable_non_mutating": 478,
                 "partial_exact_saved_data": 144,
@@ -3890,6 +3894,27 @@ namespace Chummer
         self.assertEqual(
             "dialog-action-complete-new-character-workflow",
             rows["cmdOK"]["phone"]["automationId"],
+        )
+
+    def test_checked_in_inventory_downgrades_stale_shared_launch_driver_receipts(self) -> None:
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertNotIn("implemented_verified_api36", payload["summary"]["phoneStatusCounts"])
+        self.assertNotIn("implemented_verified_api36", payload["summary"]["tabletStatusCounts"])
+        executed = [
+            (row["id"], profile)
+            for row in payload["rows"]
+            for profile in ("phone", "tablet")
+            if row["e2e"][profile]["status"] == "executed_api36"
+        ]
+        self.assertEqual([], executed)
+        self.assertEqual(
+            payload["summary"]["reviewedNonMutatingCount"],
+            payload["summary"]["completionProvenCount"],
         )
 
     def test_condition_receipts_fail_closed_when_a_driver_hash_is_stale(self) -> None:

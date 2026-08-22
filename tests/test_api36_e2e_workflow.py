@@ -19,6 +19,12 @@ COMPATIBILITY_GRAPH = {
     "ArchonMegalon/chummer6-media-factory":
         "415c8163d3d90b1211e4014fef332bdec6d75f73",
 }
+INVENTORY_AUTHORITIES = {
+    "ArchonMegalon/chummer6-design":
+        "14e78a8585354341841c2ea05794d06d5c58c2dc",
+    "ArchonMegalon/chummer5a":
+        "fe4355d06c98cd9b7feade89f5fc1a0e438f7ce3",
+}
 
 
 class Api36EditingE2EWorkflowTests(unittest.TestCase):
@@ -47,6 +53,33 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             with self.subTest(repository=repository):
                 self.assertIn(f"repository: {repository}", self.text)
                 self.assertIn(f"ref: {commit}", self.text)
+
+    def test_phone_and_tablet_paths_fail_closed_on_stale_inventory(self) -> None:
+        for repository, commit in INVENTORY_AUTHORITIES.items():
+            with self.subTest(repository=repository):
+                self.assertIn(f"repository: {repository}", self.text)
+                self.assertIn(f"ref: {commit}", self.text)
+
+        check = "python3 scripts/materialize_chummer5_editability_inventory.py --check"
+        self.assertEqual(1, self.text.count(check))
+        self.assertIn("CHUMMER_COMPLETE_ROOT: ${{ github.workspace }}", self.text)
+        self.assertIn("CHUMMER5A_ROOT: ${{ github.workspace }}/chummer5a", self.text)
+        self.assertLess(self.text.index(check), self.text.index("actions/setup-dotnet@"))
+        self.assertLess(self.text.index(check), self.text.index("run: scripts/build-debug.sh"))
+        self.assertIn("needs: build", self.text)
+
+    def test_inventory_inputs_trigger_the_phone_and_tablet_gate(self) -> None:
+        self.assertEqual(
+            2,
+            self.text.count(
+                '"docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"'
+            ),
+        )
+        self.assertEqual(
+            2,
+            self.text.count('"scripts/materialize_chummer5_editability_inventory.py"'),
+        )
+        self.assertEqual(2, self.text.count('"docs/editability-evidence/**"'))
 
     def test_preview_release_uses_the_same_compiled_compatibility_graph(self) -> None:
         for repository, commit in COMPATIBILITY_GRAPH.items():
