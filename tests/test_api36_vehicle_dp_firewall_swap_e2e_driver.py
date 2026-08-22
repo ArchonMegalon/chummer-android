@@ -18,7 +18,8 @@ class DriverTests(unittest.TestCase):
                          tuple(ast.literal_eval(controls.value)))
         for marker in ('"profile": "phone"', 'api != "36"', '"arm64-v8a" not in abi.split(",")',
                        "shared.PACKAGE", 'device.shell("am", "force-stop"', '"vehicleMatrixRulesSha256"',
-                       '"workspaceStoreSha256"', '"creationFixtureSha256"', '"careerFixtureSha256"',
+                       '"sharedMatrixAuthoritySha256"', '"workspaceStoreSha256"',
+                       '"creationFixtureSha256"', '"careerFixtureSha256"',
                        '"descendantTargetsFailClosedCoverage"'):
             self.assertIn(marker, source)
         journeys = next(node for node in module.body if isinstance(node, ast.Assign)

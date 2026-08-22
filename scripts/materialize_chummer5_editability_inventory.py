@@ -1948,6 +1948,12 @@ VEHICLE_MATRIX_SWAP_CONTROLS = {
     "cboVehicleDataProcessing": "cboVehicleDataProcessing_SelectedIndexChanged",
     "cboVehicleFirewall": "cboVehicleFirewall_SelectedIndexChanged",
 }
+CYBERWARE_MATRIX_SWAP_CONTROLS = {
+    "cboCyberwareAttack": "cboCyberwareAttack_SelectedIndexChanged",
+    "cboCyberwareSleaze": "cboCyberwareSleaze_SelectedIndexChanged",
+    "cboCyberwareDataProcessing": "cboCyberwareDataProcessing_SelectedIndexChanged",
+    "cboCyberwareFirewall": "cboCyberwareFirewall_SelectedIndexChanged",
+}
 IMPROVEMENT_ACTIVE_CONTROL = "chkImprovementActive"
 IMPROVEMENT_NOTES_CONTROL = "tsImprovementNotes"
 IMPROVEMENT_GROUP_ADD_CONTROL = "cmdAddImprovementGroup"
@@ -11542,6 +11548,79 @@ def _known_phone_mapping(
             "tabletE2e": {"status": "missing", "ref": None},
         }
     if (class_name in {"CharacterCreate", "CharacterCareer"}
+            and control in CYBERWARE_MATRIX_SWAP_CONTROLS):
+        legacy_source = chummer5_root / "Chummer/Forms/Character Forms" / f"{class_name}.cs"
+        page = REPO_ROOT / "src/Chummer.Android/Native/CyberwareMatrixSwapPage.cs"
+        editor = REPO_ROOT / "src/Chummer.Android/Native/CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests/run_api36_cyberware_matrix_swap_e2e.py"
+        overview = presentation_root / "Chummer.Presentation/Overview"
+        request = overview / "CyberwareMatrixSwapEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        interface = overview / "ICharacterOverviewPresenter.cs"
+        rules = character_notes_core_root / "Chummer.Contracts/Characters/CharacterCyberwareMatrixSwapRules.cs"
+        shared_authority = character_notes_core_root / "Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        handler = CYBERWARE_MATRIX_SWAP_CONTROLS[control]
+        legacy_exact = any(event.get("handler") == handler for event in legacy.get("events", [])) \
+            and _contains(legacy_source, handler, "treCyberware.SelectedNode?.Tag",
+                          "IHasMatrixAttributes", "ProcessMatrixAttributeComboBoxChangeAsync",
+                          "cboCyberwareAttack", "cboCyberwareSleaze",
+                          "cboCyberwareDataProcessing", "cboCyberwareFirewall")
+        implemented = _contains(page, "class CyberwareMatrixSwapPage",
+                          "CharacterCyberwareMatrixStat.Attack", "CharacterCyberwareMatrixStat.Sleaze",
+                          "CharacterCyberwareMatrixStat.DataProcessing", "CharacterCyberwareMatrixStat.Firewall",
+                          'AutomationId = $"cyberware-matrix-swap-page-{token}"', "TryValidateMutation") \
+            and _contains(editor, "AddCyberwareMatrixSwapAction",
+                          'automationId: $"cyberware-matrix-swap-open-{cyberwareId:N}"') \
+            and _contains(coordinator, "PrepareCyberwareMatrixSwapEditAsync",
+                          "ApplyCyberwareMatrixSwapEditAsync", "ExpectedContentRevision", "_presenter.SaveAsync") \
+            and _contains(request, "CharacterCyberwareMatrixSwapIdentity", "FindCyberwareRoot",
+                          "container.Elements(\"cyberware\")", "attributearray", "canswapattributes",
+                          "ReadSingle(cyberware, \"dataprocessing\")") \
+            and _contains(mutation, "ApplyCyberwareMatrixSwapEdit", "TryValidateMutation",
+                          "changed.Value", "target.Value") \
+            and _contains(presenter, "PrepareCyberwareMatrixSwapEditAsync",
+                          "ApplyCyberwareMatrixSwapEditAsync", "ApplyWorkspaceXmlMutationAsync") \
+            and _contains(interface, "PrepareCyberwareMatrixSwapEditAsync",
+                          "ApplyCyberwareMatrixSwapEditAsync") \
+            and _contains(rules, "CharacterCyberwareMatrixSwapIdentity", "CharacterCyberwareMatrixSwapPhase",
+                          "NuyenDelta: 0m", "KarmaDelta: 0", "RequiresMatrixInitiativeNotification",
+                          "CharacterMatrixPermutationAuthority") \
+            and _contains(shared_authority, "HasExactRawState", "TryValidatePermutation", "SHA256.HashData") \
+            and _contains(store, "expectedContentRevision", "Flush(flushToDisk: true)", "File.Replace", "File.Move")
+        scripted = _contains(driver, '"CharacterCreate.cboCyberwareAttack"',
+                             '"CharacterCreate.cboCyberwareSleaze"',
+                             '"CharacterCreate.cboCyberwareDataProcessing"',
+                             '"CharacterCreate.cboCyberwareFirewall"',
+                             '"CharacterCareer.cboCyberwareAttack"',
+                             '"CharacterCareer.cboCyberwareSleaze"',
+                             '"CharacterCareer.cboCyberwareDataProcessing"',
+                             '"CharacterCareer.cboCyberwareFirewall"', 'api != "36"',
+                             '"arm64-v8a" not in abi.split(",")', "shared.PACKAGE",
+                             '"journey": "cyberware-matrix-swap"',
+                             '"cyberwareMatrixRulesSha256"', '"workspaceStoreSha256"') \
+            and (REPO_ROOT / "tests/fixtures/creation-cyberware-matrix-swap-e2e.chum5").is_file() \
+            and (REPO_ROOT / "tests/fixtures/career-cyberware-matrix-swap-e2e.chum5").is_file()
+        return {
+            "status": "partial_exact_saved_data" if implemented and legacy_exact else "missing",
+            "route": "Build > Gear > Cyberware > selected stable Cyberware > Swap Cyberware Matrix values",
+            "surface": "CyberwareMatrixSwapPage",
+            "automationId": "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
+            "sourceRefs": ["src/Chummer.Android/Native/CyberwareMatrixSwapPage.cs",
+                           "chummer-presentation/Chummer.Presentation/Overview/CyberwareMatrixSwapEditRequest.cs",
+                           "chummer-core-engine/Chummer.Contracts/Characters/CharacterCyberwareMatrixSwapRules.cs",
+                           "chummer-core-engine/Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs"],
+            "presenterMutation": "typed root Cyberware Attack/Sleaze/Data Processing/Firewall raw permutation with exact Guid identity, Create/Career phase, AttributeArray/CanSwapAttributes provenance, zero Nuyen/Karma economics, node revision and expected workspace revision",
+            "persistenceAssertion": "two raw root Cyberware Matrix strings exchange atomically while bonuses, attributearray/canswapattributes, descendants, active/home state, grade, rating, cost, Nuyen, Karma and unrelated XML remain exact after atomic save/recovery and restart",
+            "coverageLimit": f"Exact {class_name} {control} top-level Cyberware root selection only ({'legacy handler proven' if legacy_exact else 'legacy handler proof unavailable'}); descendant Cyberware and child Gear IHasMatrixAttributes targets, malformed/duplicate/ineligible/equal/stale state, and tablet fail closed.",
+            "e2e": {"status": "scripted_not_executed" if scripted else "missing",
+                    "ref": "tests/run_api36_cyberware_matrix_swap_e2e.py" if scripted else None},
+            "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if (class_name in {"CharacterCreate", "CharacterCareer"}
             and control in VEHICLE_MATRIX_SWAP_CONTROLS):
         legacy_source = presentation_root / "Chummer/Forms/Character Forms" / f"{class_name}.cs"
         page = REPO_ROOT / "src/Chummer.Android/Native/VehicleDataProcessingFirewallSwapPage.cs"
@@ -11554,6 +11633,7 @@ def _known_phone_mapping(
         presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
         interface = overview / "ICharacterOverviewPresenter.cs"
         rules = character_notes_core_root / "Chummer.Contracts/Characters/CharacterVehicleMatrixSwapRules.cs"
+        shared_authority = character_notes_core_root / "Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs"
         store = character_notes_core_root / "Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
         handler = VEHICLE_MATRIX_SWAP_CONTROLS[control]
         legacy_exact = any(event.get("handler") == handler for event in legacy.get("events", [])) \
@@ -11577,7 +11657,9 @@ def _known_phone_mapping(
             and _contains(interface, "PrepareVehicleDataProcessingFirewallSwapEditAsync",
                           "ApplyVehicleDataProcessingFirewallSwapEditAsync") \
             and _contains(rules, "CharacterVehicleMatrixSwapIdentity", "CharacterVehicleMatrixSwapPhase",
-                          "NuyenDelta: 0m", "KarmaDelta: 0", "RequiresMatrixInitiativeNotification", "SHA256.HashData") \
+                          "NuyenDelta: 0m", "KarmaDelta: 0", "RequiresMatrixInitiativeNotification",
+                          "CharacterMatrixPermutationAuthority") \
+            and _contains(shared_authority, "HasExactRawState", "TryValidatePermutation", "SHA256.HashData") \
             and _contains(store, "expectedContentRevision", "Flush(flushToDisk: true)", "File.Replace", "File.Move")
         scripted = _contains(driver, '"CharacterCreate.cboVehicleAttack"',
                              '"CharacterCreate.cboVehicleSleaze"',
@@ -11589,7 +11671,8 @@ def _known_phone_mapping(
                              '"CharacterCareer.cboVehicleFirewall"', 'api != "36"',
                              '"arm64-v8a" not in abi.split(",")', "shared.PACKAGE",
                              '"journey": "vehicle-matrix-swap"',
-                             '"vehicleMatrixRulesSha256"', '"workspaceStoreSha256"') \
+                             '"vehicleMatrixRulesSha256"', '"sharedMatrixAuthoritySha256"',
+                             '"workspaceStoreSha256"') \
             and (REPO_ROOT / "tests/fixtures/creation-vehicle-dp-firewall-swap-e2e.chum5").is_file() \
             and (REPO_ROOT / "tests/fixtures/career-vehicle-dp-firewall-swap-e2e.chum5").is_file()
         return {
@@ -18287,6 +18370,10 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearDataProcessingFirewallSwapPage.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "GearDataProcessingFirewallSwapEditRequest.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterGearMatrixSwapRules.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CyberwareMatrixSwapPage.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CyberwareMatrixSwapEditRequest.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCyberwareMatrixSwapRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterMatrixPermutationAuthority.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementActivePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementNotesPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ImprovementGroupAddPage.cs",
@@ -18315,6 +18402,9 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_gear_dp_firewall_swap_e2e.py",
         REPO_ROOT / "tests" / "fixtures" / "creation-gear-dp-firewall-swap-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-gear-dp-firewall-swap-e2e.chum5",
+        REPO_ROOT / "tests" / "run_api36_cyberware_matrix_swap_e2e.py",
+        REPO_ROOT / "tests" / "fixtures" / "creation-cyberware-matrix-swap-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-cyberware-matrix-swap-e2e.chum5",
         REPO_ROOT / "tests" / "run_api36_character_notes_e2e.py",
         REPO_ROOT / "tests" / "run_api36_career_reputation_e2e.py",
         REPO_ROOT / "tests" / "run_api36_situational_modifiers_e2e.py",

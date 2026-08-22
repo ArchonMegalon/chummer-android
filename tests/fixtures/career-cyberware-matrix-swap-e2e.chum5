@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Cyberware Matrix Swap E2E</name>
+  <alias>CareerCyberwareMatrixSwapE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <nuyen>8765</nuyen>
+  <karma>19</karma>
+  <customstate>Career Cyberware Matrix sentinel</customstate>
+  <cyberwares>
+    <cyberware>
+      <guid>a6222222-1622-4622-8622-162222222222</guid>
+      <name>Career Matrix Cyberware</name>
+      <category>Headware</category>
+      <improvementsource>Cyberware</improvementsource>
+      <rating>4</rating>
+      <ess>0.3</ess>
+      <grade>Alpha</grade>
+      <attack>8</attack>
+      <sleaze>7</sleaze>
+      <dataprocessing>{Rating}</dataprocessing>
+      <firewall>5</firewall>
+      <attributearray>8,7,6,5</attributearray>
+      <canswapattributes>True</canswapattributes>
+      <modattack>6</modattack>
+      <modsleaze>10</modsleaze>
+      <moddataprocessing>11</moddataprocessing>
+      <modfirewall>12</modfirewall>
+      <cost>54321</cost>
+      <equipped>False</equipped>
+      <active>False</active>
+      <homenode>True</homenode>
+      <notes>Career root sentinel</notes>
+      <children>
+        <cyberware><guid>b6222222-1622-4622-8622-162222222222</guid><name>Career descendant sentinel</name><attack>4</attack><sleaze>3</sleaze><dataprocessing>2</dataprocessing><firewall>1</firewall><attributearray>4,3,2,1</attributearray><canswapattributes>True</canswapattributes><children /><gears /></cyberware>
+      </children>
+      <gears>
+        <gear><guid>c6222222-1622-4622-8622-162222222222</guid><name>Career child Gear sentinel</name><attack>4</attack><sleaze>3</sleaze><dataprocessing>2</dataprocessing><firewall>1</firewall><attributearray>4,3,2,1</attributearray><canswapattributes>True</canswapattributes></gear>
+      </gears>
+    </cyberware>
+  </cyberwares>
+  <gears />
+  <vehicles />
+</character>

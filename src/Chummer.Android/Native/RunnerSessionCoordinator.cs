@@ -985,6 +985,31 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<CyberwareMatrixSwapEditorState?> PrepareCyberwareMatrixSwapEditAsync(
+        Guid cyberwareId,
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCyberwareMatrixSwapEditAsync(cyberwareId, cancellationToken);
+
+    public async Task ApplyCyberwareMatrixSwapEditAsync(
+        CyberwareMatrixSwapEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Cyberware Matrix swapping was open. Reopen it.");
+        }
+
+        await _presenter.ApplyCyberwareMatrixSwapEditAsync(request, cancellationToken);
+        if (State.Error is null)
+            await _presenter.SaveAsync(cancellationToken);
+        _notice = State.Error is null ? "Cyberware Matrix values swapped." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<GearOverclockerEditorState?> PrepareGearOverclockerEditAsync(
         Guid rootGearId,
         CancellationToken cancellationToken = default)

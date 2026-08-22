@@ -4229,6 +4229,65 @@ namespace Chummer
         ):
             self.assertIn(marker, source)
 
+    def test_cyberware_matrix_source_mapping_is_eight_row_typed_partial_and_scripted(self) -> None:
+        import inspect
+
+        source = SCRIPT.read_text(encoding="utf-8")
+        self.assertEqual({
+            "cboCyberwareAttack": "cboCyberwareAttack_SelectedIndexChanged",
+            "cboCyberwareSleaze": "cboCyberwareSleaze_SelectedIndexChanged",
+            "cboCyberwareDataProcessing": "cboCyberwareDataProcessing_SelectedIndexChanged",
+            "cboCyberwareFirewall": "cboCyberwareFirewall_SelectedIndexChanged",
+        }, inventory.CYBERWARE_MATRIX_SWAP_CONTROLS)
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = [
+            row for row in payload["rows"]
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] in inventory.CYBERWARE_MATRIX_SWAP_CONTROLS
+        ]
+        self.assertEqual(8, len(rows))
+        parameters = list(inspect.signature(inventory._known_phone_mapping).parameters)
+        receipt_arguments = {
+            name: {} if name in {"condition_e2e_receipts", "contact_pet_e2e_receipts"} else None
+            for name in parameters[4:]
+        }
+        for row in rows:
+            mapping = inventory._known_phone_mapping(
+                row,
+                inventory.DEFAULT_CHUMMER5_ROOT,
+                PRESENTATION_ROOT,
+                CORE_ROOT,
+                **receipt_arguments,
+            )
+            self.assertEqual("partial_exact_saved_data", mapping["status"])
+            self.assertEqual("CyberwareMatrixSwapPage", mapping["surface"])
+            self.assertEqual(
+                "cyberware-matrix-swap-changed-{stable-cyberware-guid}",
+                mapping["automationId"],
+            )
+            self.assertIn("typed root Cyberware", mapping["presenterMutation"])
+            self.assertIn("zero Nuyen/Karma", mapping["presenterMutation"])
+            self.assertIn("descendant Cyberware and child Gear", mapping["coverageLimit"])
+            self.assertEqual("scripted_not_executed", mapping["e2e"]["status"])
+            self.assertEqual(
+                "tests/run_api36_cyberware_matrix_swap_e2e.py",
+                mapping["e2e"]["ref"],
+            )
+            self.assertEqual("missing", mapping["tablet"]["status"])
+        for marker in (
+            "CyberwareMatrixSwapPage",
+            "CyberwareMatrixSwapEditRequest.cs",
+            "CharacterCyberwareMatrixSwapRules.cs",
+            '"status": "partial_exact_saved_data" if implemented and legacy_exact else "missing"',
+            "top-level Cyberware root selection only",
+            "tests/run_api36_cyberware_matrix_swap_e2e.py",
+        ):
+            self.assertIn(marker, source)
+
 
 if __name__ == "__main__":
     unittest.main()

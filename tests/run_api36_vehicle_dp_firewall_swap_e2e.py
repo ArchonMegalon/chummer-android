@@ -129,6 +129,7 @@ def main() -> int:
         "vehicleMatrixRequestSha256": workspace / "chummer-presentation/Chummer.Presentation/Overview/VehicleDataProcessingFirewallSwapEditRequest.cs",
         "mutationCatalogSha256": workspace / "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "vehicleMatrixRulesSha256": workspace / "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleMatrixSwapRules.cs",
+        "sharedMatrixAuthoritySha256": workspace / "chummer-core-engine/Chummer.Contracts/Characters/CharacterMatrixPermutationAuthority.cs",
         "presenterPersistenceSha256": workspace / "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
         "workspaceStoreSha256": workspace / "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
         "creationFixtureSha256": android / "tests/fixtures/creation-vehicle-dp-firewall-swap-e2e.chum5",

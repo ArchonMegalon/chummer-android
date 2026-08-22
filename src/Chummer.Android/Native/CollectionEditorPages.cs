@@ -114,6 +114,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddVehicleHomeNodeAction(item);
         AddVehicleEquipmentInstalledAction(item);
         AddVehicleDataProcessingFirewallSwapAction(item);
+        AddCyberwareMatrixSwapAction(item);
         AddArmorHomeNodeAction(item);
         AddWeaponHomeNodeAction(item);
         AddWeaponActiveCommlinkAction(item);
@@ -812,6 +813,29 @@ public sealed class CollectionItemEditorPage : NativePageBase
                     await Navigation.PushAsync(new VehicleDataProcessingFirewallSwapPage(Coordinator, editor));
             },
             automationId: $"vehicle-dp-firewall-swap-open-{vehicleId:N}"));
+    }
+
+    private void AddCyberwareMatrixSwapAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Cyberware || _target.NestedKind is not null
+            || Coordinator.State.WorkspaceId is null
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid cyberwareId)
+            || cyberwareId == Guid.Empty)
+        {
+            return;
+        }
+
+        _body.Add(NativeTheme.NavigationRow(
+            "Swap Cyberware Matrix values",
+            "Swap raw Attack, Sleaze, Data Processing, or Firewall on an eligible Cyberware root; descendants remain fail-closed",
+            async () =>
+            {
+                CyberwareMatrixSwapEditorState? editor = await Coordinator
+                    .PrepareCyberwareMatrixSwapEditAsync(cyberwareId);
+                if (editor is not null)
+                    await Navigation.PushAsync(new CyberwareMatrixSwapPage(Coordinator, editor));
+            },
+            automationId: $"cyberware-matrix-swap-open-{cyberwareId:N}"));
     }
 
     private void AddArmorHomeNodeAction(WorkspaceCollectionItemEditorState item)
