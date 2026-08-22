@@ -4210,6 +4210,23 @@ namespace Chummer
                     )
                 )
 
+    def test_vehicle_data_processing_firewall_source_mapping_is_four_row_partial(self) -> None:
+        source = SCRIPT.read_text(encoding="utf-8")
+        self.assertEqual({
+            "cboVehicleDataProcessing": "cboVehicleDataProcessing_SelectedIndexChanged",
+            "cboVehicleFirewall": "cboVehicleFirewall_SelectedIndexChanged",
+        }, inventory.VEHICLE_DATA_PROCESSING_FIREWALL_SWAP_CONTROLS)
+        for marker in (
+            "VehicleDataProcessingFirewallSwapPage",
+            "VehicleDataProcessingFirewallSwapEditRequest.cs",
+            "CharacterVehicleMatrixSwapRules.cs",
+            '"status": "partial_exact_saved_data" if implemented else "missing"',
+            "root Vehicle selection only",
+            "descendant Weapon/Cyberware/Gear tree and clip-ammo parent paths",
+            "tests/run_api36_vehicle_dp_firewall_swap_e2e.py",
+        ):
+            self.assertIn(marker, source)
+
 
 if __name__ == "__main__":
     unittest.main()

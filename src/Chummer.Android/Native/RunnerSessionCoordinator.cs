@@ -964,6 +964,27 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<VehicleDataProcessingFirewallSwapEditorState?> PrepareVehicleDataProcessingFirewallSwapEditAsync(
+        Guid vehicleId,
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareVehicleDataProcessingFirewallSwapEditAsync(vehicleId, cancellationToken);
+
+    public async Task ApplyVehicleDataProcessingFirewallSwapEditAsync(
+        VehicleDataProcessingFirewallSwapEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+            throw new InvalidOperationException(
+                "This runner changed while Vehicle Matrix swapping was open. Reopen it.");
+        await _presenter.ApplyVehicleDataProcessingFirewallSwapEditAsync(request, cancellationToken);
+        if (State.Error is null) await _presenter.SaveAsync(cancellationToken);
+        _notice = State.Error is null ? "Vehicle Data Processing or Firewall value swapped." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<GearOverclockerEditorState?> PrepareGearOverclockerEditAsync(
         Guid rootGearId,
         CancellationToken cancellationToken = default)

@@ -113,6 +113,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddNestedActions(item);
         AddVehicleHomeNodeAction(item);
         AddVehicleEquipmentInstalledAction(item);
+        AddVehicleDataProcessingFirewallSwapAction(item);
         AddArmorHomeNodeAction(item);
         AddWeaponHomeNodeAction(item);
         AddWeaponActiveCommlinkAction(item);
@@ -793,6 +794,24 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 }
             },
             automationId: $"vehicle-equipment-installed-open-{vehicleId:N}"));
+    }
+
+    private void AddVehicleDataProcessingFirewallSwapAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Vehicle || _target.NestedKind is not null
+            || Coordinator.State.WorkspaceId is null
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid vehicleId) || vehicleId == Guid.Empty) return;
+        _body.Add(NativeTheme.NavigationRow(
+            "Swap Data Processing / Firewall",
+            "Swap raw Matrix values on an eligible Vehicle root; descendant Matrix items remain fail-closed",
+            async () =>
+            {
+                VehicleDataProcessingFirewallSwapEditorState? editor = await Coordinator
+                    .PrepareVehicleDataProcessingFirewallSwapEditAsync(vehicleId);
+                if (editor is not null)
+                    await Navigation.PushAsync(new VehicleDataProcessingFirewallSwapPage(Coordinator, editor));
+            },
+            automationId: $"vehicle-dp-firewall-swap-open-{vehicleId:N}"));
     }
 
     private void AddArmorHomeNodeAction(WorkspaceCollectionItemEditorState item)
