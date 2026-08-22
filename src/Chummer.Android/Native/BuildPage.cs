@@ -1,5 +1,8 @@
+using System.Globalization;
+using Chummer.Contracts.Characters;
 using Chummer.Contracts.Presentation;
 using Chummer.Presentation.Overview;
+using Microsoft.Maui.Layouts;
 
 namespace Chummer.Android.Native;
 
@@ -11,6 +14,7 @@ public sealed class BuildPage : NativePageBase
         Spacing = 16
     };
     private readonly ToolbarItem _save;
+    private readonly ToolbarItem _actions;
 
     public BuildPage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
@@ -22,13 +26,13 @@ public sealed class BuildPage : NativePageBase
             Command = new Command(async () => await RunAsync(() => Coordinator.SaveAsync()))
         };
         ToolbarItems.Add(_save);
-        ToolbarItems.Add(new ToolbarItem
+        _actions = new ToolbarItem
         {
             Text = "Actions",
             Order = ToolbarItemOrder.Primary,
             Priority = 1,
             Command = new Command(async () => await Navigation.PushAsync(new NativeCommandPage(Coordinator)))
-        });
+        };
         Content = new ScrollView { Content = _body };
     }
 
@@ -38,6 +42,7 @@ public sealed class BuildPage : NativePageBase
         _save.IsEnabled = Coordinator.State.Profile is not null;
         if (Coordinator.State.Profile is null)
         {
+            SetExhaustiveActionsVisible(false);
             _body.Add(NativeTheme.Eyebrow("Build"));
             _body.Add(NativeTheme.Title("Open a runner first"));
             _body.Add(NativeTheme.Body("Your file stays on this device unless you choose to link it.", NativeTheme.Muted));
@@ -47,12 +52,27 @@ public sealed class BuildPage : NativePageBase
             return;
         }
 
+        if (Coordinator.State.Profile.Created == false)
+        {
+            SetExhaustiveActionsVisible(false);
+            AddWorkspacePicker();
+            AddCreationWizardDashboard();
+            AddFeedback();
+            return;
+        }
+
+        SetExhaustiveActionsVisible(true);
         AddWorkspacePicker();
         AddSummary();
         AddDossier();
         AddBuildAreas();
         AddTools();
 
+        AddFeedback();
+    }
+
+    private void AddFeedback()
+    {
         if (!string.IsNullOrWhiteSpace(Coordinator.State.Error ?? Coordinator.Surface.Error))
         {
             _body.Add(NativeTheme.Body(Coordinator.State.Error ?? Coordinator.Surface.Error!, NativeTheme.Danger));
@@ -62,6 +82,236 @@ public sealed class BuildPage : NativePageBase
             _body.Add(NativeTheme.Body(Coordinator.Notice!, NativeTheme.Muted));
         }
     }
+
+    private void SetExhaustiveActionsVisible(bool visible)
+    {
+        if (visible && !ToolbarItems.Contains(_actions))
+        {
+            ToolbarItems.Add(_actions);
+        }
+        else if (!visible && ToolbarItems.Contains(_actions))
+        {
+            ToolbarItems.Remove(_actions);
+        }
+    }
+
+    private void AddCreationWizardDashboard()
+    {
+        VerticalStackLayout header = new()
+        {
+            AutomationId = "creation-wizard-dashboard",
+            Spacing = 8
+        };
+        header.Add(NativeTheme.Eyebrow("Character creation"));
+        header.Add(NativeTheme.Title(
+            Coordinator.State.Profile?.Alias
+            ?? Coordinator.State.Profile?.Name
+            ?? "New runner"));
+        header.Add(NativeTheme.Body(
+            "Build this runner step by step. The full character editor unlocks after creation is complete.",
+            NativeTheme.Muted));
+        _body.Add(header);
+
+        _body.Add(NativeTheme.NavigationRow(
+            "Ask Rook",
+            "Persistent conversation grounded in this revision, budgets, blockers, and legal options",
+            () => Navigation.PushAsync(new RookConversationPage(Coordinator)),
+            automationId: "creation-wizard-rook"));
+
+        CharacterCreationWizardSnapshot? snapshot = Coordinator.State.CreationWizard;
+        if (snapshot is null)
+        {
+            Label unavailable = NativeTheme.Body(
+                "The authoritative creation projection is unavailable. The wizard is fail-closed and will not "
+                + "expose the unrestricted editor or invent rules data.",
+                NativeTheme.Danger);
+            unavailable.AutomationId = "creation-wizard-snapshot-unavailable";
+            _body.Add(NativeTheme.Card(unavailable));
+            return;
+        }
+
+        Label binding = NativeTheme.Body(
+            $"Revision {snapshot.WorkspaceRevision} · snapshot {ShortDigest(snapshot.SnapshotDigest)}",
+            NativeTheme.Muted);
+        binding.AutomationId = "creation-wizard-binding";
+        _body.Add(binding);
+
+        VerticalStackLayout method = new() { Spacing = 8 };
+        method.Add(NativeTheme.Eyebrow("Build method"));
+        method.Add(NativeTheme.Title(RunnerSessionCoordinator.HumanizeId(snapshot.BuildMethod), 21));
+        method.Add(NativeTheme.Metric("Active stage", StageLabel(snapshot, snapshot.ActiveStepId)));
+        _body.Add(NativeTheme.Card(method));
+
+        if (string.Equals(snapshot.BuildMethod, CharacterCreationBuildMethods.LifeModules, StringComparison.Ordinal))
+        {
+            Label blocked = NativeTheme.Body(
+                "Life Modules are fail-closed on this phone foundation. Chummer will not substitute or claim "
+                + "the Karma workflow. Creation remains blocked until the typed staged module journey is wired.",
+                NativeTheme.Danger);
+            blocked.AutomationId = "creation-wizard-life-modules-blocked";
+            _body.Add(NativeTheme.Card(blocked));
+        }
+
+        AddBudgetRibbon(snapshot);
+        AddWizardStages(snapshot);
+        AddCompletionBlockers(snapshot);
+        AddLegalNextSteps(snapshot);
+    }
+
+    private void AddBudgetRibbon(CharacterCreationWizardSnapshot snapshot)
+    {
+        _body.Add(NativeTheme.Eyebrow("Budgets"));
+        if (snapshot.Budgets.Count == 0)
+        {
+            _body.Add(NativeTheme.Body(
+                "No authoritative budgets are available. Chummer will not invent a remainder.",
+                NativeTheme.Danger));
+            return;
+        }
+
+        FlexLayout ribbon = new()
+        {
+            Direction = FlexDirection.Row,
+            Wrap = FlexWrap.Wrap,
+            JustifyContent = FlexJustify.SpaceBetween,
+            AlignItems = FlexAlignItems.Stretch
+        };
+        foreach (CharacterCreationBudgetState budget in snapshot.Budgets)
+        {
+            string unit = string.IsNullOrWhiteSpace(budget.Unit) ? "points" : budget.Unit;
+            VerticalStackLayout card = new()
+            {
+                MinimumWidthRequest = 164,
+                Spacing = 5
+            };
+            card.Add(NativeTheme.Eyebrow(budget.Label));
+            card.Add(NativeTheme.Title(
+                budget.IsExact
+                    ? $"{budget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)} left"
+                    : "Not exact",
+                20));
+            card.Add(NativeTheme.Body(
+                budget.IsExact
+                    ? $"{budget.Used.ToString("0.##", CultureInfo.InvariantCulture)} / "
+                        + $"{budget.Total.ToString("0.##", CultureInfo.InvariantCulture)} {unit}"
+                    : budget.Blockers.FirstOrDefault() ?? "Rules authority unavailable",
+                budget.IsExact ? NativeTheme.Muted : NativeTheme.Danger));
+            Border budgetCard = NativeTheme.Card(card, new Thickness(14));
+            budgetCard.Margin = new Thickness(0, 0, 8, 10);
+            budgetCard.AutomationId = $"creation-budget-{Token(budget.BudgetId)}";
+            ribbon.Add(budgetCard);
+        }
+        _body.Add(ribbon);
+    }
+
+    private void AddWizardStages(CharacterCreationWizardSnapshot snapshot)
+    {
+        _body.Add(NativeTheme.Eyebrow("Generation steps"));
+        foreach (CharacterCreationWizardStageState stage in snapshot.Steps)
+        {
+            string detail = HumanizeStatus(stage.Status);
+            if (stage.Blockers.Count > 0)
+            {
+                detail += $" · {stage.Blockers[0]}";
+            }
+            Border row = NativeTheme.NavigationRow(
+                stage.Label,
+                detail,
+                () => Task.CompletedTask,
+                enabled: false,
+                automationId: $"creation-stage-{Token(stage.StepId)}");
+            _body.Add(row);
+        }
+    }
+
+    private void AddCompletionBlockers(CharacterCreationWizardSnapshot snapshot)
+    {
+        if (snapshot.CompletionBlockers.Count == 0)
+        {
+            return;
+        }
+
+        VerticalStackLayout blockers = new() { Spacing = 6 };
+        blockers.Add(NativeTheme.Eyebrow("Before you can finish"));
+        foreach (string blocker in snapshot.CompletionBlockers)
+        {
+            blockers.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
+        }
+        Border card = NativeTheme.Card(blockers);
+        card.AutomationId = "creation-wizard-blockers";
+        _body.Add(card);
+    }
+
+    private void AddLegalNextSteps(CharacterCreationWizardSnapshot snapshot)
+    {
+        CharacterCreationWizardStageState? active = snapshot.Steps.FirstOrDefault(stage =>
+            string.Equals(stage.StepId, snapshot.ActiveStepId, StringComparison.Ordinal));
+        string[] candidateIds = new[] { snapshot.ActiveStepId }
+            .Concat(active?.LegalNextStepIds ?? [])
+            .Where(static id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (candidateIds.Length == 0)
+        {
+            return;
+        }
+
+        _body.Add(NativeTheme.Eyebrow("Continue"));
+        foreach (string stepId in candidateIds)
+        {
+            CharacterCreationWizardStageState? stage = snapshot.Steps.FirstOrDefault(candidate =>
+                string.Equals(candidate.StepId, stepId, StringComparison.Ordinal));
+            if (stage is null)
+            {
+                continue;
+            }
+
+            bool attributes = string.Equals(
+                stepId,
+                CharacterCreationWizardStepIds.Attributes,
+                StringComparison.Ordinal);
+            bool canOpen = attributes && stage.IsAvailable && HasEnabledAttributesTab();
+            string detail = canOpen
+                ? "Open the typed creation attribute editor"
+                : stage.IsAvailable
+                    ? "Legal in the projection · dedicated phone step is not wired yet"
+                    : stage.Blockers.FirstOrDefault() ?? "Blocked by the current projection";
+            _body.Add(NativeTheme.NavigationRow(
+                stage.Label,
+                detail,
+                canOpen ? OpenCreationAttributesAsync : () => Task.CompletedTask,
+                canOpen,
+                $"creation-next-{Token(stepId)}"));
+        }
+    }
+
+    private bool HasEnabledAttributesTab()
+        => Coordinator.Surface.NavigationTabs.Any(tab =>
+            string.Equals(tab.Id, "tab-attributes", StringComparison.Ordinal)
+            && Coordinator.IsTabEnabled(tab));
+
+    private async Task OpenCreationAttributesAsync()
+    {
+        NavigationTabDefinition tab = Coordinator.Surface.NavigationTabs.First(candidate =>
+            string.Equals(candidate.Id, "tab-attributes", StringComparison.Ordinal));
+        await Coordinator.SelectTabAsync(tab.Id);
+        await Navigation.PushAsync(new CreationAttributesPage(Coordinator));
+    }
+
+    private static string StageLabel(CharacterCreationWizardSnapshot snapshot, string stepId)
+        => snapshot.Steps.FirstOrDefault(stage => string.Equals(stage.StepId, stepId, StringComparison.Ordinal))?.Label
+            ?? RunnerSessionCoordinator.HumanizeId(stepId);
+
+    private static string HumanizeStatus(string status)
+        => RunnerSessionCoordinator.HumanizeId(status);
+
+    private static string ShortDigest(string digest)
+        => string.IsNullOrWhiteSpace(digest)
+            ? "unavailable"
+            : digest[..Math.Min(12, digest.Length)];
+
+    private static string Token(string value)
+        => new(value.Trim().ToLowerInvariant().Select(character => char.IsLetterOrDigit(character) ? character : '-').ToArray());
 
     private void AddDossier()
     {

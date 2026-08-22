@@ -50,6 +50,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly IAndroidAccountLinkService _account;
     private readonly CharacterRosterFavoritePresenter _rosterFavoritePresenter;
     private readonly ApplicationDeleteConfirmationPresenter _applicationSettingsPresenter;
+    private readonly RookConversationStore _rookConversations = new();
     private readonly SemaphoreSlim _initializeGate = new(1, 1);
     private readonly SemaphoreSlim _outputGate = new(1, 1);
     private readonly SemaphoreSlim _shellSyncGate = new(1, 1);
@@ -130,6 +131,11 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     public ApplicationDeleteConfirmationState ApplicationSettings => _applicationSettings;
 
+    public RookConversationThreadState RookConversation
+        => State.WorkspaceId is { } workspaceId
+            ? _rookConversations.Read(workspaceId.Value)
+            : RookConversationThreadState.Empty;
+
     public string CharacterNotes
         => State.WorkspaceId == _characterNotesWorkspaceId
             && State.ContentRevision == _characterNotesRevision
@@ -151,6 +157,24 @@ public sealed class RunnerSessionCoordinator : IDisposable
     public string? Notice => _notice ?? State.Notice ?? Surface.Notice;
 
     public bool IsBusy => State.IsBusy || Surface.IsBusy;
+
+    public void AskRook(string question)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(question);
+        CharacterCreationWizardSnapshot snapshot = State.CreationWizard
+            ?? throw new InvalidOperationException(
+                "Rook needs a current character-creation snapshot. Return to the wizard and try again.");
+        if (State.WorkspaceId is not { } workspaceId
+            || !string.Equals(snapshot.WorkspaceId, workspaceId.Value, StringComparison.Ordinal)
+            || snapshot.WorkspaceRevision != State.ContentRevision)
+        {
+            throw new InvalidOperationException(
+                "The runner changed before Rook could answer. Refresh the wizard and ask again.");
+        }
+
+        _rookConversations.AddGroundedTurn(snapshot, question);
+        NotifyChanged();
+    }
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {

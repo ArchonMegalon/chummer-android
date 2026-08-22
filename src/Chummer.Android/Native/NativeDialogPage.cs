@@ -4,6 +4,7 @@ namespace Chummer.Android.Native;
 
 public sealed class NativeDialogPage : ContentPage
 {
+    private const string CompleteNewCharacterWorkflowActionId = "complete_new_character_workflow";
     private readonly RunnerSessionCoordinator _coordinator;
     private bool _closing;
 
@@ -246,7 +247,18 @@ public sealed class NativeDialogPage : ContentPage
             DesktopDialogState? next = _coordinator.State.ActiveDialog;
             if (next is null)
             {
+                bool routeToCreationWizard = string.Equals(
+                        actionId,
+                        CompleteNewCharacterWorkflowActionId,
+                        StringComparison.Ordinal)
+                    && _coordinator.State.WorkspaceId is not null
+                    && _coordinator.State.Profile?.Created == false;
                 await CloseAsync(updatePresenter: false);
+                if (routeToCreationWizard
+                    && Shell.Current is Chummer.Android.MainShell { UsesTabletComposition: false } shell)
+                {
+                    await shell.GoToAsync("//build");
+                }
             }
             else
             {

@@ -18,6 +18,15 @@ public sealed class AttributeEditPage : NativePageBase
         Title = row.DisplayName;
         Content = new ScrollView { Content = _body };
         AutomationId = $"attribute-editor-{Token(row.AttributeName)}";
+        if (!row.CareerMode)
+        {
+            ToolbarItems.Add(new ToolbarItem
+            {
+                Text = "Rook",
+                AutomationId = "creation-attribute-editor-rook",
+                Command = new Command(async () => await Navigation.PushAsync(new RookConversationPage(Coordinator)))
+            });
+        }
     }
 
     protected override void Refresh()

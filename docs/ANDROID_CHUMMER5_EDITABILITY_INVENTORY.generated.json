@@ -71,7 +71,7 @@
       {
         "path": "src/Chummer.Android/Native/AttributeEditPage.cs",
         "exists": true,
-        "sha256": "82a7b4647af8e7ae1d4e19389965bf50195c1b5233c85911ece972378aaec861"
+        "sha256": "b4cdd7bf9bd8045bbfc308992f9fa0ba0c9cc19c2c3c212bd814608704228302"
       },
       {
         "path": "src/Chummer.Android/Native/BuildFlowPages.cs",
@@ -81,7 +81,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "378cb4505e5607f02d4ca22f0692a60404444b62f382b7c7830a6f198833bc77"
+        "sha256": "deac77a2c400778e687d589a8c496965a955153fa6e34ff7a38645313babea34"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -556,7 +556,7 @@
       {
         "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
         "exists": true,
-        "sha256": "ddced2a9011f91afb49f569001fff4ff9528beaa4e99a907f165f12b105d9c78"
+        "sha256": "3362933d4202e86ffd24c4c66c9f1c7ad4b0037e51e29b956e85565c249e8a31"
       },
       {
         "path": "src/Chummer.Android/Native/NativeCommandPage.cs",
@@ -566,7 +566,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "4e97453d096cb9b28e52b8236aa42a2091b0653f9f198bde10303d5f64ea4027"
+        "sha256": "32f6aeb289e1529f3a4af182b1d00866a6b861ea99e83f0dbce050ef7a3e22ac"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -2166,7 +2166,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewState.cs",
         "exists": true,
-        "sha256": "64fae58c8d580266041f407c49cb75d60f77521a33b64a759c1e7275aedc7caa"
+        "sha256": "3c530b256a45728395420b32325cc2dca60f41137ec7e5e838293b17452df98a"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
@@ -2196,7 +2196,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
         "exists": true,
-        "sha256": "c95cdae34903ee982dcc8ed766fb2699d74205e4e1bfeb7a1d5cd72184e661d6"
+        "sha256": "69dd033f37ec517c6f7e139f72d82decaf631ac5c4a6c776c79bd569538f7a18"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
