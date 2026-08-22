@@ -230,6 +230,9 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         self.assertIn('device.set_text("rook-question"', source)
         self.assertIn('device.tap("rook-send-question"', source)
         self.assertIn("assert_same_binding", source)
+        self.assertIn("def assert_creation_editor_gated", source)
+        self.assertIn('"build-career-create-expense"', source)
+        self.assertGreaterEqual(source.count("assert_creation_editor_gated(device)"), 3)
         for marker in (
             'device.tap_until_visible(\n        "creation-stage-foundation"',
             'tap_first_enabled_prefix(device, "creation-foundation-metatype-")',
@@ -243,6 +246,7 @@ class CreationWizardSourceContractTests(unittest.TestCase):
             '"foundationDraftSaveReloadAndProcessRestart": "pass"',
             '"foundationCharacterEffectsAppliedFalse": "pass"',
             '"foundationCompilationPending": "pass"',
+            '"advancedEditorNeverExposedWhileCreatedFalse": "pass"',
         ):
             self.assertIn(marker, source)
         self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', source)

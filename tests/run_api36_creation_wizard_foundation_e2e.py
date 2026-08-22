@@ -31,10 +31,27 @@ def node_text(device: shared.Device, selector: str, *, scroll: bool = False) -> 
     return node.attributes.get("text") or node.attributes.get("content-desc") or ""
 
 
-def assert_absent(device: shared.Device, selector: str) -> None:
-    if device.find(selector) is not None:
-        device.capture(f"wizard-forbidden-{selector}")
-        raise RuntimeError(f"Creation wizard exposed forbidden control {selector!r}")
+def assert_creation_editor_gated(device: shared.Device) -> None:
+    """Scan the whole creation dashboard for Career/advanced-editor escape hatches."""
+    forbidden = (
+        "Actions",
+        "build-origin-dossier",
+        "build-free-sprite-conversion",
+        "build-career-create-expense",
+    )
+    shared.reset_scroll_to_top(device, swipes=18)
+    for scroll_index in range(19):
+        nodes = device.hierarchy()
+        for selector in forbidden:
+            if any(shared.Device._matches(node, selector) for node in nodes):
+                device.capture(f"wizard-forbidden-{selector}")
+                raise RuntimeError(
+                    "Creation dashboard exposed a Career/advanced-editor control while "
+                    f"the authoritative runner is still uncreated: {selector!r}"
+                )
+        if scroll_index < 18:
+            device.swipe_up()
+    shared.reset_scroll_to_top(device, swipes=18)
 
 
 def assert_same_binding(before: str, after: str) -> None:
@@ -150,9 +167,7 @@ def main() -> int:
     device.wait("creation-stage-basics", timeout=60, scroll=True, max_scrolls=18)
     shared.reset_scroll_to_top(device, swipes=18)
     binding_before = node_text(device, "creation-wizard-binding", scroll=True)
-    assert_absent(device, "build-free-sprite-conversion")
-    assert_absent(device, "build-origin-dossier")
-    assert_absent(device, "Actions")
+    assert_creation_editor_gated(device)
 
     # Foundation and Nationality remain a phone-only, authority-rendered route. The driver uses
     # only enabled option IDs present in the rendered projection and never supplies defaults.
@@ -202,6 +217,7 @@ def main() -> int:
     device.capture("creation-foundation-confirmed-draft")
     device.tap("creation-foundation-back-to-build", scroll=True, max_scrolls=22)
     device.wait("creation-wizard-dashboard", timeout=60)
+    assert_creation_editor_gated(device)
     binding_after_foundation = node_text(device, "creation-wizard-binding", scroll=True)
     if binding_after_foundation == binding_before:
         raise RuntimeError("Foundation confirmation did not advance the authoritative wizard binding")
@@ -251,6 +267,7 @@ def main() -> int:
     device.wait("Your runners", timeout=90)
     shared.open_build(device, "phone")
     device.wait("creation-wizard-dashboard", timeout=90)
+    assert_creation_editor_gated(device)
     shared.reset_scroll_to_top(device, swipes=18)
     device.tap_until_visible(
         "creation-stage-foundation",
@@ -286,6 +303,7 @@ def main() -> int:
         "journeys": {
             "authoritativeUncreatedProfileRoutesDirectlyToWizard": "pass",
             "exhaustiveCreationActionsHidden": "pass",
+            "advancedEditorNeverExposedWhileCreatedFalse": "pass",
             "foundationExactOptionSelection": "pass",
             "foundationMetatypeOption": metatype_option,
             "foundationNationalityOption": nationality_option,
