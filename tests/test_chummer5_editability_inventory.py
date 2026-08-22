@@ -478,6 +478,154 @@ namespace Chummer
         self.assertEqual("not_applicable_non_mutating", row["e2e"]["tablet"]["status"])
         self.assertTrue(row["completionProven"])
 
+    def test_career_contacts_expansion_is_source_and_callee_guarded_non_mutating(self) -> None:
+        legacy_root = (
+            inventory.DEFAULT_CHUMMER5_ROOT
+            if inventory.DEFAULT_CHUMMER5_ROOT.is_dir()
+            else PRESENTATION_ROOT
+        )
+        career_source = (
+            legacy_root
+            / "Chummer"
+            / "Forms"
+            / "Character Forms"
+            / "CharacterCareer.cs"
+        ).read_bytes().decode("utf-8-sig")
+        contact_source = (
+            legacy_root
+            / "Chummer"
+            / "Controls"
+            / "Characters"
+            / "ContactControl.cs"
+        ).read_bytes().decode("utf-8-sig")
+        identity = ("CharacterCareer", "cmdContactsExpansionToggle")
+        handler = "cmdContactsExpansionToggle_Click"
+        handlers = [{"event": "Click", "handler": handler}]
+        all_class_texts = {
+            ("Chummer", "CharacterCareer"): [career_source],
+            ("Chummer", "ContactControl"): [contact_source],
+        }
+        expected_digests = {
+            handler: "86f560865dcc9355d6ae281241b6d6b3a383467225bab689ff3e47745a239e0f",
+            "GetExpandedAsync": "86c89244744903cb9fcc0393f5af724c44cb54a1d22913bd20739a1fc0813652",
+            "SetExpandedAsync": "d8e7b92d31a5c59167221da51e7ca51b2da351c845662964d02644c919d4cb35",
+            "CreateSecondRowAsync": "3d6fd6d0e0092da8f86b3c305a9883eb1d958e20848a226f823bc211929335b5",
+            "CreateStatBlockAsync": "9ee96c36c405eece525890c18b46299395d477a04bffc278db356cbce0e5b7f6",
+            "LoadStatBlockListsAsync": "8d1eec5bf6905b96a722c3f9a195cedcd4fc1b3697438ca2f2f1ea7f808245ac",
+        }
+
+        review = inventory._source_guarded_non_mutating_review(
+            identity[0],
+            identity[1],
+            handlers,
+            [career_source],
+            all_class_texts,
+        )
+        self.assertIsNotNone(review)
+        self.assertEqual("toggle_view", review[0])
+        self.assertIn("transient expanded state", review[1])
+        self.assertIn("writes neither runner XML", review[1])
+        self.assertEqual(
+            expected_digests[handler],
+            inventory._legacy_method_digest([career_source], handler),
+        )
+        for method_name in expected_digests.keys() - {handler}:
+            self.assertEqual(
+                expected_digests[method_name],
+                inventory._legacy_method_digest([contact_source], method_name),
+            )
+        self.assertNotIn(identity, inventory.NON_MUTATING_LEGACY_INTERACTIONS)
+        self.assertEqual(
+            ("toggle", "definite"),
+            inventory._operation(identity[1], "action", handlers),
+        )
+        self.assertIsNone(
+            inventory._source_guarded_non_mutating_review(
+                identity[0],
+                identity[1],
+                [{"event": "Click", "handler": "drifted_handler"}],
+                [career_source],
+                all_class_texts,
+            )
+        )
+        self.assertIsNone(
+            inventory._source_guarded_non_mutating_review(
+                identity[0],
+                identity[1],
+                handlers,
+                [career_source],
+            )
+        )
+
+        contract = inventory.SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS[identity]
+        with patch.dict(
+            inventory.SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS,
+            {
+                identity: {
+                    **contract,
+                    "methodDigests": {handler: "0" * 64},
+                },
+            },
+        ):
+            self.assertIsNone(
+                inventory._source_guarded_non_mutating_review(
+                    identity[0],
+                    identity[1],
+                    handlers,
+                    [career_source],
+                    all_class_texts,
+                )
+            )
+
+        callee_contracts = contract["calleeMethodDigests"]
+        for callee_name in expected_digests.keys() - {handler}:
+            drifted_callees = {
+                callee_identity: dict(method_digests)
+                for callee_identity, method_digests in callee_contracts.items()
+            }
+            drifted_callees[("Chummer", "ContactControl")][callee_name] = "0" * 64
+            with patch.dict(
+                inventory.SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS,
+                {
+                    identity: {
+                        **contract,
+                        "calleeMethodDigests": drifted_callees,
+                    },
+                },
+            ):
+                self.assertIsNone(
+                    inventory._source_guarded_non_mutating_review(
+                        identity[0],
+                        identity[1],
+                        handlers,
+                        [career_source],
+                        all_class_texts,
+                    )
+                )
+
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = [
+            row
+            for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == identity[0]
+            and row["legacy"]["controlName"] == identity[1]
+        ]
+        self.assertEqual(1, len(rows))
+        row = rows[0]
+        self.assertEqual("toggle_view", row["operation"])
+        self.assertEqual("non_mutating", row["legacy"]["mutationDisposition"])
+        self.assertIn("transient expanded state", row["legacy"]["dispositionEvidence"])
+        self.assertFalse(row["editParityRequired"])
+        self.assertEqual("not_applicable_non_mutating", row["phone"]["status"])
+        self.assertEqual("not_applicable_non_mutating", row["tablet"]["status"])
+        self.assertEqual("not_applicable_non_mutating", row["e2e"]["phone"]["status"])
+        self.assertEqual("not_applicable_non_mutating", row["e2e"]["tablet"]["status"])
+        self.assertTrue(row["completionProven"])
+
     def test_career_attribute_category_is_reviewed_as_transient_shapeshifter_view(self) -> None:
         payload = json.loads(
             (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(

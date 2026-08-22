@@ -2270,8 +2270,8 @@ NON_MUTATING_LEGACY_INTERACTIONS = {
     ),
 }
 
-# These expense-view controls look mutation-capable to the generic designer parser because they are
-# writable checkboxes with CheckedChanged handlers.  They are excluded only while the exact reviewed
+# These controls look mutation-capable to the generic designer parser because they are writable
+# controls with mutation-shaped event handlers.  They are excluded only while the exact reviewed
 # legacy method bodies below remain unchanged.  A source change deliberately removes the override and
 # returns the row to the fail-closed mutating/missing path until the new behavior is reviewed.
 SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS: dict[
@@ -2333,6 +2333,40 @@ SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS: dict[
             "cmdSwapContactOrder_Click": (
                 "cf9933134fa9de0dbaea61a70982844b3eaec1a086f6765d20db521d32f35bf3"
             ),
+        },
+    },
+    ("CharacterCareer", "cmdContactsExpansionToggle"): {
+        "operation": "toggle_view",
+        "evidence": (
+            "Click reads the first ContactControl's transient expanded state and applies its inverse "
+            "to every contact row; ContactControl only lazily creates WinForms editor/binding controls "
+            "from existing Contact values and changes icons, visibility, and layout, so the action "
+            "writes neither runner XML nor persisted application preferences"
+        ),
+        "events": (("Click", "cmdContactsExpansionToggle_Click"),),
+        "methodDigests": {
+            "cmdContactsExpansionToggle_Click": (
+                "86f560865dcc9355d6ae281241b6d6b3a383467225bab689ff3e47745a239e0f"
+            ),
+        },
+        "calleeMethodDigests": {
+            ("Chummer", "ContactControl"): {
+                "GetExpandedAsync": (
+                    "86c89244744903cb9fcc0393f5af724c44cb54a1d22913bd20739a1fc0813652"
+                ),
+                "SetExpandedAsync": (
+                    "d8e7b92d31a5c59167221da51e7ca51b2da351c845662964d02644c919d4cb35"
+                ),
+                "CreateSecondRowAsync": (
+                    "3d6fd6d0e0092da8f86b3c305a9883eb1d958e20848a226f823bc211929335b5"
+                ),
+                "CreateStatBlockAsync": (
+                    "9ee96c36c405eece525890c18b46299395d477a04bffc278db356cbce0e5b7f6"
+                ),
+                "LoadStatBlockListsAsync": (
+                    "8d1eec5bf6905b96a722c3f9a195cedcd4fc1b3697438ca2f2f1ea7f808245ac"
+                ),
+            },
         },
     },
 }
@@ -5596,6 +5630,7 @@ def _source_guarded_non_mutating_review(
     control: str,
     handlers: list[dict[str, str]],
     texts: Iterable[str],
+    all_class_texts: dict[tuple[str, str], list[str]] | None = None,
 ) -> tuple[str, str] | None:
     review = SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS.get((class_name, control))
     if review is None:
@@ -5606,6 +5641,15 @@ def _source_guarded_non_mutating_review(
     if any(
         _legacy_method_digest(texts, method_name) != expected_digest
         for method_name, expected_digest in review["methodDigests"].items()
+    ):
+        return None
+    callee_method_digests = review.get("calleeMethodDigests", {})
+    if callee_method_digests and all_class_texts is None:
+        return None
+    if any(
+        _legacy_method_digest(all_class_texts.get(identity, []), method_name) != expected_digest
+        for identity, method_digests in callee_method_digests.items()
+        for method_name, expected_digest in method_digests.items()
     ):
         return None
     return review["operation"], review["evidence"]
@@ -5681,6 +5725,7 @@ def extract_legacy_rows(chummer5_root: Path) -> tuple[list[dict[str, Any]], dict
                 control,
                 handlers,
                 texts,
+                class_texts,
             )
             if source_guarded_non_mutating is not None:
                 operation, inert_evidence = source_guarded_non_mutating

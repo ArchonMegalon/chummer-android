@@ -6,26 +6,26 @@
     "rowCount": 2229,
     "sourceFileCount": 300,
     "designerFileCount": 137,
-    "definiteMutationCandidateCount": 1756,
+    "definiteMutationCandidateCount": 1755,
     "reviewRequiredCount": 0,
     "legacyReviewCompleteCount": 2229,
-    "reviewedNonMutatingCount": 473,
-    "editParityRequiredCount": 1756,
+    "reviewedNonMutatingCount": 474,
+    "editParityRequiredCount": 1755,
     "unclassifiedCount": 0,
-    "completionProvenCount": 548,
+    "completionProvenCount": 549,
     "phoneStatusCounts": {
       "implemented_pending_emulator": 456,
       "implemented_verified_api36": 79,
-      "missing": 943,
-      "not_applicable_non_mutating": 473,
+      "missing": 942,
+      "not_applicable_non_mutating": 474,
       "partial_create_only": 106,
       "partial_exact_saved_data": 172
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
       "implemented_verified_api36": 75,
-      "missing": 1533,
-      "not_applicable_non_mutating": 473,
+      "missing": 1532,
+      "not_applicable_non_mutating": 474,
       "partial_exact_saved_data": 144
     }
   },
@@ -2122,7 +2122,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "e21bac5e2089bbc969118eac3492c2228f71994913e356c5309f9b6a1deba346"
+      "sha256": "33d0fec929ab6d35ffb0fd5252730a447ca7a70574dadade3eb93416719f70b3"
     }
   },
   "coverageByFamily": {
@@ -2213,9 +2213,9 @@
     "contacts": {
       "rowCount": 63,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 12,
-      "tabletMissingCount": 18,
-      "completionProvenCount": 41
+      "phoneMissingCount": 11,
+      "tabletMissingCount": 17,
+      "completionProvenCount": 42
     },
     "crash_report_and_diagnostics": {
       "rowCount": 10,
@@ -28131,9 +28131,9 @@
         "controlName": "cmdContactsExpansionToggle",
         "controlType": "Button",
         "candidateKind": "action",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "action accepts a value or invokes mutation-capable source wiring (cmdContactsExpansionToggle_Click)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "Click reads the first ContactControl's transient expanded state and applies its inverse to every contact row; ContactControl only lazily creates WinForms editor/binding controls from existing Contact values and changes icons, visibility, and layout, so the action writes neither runner XML nor persisted application preferences",
         "text": "&Expand/Collapse All",
         "tag": "Button_ContactsExpansionToggle",
         "readOnlyAtDesignTime": null,
@@ -28147,16 +28147,16 @@
         ]
       },
       "mutationFamily": "contacts",
-      "operation": "toggle",
+      "operation": "toggle_view",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -28165,18 +28165,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Character Forms/CharacterCareer.Designer.cs::Chummer.CharacterCareer::cmdSwapContactOrder",
