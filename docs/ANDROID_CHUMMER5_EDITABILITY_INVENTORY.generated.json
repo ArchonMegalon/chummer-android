@@ -119,7 +119,7 @@
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "a26f74b1a32c157d68bf23c0d60cef2da401f9170644edf5fe611c70a0e7bbc1"
+        "sha256": "b2f09b1fd7560a52a0f57f23550a3f1f908672fc0b01e560b1ec055d7cfe3197"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -1934,12 +1934,12 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
         "exists": true,
-        "sha256": "b4ad7a1a873d83bab99de41213372b92b9aec4903e18e5def729186e9759a476"
+        "sha256": "6fc8e6400f2ba300d0b274e1bcb0e550720eafbb74f126abc8259dd1d339a59c"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "1b4bbbb823da0af19e0c50551826e1b07bd58d93c73b4bb142629ef7e5f14b29"
+        "sha256": "afc1fc6be791cbd26786a461a24a60cf51a05fdddfd9b6d281cd778d77e712b2"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",

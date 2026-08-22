@@ -7,11 +7,11 @@ WORKFLOW = REPO_ROOT / ".github" / "workflows" / "api36-editing-e2e.yml"
 PREVIEW_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "preview9-arm64-aab.yml"
 COMPATIBILITY_GRAPH = {
     "ArchonMegalon/chummer6-ui":
-        "8090e53f6dd64794145d81d7698394e4881d0c02",
+        "1c492202ac708f302b59f47c2bb1e4c67e352328",
     "ArchonMegalon/chummer6-core":
-        "c75d68d2233af980dd8b1ef6116dcbdeefcf3c71",
+        "d1f3ec8b13d1359fa383a000770cec30ae1a20fe",
     "ArchonMegalon/chummer6-hub":
-        "25f4906b1b92fa286c63ec364ea33ada63ba9431",
+        "fce73dea2d5b2cb48fe74e1b33d9f1dbe13b8e31",
     "ArchonMegalon/chummer6-hub-registry":
         "7b54afec574a9327616c4ad7566da3a7b6b906a5",
     "ArchonMegalon/chummer6-ui-kit":
@@ -46,6 +46,29 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("scripts/build-debug.sh", self.text)
         self.assertIn("test \"${#apks[@]}\" -eq 1", self.text)
         self.assertIn("chummer-android-x64-debug.apk.sha256", self.text)
+        content_check = "python3 chummer-android/scripts/verify_android_content_bundle.py"
+        self.assertEqual(2, self.text.count(content_check))
+        self.assertEqual(2, self.text.count("--core-root chummer-core-engine"))
+        self.assertIn(
+            '--apk "$RUNNER_TEMP/chummer-android-apk/chummer-android-x64-debug.apk"',
+            self.text,
+        )
+        self.assertIn(
+            '--receipt "$RUNNER_TEMP/chummer-android-apk/chummer-android-content-bundle-receipt.json"',
+            self.text,
+        )
+        self.assertLess(
+            self.text.index("Seal the unique signed debug APK"),
+            self.text.rindex(content_check),
+        )
+        self.assertLess(
+            self.text.rindex(content_check),
+            self.text.index("Upload the exact APK under test"),
+        )
+        self.assertLess(
+            self.text.index(content_check),
+            self.text.index("Install the governed .NET SDK"),
+        )
         self.assertIn("needs: build", self.text)
 
     def test_full_local_compatibility_tree_is_commit_pinned(self) -> None:

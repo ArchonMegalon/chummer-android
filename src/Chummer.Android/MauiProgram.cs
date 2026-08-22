@@ -14,6 +14,8 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
+        string contentPath = AndroidBundledContentMaterializer.Materialize();
+        Environment.SetEnvironmentVariable("CHUMMER_REQUIRE_CONTENT_BUNDLE", "true");
         string statePath = Path.Combine(FileSystem.AppDataDirectory, "state");
         Directory.CreateDirectory(statePath);
         Environment.SetEnvironmentVariable("CHUMMER_STATE_PATH", statePath);
@@ -36,8 +38,8 @@ public static class MauiProgram
                 typeof(MauiProgram).Assembly.GetName().Version ?? new Version(0, 0)));
         builder.Services.AddSingleton<ApplicationDeleteConfirmationPresenter>();
         builder.Services.AddChummerLocalRuntimeClient(
-            AppContext.BaseDirectory,
-            FileSystem.AppDataDirectory,
+            contentPath,
+            contentPath,
             "android");
         builder.Services.AddSingleton(new HttpClient
         {
