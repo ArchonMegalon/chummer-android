@@ -1236,6 +1236,9 @@ def launch_app(device: Device, attempts: int = 3, resume_timeout: float = 20) ->
         start_result: subprocess.CompletedProcess | None = None
         start_error: BaseException | None = None
         try:
+            # The journey owns its clear/force-stop lifecycle boundary. On API 36,
+            # combining that stop with this start via `-S` can return Status: ok and
+            # LaunchState: UNKNOWN without ever scheduling the package process.
             start_result = device.run(
                 "shell",
                 "am",
@@ -1243,7 +1246,6 @@ def launch_app(device: Device, attempts: int = 3, resume_timeout: float = 20) ->
                 "--user",
                 "current",
                 "-W",
-                "-S",
                 "-a",
                 MAIN_ACTION,
                 "-c",

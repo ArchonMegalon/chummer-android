@@ -138,7 +138,6 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 "--user",
                 "current",
                 "-W",
-                "-S",
                 "-a",
                 DRIVER.MAIN_ACTION,
                 "-c",
@@ -150,6 +149,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ),
             device.run.call_args_list[1],
         )
+        self.assertNotIn("-S", device.run.call_args_list[1].args)
 
     def test_launch_app_accepts_am_wait_timeout_only_with_exact_process_and_resume(self) -> None:
         component = "com.myexternalbrain.chummer/crccurrent.MainActivity"
