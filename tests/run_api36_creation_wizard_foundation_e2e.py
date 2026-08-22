@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scripted phone proof for wizard routing and local non-mutating Rook chat.
+"""Scripted phone proof for wizard routing and durable local non-mutating Rook chat.
 
 This driver is intentionally committed without being executed in this change. It requires an
 operator-provided, already-booted API 36 target and a reviewed APK.
@@ -113,6 +113,21 @@ def main() -> int:
         raise RuntimeError("Rook transcript did not survive leaving and reopening the page")
     device.capture("creation-wizard-rook-local-thread")
 
+    # A real process boundary is required: page navigation alone cannot prove durable local
+    # conversation storage. Do not clear app data or reinstall between stop and relaunch.
+    device.shell("am", "force-stop", shared.PACKAGE)
+    shared.launch_app(device)
+    device.wait("Your runners", timeout=90)
+    shared.open_build(device, "phone")
+    device.wait("creation-wizard-dashboard", timeout=90)
+    shared.reset_scroll_to_top(device, swipes=18)
+    device.tap("creation-wizard-rook", scroll=True)
+    device.assert_text("What can I do next?", timeout=45)
+    restarted_binding = node_text(device, "rook-message-binding-1", scroll=True)
+    if restarted_binding != assistant_binding:
+        raise RuntimeError("Rook transcript did not survive a force-stop and process restart")
+    device.capture("creation-wizard-rook-process-restart")
+
     receipt = {
         "schema": "chummer.android.creation-wizard-foundation-e2e/v1",
         "status": "scripted_not_executed",
@@ -130,6 +145,7 @@ def main() -> int:
             "exhaustiveCreationActionsHidden": "pass",
             "rookLocalFallbackVisible": "pass",
             "rookTranscriptSurvivesPageVisits": "pass",
+            "rookTranscriptSurvivesProcessRestart": "pass",
             "rookQuestionDoesNotChangeRevisionOrSnapshotBinding": "pass",
         },
     }

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Chummer.Contracts.Characters;
 
 namespace Chummer.Android.Native;
@@ -38,6 +39,9 @@ public sealed record RookConversationThreadState(
 /// </summary>
 public sealed class RookConversationStore
 {
+    private const string PreferencePrefix = "chummer.android.rook-thread.v1.";
+    private const int MaximumMessagesPerThread = 80;
+    private const int MaximumPersistedMessageLength = 8_000;
     private readonly object _gate = new();
     private readonly Dictionary<string, Thread> _threads = new(StringComparer.Ordinal);
 
@@ -46,9 +50,8 @@ public sealed class RookConversationStore
         ArgumentException.ThrowIfNullOrWhiteSpace(workspaceId);
         lock (_gate)
         {
-            return _threads.TryGetValue(workspaceId, out Thread? thread)
-                ? thread.Snapshot()
-                : new RookConversationThreadState(workspaceId, ThreadId(workspaceId), []);
+            Thread thread = GetOrRestoreThread(workspaceId);
+            return thread.Snapshot();
         }
     }
 
@@ -67,11 +70,7 @@ public sealed class RookConversationStore
 
         lock (_gate)
         {
-            if (!_threads.TryGetValue(snapshot.WorkspaceId, out Thread? thread))
-            {
-                thread = new Thread(snapshot.WorkspaceId, ThreadId(snapshot.WorkspaceId));
-                _threads.Add(snapshot.WorkspaceId, thread);
-            }
+            Thread thread = GetOrRestoreThread(snapshot.WorkspaceId);
 
             thread.Add(
                 RookConversationRoles.User,
@@ -83,30 +82,146 @@ public sealed class RookConversationStore
                 RookLocalGroundedResponder.Answer(snapshot, normalizedQuestion),
                 snapshot.WorkspaceRevision,
                 snapshot.SnapshotDigest);
-            return thread.Snapshot();
+            RookConversationThreadState state = thread.Snapshot();
+            Persist(state);
+            return state;
         }
+    }
+
+    private Thread GetOrRestoreThread(string workspaceId)
+    {
+        if (_threads.TryGetValue(workspaceId, out Thread? existing))
+        {
+            return existing;
+        }
+
+        string threadId = ThreadId(workspaceId);
+        RookConversationThreadState? restored = Restore(workspaceId, threadId);
+        var thread = new Thread(
+            workspaceId,
+            threadId,
+            restored?.Messages ?? []);
+        _threads.Add(workspaceId, thread);
+        return thread;
+    }
+
+    private static RookConversationThreadState? Restore(string workspaceId, string threadId)
+    {
+        try
+        {
+            string json = Preferences.Default.Get(PreferenceKey(workspaceId), string.Empty);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return null;
+            }
+
+            RookConversationThreadState? state = JsonSerializer.Deserialize<RookConversationThreadState>(json);
+            if (state is null
+                || !string.Equals(state.WorkspaceId, workspaceId, StringComparison.Ordinal)
+                || !string.Equals(state.ThreadId, threadId, StringComparison.Ordinal)
+                || state.Messages.Count > MaximumMessagesPerThread
+                || state.Messages.Any(message => !IsValidPersistedMessage(message, threadId)))
+            {
+                return null;
+            }
+
+            return state;
+        }
+        catch (Exception exception) when (exception is JsonException or NotSupportedException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    private static bool IsValidPersistedMessage(RookConversationMessage message, string threadId)
+        => message.Role is RookConversationRoles.User or RookConversationRoles.Rook
+            && message.MessageId.StartsWith($"{threadId}-", StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(message.Text)
+            && message.Text.Length <= MaximumPersistedMessageLength
+            && message.WorkspaceRevision > 0
+            && IsSha256Digest(message.WizardSnapshotDigest);
+
+    private static bool IsSha256Digest(string value)
+        => value.Length == 71
+            && value.StartsWith("sha256:", StringComparison.Ordinal)
+            && value.AsSpan(7).IndexOfAnyExcept("0123456789abcdef") < 0;
+
+    private static void Persist(RookConversationThreadState state)
+    {
+        try
+        {
+            Preferences.Default.Set(
+                PreferenceKey(state.WorkspaceId),
+                JsonSerializer.Serialize(state));
+        }
+        catch (Exception exception) when (exception is JsonException or NotSupportedException or InvalidOperationException)
+        {
+            // Conversation persistence is best-effort. The grounded in-memory answer remains usable,
+            // and no provider or mutation fallback is introduced when the platform store is unavailable.
+        }
+    }
+
+    private static string PreferenceKey(string workspaceId)
+        => PreferencePrefix + ThreadKey(workspaceId);
+
+    private static string ThreadKey(string workspaceId)
+    {
+        byte[] digest = SHA256.HashData(Encoding.UTF8.GetBytes(workspaceId));
+        return Convert.ToHexString(digest).ToLowerInvariant();
     }
 
     private static string ThreadId(string workspaceId)
     {
-        byte[] digest = SHA256.HashData(Encoding.UTF8.GetBytes(workspaceId));
-        return $"rook-local-{Convert.ToHexString(digest)[..16].ToLowerInvariant()}";
+        return $"rook-local-{ThreadKey(workspaceId)[..16]}";
     }
 
-    private sealed class Thread(string workspaceId, string threadId)
+    private sealed class Thread
     {
         private readonly List<RookConversationMessage> _messages = [];
+        private readonly string _workspaceId;
+        private readonly string _threadId;
+        private long _nextSequence;
+
+        public Thread(
+            string workspaceId,
+            string threadId,
+            IEnumerable<RookConversationMessage> messages)
+        {
+            _workspaceId = workspaceId;
+            _threadId = threadId;
+            _messages.AddRange(messages);
+            _nextSequence = _messages
+                .Select(message => ParseSequence(message.MessageId, threadId))
+                .DefaultIfEmpty(0L)
+                .Max();
+        }
 
         public void Add(string role, string text, long revision, string snapshotDigest)
-            => _messages.Add(new RookConversationMessage(
-                $"{threadId}-{_messages.Count + 1}",
+        {
+            _messages.Add(new RookConversationMessage(
+                $"{_threadId}-{checked(++_nextSequence)}",
                 role,
                 text,
                 revision,
                 snapshotDigest));
+            if (_messages.Count > MaximumMessagesPerThread)
+            {
+                _messages.RemoveRange(0, _messages.Count - MaximumMessagesPerThread);
+            }
+        }
 
         public RookConversationThreadState Snapshot()
-            => new(workspaceId, threadId, _messages.ToArray());
+            => new(_workspaceId, _threadId, _messages.ToArray());
+
+        private static long ParseSequence(string messageId, string threadId)
+            => messageId.StartsWith($"{threadId}-", StringComparison.Ordinal)
+               && long.TryParse(
+                   messageId.AsSpan(threadId.Length + 1),
+                   NumberStyles.None,
+                   CultureInfo.InvariantCulture,
+                   out long value)
+                ? value
+                : 0L;
     }
 }
 
@@ -120,12 +235,17 @@ public static class RookLocalGroundedResponder
         string normalized = question.Trim().ToLowerInvariant();
 
         if (string.Equals(snapshot.BuildMethod, CharacterCreationBuildMethods.LifeModules, StringComparison.Ordinal)
-            && ContainsAny(normalized, "life module", "life-module", "module", "karma flow"))
+            && ContainsAny(normalized, "life module", "life-module", "module", "karma flow")
+            && snapshot.Steps.FirstOrDefault(candidate => string.Equals(
+                candidate.StepId,
+                CharacterCreationWizardStepIds.LifeModules,
+                StringComparison.Ordinal)) is { } lifeModuleStage
+            && (!lifeModuleStage.IsAvailable || lifeModuleStage.Blockers.Count > 0))
         {
             return Prefix(
-                "Life Modules stay fail-closed on this phone foundation. Rook will not substitute "
+                "Life Modules are blocked by the current authoritative projection. Rook will not substitute "
                 + "the Karma workflow. "
-                + BlockerSentence(snapshot.CompletionBlockers));
+                + BlockerSentence(lifeModuleStage.Blockers));
         }
 
         CharacterCreationBudgetState? budget = snapshot.Budgets.FirstOrDefault(candidate =>

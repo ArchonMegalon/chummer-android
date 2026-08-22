@@ -70,6 +70,13 @@ class CreationWizardSourceContractTests(unittest.TestCase):
 
         for marker in (
             "Dictionary<string, Thread>",
+            'PreferencePrefix = "chummer.android.rook-thread.v1."',
+            "Preferences.Default.Get",
+            "Preferences.Default.Set",
+            "MaximumMessagesPerThread = 80",
+            "IsValidPersistedMessage",
+            "CharacterCreationWizardStepIds.LifeModules",
+            "lifeModuleStage.IsAvailable",
             "snapshot.WorkspaceId",
             "snapshot.WorkspaceRevision",
             "snapshot.SnapshotDigest",
@@ -112,6 +119,8 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         self.assertIn('device.set_text("rook-question"', source)
         self.assertIn('device.tap("rook-send-question"', source)
         self.assertIn("assert_same_binding", source)
+        self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', source)
+        self.assertIn('"rookTranscriptSurvivesProcessRestart": "pass"', source)
         self.assertNotIn('"profile": "tablet"', source)
 
 
