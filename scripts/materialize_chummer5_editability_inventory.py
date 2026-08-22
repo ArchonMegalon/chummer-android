@@ -442,6 +442,26 @@ CAPTURE_ONLY_PHONE_E2E_SOURCE_PATHS: dict[str, tuple[str, str]] = {
         "core",
         "Chummer.Infrastructure/Files/FileCharacterRosterFavoriteStore.cs",
     ),
+    "applicationSettingsPageSha256": (
+        "android",
+        "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+    ),
+    "applicationSettingsPresenterSha256": (
+        "presentation",
+        "Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+    ),
+    "applicationSettingsContractSha256": (
+        "core",
+        "Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+    ),
+    "applicationSettingsRulesSha256": (
+        "core",
+        "Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+    ),
+    "applicationSettingsStoreSha256": (
+        "core",
+        "Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs",
+    ),
     "groupNamePageSha256": ("android", "src/Chummer.Android/Native/GroupNamePage.cs"),
     "groupNameContractSha256": ("presentation", "Chummer.Presentation/Overview/GroupNameEditRequest.cs"),
     "groupNameRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterGroupNameRules.cs"),
@@ -465,6 +485,29 @@ CAPTURE_ONLY_PHONE_E2E_SOURCE_PATHS: dict[str, tuple[str, str]] = {
     "traditionNameRulesSha256": ("core", "Chummer.Contracts/Characters/CharacterTraditionNameRules.cs"),
 }
 CAPTURE_ONLY_PHONE_E2E_DEFINITIONS: dict[str, dict[str, Any]] = {
+    "application-confirm-delete": {
+        "driver": "tests/run_api36_application_confirm_delete_e2e.py",
+        "fixtures": (
+            ("runnerFixtureSha256", "tests/fixtures/application-confirm-delete-e2e.chum5"),
+        ),
+        "sourceKeys": (
+            "applicationSettingsPageSha256", "homePageSha256", "coordinatorSha256",
+            "mauiProgramSha256", "applicationSettingsPresenterSha256",
+            "applicationSettingsContractSha256", "applicationSettingsRulesSha256",
+            "applicationSettingsStoreSha256",
+        ),
+        "controls": ("EditGlobalSettings.chkConfirmDelete", "EditGlobalSettings.cmdOK"),
+        "proofKeys": (
+            "legacyDefaultTrue", "draftBackDoesNotPersist", "explicitSaveOnly",
+            "typedSettingIdentity", "expectedRevisionCas", "atomicSave",
+            "processRestartReadback", "newestValidBackupRecovery", "characterDocumentPreserved",
+        ),
+        "journeys": (
+            "legacyDefaultTrue", "draftDiscardedOnBack", "explicitSaveCommitted",
+            "processRestartReadback", "atomicPreviousCommitBackup",
+            "newestValidBackupRecovery", "characterDocumentPreserved",
+        ),
+    },
     "gear-name": {
         "driver": "tests/run_api36_gear_name_e2e.py",
         "fixtures": (
@@ -1648,6 +1691,7 @@ GROUP_MEMBERSHIP_CONTROL = "chkJoinGroup"
 ROSTER_FAVORITE_CONTROL = "tsToggleFav"
 ROSTER_SORT_CONTROL = "tsSort"
 ROSTER_REMOVE_CONTROL = "tsDelete"
+APPLICATION_CONFIRM_DELETE_CONTROLS = {"chkConfirmDelete", "cmdOK"}
 GROUP_NAME_CONTROL = "txtGroupName"
 TRADITION_NAME_CONTROL = "txtTraditionName"
 TRADITION_DRAIN_CONTROL = "cboDrain"
@@ -6899,6 +6943,126 @@ def _known_phone_mapping(
             "e2e": phone_e2e or {
                 "status": "scripted_not_executed" if e2e_scripted else "missing",
                 "ref": "tests/run_api36_career_nuyen_expense_edit_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
+    if class_name == "EditGlobalSettings" and control in APPLICATION_CONFIRM_DELETE_CONTROLS:
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ApplicationSettingsPage.cs"
+        home_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "HomePage.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        maui_program = REPO_ROOT / "src" / "Chummer.Android" / "MauiProgram.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_application_confirm_delete_e2e.py"
+        fixture = REPO_ROOT / "tests" / "fixtures" / "application-confirm-delete-e2e.chum5"
+        presenter = presentation_root / "Chummer.Presentation" / "Overview" / "ApplicationDeleteConfirmationPresenter.cs"
+        contract = character_notes_core_root / "Chummer.Contracts" / "Api" / "ApplicationDeleteConfirmationContracts.cs"
+        rules = character_notes_core_root / "Chummer.Application" / "Tools" / "ApplicationDeleteConfirmationRules.cs"
+        store = character_notes_core_root / "Chummer.Infrastructure" / "Files" / "FileApplicationDeleteConfirmationStore.cs"
+        automation_id = "settings-confirm-delete" if control == "chkConfirmDelete" else "settings-save"
+        implemented = (
+            _contains(
+                page,
+                "class ApplicationSettingsPage",
+                'AutomationId = "settings-confirm-delete"',
+                'AutomationId = "settings-save"',
+                "_baseline.Revision",
+                "SaveDeleteConfirmationSettingAsync",
+            )
+            and _contains(home_page, 'AutomationId = "home-application-settings"', "new ApplicationSettingsPage")
+            and _contains(
+                coordinator,
+                "ApplicationDeleteConfirmationState",
+                "SaveDeleteConfirmationSettingAsync",
+                "ApplicationSettingIdentity.ConfirmDelete",
+                "expectedRevision",
+                "_applicationSettingsPresenter.Apply",
+            )
+            and _contains(
+                maui_program,
+                "IApplicationDeleteConfirmationStore",
+                "FileApplicationDeleteConfirmationStore",
+                "ApplicationDeleteConfirmationPresenter",
+            )
+            and _contains(
+                presenter,
+                "ApplicationDeleteConfirmationPresenter",
+                "ApplicationDeleteConfirmationRules.Apply",
+                "_store.Save(mutation.ExpectedRevision, updated)",
+            )
+            and _contains(
+                contract,
+                "ApplicationSettingIdentity",
+                "ApplicationDeleteConfirmationState",
+                "ApplicationDeleteConfirmationMutation",
+                "ConfirmDelete: true",
+                "ExpectedRevision",
+            )
+            and _contains(
+                rules,
+                'LegacyIdentity = "confirmdelete"',
+                "mutation.ExpectedRevision != current.Revision",
+                "ApplicationSettingIdentity.ConfirmDelete",
+            )
+            and _contains(
+                store,
+                "application-delete-confirmation.json",
+                "primary.Revision >= backup.Revision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                'path + ".bak"',
+                "current.Revision != expectedRevision",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                'CONTROLS = ("chkConfirmDelete", "cmdOK")',
+                'api != "36"',
+                'abi != "arm64-v8a"',
+                '"profile": "phone"',
+                '"journey": "application-confirm-delete"',
+                'device.shell("pm", "path", shared.PACKAGE)',
+                '"applicationSettingsStoreSha256"',
+                '"runnerFixtureSha256"',
+            )
+            and fixture.is_file()
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Home > Application settings > Delete confirmation > Save",
+            "surface": "ApplicationSettingsPage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+                "src/Chummer.Android/Native/HomePage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "src/Chummer.Android/MauiProgram.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+                "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs",
+            ],
+            "presenterMutation": (
+                "ApplicationDeleteConfirmationPresenter.Apply(ApplicationDeleteConfirmationMutation)"
+            ),
+            "persistenceAssertion": (
+                "the confirmdelete draft alone is committed by explicit Save with expected-revision CAS, atomic "
+                "replacement, process-restart readback, and newest-valid primary/.bak recovery; Back performs no "
+                "write and character XML remains byte-independent"
+            ),
+            "coverageLimit": (
+                "Phone application setting confirmdelete only. The cmdOK row means only that this one staged value "
+                "has an explicit commit action; no unrelated Global Settings field is claimed. Tablet intentionally "
+                f"remains missing and the API 36 driver is {'present but not yet executed' if e2e_scripted else 'missing'}"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_application_confirm_delete_e2e.py" if e2e_scripted else None,
             },
             "tablet": {
                 "status": "missing",

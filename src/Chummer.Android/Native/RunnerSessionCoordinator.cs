@@ -49,6 +49,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly IAndroidSystemService _system;
     private readonly IAndroidAccountLinkService _account;
     private readonly CharacterRosterFavoritePresenter _rosterFavoritePresenter;
+    private readonly ApplicationDeleteConfirmationPresenter _applicationSettingsPresenter;
     private readonly SemaphoreSlim _initializeGate = new(1, 1);
     private readonly SemaphoreSlim _outputGate = new(1, 1);
     private readonly SemaphoreSlim _shellSyncGate = new(1, 1);
@@ -70,6 +71,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private string _gameNotes = string.Empty;
     private string _groupNotes = string.Empty;
     private CharacterRosterFavoriteState _rosterFavorites = CharacterRosterFavoriteState.Empty;
+    private ApplicationDeleteConfirmationState _applicationSettings = ApplicationDeleteConfirmationState.Default;
 
     public RunnerSessionCoordinator(
         ICharacterOverviewPresenter presenter,
@@ -80,7 +82,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         IAndroidLinkedCharacterFileService linkedCharacters,
         IAndroidSystemService system,
         IAndroidAccountLinkService account,
-        CharacterRosterFavoritePresenter rosterFavoritePresenter)
+        CharacterRosterFavoritePresenter rosterFavoritePresenter,
+        ApplicationDeleteConfirmationPresenter applicationSettingsPresenter)
     {
         _presenter = presenter;
         _shellPresenter = shellPresenter;
@@ -91,6 +94,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _system = system;
         _account = account;
         _rosterFavoritePresenter = rosterFavoritePresenter;
+        _applicationSettingsPresenter = applicationSettingsPresenter;
         _presenter.StateChanged += OnPresenterStateChanged;
         _shellPresenter.StateChanged += OnShellStateChanged;
         _account.Changed += OnAccountChanged;
@@ -123,6 +127,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
     public NativePlaySnapshot Play => _play;
 
     public CharacterRosterFavoriteState RosterFavorites => _rosterFavorites;
+
+    public ApplicationDeleteConfirmationState ApplicationSettings => _applicationSettings;
 
     public string CharacterNotes
         => State.WorkspaceId == _characterNotesWorkspaceId
@@ -163,6 +169,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
             RestoreCharacterSettingsCatalog();
             _rosterFavorites = _rosterFavoritePresenter.Load();
+            _applicationSettings = _applicationSettingsPresenter.Load();
             await _shellPresenter.InitializeAsync(cancellationToken);
             await _presenter.InitializeAsync(cancellationToken);
             await RestoreSelectedWorkspaceAsync(cancellationToken);
@@ -315,6 +322,22 @@ public sealed class RunnerSessionCoordinator : IDisposable
             CharacterRosterRemoveTarget.Recent => $"{identity.DisplayName} removed from recent runners.",
             _ => throw new ArgumentOutOfRangeException(nameof(target), "A known roster removal target is required.")
         };
+        NotifyChanged();
+        return Task.CompletedTask;
+    }
+
+    public Task SaveDeleteConfirmationSettingAsync(
+        bool confirmDelete,
+        long expectedRevision,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        _applicationSettings = _applicationSettingsPresenter.Apply(
+            new ApplicationDeleteConfirmationMutation(
+                ApplicationSettingIdentity.ConfirmDelete,
+                confirmDelete,
+                expectedRevision));
+        _notice = "Application settings saved.";
         NotifyChanged();
         return Task.CompletedTask;
     }

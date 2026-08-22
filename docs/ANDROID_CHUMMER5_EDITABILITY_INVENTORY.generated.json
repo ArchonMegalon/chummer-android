@@ -14,9 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 543,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 437,
+      "implemented_pending_emulator": 439,
       "implemented_verified_api36": 79,
-      "missing": 991,
+      "missing": 989,
       "not_applicable_non_mutating": 468,
       "partial_create_only": 106,
       "partial_exact_saved_data": 148
@@ -112,12 +112,12 @@
       {
         "path": "src/Chummer.Android/Native/HomePage.cs",
         "exists": true,
-        "sha256": "474ed9646a2366813a6dcd4c91e202f6a67a9eaef307f10170311ca3844b6826"
+        "sha256": "c651b9b804bdcd91370ecf5aef84061dc9b479bb3230ab74d2ef4a5ee9d4a6ea"
       },
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "ae435768da1498b05315185590d5d6375ed76f8a64c7ebe6e275082e4a76b7f8"
+        "sha256": "145feae702acd8d7298de440c8a10f7f20a3ac8114ddce0c01e7ffd3bb11d626"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterRosterFavoritePresenter.cs",
@@ -372,7 +372,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "f86ca6c0ce318cb4c1d325cd775c22a4dda9ff3ae92a9fc8bb4238c95c5aa16c"
+        "sha256": "e3a0ef0c2184034b3eeb01575868ad77d1e72d1382ebc6fe341ca12f2c9e6419"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1175,6 +1175,11 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-application-confirm-delete/receipt.json",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-gear-name/receipt.json",
         "exists": false,
         "sha256": null
@@ -1862,7 +1867,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "3dcb1938fd6c1ce118a5afb07bd700a8f555c87062c3395131d1c7a55c8568be"
+      "sha256": "5e305061e324589bb3074f6c808741de93821d6f951c44d9c41746eb866b169b"
     }
   },
   "coverageByFamily": {
@@ -1883,7 +1888,7 @@
     "application_settings": {
       "rowCount": 73,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 56,
+      "phoneMissingCount": 54,
       "tabletMissingCount": 56,
       "completionProvenCount": 17
     },
@@ -96715,11 +96720,21 @@
       "mutationFamily": "application_settings",
       "operation": "set_value",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Home > Application settings > Delete confirmation > Save",
+        "surface": "ApplicationSettingsPage",
+        "automationId": "settings-confirm-delete",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+          "src/Chummer.Android/Native/HomePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/MauiProgram.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+        ],
+        "coverageLimit": "Phone application setting confirmdelete only. The cmdOK row means only that this one staged value has an explicit commit action; no unrelated Global Settings field is claimed. Tablet intentionally remains missing and the API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -96727,12 +96742,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ApplicationDeleteConfirmationPresenter.Apply(ApplicationDeleteConfirmationMutation)",
+      "persistenceAssertion": "the confirmdelete draft alone is committed by explicit Save with expected-revision CAS, atomic replacement, process-restart readback, and newest-valid primary/.bak recovery; Back performs no write and character XML remains byte-independent",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_application_confirm_delete_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -97682,11 +97697,21 @@
       "mutationFamily": "application_settings",
       "operation": "commit",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Home > Application settings > Delete confirmation > Save",
+        "surface": "ApplicationSettingsPage",
+        "automationId": "settings-save",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
+          "src/Chummer.Android/Native/HomePage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "src/Chummer.Android/MauiProgram.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Api/ApplicationDeleteConfirmationContracts.cs",
+          "chummer-core-engine/Chummer.Application/Tools/ApplicationDeleteConfirmationRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Files/FileApplicationDeleteConfirmationStore.cs"
+        ],
+        "coverageLimit": "Phone application setting confirmdelete only. The cmdOK row means only that this one staged value has an explicit commit action; no unrelated Global Settings field is claimed. Tablet intentionally remains missing and the API 36 driver is present but not yet executed"
       },
       "tablet": {
         "status": "missing",
@@ -97694,12 +97719,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ApplicationDeleteConfirmationPresenter.Apply(ApplicationDeleteConfirmationMutation)",
+      "persistenceAssertion": "the confirmdelete draft alone is committed by explicit Save with expected-revision CAS, atomic replacement, process-restart readback, and newest-valid primary/.bak recovery; Back performs no write and character XML remains byte-independent",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_application_confirm_delete_e2e.py"
         },
         "tablet": {
           "status": "missing",

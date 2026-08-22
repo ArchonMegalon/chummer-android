@@ -28,6 +28,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<ICharacterRosterFavoriteStore>(
             new FileCharacterRosterFavoriteStore(statePath));
         builder.Services.AddSingleton<CharacterRosterFavoritePresenter>();
+        builder.Services.AddSingleton<IApplicationDeleteConfirmationStore>(
+            new FileApplicationDeleteConfirmationStore(statePath));
+        builder.Services.AddSingleton<ApplicationDeleteConfirmationPresenter>();
         builder.Services.AddChummerLocalRuntimeClient(
             AppContext.BaseDirectory,
             FileSystem.AppDataDirectory,
@@ -45,6 +48,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<RunnerSessionCoordinator>();
         builder.Services.AddTransient<HomePage>();
         builder.Services.AddTransient<RosterFavoritesPage>();
+        builder.Services.AddTransient<ApplicationSettingsPage>();
         builder.Services.AddTransient<BuildPage>();
         builder.Services.AddTransient<TabletBuildPage>();
         builder.Services.AddTransient<PlayPage>();

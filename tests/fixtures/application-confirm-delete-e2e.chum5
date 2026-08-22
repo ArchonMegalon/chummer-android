@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Settings Proof</name>
+  <alias>Confirm Delete Proof</alias>
+  <created>False</created>
+  <gameedition>SR6</gameedition>
+  <settings>settings.xml</settings>
+  <customstate>
+    <applicationconfirmdelete>character XML must remain unrelated</applicationconfirmdelete>
+  </customstate>
+</character>
