@@ -816,6 +816,132 @@ namespace Chummer
         self.assertEqual("not_applicable_non_mutating", row["e2e"]["tablet"]["status"])
         self.assertTrue(row["completionProven"])
 
+    def test_select_gear_availability_and_affordability_filters_are_source_guarded(self) -> None:
+        legacy_root = (
+            inventory.DEFAULT_CHUMMER5_ROOT
+            if inventory.DEFAULT_CHUMMER5_ROOT.is_dir()
+            else PRESENTATION_ROOT
+        )
+        source = (
+            legacy_root
+            / "Chummer"
+            / "Forms"
+            / "Selection Forms"
+            / "SelectGear.cs"
+        ).read_bytes().decode("utf-8-sig")
+        controls = {"chkHideOverAvailLimit", "chkShowOnlyAffordItems"}
+        handler = "RefreshCurrentList"
+        handlers = [{"event": "CheckedChanged", "handler": handler}]
+        handler_digest = "9f4374a914f9f2d537232983ee256a546009af34edac1e57a208e64c192d3d11"
+        refresh_digests = (
+            "3af15ac9061e25f1288e023cab61c03d7bd4e0c3fd905d00e330169360022b8f",
+            "d35e0292aadfa2042f1676bffc905d6262dd215b5c7f104fe46d0689bb261375",
+        )
+
+        self.assertEqual(handler_digest, inventory._legacy_method_digest([source], handler))
+        self.assertEqual(
+            refresh_digests,
+            inventory._legacy_method_overload_digests([source], "RefreshList"),
+        )
+        self.assertEqual((), inventory._legacy_method_overload_digests([source], "MissingMethod"))
+        for control in controls:
+            identity = ("SelectGear", control)
+            review = inventory._source_guarded_non_mutating_review(
+                identity[0],
+                identity[1],
+                handlers,
+                [source],
+            )
+            self.assertIsNotNone(review)
+            self.assertEqual("filter_selection_view", review[0])
+            self.assertIn("transient checkbox", review[1])
+            self.assertIn("repopulating the modal WinForms gear list", review[1])
+            self.assertIn("writes no Character, Gear, GlobalSettings", review[1])
+            self.assertNotIn(identity, inventory.NON_MUTATING_LEGACY_INTERACTIONS)
+            self.assertEqual(
+                ("set_value", "definite"),
+                inventory._operation(control, "direct_value_editor", handlers),
+            )
+            self.assertIsNone(
+                inventory._source_guarded_non_mutating_review(
+                    identity[0],
+                    identity[1],
+                    [{"event": "CheckedChanged", "handler": "drifted_handler"}],
+                    [source],
+                )
+            )
+
+            contract = inventory.SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS[identity]
+            with patch.dict(
+                inventory.SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS,
+                {
+                    identity: {
+                        **contract,
+                        "methodDigests": {handler: "0" * 64},
+                    },
+                },
+            ):
+                self.assertIsNone(
+                    inventory._source_guarded_non_mutating_review(
+                        identity[0],
+                        identity[1],
+                        handlers,
+                        [source],
+                    )
+                )
+
+            for overload_index in range(len(refresh_digests)):
+                drifted_refresh_digests = list(refresh_digests)
+                drifted_refresh_digests[overload_index] = "0" * 64
+                with patch.dict(
+                    inventory.SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS,
+                    {
+                        identity: {
+                            **contract,
+                            "methodOverloadDigests": {
+                                "RefreshList": tuple(drifted_refresh_digests),
+                            },
+                        },
+                    },
+                ):
+                    self.assertIsNone(
+                        inventory._source_guarded_non_mutating_review(
+                            identity[0],
+                            identity[1],
+                            handlers,
+                            [source],
+                        )
+                    )
+
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = [
+            row
+            for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == "SelectGear"
+            and row["legacy"]["controlName"] in controls
+        ]
+        self.assertEqual(2, len(rows))
+        self.assertEqual([1049, 1050], [row["legacy"]["line"] for row in rows])
+        self.assertEqual(controls, {row["legacy"]["controlName"] for row in rows})
+        for row in rows:
+            self.assertEqual("filter_selection_view", row["operation"])
+            self.assertEqual("non_mutating", row["legacy"]["mutationDisposition"])
+            self.assertIn("transient checkbox", row["legacy"]["dispositionEvidence"])
+            self.assertFalse(row["editParityRequired"])
+            self.assertEqual("not_applicable_non_mutating", row["phone"]["status"])
+            self.assertEqual("not_applicable_non_mutating", row["tablet"]["status"])
+            self.assertEqual("not_applicable_non_mutating", row["e2e"]["phone"]["status"])
+            self.assertEqual("not_applicable_non_mutating", row["e2e"]["tablet"]["status"])
+            self.assertEqual([], row["phone"]["sourceRefs"])
+            self.assertIsNone(row["phone"]["route"])
+            self.assertIsNone(row["phone"]["surface"])
+            self.assertIsNone(row["phone"]["automationId"])
+            self.assertTrue(row["completionProven"])
+
     def test_career_attribute_category_is_reviewed_as_transient_shapeshifter_view(self) -> None:
         payload = json.loads(
             (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
@@ -2929,8 +3055,8 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 458,
                 "implemented_verified_api36": 79,
-                "missing": 938,
-                "not_applicable_non_mutating": 476,
+                "missing": 936,
+                "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 172,
             },
@@ -2940,8 +3066,8 @@ namespace Chummer
             {
                 "implemented_pending_emulator": 4,
                 "implemented_verified_api36": 75,
-                "missing": 1530,
-                "not_applicable_non_mutating": 476,
+                "missing": 1528,
+                "not_applicable_non_mutating": 478,
                 "partial_exact_saved_data": 144,
             },
             payload["summary"]["tabletStatusCounts"],

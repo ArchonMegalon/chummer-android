@@ -2493,6 +2493,48 @@ SOURCE_GUARDED_NON_MUTATING_LEGACY_INTERACTIONS: dict[
             },
         },
     },
+    ("SelectGear", "chkHideOverAvailLimit"): {
+        "operation": "filter_selection_view",
+        "evidence": (
+            "CheckedChanged calls RefreshCurrentList/RefreshList, which reads the transient checkbox, "
+            "catalog, settings, character availability, improvements, and available Nuyen only as filter "
+            "inputs before repopulating the modal WinForms gear list; it writes no Character, Gear, "
+            "GlobalSettings, dirty/save/recovery, or persisted application-preference state"
+        ),
+        "events": (("CheckedChanged", "RefreshCurrentList"),),
+        "methodDigests": {
+            "RefreshCurrentList": (
+                "9f4374a914f9f2d537232983ee256a546009af34edac1e57a208e64c192d3d11"
+            ),
+        },
+        "methodOverloadDigests": {
+            "RefreshList": (
+                "3af15ac9061e25f1288e023cab61c03d7bd4e0c3fd905d00e330169360022b8f",
+                "d35e0292aadfa2042f1676bffc905d6262dd215b5c7f104fe46d0689bb261375",
+            ),
+        },
+    },
+    ("SelectGear", "chkShowOnlyAffordItems"): {
+        "operation": "filter_selection_view",
+        "evidence": (
+            "CheckedChanged calls RefreshCurrentList/RefreshList, which reads the transient checkbox, "
+            "catalog, settings, character availability, improvements, and available Nuyen only as filter "
+            "inputs before repopulating the modal WinForms gear list; it writes no Character, Gear, "
+            "GlobalSettings, dirty/save/recovery, or persisted application-preference state"
+        ),
+        "events": (("CheckedChanged", "RefreshCurrentList"),),
+        "methodDigests": {
+            "RefreshCurrentList": (
+                "9f4374a914f9f2d537232983ee256a546009af34edac1e57a208e64c192d3d11"
+            ),
+        },
+        "methodOverloadDigests": {
+            "RefreshList": (
+                "3af15ac9061e25f1288e023cab61c03d7bd4e0c3fd905d00e330169360022b8f",
+                "d35e0292aadfa2042f1676bffc905d6262dd215b5c7f104fe46d0689bb261375",
+            ),
+        },
+    },
 }
 
 MATRIX_CONDITION_CONTROL_RE = re.compile(
@@ -5749,6 +5791,28 @@ def _legacy_method_digest(texts: Iterable[str], method_name: str) -> str | None:
     return hashlib.sha256(matches[0].encode("utf-8")).hexdigest()
 
 
+def _legacy_method_overload_digests(
+    texts: Iterable[str],
+    method_name: str,
+) -> tuple[str, ...]:
+    """Hash every overload of one legacy method in declaration order."""
+
+    declaration = re.compile(
+        rf"(?m)^\s{{8}}(?:private|protected|public|internal)\s+[^\n]*\b{re.escape(method_name)}\s*\("
+    )
+    next_declaration = re.compile(
+        r"(?m)^\s{8}(?:private|protected|public|internal)\s+[^\n]*(?:\(|=>|\{)"
+    )
+    digests: list[str] = []
+    for text in texts:
+        for match in declaration.finditer(text):
+            following = next_declaration.search(text, match.end())
+            end = following.start() if following is not None else len(text)
+            source = text[match.start():end].rstrip().replace("\r\n", "\n")
+            digests.append(hashlib.sha256(source.encode("utf-8")).hexdigest())
+    return tuple(digests)
+
+
 def _source_guarded_non_mutating_review(
     class_name: str,
     control: str,
@@ -5765,6 +5829,11 @@ def _source_guarded_non_mutating_review(
     if any(
         _legacy_method_digest(texts, method_name) != expected_digest
         for method_name, expected_digest in review["methodDigests"].items()
+    ):
+        return None
+    if any(
+        _legacy_method_overload_digests(texts, method_name) != tuple(expected_digests)
+        for method_name, expected_digests in review.get("methodOverloadDigests", {}).items()
     ):
         return None
     callee_method_digests = review.get("calleeMethodDigests", {})

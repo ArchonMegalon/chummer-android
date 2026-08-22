@@ -6,26 +6,26 @@
     "rowCount": 2229,
     "sourceFileCount": 300,
     "designerFileCount": 137,
-    "definiteMutationCandidateCount": 1753,
+    "definiteMutationCandidateCount": 1751,
     "reviewRequiredCount": 0,
     "legacyReviewCompleteCount": 2229,
-    "reviewedNonMutatingCount": 476,
-    "editParityRequiredCount": 1753,
+    "reviewedNonMutatingCount": 478,
+    "editParityRequiredCount": 1751,
     "unclassifiedCount": 0,
-    "completionProvenCount": 551,
+    "completionProvenCount": 553,
     "phoneStatusCounts": {
       "implemented_pending_emulator": 458,
       "implemented_verified_api36": 79,
-      "missing": 938,
-      "not_applicable_non_mutating": 476,
+      "missing": 936,
+      "not_applicable_non_mutating": 478,
       "partial_create_only": 106,
       "partial_exact_saved_data": 172
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 4,
       "implemented_verified_api36": 75,
-      "missing": 1530,
-      "not_applicable_non_mutating": 476,
+      "missing": 1528,
+      "not_applicable_non_mutating": 478,
       "partial_exact_saved_data": 144
     }
   },
@@ -2151,7 +2151,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "c63ff3f4928e5a00a3ea00dff070592d526dde1efa484476330268ebaefe146d"
+      "sha256": "5085e20eaa12074dd264f48e79289cd1f346cc26aa461af07ea8857cdee36c6d"
     }
   },
   "coverageByFamily": {
@@ -2305,9 +2305,9 @@
     "gear": {
       "rowCount": 84,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 21,
-      "tabletMissingCount": 56,
-      "completionProvenCount": 4
+      "phoneMissingCount": 19,
+      "tabletMissingCount": 54,
+      "completionProvenCount": 6
     },
     "generic_selection_and_collection_controls": {
       "rowCount": 31,
@@ -110036,9 +110036,9 @@
         "controlName": "chkHideOverAvailLimit",
         "controlType": "Chummer.ColorableCheckBox",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (RefreshCurrentList)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "CheckedChanged calls RefreshCurrentList/RefreshList, which reads the transient checkbox, catalog, settings, character availability, improvements, and available Nuyen only as filter inputs before repopulating the modal WinForms gear list; it writes no Character, Gear, GlobalSettings, dirty/save/recovery, or persisted application-preference state",
         "text": "Hide Items Over Avail Limit ({0})",
         "tag": "Checkbox_HideOverAvailLimit",
         "readOnlyAtDesignTime": null,
@@ -110052,16 +110052,16 @@
         ]
       },
       "mutationFamily": "gear",
-      "operation": "set_value",
+      "operation": "filter_selection_view",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -110070,18 +110070,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Selection Forms/SelectGear.Designer.cs::Chummer.SelectGear::chkShowOnlyAffordItems",
@@ -110093,9 +110093,9 @@
         "controlName": "chkShowOnlyAffordItems",
         "controlType": "Chummer.ColorableCheckBox",
         "candidateKind": "direct_value_editor",
-        "mutationConfidence": "definite",
-        "mutationDisposition": "mutating",
-        "dispositionEvidence": "direct_value_editor accepts a value or invokes mutation-capable source wiring (RefreshCurrentList)",
+        "mutationConfidence": "non_mutating",
+        "mutationDisposition": "non_mutating",
+        "dispositionEvidence": "CheckedChanged calls RefreshCurrentList/RefreshList, which reads the transient checkbox, catalog, settings, character availability, improvements, and available Nuyen only as filter inputs before repopulating the modal WinForms gear list; it writes no Character, Gear, GlobalSettings, dirty/save/recovery, or persisted application-preference state",
         "text": "Show Only Items I Can Afford",
         "tag": "Checkbox_ShowOnlyAffordItems",
         "readOnlyAtDesignTime": null,
@@ -110109,16 +110109,16 @@
         ]
       },
       "mutationFamily": "gear",
-      "operation": "set_value",
+      "operation": "filter_selection_view",
       "phone": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "route": null,
         "surface": null,
         "automationId": null,
         "sourceRefs": []
       },
       "tablet": {
-        "status": "missing",
+        "status": "not_applicable_non_mutating",
         "surface": null,
         "automationId": null,
         "sourceRefs": []
@@ -110127,18 +110127,18 @@
       "persistenceAssertion": null,
       "e2e": {
         "phone": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         },
         "tablet": {
-          "status": "missing",
+          "status": "not_applicable_non_mutating",
           "ref": null
         }
       },
-      "editParityRequired": true,
+      "editParityRequired": false,
       "legacyReviewComplete": true,
-      "overallStatus": "missing",
-      "completionProven": false
+      "overallStatus": "not_applicable_non_mutating",
+      "completionProven": true
     },
     {
       "id": "Chummer/Forms/Selection Forms/SelectGear.Designer.cs::Chummer.SelectGear::nudMinimumCost",
