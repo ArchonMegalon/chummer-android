@@ -161,9 +161,12 @@ jobs:
           install -m 0644 \
             "${apks[0]}" \
             "$RUNNER_TEMP/chummer-android-apk/chummer-android-x64-debug.apk"
-          sha256sum \
-            "$RUNNER_TEMP/chummer-android-apk/chummer-android-x64-debug.apk" \
-            >"$RUNNER_TEMP/chummer-android-apk/chummer-android-x64-debug.apk.sha256"
+          (
+            cd "$RUNNER_TEMP/chummer-android-apk"
+            sha256sum chummer-android-x64-debug.apk \
+              >chummer-android-x64-debug.apk.sha256
+            sha256sum --check chummer-android-x64-debug.apk.sha256
+          )
 
       - name: Verify canonical content in the exact signed APK
         run: >-
@@ -213,6 +216,10 @@ jobs:
         with:
           name: chummer-android-api36-x64-debug-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/chummer-android-apk
+
+      - name: Verify the portable downloaded APK seal
+        working-directory: ${{ runner.temp }}/chummer-android-apk
+        run: sha256sum --check chummer-android-x64-debug.apk.sha256
 
       - name: Enable KVM for the disposable emulator
         shell: bash

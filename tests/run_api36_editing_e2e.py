@@ -49,6 +49,13 @@ class LaunchState:
     activity_dump: str
 
 
+@dataclass(frozen=True)
+class ProcessRestartProof:
+    before_force_stop: LaunchState
+    after_force_stop: LaunchState
+    restarted: LaunchState
+
+
 class Device:
     def __init__(self, adb: Path, serial: str, evidence: Path) -> None:
         self.adb = adb
@@ -1263,7 +1270,7 @@ def _wait_for_resumed_component(
         time.sleep(0.5)
 
 
-def launch_app(device: Device, attempts: int = 3, resume_timeout: float = 20) -> None:
+def launch_app(device: Device, attempts: int = 3, resume_timeout: float = 20) -> LaunchState:
     if attempts < 1 or resume_timeout < 0:
         raise ValueError("Launch attempts must be positive and resume timeout nonnegative")
     component = launcher_component(device)
@@ -1349,7 +1356,7 @@ def launch_app(device: Device, attempts: int = 3, resume_timeout: float = 20) ->
                 )
                 + "\n",
             )
-            return
+            return state
 
         logcat = capture_launch_diagnostics(
             device,
@@ -1376,6 +1383,86 @@ def launch_app(device: Device, attempts: int = 3, resume_timeout: float = 20) ->
                 f"{attempts} attempts; component={component!r}"
             )
         time.sleep(3)
+
+
+def force_stop_and_launch_new_process(
+    device: Device,
+    previous: LaunchState,
+) -> ProcessRestartProof:
+    if not previous.process_ids:
+        raise RuntimeError("Process-restart proof requires an initial Chummer PID")
+
+    before_force_stop = current_launch_state(device)
+    if before_force_stop.process_ids != previous.process_ids \
+        or before_force_stop.resumed_component != previous.resumed_component:
+        device.capture("process-restart-precondition-changed")
+        raise RuntimeError(
+            "Chummer launch identity changed before the owned force-stop boundary: "
+            f"launch_process_ids={previous.process_ids!r}, "
+            f"live_process_ids={before_force_stop.process_ids!r}, "
+            f"launch_resumed={previous.resumed_component!r}, "
+            f"live_resumed={before_force_stop.resumed_component!r}"
+        )
+
+    device.shell("am", "force-stop", PACKAGE)
+    after_force_stop = current_launch_state(device)
+    if after_force_stop.process_ids:
+        device.capture("process-restart-force-stop-not-empty")
+        raise RuntimeError(
+            "Chummer package PID set remained non-empty after force-stop: "
+            + " ".join(after_force_stop.process_ids)
+        )
+
+    restarted = launch_app(device)
+    reused = sorted(set(before_force_stop.process_ids).intersection(restarted.process_ids))
+    if reused:
+        device.capture("process-restart-pid-reused")
+        raise RuntimeError(
+            "Chummer process restart reused an existing PID instead of proving a new process: "
+            + " ".join(reused)
+        )
+
+    _write_launch_evidence(
+        device,
+        "process-restart-verified.txt",
+        "\n".join(
+            (
+                f"pre_force_stop_process_ids={' '.join(before_force_stop.process_ids)}",
+                f"pre_force_stop_resumed_component={before_force_stop.resumed_component or ''}",
+                f"post_force_stop_process_ids={' '.join(after_force_stop.process_ids)}",
+                f"restart_process_ids={' '.join(restarted.process_ids)}",
+                f"restart_resumed_component={restarted.resumed_component or ''}",
+            )
+        )
+        + "\n",
+    )
+    return ProcessRestartProof(before_force_stop, after_force_stop, restarted)
+
+
+def prepare_full_editing_runner(
+    device: Device,
+    profile: str,
+    completed_runner_name: str,
+) -> None:
+    device.tap_until_visible("home-new-runner", "Select Build Method")
+    device.tap("dialog-action-create-character", scroll=True)
+    device.wait("dialog-action-complete-new-character-workflow", timeout=45, scroll=True)
+    device.tap("dialog-action-complete-new-character-workflow", scroll=True)
+
+    if profile == "phone":
+        # A new creation-mode runner now routes directly to the fail-closed wizard.
+        # The unrestricted editor must remain unavailable until creation is complete.
+        device.wait("creation-wizard-dashboard", timeout=90)
+        device.capture("new-runner-creation-wizard")
+        device.tap("Home")
+    else:
+        # Tablet creation remains on Home after the modal workflow closes.
+        device.wait("Continue building", timeout=90)
+
+    device.wait("home-open-file", timeout=90)
+    device.tap("home-open-file")
+    select_android_document(device, completed_runner_name)
+    device.wait("Continue building", timeout=90)
 
 
 def attach_linked_runner(
@@ -1793,7 +1880,7 @@ def main() -> int:
     device.push(args.invalid_linked_runner, "/sdcard/Download/invalid-linked-runner-e2e.chum5")
     device.push(args.condition_runner, "/sdcard/Download/career-condition-monitor-e2e.chum5")
     device.push(args.contact_pet_runner, "/sdcard/Download/creation-contact-pet-e2e.chum5")
-    launch_app(device)
+    initial_launch_state = launch_app(device)
     device.wait("Your runners", timeout=90)
 
     if args.journey in {"condition-monitor", "contact-pet"}:
@@ -1806,11 +1893,11 @@ def main() -> int:
         select_android_document(device, fixture_name)
         device.wait("Continue building", timeout=90)
     else:
-        device.tap_until_visible("home-new-runner", "Select Build Method")
-        device.tap("dialog-action-create-character", scroll=True)
-        device.wait("dialog-action-complete-new-character-workflow", timeout=45, scroll=True)
-        device.tap("dialog-action-complete-new-character-workflow", scroll=True)
-        device.wait("Continue building", timeout=90)
+        prepare_full_editing_runner(
+            device,
+            args.profile,
+            "career-condition-monitor-e2e.chum5",
+        )
 
     open_build(device, args.profile)
     if args.journey == "contact-pet":
@@ -1820,8 +1907,10 @@ def main() -> int:
         add_and_edit_pet(device, args.profile, create_items=False)
         device.capture("contact-pet-persisted")
 
-        device.shell("am", "force-stop", PACKAGE)
-        launch_app(device)
+        restart_proof = force_stop_and_launch_new_process(
+            device,
+            initial_launch_state,
+        )
         device.wait("Continue building", timeout=90)
         open_build(device, args.profile)
         assert_contact_persisted(device, args.profile)
@@ -1843,6 +1932,13 @@ def main() -> int:
             "driverSha256": sha256(Path(__file__).resolve()),
             "inputFixture": str(args.contact_pet_runner.resolve()),
             "inputFixtureSha256": sha256(args.contact_pet_runner.resolve()),
+            "initialLaunchProcessIds": list(initial_launch_state.process_ids),
+            "initialLaunchResumedComponent": initial_launch_state.resumed_component,
+            "preForceStopProcessIds": list(restart_proof.before_force_stop.process_ids),
+            "preForceStopResumedComponent": restart_proof.before_force_stop.resumed_component,
+            "postForceStopProcessIds": list(restart_proof.after_force_stop.process_ids),
+            "restartProcessIds": list(restart_proof.restarted.process_ids),
+            "restartResumedComponent": restart_proof.restarted.resumed_component,
             "journeys": {
                 "creationRunnerImport": "pass",
                 "contactInvalidBoundsRejected": "pass",
@@ -1867,8 +1963,10 @@ def main() -> int:
         assert_condition_damage(device, args.profile, "stun", 1)
         device.capture("condition-monitor-persisted")
 
-        device.shell("am", "force-stop", PACKAGE)
-        launch_app(device)
+        restart_proof = force_stop_and_launch_new_process(
+            device,
+            initial_launch_state,
+        )
         device.wait("Continue building", timeout=90)
         open_build(device, args.profile)
         assert_condition_damage(device, args.profile, "physical", 2)
@@ -1888,6 +1986,13 @@ def main() -> int:
             "driverSha256": sha256(Path(__file__).resolve()),
             "inputFixture": str(args.condition_runner.resolve()),
             "inputFixtureSha256": sha256(args.condition_runner.resolve()),
+            "initialLaunchProcessIds": list(initial_launch_state.process_ids),
+            "initialLaunchResumedComponent": initial_launch_state.resumed_component,
+            "preForceStopProcessIds": list(restart_proof.before_force_stop.process_ids),
+            "preForceStopResumedComponent": restart_proof.before_force_stop.resumed_component,
+            "postForceStopProcessIds": list(restart_proof.after_force_stop.process_ids),
+            "restartProcessIds": list(restart_proof.restarted.process_ids),
+            "restartResumedComponent": restart_proof.restarted.resumed_component,
             "journeys": {
                 "careerRunnerImport": "pass",
                 "physicalConditionDamageEditPersisted": "pass",
@@ -1939,8 +2044,10 @@ def main() -> int:
         device.back()
     device.capture("editing-persisted")
 
-    device.shell("am", "force-stop", PACKAGE)
-    launch_app(device)
+    restart_proof = force_stop_and_launch_new_process(
+        device,
+        initial_launch_state,
+    )
     device.wait("Continue building", timeout=90)
     open_build(device, args.profile)
     open_origin_dossier(device, args.profile)
@@ -2005,8 +2112,22 @@ def main() -> int:
         "apk": str(args.apk.resolve()),
         "apkSha256": sha256(args.apk.resolve()),
         "driverSha256": sha256(Path(__file__).resolve()),
+        "inputFixture": str(args.condition_runner.resolve()),
+        "inputFixtureSha256": sha256(args.condition_runner.resolve()),
+        "initialLaunchProcessIds": list(initial_launch_state.process_ids),
+        "initialLaunchResumedComponent": initial_launch_state.resumed_component,
+        "preForceStopProcessIds": list(restart_proof.before_force_stop.process_ids),
+        "preForceStopResumedComponent": restart_proof.before_force_stop.resumed_component,
+        "postForceStopProcessIds": list(restart_proof.after_force_stop.process_ids),
+        "restartProcessIds": list(restart_proof.restarted.process_ids),
+        "restartResumedComponent": restart_proof.restarted.resumed_component,
         "journeys": {
-            "newRunner": "pass",
+            "newRunnerCreationWorkflowStarted": "pass",
+            "newRunnerCreationCompletion": "not-claimed",
+            "phoneCreationWizardDashboard": (
+                "pass" if args.profile == "phone" else "not-applicable-tablet-deferred"
+            ),
+            "careerRunnerImport": "pass",
             "originIdentityEditPersisted": "pass",
             "originStoryEditPersisted": "pass",
             "attributeBaseEditPersisted": "pass",

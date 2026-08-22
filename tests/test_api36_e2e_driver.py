@@ -123,12 +123,14 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 self.successful_am_start(component),
             ]
 
-            DRIVER.launch_app(device, resume_timeout=0)
+            state = DRIVER.launch_app(device, resume_timeout=0)
 
             verified = Path(temporary) / "launch-attempt-1-verified.txt"
             self.assertTrue(verified.is_file())
             self.assertIn("process_ids=7225", verified.read_text(encoding="utf-8"))
             self.assertIn(f"resumed_component={component}", verified.read_text(encoding="utf-8"))
+            self.assertEqual(("7225",), state.process_ids)
+            self.assertEqual(component, state.resumed_component)
 
         self.assertEqual(
             call(
@@ -288,6 +290,80 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ),
             device.shell.call_args_list[1],
         )
+
+    def test_process_restart_requires_a_new_exact_launch_pid(self) -> None:
+        component = "com.myexternalbrain.chummer/crccurrent.MainActivity"
+        initial = DRIVER.LaunchState(("7225",), component, "initial")
+        stopped = DRIVER.LaunchState((), None, "stopped")
+        restarted = DRIVER.LaunchState(("7351",), component, "restart")
+        with tempfile.TemporaryDirectory() as temporary:
+            device = Mock(spec=DRIVER.Device)
+            device.evidence = Path(temporary)
+            with patch.object(
+                DRIVER,
+                "current_launch_state",
+                side_effect=[initial, stopped],
+            ), patch.object(DRIVER, "launch_app", return_value=restarted):
+                actual = DRIVER.force_stop_and_launch_new_process(device, initial)
+
+            proof = Path(temporary) / "process-restart-verified.txt"
+            self.assertTrue(proof.is_file())
+            self.assertIn("pre_force_stop_process_ids=7225", proof.read_text(encoding="utf-8"))
+            self.assertIn("post_force_stop_process_ids=", proof.read_text(encoding="utf-8"))
+            self.assertIn("restart_process_ids=7351", proof.read_text(encoding="utf-8"))
+
+        self.assertIs(initial, actual.before_force_stop)
+        self.assertIs(stopped, actual.after_force_stop)
+        self.assertIs(restarted, actual.restarted)
+        device.shell.assert_called_once_with("am", "force-stop", DRIVER.PACKAGE)
+
+    def test_process_restart_rejects_a_reused_pid(self) -> None:
+        component = "com.myexternalbrain.chummer/crccurrent.MainActivity"
+        initial = DRIVER.LaunchState(("7225",), component, "initial")
+        stopped = DRIVER.LaunchState((), None, "stopped")
+        restarted = DRIVER.LaunchState(("7225",), component, "restart")
+        device = Mock(spec=DRIVER.Device)
+        with patch.object(
+            DRIVER,
+            "current_launch_state",
+            side_effect=[initial, stopped],
+        ), patch.object(DRIVER, "launch_app", return_value=restarted):
+            with self.assertRaisesRegex(RuntimeError, "reused an existing PID"):
+                DRIVER.force_stop_and_launch_new_process(device, initial)
+
+        device.capture.assert_called_once_with("process-restart-pid-reused")
+
+    def test_process_restart_rejects_a_nonempty_post_force_stop_pid_set(self) -> None:
+        component = "com.myexternalbrain.chummer/crccurrent.MainActivity"
+        initial = DRIVER.LaunchState(("7225",), component, "initial")
+        still_running = DRIVER.LaunchState(("7225",), None, "stopping")
+        device = Mock(spec=DRIVER.Device)
+        with patch.object(
+            DRIVER,
+            "current_launch_state",
+            side_effect=[initial, still_running],
+        ), patch.object(DRIVER, "launch_app") as launch:
+            with self.assertRaisesRegex(RuntimeError, "remained non-empty"):
+                DRIVER.force_stop_and_launch_new_process(device, initial)
+
+        launch.assert_not_called()
+        device.capture.assert_called_once_with("process-restart-force-stop-not-empty")
+
+    def test_process_restart_rejects_a_changed_live_launch_identity(self) -> None:
+        component = "com.myexternalbrain.chummer/crccurrent.MainActivity"
+        initial = DRIVER.LaunchState(("7225",), component, "initial")
+        changed = DRIVER.LaunchState(("7300",), component, "changed")
+        device = Mock(spec=DRIVER.Device)
+        with patch.object(DRIVER, "current_launch_state", return_value=changed), patch.object(
+            DRIVER,
+            "launch_app",
+        ) as launch:
+            with self.assertRaisesRegex(RuntimeError, "changed before the owned force-stop"):
+                DRIVER.force_stop_and_launch_new_process(device, initial)
+
+        launch.assert_not_called()
+        device.shell.assert_not_called()
+        device.capture.assert_called_once_with("process-restart-precondition-changed")
 
     def test_launcher_component_rejects_missing_package_or_ambiguous_component(self) -> None:
         missing = Mock()
@@ -474,6 +550,93 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             source,
         )
         self.assertIn("time.sleep(1.25)", source)
+
+    def test_full_phone_journey_proves_wizard_then_imports_completed_runner(self) -> None:
+        device = Mock()
+
+        with patch.object(DRIVER, "select_android_document") as select_document:
+            DRIVER.prepare_full_editing_runner(
+                device,
+                "phone",
+                "career-condition-monitor-e2e.chum5",
+            )
+
+        device.assert_has_calls(
+            [
+                call.tap_until_visible("home-new-runner", "Select Build Method"),
+                call.tap("dialog-action-create-character", scroll=True),
+                call.wait(
+                    "dialog-action-complete-new-character-workflow",
+                    timeout=45,
+                    scroll=True,
+                ),
+                call.tap("dialog-action-complete-new-character-workflow", scroll=True),
+                call.wait("creation-wizard-dashboard", timeout=90),
+                call.capture("new-runner-creation-wizard"),
+                call.tap("Home"),
+                call.wait("home-open-file", timeout=90),
+                call.tap("home-open-file"),
+                call.wait("Continue building", timeout=90),
+            ]
+        )
+        select_document.assert_called_once_with(
+            device,
+            "career-condition-monitor-e2e.chum5",
+        )
+
+    def test_full_tablet_journey_returns_home_then_imports_completed_runner(self) -> None:
+        device = Mock()
+
+        with patch.object(DRIVER, "select_android_document") as select_document:
+            DRIVER.prepare_full_editing_runner(
+                device,
+                "tablet",
+                "career-condition-monitor-e2e.chum5",
+            )
+
+        device.assert_has_calls(
+            [
+                call.tap_until_visible("home-new-runner", "Select Build Method"),
+                call.tap("dialog-action-create-character", scroll=True),
+                call.wait(
+                    "dialog-action-complete-new-character-workflow",
+                    timeout=45,
+                    scroll=True,
+                ),
+                call.tap("dialog-action-complete-new-character-workflow", scroll=True),
+                call.wait("Continue building", timeout=90),
+                call.wait("home-open-file", timeout=90),
+                call.tap("home-open-file"),
+                call.wait("Continue building", timeout=90),
+            ]
+        )
+        device.capture.assert_not_called()
+        device.tap.assert_any_call("home-open-file")
+        self.assertNotIn(call.tap("Home"), device.mock_calls)
+        select_document.assert_called_once_with(
+            device,
+            "career-condition-monitor-e2e.chum5",
+        )
+
+    def test_full_receipt_binds_completed_fixture_and_exact_restart_identity(self) -> None:
+        source = Path(DRIVER.__file__).read_text(encoding="utf-8")
+        receipt = source[source.rindex("    receipt = {") :]
+
+        for marker in (
+            '"inputFixture": str(args.condition_runner.resolve())',
+            '"inputFixtureSha256": sha256(args.condition_runner.resolve())',
+            '"initialLaunchProcessIds": list(initial_launch_state.process_ids)',
+            '"initialLaunchResumedComponent": initial_launch_state.resumed_component',
+            '"preForceStopProcessIds": list(restart_proof.before_force_stop.process_ids)',
+            '"preForceStopResumedComponent": restart_proof.before_force_stop.resumed_component',
+            '"postForceStopProcessIds": list(restart_proof.after_force_stop.process_ids)',
+            '"restartProcessIds": list(restart_proof.restarted.process_ids)',
+            '"restartResumedComponent": restart_proof.restarted.resumed_component',
+            '"newRunnerCreationCompletion": "not-claimed"',
+            '"careerRunnerImport": "pass"',
+            '"processRestartPersistence": "pass"',
+        ):
+            self.assertIn(marker, receipt)
 
     def test_native_dialog_rebuilds_from_state_shape_changes_not_a_dialog_allowlist(self) -> None:
         source = (
@@ -1056,7 +1219,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         for marker in (
             "add_and_edit_contact(device, args.profile, create_items=False)",
             "add_and_edit_pet(device, args.profile, create_items=False)",
-            'device.shell("am", "force-stop", PACKAGE)',
+            "force_stop_and_launch_new_process(",
             "assert_contact_persisted(device, args.profile)",
             "assert_pet_persisted(device, args.profile)",
             '"inputFixtureSha256": sha256(args.contact_pet_runner.resolve())',

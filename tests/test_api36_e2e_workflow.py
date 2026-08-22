@@ -46,6 +46,22 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("scripts/build-debug.sh", self.text)
         self.assertIn("test \"${#apks[@]}\" -eq 1", self.text)
         self.assertIn("chummer-android-x64-debug.apk.sha256", self.text)
+        seal_start = self.text.index("Seal the unique signed debug APK")
+        seal_end = self.text.index("Verify canonical content in the exact signed APK")
+        seal = self.text[seal_start:seal_end]
+        self.assertIn('cd "$RUNNER_TEMP/chummer-android-apk"', seal)
+        self.assertIn(
+            "sha256sum chummer-android-x64-debug.apk \\\n              >chummer-android-x64-debug.apk.sha256",
+            seal,
+        )
+        self.assertIn(
+            "sha256sum --check chummer-android-x64-debug.apk.sha256",
+            seal,
+        )
+        self.assertNotIn(
+            'sha256sum \\\n            "$RUNNER_TEMP/chummer-android-apk/chummer-android-x64-debug.apk"',
+            seal,
+        )
         content_check = "python3 chummer-android/scripts/verify_android_content_bundle.py"
         self.assertEqual(2, self.text.count(content_check))
         self.assertEqual(2, self.text.count("--core-root chummer-core-engine"))
@@ -140,6 +156,23 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertLess(
             runner.index("python3 chummer-android/tests/run_api36_editing_e2e.py"),
             runner.index("tests/run_api36_creation_prerequisite_e2e.py"),
+        )
+
+    def test_downloaded_artifact_verifies_the_portable_apk_seal_before_emulation(self) -> None:
+        download = self.text.index("Download the exact APK under test")
+        verify = self.text.index("Verify the portable downloaded APK seal")
+        emulator = self.text.index("Enable KVM for the disposable emulator")
+
+        self.assertLess(download, verify)
+        self.assertLess(verify, emulator)
+        verify_block = self.text[verify:emulator]
+        self.assertIn(
+            "working-directory: ${{ runner.temp }}/chummer-android-apk",
+            verify_block,
+        )
+        self.assertIn(
+            "run: sha256sum --check chummer-android-x64-debug.apk.sha256",
+            verify_block,
         )
 
     def test_actions_are_commit_pinned_and_evidence_survives_failure(self) -> None:
