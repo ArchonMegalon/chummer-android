@@ -937,6 +937,33 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<VehicleEquipmentInstalledEditorState?> PrepareVehicleEquipmentInstalledEditAsync(
+        Guid vehicleId,
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareVehicleEquipmentInstalledEditAsync(vehicleId, cancellationToken);
+
+    public async Task ApplyVehicleEquipmentInstalledEditAsync(
+        VehicleEquipmentInstalledEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Vehicle Installed was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyVehicleEquipmentInstalledEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Vehicle Installed state saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<GearOverclockerEditorState?> PrepareGearOverclockerEditAsync(
         Guid rootGearId,
         CancellationToken cancellationToken = default)

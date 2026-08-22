@@ -2697,6 +2697,50 @@ namespace Chummer
         self.assertEqual("implemented_verified_api36", verified_spirit["status"])
         self.assertEqual(executed, verified_spirit["e2e"])
 
+    def test_vehicle_equipment_installed_source_mapping_is_two_row_typed_and_fail_closed(self) -> None:
+        import inspect
+
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = [
+            row for row in payload["rows"]
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"] == inventory.VEHICLE_EQUIPMENT_INSTALLED_CONTROL
+        ]
+        self.assertEqual(2, len(rows))
+        parameters = list(inspect.signature(inventory._known_phone_mapping).parameters)
+        receipt_arguments = {
+            name: {} if name in {"condition_e2e_receipts", "contact_pet_e2e_receipts"} else None
+            for name in parameters[4:]
+        }
+        for row in rows:
+            mapping = inventory._known_phone_mapping(
+                row,
+                inventory.DEFAULT_CHUMMER5_ROOT,
+                PRESENTATION_ROOT,
+                CORE_ROOT,
+                **receipt_arguments,
+            )
+            self.assertEqual("partial_exact_saved_data", mapping["status"])
+            self.assertEqual(
+                "Build > Gear > Vehicles > selected stable Vehicle > Installed equipment",
+                mapping["route"],
+            )
+            self.assertEqual("VehicleEquipmentInstalledPage", mapping["surface"])
+            self.assertIn("WeaponMount|VehicleMod|Weapon|WeaponAccessory", mapping["presenterMutation"])
+            self.assertIn("zero Nuyen/Karma", mapping["presenterMutation"])
+            self.assertIn("sensor-affecting VehicleMod", mapping["presenterMutation"])
+            self.assertIn("Sensor Array rating", mapping["coverageLimit"])
+            self.assertEqual("scripted_not_executed", mapping["e2e"]["status"])
+            self.assertEqual(
+                "tests/run_api36_vehicle_equipment_installed_e2e.py",
+                mapping["e2e"]["ref"],
+            )
+            self.assertEqual("missing", mapping["tablet"]["status"])
+
     def test_select_build_method_phone_mapping_is_exact_and_fail_closed(self) -> None:
         payload = json.loads(
             (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(

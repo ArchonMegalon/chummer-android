@@ -1934,6 +1934,7 @@ ARMOR_TREE_FLAG_CONTROLS = {
 GEAR_STOLEN_CONTROL = "chkGearStolen"
 WEAPON_STOLEN_CONTROL = "chkWeaponStolen"
 GEAR_EQUIPMENT_CONTROL = "chkGearEquipped"
+VEHICLE_EQUIPMENT_INSTALLED_CONTROL = "chkVehicleWeaponAccessoryInstalled"
 GEAR_OVERCLOCKER_CONTROL = "cboGearOverclocker"
 GEAR_ATTACK_SWAP_CONTROL = "cboGearAttack"
 GEAR_SLEAZE_SWAP_CONTROL = "cboGearSleaze"
@@ -11148,6 +11149,205 @@ def _known_phone_mapping(
             "tablet": {"status": "missing", "surface": None, "automationId": None, "sourceRefs": []},
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if (
+        class_name in {"CharacterCreate", "CharacterCareer"}
+        and control == VEHICLE_EQUIPMENT_INSTALLED_CONTROL
+    ):
+        legacy_source = (
+            presentation_root / "Chummer" / "Forms" / "Character Forms" / f"{class_name}.cs"
+        )
+        page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "VehicleEquipmentInstalledPage.cs"
+        editor = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CollectionEditorPages.cs"
+        coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_vehicle_equipment_installed_e2e.py"
+        creation_fixture = REPO_ROOT / "tests" / "fixtures" / "creation-vehicle-equipment-installed-e2e.chum5"
+        career_fixture = REPO_ROOT / "tests" / "fixtures" / "career-vehicle-equipment-installed-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "VehicleEquipmentInstalledEditRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = (
+            character_notes_core_root
+            / "Chummer.Contracts"
+            / "Characters"
+            / "CharacterVehicleEquipmentInstalledRules.cs"
+        )
+        workspace_store = (
+            character_notes_core_root
+            / "Chummer.Infrastructure"
+            / "Workspaces"
+            / "FileWorkspaceStore.cs"
+        )
+        legacy_exact = (
+            any(
+                event.get("handler") == "chkVehicleWeaponAccessoryInstalled_CheckedChanged"
+                for event in legacy.get("events", [])
+            )
+            and _contains(
+                legacy_source,
+                "chkVehicleWeaponAccessoryInstalled_CheckedChanged",
+                "is ICanEquip",
+                "SetEquippedAsync",
+                "SetDirty(true)",
+                "case WeaponMount",
+                "case VehicleMod",
+                "case Weapon objWeapon",
+                "case WeaponAccessory",
+            )
+        )
+        implemented = (
+            legacy_exact
+            and _contains(
+                page,
+                "class VehicleEquipmentInstalledPage",
+                'AutomationId = $"vehicle-equipment-installed-page-{vehicleToken}"',
+                'AutomationId = $"vehicle-equipment-installed-target-{vehicleToken}"',
+                'AutomationId = $"vehicle-equipment-installed-toggle-{vehicleToken}"',
+                'AutomationId = $"vehicle-equipment-installed-save-{vehicleToken}"',
+                "CharacterVehicleEquipmentInstalledRules.IsValidIdentity",
+                "selected.CanChangeInstalled",
+                "selected.Revision",
+                "VehicleEquipmentInstalledEditRequest",
+            )
+            and _contains(
+                editor,
+                "AddVehicleEquipmentInstalledAction",
+                'automationId: $"vehicle-equipment-installed-open-{vehicleId:N}"',
+                "PrepareVehicleEquipmentInstalledEditAsync",
+                "new VehicleEquipmentInstalledPage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareVehicleEquipmentInstalledEditAsync",
+                "ApplyVehicleEquipmentInstalledEditAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CharacterVehicleEquipmentInstalledIdentity",
+                "VehicleEquipmentInstalledEditorProjector",
+                'ReadRequiredBoolean(root, "created"',
+                'ReadRequiredBoolean(element, "equipped"',
+                'ReadRequiredBoolean(mount, "included"',
+                'ReadOptionalSingleText(weapon, "parentid")',
+                "UnderbarrelWeapons",
+                "HasDirectSensor",
+                "seenIds.Add",
+                "FindUniqueDirectByGuid",
+            )
+            and _contains(
+                mutation,
+                "ApplyVehicleEquipmentInstalledEdit",
+                "CharacterVehicleEquipmentInstalledRules.TryValidateMutation",
+                "VehicleEquipmentInstalledEditorProjector.FindNode",
+                'SetElementValue(target, "equipped"',
+            )
+            and _contains(
+                presenter,
+                "PrepareVehicleEquipmentInstalledEditAsync",
+                "ApplyVehicleEquipmentInstalledEditAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareVehicleEquipmentInstalledEditAsync",
+                "ApplyVehicleEquipmentInstalledEditAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterVehicleEquipmentInstalledIdentity",
+                "CharacterVehicleEquipmentPathSegment",
+                "CharacterVehicleEquipmentNodeKind",
+                "CharacterVehicleEquipmentInstalledPhase",
+                "CharacterVehicleEquipmentInstalledEconomics",
+                "LegacyEnabled",
+                "EquippedOnlyMutationExact",
+                "CanChangeInstalled",
+                "NuyenDelta: 0m",
+                "KarmaDelta: 0",
+                "TryValidateMutation",
+                "SHA256.HashData",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "WriteRecordAtomically",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"CharacterCreate.chkVehicleWeaponAccessoryInstalled"',
+                '"CharacterCareer.chkVehicleWeaponAccessoryInstalled"',
+                'if api != "36"',
+                '"arm64-v8a" not in abi_list.split(",")',
+                '"package": shared.PACKAGE',
+                '"profile": "phone"',
+                '"journey": "vehicle-equipment-installed"',
+                'device.shell("am", "force-stop"',
+                "sensorVehicleModFailClosed",
+                "processRestartWorkspacePersisted",
+            )
+            and creation_fixture.is_file()
+            and career_fixture.is_file()
+        )
+        return {
+            "status": "partial_exact_saved_data" if implemented else "missing",
+            "route": "Build > Gear > Vehicles > selected stable Vehicle > Installed equipment",
+            "surface": "VehicleEquipmentInstalledPage",
+            "automationId": "vehicle-equipment-installed-toggle-{stable-vehicle-guid}",
+            "coverageLimit": (
+                "WeaponMount, non-sensor VehicleMod, Weapon, and WeaponAccessory equipped values use exact legacy "
+                "identity and enable rules; enabled VehicleMods whose bonus or active wirelessbonus contains sensor "
+                "remain fail-closed because Chummer5 also recalculates the saved Vehicle Sensor Array rating"
+            ),
+            "sourceRefs": [
+                "src/Chummer.Android/Native/VehicleEquipmentInstalledPage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/VehicleEquipmentInstalledEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterVehicleEquipmentInstalledRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyVehicleEquipmentInstalledEditAsync with exact typed Vehicle > "
+                "WeaponMount|VehicleMod|Weapon|WeaponAccessory identity, per-kind legacy enable rules, zero Nuyen/Karma "
+                "economics, duplicate rejection, node-local revision, expected workspace content revision, and "
+                "fail-closed sensor-affecting VehicleMod provenance"
+            ),
+            "persistenceAssertion": (
+                "the exact selected saved Vehicle-tree equipped value persists after revision-bound atomic save, "
+                "same-session reopen, and process restart while unrelated Vehicle/economic XML remains byte-semantic"
+            ),
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": "tests/run_api36_vehicle_equipment_installed_e2e.py" if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name in {"CharacterCreate", "CharacterCareer"} and control == GEAR_EQUIPMENT_CONTROL:
         legacy_source = (
             presentation_root / "Chummer" / "Forms" / "Character Forms" / f"{class_name}.cs"
@@ -18005,6 +18205,9 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "ArmorTreeFlagPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearStolenPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "WeaponStolenPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "VehicleEquipmentInstalledPage.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "VehicleEquipmentInstalledEditRequest.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterVehicleEquipmentInstalledRules.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearOverclockerPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearAttackSwapPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GearSleazeSwapPage.cs",
@@ -18069,6 +18272,9 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_armor_tree_flags_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_stolen_e2e.py",
         REPO_ROOT / "tests" / "run_api36_weapon_stolen_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_vehicle_equipment_installed_e2e.py",
+        REPO_ROOT / "tests" / "fixtures" / "creation-vehicle-equipment-installed-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-vehicle-equipment-installed-e2e.chum5",
         REPO_ROOT / "tests" / "run_api36_gear_equipment_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_overclocker_e2e.py",
         REPO_ROOT / "tests" / "run_api36_improvement_active_e2e.py",

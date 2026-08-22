@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Vehicle Installed E2E</name><alias>CareerVehicleInstalledE2E</alias>
+  <playername>Local API 36 E2E</playername><metatype>Human</metatype><buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion><appversion>5.225.0</appversion>
+  <created>True</created><gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <nuyen>8765</nuyen><karma>19</karma>
+  <vehicles>
+    <vehicle>
+      <guid>71111111-7111-4111-8111-711111111111</guid><name>Career Roadmaster</name><category>Groundcraft</category><body>8</body>
+      <homenode>False</homenode><notes>Career vehicle sentinel</notes><locations />
+      <weaponmounts><weaponmount>
+        <guid>72222222-7222-4222-8222-722222222222</guid><name>Career External Mount</name>
+        <included>False</included><equipped>False</equipped><notes>Career mount sentinel</notes>
+        <mods><mod>
+          <guid>73333333-7333-4333-8333-733333333333</guid><name>Career Mount Mod</name>
+          <included>False</included><equipped>True</equipped><wirelesson>True</wirelesson><weapons />
+        </mod></mods>
+        <weapons><weapon>
+          <guid>74444444-7444-4444-8444-744444444444</guid><name>Career Mount Weapon</name>
+          <parentid>72222222-7222-4222-8222-722222222222</parentid><equipped>False</equipped>
+          <accessories><accessory>
+            <guid>75555555-7555-4555-8555-755555555555</guid><name>Career Smartgun</name>
+            <equipped>True</equipped><notes>Career accessory sentinel</notes>
+          </accessory></accessories>
+        </weapon></weapons>
+      </weaponmount></weaponmounts>
+      <mods><mod>
+        <guid>76666666-7666-4666-8666-766666666666</guid><name>Career Sensor Side Effect</name>
+        <included>False</included><equipped>False</equipped><wirelesson>True</wirelesson>
+        <bonus><sensor>2</sensor></bonus><weapons />
+      </mod></mods>
+      <weapons><weapon>
+        <guid>77777777-7777-4777-8777-777777777777</guid><name>Career Loose Weapon</name>
+        <parentid></parentid><equipped>True</equipped><accessories />
+        <underbarrel><weapon>
+          <guid>78888888-7888-4888-8888-788888888888</guid><name>Career Included Underbarrel</name>
+          <parentid>77777777-7777-4777-8777-777777777777</parentid><equipped>False</equipped><accessories />
+        </weapon></underbarrel>
+      </weapon></weapons>
+    </vehicle>
+    <vehicle>
+      <guid>7aaaaaaa-7aaa-4aaa-8aaa-7aaaaaaaaaaa</guid><name>Career Untouched Vehicle</name>
+      <category>Groundcraft</category><body>2</body><homenode>False</homenode>
+      <notes>Career untouched sentinel</notes><locations /><weaponmounts /><mods /><weapons />
+    </vehicle>
+  </vehicles>
+  <customstate>Career Vehicle Installed runner sentinel</customstate>
+</character>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Vehicle Installed E2E</name><alias>CreationVehicleInstalledE2E</alias>
+  <playername>Local API 36 E2E</playername><metatype>Human</metatype><buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion><appversion>5.225.0</appversion>
+  <created>False</created><gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <nuyen>4321</nuyen><karma>7</karma>
+  <vehicles>
+    <vehicle>
+      <guid>61111111-6111-4111-8111-611111111111</guid><name>Creation Roadmaster</name><category>Groundcraft</category><body>8</body>
+      <homenode>False</homenode><notes>Creation vehicle sentinel</notes><locations />
+      <weaponmounts><weaponmount>
+        <guid>62222222-6222-4222-8222-622222222222</guid><name>Creation External Mount</name>
+        <included>False</included><equipped>False</equipped><notes>Creation mount sentinel</notes>
+        <mods><mod>
+          <guid>63333333-6333-4333-8333-633333333333</guid><name>Creation Mount Mod</name>
+          <included>False</included><equipped>True</equipped><wirelesson>True</wirelesson><weapons />
+        </mod></mods>
+        <weapons><weapon>
+          <guid>64444444-6444-4444-8444-644444444444</guid><name>Creation Mount Weapon</name>
+          <parentid>62222222-6222-4222-8222-622222222222</parentid><equipped>False</equipped>
+          <accessories><accessory>
+            <guid>65555555-6555-4555-8555-655555555555</guid><name>Creation Smartgun</name>
+            <equipped>True</equipped><notes>Creation accessory sentinel</notes>
+          </accessory></accessories>
+        </weapon></weapons>
+      </weaponmount></weaponmounts>
+      <mods><mod>
+        <guid>66666666-6666-4666-8666-666666666666</guid><name>Creation Sensor Side Effect</name>
+        <included>False</included><equipped>False</equipped><wirelesson>True</wirelesson>
+        <bonus><sensor>2</sensor></bonus><weapons />
+      </mod></mods>
+      <weapons><weapon>
+        <guid>67777777-6777-4777-8777-677777777777</guid><name>Creation Loose Weapon</name>
+        <parentid></parentid><equipped>True</equipped><accessories />
+        <underbarrel><weapon>
+          <guid>68888888-6888-4888-8888-688888888888</guid><name>Creation Included Underbarrel</name>
+          <parentid>67777777-6777-4777-8777-677777777777</parentid><equipped>False</equipped><accessories />
+        </weapon></underbarrel>
+      </weapon></weapons>
+    </vehicle>
+    <vehicle>
+      <guid>6aaaaaaa-6aaa-4aaa-8aaa-6aaaaaaaaaaa</guid><name>Creation Untouched Vehicle</name>
+      <category>Groundcraft</category><body>2</body><homenode>False</homenode>
+      <notes>Creation untouched sentinel</notes><locations /><weaponmounts /><mods /><weapons />
+    </vehicle>
+  </vehicles>
+  <customstate>Creation Vehicle Installed runner sentinel</customstate>
+</character>

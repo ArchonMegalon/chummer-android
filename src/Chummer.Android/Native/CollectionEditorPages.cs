@@ -112,6 +112,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddMoveAndDeleteActions(item);
         AddNestedActions(item);
         AddVehicleHomeNodeAction(item);
+        AddVehicleEquipmentInstalledAction(item);
         AddArmorHomeNodeAction(item);
         AddWeaponHomeNodeAction(item);
         AddWeaponActiveCommlinkAction(item);
@@ -766,6 +767,32 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 item.Label,
                 homeNode)),
             automationId: $"vehicle-home-node-open-{vehicleId:N}"));
+    }
+
+    private void AddVehicleEquipmentInstalledAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Vehicle
+            || _target.NestedKind is not null
+            || Coordinator.State.WorkspaceId is null
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid vehicleId)
+            || vehicleId == Guid.Empty)
+        {
+            return;
+        }
+
+        _body.Add(NativeTheme.NavigationRow(
+            "Installed equipment",
+            "Edit exact Weapon Mount, Vehicle Mod, Weapon, or Weapon Accessory Installed state",
+            async () =>
+            {
+                VehicleEquipmentInstalledEditorState? editor = await Coordinator
+                    .PrepareVehicleEquipmentInstalledEditAsync(vehicleId);
+                if (editor is not null && editor.Nodes.Count > 0)
+                {
+                    await Navigation.PushAsync(new VehicleEquipmentInstalledPage(Coordinator, editor));
+                }
+            },
+            automationId: $"vehicle-equipment-installed-open-{vehicleId:N}"));
     }
 
     private void AddArmorHomeNodeAction(WorkspaceCollectionItemEditorState item)
