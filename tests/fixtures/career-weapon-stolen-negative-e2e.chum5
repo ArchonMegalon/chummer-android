@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Career Weapon Stolen Negative E2E</name>
+  <alias>CareerWeaponStolenNegativeE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <nuyen>4321</nuyen><karma>7</karma>
+  <improvements>
+    <improvement><improvementttype>Nuyen</improvementttype><improvedname>Stolen</improvedname><condition>career</condition><addtorating>0</addtorating><enabled>1</enabled></improvement>
+  </improvements>
+  <weapons>
+    <weapon>
+      <guid>ab141111-1411-4411-8411-141111111111</guid>
+      <name>Career Weapon Stolen Negative</name><category>Pistols</category><cost>1000</cost>
+      <stolen>False</stolen><notes>Career Weapon Stolen negative sentinel</notes><accessories />
+    </weapon>
+  </weapons>
+  <customstate>Career Weapon Stolen runner sentinel</customstate>
+</character>

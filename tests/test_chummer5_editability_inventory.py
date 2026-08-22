@@ -1083,6 +1083,43 @@ namespace Chummer
         )
         self.assertFalse(row["completionProven"])
 
+        weapon_stolen = [
+            row for row in rows
+            if row["legacy"]["formOrControl"] == "CharacterCreate"
+            and row["legacy"]["controlName"] == inventory.WEAPON_STOLEN_CONTROL
+        ]
+        self.assertEqual(1, len(weapon_stolen))
+        row = weapon_stolen[0]
+        self.assertEqual("weapons", row["mutationFamily"])
+        self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+        self.assertEqual(
+            "Build > Gear > Weapons > selected stable root Weapon > Stolen",
+            row["phone"]["route"],
+        )
+        self.assertEqual("WeaponStolenPage", row["phone"]["surface"])
+        self.assertEqual(
+            "weapon-stolen-toggle-{stable-root-weapon-guid}",
+            row["phone"]["automationId"],
+        )
+        self.assertIn("exact typed Weapon", row["presenterMutation"])
+        self.assertIn("underbarrel Weapon", row["presenterMutation"])
+        self.assertIn("WeaponAccessory", row["presenterMutation"])
+        self.assertIn("recursive Gear hierarchy", row["presenterMutation"])
+        self.assertIn("Nuyen/Stolen eligibility", row["presenterMutation"])
+        self.assertIn("zero Nuyen/Karma economics", row["presenterMutation"])
+        self.assertIn("character/weapons/.../stolen", row["persistenceAssertion"])
+        self.assertIn("Nuyen, Karma", row["persistenceAssertion"])
+        self.assertIn("revision-bound atomic save/recovery", row["persistenceAssertion"])
+        self.assertIn("enabled, non-add-to-rating Nuyen/Stolen", row["phone"]["coverageLimit"])
+        self.assertIn("CharacterCareer", row["phone"]["coverageLimit"])
+        self.assertEqual("missing", row["tablet"]["status"])
+        self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+        self.assertEqual(
+            "tests/run_api36_weapon_stolen_e2e.py",
+            row["e2e"]["phone"]["ref"],
+        )
+        self.assertFalse(row["completionProven"])
+
         gear_equipment = [
             row for row in rows
             if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
@@ -2035,9 +2072,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 428,
+                "implemented_pending_emulator": 429,
                 "implemented_verified_api36": 79,
-                "missing": 1000,
+                "missing": 999,
                 "not_applicable_non_mutating": 468,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 148,

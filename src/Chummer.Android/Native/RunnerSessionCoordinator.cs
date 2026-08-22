@@ -802,6 +802,33 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<WeaponStolenEditorState?> PrepareWeaponStolenEditAsync(
+        Guid rootWeaponId,
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareWeaponStolenEditAsync(rootWeaponId, cancellationToken);
+
+    public async Task ApplyWeaponStolenEditAsync(
+        WeaponStolenEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Weapon Stolen was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyWeaponStolenEditAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Weapon Stolen state saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<GearEquipmentEditorState?> PrepareGearEquipmentEditAsync(
         Guid rootGearId,
         CancellationToken cancellationToken = default)

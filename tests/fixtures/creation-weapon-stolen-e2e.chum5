@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Weapon Stolen E2E</name>
+  <alias>CreationWeaponStolenE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <nuyen>4321</nuyen>
+  <karma>7</karma>
+  <improvements>
+    <improvement>
+      <improvementttype>Nuyen</improvementttype><improvedname>Stolen</improvedname>
+      <condition>create</condition><addtorating>0</addtorating><enabled>1</enabled>
+      <notes>Creation Weapon Stolen eligibility sentinel</notes>
+    </improvement>
+  </improvements>
+  <weapons>
+    <weapon>
+      <guid>aa131111-1311-4311-8311-131111111111</guid>
+      <name>Weapon Stolen Root</name><category>Pistols</category><cost>1000</cost>
+      <stolen>False</stolen><notes>Creation root Weapon sentinel</notes>
+      <accessories>
+        <accessory>
+          <guid>bb131111-1311-4311-8311-131111111111</guid>
+          <name>Weapon Stolen Accessory</name><cost>200</cost>
+          <stolen>True</stolen><notes>Creation accessory sentinel</notes>
+          <gears>
+            <gear>
+              <guid>cc131111-1311-4311-8311-131111111111</guid>
+              <name>Weapon Stolen Gear</name><category>Electronics</category><rating>1</rating><qty>1</qty><cost>50</cost>
+              <stolen>True</stolen><notes>Creation accessory Gear sentinel</notes>
+              <children>
+                <gear>
+                  <guid>dd131111-1311-4311-8311-131111111111</guid>
+                  <name>Weapon Stolen Target</name><category>Electronics</category><rating>1</rating><qty>1</qty><cost>25</cost>
+                  <stolen>False</stolen><notes>Creation target Gear sentinel</notes><children />
+                </gear>
+              </children>
+            </gear>
+          </gears>
+        </accessory>
+      </accessories>
+      <underbarrel>
+        <weapon>
+          <guid>ee131111-1311-4311-8311-131111111111</guid>
+          <name>Weapon Stolen Underbarrel</name><category>Underbarrel Weapons</category><cost>300</cost>
+          <stolen>False</stolen><notes>Creation underbarrel Weapon sentinel</notes><accessories />
+        </weapon>
+      </underbarrel>
+    </weapon>
+    <weapon>
+      <guid>ff131111-1311-4311-8311-131111111111</guid>
+      <name>Untouched Weapon</name><category>Pistols</category><cost>750</cost>
+      <stolen>False</stolen><notes>Creation untouched Weapon sentinel</notes><accessories />
+    </weapon>
+  </weapons>
+  <customstate>Creation Weapon Stolen runner sentinel</customstate>
+</character>
