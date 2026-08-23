@@ -391,6 +391,7 @@ class Device:
         backward_scrolls: int = 24,
         forward_scrolls: int = 24,
         scroll_distance_ratio: float = 0.22,
+        exact_resource_id: bool = False,
     ) -> None:
         """Reset a preserved list position, then scan forward with bounded dumps."""
         # A uiautomator hierarchy dump can take several seconds on the full Build
@@ -410,7 +411,11 @@ class Device:
         deadline = time.monotonic() + timeout
         forward = 0
         while time.monotonic() < deadline:
-            candidate = self.find(selector)
+            candidate = (
+                self.find_exact_resource_id(selector)
+                if exact_resource_id
+                else self.find(selector)
+            )
             if candidate is not None and self.node_has_tappable_bounds(candidate):
                 x, y = candidate.center
                 self.shell("input", "tap", str(x), str(y))
@@ -1220,8 +1225,14 @@ def open_gear_section(device: Device, profile: str) -> None:
             scroll_distance_ratio=0.22,
         )
         return
-    reset_scroll_to_top(device, swipes=12)
-    device.tap("build-section-tab-gear", scroll=True, exact_resource_id=True)
+    device.tap_bidirectional(
+        "build-section-tab-gear",
+        timeout=120,
+        backward_scrolls=24,
+        forward_scrolls=24,
+        scroll_distance_ratio=0.22,
+        exact_resource_id=True,
+    )
     device.wait_exact_resource_id_bidirectional(
         "section-quick-gear-add",
         timeout=180,

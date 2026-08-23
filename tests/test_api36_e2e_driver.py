@@ -618,6 +618,189 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertEqual(3, device.find.call_count)
         device.capture.assert_called_once_with("failure")
 
+    def test_exact_bidirectional_tap_recovers_when_twelve_swipes_leave_gear_clipped(self) -> None:
+        clipped = DRIVER.UiNode(
+            {
+                "resource-id": "com.myexternalbrain.chummer:id/build-section-tab-gear",
+                "clickable": "true",
+                "bounds": "[98,275][984,276]",
+            }
+        )
+        target = DRIVER.UiNode(
+            {
+                "resource-id": "com.myexternalbrain.chummer:id/build-section-tab-gear",
+                "clickable": "true",
+                "bounds": "[98,400][984,560]",
+            }
+        )
+        prefix_decoy = DRIVER.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/build-section-tab-gear-locations"
+                ),
+                "clickable": "true",
+                "bounds": "[98,700][984,860]",
+            }
+        )
+        legacy = Mock(spec=DRIVER.Device)
+        legacy_position = {"forward_swipes": 0}
+        legacy_clock = {"seconds": 0}
+        legacy._scroll_x_ratio.return_value = 0.5
+        legacy.display_size.return_value = (1080, 2400)
+        legacy.hierarchy.side_effect = lambda: [
+            prefix_decoy,
+            *([clipped] if legacy_position["forward_swipes"] == 1 else []),
+        ]
+        legacy.find_exact_resource_id.side_effect = (
+            lambda selector: DRIVER.Device.find_exact_resource_id(legacy, selector)
+        )
+        legacy.node_has_tappable_bounds.side_effect = (
+            lambda node: DRIVER.Device.node_has_tappable_bounds(legacy, node)
+        )
+        legacy.dismiss_system_ui_anr.return_value = False
+        legacy.swipe_up.side_effect = lambda **_: legacy_position.update(
+            forward_swipes=legacy_position["forward_swipes"] + 1
+        )
+
+        def advance_legacy_clock() -> int:
+            legacy_clock["seconds"] += 1
+            return legacy_clock["seconds"]
+
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=advance_legacy_clock),
+            patch.object(DRIVER.time, "sleep"),
+            self.assertRaisesRegex(RuntimeError, "Timed out waiting for tappable UI node"),
+        ):
+            DRIVER.Device.tap(
+                legacy,
+                "build-section-tab-gear",
+                timeout=8,
+                scroll=True,
+                max_scrolls=6,
+                scroll_distance_ratio=0.52,
+                exact_resource_id=True,
+            )
+
+        self.assertEqual(
+            [call(x_ratio=0.5, distance_ratio=0.52)] * 6,
+            legacy.swipe_up.call_args_list,
+        )
+        legacy.capture.assert_called_once_with("failure")
+        legacy.node_has_tappable_bounds.assert_called_once_with(clipped)
+        legacy.shell.assert_not_called()
+
+        device = Mock(spec=DRIVER.Device)
+        position = {"rows_below_top": 24}
+        device._scroll_x_ratio.return_value = 0.5
+        device.display_size.return_value = (1080, 2400)
+        device.swipe_down.side_effect = lambda **_: position.update(
+            rows_below_top=max(0, position["rows_below_top"] - 1)
+        )
+        device.swipe_up.side_effect = lambda **_: position.update(
+            rows_below_top=position["rows_below_top"] + 1
+        )
+        device.hierarchy.side_effect = lambda: [
+            prefix_decoy,
+            *(
+                [clipped]
+                if position["rows_below_top"] == 12
+                else [target]
+                if position["rows_below_top"] == 11
+                else []
+            ),
+        ]
+        device.find_exact_resource_id.side_effect = (
+            lambda selector: DRIVER.Device.find_exact_resource_id(device, selector)
+        )
+        device.node_has_tappable_bounds.side_effect = (
+            lambda node: DRIVER.Device.node_has_tappable_bounds(device, node)
+        )
+        device.dismiss_system_ui_anr.return_value = False
+
+        for _ in range(12):
+            device.swipe_down(x_ratio=0.5, distance_ratio=0.22)
+        twelve_swipe_candidate = DRIVER.Device.find_exact_resource_id(
+            device,
+            "build-section-tab-gear",
+        )
+        self.assertIs(clipped, twelve_swipe_candidate)
+        self.assertFalse(DRIVER.Device.node_has_tappable_bounds(device, clipped))
+        self.assertTrue(DRIVER.Device._matches(prefix_decoy, "build-section-tab-gear"))
+
+        position["rows_below_top"] = 24
+        device.reset_mock()
+        device._scroll_x_ratio.return_value = 0.5
+        device.display_size.return_value = (1080, 2400)
+        device.find_exact_resource_id.side_effect = (
+            lambda selector: DRIVER.Device.find_exact_resource_id(device, selector)
+        )
+        device.node_has_tappable_bounds.side_effect = (
+            lambda node: DRIVER.Device.node_has_tappable_bounds(device, node)
+        )
+        device.dismiss_system_ui_anr.return_value = False
+
+        with patch.object(DRIVER.time, "sleep"):
+            DRIVER.Device.tap_bidirectional(
+                device,
+                "build-section-tab-gear",
+                timeout=120,
+                backward_scrolls=24,
+                forward_scrolls=24,
+                scroll_distance_ratio=0.22,
+                exact_resource_id=True,
+            )
+
+        self.assertEqual(24, device.swipe_down.call_count)
+        self.assertEqual(11, device.swipe_up.call_count)
+        self.assertEqual(11, position["rows_below_top"])
+        device.find.assert_not_called()
+        device.shell.assert_called_once_with("input", "tap", "541", "480")
+
+    def test_exact_bidirectional_tap_exhaustion_never_taps_clipped_or_prefix_decoy(self) -> None:
+        clipped = DRIVER.UiNode(
+            {
+                "resource-id": "com.myexternalbrain.chummer:id/build-section-tab-gear",
+                "clickable": "true",
+                "bounds": "[98,275][984,276]",
+            }
+        )
+        prefix_decoy = DRIVER.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/build-section-tab-gear-locations"
+                ),
+                "clickable": "true",
+                "bounds": "[98,700][984,860]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        device._scroll_x_ratio.return_value = 0.5
+        device.display_size.return_value = (1080, 2400)
+        device.hierarchy.return_value = [prefix_decoy, clipped]
+        device.find_exact_resource_id.side_effect = (
+            lambda selector: DRIVER.Device.find_exact_resource_id(device, selector)
+        )
+        device.node_has_tappable_bounds.side_effect = (
+            lambda node: DRIVER.Device.node_has_tappable_bounds(device, node)
+        )
+        device.dismiss_system_ui_anr.return_value = False
+
+        with patch.object(DRIVER.time, "sleep"):
+            with self.assertRaisesRegex(RuntimeError, "bounded bidirectional search"):
+                DRIVER.Device.tap_bidirectional(
+                    device,
+                    "build-section-tab-gear",
+                    backward_scrolls=2,
+                    forward_scrolls=2,
+                    exact_resource_id=True,
+                )
+
+        self.assertEqual(2, device.swipe_down.call_count)
+        self.assertEqual(2, device.swipe_up.call_count)
+        device.find.assert_not_called()
+        device.capture.assert_called_once_with("failure")
+        device.shell.assert_not_called()
+
     def test_fixture_transport_verifies_the_exact_remote_bytes(self) -> None:
         expected = "a" * 64
         device = Mock(spec=DRIVER.Device)
@@ -1801,8 +1984,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             def __init__(self) -> None:
                 self.calls: list[tuple[str, str, dict[str, object]]] = []
 
-            def tap(self, selector: str, **options: object) -> None:
-                self.calls.append(("tap", selector, options))
+            def tap_bidirectional(self, selector: str, **options: object) -> None:
+                self.calls.append(("tap_bidirectional", selector, options))
 
             def wait_exact_resource_id_bidirectional(
                 self,
@@ -1811,16 +1994,22 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ) -> None:
                 self.calls.append(("wait_exact", selector, options))
 
-            def swipe_down(self, **_: object) -> None:
-                self.calls.append(("swipe", "down", {}))
-
         device = GearRouteDevice()
         DRIVER.open_gear_section(device, "phone")
 
-        self.assertEqual([("swipe", "down", {})] * 12, device.calls[:12])
         self.assertEqual(
-            ("tap", "build-section-tab-gear", {"scroll": True, "exact_resource_id": True}),
-            device.calls[12],
+            (
+                "tap_bidirectional",
+                "build-section-tab-gear",
+                {
+                    "timeout": 120,
+                    "backward_scrolls": 24,
+                    "forward_scrolls": 24,
+                    "scroll_distance_ratio": 0.22,
+                    "exact_resource_id": True,
+                },
+            ),
+            device.calls[0],
         )
         self.assertEqual(
             [
@@ -1835,7 +2024,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     },
                 ),
             ],
-            device.calls[13:],
+            device.calls[1:],
         )
         self.assertNotIn(
             "build-action-tab-gear-gear",
