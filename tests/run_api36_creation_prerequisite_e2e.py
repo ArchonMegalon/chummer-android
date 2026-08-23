@@ -90,8 +90,27 @@ def provision_creation_karma_through_priority_creation(
         max_scrolls=24,
         scroll_distance_ratio=0.22,
     )
-    device.wait("Continue building", timeout=120)
+    # Completing a created=false runner deliberately routes the phone shell straight to Build.
+    # Persist that production-created workspace through the public Save action before using the
+    # Home debug authority as evidence; waiting for Home's Continue button here would assert the
+    # opposite of NativeDialogPage's route contract.
+    device.wait("creation-wizard-dashboard", timeout=120)
     device.capture("creation-karma-priority-runner-created")
+    device.tap(
+        "build-save-runner",
+        scroll=True,
+        max_scrolls=48,
+        scroll_distance_ratio=0.22,
+    )
+    device.wait(
+        "Saved.",
+        timeout=90,
+        scroll=True,
+        max_scrolls=48,
+        scroll_distance_ratio=0.22,
+    )
+    device.tap("Home")
+    device.wait("home-open-file", timeout=90)
     return selected
 
 

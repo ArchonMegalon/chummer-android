@@ -41,6 +41,72 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             dict(driver.PRIORITY_CREATION_SELECTIONS),
         )
 
+    def test_priority_provisioning_follows_build_route_and_public_save_before_home(self) -> None:
+        calls: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
+
+        class FakeDevice:
+            def tap_until_visible(self, *args, **kwargs) -> None:
+                calls.append(("tap_until_visible", args, kwargs))
+
+            def tap(self, *args, **kwargs) -> None:
+                calls.append(("tap", args, kwargs))
+
+            def wait(self, *args, **kwargs):
+                calls.append(("wait", args, kwargs))
+                return driver.shared.UiNode({})
+
+            def capture(self, *args, **kwargs) -> None:
+                calls.append(("capture", args, kwargs))
+
+        selected_options: list[tuple[str, str]] = []
+
+        def select_option(_device, selector: str, value: str) -> None:
+            self.assertIs(device, _device)
+            selected_options.append((selector, value))
+
+        device = FakeDevice()
+        with mock.patch.object(driver.priority, "select_option", side_effect=select_option):
+            selected = driver.provision_creation_karma_through_priority_creation(device)
+
+        self.assertEqual(
+            [driver.PRIORITY_BUILD_METHOD_SELECTION, *driver.PRIORITY_CREATION_SELECTIONS],
+            selected_options,
+        )
+        self.assertEqual(dict(selected_options), selected)
+        route_index = calls.index(("wait", ("creation-wizard-dashboard",), {"timeout": 120}))
+        capture_index = calls.index(("capture", ("creation-karma-priority-runner-created",), {}))
+        save_index = calls.index(
+            (
+                "tap",
+                ("build-save-runner",),
+                {
+                    "scroll": True,
+                    "max_scrolls": 48,
+                    "scroll_distance_ratio": 0.22,
+                },
+            )
+        )
+        saved_index = calls.index(
+            (
+                "wait",
+                ("Saved.",),
+                {
+                    "timeout": 90,
+                    "scroll": True,
+                    "max_scrolls": 48,
+                    "scroll_distance_ratio": 0.22,
+                },
+            )
+        )
+        home_index = calls.index(("tap", ("Home",), {}))
+        authority_surface_index = calls.index(("wait", ("home-open-file",), {"timeout": 90}))
+        self.assertLess(route_index, capture_index)
+        self.assertLess(capture_index, save_index)
+        self.assertLess(save_index, saved_index)
+        self.assertLess(saved_index, home_index)
+        self.assertLess(home_index, authority_surface_index)
+        self.assertNotIn(("wait", ("Continue building",), {"timeout": 120}), calls)
+
     def test_creation_karma_navigation_precondition_remains_fail_closed(self) -> None:
         blocked = driver.shared.UiNode(
             {
@@ -414,7 +480,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn("provision_creation_karma_through_priority_creation", source)
         self.assertIn("priority.select_option(device, selector, option)", source)
         self.assertIn('device.wait("Select Metatype Priority"', source)
-        self.assertIn('device.wait("Continue building"', source)
+        self.assertIn('device.wait("creation-wizard-dashboard", timeout=120)', source)
+        self.assertIn('"build-save-runner",', source)
+        self.assertIn('device.wait("home-open-file", timeout=90)', source)
+        self.assertNotIn('device.wait("Continue building", timeout=120)', source)
         self.assertIn("require_priority_created_workspace_authority", source)
         self.assertIn("prepared.workspace_id == fresh.workspace_id", source)
         self.assertIn("prepared.payload_sha256 == fresh.payload_sha256", source)
