@@ -695,6 +695,18 @@ public sealed class BuildPage : NativePageBase
                 },
                 automationId: "build-career-nuyen-expenses"));
             _body.Add(NativeTheme.NavigationRow(
+                "Karma expenses",
+                "Select a saved Karma expense; edit date and reason, and source-authorized amounts",
+                async () =>
+                {
+                    CareerKarmaExpenseEditorState? editor = await Coordinator.PrepareCareerKarmaExpenseEditAsync();
+                    if (editor is not null)
+                    {
+                        await Navigation.PushAsync(new CareerKarmaExpensePage(Coordinator, editor));
+                    }
+                },
+                automationId: "build-career-karma-expenses"));
+            _body.Add(NativeTheme.NavigationRow(
                 "Reputation",
                 "Street Cred, notoriety and source-aware reputation",
                 async () =>

@@ -81,9 +81,9 @@ class AndroidContractTests(unittest.TestCase):
         )
 
         for dependency, commit in (
-            ("ArchonMegalon/chummer6-ui", "1c492202ac708f302b59f47c2bb1e4c67e352328"),
-            ("ArchonMegalon/chummer6-core", "e8d221cde98525b68234201a8bee68bf976cc304"),
-            ("ArchonMegalon/chummer6-hub", "fce73dea2d5b2cb48fe74e1b33d9f1dbe13b8e31"),
+            ("ArchonMegalon/chummer6-ui", "37baed9bda69629ad48091782574eb85ed3b4ffa"),
+            ("ArchonMegalon/chummer6-core", "b375ad0b0e24659e192e0d10911544450d85e68c"),
+            ("ArchonMegalon/chummer6-hub", "8e9b2e3e744de5ee6b200e6526815787497beaaa"),
             ("ArchonMegalon/chummer6-ui-kit", "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61"),
             ("ArchonMegalon/chummer6-hub-registry", "7b54afec574a9327616c4ad7566da3a7b6b906a5"),
             ("ArchonMegalon/chummer6-media-factory", "415c8163d3d90b1211e4014fef332bdec6d75f73"),
@@ -2065,6 +2065,109 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("amount - current.Amount", rules)
         self.assertIn("TryBeginCaptureIntent", persistence)
         self.assertIn("WriteRecordAtomically", store)
+
+    def test_phone_karma_expense_edit_is_source_exact_revision_and_durable_save_bound(self) -> None:
+        page = (PROJECT / "Native" / "CareerKarmaExpensePage.cs").read_text(encoding="utf-8")
+        build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        presentation = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+        request = (presentation / "CareerKarmaExpenseEditRequest.cs").read_text(encoding="utf-8")
+        presenter = (presentation / "CharacterOverviewPresenter.WorkspaceMutations.cs").read_text(
+            encoding="utf-8"
+        )
+        core = WORKSPACE / "chummer-core-engine"
+        rules = (
+            core
+            / "Chummer.Contracts"
+            / "Characters"
+            / "CharacterCareerKarmaExpenseEditRules.cs"
+        ).read_text(encoding="utf-8")
+
+        for token in (
+            'AutomationId = "career-karma-expense-page"',
+            'AutomationId = "career-karma-expense-picker"',
+            'AutomationId = "career-karma-expense-balance"',
+            'AutomationId = "career-karma-expense-amount"',
+            '"career-karma-expense-reason"',
+            'AutomationId = "career-karma-expense-date"',
+            'AutomationId = "career-karma-expense-time"',
+            'AutomationId = "career-karma-expense-locked-metadata"',
+            'AutomationId = "career-karma-expense-save"',
+            "_amount.IsEnabled = revisionMatches && _selected.AmountEditable",
+            "CharacterCareerKarmaExpenseEditRules.TryEdit",
+            "_selected.KarmaUndoTypeElementPresent",
+            "_selected.RawKarmaUndoType",
+            "_editor.ReasonNormalizationLanguage",
+            "Coordinator.State.Preferences.Language",
+            "DesktopLocalizationCatalog.NormalizeOrDefault",
+            "{expense.ExpenseId:D}",
+            "{expense.ExpenseDateLocal:yyyy-MM-dd HH:mm:ss}",
+        ):
+            self.assertIn(token, page)
+
+        route = build.index('automationId: "build-career-karma-expenses"')
+        career_gate = build.rindex("if (Coordinator.State.Profile?.Created == true)", 0, route)
+        self.assertLess(career_gate, route)
+        self.assertIn("new CareerKarmaExpensePage", build)
+        self.assertIn("PrepareCareerKarmaExpenseEditAsync", coordinator + presenter)
+        self.assertIn("ApplyCareerKarmaExpenseEditAsync", coordinator + presenter)
+        self.assertIn("WorkspaceDocumentFormat.NativeXml", presenter)
+        self.assertIn("CharacterCareerKarmaExpenseEntry ExpectedExpense", request)
+        self.assertIn("ExpectedAvailableKarma", request + coordinator)
+        self.assertIn("ExpectedContentRevision", request + coordinator)
+        self.assertIn("ExpectedReasonNormalizationLanguage", request + coordinator)
+        self.assertIn("_editor.ReasonNormalizationLanguage", page)
+        self.assertIn("State.Preferences.Language", coordinator)
+        self.assertIn("DesktopLocalizationCatalog.NormalizeOrDefault", page + coordinator)
+        self.assertIn("KarmaUndoTypeElementPresent", request + rules)
+        self.assertIn("RawKarmaUndoType", request + rules)
+
+        guard = coordinator.index(
+            "State.ContentRevision != request.ExpectedContentRevision",
+            coordinator.index("ApplyCareerKarmaExpenseEditAsync"),
+        )
+        mutation = coordinator.index(
+            "_presenter.ApplyCareerKarmaExpenseEditAsync",
+            guard,
+        )
+        locale_guard = coordinator.index(
+            "request.ExpectedReasonNormalizationLanguage",
+            guard,
+        )
+        mutation_postcondition = coordinator.index(
+            "State.ContentRevision == request.ExpectedContentRevision + 1",
+            mutation,
+        )
+        save = coordinator.index("_presenter.SaveAsync", mutation_postcondition)
+        durable_postcondition = coordinator.index(
+            "State.ContentRevision == appliedContentRevision",
+            save,
+        )
+        self.assertLess(guard, mutation)
+        self.assertLess(locale_guard, mutation)
+        self.assertLess(mutation, mutation_postcondition)
+        self.assertLess(mutation_postcondition, save)
+        self.assertLess(save, durable_postcondition)
+        self.assertIn("State.SavedRevision == appliedContentRevision", coordinator[durable_postcondition:])
+        self.assertIn("&& !State.IsDirty", coordinator[durable_postcondition:])
+        authority = coordinator.index("TryRefreshWorkspaceAuthorityAsync", durable_postcondition)
+        authority_match = coordinator.index("authority.Matches(State)", authority)
+        self.assertLess(durable_postcondition, authority)
+        self.assertLess(authority, authority_match)
+        self.assertIn("if (persisted)", page)
+        locale_page_guard = page.index("_editor.ReasonNormalizationLanguage")
+        page_request = page.rindex("_editor.ReasonNormalizationLanguage")
+        self.assertLess(locale_page_guard, page.index("_save.IsEnabled"))
+        self.assertLess(page.index("_save.IsEnabled"), page_request)
+        self.assertIn("await Navigation.PopAsync()", page[page.index("if (persisted)"):])
+        self.assertNotIn("Navigation.PopAsync", page[:page.index("if (persisted)")])
+
+        self.assertIn("karmaUndoTypeElementPresent", rules)
+        self.assertIn("rawKarmaUndoType", rules)
+        self.assertIn("ManualAdd", rules)
+        self.assertIn("ManualSubtract", rules)
+        self.assertIn("decimal.ToInt32(current.Amount)", rules)
+        self.assertIn("newAmount - oldAmount", rules)
 
     def test_phone_cyberware_commerce_is_stable_revision_bound_and_source_exact(self) -> None:
         page = (PROJECT / "Native" / "CyberwareCommercePage.cs").read_text(encoding="utf-8")

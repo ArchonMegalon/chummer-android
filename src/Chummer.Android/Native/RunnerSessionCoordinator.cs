@@ -2217,6 +2217,61 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<CareerKarmaExpenseEditorState?> PrepareCareerKarmaExpenseEditAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCareerKarmaExpenseEditAsync(cancellationToken);
+
+    public async Task<bool> ApplyCareerKarmaExpenseEditAsync(
+        CareerKarmaExpenseEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        string currentReasonNormalizationLanguage = DesktopLocalizationCatalog.NormalizeOrDefault(
+            State.Preferences.Language);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision
+            || !string.Equals(
+                request.ExpectedReasonNormalizationLanguage,
+                currentReasonNormalizationLanguage,
+                StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "This runner changed while a Karma expense was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyCareerKarmaExpenseEditAsync(request, cancellationToken);
+        bool exactMutationApplied = State.Error is null
+            && State.WorkspaceId == request.WorkspaceId
+            && request.ExpectedContentRevision < long.MaxValue
+            && State.ContentRevision == request.ExpectedContentRevision + 1
+            && State.IsDirty;
+        long appliedContentRevision = exactMutationApplied ? State.ContentRevision : 0;
+        if (exactMutationApplied)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+
+        bool durableState = exactMutationApplied
+            && State.Error is null
+            && State.WorkspaceId == request.WorkspaceId
+            && State.ContentRevision == appliedContentRevision
+            && State.SavedRevision == appliedContentRevision
+            && !State.IsDirty;
+        NativeWorkspaceAuthoritySnapshot? authority = durableState
+            ? await TryRefreshWorkspaceAuthorityAsync(
+                expectedWorkspaceId: request.WorkspaceId,
+                expectedPayloadSha256: null,
+                cancellationToken)
+            : null;
+        bool persisted = durableState
+            && (!AndroidE2EAuthority.Enabled
+                || authority is not null && authority.Matches(State));
+        _notice = persisted ? "Karma expense saved." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+        return persisted;
+    }
+
     public Task<SustainedObjectsEditorState?> PrepareSustainedObjectsEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareSustainedObjectsEditAsync(cancellationToken);
