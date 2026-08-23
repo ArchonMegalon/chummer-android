@@ -1367,6 +1367,21 @@ def _open_phone_relationship_collection(
             scroll_distance_ratio=0.22,
         )
         return
+    empty_marker = "No entries yet. Use an action above to add one."
+    reset_scroll_to_top(device, swipes=24)
+    marker_node = device.wait(
+        empty_marker,
+        timeout=60,
+        scroll=True,
+        max_scrolls=24,
+        scroll_distance_ratio=0.22,
+    )
+    if marker_node.attributes.get("text") != empty_marker:
+        device.capture("relationship-collection-empty-marker-mismatch")
+        raise RuntimeError(
+            "Relationship collection action did not activate its exact empty state; "
+            f"expected {empty_marker!r}, got {marker_node.attributes.get('text', '')!r}"
+        )
     device.wait_exact_resource_id_bidirectional(
         quick_add_selector,
         timeout=180,

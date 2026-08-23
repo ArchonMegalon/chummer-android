@@ -1456,6 +1456,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertIn("device.wait_exact_resource_id_bidirectional(", helper)
         self.assertIn("reset_scroll_to_top(device, swipes=24)", helper)
         self.assertIn("max_scrolls=24", helper)
+        empty_marker = "No entries yet. Use an action above to add one."
+        self.assertIn(empty_marker, helper)
+        self.assertLess(
+            helper.index(empty_marker),
+            helper.index("device.wait_exact_resource_id_bidirectional("),
+        )
 
     def test_relationship_openers_wait_for_fixture_items_instead_of_quick_add(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
@@ -2041,6 +2047,13 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ) -> None:
                 self.calls.append(("wait_exact", selector, options))
 
+            def swipe_down(self, **options: object) -> None:
+                self.calls.append(("swipe_down", "", options))
+
+            def wait(self, selector: str, **options: object) -> DRIVER.UiNode:
+                self.calls.append(("wait", selector, options))
+                return DRIVER.UiNode({"text": selector})
+
         for opener, action_selector in (
             (DRIVER.open_contact_section, "build-action-tab-relationships-contacts"),
             (DRIVER.open_pet_section, "build-action-tab-relationships-pets"),
@@ -2075,6 +2088,16 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                             },
                         ),
                         (
+                            "wait",
+                            "No entries yet. Use an action above to add one.",
+                            {
+                                "timeout": 60,
+                                "scroll": True,
+                                "max_scrolls": 24,
+                                "scroll_distance_ratio": 0.22,
+                            },
+                        ),
+                        (
                             "wait_exact",
                             "section-quick-contact-add",
                             {
@@ -2085,8 +2108,71 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                             },
                         ),
                     ],
-                    device.calls,
+                    [
+                        call_value
+                        for call_value in device.calls
+                        if call_value[0] != "swipe_down"
+                    ],
                 )
+                marker_index = next(
+                    index
+                    for index, call_value in enumerate(device.calls)
+                    if call_value[0] == "wait"
+                )
+                quick_add_index = next(
+                    index
+                    for index, call_value in enumerate(device.calls)
+                    if call_value[0] == "wait_exact"
+                )
+                self.assertEqual(
+                    24,
+                    sum(
+                        call_value[0] == "swipe_down"
+                        for call_value in device.calls[1:marker_index]
+                    ),
+                )
+                self.assertLess(marker_index, quick_add_index)
+
+    def test_stale_relationships_quick_add_cannot_satisfy_collection_activation(self) -> None:
+        class StaleRelationshipsDevice:
+            def __init__(self) -> None:
+                self.stale_quick_add_visible = True
+                self.quick_add_waited = False
+
+            def tap_bidirectional(self, _: str, **__: object) -> None:
+                return None
+
+            def swipe_down(self, **_: object) -> None:
+                return None
+
+            def wait(self, selector: str, **_: object) -> DRIVER.UiNode:
+                if selector == "No entries yet. Use an action above to add one.":
+                    raise RuntimeError("target collection empty marker absent on stale Relationships")
+                raise AssertionError(f"unexpected selector {selector!r}")
+
+            def wait_exact_resource_id_bidirectional(
+                self,
+                selector: str,
+                **_: object,
+            ) -> None:
+                if selector == "section-quick-contact-add" and self.stale_quick_add_visible:
+                    self.quick_add_waited = True
+                    return None
+                raise AssertionError(f"unexpected selector {selector!r}")
+
+        device = StaleRelationshipsDevice()
+        with (
+            patch.object(DRIVER.time, "sleep"),
+            self.assertRaisesRegex(RuntimeError, "empty marker absent on stale Relationships"),
+        ):
+            DRIVER._open_phone_relationship_collection(
+                device,
+                action_selector="build-action-tab-relationships-contacts",
+                quick_add_selector="section-quick-contact-add",
+                expected_item=None,
+            )
+
+        self.assertFalse(device.quick_add_waited)
 
     def test_phone_relationship_fixture_route_resets_before_bounded_item_search(self) -> None:
         class RelationshipFixtureDevice:
