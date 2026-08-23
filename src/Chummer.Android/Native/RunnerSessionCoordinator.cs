@@ -2272,6 +2272,97 @@ public sealed class RunnerSessionCoordinator : IDisposable
         return persisted;
     }
 
+    public Task<CareerCalendarEditorState?> PrepareCareerCalendarEditAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCareerCalendarEditAsync(cancellationToken);
+
+    public async Task<bool> ApplyCareerCalendarAddAsync(
+        CareerCalendarAddRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return await ApplyCareerCalendarMutationAsync(
+            request.WorkspaceId,
+            request.ExpectedContentRevision,
+            token => _presenter.ApplyCareerCalendarAddAsync(request, token),
+            "Calendar week added.",
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> ApplyCareerCalendarEditAsync(
+        CareerCalendarEditRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return await ApplyCareerCalendarMutationAsync(
+            request.WorkspaceId,
+            request.ExpectedContentRevision,
+            token => _presenter.ApplyCareerCalendarEditAsync(request, token),
+            "Calendar week saved.",
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> ApplyCareerCalendarDeleteAsync(
+        CareerCalendarDeleteRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return await ApplyCareerCalendarMutationAsync(
+            request.WorkspaceId,
+            request.ExpectedContentRevision,
+            token => _presenter.ApplyCareerCalendarDeleteAsync(request, token),
+            "Calendar week deleted.",
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<bool> ApplyCareerCalendarMutationAsync(
+        CharacterWorkspaceId workspaceId,
+        long expectedContentRevision,
+        Func<CancellationToken, Task> apply,
+        string successNotice,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(apply);
+        if (State.WorkspaceId != workspaceId
+            || State.ContentRevision != expectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while the calendar was open. Reopen it before saving.");
+        }
+
+        await apply(cancellationToken).ConfigureAwait(false);
+        bool exactMutationApplied = State.Error is null
+            && State.WorkspaceId == workspaceId
+            && expectedContentRevision < long.MaxValue
+            && State.ContentRevision == expectedContentRevision + 1
+            && State.IsDirty;
+        long appliedContentRevision = exactMutationApplied ? State.ContentRevision : 0;
+        if (exactMutationApplied)
+        {
+            await _presenter.SaveAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        bool durableState = exactMutationApplied
+            && State.Error is null
+            && State.WorkspaceId == workspaceId
+            && State.ContentRevision == appliedContentRevision
+            && State.SavedRevision == appliedContentRevision
+            && !State.IsDirty;
+        NativeWorkspaceAuthoritySnapshot? authority = durableState
+            ? await TryRefreshWorkspaceAuthorityAsync(
+                expectedWorkspaceId: workspaceId,
+                expectedPayloadSha256: null,
+                cancellationToken).ConfigureAwait(false)
+            : null;
+        bool persisted = durableState
+            && (!AndroidE2EAuthority.Enabled
+                || authority is not null && authority.Matches(State));
+        _notice = persisted ? successNotice : null;
+        await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+        NotifyChanged();
+        return persisted;
+    }
+
     public Task<SustainedObjectsEditorState?> PrepareSustainedObjectsEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareSustainedObjectsEditAsync(cancellationToken);

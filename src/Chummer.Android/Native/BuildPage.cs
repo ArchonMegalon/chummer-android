@@ -707,6 +707,18 @@ public sealed class BuildPage : NativePageBase
                 },
                 automationId: "build-career-karma-expenses"));
             _body.Add(NativeTheme.NavigationRow(
+                "Calendar",
+                "Add the next ISO week, edit its notes and color, or delete it by stable identity",
+                async () =>
+                {
+                    CareerCalendarEditorState? editor = await Coordinator.PrepareCareerCalendarEditAsync();
+                    if (editor is not null)
+                    {
+                        await Navigation.PushAsync(new CareerCalendarPage(Coordinator, editor));
+                    }
+                },
+                automationId: "build-career-calendar"));
+            _body.Add(NativeTheme.NavigationRow(
                 "Reputation",
                 "Street Cred, notoriety and source-aware reputation",
                 async () =>
