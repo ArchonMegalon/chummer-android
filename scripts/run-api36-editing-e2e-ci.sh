@@ -34,6 +34,8 @@ python3 chummer-android/tests/run_api36_creation_prerequisite_e2e.py \
   --adb "$adb_path" \
   --apk "$apk_path" \
   --serial emulator-5554 \
+  --creation-karma-runner \
+    chummer-android/tests/fixtures/creation-group-membership-e2e.chum5 \
   --evidence "$prerequisite_root/screenshots" \
   --receipt "$prerequisite_root/receipt.json"
 

@@ -1,4 +1,6 @@
 import ast
+import importlib.util
+import sys
 import unittest
 from pathlib import Path
 
@@ -6,9 +8,64 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 DRIVER = REPO / "tests" / "run_api36_creation_prerequisite_e2e.py"
+FIXTURE = REPO / "tests" / "fixtures" / "creation-group-membership-e2e.chum5"
+
+sys.path.insert(0, str(DRIVER.parent))
+SPEC = importlib.util.spec_from_file_location("creation_prerequisite_driver", DRIVER)
+assert SPEC is not None and SPEC.loader is not None
+driver = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(driver)
 
 
 class CreationPrerequisiteSourceContractTests(unittest.TestCase):
+    def test_public_fixture_and_navigation_precondition_fail_closed(self) -> None:
+        fixture = driver.validate_creation_karma_fixture(FIXTURE)
+        self.assertEqual("CreationGroupMembershipE2E", fixture["alias"])
+        self.assertEqual("Priority", fixture["buildMethod"])
+        self.assertEqual("223a11ff-80e0-428b-89a9-6ef1c243b8b6", fixture["settingsProfileId"])
+        self.assertEqual(0, fixture["karma"])
+
+        blocked = driver.shared.UiNode(
+            {
+                "content-desc": "Creation method. creation-karma-authority-required",
+                "clickable": "false",
+                "enabled": "false",
+            }
+        )
+        ready = driver.shared.UiNode(
+            {
+                "content-desc": (
+                    "Creation method. Choose five ordered Priority ranks from exact Core authority"
+                ),
+                "clickable": "true",
+                "enabled": "true",
+            }
+        )
+        self.assertIn(
+            "creation-karma-authority-required",
+            driver.require_creation_method_navigation(blocked, ready=False),
+        )
+        self.assertIn(
+            "exact Core authority",
+            driver.require_creation_method_navigation(ready, ready=True),
+        )
+        with self.assertRaisesRegex(RuntimeError, "did not enable"):
+            driver.require_creation_method_navigation(blocked, ready=True)
+        with self.assertRaisesRegex(RuntimeError, "did not remain fail-closed"):
+            driver.require_creation_method_navigation(ready, ready=False)
+
+    def test_prerequisite_binding_requires_revision_and_both_digest_prefixes(self) -> None:
+        authority = driver.require_prerequisite_binding(
+            "Revision 7 · saved 7 · snapshot 0123456789ab · authority abcdef012345"
+        )
+        self.assertEqual(7, authority["contentRevision"])
+        self.assertEqual("0123456789ab", authority["snapshotDigestPrefix"])
+        self.assertEqual("abcdef012345", authority["authorityDigestPrefix"])
+        with self.assertRaisesRegex(RuntimeError, "did not expose exact"):
+            driver.require_prerequisite_binding(
+                "Revision 7 · saved 7 · snapshot unavailable · authority unavailable"
+            )
+
     def test_coordinator_uses_only_the_core_prerequisite_boundary_and_refreshes_receipt(self) -> None:
         source = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
         for marker in (
@@ -199,6 +256,13 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('"profile": "phone"', source)
         self.assertIn('api != "36"', source)
         self.assertIn('"creation-stage-method"', source)
+        self.assertIn("validate_creation_karma_fixture", source)
+        self.assertIn("require_creation_method_navigation", source)
+        self.assertIn("shared.select_android_document", source)
+        self.assertIn("shared.require_import_authority", source)
+        self.assertIn("read_source_authority_digests", source)
+        self.assertIn('"freshRunnerCreationKarmaAuthorityBlocked": "pass"', source)
+        self.assertIn('"publicRulesValidFixtureImported": "pass"', source)
         self.assertIn('"creation-prerequisite-karma-budget"', source)
         self.assertIn('"creation-prerequisite-rook"', source)
         self.assertIn("for category in CATEGORIES:", source)
@@ -235,6 +299,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('prerequisite_root="$evidence_root/creation-prerequisite"', runner)
         self.assertIn('--evidence "$prerequisite_root/screenshots"', runner)
         self.assertIn('--receipt "$prerequisite_root/receipt.json"', runner)
+        self.assertIn('--creation-karma-runner', runner)
+        self.assertIn('creation-group-membership-e2e.chum5', runner)
 
 
 if __name__ == "__main__":

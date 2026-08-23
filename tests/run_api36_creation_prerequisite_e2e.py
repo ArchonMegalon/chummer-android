@@ -10,8 +10,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import sys
+import time
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -21,6 +24,13 @@ import run_api36_editing_e2e as shared
 
 
 CATEGORIES = ("heritage", "talent", "attributes", "skills", "resources")
+CREATION_KARMA_AUTHORITY_BLOCKER = "creation-karma-authority-required"
+CREATION_KARMA_FIXTURE_ALIAS = "CreationGroupMembershipE2E"
+CREATION_KARMA_FIXTURE_SETTINGS = "223a11ff-80e0-428b-89a9-6ef1c243b8b6"
+SHORT_AUTHORITY_BINDING = re.compile(
+    r"^Revision (?P<revision>[1-9][0-9]*) · saved (?P<saved>[0-9]+) · "
+    r"snapshot (?P<snapshot>[0-9a-f]{12}) · authority (?P<authority>[0-9a-f]{12})$"
+)
 
 
 def sha256(path: Path) -> str:
@@ -30,6 +40,141 @@ def sha256(path: Path) -> str:
 def node_text(device: shared.Device, selector: str, *, scroll: bool = False) -> str:
     node = device.wait(selector, timeout=60, scroll=scroll, max_scrolls=22)
     return node.attributes.get("text") or node.attributes.get("content-desc") or ""
+
+
+def validate_creation_karma_fixture(path: Path) -> dict[str, object]:
+    try:
+        root = ET.parse(path).getroot()
+    except (OSError, ET.ParseError) as error:
+        raise RuntimeError(f"Creation Karma fixture is not valid XML: {path}") from error
+    if root.tag != "character":
+        raise RuntimeError("Creation Karma fixture must use <character> as its root")
+    expected = {
+        "alias": CREATION_KARMA_FIXTURE_ALIAS,
+        "created": "False",
+        "gameedition": "SR5",
+        "settings": CREATION_KARMA_FIXTURE_SETTINGS,
+    }
+    for element, value in expected.items():
+        if root.findtext(element) != value:
+            raise RuntimeError(
+                f"Creation Karma fixture requires exact <{element}>{value}</{element}>"
+            )
+    build_method = root.findtext("buildmethod")
+    if build_method not in {"Priority", "Sum-to-Ten"}:
+        raise RuntimeError(
+            "Creation Karma fixture requires a production-supported Priority or Sum-to-Ten method"
+        )
+    try:
+        karma = int(root.findtext("karma", default=""))
+    except ValueError as error:
+        raise RuntimeError("Creation Karma fixture requires an integer <karma>") from error
+    if karma < 0:
+        raise RuntimeError("Creation Karma fixture cannot have negative Karma")
+    return {
+        "alias": expected["alias"],
+        "buildMethod": build_method,
+        "settingsProfileId": expected["settings"],
+        "karma": karma,
+    }
+
+
+def require_creation_method_navigation(
+    node: shared.UiNode,
+    *,
+    ready: bool,
+) -> str:
+    description = (
+        node.attributes.get("content-desc")
+        or node.attributes.get("text")
+        or ""
+    )
+    clickable = node.attributes.get("clickable") == "true"
+    enabled = node.attributes.get("enabled") == "true"
+    if ready:
+        if not clickable or not enabled or CREATION_KARMA_AUTHORITY_BLOCKER in description:
+            raise RuntimeError(
+                "Prepared Creation Karma fixture did not enable the method navigation row: "
+                f"clickable={clickable}, enabled={enabled}, detail={description!r}"
+            )
+    elif clickable or CREATION_KARMA_AUTHORITY_BLOCKER not in description:
+        raise RuntimeError(
+            "Fresh runner did not remain fail-closed without Creation Karma authority: "
+            f"clickable={clickable}, enabled={enabled}, detail={description!r}"
+        )
+    return description
+
+
+def wait_creation_method_navigation(
+    device: shared.Device,
+    *,
+    ready: bool,
+    max_scrolls: int = 22,
+) -> str:
+    shared.reset_scroll_to_top(device, swipes=max_scrolls)
+    for scroll_index in range(max_scrolls + 1):
+        node = device.find("creation-stage-method")
+        if node is not None:
+            return require_creation_method_navigation(node, ready=ready)
+        if scroll_index < max_scrolls:
+            device.swipe_up(distance_ratio=0.22)
+            time.sleep(0.75)
+    device.capture("creation-method-navigation-missing")
+    raise RuntimeError("Creation method navigation row is absent from the phone wizard")
+
+
+def require_prerequisite_binding(value: str) -> dict[str, object]:
+    match = SHORT_AUTHORITY_BINDING.fullmatch(value)
+    if match is None:
+        raise RuntimeError(
+            "Creation prerequisite binding did not expose exact revision, snapshot, and authority "
+            f"digests: {value!r}"
+        )
+    revision = int(match.group("revision"))
+    saved = int(match.group("saved"))
+    if saved > revision:
+        raise RuntimeError(
+            f"Creation prerequisite binding saved revision exceeds content revision: {value!r}"
+        )
+    return {
+        "contentRevision": revision,
+        "savedRevision": saved,
+        "snapshotDigestPrefix": match.group("snapshot"),
+        "authorityDigestPrefix": match.group("authority"),
+    }
+
+
+def read_source_authority_digests(device: shared.Device) -> list[str]:
+    required_labels = {"Authority digest", "Profile inputs", "Priorities XML"}
+    seen_labels: set[str] = set()
+    digests: set[str] = set()
+    seen_card = False
+    shared.reset_scroll_to_top(device, swipes=22)
+    for scroll_index in range(23):
+        nodes = device.hierarchy()
+        seen_card = seen_card or any(
+            shared.Device._matches(node, "creation-prerequisite-source-authority")
+            for node in nodes
+        )
+        for node in nodes:
+            values = (
+                node.attributes.get("text", ""),
+                node.attributes.get("content-desc", ""),
+            )
+            for value in values:
+                if value in required_labels:
+                    seen_labels.add(value)
+                digests.update(shared.SHA256_TEXT.findall(value))
+        if seen_card and seen_labels == required_labels and len(digests) >= 3:
+            return sorted(digests)
+        if scroll_index < 22:
+            device.swipe_up(distance_ratio=0.22)
+            time.sleep(0.75)
+    device.capture("creation-prerequisite-source-authority-incomplete")
+    raise RuntimeError(
+        "Creation prerequisite source authority was incomplete: "
+        f"card={seen_card}, labels={sorted(seen_labels)!r}, canonicalDigests={sorted(digests)!r}"
+    )
 
 
 def open_prerequisite(device: shared.Device) -> None:
@@ -51,10 +196,23 @@ def main() -> int:
     parser.add_argument("--serial", required=True)
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
+    parser.add_argument(
+        "--creation-karma-runner",
+        type=Path,
+        default=(
+            Path(__file__).resolve().parent
+            / "fixtures"
+            / "creation-group-membership-e2e.chum5"
+        ),
+    )
     args = parser.parse_args()
 
     driver_path = Path(__file__).resolve()
     shared_path = Path(shared.__file__).resolve()
+    creation_karma_runner = args.creation_karma_runner.resolve()
+    creation_karma_fixture = validate_creation_karma_fixture(creation_karma_runner)
+    creation_karma_fixture_sha256 = sha256(creation_karma_runner)
+    remote_fixture = "/sdcard/Download/creation-group-membership-e2e.chum5"
     device = shared.Device(args.adb.resolve(), args.serial, args.evidence.resolve())
     api = device.shell("getprop", "ro.build.version.sdk")
     if api != "36":
@@ -74,6 +232,27 @@ def main() -> int:
         timeout=300,
     )
     device.shell("pm", "clear", shared.PACKAGE)
+    verified_remote_sha256 = device.push_verified(
+        creation_karma_runner,
+        remote_fixture,
+        creation_karma_fixture_sha256,
+    )
+    fixture_transport_receipt = {
+        "schema": "chummer.android.fixture-transport/v1",
+        "status": "pass",
+        "fixtures": [
+            {
+                "localPath": str(creation_karma_runner),
+                "remotePath": remote_fixture,
+                "capturedLocalSha256": creation_karma_fixture_sha256,
+                "verifiedRemoteSha256": verified_remote_sha256,
+            }
+        ],
+    }
+    (device.evidence / "fixture-transport-receipt.json").write_text(
+        json.dumps(fixture_transport_receipt, indent=2) + "\n",
+        encoding="utf-8",
+    )
     shared.launch_app(device)
     device.wait("Your runners", timeout=90)
     device.tap_until_visible("home-new-runner", "Select Build Method")
@@ -83,15 +262,51 @@ def main() -> int:
     device.wait("creation-wizard-dashboard", timeout=90)
     foundation.assert_creation_editor_gated(device)
 
+    fresh_dashboard_binding = node_text(device, "creation-wizard-binding", scroll=True)
+    fresh_navigation_detail = wait_creation_method_navigation(device, ready=False)
+    device.capture("fresh-runner-creation-karma-authority-blocked")
+    shared.reset_scroll_to_top(device, swipes=22)
+
+    # The fixture is provisioned through the same save + Home + Android document import path
+    # available to production users. Debug authority nodes are read-only evidence, never a bypass.
+    device.tap("build-save-runner", scroll=True, max_scrolls=48, scroll_distance_ratio=0.22)
+    device.wait("Saved.", timeout=90, scroll=True, max_scrolls=48, scroll_distance_ratio=0.22)
+    device.tap("Home")
+    device.wait("home-open-file", timeout=90)
+    fresh_authority = shared.read_workspace_authority(device)
+    shared.require_saved_authority(fresh_authority)
+    device.tap("home-open-file")
+    shared.select_android_document(device, creation_karma_runner.name)
+    device.wait(CREATION_KARMA_FIXTURE_ALIAS, timeout=90)
+    device.wait("Continue building", timeout=90)
+    imported_authority = shared.read_workspace_authority(device)
+    shared.require_import_authority(
+        imported_authority,
+        creation_karma_fixture_sha256,
+        fresh_authority.workspace_id,
+    )
+    if shared.SHA256_TEXT.fullmatch(imported_authority.document_sha256) is None:
+        raise RuntimeError("Imported Creation Karma document digest is not canonical")
+
+    shared.open_build(device, "phone")
+    device.wait("creation-wizard-dashboard", timeout=90)
+    foundation.assert_creation_editor_gated(device)
     dashboard_binding = node_text(device, "creation-wizard-binding", scroll=True)
+    if dashboard_binding == fresh_dashboard_binding:
+        raise RuntimeError("Public fixture import did not refresh the creation wizard binding")
+    ready_navigation_detail = wait_creation_method_navigation(device, ready=True)
+
     open_prerequisite(device)
     prerequisite_binding = node_text(device, "creation-prerequisite-binding", scroll=True)
+    prerequisite_binding_authority = require_prerequisite_binding(prerequisite_binding)
     karma = node_text(device, "creation-prerequisite-karma-budget", scroll=True)
     for label in ("Total", "Used", "Remaining"):
         if label.lower() not in karma.lower():
             raise RuntimeError(f"Global Creation Karma omitted {label!r}: {karma!r}")
+    source_authority_digests = read_source_authority_digests(device)
 
     # Build Ghost can answer from this state, but the chat route cannot touch Core mutation APIs.
+    shared.reset_scroll_to_top(device, swipes=22)
     device.tap("creation-prerequisite-rook", scroll=True, max_scrolls=22)
     device.wait("rook-local-grounded-fallback", timeout=45)
     device.set_text("rook-question", "Priority question", "Which legal rank should I consider?")
@@ -200,6 +415,11 @@ def main() -> int:
         "driverSha256": sha256(driver_path),
         "sharedDriverSha256": sha256(shared_path),
         "journeys": {
+            "freshRunnerCreationKarmaAuthorityBlocked": "pass",
+            "publicRulesValidFixtureImported": "pass",
+            "fixturePayloadAndDocumentDigestsVerified": "pass",
+            "creationMethodNavigationEnabledAfterAuthority": "pass",
+            "canonicalSourceAuthorityDigestsVisible": "pass",
             "priorityOrSumToTenAuthorityLoaded": "pass",
             "globalCreationKarmaExactTotalUsedRemaining": "pass",
             "fiveOrderedTypedCategorySelections": "pass",
@@ -216,6 +436,17 @@ def main() -> int:
             "pendingDraftProcessRestartResume": "pass",
             "buildGhostCurrentAndNonMutating": "pass",
             "advancedEditorNeverExposedWhileCreatedFalse": "pass",
+        },
+        "creationKarmaProvisioning": {
+            "fixture": creation_karma_fixture,
+            "fixtureSha256": creation_karma_fixture_sha256,
+            "verifiedRemoteFixtureSha256": verified_remote_sha256,
+            "freshRunnerWorkspaceAuthority": shared.workspace_authority_json(fresh_authority),
+            "importedWorkspaceAuthority": shared.workspace_authority_json(imported_authority),
+            "freshNavigationDetail": fresh_navigation_detail,
+            "readyNavigationDetail": ready_navigation_detail,
+            "prerequisiteBinding": prerequisite_binding_authority,
+            "sourceAuthorityDigests": source_authority_digests,
         },
     }
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
