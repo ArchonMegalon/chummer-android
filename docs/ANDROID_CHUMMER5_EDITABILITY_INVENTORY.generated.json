@@ -579,7 +579,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "651b5f275b0ca001d5d1ec0d1b391ddadb96b8157b05c1c21d85129a9221e425"
+        "sha256": "9c1819839bc6159b72f5c9662b3900572d147af47cdb78a883610e69fb886a73"
       },
       {
         "path": "tests/run_api36_gear_attack_swap_e2e.py",

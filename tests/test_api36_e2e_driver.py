@@ -1255,17 +1255,27 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
     def test_collection_openers_use_overlapping_search_below_the_action_list(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
         for function_name, action, quick_add in (
-            ("open_gear_section", "build-action-tab-gear-gear", "section-quick-gear-add"),
+            ("open_gear_section", "build-section-tab-gear", "section-quick-gear-add"),
             ("open_contact_section", "build-action-tab-relationships-contacts", "section-quick-contact-add"),
             ("open_pet_section", "build-action-tab-relationships-pets", "section-quick-contact-add"),
         ):
             block = source[source.index(f"def {function_name}") :]
             block = block[: block.index("\ndef ", 5)]
             self.assertIn("device.tap(", block)
-            self.assertIn("device.wait(", block)
+            self.assertIn(
+                "device.wait_exact_resource_id_bidirectional("
+                if function_name == "open_gear_section"
+                else "device.wait(",
+                block,
+            )
             self.assertIn(f'"{action}"', block)
             self.assertIn(f'"{quick_add}"', block)
-            self.assertIn("max_scrolls=48", block)
+            self.assertIn(
+                "forward_scrolls=48"
+                if function_name == "open_gear_section"
+                else "max_scrolls=48",
+                block,
+            )
             self.assertIn("scroll_distance_ratio=0.22", block)
 
     def test_relationship_openers_wait_for_fixture_items_instead_of_quick_add(self) -> None:
@@ -1789,30 +1799,138 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
     def test_phone_gear_route_resets_preserved_action_scroll(self) -> None:
         class GearRouteDevice:
             def __init__(self) -> None:
-                self.calls: list[tuple[str, str]] = []
+                self.calls: list[tuple[str, str, dict[str, object]]] = []
 
-            def tap(self, selector: str, **_: object) -> None:
-                self.calls.append(("tap", selector))
+            def tap(self, selector: str, **options: object) -> None:
+                self.calls.append(("tap", selector, options))
 
-            def wait(self, selector: str, **_: object) -> None:
-                self.calls.append(("wait", selector))
+            def wait_exact_resource_id_bidirectional(
+                self,
+                selector: str,
+                **options: object,
+            ) -> None:
+                self.calls.append(("wait_exact", selector, options))
 
             def swipe_down(self, **_: object) -> None:
-                self.calls.append(("swipe", "down"))
+                self.calls.append(("swipe", "down", {}))
 
         device = GearRouteDevice()
         DRIVER.open_gear_section(device, "phone")
 
-        self.assertEqual([("swipe", "down")] * 12, device.calls[:12])
-        self.assertEqual(("tap", "build-section-tab-gear"), device.calls[12])
-        self.assertEqual([("swipe", "down")] * 12, device.calls[13:25])
+        self.assertEqual([("swipe", "down", {})] * 12, device.calls[:12])
+        self.assertEqual(
+            ("tap", "build-section-tab-gear", {"scroll": True, "exact_resource_id": True}),
+            device.calls[12],
+        )
         self.assertEqual(
             [
-                ("tap", "build-action-tab-gear-gear"),
-                ("wait", "section-quick-gear-add"),
+                (
+                    "wait_exact",
+                    "section-quick-gear-add",
+                    {
+                        "timeout": 180,
+                        "backward_scrolls": 24,
+                        "forward_scrolls": 48,
+                        "scroll_distance_ratio": 0.22,
+                    },
+                ),
             ],
-            device.calls[25:],
+            device.calls[13:],
         )
+        self.assertNotIn(
+            "build-action-tab-gear-gear",
+            [selector for _, selector, _ in device.calls],
+        )
+
+    def test_exact_bidirectional_wait_recovers_quick_add_above_preserved_scroll(self) -> None:
+        wrong_prefix = DRIVER.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/"
+                    "build-action-tab-gear-gearlocations"
+                ),
+                "clickable": "true",
+                "bounds": "[100,100][300,300]",
+            }
+        )
+        finder = Mock(spec=DRIVER.Device)
+        finder.hierarchy.return_value = [wrong_prefix]
+        self.assertTrue(
+            DRIVER.Device._matches(wrong_prefix, "build-action-tab-gear-gear")
+        )
+        self.assertIsNone(
+            DRIVER.Device.find_exact_resource_id(
+                finder,
+                "build-action-tab-gear-gear",
+            )
+        )
+
+        target = DRIVER.UiNode(
+            {
+                "resource-id": "com.myexternalbrain.chummer:id/section-quick-gear-add",
+                "clickable": "true",
+                "bounds": "[100,100][300,300]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        preserved_offset = {"rows_below_top": 24}
+        device._scroll_x_ratio.return_value = 0.5
+        device.swipe_down.side_effect = lambda **_: preserved_offset.update(
+            rows_below_top=max(0, preserved_offset["rows_below_top"] - 1)
+        )
+        device.swipe_up.side_effect = lambda **_: preserved_offset.update(
+            rows_below_top=preserved_offset["rows_below_top"] + 1
+        )
+        device.find_exact_resource_id.side_effect = lambda _: (
+            target if preserved_offset["rows_below_top"] == 0 else None
+        )
+        device.node_has_tappable_bounds.return_value = True
+        with patch.object(DRIVER.time, "sleep"):
+            actual = DRIVER.Device.wait_exact_resource_id_bidirectional(
+                device,
+                "section-quick-gear-add",
+                timeout=120,
+                backward_scrolls=24,
+                forward_scrolls=24,
+                scroll_distance_ratio=0.22,
+            )
+
+        self.assertIs(target, actual)
+        self.assertEqual(0, preserved_offset["rows_below_top"])
+        self.assertEqual(24, device.swipe_down.call_count)
+        device.swipe_up.assert_not_called()
+        device.node_has_tappable_bounds.assert_called_once_with(target)
+
+        old_offset = {"rows_below_top": 24}
+        old_device = Mock(spec=DRIVER.Device)
+        old_device.find.side_effect = lambda _: (
+            target if old_offset["rows_below_top"] == 0 else None
+        )
+        old_device.dismiss_system_ui_anr.return_value = False
+        old_device._scroll_x_ratio.return_value = 0.5
+        old_device.swipe_up.side_effect = lambda **_: old_offset.update(
+            rows_below_top=old_offset["rows_below_top"] + 1
+        )
+        clock = {"now": 0.0}
+
+        def advance_clock() -> float:
+            clock["now"] += 1.0
+            return clock["now"]
+
+        with patch.object(DRIVER.time, "monotonic", side_effect=advance_clock), patch.object(
+            DRIVER.time,
+            "sleep",
+        ):
+            with self.assertRaisesRegex(RuntimeError, "Timed out waiting"):
+                DRIVER.Device.wait(
+                    old_device,
+                    "section-quick-gear-add",
+                    timeout=4,
+                    scroll=True,
+                    max_scrolls=4,
+                    scroll_distance_ratio=0.22,
+                )
+        self.assertGreater(old_offset["rows_below_top"], 24)
 
     def test_phone_condition_route_uses_overlapping_scrolls(self) -> None:
         class ConditionRouteDevice:

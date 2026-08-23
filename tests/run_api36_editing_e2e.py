@@ -241,6 +241,19 @@ class Device:
                         return node
         return None
 
+    def find_exact_resource_id(self, selector: str) -> UiNode | None:
+        matches = [
+            node
+            for node in self.hierarchy()
+            if node.attributes.get("resource-id", "").rsplit("/", 1)[-1] == selector
+        ]
+        if not matches:
+            return None
+        return next(
+            (node for node in matches if node.attributes.get("clickable") == "true"),
+            matches[0],
+        )
+
     def wait(
         self,
         selector: str,
@@ -293,12 +306,17 @@ class Device:
         max_scrolls: int = 6,
         scroll_distance_ratio: float = 0.52,
         text_leading_offset: int = 0,
+        exact_resource_id: bool = False,
     ) -> None:
         deadline = time.monotonic() + timeout
         scrolls = 0
         node = None
         while time.monotonic() < deadline:
-            candidate = self.find(selector)
+            candidate = (
+                self.find_exact_resource_id(selector)
+                if exact_resource_id
+                else self.find(selector)
+            )
             if candidate is not None and self.node_has_tappable_bounds(candidate):
                 node = candidate
                 break
@@ -321,6 +339,49 @@ class Device:
             if match is not None:
                 x = max(1, int(match.group(1)) - text_leading_offset)
         self.shell("input", "tap", str(x), str(y))
+
+    def wait_exact_resource_id_bidirectional(
+        self,
+        selector: str,
+        *,
+        timeout: int = 90,
+        backward_scrolls: int = 24,
+        forward_scrolls: int = 24,
+        scroll_distance_ratio: float = 0.22,
+    ) -> UiNode:
+        """Reset a refreshed page to its top, then scan forward for one exact ID."""
+        x_ratio = self._scroll_x_ratio(selector)
+        for _ in range(backward_scrolls):
+            self.swipe_down(
+                x_ratio=x_ratio,
+                distance_ratio=scroll_distance_ratio,
+            )
+            time.sleep(0.2)
+        if backward_scrolls > 0:
+            time.sleep(0.75)
+
+        deadline = time.monotonic() + timeout
+        forward = 0
+        while time.monotonic() < deadline:
+            node = self.find_exact_resource_id(selector)
+            if node is not None and self.node_has_tappable_bounds(node):
+                return node
+            if self.dismiss_system_ui_anr():
+                time.sleep(2)
+                continue
+            if forward >= forward_scrolls:
+                break
+            self.swipe_up(
+                x_ratio=x_ratio,
+                distance_ratio=scroll_distance_ratio,
+            )
+            forward += 1
+            time.sleep(0.75)
+        self.capture("failure")
+        raise RuntimeError(
+            f"Timed out waiting for exact UI resource {selector!r} "
+            "after a bounded bidirectional search"
+        )
 
     def tap_bidirectional(
         self,
@@ -1160,14 +1221,12 @@ def open_gear_section(device: Device, profile: str) -> None:
         )
         return
     reset_scroll_to_top(device, swipes=12)
-    device.tap("build-section-tab-gear", scroll=True)
-    reset_scroll_to_top(device, swipes=12)
-    device.tap("build-action-tab-gear-gear", scroll=True)
-    device.wait(
+    device.tap("build-section-tab-gear", scroll=True, exact_resource_id=True)
+    device.wait_exact_resource_id_bidirectional(
         "section-quick-gear-add",
         timeout=180,
-        scroll=True,
-        max_scrolls=48,
+        backward_scrolls=24,
+        forward_scrolls=48,
         scroll_distance_ratio=0.22,
     )
 
