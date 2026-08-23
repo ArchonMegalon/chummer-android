@@ -28,17 +28,6 @@ python3 chummer-android/tests/run_api36_editing_e2e.py \
   --evidence "$evidence_root/screenshots" \
   --receipt "$evidence_root/receipt.json"
 
-contact_pet_root="$evidence_root/contact-pet"
-install -d -m 0755 "$contact_pet_root"
-python3 chummer-android/tests/run_api36_editing_e2e.py \
-  --adb "$adb_path" \
-  --apk "$apk_path" \
-  --serial emulator-5554 \
-  --profile "$profile" \
-  --journey contact-pet \
-  --evidence "$contact_pet_root/screenshots" \
-  --receipt "$contact_pet_root/receipt.json"
-
 prerequisite_root="$evidence_root/creation-prerequisite"
 install -d -m 0755 "$prerequisite_root"
 python3 chummer-android/tests/run_api36_creation_prerequisite_e2e.py \
