@@ -22175,6 +22175,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_new_character_karma_e2e.py",
         REPO_ROOT / "tests" / "run_api36_new_character_priority_e2e.py",
         REPO_ROOT / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5",
+        REPO_ROOT / "tests" / "fixtures" / "career-full-editing-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-reputation-core-only-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-reputation-full-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "creation-situational-modifiers-e2e.chum5",

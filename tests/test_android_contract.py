@@ -81,9 +81,9 @@ class AndroidContractTests(unittest.TestCase):
         )
 
         for dependency, commit in (
-            ("ArchonMegalon/chummer6-ui", "8090e53f6dd64794145d81d7698394e4881d0c02"),
-            ("ArchonMegalon/chummer6-core", "c75d68d2233af980dd8b1ef6116dcbdeefcf3c71"),
-            ("ArchonMegalon/chummer6-hub", "25f4906b1b92fa286c63ec364ea33ada63ba9431"),
+            ("ArchonMegalon/chummer6-ui", "1c492202ac708f302b59f47c2bb1e4c67e352328"),
+            ("ArchonMegalon/chummer6-core", "e8d221cde98525b68234201a8bee68bf976cc304"),
+            ("ArchonMegalon/chummer6-hub", "fce73dea2d5b2cb48fe74e1b33d9f1dbe13b8e31"),
             ("ArchonMegalon/chummer6-ui-kit", "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61"),
             ("ArchonMegalon/chummer6-hub-registry", "7b54afec574a9327616c4ad7566da3a7b6b906a5"),
             ("ArchonMegalon/chummer6-media-factory", "415c8163d3d90b1211e4014fef332bdec6d75f73"),
@@ -1056,7 +1056,7 @@ class AndroidContractTests(unittest.TestCase):
             'if args.journey in {"condition-monitor", "contact-pet"}:',
             'select_android_document(device, fixture_name)',
             '"careerRunnerImport": "pass"',
-            '"inputFixtureSha256": sha256(args.condition_runner.resolve())',
+            '"inputFixtureSha256": condition_runner_sha256',
         ):
             self.assertIn(marker, e2e)
         self.assertNotIn("XDocument", phone + tablet + coordinator + staging)
@@ -1119,12 +1119,11 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("XDocument", tablet)
         for automation_id in (
             "tablet-build-tab-tab-attributes",
-            "tablet-attribute-body",
-            "tablet-attribute-base-body",
-            "tablet-attribute-save-body",
+            "tablet-attribute-bod",
+            "tablet-attribute-improve-bod",
         ):
             self.assertIn(automation_id, e2e)
-        self.assertIn('"attributeBaseEditPersisted": "pass"', e2e)
+        self.assertIn('"careerAttributeImprovePersisted": "pass"', e2e)
         self.assertNotIn("not_covered", e2e)
 
     def test_editing_parity_matrix_is_explicit_and_fail_closed(self) -> None:

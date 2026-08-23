@@ -28,6 +28,9 @@ COMPONENT = re.compile(
 )
 PROCESS_ID = re.compile(r"[1-9][0-9]*")
 SHA256_TEXT = re.compile(r"[0-9a-f]{64}")
+BODY_TOTAL_DESCRIPTION = re.compile(
+    r"^Body\.\s+(?:Selected\s+·\s+)?(?P<total>[0-9]+)(?:\s+·|$)"
+)
 MAX_LAUNCH_EVIDENCE_CHARACTERS = 1_000_000
 
 
@@ -65,6 +68,16 @@ class WorkspaceAuthority:
     saved_revision: int
     payload_sha256: str
     document_sha256: str
+
+
+@dataclass(frozen=True)
+class FullEditingFixtureContract:
+    initial_body_total: int
+    improved_body_total: int
+    improvement_cost: int
+    initial_karma: int
+    remaining_karma: int
+    next_improvement_cost: int
 
 
 class Device:
@@ -618,6 +631,87 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def validate_full_editing_fixture(path: Path) -> FullEditingFixtureContract:
+    try:
+        root = ET.parse(path).getroot()
+    except (OSError, ET.ParseError) as error:
+        raise RuntimeError(f"Full-editing fixture is not valid XML: {path}") from error
+    if root.tag != "character":
+        raise RuntimeError("Full-editing fixture must use <character> as its root")
+    if root.findtext("created") != "True":
+        raise RuntimeError("Full-editing fixture must be an exact created=True career runner")
+    if root.findtext("alias") != "FullEditingE2E":
+        raise RuntimeError("Full-editing fixture must use alias FullEditingE2E")
+
+    bodies = [
+        attribute
+        for attribute in root.findall("./attributes/attribute")
+        if attribute.findtext("name") == "BOD"
+    ]
+    if len(bodies) != 1:
+        raise RuntimeError("Full-editing fixture must contain exactly one source-valid BOD attribute")
+    body = bodies[0]
+    if [child.tag for child in body] != [
+        "name",
+        "metatypemin",
+        "metatypemax",
+        "metatypeaugmax",
+        "base",
+        "karma",
+        "metatypecategory",
+        "totalvalue",
+    ]:
+        raise RuntimeError("Full-editing fixture BOD must use canonical Chummer5 field order")
+
+    def required_int(parent: ET.Element, name: str) -> int:
+        raw = parent.findtext(name)
+        try:
+            return int(raw) if raw is not None else int("")
+        except ValueError as error:
+            raise RuntimeError(
+                f"Full-editing fixture requires integer <{name}> for BOD"
+            ) from error
+
+    base = required_int(body, "base")
+    karma_value = required_int(body, "karma")
+    total = required_int(body, "totalvalue")
+    minimum = required_int(body, "metatypemin")
+    maximum = required_int(body, "metatypemax")
+    augmented_maximum = required_int(body, "metatypeaugmax")
+    available_karma = required_int(root, "karma")
+    if body.findtext("metatypecategory") != "Standard":
+        raise RuntimeError(
+            "Full-editing fixture BOD must use Chummer5 metatypecategory Standard"
+        )
+    if (base, karma_value, total, minimum, maximum, augmented_maximum) != (
+        1,
+        0,
+        1,
+        1,
+        6,
+        10,
+    ):
+        raise RuntimeError(
+            "Full-editing fixture BOD must be exact: base=1, karma=0, "
+            "totalvalue=1, min=1, max=6, augmax=10"
+        )
+    if not minimum <= total < augmented_maximum:
+        raise RuntimeError("Full-editing fixture BOD must have career improvement headroom")
+    improvement_cost = (total + 1) * 5
+    if available_karma < improvement_cost:
+        raise RuntimeError(
+            "Full-editing fixture does not have enough Karma for the BOD improvement"
+        )
+    return FullEditingFixtureContract(
+        initial_body_total=total,
+        improved_body_total=total + 1,
+        improvement_cost=improvement_cost,
+        initial_karma=available_karma,
+        remaining_karma=available_karma - improvement_cost,
+        next_improvement_cost=(total + 2) * 5,
+    )
+
+
 def _authority_value(device: Device, automation_id: str) -> str:
     node = device.wait(automation_id, timeout=90, scroll=True, max_scrolls=12)
     value = node.attributes.get("text", "").strip()
@@ -796,14 +890,17 @@ def reset_collection_editor_to_top(device: Device, profile: str) -> None:
     )
 
 
-def open_attribute_section(device: Device, profile: str) -> None:
+def open_attribute_section(
+    device: Device,
+    profile: str,
+    attribute_token: str = "body",
+) -> None:
     if profile == "tablet":
         reset_scroll_to_top(device, x_ratio=0.15, swipes=24)
         device.tap("tablet-build-tab-tab-attributes", scroll=True)
         reset_scroll_to_top(device, x_ratio=0.375)
-        device.wait("tablet-attribute-body", timeout=45)
-        device.tap("tablet-attribute-body")
-        device.wait("tablet-attribute-base-body", timeout=45)
+        device.wait(f"tablet-attribute-{attribute_token}", timeout=45)
+        device.tap(f"tablet-attribute-{attribute_token}")
         return
     device.tap_bidirectional(
         "build-section-tab-attributes",
@@ -813,37 +910,125 @@ def open_attribute_section(device: Device, profile: str) -> None:
         scroll_distance_ratio=0.22,
     )
     reset_scroll_to_top(device)
-    device.wait("attribute-body", timeout=45, scroll=True)
+    device.wait(
+        f"attribute-{attribute_token}",
+        timeout=120,
+        scroll=True,
+        max_scrolls=24,
+        scroll_distance_ratio=0.22,
+    )
 
 
-def edit_body_base(device: Device, profile: str, value: int) -> None:
-    open_attribute_section(device, profile)
-    if profile == "tablet":
-        device.tap("tablet-attribute-base-body", scroll=True)
-        device.tap(str(value), scroll=True)
-        device.tap("tablet-attribute-save-body", scroll=True)
-        return
-    device.tap("attribute-body", scroll=True)
-    device.tap("attribute-base-body", scroll=True)
-    device.tap(str(value), scroll=True)
-    device.tap("attribute-save-body", scroll=True)
-    device.back()
-
-
-def assert_body_base(device: Device, profile: str, expected: int) -> None:
-    open_attribute_section(device, profile)
-    selector = "tablet-attribute-base-body" if profile == "tablet" else "attribute-base-body"
-    if profile == "phone":
-        device.tap("attribute-body", scroll=True)
-    base = device.find(selector, field_after_label="Base")
-    if base is None or base.attributes.get("text") != str(expected):
-        device.capture(f"{profile}-attribute-not-persisted")
+def read_body_total(device: Device, profile: str) -> int:
+    selector = "tablet-attribute-bod" if profile == "tablet" else "attribute-bod"
+    node = device.wait(
+        selector,
+        timeout=90,
+        scroll=True,
+        max_scrolls=24,
+        scroll_distance_ratio=0.22,
+    )
+    description = node.attributes.get("content-desc", "").strip()
+    match = BODY_TOTAL_DESCRIPTION.match(description)
+    if match is None:
+        device.capture(f"{profile}-body-total-unavailable")
         raise RuntimeError(
-            f"Body base value did not persist in the {profile} native editor; "
-            f"expected {expected}"
+            f"BOD row did not expose an authoritative Body total: {description!r}"
+        )
+    return int(match.group("total"))
+
+
+def wait_exact_text(
+    device: Device,
+    expected: str,
+    *,
+    timeout: int,
+) -> None:
+    node = device.wait(
+        expected,
+        timeout=timeout,
+        scroll=True,
+        max_scrolls=12,
+        scroll_distance_ratio=0.22,
+    )
+    if node.attributes.get("text") != expected:
+        device.capture("career-attribute-text-mismatch")
+        raise RuntimeError(
+            f"Expected exact career attribute text {expected!r}, "
+            f"got {node.attributes.get('text', '')!r}"
+        )
+
+
+def assert_body_total(device: Device, profile: str, expected: int) -> None:
+    open_attribute_section(device, profile, "bod")
+    actual = read_body_total(device, profile)
+    if actual != expected:
+        device.capture(f"{profile}-body-total-not-persisted")
+        raise RuntimeError(
+            f"Career Body total did not persist in the {profile} editor; "
+            f"expected {expected}, got {actual}"
+        )
+
+
+def improve_body_in_career(
+    device: Device,
+    profile: str,
+    contract: FullEditingFixtureContract,
+) -> None:
+    open_attribute_section(device, profile, "bod")
+    before = read_body_total(device, profile)
+    if before != contract.initial_body_total:
+        device.capture(f"{profile}-body-total-before-improvement-invalid")
+        raise RuntimeError(
+            "Imported career BOD did not match its validated fixture total; "
+            f"expected {contract.initial_body_total}, got {before}"
         )
     if profile == "phone":
+        device.tap("attribute-bod", scroll=True)
+        improve_selector = "attribute-improve-bod"
+    else:
+        improve_selector = "tablet-attribute-improve-bod"
+    reset_scroll_to_top(
+        device,
+        x_ratio=0.82 if profile == "tablet" else 0.5,
+        swipes=6,
+    )
+    wait_exact_text(
+        device,
+        f"Available Karma: {contract.initial_karma}",
+        timeout=45,
+    )
+    wait_exact_text(
+        device,
+        f"Improve · {contract.improvement_cost} Karma",
+        timeout=45,
+    )
+    device.wait(improve_selector, timeout=45, scroll=True)
+    device.tap(improve_selector, scroll=True)
+    reset_scroll_to_top(
+        device,
+        x_ratio=0.82 if profile == "tablet" else 0.5,
+        swipes=6,
+    )
+    wait_exact_text(
+        device,
+        f"Available Karma: {contract.remaining_karma}",
+        timeout=90,
+    )
+    wait_exact_text(
+        device,
+        f"Improve · {contract.next_improvement_cost} Karma",
+        timeout=90,
+    )
+    if profile == "phone":
         device.back()
+    after = read_body_total(device, profile)
+    if after != contract.improved_body_total:
+        device.capture(f"{profile}-body-total-after-improvement-invalid")
+        raise RuntimeError(
+            "Career BOD improvement did not produce the expected total; "
+            f"expected {contract.improved_body_total}, got {after}"
+        )
 
 
 def open_condition_monitor_section(device: Device, profile: str) -> None:
@@ -2100,6 +2285,11 @@ def main() -> int:
         default=Path(__file__).resolve().parent / "fixtures" / "invalid-linked-runner-e2e.chum5",
     )
     parser.add_argument(
+        "--full-editing-runner",
+        type=Path,
+        default=Path(__file__).resolve().parent / "fixtures" / "career-full-editing-e2e.chum5",
+    )
+    parser.add_argument(
         "--condition-runner",
         type=Path,
         default=Path(__file__).resolve().parent / "fixtures" / "career-condition-monitor-e2e.chum5",
@@ -2111,11 +2301,21 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    full_editing_contract = (
+        validate_full_editing_fixture(args.full_editing_runner.resolve())
+        if args.journey == "full"
+        else None
+    )
+
     fixture_inputs = (
         (args.linked_runner.resolve(), "/sdcard/Download/linked-runner-e2e.chum5"),
         (
             args.invalid_linked_runner.resolve(),
             "/sdcard/Download/invalid-linked-runner-e2e.chum5",
+        ),
+        (
+            args.full_editing_runner.resolve(),
+            "/sdcard/Download/career-full-editing-e2e.chum5",
         ),
         (
             args.condition_runner.resolve(),
@@ -2127,6 +2327,7 @@ def main() -> int:
         ),
     )
     fixture_sha256 = {local_path: sha256(local_path) for local_path, _ in fixture_inputs}
+    full_editing_runner_sha256 = fixture_sha256[args.full_editing_runner.resolve()]
     condition_runner_sha256 = fixture_sha256[args.condition_runner.resolve()]
     contact_pet_runner_sha256 = fixture_sha256[args.contact_pet_runner.resolve()]
 
@@ -2198,9 +2399,9 @@ def main() -> int:
         imported_authority = prepare_full_editing_runner(
             device,
             args.profile,
-            "career-condition-monitor-e2e.chum5",
-            "ConditionMonitorE2E",
-            condition_runner_sha256,
+            "career-full-editing-e2e.chum5",
+            "FullEditingE2E",
+            full_editing_runner_sha256,
         )
 
     open_build(device, args.profile)
@@ -2382,7 +2583,9 @@ def main() -> int:
     device.back()
     device.back()
 
-    edit_body_base(device, args.profile, 2)
+    if full_editing_contract is None:
+        raise RuntimeError("Full journey requires a validated full-editing fixture")
+    improve_body_in_career(device, args.profile, full_editing_contract)
     if args.profile == "phone":
         device.back()
 
@@ -2403,7 +2606,7 @@ def main() -> int:
     attach_linked_runner(device, args.profile, "pet", "PetPersistedE2E")
     if args.profile == "phone":
         device.back()
-    assert_body_base(device, args.profile, 2)
+    assert_body_total(device, args.profile, full_editing_contract.improved_body_total)
     if args.profile == "phone":
         device.back()
     persisted_authority = (
@@ -2432,7 +2635,7 @@ def main() -> int:
     device.assert_text("NativeE2E")
     device.back()
     device.back()
-    assert_body_base(device, args.profile, 2)
+    assert_body_total(device, args.profile, full_editing_contract.improved_body_total)
     if args.profile == "phone":
         device.back()
     open_gear_section(device, args.profile)
@@ -2486,10 +2689,10 @@ def main() -> int:
         "apk": str(args.apk.resolve()),
         "apkSha256": sha256(args.apk.resolve()),
         "driverSha256": sha256(Path(__file__).resolve()),
-        "inputFixture": str(args.condition_runner.resolve()),
-        "inputFixtureSha256": condition_runner_sha256,
+        "inputFixture": str(args.full_editing_runner.resolve()),
+        "inputFixtureSha256": full_editing_runner_sha256,
         "verifiedRemoteInputFixtureSha256": verified_remote_sha256[
-            args.condition_runner.resolve()
+            args.full_editing_runner.resolve()
         ],
         "importAuthority": optional_workspace_authority_json(imported_authority),
         "preRestartAuthority": optional_workspace_authority_json(persisted_authority),
@@ -2499,9 +2702,9 @@ def main() -> int:
                 "pass" if args.profile == "phone" else "not-claimed-tablet-deferred"
             ),
             "import": {
-                "frozenFixtureSha256": condition_runner_sha256,
+                "frozenFixtureSha256": full_editing_runner_sha256,
                 "verifiedRemoteFixtureSha256": verified_remote_sha256[
-                    args.condition_runner.resolve()
+                    args.full_editing_runner.resolve()
                 ],
                 "workspace": optional_workspace_authority_json(imported_authority),
             },
@@ -2515,6 +2718,15 @@ def main() -> int:
         "postForceStopProcessIds": list(restart_proof.after_force_stop.process_ids),
         "restartProcessIds": list(restart_proof.restarted.process_ids),
         "restartResumedComponent": restart_proof.restarted.resumed_component,
+        "careerAttributeTransition": {
+            "attribute": "BOD",
+            "initialTotal": full_editing_contract.initial_body_total,
+            "improvedTotal": full_editing_contract.improved_body_total,
+            "improvementCost": full_editing_contract.improvement_cost,
+            "initialKarma": full_editing_contract.initial_karma,
+            "remainingKarma": full_editing_contract.remaining_karma,
+            "nextImprovementCost": full_editing_contract.next_improvement_cost,
+        },
         "journeys": {
             "newRunnerCreationWorkflowStarted": "pass",
             "newRunnerCreationDraftSaved": (
@@ -2525,10 +2737,10 @@ def main() -> int:
                 "pass" if args.profile == "phone" else "not-applicable-tablet-deferred"
             ),
             "careerRunnerImport": "pass",
-            "careerRunnerAliasActivated": "ConditionMonitorE2E",
+            "careerRunnerAliasActivated": "FullEditingE2E",
             "originIdentityEditPersisted": "pass",
             "originStoryEditPersisted": "pass",
-            "attributeBaseEditPersisted": "pass",
+            "careerAttributeImprovePersisted": "pass",
             "collectionCustomNameEditPersisted": "pass",
             "contactInvalidBoundsRejected": "pass",
             "contactEditPersisted": "pass",

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Full Editing E2E</name>
+  <alias>FullEditingE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>True</created>
+  <gameedition>SR5</gameedition>
+  <karma>35</karma>
+  <nuyen>8500</nuyen>
+  <physicalcm>10</physicalcm>
+  <physicalcmoverflow>3</physicalcmoverflow>
+  <physicalcmfilled>0</physicalcmfilled>
+  <stuncm>10</stuncm>
+  <stuncmfilled>0</stuncmfilled>
+  <attributes>
+    <attribute>
+      <name>BOD</name>
+      <metatypemin>1</metatypemin>
+      <metatypemax>6</metatypemax>
+      <metatypeaugmax>10</metatypeaugmax>
+      <base>1</base>
+      <karma>0</karma>
+      <metatypecategory>Standard</metatypecategory>
+      <totalvalue>1</totalvalue>
+    </attribute>
+  </attributes>
+</character>

@@ -579,7 +579,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "fa23bc1f80b240a6523dbd0fe716bd8b3133ebe38f5e073c5aa3cb621d34e61e"
+        "sha256": "651b5f275b0ca001d5d1ec0d1b391ddadb96b8157b05c1c21d85129a9221e425"
       },
       {
         "path": "tests/run_api36_gear_attack_swap_e2e.py",
@@ -970,6 +970,11 @@
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
         "exists": true,
         "sha256": "aebca5d1b09a338a798afb45805fe0679c174c2f4f1687e53624990ce095ae25"
+      },
+      {
+        "path": "tests/fixtures/career-full-editing-e2e.chum5",
+        "exists": true,
+        "sha256": "e84a9238be230a90f4049051b95b31c35968be4b1935929a34ba3008befce89e"
       },
       {
         "path": "tests/fixtures/career-reputation-core-only-e2e.chum5",
@@ -2239,7 +2244,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "527b07b7e52709f7f7fd5aa60a096897fa5235c9243028dfd14d5ccf41d60f1c"
+      "sha256": "4c7253ab882d6d99e6b69c840ab94457708f79d4ade77a94d2ea1b11ab67dbcc"
     }
   },
   "coverageByFamily": {

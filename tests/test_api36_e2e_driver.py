@@ -729,8 +729,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             result = DRIVER.prepare_full_editing_runner(
                 device,
                 "phone",
-                "career-condition-monitor-e2e.chum5",
-                "ConditionMonitorE2E",
+                "career-full-editing-e2e.chum5",
+                "FullEditingE2E",
                 fixture_sha256,
             )
 
@@ -757,13 +757,13 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 call.tap("Home"),
                 call.wait("home-open-file", timeout=90),
                 call.tap("home-open-file"),
-                call.wait("ConditionMonitorE2E", timeout=90),
+                call.wait("FullEditingE2E", timeout=90),
                 call.wait("Continue building", timeout=90),
             ]
         )
         select_document.assert_called_once_with(
             device,
-            "career-condition-monitor-e2e.chum5",
+            "career-full-editing-e2e.chum5",
         )
         self.assertEqual(imported, result)
 
@@ -774,8 +774,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             result = DRIVER.prepare_full_editing_runner(
                 device,
                 "tablet",
-                "career-condition-monitor-e2e.chum5",
-                "ConditionMonitorE2E",
+                "career-full-editing-e2e.chum5",
+                "FullEditingE2E",
                 "a" * 64,
             )
 
@@ -792,7 +792,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 call.wait("Continue building", timeout=90),
                 call.wait("home-open-file", timeout=90),
                 call.tap("home-open-file"),
-                call.wait("ConditionMonitorE2E", timeout=90),
+                call.wait("FullEditingE2E", timeout=90),
                 call.wait("Continue building", timeout=90),
             ]
         )
@@ -801,7 +801,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertNotIn(call.tap("Home"), device.mock_calls)
         select_document.assert_called_once_with(
             device,
-            "career-condition-monitor-e2e.chum5",
+            "career-full-editing-e2e.chum5",
         )
 
     def test_generic_driver_keeps_the_deferred_tablet_profile(self) -> None:
@@ -813,13 +813,13 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         receipt = source[source.rindex("    receipt = {") :]
 
         for marker in (
-            '"inputFixture": str(args.condition_runner.resolve())',
-            '"inputFixtureSha256": condition_runner_sha256',
+            '"inputFixture": str(args.full_editing_runner.resolve())',
+            '"inputFixtureSha256": full_editing_runner_sha256',
             '"verifiedRemoteInputFixtureSha256": verified_remote_sha256[',
             '"importAuthority": optional_workspace_authority_json(imported_authority)',
             '"preRestartAuthority": optional_workspace_authority_json(persisted_authority)',
             '"postRestartAuthority": optional_workspace_authority_json(restored_authority)',
-            '"frozenFixtureSha256": condition_runner_sha256',
+            '"frozenFixtureSha256": full_editing_runner_sha256',
             '"initialLaunchProcessIds": list(initial_launch_state.process_ids)',
             '"initialLaunchResumedComponent": initial_launch_state.resumed_component',
             '"preForceStopProcessIds": list(restart_proof.before_force_stop.process_ids)',
@@ -833,10 +833,74 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             '"phoneCreationWizardDashboard": (',
             '"pass" if args.profile == "phone" else "not-applicable-tablet-deferred"',
             '"careerRunnerImport": "pass"',
-            '"careerRunnerAliasActivated": "ConditionMonitorE2E"',
+            '"careerRunnerAliasActivated": "FullEditingE2E"',
+            '"careerAttributeImprovePersisted": "pass"',
+            '"careerAttributeTransition": {',
+            '"initialTotal": full_editing_contract.initial_body_total',
+            '"improvedTotal": full_editing_contract.improved_body_total',
+            '"improvementCost": full_editing_contract.improvement_cost',
+            '"remainingKarma": full_editing_contract.remaining_karma',
             '"processRestartPersistence": "pass"',
         ):
             self.assertIn(marker, receipt)
+
+    def test_post_restart_attribute_section_returns_to_build_before_gear(self) -> None:
+        source = Path(DRIVER.__file__).read_text(encoding="utf-8")
+        marker = (
+            "assert_body_total(device, args.profile, "
+            "full_editing_contract.improved_body_total)"
+        )
+        post_restart = source[source.rindex(marker) :]
+        route = post_restart[: post_restart.index("open_gear_section(device, args.profile)")]
+        self.assertIn('if args.profile == "phone":\n        device.back()', route)
+
+    def test_full_editing_fixture_has_valid_career_body_improvement(self) -> None:
+        fixture = REPO_ROOT / "tests" / "fixtures" / "career-full-editing-e2e.chum5"
+        self.assertEqual(
+            DRIVER.FullEditingFixtureContract(
+                initial_body_total=1,
+                improved_body_total=2,
+                improvement_cost=10,
+                initial_karma=35,
+                remaining_karma=25,
+                next_improvement_cost=15,
+            ),
+            DRIVER.validate_full_editing_fixture(fixture),
+        )
+
+    def test_sparse_condition_fixture_is_rejected_for_full_editing(self) -> None:
+        sparse_fixture = (
+            REPO_ROOT / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5"
+        )
+        with self.assertRaises(RuntimeError):
+            DRIVER.validate_full_editing_fixture(sparse_fixture)
+
+    def test_full_fixture_is_validated_before_transport_or_app_install(self) -> None:
+        source = Path(DRIVER.__file__).read_text(encoding="utf-8")
+        validation = source.index(
+            "validate_full_editing_fixture(args.full_editing_runner.resolve())"
+        )
+        fixture_transport = source.index("    fixture_inputs = (")
+        app_install = source.index('        [str(args.adb), "-s", args.serial, "install"')
+        self.assertLess(validation, fixture_transport)
+        self.assertLess(fixture_transport, app_install)
+
+        generator = (
+            REPO_ROOT / "scripts" / "materialize_chummer5_editability_inventory.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            'REPO_ROOT / "tests" / "fixtures" / "career-full-editing-e2e.chum5"',
+            generator,
+        )
+
+    def test_exact_career_attribute_text_rejects_prefix_only_match(self) -> None:
+        device = Mock()
+        device.wait.return_value = DRIVER.UiNode(
+            {"text": "Improve · 10 Karma unexpected"}
+        )
+        with self.assertRaisesRegex(RuntimeError, "Expected exact career attribute text"):
+            DRIVER.wait_exact_text(device, "Improve · 10 Karma", timeout=45)
+        device.capture.assert_called_once_with("career-attribute-text-mismatch")
 
     def test_local_import_does_not_claim_success_for_a_guarded_workspace(self) -> None:
         source = (
@@ -1635,10 +1699,92 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 ("swipe", "down"),
                 ("wait", "tablet-attribute-body"),
                 ("tap", "tablet-attribute-body"),
-                ("wait", "tablet-attribute-base-body"),
             ],
             device.calls,
         )
+
+    def test_phone_attribute_route_uses_auto_loaded_default_action(self) -> None:
+        class AttributeRouteDevice:
+            def __init__(self) -> None:
+                self.calls: list[tuple[str, str]] = []
+                self.row_wait_options: dict[str, object] = {}
+
+            def tap_bidirectional(self, selector: str, **_: object) -> None:
+                self.calls.append(("tap_bidirectional", selector))
+
+            def swipe_down(self, **_: object) -> None:
+                self.calls.append(("swipe", "down"))
+
+            def wait(self, selector: str, **options: object) -> None:
+                self.calls.append(("wait", selector))
+                if selector == "attribute-body":
+                    self.row_wait_options = options
+
+        device = AttributeRouteDevice()
+        with patch.object(DRIVER.time, "sleep"):
+            DRIVER.open_attribute_section(device, "phone")
+
+        self.assertEqual(
+            [
+                ("tap_bidirectional", "build-section-tab-attributes"),
+                ("swipe", "down"),
+                ("swipe", "down"),
+                ("wait", "attribute-body"),
+            ],
+            device.calls,
+        )
+        self.assertEqual(
+            {
+                "timeout": 120,
+                "scroll": True,
+                "max_scrolls": 24,
+                "scroll_distance_ratio": 0.22,
+            },
+            device.row_wait_options,
+        )
+
+    def test_career_body_improvement_binds_rendered_total_and_karma(self) -> None:
+        class CareerAttributeDevice:
+            def __init__(self) -> None:
+                self.calls: list[tuple[str, str]] = []
+                self.total = 1
+
+            def tap_bidirectional(self, selector: str, **_: object) -> None:
+                self.calls.append(("tap_bidirectional", selector))
+
+            def swipe_down(self, **_: object) -> None:
+                self.calls.append(("swipe", "down"))
+
+            def wait(self, selector: str, **_: object) -> DRIVER.UiNode:
+                self.calls.append(("wait", selector))
+                if selector == "attribute-bod":
+                    return DRIVER.UiNode(
+                        {"content-desc": f"Body. {self.total} · 1-6 · Aug 10"}
+                    )
+                return DRIVER.UiNode({"text": selector})
+
+            def tap(self, selector: str, **_: object) -> None:
+                self.calls.append(("tap", selector))
+                if selector == "attribute-improve-bod":
+                    self.total = 2
+
+            def back(self) -> None:
+                self.calls.append(("back", ""))
+
+            def capture(self, name: str) -> None:
+                raise AssertionError(f"unexpected capture: {name}")
+
+        device = CareerAttributeDevice()
+        contract = DRIVER.FullEditingFixtureContract(1, 2, 10, 35, 25, 15)
+        with patch.object(DRIVER.time, "sleep"):
+            DRIVER.improve_body_in_career(device, "phone", contract)
+
+        self.assertIn(("tap", "attribute-improve-bod"), device.calls)
+        self.assertIn(("wait", "Available Karma: 35"), device.calls)
+        self.assertIn(("wait", "Improve · 10 Karma"), device.calls)
+        self.assertIn(("wait", "Available Karma: 25"), device.calls)
+        self.assertIn(("wait", "Improve · 15 Karma"), device.calls)
+        self.assertEqual(2, device.total)
 
     def test_phone_gear_route_resets_preserved_action_scroll(self) -> None:
         class GearRouteDevice:
