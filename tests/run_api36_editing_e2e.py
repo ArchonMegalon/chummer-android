@@ -1279,34 +1279,11 @@ def open_contact_section(
             scroll_distance_ratio=0.22,
         )
         return
-    reset_scroll_to_top(device, swipes=12)
-    device.tap("build-section-tab-relationships", scroll=True)
-    time.sleep(5)
-    reset_scroll_to_top(device, swipes=12)
-    if expected_item is not None:
-        device.tap(
-            "build-action-tab-relationships-contacts",
-            scroll=True,
-            timeout=180,
-            max_scrolls=48,
-            scroll_distance_ratio=0.22,
-        )
-        time.sleep(2)
-        device.wait(
-            expected_item,
-            timeout=60,
-            scroll=True,
-            max_scrolls=8,
-            scroll_distance_ratio=0.22,
-        )
-        return
-    device.tap("build-action-tab-relationships-contacts", scroll=True)
-    device.wait(
-        "section-quick-contact-add",
-        timeout=180,
-        scroll=True,
-        max_scrolls=48,
-        scroll_distance_ratio=0.22,
+    _open_phone_relationship_collection(
+        device,
+        action_selector="build-action-tab-relationships-contacts",
+        quick_add_selector="section-quick-contact-add",
+        expected_item=expected_item,
     )
 
 
@@ -1347,33 +1324,54 @@ def open_pet_section(
             scroll_distance_ratio=0.22,
         )
         return
-    reset_scroll_to_top(device, swipes=12)
-    device.tap("build-section-tab-relationships", scroll=True)
+    _open_phone_relationship_collection(
+        device,
+        action_selector="build-action-tab-relationships-pets",
+        quick_add_selector="section-quick-contact-add",
+        expected_item=expected_item,
+    )
+
+
+def _open_phone_relationship_collection(
+    device: Device,
+    *,
+    action_selector: str,
+    quick_add_selector: str,
+    expected_item: str | None,
+) -> None:
+    device.tap_bidirectional(
+        "build-section-tab-relationships",
+        timeout=120,
+        backward_scrolls=24,
+        forward_scrolls=24,
+        scroll_distance_ratio=0.22,
+        exact_resource_id=True,
+    )
     time.sleep(5)
-    reset_scroll_to_top(device, swipes=12)
+    device.tap_bidirectional(
+        action_selector,
+        timeout=180,
+        backward_scrolls=24,
+        forward_scrolls=48,
+        scroll_distance_ratio=0.22,
+        exact_resource_id=True,
+    )
+    time.sleep(2)
     if expected_item is not None:
-        device.tap(
-            "build-action-tab-relationships-pets",
-            scroll=True,
-            timeout=180,
-            max_scrolls=48,
-            scroll_distance_ratio=0.22,
-        )
-        time.sleep(2)
+        reset_scroll_to_top(device, swipes=24)
         device.wait(
             expected_item,
             timeout=60,
             scroll=True,
-            max_scrolls=8,
+            max_scrolls=24,
             scroll_distance_ratio=0.22,
         )
         return
-    device.tap("build-action-tab-relationships-pets", scroll=True)
-    device.wait(
-        "section-quick-contact-add",
+    device.wait_exact_resource_id_bidirectional(
+        quick_add_selector,
         timeout=180,
-        scroll=True,
-        max_scrolls=48,
+        backward_scrolls=24,
+        forward_scrolls=48,
         scroll_distance_ratio=0.22,
     )
 

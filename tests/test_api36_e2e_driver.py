@@ -1438,28 +1438,24 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
     def test_collection_openers_use_overlapping_search_below_the_action_list(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
         for function_name, action, quick_add in (
-            ("open_gear_section", "build-section-tab-gear", "section-quick-gear-add"),
             ("open_contact_section", "build-action-tab-relationships-contacts", "section-quick-contact-add"),
             ("open_pet_section", "build-action-tab-relationships-pets", "section-quick-contact-add"),
         ):
             block = source[source.index(f"def {function_name}") :]
             block = block[: block.index("\ndef ", 5)]
-            self.assertIn("device.tap(", block)
-            self.assertIn(
-                "device.wait_exact_resource_id_bidirectional("
-                if function_name == "open_gear_section"
-                else "device.wait(",
-                block,
-            )
+            self.assertIn("_open_phone_relationship_collection(", block)
             self.assertIn(f'"{action}"', block)
             self.assertIn(f'"{quick_add}"', block)
-            self.assertIn(
-                "forward_scrolls=48"
-                if function_name == "open_gear_section"
-                else "max_scrolls=48",
-                block,
-            )
-            self.assertIn("scroll_distance_ratio=0.22", block)
+
+        helper = source[source.index("def _open_phone_relationship_collection") :]
+        helper = helper[: helper.index("\ndef ", 5)]
+        self.assertEqual(2, helper.count("device.tap_bidirectional("))
+        self.assertEqual(2, helper.count("exact_resource_id=True"))
+        self.assertIn('"build-section-tab-relationships"', helper)
+        self.assertIn("forward_scrolls=48", helper)
+        self.assertIn("device.wait_exact_resource_id_bidirectional(", helper)
+        self.assertIn("reset_scroll_to_top(device, swipes=24)", helper)
+        self.assertIn("max_scrolls=24", helper)
 
     def test_relationship_openers_wait_for_fixture_items_instead_of_quick_add(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
@@ -1478,11 +1474,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             block = source[source.index(f"def {function_name}") :]
             block = block[: block.index("\ndef ", 5)]
             self.assertIn("expected_item: str | None = None", block)
-            self.assertIn("device.tap(", block)
-            self.assertIn("device.wait(", block)
+            self.assertIn("_open_phone_relationship_collection(", block)
             self.assertIn(f'"{phone_action}"', block)
             self.assertIn(f'"{tablet_action}"', block)
-            self.assertIn("expected_item,", block)
+            self.assertIn("expected_item=expected_item", block)
             self.assertNotIn("device.swipe_up(", block)
             self.assertIn("max_scrolls=8", block)
             self.assertIn("time.sleep(2)", block)
@@ -2030,6 +2025,136 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             "build-action-tab-gear-gear",
             [selector for _, selector, _ in device.calls],
         )
+
+    def test_phone_relationship_routes_use_exact_bounded_activation_and_quick_add_reset(self) -> None:
+        class RelationshipRouteDevice:
+            def __init__(self) -> None:
+                self.calls: list[tuple[str, str, dict[str, object]]] = []
+
+            def tap_bidirectional(self, selector: str, **options: object) -> None:
+                self.calls.append(("tap_bidirectional", selector, options))
+
+            def wait_exact_resource_id_bidirectional(
+                self,
+                selector: str,
+                **options: object,
+            ) -> None:
+                self.calls.append(("wait_exact", selector, options))
+
+        for opener, action_selector in (
+            (DRIVER.open_contact_section, "build-action-tab-relationships-contacts"),
+            (DRIVER.open_pet_section, "build-action-tab-relationships-pets"),
+        ):
+            with self.subTest(action_selector=action_selector):
+                device = RelationshipRouteDevice()
+                with patch.object(DRIVER.time, "sleep"):
+                    opener(device, "phone")
+
+                self.assertEqual(
+                    [
+                        (
+                            "tap_bidirectional",
+                            "build-section-tab-relationships",
+                            {
+                                "timeout": 120,
+                                "backward_scrolls": 24,
+                                "forward_scrolls": 24,
+                                "scroll_distance_ratio": 0.22,
+                                "exact_resource_id": True,
+                            },
+                        ),
+                        (
+                            "tap_bidirectional",
+                            action_selector,
+                            {
+                                "timeout": 180,
+                                "backward_scrolls": 24,
+                                "forward_scrolls": 48,
+                                "scroll_distance_ratio": 0.22,
+                                "exact_resource_id": True,
+                            },
+                        ),
+                        (
+                            "wait_exact",
+                            "section-quick-contact-add",
+                            {
+                                "timeout": 180,
+                                "backward_scrolls": 24,
+                                "forward_scrolls": 48,
+                                "scroll_distance_ratio": 0.22,
+                            },
+                        ),
+                    ],
+                    device.calls,
+                )
+
+    def test_phone_relationship_fixture_route_resets_before_bounded_item_search(self) -> None:
+        class RelationshipFixtureDevice:
+            def __init__(self) -> None:
+                self.calls: list[tuple[str, str, dict[str, object]]] = []
+
+            def tap_bidirectional(self, selector: str, **options: object) -> None:
+                self.calls.append(("tap_bidirectional", selector, options))
+
+            def swipe_down(self, **options: object) -> None:
+                self.calls.append(("swipe_down", "", options))
+
+            def wait(self, selector: str, **options: object) -> None:
+                self.calls.append(("wait", selector, options))
+
+        for opener, action_selector, expected_item in (
+            (
+                DRIVER.open_contact_section,
+                "build-action-tab-relationships-contacts",
+                "ContactPersistedE2E",
+            ),
+            (
+                DRIVER.open_pet_section,
+                "build-action-tab-relationships-pets",
+                "PetPersistedE2E",
+            ),
+        ):
+            with self.subTest(action_selector=action_selector):
+                device = RelationshipFixtureDevice()
+                with patch.object(DRIVER.time, "sleep"):
+                    opener(device, "phone", expected_item=expected_item)
+
+                self.assertEqual(
+                    [
+                        "build-section-tab-relationships",
+                        action_selector,
+                    ],
+                    [
+                        selector
+                        for kind, selector, _ in device.calls
+                        if kind == "tap_bidirectional"
+                    ],
+                )
+                action_index = next(
+                    index
+                    for index, call_value in enumerate(device.calls)
+                    if call_value[0:2] == ("tap_bidirectional", action_selector)
+                )
+                wait_index = next(
+                    index
+                    for index, call_value in enumerate(device.calls)
+                    if call_value[0:2] == ("wait", expected_item)
+                )
+                between = device.calls[action_index + 1 : wait_index]
+                self.assertEqual(24, sum(call_value[0] == "swipe_down" for call_value in between))
+                self.assertEqual(
+                    (
+                        "wait",
+                        expected_item,
+                        {
+                            "timeout": 60,
+                            "scroll": True,
+                            "max_scrolls": 24,
+                            "scroll_distance_ratio": 0.22,
+                        },
+                    ),
+                    device.calls[wait_index],
+                )
 
     def test_exact_bidirectional_wait_recovers_quick_add_above_preserved_scroll(self) -> None:
         wrong_prefix = DRIVER.UiNode(
