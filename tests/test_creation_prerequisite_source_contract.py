@@ -45,6 +45,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         calls: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
 
         class FakeDevice:
+            viewport_reset = False
+
             def tap_until_visible(self, *args, **kwargs) -> None:
                 calls.append(("tap_until_visible", args, kwargs))
 
@@ -52,6 +54,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 calls.append(("tap", args, kwargs))
 
             def wait(self, *args, **kwargs):
+                if args == ("creation-wizard-dashboard",) and not self.viewport_reset:
+                    raise AssertionError("Scrolled dashboard marker was checked before reset")
                 calls.append(("wait", args, kwargs))
                 return driver.shared.UiNode({})
 
@@ -64,8 +68,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.assertIs(device, _device)
             selected_options.append((selector, value))
 
+        def reset_scroll(_device, *, swipes: int) -> None:
+            self.assertIs(device, _device)
+            device.viewport_reset = True
+            calls.append(("reset_scroll_to_top", (_device,), {"swipes": swipes}))
+
         device = FakeDevice()
-        with mock.patch.object(driver.priority, "select_option", side_effect=select_option):
+        with mock.patch.object(driver.priority, "select_option", side_effect=select_option), \
+             mock.patch.object(driver.shared, "reset_scroll_to_top", side_effect=reset_scroll):
             selected = driver.provision_creation_karma_through_priority_creation(device)
 
         self.assertEqual(
@@ -73,7 +83,13 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             selected_options,
         )
         self.assertEqual(dict(selected_options), selected)
-        route_index = calls.index(("wait", ("creation-wizard-dashboard",), {"timeout": 120}))
+        route_index = calls.index(("wait", ("build-save-runner",), {"timeout": 120}))
+        reset_index = calls.index(
+            ("reset_scroll_to_top", (device,), {"swipes": 48})
+        )
+        dashboard_index = calls.index(
+            ("wait", ("creation-wizard-dashboard",), {"timeout": 30})
+        )
         capture_index = calls.index(("capture", ("creation-karma-priority-runner-created",), {}))
         save_index = calls.index(
             (
@@ -100,7 +116,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         home_index = calls.index(("tap", ("Home",), {}))
         authority_surface_index = calls.index(("wait", ("home-open-file",), {"timeout": 90}))
-        self.assertLess(route_index, capture_index)
+        self.assertLess(route_index, reset_index)
+        self.assertLess(reset_index, dashboard_index)
+        self.assertLess(dashboard_index, capture_index)
         self.assertLess(capture_index, save_index)
         self.assertLess(save_index, saved_index)
         self.assertLess(saved_index, home_index)
@@ -480,7 +498,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn("provision_creation_karma_through_priority_creation", source)
         self.assertIn("priority.select_option(device, selector, option)", source)
         self.assertIn('device.wait("Select Metatype Priority"', source)
-        self.assertIn('device.wait("creation-wizard-dashboard", timeout=120)', source)
+        self.assertIn('device.wait("build-save-runner", timeout=120)', source)
+        self.assertIn('shared.reset_scroll_to_top(device, swipes=48)', source)
+        self.assertIn('device.wait("creation-wizard-dashboard", timeout=30)', source)
         self.assertIn('"build-save-runner",', source)
         self.assertIn('device.wait("home-open-file", timeout=90)', source)
         self.assertNotIn('device.wait("Continue building", timeout=120)', source)

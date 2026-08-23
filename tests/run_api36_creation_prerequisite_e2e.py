@@ -91,10 +91,12 @@ def provision_creation_karma_through_priority_creation(
         scroll_distance_ratio=0.22,
     )
     # Completing a created=false runner deliberately routes the phone shell straight to Build.
-    # Persist that production-created workspace through the public Save action before using the
-    # Home debug authority as evidence; waiting for Home's Continue button here would assert the
-    # opposite of NativeDialogPage's route contract.
-    device.wait("creation-wizard-dashboard", timeout=120)
+    # The closing dialog can leave Build's ScrollView at the dialog's deep scroll offset, which
+    # prunes the page-level AutomationId from UIAutomator. Bind the route to the fixed toolbar,
+    # reset the viewport, and only then require the dashboard marker.
+    device.wait("build-save-runner", timeout=120)
+    shared.reset_scroll_to_top(device, swipes=48)
+    device.wait("creation-wizard-dashboard", timeout=30)
     device.capture("creation-karma-priority-runner-created")
     device.tap(
         "build-save-runner",
