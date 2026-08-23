@@ -38,6 +38,46 @@ class Api36CareerSkillSpecializationDriverTests(unittest.TestCase):
         self.assertIn('"AddSpecialization"', source)
         self.assertIn('"objectid": specialization_id', source)
 
+    def test_inventory_contract_names_both_typed_legacy_rows_and_exact_delta(self) -> None:
+        module = ast.parse(DRIVER.read_text(encoding="utf-8"))
+        assignments = {
+            node.targets[0].id: ast.literal_eval(node.value)
+            for node in module.body
+            if isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id.startswith("INVENTORY_")
+        }
+        self.assertEqual(
+            (
+                "Chummer/Controls/Skills/KnowledgeSkillControl.cs::"
+                "Chummer.UI.Skills.KnowledgeSkillControl::btnAddSpec",
+                "Chummer/Controls/Skills/SkillControl.cs::"
+                "Chummer.UI.Skills.SkillControl::btnAddSpec",
+            ),
+            assignments["INVENTORY_ROW_IDS"],
+        )
+        self.assertEqual(
+            "partial_create_only",
+            assignments["INVENTORY_PHONE_STATUS_BEFORE"],
+        )
+        self.assertEqual(
+            "implemented_pending_emulator",
+            assignments["INVENTORY_PHONE_STATUS_AFTER"],
+        )
+        self.assertEqual(
+            {
+                "implemented_pending_emulator": 2,
+                "partial_create_only": -2,
+            },
+            assignments["INVENTORY_PHONE_STATUS_COUNT_DELTA"],
+        )
+        source = DRIVER.read_text(encoding="utf-8")
+        self.assertIn('"tabletStatusDelta": {}', source)
+        self.assertIn('"familyCountDelta": {}', source)
+        self.assertIn('"rowCountDelta": 0', source)
+        self.assertIn('"completionProvenCountDelta": 0', source)
+
     def test_fixture_has_exact_typed_guid_source_balance_and_nested_authority(self) -> None:
         root = ET.parse(FIXTURE).getroot()
         self.assertEqual("True", root.findtext("created"))

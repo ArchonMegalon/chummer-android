@@ -17,6 +17,18 @@ import run_api36_editing_e2e as shared
 
 
 CONTROLS = ("SkillControl.btnAddSpec",)
+INVENTORY_ROW_IDS = (
+    "Chummer/Controls/Skills/KnowledgeSkillControl.cs::"
+    "Chummer.UI.Skills.KnowledgeSkillControl::btnAddSpec",
+    "Chummer/Controls/Skills/SkillControl.cs::"
+    "Chummer.UI.Skills.SkillControl::btnAddSpec",
+)
+INVENTORY_PHONE_STATUS_BEFORE = "partial_create_only"
+INVENTORY_PHONE_STATUS_AFTER = "implemented_pending_emulator"
+INVENTORY_PHONE_STATUS_COUNT_DELTA = {
+    "implemented_pending_emulator": 2,
+    "partial_create_only": -2,
+}
 SKILL_ID = "11111111-1111-1111-1111-111111111111"
 SOURCE_SKILL_ID = "ae91a8a6-80e7-4f52-b9eb-21725a5528a4"
 ORIGINAL_EXPENSE_ID = "22222222-2222-2222-2222-222222222222"
@@ -400,6 +412,16 @@ def main() -> int:
         "verifiedRemoteCareerFixtureSha256": verified_remote_fixture_sha256,
         "controlCount": len(controls),
         "controls": controls,
+        "inventoryContract": {
+            "rowIds": list(INVENTORY_ROW_IDS),
+            "phoneStatusBefore": INVENTORY_PHONE_STATUS_BEFORE,
+            "phoneStatusAfter": INVENTORY_PHONE_STATUS_AFTER,
+            "phoneStatusCountDelta": INVENTORY_PHONE_STATUS_COUNT_DELTA,
+            "tabletStatusDelta": {},
+            "familyCountDelta": {},
+            "rowCountDelta": 0,
+            "completionProvenCountDelta": 0,
+        },
         "authorityProofStages": journey,
         "journeys": {
             "cancelThenConfirmPurchase": "pass",
