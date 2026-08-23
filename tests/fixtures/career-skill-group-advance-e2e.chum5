@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <created>True</created>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <name>CareerSkillGroupAdvanceE2E</name>
+  <alias>CareerSkillGroupAdvanceE2E</alias>
+  <karma>40</karma>
+  <nuyen>1000</nuyen>
+  <newskills>
+    <skillptsmax>0</skillptsmax>
+    <skillgrpsmax>0</skillgrpsmax>
+    <skills>
+      <skill>
+        <guid>22222222-2222-2222-2222-222222222222</guid>
+        <suid>9b2416b2-3e2b-4dd6-ab9d-530f493c1c22</suid>
+        <isknowledge>False</isknowledge>
+        <skillcategory>Physical Active</skillcategory>
+        <karma>0</karma>
+        <base>0</base>
+        <notes>disguise-must-survive</notes>
+      </skill>
+      <skill>
+        <guid>33333333-3333-3333-3333-333333333333</guid>
+        <suid>17fbaafa-8dbb-4f29-9244-5ae1cd4ac42f</suid>
+        <isknowledge>False</isknowledge>
+        <skillcategory>Physical Active</skillcategory>
+        <karma>0</karma>
+        <base>0</base>
+        <notes>palming-must-survive</notes>
+      </skill>
+      <skill>
+        <guid>44444444-4444-4444-4444-444444444444</guid>
+        <suid>9cff9aa7-d092-4f89-8b7b-3ab835818874</suid>
+        <isknowledge>False</isknowledge>
+        <skillcategory>Physical Active</skillcategory>
+        <karma>0</karma>
+        <base>0</base>
+        <notes>sneaking-must-survive</notes>
+      </skill>
+    </skills>
+    <knoskills />
+    <skilljackknowledgeskills />
+    <groups>
+      <group>
+        <id>11111111-1111-1111-1111-111111111111</id>
+        <name>Stealth</name>
+        <karma>1</karma>
+        <base>2</base>
+        <isbroken>False</isbroken>
+        <notes>target-group-must-survive</notes>
+      </group>
+    </groups>
+  </newskills>
+  <improvements />
+  <expenses>
+    <expense>
+      <guid>55555555-5555-5555-5555-555555555555</guid>
+      <date>2081-05-01T08:00:00</date>
+      <amount>-1</amount>
+      <reason>Older expense</reason>
+      <type>Karma</type>
+      <refund>False</refund>
+      <forcecareervisible>False</forcecareervisible>
+    </expense>
+  </expenses>
+  <customstate>
+    <sentinel guid="nested-sentinel">keep-nested-structure</sentinel>
+  </customstate>
+</character>

@@ -1,0 +1,74 @@
+import ast
+from pathlib import Path
+import unittest
+import uuid
+import xml.etree.ElementTree as ET
+
+
+REPO = Path(__file__).resolve().parents[1]
+DRIVER = REPO / "tests/run_api36_career_skill_group_advance_e2e.py"
+FIXTURE = REPO / "tests/fixtures/career-skill-group-advance-e2e.chum5"
+GROUP_ID = "11111111-1111-1111-1111-111111111111"
+MEMBER_SOURCE_IDS = {
+    "9b2416b2-3e2b-4dd6-ab9d-530f493c1c22",
+    "17fbaafa-8dbb-4f29-9244-5ae1cd4ac42f",
+    "9cff9aa7-d092-4f89-8b7b-3ab835818874",
+}
+
+
+class Api36CareerSkillGroupAdvanceDriverTests(unittest.TestCase):
+    def test_driver_is_phone_only_digest_revision_and_two_restart_bound(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        ast.parse(source)
+        self.assertIn('"SkillGroupControl.btnCareerIncrease"', source)
+        self.assertIn('"profile": "phone"', source)
+        self.assertIn('"journey": "career-skill-group-advance"', source)
+        self.assertIn('api != "36"', source)
+        self.assertIn('abi != "x86_64"', source)
+        self.assertNotIn('"profile": "tablet"', source)
+        self.assertIn('"careerSkillGroupRulesSha256"', source)
+        self.assertIn('"careerSkillGroupMutationSha256"', source)
+        self.assertIn('"activeSkillSourceResolverSha256"', source)
+        self.assertIn('"presenterPersistenceSha256"', source)
+        self.assertIn('"workspaceStoreSha256"', source)
+        self.assertIn("saved.content_revision != imported.content_revision + 1", source)
+        self.assertIn("saved.payload_sha256 == imported.payload_sha256", source)
+        self.assertEqual(2, source.count("shared.force_stop_and_launch_new_process"))
+        self.assertIn("shared.require_restored_authority(saved, first_restored)", source)
+        self.assertIn("shared.require_restored_authority(saved, second_restored)", source)
+        self.assertIn('device.tap("Cancel"', source)
+        self.assertIn('device.tap("Advance group"', source)
+        self.assertIn('"Skill Group Stealth 3 -> 4"', source)
+        self.assertIn('"ImproveSkillGroup"', source)
+
+    def test_fixture_has_exact_group_member_balance_expense_and_nested_authority(self) -> None:
+        root = ET.parse(FIXTURE).getroot()
+        self.assertEqual("True", root.findtext("created"))
+        self.assertEqual("CareerSkillGroupAdvanceE2E", root.findtext("alias"))
+        self.assertEqual("40", root.findtext("karma"))
+        groups = root.findall("./newskills/groups/group")
+        self.assertEqual(1, len(groups))
+        group = groups[0]
+        self.assertEqual(GROUP_ID, group.findtext("id"))
+        uuid.UUID(group.findtext("id"))
+        self.assertEqual("Stealth", group.findtext("name"))
+        self.assertEqual("2", group.findtext("base"))
+        self.assertEqual("1", group.findtext("karma"))
+        self.assertEqual("False", group.findtext("isbroken"))
+        skills = root.findall("./newskills/skills/skill")
+        self.assertEqual(3, len(skills))
+        self.assertEqual(MEMBER_SOURCE_IDS, {skill.findtext("suid") for skill in skills})
+        for skill in skills:
+            uuid.UUID(skill.findtext("guid"))
+            uuid.UUID(skill.findtext("suid"))
+            self.assertEqual("0", skill.findtext("base"))
+            self.assertEqual("0", skill.findtext("karma"))
+            self.assertEqual("Physical Active", skill.findtext("skillcategory"))
+        self.assertEqual(
+            "keep-nested-structure",
+            root.findtext("./customstate/sentinel"),
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

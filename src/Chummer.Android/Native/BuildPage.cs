@@ -719,6 +719,18 @@ public sealed class BuildPage : NativePageBase
                 },
                 automationId: "build-career-active-skill"));
             _body.Add(NativeTheme.NavigationRow(
+                "Advance skill group",
+                "Review exact Chummer5 member rating, modifiers, maximum and Karma cost, then confirm one atomic advancement",
+                async () =>
+                {
+                    CareerSkillGroupAdvanceEditorState? editor = await Coordinator.PrepareCareerSkillGroupAdvanceAsync();
+                    if (editor is not null)
+                    {
+                        await Navigation.PushAsync(new CareerSkillGroupAdvancePage(Coordinator, editor));
+                    }
+                },
+                automationId: "build-career-skill-group"));
+            _body.Add(NativeTheme.NavigationRow(
                 "Calendar",
                 "Add the next ISO week, edit its notes and color, or delete it by stable identity",
                 async () =>
