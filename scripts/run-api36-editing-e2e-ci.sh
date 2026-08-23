@@ -47,3 +47,13 @@ python3 chummer-android/tests/run_api36_creation_prerequisite_e2e.py \
   --serial emulator-5554 \
   --evidence "$prerequisite_root/screenshots" \
   --receipt "$prerequisite_root/receipt.json"
+
+active_skill_root="$evidence_root/career-active-skill-advance"
+install -d -m 0755 "$active_skill_root"
+python3 chummer-android/tests/run_api36_career_active_skill_advance_e2e.py \
+  --adb "$adb_path" \
+  --apk "$apk_path" \
+  --serial emulator-5554 \
+  --workspace-root "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is required}" \
+  --evidence "$active_skill_root/screenshots" \
+  --receipt "$active_skill_root/receipt.json"

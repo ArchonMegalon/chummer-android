@@ -155,6 +155,10 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("tests/run_api36_creation_prerequisite_e2e.py", runner)
         self.assertIn('--evidence "$prerequisite_root/screenshots"', runner)
         self.assertIn('--receipt "$prerequisite_root/receipt.json"', runner)
+        self.assertIn("tests/run_api36_career_active_skill_advance_e2e.py", runner)
+        self.assertIn('--workspace-root "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is required}"', runner)
+        self.assertIn('--evidence "$active_skill_root/screenshots"', runner)
+        self.assertIn('--receipt "$active_skill_root/receipt.json"', runner)
         self.assertLess(
             runner.index('install -d -m 0755 "$evidence_root"'),
             runner.index("python3 chummer-android/tests/run_api36_editing_e2e.py"),
@@ -162,8 +166,10 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         full = runner.index("python3 chummer-android/tests/run_api36_editing_e2e.py")
         contact_pet = runner.index("python3 chummer-android/tests/run_api36_editing_e2e.py", full + 1)
         prerequisite = runner.index("tests/run_api36_creation_prerequisite_e2e.py")
+        active_skill = runner.index("tests/run_api36_career_active_skill_advance_e2e.py")
         self.assertLess(full, contact_pet)
         self.assertLess(contact_pet, prerequisite)
+        self.assertLess(prerequisite, active_skill)
 
     def test_downloaded_artifact_verifies_the_portable_apk_seal_before_emulation(self) -> None:
         download = self.text.index("Download the exact APK under test")
