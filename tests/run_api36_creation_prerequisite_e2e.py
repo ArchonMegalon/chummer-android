@@ -97,7 +97,7 @@ def require_creation_method_navigation(
                 "Prepared Creation Karma fixture did not enable the method navigation row: "
                 f"clickable={clickable}, enabled={enabled}, detail={description!r}"
             )
-    elif clickable or enabled or CREATION_KARMA_AUTHORITY_BLOCKER not in description:
+    elif enabled or CREATION_KARMA_AUTHORITY_BLOCKER not in description:
         raise RuntimeError(
             "Fresh runner did not remain fail-closed without Creation Karma authority: "
             f"clickable={clickable}, enabled={enabled}, detail={description!r}"
@@ -110,12 +110,35 @@ def wait_creation_method_navigation(
     *,
     ready: bool,
     max_scrolls: int = 22,
-) -> str:
+) -> dict[str, object]:
     shared.reset_scroll_to_top(device, swipes=max_scrolls)
     for scroll_index in range(max_scrolls + 1):
         node = device.find("creation-stage-method")
         if node is not None:
-            return require_creation_method_navigation(node, ready=ready)
+            detail = require_creation_method_navigation(node, ready=ready)
+            if not ready:
+                # UIAutomator reports a MAUI Button with a Clicked handler as clickable even while
+                # IsEnabled=false. Prove the product gate itself: a physical tap must remain on the
+                # dashboard and must not open the prerequisite route.
+                x, y = node.center
+                device.shell("input", "tap", str(x), str(y))
+                time.sleep(1.25)
+                if device.find("creation-prerequisite-page") is not None:
+                    device.capture("creation-method-navigation-opened-without-authority")
+                    raise RuntimeError(
+                        "Disabled creation method navigation opened without Creation Karma authority"
+                    )
+                if device.find("creation-wizard-dashboard") is None:
+                    device.capture("creation-method-navigation-left-dashboard-without-authority")
+                    raise RuntimeError(
+                        "Creation method tap left the wizard dashboard without exact authority"
+                    )
+            return {
+                "detail": detail,
+                "clickable": node.attributes.get("clickable") == "true",
+                "enabled": node.attributes.get("enabled") == "true",
+                "tapRemainedOnDashboard": True if not ready else None,
+            }
         if scroll_index < max_scrolls:
             device.swipe_up(distance_ratio=0.22)
             time.sleep(0.75)
@@ -263,7 +286,7 @@ def main() -> int:
     foundation.assert_creation_editor_gated(device)
 
     fresh_dashboard_binding = node_text(device, "creation-wizard-binding", scroll=True)
-    fresh_navigation_detail = wait_creation_method_navigation(device, ready=False)
+    fresh_navigation = wait_creation_method_navigation(device, ready=False)
     device.capture("fresh-runner-creation-karma-authority-blocked")
     shared.reset_scroll_to_top(device, swipes=22)
 
@@ -294,7 +317,7 @@ def main() -> int:
     dashboard_binding = node_text(device, "creation-wizard-binding", scroll=True)
     if dashboard_binding == fresh_dashboard_binding:
         raise RuntimeError("Public fixture import did not refresh the creation wizard binding")
-    ready_navigation_detail = wait_creation_method_navigation(device, ready=True)
+    ready_navigation = wait_creation_method_navigation(device, ready=True)
 
     open_prerequisite(device)
     prerequisite_binding = node_text(device, "creation-prerequisite-binding", scroll=True)
@@ -443,8 +466,8 @@ def main() -> int:
             "verifiedRemoteFixtureSha256": verified_remote_sha256,
             "freshRunnerWorkspaceAuthority": shared.workspace_authority_json(fresh_authority),
             "importedWorkspaceAuthority": shared.workspace_authority_json(imported_authority),
-            "freshNavigationDetail": fresh_navigation_detail,
-            "readyNavigationDetail": ready_navigation_detail,
+            "freshNavigation": fresh_navigation,
+            "readyNavigation": ready_navigation,
             "prerequisiteBinding": prerequisite_binding_authority,
             "sourceAuthorityDigests": source_authority_digests,
         },

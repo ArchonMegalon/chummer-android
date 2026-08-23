@@ -28,7 +28,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         blocked = driver.shared.UiNode(
             {
                 "content-desc": "Creation method. creation-karma-authority-required",
-                "clickable": "false",
+                # Android UIAutomator exposes the installed MAUI Button's handler capability even
+                # while IsEnabled=false. The driver separately taps and proves no navigation.
+                "clickable": "true",
                 "enabled": "false",
             }
         )
@@ -66,6 +68,21 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 ),
                 ready=False,
             )
+        self.assertIn(
+            "creation-karma-authority-required",
+            driver.require_creation_method_navigation(
+                driver.shared.UiNode(
+                    {
+                        "content-desc": (
+                            "Creation method. creation-karma-authority-required"
+                        ),
+                        "clickable": "false",
+                        "enabled": "false",
+                    }
+                ),
+                ready=False,
+            ),
+        )
 
     def test_prerequisite_binding_requires_revision_and_both_digest_prefixes(self) -> None:
         authority = driver.require_prerequisite_binding(
@@ -271,6 +288,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('"creation-stage-method"', source)
         self.assertIn("validate_creation_karma_fixture", source)
         self.assertIn("require_creation_method_navigation", source)
+        self.assertIn('device.find("creation-prerequisite-page") is not None', source)
+        self.assertIn('device.find("creation-wizard-dashboard") is None', source)
+        self.assertIn('"clickable": node.attributes.get("clickable") == "true"', source)
+        self.assertIn('"tapRemainedOnDashboard": True if not ready else None', source)
+        self.assertIn('"freshNavigation": fresh_navigation', source)
         self.assertIn("shared.select_android_document", source)
         self.assertIn("shared.require_import_authority", source)
         self.assertIn("read_source_authority_digests", source)
