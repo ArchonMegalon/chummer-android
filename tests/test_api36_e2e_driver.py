@@ -1538,7 +1538,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertIn("connection_maximum: int = 6", block)
         self.assertIn('f"Connection · 1–{connection_maximum}",', block)
         self.assertIn("str(connection_maximum + 1)", block)
-        self.assertIn('\n        "6",', block)
+        self.assertIn("str(connection_maximum)", block)
         ratings_save = block.index("device.tap(save, scroll=True)")
         toggle_batch = block.index(
             'for toggle in ("group", "free", "family", "blackmail")'
@@ -1569,11 +1569,25 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             full_journey,
         )
 
-    def test_contact_connection_invalid_probe_uses_the_active_runner_bound(self) -> None:
+    def test_contact_connection_invalid_probe_save_and_readback_use_the_active_runner_bound(self) -> None:
+        persisted_fields = [
+            "ContactPersistedE2E",
+            "ContactNotesE2E",
+            "FixerE2E",
+            "ViennaE2E",
+            "ElfE2E",
+            "NonbinaryE2E",
+            "42",
+            "ProfessionalE2E",
+            "CredstickE2E",
+            "UrbanExplorerE2E",
+            "PrivateE2E",
+        ]
         for maximum, invalid in ((6, "7"), (12, "13")):
             with self.subTest(maximum=maximum):
                 device = Mock(spec=DRIVER.Device)
                 device.find.return_value = None
+                device.wait.return_value = DRIVER.UiNode({"checked": "true"})
                 with (
                     patch.object(DRIVER, "open_contact_section"),
                     patch.object(DRIVER, "tap_collection_item"),
@@ -1602,7 +1616,52 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     ),
                     connection_calls[0].args,
                 )
-                self.assertEqual("6", connection_calls[1].args[2])
+                self.assertEqual(str(maximum), connection_calls[1].args[2])
+
+                with (
+                    patch.object(DRIVER, "open_contact_section"),
+                    patch.object(DRIVER, "tap_collection_item"),
+                    patch.object(DRIVER, "reset_collection_editor_to_top"),
+                    patch.object(
+                        DRIVER,
+                        "selected_text",
+                        side_effect=[*persisted_fields, str(maximum)],
+                    ) as selected_text,
+                ):
+                    DRIVER.assert_contact_persisted(
+                        device,
+                        "phone",
+                        connection_maximum=maximum,
+                    )
+
+                self.assertEqual(
+                    f"Connection · 1–{maximum}",
+                    selected_text.call_args_list[-1].args[2],
+                )
+
+                if maximum == 12:
+                    with (
+                        patch.object(DRIVER, "open_contact_section"),
+                        patch.object(DRIVER, "tap_collection_item"),
+                        patch.object(DRIVER, "reset_collection_editor_to_top"),
+                        patch.object(
+                            DRIVER,
+                            "selected_text",
+                            side_effect=[*persisted_fields, "6"],
+                        ),
+                    ):
+                        with self.assertRaisesRegex(
+                            RuntimeError,
+                            "expected '12', got '6'",
+                        ):
+                            DRIVER.assert_contact_persisted(
+                                device,
+                                "phone",
+                                connection_maximum=12,
+                            )
+                    device.capture.assert_called_with(
+                        "phone-contact-connection-12-not-persisted"
+                    )
 
     def test_restart_gear_proof_reads_the_persisted_custom_name_field(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")

@@ -2188,7 +2188,7 @@ def add_and_edit_contact(
     device.set_text(
         connection_selector,
         f"Connection · 1–{connection_maximum}",
-        "6",
+        str(connection_maximum),
         scroll=True,
         max_scrolls=20,
         scroll_distance_ratio=0.22,
@@ -2270,14 +2270,21 @@ def assert_contact_persisted(
     connection_selector = (
         "tablet-contact-connection" if profile == "tablet" else "collection-contact-connection-"
     )
-    if selected_text(
+    expected_connection = str(connection_maximum)
+    actual_connection = selected_text(
         device,
         connection_selector,
         f"Connection · 1–{connection_maximum}",
         scroll=True,
-    ) != "6":
-        device.capture(f"{profile}-contact-connection-not-persisted")
-        raise RuntimeError("Contact Connection did not persist as 6")
+    )
+    if actual_connection != expected_connection:
+        device.capture(
+            f"{profile}-contact-connection-{expected_connection}-not-persisted"
+        )
+        raise RuntimeError(
+            "Contact Connection did not persist at the active runner bound: "
+            f"expected {expected_connection!r}, got {actual_connection!r}"
+        )
     toggle_prefix = "tablet-toggle" if profile == "tablet" else "collection-toggle"
     reset_collection_editor_to_top(device, profile)
     for toggle in ("group", "free", "family", "blackmail"):
