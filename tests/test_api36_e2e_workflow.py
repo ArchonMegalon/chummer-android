@@ -176,12 +176,38 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertLess(prerequisite, active_skill)
 
     def test_downloaded_artifact_verifies_the_portable_apk_seal_before_emulation(self) -> None:
+        resolve = self.text.index("Resolve the authoritative APK artifact")
         download = self.text.index("Download the exact APK under test")
         verify = self.text.index("Verify the portable downloaded APK seal")
         emulator = self.text.index("Enable KVM for the disposable emulator")
 
+        self.assertLess(resolve, download)
         self.assertLess(download, verify)
         self.assertLess(verify, emulator)
+        resolve_block = self.text[resolve:download]
+        self.assertIn("actions: read", self.text)
+        self.assertIn("GH_TOKEN: ${{ github.token }}", resolve_block)
+        self.assertIn(
+            "actions/runs/${GITHUB_RUN_ID}/artifacts?per_page=100",
+            resolve_block,
+        )
+        self.assertIn(
+            "actions/runs/${GITHUB_RUN_ID}/jobs?filter=all&per_page=100",
+            resolve_block,
+        )
+        self.assertIn('.name == "Build x64 native APK"', resolve_block)
+        self.assertIn('.run_attempt == $attempt', resolve_block)
+        self.assertIn('.conclusion == "success"', resolve_block)
+        self.assertIn("artifact_attempt > GITHUB_RUN_ATTEMPT", resolve_block)
+        self.assertIn("successful_builds != 1", resolve_block)
+        self.assertIn("duplicate artifacts exist", resolve_block)
+        self.assertIn("no non-expired APK artifact", resolve_block)
+        download_block = self.text[download:verify]
+        self.assertIn(
+            "artifact-ids: ${{ steps.authoritative-apk.outputs.artifact-id }}",
+            download_block,
+        )
+        self.assertNotIn("github.run_attempt", download_block)
         verify_block = self.text[verify:emulator]
         self.assertIn(
             "working-directory: ${{ runner.temp }}/chummer-android-apk",

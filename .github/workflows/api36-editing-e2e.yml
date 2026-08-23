@@ -26,6 +26,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -204,10 +205,97 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
+      - name: Resolve the authoritative APK artifact
+        id: authoritative-apk
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          artifact_prefix="chummer-android-api36-x64-debug-${GITHUB_RUN_ID}-"
+          artifacts_json="$RUNNER_TEMP/chummer-android-run-artifacts.json"
+          jobs_json="$RUNNER_TEMP/chummer-android-run-jobs.json"
+
+          gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts?per_page=100" \
+            >"$artifacts_json"
+          gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs?filter=all&per_page=100" \
+            >"$jobs_json"
+
+          artifact_total="$(jq -r '.total_count' "$artifacts_json")"
+          job_total="$(jq -r '.total_count' "$jobs_json")"
+          if (( artifact_total > 100 || job_total > 100 )); then
+            echo "APK authority error: the run exceeds the bounded 100-item artifact/job query." >&2
+            exit 1
+          fi
+
+          selected_attempt=0
+          selected_id=""
+          selected_name=""
+          while IFS=$'\t' read -r artifact_id artifact_name; do
+            artifact_attempt="${artifact_name#"$artifact_prefix"}"
+            if [[ ! "$artifact_attempt" =~ ^[1-9][0-9]*$ ]]; then
+              echo "APK authority error: malformed candidate artifact '$artifact_name'." >&2
+              exit 1
+            fi
+            if (( artifact_attempt > GITHUB_RUN_ATTEMPT )); then
+              echo "APK authority error: artifact '$artifact_name' comes from a future attempt." >&2
+              exit 1
+            fi
+
+            successful_builds="$(
+              jq \
+                --argjson attempt "$artifact_attempt" \
+                '[.jobs[] | select(
+                  .name == "Build x64 native APK"
+                  and .run_attempt == $attempt
+                  and .status == "completed"
+                  and .conclusion == "success"
+                )] | length' \
+                "$jobs_json"
+            )"
+            if (( successful_builds != 1 )); then
+              echo "APK authority error: '$artifact_name' is not bound to exactly one successful build job." >&2
+              exit 1
+            fi
+
+            if (( artifact_attempt > selected_attempt )); then
+              selected_attempt="$artifact_attempt"
+              selected_id="$artifact_id"
+              selected_name="$artifact_name"
+            elif (( artifact_attempt == selected_attempt )); then
+              echo "APK authority error: duplicate artifacts exist for build attempt $artifact_attempt." >&2
+              exit 1
+            fi
+          done < <(
+            jq -r \
+              --arg prefix "$artifact_prefix" \
+              '.artifacts[]
+               | select(.expired == false and .size_in_bytes > 0)
+               | select(.name | startswith($prefix))
+               | [.id, .name]
+               | @tsv' \
+              "$artifacts_json"
+          )
+
+          if [[ -z "$selected_id" ]]; then
+            echo "APK authority error: no non-expired APK artifact from a successful build attempt exists in run $GITHUB_RUN_ID." >&2
+            exit 1
+          fi
+
+          {
+            echo "artifact-id=$selected_id"
+            echo "artifact-name=$selected_name"
+            echo "artifact-attempt=$selected_attempt"
+          } >>"$GITHUB_OUTPUT"
+          echo "Resolved authoritative APK artifact '$selected_name' (id $selected_id) from build attempt $selected_attempt."
+
       - name: Download the exact APK under test
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: chummer-android-api36-x64-debug-${{ github.run_id }}-${{ github.run_attempt }}
+          artifact-ids: ${{ steps.authoritative-apk.outputs.artifact-id }}
           path: ${{ runner.temp }}/chummer-android-apk
 
       - name: Verify the portable downloaded APK seal
