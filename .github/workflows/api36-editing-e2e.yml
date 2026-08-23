@@ -297,6 +297,7 @@ jobs:
         with:
           artifact-ids: ${{ steps.authoritative-apk.outputs.artifact-id }}
           path: ${{ runner.temp }}/chummer-android-apk
+          merge-multiple: true
 
       - name: Verify the portable downloaded APK seal
         working-directory: ${{ runner.temp }}/chummer-android-apk

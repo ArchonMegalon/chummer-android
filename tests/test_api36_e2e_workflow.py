@@ -207,6 +207,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             "artifact-ids: ${{ steps.authoritative-apk.outputs.artifact-id }}",
             download_block,
         )
+        self.assertIn("merge-multiple: true", download_block)
         self.assertNotIn("github.run_attempt", download_block)
         verify_block = self.text[verify:emulator]
         self.assertIn(
