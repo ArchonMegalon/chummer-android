@@ -79,7 +79,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "5647b7f955fc8f5fe2af847250f0aced87eeeec82ea309af4c1becf154fe391a"
+        "sha256": "799fe29dc2a4705e2d52abbbbf93f08591d866868ad0b451f75fcfc33d29637a"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -564,7 +564,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "96695f9f79f295019bb266b5c006cec8be81c95f72e30a40a0e4b91b1811f54c"
+        "sha256": "04adcf311f011737ba2c90253bb4d39c9177ff8b05d6bb44494b3c21750c798f"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1924,7 +1924,7 @@
       {
         "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "6eb57f89225ecc0ca54a37edb66cccc9721c0f0a9ed82156e21221fef06e5c8c"
+        "sha256": "60022ccc36396a79950cb9cf319388419f636d77b91876786801f39a796ba4a5"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
@@ -1939,12 +1939,12 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
         "exists": true,
-        "sha256": "6fc8e6400f2ba300d0b274e1bcb0e550720eafbb74f126abc8259dd1d339a59c"
+        "sha256": "f553ab9151395824f0b035a9aa04c86a9403bb710f8edffe12b6138e56421c16"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "ff44568e91dfc039dbb417416afbc6d8eb9dee905d58664b662ffd6ac6879e44"
+        "sha256": "91c93769679796cfb4e1317a3fa50cfc82b62c2351780def66fbd530c28c220a"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -1964,7 +1964,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "09d9bdd9d60834f1dbf63382376f2c98c4c5af1edf7db6927d9352efce8d06a0"
+        "sha256": "1e0fbd2738833a9739789ae0ec9908e017476e24db41ee4f8cc82e8409ed27d4"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -2169,7 +2169,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewState.cs",
         "exists": true,
-        "sha256": "48f9c6c86d3d79d4b49ca515137a6cf8aa2d7ae91c66e4f4b41267f066f981be"
+        "sha256": "3cdf7425e1c0dfabbe7ee1bd4e345e19c18b4b4fcc91b996d151f7fa3cdf7c47"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
@@ -2179,7 +2179,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "f9b8a8b6a066c471f92b605b5472fac1229cc5f81998c93edb1271c30a5ab0df"
+        "sha256": "8f581f3dc610d58211bb2f0d59a1fbad5e42430ccce8ddd8de4d0d6bddb8d304"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2234,7 +2234,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "8e51fee4bdb94f7364144ce76a2dff64073356e96bda667e1654f58914b2a59b"
+        "sha256": "d34351a188bb682a5c6764a976f83f42226cb6f657ee4959799734a96f4680a1"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
