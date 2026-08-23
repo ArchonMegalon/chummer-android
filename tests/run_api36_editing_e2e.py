@@ -2117,7 +2117,13 @@ def add_contact_from_dialog(device: Device, profile: str, name: str, role: str) 
     device.wait(name, timeout=60, scroll=True)
 
 
-def add_and_edit_contact(device: Device, profile: str, *, create_items: bool = True) -> None:
+def add_and_edit_contact(
+    device: Device,
+    profile: str,
+    *,
+    create_items: bool = True,
+    connection_maximum: int = 6,
+) -> None:
     open_contact_section(
         device,
         profile,
@@ -2165,8 +2171,8 @@ def add_and_edit_contact(device: Device, profile: str, *, create_items: bool = T
     )
     device.set_text(
         connection_selector,
-        "Connection · 1–6",
-        "7",
+        f"Connection · 1–{connection_maximum}",
+        str(connection_maximum + 1),
         scroll=True,
         max_scrolls=20,
         scroll_distance_ratio=0.22,
@@ -2181,7 +2187,7 @@ def add_and_edit_contact(device: Device, profile: str, *, create_items: bool = T
     )
     device.set_text(
         connection_selector,
-        "Connection · 1–6",
+        f"Connection · 1–{connection_maximum}",
         "6",
         scroll=True,
         max_scrolls=20,
@@ -2225,7 +2231,12 @@ def add_and_edit_contact(device: Device, profile: str, *, create_items: bool = T
         raise RuntimeError("Deleted contact remains visible")
 
 
-def assert_contact_persisted(device: Device, profile: str) -> None:
+def assert_contact_persisted(
+    device: Device,
+    profile: str,
+    *,
+    connection_maximum: int = 6,
+) -> None:
     open_contact_section(device, profile, expected_item="ContactPersistedE2E")
     device.wait("ContactPersistedE2E", timeout=60, scroll=True)
     if device.find("ContactDeleteE2E") is not None:
@@ -2259,7 +2270,12 @@ def assert_contact_persisted(device: Device, profile: str) -> None:
     connection_selector = (
         "tablet-contact-connection" if profile == "tablet" else "collection-contact-connection-"
     )
-    if selected_text(device, connection_selector, "Connection · 1–6", scroll=True) != "6":
+    if selected_text(
+        device,
+        connection_selector,
+        f"Connection · 1–{connection_maximum}",
+        scroll=True,
+    ) != "6":
         device.capture(f"{profile}-contact-connection-not-persisted")
         raise RuntimeError("Contact Connection did not persist as 6")
     toggle_prefix = "tablet-toggle" if profile == "tablet" else "collection-toggle"
@@ -2675,7 +2691,7 @@ def main() -> int:
     add_and_edit_gear(device, args.profile)
     if args.profile == "phone":
         device.back()
-    add_and_edit_contact(device, args.profile)
+    add_and_edit_contact(device, args.profile, connection_maximum=12)
     attach_linked_runner(
         device,
         args.profile,
@@ -2747,7 +2763,7 @@ def main() -> int:
     )
     if args.profile == "phone":
         device.back()
-    assert_contact_persisted(device, args.profile)
+    assert_contact_persisted(device, args.profile, connection_maximum=12)
     if args.profile == "phone":
         device.back()
     assert_link_persisted_then_remove(
