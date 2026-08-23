@@ -97,7 +97,7 @@ def require_creation_method_navigation(
                 "Prepared Creation Karma fixture did not enable the method navigation row: "
                 f"clickable={clickable}, enabled={enabled}, detail={description!r}"
             )
-    elif clickable or CREATION_KARMA_AUTHORITY_BLOCKER not in description:
+    elif clickable or enabled or CREATION_KARMA_AUTHORITY_BLOCKER not in description:
         raise RuntimeError(
             "Fresh runner did not remain fail-closed without Creation Karma authority: "
             f"clickable={clickable}, enabled={enabled}, detail={description!r}"

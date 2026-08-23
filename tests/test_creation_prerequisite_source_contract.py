@@ -53,6 +53,19 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.require_creation_method_navigation(blocked, ready=True)
         with self.assertRaisesRegex(RuntimeError, "did not remain fail-closed"):
             driver.require_creation_method_navigation(ready, ready=False)
+        with self.assertRaisesRegex(RuntimeError, "did not remain fail-closed"):
+            driver.require_creation_method_navigation(
+                driver.shared.UiNode(
+                    {
+                        "content-desc": (
+                            "Creation method. creation-karma-authority-required"
+                        ),
+                        "clickable": "false",
+                        "enabled": "true",
+                    }
+                ),
+                ready=False,
+            )
 
     def test_prerequisite_binding_requires_revision_and_both_digest_prefixes(self) -> None:
         authority = driver.require_prerequisite_binding(
