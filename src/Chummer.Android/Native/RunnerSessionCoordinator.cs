@@ -2363,6 +2363,56 @@ public sealed class RunnerSessionCoordinator : IDisposable
         return persisted;
     }
 
+    public Task<CareerActiveSkillAdvanceEditorState?> PrepareCareerActiveSkillAdvanceAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCareerActiveSkillAdvanceAsync(cancellationToken);
+
+    public async Task<bool> ApplyCareerActiveSkillAdvanceAsync(
+        CareerActiveSkillAdvanceRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while active-skill advancement was open. Reopen it before saving.");
+        }
+
+        await _presenter.ApplyCareerActiveSkillAdvanceAsync(request, cancellationToken)
+            .ConfigureAwait(false);
+        bool exactMutationApplied = State.Error is null
+            && State.WorkspaceId == request.WorkspaceId
+            && request.ExpectedContentRevision < long.MaxValue
+            && State.ContentRevision == request.ExpectedContentRevision + 1
+            && State.IsDirty;
+        long appliedContentRevision = exactMutationApplied ? State.ContentRevision : 0;
+        if (exactMutationApplied)
+        {
+            await _presenter.SaveAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        bool durableState = exactMutationApplied
+            && State.Error is null
+            && State.WorkspaceId == request.WorkspaceId
+            && State.ContentRevision == appliedContentRevision
+            && State.SavedRevision == appliedContentRevision
+            && !State.IsDirty;
+        NativeWorkspaceAuthoritySnapshot? authority = durableState
+            ? await TryRefreshWorkspaceAuthorityAsync(
+                expectedWorkspaceId: request.WorkspaceId,
+                expectedPayloadSha256: null,
+                cancellationToken).ConfigureAwait(false)
+            : null;
+        bool persisted = durableState
+            && (!AndroidE2EAuthority.Enabled
+                || authority is not null && authority.Matches(State));
+        _notice = persisted ? "Active skill advanced and Karma expense saved." : null;
+        await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+        NotifyChanged();
+        return persisted;
+    }
+
     public Task<SustainedObjectsEditorState?> PrepareSustainedObjectsEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareSustainedObjectsEditAsync(cancellationToken);
