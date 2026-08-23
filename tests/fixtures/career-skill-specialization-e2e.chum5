@@ -21,7 +21,20 @@
         <notes>target-skill-must-survive</notes>
       </skill>
     </skills>
-    <knoskills />
+    <knoskills>
+      <skill>
+        <guid>33333333-3333-3333-3333-333333333333</guid>
+        <suid>00000000-0000-0000-0000-000000000000</suid>
+        <isknowledge>True</isknowledge>
+        <name>Zoology</name>
+        <type>Academic</type>
+        <skillcategory>Academic</skillcategory>
+        <karma>0</karma>
+        <base>2</base>
+        <isnativelanguage>False</isnativelanguage>
+        <notes>custom-knowledge-must-survive</notes>
+      </skill>
+    </knoskills>
     <skilljackknowledgeskills />
     <groups />
   </newskills>

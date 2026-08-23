@@ -31,10 +31,13 @@ INVENTORY_PHONE_STATUS_COUNT_DELTA = {
 }
 SKILL_ID = "11111111-1111-1111-1111-111111111111"
 SOURCE_SKILL_ID = "ae91a8a6-80e7-4f52-b9eb-21725a5528a4"
+KNOWLEDGE_SKILL_ID = "33333333-3333-3333-3333-333333333333"
+NULL_SOURCE_SKILL_ID = "00000000-0000-0000-0000-000000000000"
 ORIGINAL_EXPENSE_ID = "22222222-2222-2222-2222-222222222222"
 EXPECTED_SPECIALIZATION = "Bike"
 CONTROL_PROOF_KEYS = (
     "typedActiveSkillIdentity",
+    "typedCustomKnowledgeIdentityPreserved",
     "exactSourceSkillGuid",
     "sourceCatalogSelectionBound",
     "characterSourceRuleLogicalDigestsBound",
@@ -135,8 +138,40 @@ def target_skill(root: ET.Element) -> ET.Element:
     return matches[0]
 
 
+def assert_custom_knowledge_unchanged(root: ET.Element) -> None:
+    matches = [
+        skill
+        for skill in root.findall("./newskills/knoskills/skill")
+        if skill.findtext("guid") == KNOWLEDGE_SKILL_ID
+        and skill.findtext("suid") == NULL_SOURCE_SKILL_ID
+        and skill.findtext("isknowledge") == "True"
+    ]
+    if len(matches) != 1:
+        raise RuntimeError(
+            f"Expected one custom knowledge-skill identity with null source, got {len(matches)}"
+        )
+    knowledge = matches[0]
+    expected = {
+        "name": "Zoology",
+        "type": "Academic",
+        "skillcategory": "Academic",
+        "base": "2",
+        "karma": "0",
+        "isnativelanguage": "False",
+        "notes": "custom-knowledge-must-survive",
+    }
+    for name, value in expected.items():
+        if knowledge.findtext(name) != value:
+            raise RuntimeError(
+                f"Unrelated custom knowledge <{name}> changed: {knowledge.findtext(name)!r}"
+            )
+    if knowledge.find("specs") is not None:
+        raise RuntimeError("Active-skill specialization mutated the custom knowledge skill")
+
+
 def assert_before(root: ET.Element) -> None:
     skill = target_skill(root)
+    assert_custom_knowledge_unchanged(root)
     if root.findtext("karma") != "20":
         raise RuntimeError("Imported Karma balance does not match specialization authority")
     if skill.find("specs") is not None:
@@ -151,6 +186,7 @@ def assert_before(root: ET.Element) -> None:
 
 def assert_after(root: ET.Element) -> tuple[str, str]:
     skill = target_skill(root)
+    assert_custom_knowledge_unchanged(root)
     if root.findtext("karma") != "13":
         raise RuntimeError("Exact 7-Karma specialization cost was not persisted")
     if skill.findtext("base") != "2" or skill.findtext("karma") != "1":

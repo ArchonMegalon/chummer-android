@@ -10,6 +10,7 @@ DRIVER = REPO / "tests/run_api36_career_skill_specialization_e2e.py"
 FIXTURE = REPO / "tests/fixtures/career-skill-specialization-e2e.chum5"
 SKILL_ID = "11111111-1111-1111-1111-111111111111"
 SOURCE_SKILL_ID = "ae91a8a6-80e7-4f52-b9eb-21725a5528a4"
+KNOWLEDGE_SKILL_ID = "33333333-3333-3333-3333-333333333333"
 
 
 class Api36CareerSkillSpecializationDriverTests(unittest.TestCase):
@@ -17,6 +18,7 @@ class Api36CareerSkillSpecializationDriverTests(unittest.TestCase):
         source = DRIVER.read_text(encoding="utf-8")
         ast.parse(source)
         self.assertIn('"SkillControl.btnAddSpec"', source)
+        self.assertIn('"typedCustomKnowledgeIdentityPreserved"', source)
         self.assertIn('"profile": "phone"', source)
         self.assertIn('"journey": "career-skill-specialization"', source)
         self.assertIn('api != "36"', source)
@@ -95,6 +97,22 @@ class Api36CareerSkillSpecializationDriverTests(unittest.TestCase):
         self.assertEqual("1", skill.findtext("karma"))
         self.assertEqual("Vehicle Active", skill.findtext("skillcategory"))
         self.assertIsNone(skill.find("specs"))
+        knowledge_skills = root.findall("./newskills/knoskills/skill")
+        self.assertEqual(1, len(knowledge_skills))
+        knowledge = knowledge_skills[0]
+        self.assertEqual(KNOWLEDGE_SKILL_ID, knowledge.findtext("guid"))
+        self.assertEqual(
+            "00000000-0000-0000-0000-000000000000",
+            knowledge.findtext("suid"),
+        )
+        uuid.UUID(knowledge.findtext("guid"))
+        self.assertEqual("True", knowledge.findtext("isknowledge"))
+        self.assertEqual("Zoology", knowledge.findtext("name"))
+        self.assertEqual("Academic", knowledge.findtext("type"))
+        self.assertEqual("2", knowledge.findtext("base"))
+        self.assertEqual("0", knowledge.findtext("karma"))
+        self.assertEqual("custom-knowledge-must-survive", knowledge.findtext("notes"))
+        self.assertIsNone(knowledge.find("specs"))
         self.assertEqual(
             "keep-nested-structure",
             root.findtext("./customstate/sentinel"),
