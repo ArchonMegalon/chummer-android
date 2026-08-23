@@ -39,6 +39,9 @@ class CareerSkillSpecializationSourceContractTests(unittest.TestCase):
         self.assertIn("ExpenseId: Guid.NewGuid()", page)
         self.assertIn('"Buy specialization"', page)
         self.assertIn('"Cancel"', page)
+        self.assertIn("SelectionBlockerText()", page)
+        self.assertIn("MaximumNameLength.ToString(CultureInfo.InvariantCulture)", page)
+        self.assertIn("Enter a custom specialization name", page)
         self.assertNotIn("tablet", page.lower())
 
     def test_rook_navigation_is_a_question_path_not_confirmation(self) -> None:

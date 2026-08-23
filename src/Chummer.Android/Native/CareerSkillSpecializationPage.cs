@@ -254,10 +254,36 @@ public sealed class CareerSkillSpecializationPage : NativePageBase
 
         _blocker.Text = !revisionMatches
             ? "This runner changed. Discard this selection and reopen specialization purchase."
-            : _blocker.Text;
+            : SelectionBlockerText();
         _review.IsEnabled = revisionMatches
             && _selectedSkill is not null
             && CurrentSelection() is not null;
+    }
+
+    private string SelectionBlockerText()
+    {
+        if (_selectedSkill is null)
+        {
+            return "No exact active- or knowledge-skill identity is available to specialize.";
+        }
+        if (_options.SelectedIndex < 0)
+        {
+            return "Choose one exact specialization origin.";
+        }
+        if (!IsCustomSelection)
+        {
+            return string.Empty;
+        }
+
+        string customName = (_customName.Text ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(customName))
+        {
+            return "Enter a custom specialization name before requesting a quote.";
+        }
+        return customName.Length > CharacterCareerSkillSpecializationRules.MaximumNameLength
+            ? $"Custom specialization names are limited to "
+                + $"{CharacterCareerSkillSpecializationRules.MaximumNameLength.ToString(CultureInfo.InvariantCulture)} characters."
+            : string.Empty;
     }
 
     private async Task ReviewAsync()
