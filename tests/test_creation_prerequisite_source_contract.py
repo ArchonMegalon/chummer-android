@@ -19,6 +19,25 @@ SPEC.loader.exec_module(driver)
 
 
 class CreationPrerequisiteSourceContractTests(unittest.TestCase):
+    @staticmethod
+    def authority_nodes(authority: driver.shared.WorkspaceAuthority):
+        values = (
+            authority.workspace_id,
+            str(authority.content_revision),
+            str(authority.saved_revision),
+            authority.payload_sha256,
+            authority.document_sha256,
+        )
+        return [
+            driver.shared.UiNode(
+                {
+                    "resource-id": f"com.myexternalbrain.chummer:id/{selector}",
+                    "text": value,
+                }
+            )
+            for selector, value in zip(driver.WORKSPACE_AUTHORITY_SELECTORS, values)
+        ]
+
     def test_public_fixture_and_navigation_precondition_fail_closed(self) -> None:
         fixture = driver.validate_creation_karma_fixture(FIXTURE)
         self.assertEqual("CreationGroupMembershipE2E", fixture["alias"])
@@ -167,6 +186,77 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             evidence["afterTap"],
         )
         self.assertTrue(evidence["tapRemainedOnDashboard"])
+
+    def test_public_import_waits_through_cleared_authority_for_exact_new_workspace(self) -> None:
+        old = driver.shared.WorkspaceAuthority("old-workspace", 2, 2, "a" * 64, "b" * 64)
+        imported = driver.shared.WorkspaceAuthority(
+            "imported-workspace",
+            1,
+            0,
+            "c" * 64,
+            "d" * 64,
+        )
+
+        class TransitionDevice:
+            def __init__(self) -> None:
+                self.surfaces = [
+                    self_authority_nodes(old),
+                    [],
+                    self_authority_nodes(imported),
+                ]
+                self.captures: list[str] = []
+
+            def hierarchy(self):
+                return self.surfaces.pop(0) if self.surfaces else self_authority_nodes(imported)
+
+            def capture(self, name: str) -> None:
+                self.captures.append(name)
+
+        self_authority_nodes = self.authority_nodes
+        device = TransitionDevice()
+        with mock.patch.object(driver.shared, "reset_scroll_to_top") as reset, \
+             mock.patch.object(driver.shared, "read_workspace_authority", return_value=imported) as read, \
+             mock.patch.object(driver.time, "sleep"):
+            observed = driver.wait_imported_workspace_authority(
+                device,
+                imported.payload_sha256,
+                old.workspace_id,
+                timeout=30,
+            )
+
+        self.assertEqual(imported, observed)
+        reset.assert_called_once_with(device, swipes=12)
+        read.assert_called_once_with(device)
+        self.assertEqual([], device.captures)
+
+    def test_public_import_authority_wait_times_out_fail_closed_with_evidence(self) -> None:
+        class MissingAuthorityDevice:
+            def __init__(self) -> None:
+                self.captures: list[str] = []
+
+            @staticmethod
+            def hierarchy():
+                return []
+
+            def capture(self, name: str) -> None:
+                self.captures.append(name)
+
+        device = MissingAuthorityDevice()
+        with mock.patch.object(driver.shared, "reset_scroll_to_top"), \
+             mock.patch.object(driver.time, "sleep"), \
+             mock.patch.object(driver.time, "monotonic", side_effect=[0.0, 0.0, 2.0]):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "did not publish a new exact workspace authority within 1 seconds",
+            ):
+                driver.wait_imported_workspace_authority(
+                    device,
+                    "c" * 64,
+                    "old-workspace",
+                    timeout=1,
+                )
+
+        self.assertEqual(["creation-karma-import-authority-timeout"], device.captures)
 
     def test_coordinator_uses_only_the_core_prerequisite_boundary_and_refreshes_receipt(self) -> None:
         source = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
@@ -371,6 +461,13 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('"freshNavigation": fresh_navigation', source)
         self.assertIn("shared.select_android_document", source)
         self.assertIn("shared.require_import_authority", source)
+        self.assertIn("wait_imported_workspace_authority", source)
+        self.assertIn('device.capture("creation-karma-import-authority-timeout")', source)
+        import_selection = source.index("shared.select_android_document")
+        authority_wait = source.index("wait_imported_workspace_authority(", import_selection)
+        alias_check = source.index("device.wait(CREATION_KARMA_FIXTURE_ALIAS", authority_wait)
+        self.assertLess(import_selection, authority_wait)
+        self.assertLess(authority_wait, alias_check)
         self.assertIn("read_source_authority_digests", source)
         self.assertIn('"freshRunnerCreationKarmaAuthorityBlocked": "pass"', source)
         self.assertIn('"publicRulesValidFixtureImported": "pass"', source)

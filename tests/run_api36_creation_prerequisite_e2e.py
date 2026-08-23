@@ -27,6 +27,14 @@ CATEGORIES = ("heritage", "talent", "attributes", "skills", "resources")
 CREATION_KARMA_AUTHORITY_BLOCKER = "creation-karma-authority-required"
 CREATION_KARMA_FIXTURE_ALIAS = "CreationGroupMembershipE2E"
 CREATION_KARMA_FIXTURE_SETTINGS = "223a11ff-80e0-428b-89a9-6ef1c243b8b6"
+IMPORT_AUTHORITY_TIMEOUT_SECONDS = 240
+WORKSPACE_AUTHORITY_SELECTORS = (
+    "home-e2e-workspace-id",
+    "home-e2e-content-revision",
+    "home-e2e-saved-revision",
+    "home-e2e-payload-sha256",
+    "home-e2e-document-sha256",
+)
 SHORT_AUTHORITY_BINDING = re.compile(
     r"^Revision (?P<revision>[1-9][0-9]*) · saved (?P<saved>[0-9]+) · "
     r"snapshot (?P<snapshot>[0-9a-f]{12}) · authority (?P<authority>[0-9a-f]{12})$"
@@ -77,6 +85,89 @@ def validate_creation_karma_fixture(path: Path) -> dict[str, object]:
         "settingsProfileId": expected["settings"],
         "karma": karma,
     }
+
+
+def visible_workspace_authority(
+    device: shared.Device,
+) -> shared.WorkspaceAuthority | None:
+    nodes = device.hierarchy()
+    values: dict[str, str] = {}
+    for selector in WORKSPACE_AUTHORITY_SELECTORS:
+        node = next(
+            (
+                candidate
+                for candidate in nodes
+                if candidate.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == selector
+            ),
+            None,
+        )
+        if node is not None:
+            values[selector] = node.attributes.get("text", "").strip()
+    if not values or len(values) != len(WORKSPACE_AUTHORITY_SELECTORS):
+        return None
+    try:
+        content_revision = int(values["home-e2e-content-revision"])
+        saved_revision = int(values["home-e2e-saved-revision"])
+    except ValueError as error:
+        raise RuntimeError("Imported workspace authority revisions are not integers") from error
+    authority = shared.WorkspaceAuthority(
+        values["home-e2e-workspace-id"],
+        content_revision,
+        saved_revision,
+        values["home-e2e-payload-sha256"],
+        values["home-e2e-document-sha256"],
+    )
+    if not authority.workspace_id or authority.content_revision <= 0 or authority.saved_revision < 0:
+        raise RuntimeError("Imported workspace authority identity or revisions are invalid")
+    if shared.SHA256_TEXT.fullmatch(authority.payload_sha256) is None:
+        raise RuntimeError("Imported workspace authority payload SHA-256 is not canonical")
+    if shared.SHA256_TEXT.fullmatch(authority.document_sha256) is None:
+        raise RuntimeError("Imported workspace authority document SHA-256 is not canonical")
+    return authority
+
+
+def wait_imported_workspace_authority(
+    device: shared.Device,
+    expected_payload_sha256: str,
+    previous_workspace_id: str,
+    *,
+    timeout: int = IMPORT_AUTHORITY_TIMEOUT_SECONDS,
+) -> shared.WorkspaceAuthority:
+    # A created=False Priority import hydrates exact rules before OpenLocalAsync republishes the
+    # diagnostic authority. On the hosted x64 API-36 runner that transition can exceed the normal
+    # 90-second UI wait, so bind completion to the authority instead of accepting an alias alone.
+    shared.reset_scroll_to_top(device, swipes=12)
+    deadline = time.monotonic() + timeout
+    last_authority: shared.WorkspaceAuthority | None = None
+    while True:
+        candidate = visible_workspace_authority(device)
+        if candidate is not None:
+            last_authority = candidate
+            if candidate.workspace_id != previous_workspace_id:
+                stable = shared.read_workspace_authority(device)
+                try:
+                    shared.require_import_authority(
+                        stable,
+                        expected_payload_sha256,
+                        previous_workspace_id,
+                    )
+                except RuntimeError:
+                    device.capture("creation-karma-import-authority-mismatch")
+                    raise
+                if shared.SHA256_TEXT.fullmatch(stable.document_sha256) is None:
+                    device.capture("creation-karma-import-document-digest-invalid")
+                    raise RuntimeError("Imported Creation Karma document digest is not canonical")
+                return stable
+        if time.monotonic() >= deadline:
+            break
+        time.sleep(3)
+    device.capture("creation-karma-import-authority-timeout")
+    raise RuntimeError(
+        "Creation Karma public import did not publish a new exact workspace authority within "
+        f"{timeout} seconds: previousWorkspaceId={previous_workspace_id!r}, "
+        f"lastAuthority={last_authority!r}"
+    )
 
 
 def require_creation_method_navigation(
@@ -322,16 +413,16 @@ def main() -> int:
     shared.require_saved_authority(fresh_authority)
     device.tap("home-open-file")
     shared.select_android_document(device, creation_karma_runner.name)
-    device.wait(CREATION_KARMA_FIXTURE_ALIAS, timeout=90)
-    device.wait("Continue building", timeout=90)
-    imported_authority = shared.read_workspace_authority(device)
-    shared.require_import_authority(
-        imported_authority,
+    # Let the Android document activity finish returning before the bounded authority poll starts;
+    # this is a shell/activity precondition, not evidence that the selected dossier was accepted.
+    device.wait("Home", timeout=45)
+    imported_authority = wait_imported_workspace_authority(
+        device,
         creation_karma_fixture_sha256,
         fresh_authority.workspace_id,
     )
-    if shared.SHA256_TEXT.fullmatch(imported_authority.document_sha256) is None:
-        raise RuntimeError("Imported Creation Karma document digest is not canonical")
+    device.wait(CREATION_KARMA_FIXTURE_ALIAS, timeout=45)
+    device.wait("Continue building", timeout=45)
 
     shared.open_build(device, "phone")
     device.wait("creation-wizard-dashboard", timeout=90)
