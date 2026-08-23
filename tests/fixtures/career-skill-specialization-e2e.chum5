@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <created>True</created>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <name>CareerSkillSpecializationE2E</name>
+  <alias>CareerSkillSpecializationE2E</alias>
+  <karma>20</karma>
+  <nuyen>1000</nuyen>
+  <newskills>
+    <skillptsmax>0</skillptsmax>
+    <skillgrpsmax>0</skillgrpsmax>
+    <skills>
+      <skill>
+        <guid>11111111-1111-1111-1111-111111111111</guid>
+        <suid>ae91a8a6-80e7-4f52-b9eb-21725a5528a4</suid>
+        <isknowledge>False</isknowledge>
+        <skillcategory>Vehicle Active</skillcategory>
+        <karma>1</karma>
+        <base>2</base>
+        <notes>target-skill-must-survive</notes>
+      </skill>
+    </skills>
+    <knoskills />
+    <skilljackknowledgeskills />
+    <groups />
+  </newskills>
+  <improvements />
+  <expenses>
+    <expense>
+      <guid>22222222-2222-2222-2222-222222222222</guid>
+      <date>2081-05-01T08:00:00</date>
+      <amount>-1</amount>
+      <reason>Older expense</reason>
+      <type>Karma</type>
+      <refund>False</refund>
+      <forcecareervisible>False</forcecareervisible>
+    </expense>
+  </expenses>
+  <customstate>
+    <sentinel guid="nested-sentinel">keep-nested-structure</sentinel>
+  </customstate>
+</character>
