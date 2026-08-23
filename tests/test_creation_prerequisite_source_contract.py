@@ -258,6 +258,47 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         self.assertEqual(["creation-karma-import-authority-timeout"], device.captures)
 
+    def test_public_import_rejects_new_workspace_with_wrong_payload_digest(self) -> None:
+        unexpected = driver.shared.WorkspaceAuthority(
+            "unexpected-workspace",
+            1,
+            0,
+            "e" * 64,
+            "f" * 64,
+        )
+
+        class WrongAuthorityDevice:
+            def __init__(self) -> None:
+                self.captures: list[str] = []
+
+            @staticmethod
+            def hierarchy():
+                return self_authority_nodes(unexpected)
+
+            def capture(self, name: str) -> None:
+                self.captures.append(name)
+
+        self_authority_nodes = self.authority_nodes
+        device = WrongAuthorityDevice()
+        with mock.patch.object(driver.shared, "reset_scroll_to_top"), \
+             mock.patch.object(
+                 driver.shared,
+                 "read_workspace_authority",
+                 return_value=unexpected,
+             ):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "Imported workspace payload does not match the exact verified fixture bytes",
+            ):
+                driver.wait_imported_workspace_authority(
+                    device,
+                    "c" * 64,
+                    "old-workspace",
+                    timeout=30,
+                )
+
+        self.assertEqual(["creation-karma-import-authority-mismatch"], device.captures)
+
     def test_coordinator_uses_only_the_core_prerequisite_boundary_and_refreshes_receipt(self) -> None:
         source = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
         for marker in (
@@ -463,6 +504,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn("shared.require_import_authority", source)
         self.assertIn("wait_imported_workspace_authority", source)
         self.assertIn('device.capture("creation-karma-import-authority-timeout")', source)
+        self.assertIn('device.capture("creation-karma-import-authority-mismatch")', source)
         import_selection = source.index("shared.select_android_document")
         authority_wait = source.index("wait_imported_workspace_authority(", import_selection)
         alias_check = source.index("device.wait(CREATION_KARMA_FIXTURE_ALIAS", authority_wait)
