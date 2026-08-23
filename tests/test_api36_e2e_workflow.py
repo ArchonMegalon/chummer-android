@@ -142,10 +142,13 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             "bash chummer-android/scripts/run-api36-editing-e2e-ci.sh",
             self.text,
         )
-        self.assertIn("tests/run_api36_editing_e2e.py", runner)
+        self.assertEqual(2, runner.count("tests/run_api36_editing_e2e.py"))
         self.assertIn("--serial emulator-5554", runner)
         self.assertIn('--profile "$profile"', runner)
         self.assertIn('--receipt "$evidence_root/receipt.json"', runner)
+        self.assertIn('--journey contact-pet', runner)
+        self.assertIn('--evidence "$contact_pet_root/screenshots"', runner)
+        self.assertIn('--receipt "$contact_pet_root/receipt.json"', runner)
         self.assertIn('if [[ "$profile" != "phone" ]]; then', runner)
         self.assertIn("tablet beta proof is deferred", runner)
         self.assertNotIn('phone|tablet', runner)
@@ -156,10 +159,11 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             runner.index('install -d -m 0755 "$evidence_root"'),
             runner.index("python3 chummer-android/tests/run_api36_editing_e2e.py"),
         )
-        self.assertLess(
-            runner.index("python3 chummer-android/tests/run_api36_editing_e2e.py"),
-            runner.index("tests/run_api36_creation_prerequisite_e2e.py"),
-        )
+        full = runner.index("python3 chummer-android/tests/run_api36_editing_e2e.py")
+        contact_pet = runner.index("python3 chummer-android/tests/run_api36_editing_e2e.py", full + 1)
+        prerequisite = runner.index("tests/run_api36_creation_prerequisite_e2e.py")
+        self.assertLess(full, contact_pet)
+        self.assertLess(contact_pet, prerequisite)
 
     def test_downloaded_artifact_verifies_the_portable_apk_seal_before_emulation(self) -> None:
         download = self.text.index("Download the exact APK under test")

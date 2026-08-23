@@ -1540,9 +1540,9 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertIn("str(connection_maximum + 1)", block)
         self.assertIn("str(connection_maximum)", block)
         ratings_save = block.index("device.tap(save, scroll=True)")
-        toggle_batch = block.index(
-            'for toggle in ("group", "free", "family", "blackmail")'
-        )
+        toggle_batch = block.index("for toggle in editable_toggles")
+        self.assertIn('editable_toggles = ("group", "family", "blackmail")', block)
+        self.assertIn('capture=f"{profile}-career-contact-free-authority-invalid"', block)
         self.assertLess(
             ratings_save,
             toggle_batch,
@@ -1560,13 +1560,149 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         )
         self.assertNotIn("connection_maximum=12", contact_pet)
         self.assertIn("assert_contact_persisted(device, args.profile)", contact_pet)
-        self.assertIn(
-            "add_and_edit_contact(device, args.profile, connection_maximum=12)",
-            full_journey,
+        self.assertIn("connection_maximum=12", full_journey)
+        self.assertIn("free_editable=False", full_journey)
+        self.assertNotIn("free_editable=False", contact_pet)
+
+    def test_contact_free_proof_follows_creation_and_career_authority(self) -> None:
+        for free_editable, expected_enabled in (
+            (True, True),
+            (False, False),
+        ):
+            with self.subTest(free_editable=free_editable):
+                device = Mock(spec=DRIVER.Device)
+                device.find.return_value = None
+                device.wait.return_value = DRIVER.UiNode({"checked": "false", "enabled": "true"})
+                with (
+                    patch.object(DRIVER, "open_contact_section"),
+                    patch.object(DRIVER, "tap_collection_item"),
+                    patch.object(DRIVER, "reset_collection_editor_to_top"),
+                    patch.object(DRIVER, "reset_scroll_to_top"),
+                    patch.object(DRIVER, "ensure_checked") as ensure_checked,
+                    patch.object(DRIVER, "assert_toggle_state") as assert_toggle_state,
+                    patch.object(DRIVER.time, "sleep"),
+                ):
+                    DRIVER.add_and_edit_contact(
+                        device,
+                        "phone",
+                        create_items=False,
+                        connection_maximum=12 if not free_editable else 6,
+                        free_editable=free_editable,
+                    )
+
+                self.assertEqual(
+                    [
+                        "collection-toggle-group",
+                        "collection-toggle-family",
+                        "collection-toggle-blackmail",
+                    ],
+                    [call.args[1] for call in ensure_checked.call_args_list],
+                )
+                self.assertEqual(1, assert_toggle_state.call_count)
+                self.assertEqual(
+                    "collection-toggle-free",
+                    assert_toggle_state.call_args.args[1],
+                )
+                self.assertFalse(assert_toggle_state.call_args.kwargs["checked"])
+                self.assertEqual(expected_enabled, assert_toggle_state.call_args.kwargs["enabled"])
+
+    def test_assert_toggle_state_rejects_disabled_or_wrong_checked_authority(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.wait.return_value = DRIVER.UiNode({"checked": "false", "enabled": "false"})
+        DRIVER.assert_toggle_state(
+            device,
+            "collection-toggle-free",
+            checked=False,
+            enabled=False,
         )
-        self.assertIn(
-            "assert_contact_persisted(device, args.profile, connection_maximum=12)",
-            full_journey,
+
+        with self.assertRaisesRegex(RuntimeError, "enabled=True"):
+            DRIVER.assert_toggle_state(
+                device,
+                "collection-toggle-free",
+                checked=False,
+                enabled=True,
+                capture="free-disabled",
+            )
+        device.capture.assert_called_with("free-disabled")
+
+        with self.assertRaisesRegex(RuntimeError, "checked=True"):
+            DRIVER.assert_toggle_state(
+                device,
+                "collection-toggle-free",
+                checked=True,
+                capture="free-not-checked",
+            )
+        device.capture.assert_called_with("free-not-checked")
+
+        for malformed in (
+            {"enabled": "false"},
+            {"checked": "false"},
+            {"checked": "False", "enabled": "false"},
+            {"checked": "false", "enabled": "False"},
+        ):
+            with self.subTest(malformed=malformed):
+                device.wait.return_value = DRIVER.UiNode(malformed)
+                with self.assertRaisesRegex(RuntimeError, "state mismatch"):
+                    DRIVER.assert_toggle_state(
+                        device,
+                        "collection-toggle-free",
+                        checked=False,
+                        enabled=False,
+                        capture="free-malformed",
+                    )
+                device.capture.assert_called_with("free-malformed")
+
+    def test_creation_free_contact_is_target_isolated_from_group(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        with (
+            patch.object(DRIVER, "open_contact_section"),
+            patch.object(DRIVER, "tap_collection_item"),
+            patch.object(DRIVER, "reset_collection_editor_to_top"),
+            patch.object(DRIVER, "reset_scroll_to_top"),
+            patch.object(DRIVER, "ensure_checked") as ensure_checked,
+            patch.object(DRIVER, "assert_toggle_state") as assert_toggle_state,
+            patch.object(DRIVER.time, "sleep"),
+        ):
+            DRIVER.edit_creation_free_contact(device, "phone")
+
+        ensure_checked.assert_called_once_with(device, "collection-toggle-free")
+        observed = [
+            (call.args[1], call.kwargs["checked"], call.kwargs.get("enabled"))
+            for call in assert_toggle_state.call_args_list
+        ]
+        self.assertEqual(
+            [
+                ("collection-toggle-group", False, None),
+                ("collection-toggle-free", False, True),
+                ("collection-toggle-group", False, None),
+                ("collection-toggle-free", True, True),
+            ],
+            observed,
+        )
+
+    def test_creation_free_contact_restart_proof_keeps_other_toggles_false(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        with (
+            patch.object(DRIVER, "open_contact_section"),
+            patch.object(DRIVER, "tap_collection_item"),
+            patch.object(DRIVER, "reset_collection_editor_to_top"),
+            patch.object(DRIVER, "assert_toggle_state") as assert_toggle_state,
+        ):
+            DRIVER.assert_creation_free_contact_persisted(device, "phone")
+
+        observed = [
+            (call.args[1], call.kwargs["checked"], call.kwargs.get("enabled"))
+            for call in assert_toggle_state.call_args_list
+        ]
+        self.assertEqual(
+            [
+                ("collection-toggle-group", False, None),
+                ("collection-toggle-family", False, None),
+                ("collection-toggle-blackmail", False, None),
+                ("collection-toggle-free", True, True),
+            ],
+            observed,
         )
 
     def test_contact_connection_invalid_probe_save_and_readback_use_the_active_runner_bound(self) -> None:
@@ -1582,6 +1718,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             "CredstickE2E",
             "UrbanExplorerE2E",
             "PrivateE2E",
+            "NightMarketE2E",
         ]
         for maximum, invalid in ((6, "7"), (12, "13")):
             with self.subTest(maximum=maximum):
@@ -1593,6 +1730,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     patch.object(DRIVER, "tap_collection_item"),
                     patch.object(DRIVER, "reset_collection_editor_to_top"),
                     patch.object(DRIVER, "ensure_checked"),
+                    patch.object(DRIVER, "assert_toggle_state"),
                     patch.object(DRIVER.time, "sleep"),
                 ):
                     DRIVER.add_and_edit_contact(
@@ -1622,6 +1760,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     patch.object(DRIVER, "open_contact_section"),
                     patch.object(DRIVER, "tap_collection_item"),
                     patch.object(DRIVER, "reset_collection_editor_to_top"),
+                    patch.object(DRIVER, "assert_toggle_state"),
                     patch.object(
                         DRIVER,
                         "selected_text",
@@ -1644,6 +1783,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                         patch.object(DRIVER, "open_contact_section"),
                         patch.object(DRIVER, "tap_collection_item"),
                         patch.object(DRIVER, "reset_collection_editor_to_top"),
+                        patch.object(DRIVER, "assert_toggle_state"),
                         patch.object(
                             DRIVER,
                             "selected_text",
@@ -1662,6 +1802,55 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     device.capture.assert_called_with(
                         "phone-contact-connection-12-not-persisted"
                     )
+
+    def test_contact_restart_proof_reads_free_authority_by_mode(self) -> None:
+        persisted_fields = [
+            "ContactPersistedE2E",
+            "ContactNotesE2E",
+            "FixerE2E",
+            "ViennaE2E",
+            "ElfE2E",
+            "NonbinaryE2E",
+            "42",
+            "ProfessionalE2E",
+            "CredstickE2E",
+            "UrbanExplorerE2E",
+            "PrivateE2E",
+            "NightMarketE2E",
+        ]
+        for free_editable, maximum, expected in (
+            (True, 6, ("collection-toggle-free", False, True)),
+            (False, 12, ("collection-toggle-free", False, False)),
+        ):
+            with self.subTest(free_editable=free_editable):
+                device = Mock(spec=DRIVER.Device)
+                device.find.return_value = None
+                with (
+                    patch.object(DRIVER, "open_contact_section"),
+                    patch.object(DRIVER, "tap_collection_item"),
+                    patch.object(DRIVER, "reset_collection_editor_to_top"),
+                    patch.object(
+                        DRIVER,
+                        "selected_text",
+                        side_effect=[*persisted_fields, str(maximum)],
+                    ),
+                    patch.object(DRIVER, "assert_toggle_state") as assert_toggle_state,
+                ):
+                    DRIVER.assert_contact_persisted(
+                        device,
+                        "phone",
+                        connection_maximum=maximum,
+                        free_editable=free_editable,
+                    )
+
+                free_call = next(
+                    call
+                    for call in assert_toggle_state.call_args_list
+                    if call.args[1] == "collection-toggle-free"
+                )
+                self.assertEqual(expected[0], free_call.args[1])
+                self.assertEqual(expected[1], free_call.kwargs["checked"])
+                self.assertEqual(expected[2], free_call.kwargs["enabled"])
 
     def test_restart_gear_proof_reads_the_persisted_custom_name_field(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
@@ -1842,10 +2031,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         contact_edit = contact_edit[: contact_edit.index("def assert_contact_persisted")]
         first_save = contact_edit.index("device.tap(save, scroll=True)")
         reset = contact_edit.index("reset_scroll_to_top(", first_save)
-        toggle_batch = contact_edit.index(
-            'for toggle in ("group", "free", "family", "blackmail")',
-            reset,
-        )
+        toggle_batch = contact_edit.index("for toggle in editable_toggles", reset)
 
         self.assertLess(first_save, reset)
         self.assertLess(reset, toggle_batch)
@@ -1867,13 +2053,16 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
         block = source[source.index("def assert_contact_persisted") :]
         block = block[: block.index("\ndef ", 5)]
-        toggle_loop = block.index('for toggle in ("group", "free", "family", "blackmail")')
+        toggle_loop = block.index('for toggle in ("group", "family", "blackmail")')
         self.assertLess(
             block.index("reset_collection_editor_to_top(device, profile)"),
             toggle_loop,
         )
-        self.assertIn("max_scrolls=24", block[toggle_loop:])
-        self.assertIn("scroll_distance_ratio=0.22", block[toggle_loop:])
+        self.assertIn("assert_toggle_state(", block[toggle_loop:])
+        helper = source[source.index("def assert_toggle_state") :]
+        helper = helper[: helper.index("def selected_text")]
+        self.assertIn("max_scrolls=20", helper)
+        self.assertIn("scroll_distance_ratio=0.22", helper)
 
     def test_document_picker_opens_downloads_when_fixture_is_not_recent(self) -> None:
         device = Mock()
@@ -2534,15 +2723,18 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         for marker in (
             "add_and_edit_contact(device, args.profile, create_items=False)",
+            "edit_creation_free_contact(device, args.profile)",
             "add_and_edit_pet(device, args.profile, create_items=False)",
             "force_stop_and_launch_new_process(",
             "assert_contact_persisted(device, args.profile)",
+            "assert_creation_free_contact_persisted(device, args.profile)",
             "assert_pet_persisted(device, args.profile)",
             '"inputFixtureSha256": contact_pet_runner_sha256',
             '"verifiedRemoteInputFixtureSha256": verified_remote_sha256[',
             '"preRestartAuthority": optional_workspace_authority_json(persisted_authority)',
             '"postRestartAuthority": optional_workspace_authority_json(restored_authority)',
             '"processRestartContactPersistence": "pass"',
+            '"creationContactFreeIsolatedPersisted": "pass"',
             '"processRestartPetPersistence": "pass"',
         ):
             self.assertIn(marker, branch)
@@ -2554,6 +2746,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             "<created>False</created>",
             "<name>ContactE2E</name>",
             "<name>ContactDeleteE2E</name>",
+            "<name>ContactFreePersistedE2E</name>",
             "<name>PetE2E</name>",
             "<name>PetDeleteE2E</name>",
             "<type>Contact</type>",

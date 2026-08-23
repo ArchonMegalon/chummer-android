@@ -84,6 +84,7 @@ CONTACT_PET_E2E_JOURNEYS = (
     "creationRunnerImport",
     "contactInvalidBoundsRejected",
     "contactEditPersisted",
+    "creationContactFreeIsolatedPersisted",
     "contactDeletePersisted",
     "processRestartContactPersistence",
     "petInvalidNameRejected",
@@ -3152,6 +3153,59 @@ def _validated_contact_pet_e2e_receipts() -> dict[str, dict[str, Any]]:
             continue
         journeys = receipt.get("journeys")
         apk_sha = str(receipt.get("apkSha256") or "")
+        phone_authority_valid = True
+        if profile == "phone":
+            imported = receipt.get("importAuthority")
+            persisted = receipt.get("preRestartAuthority")
+            restored = receipt.get("postRestartAuthority")
+            stages = receipt.get("authorityProofStages")
+
+            def valid_authority(value: object, *, saved: bool) -> bool:
+                if not isinstance(value, dict):
+                    return False
+                workspace_id = value.get("workspaceId")
+                content_revision = value.get("contentRevision")
+                saved_revision = value.get("savedRevision")
+                payload_sha = value.get("payloadSha256")
+                document_sha = value.get("documentSha256")
+                return bool(
+                    isinstance(workspace_id, str)
+                    and workspace_id.strip()
+                    and isinstance(content_revision, int)
+                    and not isinstance(content_revision, bool)
+                    and content_revision > 0
+                    and isinstance(saved_revision, int)
+                    and not isinstance(saved_revision, bool)
+                    and saved_revision >= 0
+                    and (not saved or content_revision == saved_revision)
+                    and isinstance(payload_sha, str)
+                    and re.fullmatch(r"[0-9a-f]{64}", payload_sha)
+                    and isinstance(document_sha, str)
+                    and re.fullmatch(r"[0-9a-f]{64}", document_sha)
+                )
+
+            phone_authority_valid = bool(
+                valid_authority(imported, saved=False)
+                and isinstance(imported, dict)
+                and imported.get("payloadSha256") == expected_fixture_sha
+                and valid_authority(persisted, saved=True)
+                and valid_authority(restored, saved=True)
+                and isinstance(persisted, dict)
+                and persisted.get("workspaceId") == imported.get("workspaceId")
+                and persisted.get("contentRevision", 0)
+                > imported.get("contentRevision", 0)
+                and persisted.get("payloadSha256") != imported.get("payloadSha256")
+                and restored == persisted
+                and isinstance(stages, dict)
+                and stages.get("status") == "pass"
+                and isinstance(stages.get("import"), dict)
+                and stages["import"].get("frozenFixtureSha256") == expected_fixture_sha
+                and stages["import"].get("verifiedRemoteFixtureSha256")
+                == expected_fixture_sha
+                and stages["import"].get("workspace") == imported
+                and stages.get("preRestartSaved") == persisted
+                and stages.get("postRestartRestored") == restored
+            )
         if not (
             receipt.get("schema") == "chummer.android.editing-e2e/v1"
             and receipt.get("status") == "pass"
@@ -3161,7 +3215,9 @@ def _validated_contact_pet_e2e_receipts() -> dict[str, dict[str, Any]]:
             and receipt.get("driverSha256") == expected_driver_sha
             and receipt.get("inputFixtureSha256") == expected_fixture_sha
             and isinstance(journeys, dict)
+            and set(journeys) == set(CONTACT_PET_E2E_JOURNEYS)
             and all(journeys.get(journey) == "pass" for journey in CONTACT_PET_E2E_JOURNEYS)
+            and phone_authority_valid
             and re.fullmatch(r"[0-9a-f]{64}", apk_sha)
         ):
             continue

@@ -1418,6 +1418,35 @@ def ensure_checked(device: Device, selector: str, expected: bool = True) -> None
             raise RuntimeError(f"Toggle {selector!r} did not change to {expected}")
 
 
+def assert_toggle_state(
+    device: Device,
+    selector: str,
+    *,
+    checked: bool,
+    enabled: bool | None = None,
+    capture: str = "toggle-state-unexpected",
+) -> None:
+    node = device.wait(
+        selector,
+        scroll=True,
+        max_scrolls=20,
+        scroll_distance_ratio=0.22,
+    )
+    expected_checked = "true" if checked else "false"
+    expected_enabled = None if enabled is None else ("true" if enabled else "false")
+    actual_checked = node.attributes.get("checked")
+    actual_enabled = node.attributes.get("enabled")
+    if actual_checked != expected_checked or (
+        expected_enabled is not None and actual_enabled != expected_enabled
+    ):
+        device.capture(capture)
+        raise RuntimeError(
+            f"Toggle {selector!r} state mismatch: expected checked={checked}"
+            + ("" if enabled is None else f", enabled={enabled}")
+            + f"; got checked={actual_checked!r}, enabled={actual_enabled!r}"
+        )
+
+
 def selected_text(device: Device, selector: str, label: str, *, scroll: bool = False) -> str:
     node = None
     attempts = 0
@@ -2123,6 +2152,7 @@ def add_and_edit_contact(
     *,
     create_items: bool = True,
     connection_maximum: int = 6,
+    free_editable: bool = True,
 ) -> None:
     open_contact_section(
         device,
@@ -2211,8 +2241,25 @@ def add_and_edit_contact(
         swipes=12,
     )
     toggle_prefix = "tablet-toggle" if profile == "tablet" else "collection-toggle"
-    for toggle in ("group", "free", "family", "blackmail"):
+    editable_toggles = ("group", "family", "blackmail")
+    for toggle in editable_toggles:
         ensure_checked(device, f"{toggle_prefix}-{toggle}")
+    if free_editable:
+        assert_toggle_state(
+            device,
+            f"{toggle_prefix}-free",
+            checked=False,
+            enabled=True,
+            capture=f"{profile}-creation-contact-free-authority-invalid",
+        )
+    else:
+        assert_toggle_state(
+            device,
+            f"{toggle_prefix}-free",
+            checked=False,
+            enabled=False,
+            capture=f"{profile}-career-contact-free-authority-invalid",
+        )
     device.tap(save, scroll=True)
     time.sleep(5)
 
@@ -2236,6 +2283,7 @@ def assert_contact_persisted(
     profile: str,
     *,
     connection_maximum: int = 6,
+    free_editable: bool = True,
 ) -> None:
     open_contact_section(device, profile, expected_item="ContactPersistedE2E")
     device.wait("ContactPersistedE2E", timeout=60, scroll=True)
@@ -2257,6 +2305,7 @@ def assert_contact_persisted(
         (f"{prefix}-field-preferredpayment", "Preferred Payment", "CredstickE2E"),
         (f"{prefix}-field-hobbiesvice", "Hobbies Vice", "UrbanExplorerE2E"),
         (f"{prefix}-field-personallife", "Personal Life", "PrivateE2E"),
+        (f"{prefix}-field-groupname", "Group Name", "NightMarketE2E"),
     )
     for selector, label, expected in expected_fields:
         actual = selected_text(device, selector, label, scroll=True)
@@ -2287,16 +2336,94 @@ def assert_contact_persisted(
         )
     toggle_prefix = "tablet-toggle" if profile == "tablet" else "collection-toggle"
     reset_collection_editor_to_top(device, profile)
-    for toggle in ("group", "free", "family", "blackmail"):
-        node = device.wait(
+    for toggle in ("group", "family", "blackmail"):
+        assert_toggle_state(
+            device,
             f"{toggle_prefix}-{toggle}",
-            scroll=True,
-            max_scrolls=24,
-            scroll_distance_ratio=0.22,
+            checked=True,
+            capture=f"{profile}-contact-{toggle}-not-persisted",
         )
-        if node.attributes.get("checked") != "true":
-            device.capture(f"{profile}-contact-{toggle}-not-persisted")
-            raise RuntimeError(f"Contact {toggle} toggle did not persist")
+    assert_toggle_state(
+        device,
+        f"{toggle_prefix}-free",
+        checked=False,
+        enabled=free_editable,
+        capture=(
+            f"{profile}-creation-contact-free-authority-not-persisted"
+            if free_editable
+            else f"{profile}-career-contact-free-authority-not-persisted"
+        ),
+    )
+    if profile == "phone":
+        device.back()
+
+
+def edit_creation_free_contact(device: Device, profile: str) -> None:
+    name = "ContactFreePersistedE2E"
+    open_contact_section(device, profile, expected_item=name)
+    device.wait(name, timeout=60, scroll=True)
+    tap_collection_item(device, name)
+    reset_collection_editor_to_top(device, profile)
+    toggle_prefix = "tablet-toggle" if profile == "tablet" else "collection-toggle"
+    assert_toggle_state(
+        device,
+        f"{toggle_prefix}-group",
+        checked=False,
+        capture=f"{profile}-creation-free-contact-group-precondition-invalid",
+    )
+    assert_toggle_state(
+        device,
+        f"{toggle_prefix}-free",
+        checked=False,
+        enabled=True,
+        capture=f"{profile}-creation-free-contact-authority-invalid",
+    )
+    ensure_checked(device, f"{toggle_prefix}-free")
+    assert_toggle_state(
+        device,
+        f"{toggle_prefix}-group",
+        checked=False,
+        capture=f"{profile}-creation-free-contact-group-coupled",
+    )
+    assert_toggle_state(
+        device,
+        f"{toggle_prefix}-free",
+        checked=True,
+        enabled=True,
+        capture=f"{profile}-creation-free-contact-edit-failed",
+    )
+    device.tap(
+        "tablet-inspector-save" if profile == "tablet" else "Save changes",
+        scroll=True,
+    )
+    time.sleep(5)
+    if profile == "phone":
+        device.back()
+        reset_scroll_to_top(device, swipes=12)
+        device.wait(name, timeout=60, scroll=True)
+
+
+def assert_creation_free_contact_persisted(device: Device, profile: str) -> None:
+    name = "ContactFreePersistedE2E"
+    open_contact_section(device, profile, expected_item=name)
+    device.wait(name, timeout=60, scroll=True)
+    tap_collection_item(device, name)
+    reset_collection_editor_to_top(device, profile)
+    toggle_prefix = "tablet-toggle" if profile == "tablet" else "collection-toggle"
+    for toggle in ("group", "family", "blackmail"):
+        assert_toggle_state(
+            device,
+            f"{toggle_prefix}-{toggle}",
+            checked=False,
+            capture=f"{profile}-creation-free-contact-{toggle}-not-isolated",
+        )
+    assert_toggle_state(
+        device,
+        f"{toggle_prefix}-free",
+        checked=True,
+        enabled=True,
+        capture=f"{profile}-creation-free-contact-not-persisted",
+    )
     if profile == "phone":
         device.back()
 
@@ -2515,6 +2642,9 @@ def main() -> int:
         add_and_edit_contact(device, args.profile, create_items=False)
         if args.profile == "phone":
             device.back()
+        edit_creation_free_contact(device, args.profile)
+        if args.profile == "phone":
+            device.back()
         add_and_edit_pet(device, args.profile, create_items=False)
         persisted_authority = (
             save_and_read_workspace_authority(device, args.profile)
@@ -2535,6 +2665,9 @@ def main() -> int:
             require_restored_authority(persisted_authority, restored_authority)
         open_build(device, args.profile)
         assert_contact_persisted(device, args.profile)
+        if args.profile == "phone":
+            device.back()
+        assert_creation_free_contact_persisted(device, args.profile)
         if args.profile == "phone":
             device.back()
         assert_pet_persisted(device, args.profile)
@@ -2584,6 +2717,7 @@ def main() -> int:
                 "creationRunnerImport": "pass",
                 "contactInvalidBoundsRejected": "pass",
                 "contactEditPersisted": "pass",
+                "creationContactFreeIsolatedPersisted": "pass",
                 "contactDeletePersisted": "pass",
                 "processRestartContactPersistence": "pass",
                 "petInvalidNameRejected": "pass",
@@ -2698,7 +2832,12 @@ def main() -> int:
     add_and_edit_gear(device, args.profile)
     if args.profile == "phone":
         device.back()
-    add_and_edit_contact(device, args.profile, connection_maximum=12)
+    add_and_edit_contact(
+        device,
+        args.profile,
+        connection_maximum=12,
+        free_editable=False,
+    )
     attach_linked_runner(
         device,
         args.profile,
@@ -2770,7 +2909,12 @@ def main() -> int:
     )
     if args.profile == "phone":
         device.back()
-    assert_contact_persisted(device, args.profile, connection_maximum=12)
+    assert_contact_persisted(
+        device,
+        args.profile,
+        connection_maximum=12,
+        free_editable=False,
+    )
     if args.profile == "phone":
         device.back()
     assert_link_persisted_then_remove(
@@ -2850,6 +2994,7 @@ def main() -> int:
             "collectionCustomNameEditPersisted": "pass",
             "contactInvalidBoundsRejected": "pass",
             "contactEditPersisted": "pass",
+            "careerContactFreeReadOnlyAuthority": "pass",
             "contactDeletePersisted": "pass",
             "processRestartContactPersistence": "pass",
             "petInvalidNameRejected": "pass",

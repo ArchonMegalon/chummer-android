@@ -1,3 +1,4 @@
+import copy
 import importlib.util
 import json
 import os
@@ -3951,14 +3952,62 @@ namespace Chummer
             inventory._validated_contact_pet_e2e_receipts(),
             "Checked-in device receipts must fail closed after shared launch-driver drift.",
         )
+        driver_sha = inventory._sha256_file(
+            REPO / "tests" / "run_api36_editing_e2e.py"
+        )
+        fixture_sha = inventory._sha256_file(
+            REPO / "tests" / "fixtures" / "creation-contact-pet-e2e.chum5"
+        )
+
+        def valid_receipt(profile: str, source: Path) -> dict[str, object]:
+            receipt = json.loads(source.read_text(encoding="utf-8"))
+            receipt["driverSha256"] = driver_sha
+            receipt["inputFixtureSha256"] = fixture_sha
+            receipt["journeys"] = {
+                journey: "pass"
+                for journey in inventory.CONTACT_PET_E2E_JOURNEYS
+            }
+            if profile == "phone":
+                imported = {
+                    "workspaceId": "workspace-imported",
+                    "contentRevision": 1,
+                    "savedRevision": 0,
+                    "payloadSha256": fixture_sha,
+                    "documentSha256": "1" * 64,
+                }
+                persisted = {
+                    "workspaceId": "workspace-imported",
+                    "contentRevision": 2,
+                    "savedRevision": 2,
+                    "payloadSha256": "2" * 64,
+                    "documentSha256": "3" * 64,
+                }
+                receipt.update(
+                    {
+                        "importAuthority": imported,
+                        "preRestartAuthority": persisted,
+                        "postRestartAuthority": copy.deepcopy(persisted),
+                        "authorityProofStages": {
+                            "status": "pass",
+                            "import": {
+                                "frozenFixtureSha256": fixture_sha,
+                                "verifiedRemoteFixtureSha256": fixture_sha,
+                                "workspace": copy.deepcopy(imported),
+                            },
+                            "preRestartSaved": copy.deepcopy(persisted),
+                            "postRestartRestored": copy.deepcopy(persisted),
+                        },
+                    }
+                )
+            return receipt
+
         with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
             temporary_root = Path(temporary)
-            receipt_paths = {}
+            receipt_paths: dict[str, Path] = {}
+            baseline: dict[str, dict[str, object]] = {}
             for profile, source in inventory.CONTACT_PET_E2E_RECEIPTS.items():
-                receipt = json.loads(source.read_text(encoding="utf-8"))
-                receipt["driverSha256"] = inventory._sha256_file(
-                    REPO / "tests" / "run_api36_editing_e2e.py"
-                )
+                receipt = valid_receipt(profile, source)
+                baseline[profile] = receipt
                 target = temporary_root / f"{profile}.json"
                 target.write_text(json.dumps(receipt), encoding="utf-8")
                 receipt_paths[profile] = target
@@ -3968,10 +4017,141 @@ namespace Chummer
                     {"phone", "tablet"},
                     set(inventory._validated_contact_pet_e2e_receipts()),
                 )
-                receipt = json.loads(receipt_paths["tablet"].read_text(encoding="utf-8"))
-                receipt["driverSha256"] = "0" * 64
-                receipt_paths["tablet"].write_text(json.dumps(receipt), encoding="utf-8")
-                self.assertEqual({}, inventory._validated_contact_pet_e2e_receipts())
+
+                def assert_single_fault_rejected(
+                    profile: str,
+                    mutate: object,
+                ) -> None:
+                    for candidate_profile, candidate in baseline.items():
+                        receipt_paths[candidate_profile].write_text(
+                            json.dumps(candidate),
+                            encoding="utf-8",
+                        )
+                    receipt = copy.deepcopy(baseline[profile])
+                    assert callable(mutate)
+                    mutate(receipt)
+                    receipt_paths[profile].write_text(
+                        json.dumps(receipt),
+                        encoding="utf-8",
+                    )
+                    self.assertEqual({}, inventory._validated_contact_pet_e2e_receipts())
+
+                def mismatch_import_payload(receipt: dict[str, object]) -> None:
+                    imported = receipt["importAuthority"]
+                    stages = receipt["authorityProofStages"]
+                    assert isinstance(imported, dict) and isinstance(stages, dict)
+                    imported["payloadSha256"] = "4" * 64
+                    stage_import = stages["import"]
+                    assert isinstance(stage_import, dict)
+                    stage_import["workspace"] = copy.deepcopy(imported)
+
+                def make_saved_authority_dirty(receipt: dict[str, object]) -> None:
+                    stages = receipt["authorityProofStages"]
+                    assert isinstance(stages, dict)
+                    for key in ("preRestartAuthority", "postRestartAuthority"):
+                        authority = receipt[key]
+                        assert isinstance(authority, dict)
+                        authority["savedRevision"] = 1
+                    stages["preRestartSaved"] = copy.deepcopy(
+                        receipt["preRestartAuthority"]
+                    )
+                    stages["postRestartRestored"] = copy.deepcopy(
+                        receipt["postRestartAuthority"]
+                    )
+
+                def mismatch_restored_authority(receipt: dict[str, object]) -> None:
+                    restored = receipt["postRestartAuthority"]
+                    stages = receipt["authorityProofStages"]
+                    assert isinstance(restored, dict) and isinstance(stages, dict)
+                    restored["documentSha256"] = "5" * 64
+                    stages["postRestartRestored"] = copy.deepcopy(restored)
+
+                def switch_saved_workspace(receipt: dict[str, object]) -> None:
+                    stages = receipt["authorityProofStages"]
+                    assert isinstance(stages, dict)
+                    for key in ("preRestartAuthority", "postRestartAuthority"):
+                        authority = receipt[key]
+                        assert isinstance(authority, dict)
+                        authority["workspaceId"] = "wrong-workspace"
+                    stages["preRestartSaved"] = copy.deepcopy(
+                        receipt["preRestartAuthority"]
+                    )
+                    stages["postRestartRestored"] = copy.deepcopy(
+                        receipt["postRestartAuthority"]
+                    )
+
+                def erase_mutation_progress(receipt: dict[str, object]) -> None:
+                    imported = receipt["importAuthority"]
+                    stages = receipt["authorityProofStages"]
+                    assert isinstance(imported, dict) and isinstance(stages, dict)
+                    for key in ("preRestartAuthority", "postRestartAuthority"):
+                        authority = receipt[key]
+                        assert isinstance(authority, dict)
+                        authority["contentRevision"] = imported["contentRevision"]
+                        authority["savedRevision"] = imported["contentRevision"]
+                    stages["preRestartSaved"] = copy.deepcopy(
+                        receipt["preRestartAuthority"]
+                    )
+                    stages["postRestartRestored"] = copy.deepcopy(
+                        receipt["postRestartAuthority"]
+                    )
+
+                cases = (
+                    (
+                        "stale-driver",
+                        "tablet",
+                        lambda receipt: receipt.__setitem__("driverSha256", "0" * 64),
+                    ),
+                    (
+                        "missing-isolated-free-journey",
+                        "tablet",
+                        lambda receipt: receipt["journeys"].pop(
+                            "creationContactFreeIsolatedPersisted"
+                        ),
+                    ),
+                    (
+                        "missing-restart-journey",
+                        "tablet",
+                        lambda receipt: receipt["journeys"].pop(
+                            "processRestartContactPersistence"
+                        ),
+                    ),
+                    (
+                        "extra-journey",
+                        "tablet",
+                        lambda receipt: receipt["journeys"].__setitem__(
+                            "unboundExtraJourney", "pass"
+                        ),
+                    ),
+                    (
+                        "import-payload-mismatch",
+                        "phone",
+                        mismatch_import_payload,
+                    ),
+                    (
+                        "persisted-not-saved",
+                        "phone",
+                        make_saved_authority_dirty,
+                    ),
+                    (
+                        "restored-differs-from-persisted",
+                        "phone",
+                        mismatch_restored_authority,
+                    ),
+                    (
+                        "saved-workspace-differs-from-import",
+                        "phone",
+                        switch_saved_workspace,
+                    ),
+                    (
+                        "no-content-revision-progress",
+                        "phone",
+                        erase_mutation_progress,
+                    ),
+                )
+                for name, profile, mutate in cases:
+                    with self.subTest(name=name):
+                        assert_single_fault_rejected(profile, mutate)
 
     def test_attribute_receipt_is_phone_only_and_driver_hash_bound(self) -> None:
         driver = REPO / "tests" / "run_api36_attribute_e2e.py"

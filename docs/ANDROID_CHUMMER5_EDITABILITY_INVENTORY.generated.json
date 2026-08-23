@@ -579,7 +579,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "750e08d2c00dec137ded836deedc0e29337c0963506439ced5db0d3673b5613c"
+        "sha256": "157da79b96a42226535c1f1c633f3a2d779a86e02ca661885b4e528033849051"
       },
       {
         "path": "tests/run_api36_gear_attack_swap_e2e.py",
@@ -1414,7 +1414,7 @@
       {
         "path": "tests/fixtures/creation-contact-pet-e2e.chum5",
         "exists": true,
-        "sha256": "38fe0fc0da57dd6462998dab99412db7e5a3f1c4e5f5dbbe78333f425eb9cf66"
+        "sha256": "7b5d479bdaf3a8ec9400022fdf83d41104fe85a04397530b4fa20fd07dd2ea1b"
       },
       {
         "path": "tests/fixtures/career-attribute-e2e.chum5",
@@ -2244,7 +2244,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "4c7253ab882d6d99e6b69c840ab94457708f79d4ade77a94d2ea1b11ab67dbcc"
+      "sha256": "a1f8e107adc2f49e04d9c9a89b772cbc4833c140406d4ad6449502fcf15ac489"
     }
   },
   "coverageByFamily": {

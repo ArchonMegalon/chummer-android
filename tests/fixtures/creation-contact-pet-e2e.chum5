@@ -44,6 +44,19 @@
       <type>Contact</type>
     </contact>
     <contact>
+      <guid>b7ff1656-c972-47f5-b6f1-2f3c31320b06</guid>
+      <name>ContactFreePersistedE2E</name>
+      <role>FreeContactRoleE2E</role>
+      <location>Seattle</location>
+      <connection>1</connection>
+      <loyalty>1</loyalty>
+      <group>False</group>
+      <family>False</family>
+      <blackmail>False</blackmail>
+      <free>False</free>
+      <type>Contact</type>
+    </contact>
+    <contact>
       <guid>143c8c84-c117-4c57-9b43-e00fd1701dcf</guid>
       <name>PetE2E</name>
       <metatype>Dog</metatype>
