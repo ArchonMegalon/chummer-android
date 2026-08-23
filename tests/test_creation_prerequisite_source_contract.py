@@ -9,7 +9,6 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 DRIVER = REPO / "tests" / "run_api36_creation_prerequisite_e2e.py"
-FIXTURE = REPO / "tests" / "fixtures" / "creation-group-membership-e2e.chum5"
 
 sys.path.insert(0, str(DRIVER.parent))
 SPEC = importlib.util.spec_from_file_location("creation_prerequisite_driver", DRIVER)
@@ -19,32 +18,30 @@ SPEC.loader.exec_module(driver)
 
 
 class CreationPrerequisiteSourceContractTests(unittest.TestCase):
-    @staticmethod
-    def authority_nodes(authority: driver.shared.WorkspaceAuthority):
-        values = (
-            authority.workspace_id,
-            str(authority.content_revision),
-            str(authority.saved_revision),
-            authority.payload_sha256,
-            authority.document_sha256,
+    def test_priority_provisioning_declares_every_explicit_production_selection(self) -> None:
+        self.assertEqual(
+            ("dialog-field-newcharacterbuildmethod", "Priority"),
+            driver.PRIORITY_BUILD_METHOD_SELECTION,
         )
-        return [
-            driver.shared.UiNode(
-                {
-                    "resource-id": f"com.myexternalbrain.chummer:id/{selector}",
-                    "text": value,
-                }
-            )
-            for selector, value in zip(driver.WORKSPACE_AUTHORITY_SELECTORS, values)
-        ]
+        self.assertEqual(
+            {
+                "dialog-field-newcharactermetatypecategory": "Non-human choices",
+                "dialog-field-newcharactermetatype": "Elf",
+                "dialog-field-newcharacterpriorityheritage": "A",
+                "dialog-field-newcharactermetavariant": "Dryad",
+                "dialog-field-newcharacterpriorityattributes": "C",
+                "dialog-field-newcharacterprioritytalent": "B",
+                "dialog-field-newcharacterpriorityskills": "D",
+                "dialog-field-newcharacterpriorityresources": "E",
+                "dialog-field-newcharacterprioritytalentchoice": "Mystic Adept",
+                "dialog-field-newcharacterpriorityskillchoice1": "Summoning",
+                "dialog-field-newcharacterpriorityskillchoice2": "Binding",
+                "dialog-field-newcharacterpriorityskillchoice3": "Gymnastics",
+            },
+            dict(driver.PRIORITY_CREATION_SELECTIONS),
+        )
 
-    def test_public_fixture_and_navigation_precondition_fail_closed(self) -> None:
-        fixture = driver.validate_creation_karma_fixture(FIXTURE)
-        self.assertEqual("CreationGroupMembershipE2E", fixture["alias"])
-        self.assertEqual("Priority", fixture["buildMethod"])
-        self.assertEqual("223a11ff-80e0-428b-89a9-6ef1c243b8b6", fixture["settingsProfileId"])
-        self.assertEqual(0, fixture["karma"])
-
+    def test_creation_karma_navigation_precondition_remains_fail_closed(self) -> None:
         blocked = driver.shared.UiNode(
             {
                 "content-desc": "Creation method. creation-karma-authority-required",
@@ -187,117 +184,32 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         self.assertTrue(evidence["tapRemainedOnDashboard"])
 
-    def test_public_import_waits_through_cleared_authority_for_exact_new_workspace(self) -> None:
-        old = driver.shared.WorkspaceAuthority("old-workspace", 2, 2, "a" * 64, "b" * 64)
-        imported = driver.shared.WorkspaceAuthority(
-            "imported-workspace",
-            1,
-            0,
-            "c" * 64,
-            "d" * 64,
+    def test_priority_created_authority_is_distinct_saved_and_digest_bound(self) -> None:
+        fresh = driver.shared.WorkspaceAuthority("fresh", 2, 2, "a" * 64, "b" * 64)
+        prepared = driver.shared.WorkspaceAuthority("prepared", 1, 1, "c" * 64, "d" * 64)
+        driver.require_priority_created_workspace_authority(fresh, prepared)
+
+        invalid = (
+            (
+                driver.shared.WorkspaceAuthority("fresh", 1, 1, "c" * 64, "d" * 64),
+                "distinct runner workspace identity",
+            ),
+            (
+                driver.shared.WorkspaceAuthority("prepared", 2, 1, "c" * 64, "d" * 64),
+                "not durably checkpointed",
+            ),
+            (
+                driver.shared.WorkspaceAuthority("prepared", 1, 1, "a" * 64, "d" * 64),
+                "distinct character payload digest",
+            ),
+            (
+                driver.shared.WorkspaceAuthority("prepared", 1, 1, "c" * 64, "b" * 64),
+                "distinct document authority digest",
+            ),
         )
-
-        class TransitionDevice:
-            def __init__(self) -> None:
-                self.surfaces = [
-                    self_authority_nodes(old),
-                    [],
-                    self_authority_nodes(imported),
-                ]
-                self.captures: list[str] = []
-
-            def hierarchy(self):
-                return self.surfaces.pop(0) if self.surfaces else self_authority_nodes(imported)
-
-            def capture(self, name: str) -> None:
-                self.captures.append(name)
-
-        self_authority_nodes = self.authority_nodes
-        device = TransitionDevice()
-        with mock.patch.object(driver.shared, "reset_scroll_to_top") as reset, \
-             mock.patch.object(driver.shared, "read_workspace_authority", return_value=imported) as read, \
-             mock.patch.object(driver.time, "sleep"):
-            observed = driver.wait_imported_workspace_authority(
-                device,
-                imported.payload_sha256,
-                old.workspace_id,
-                timeout=30,
-            )
-
-        self.assertEqual(imported, observed)
-        reset.assert_called_once_with(device, swipes=12)
-        read.assert_called_once_with(device)
-        self.assertEqual([], device.captures)
-
-    def test_public_import_authority_wait_times_out_fail_closed_with_evidence(self) -> None:
-        class MissingAuthorityDevice:
-            def __init__(self) -> None:
-                self.captures: list[str] = []
-
-            @staticmethod
-            def hierarchy():
-                return []
-
-            def capture(self, name: str) -> None:
-                self.captures.append(name)
-
-        device = MissingAuthorityDevice()
-        with mock.patch.object(driver.shared, "reset_scroll_to_top"), \
-             mock.patch.object(driver.time, "sleep"), \
-             mock.patch.object(driver.time, "monotonic", side_effect=[0.0, 0.0, 2.0]):
-            with self.assertRaisesRegex(
-                RuntimeError,
-                "did not publish a new exact workspace authority within 1 seconds",
-            ):
-                driver.wait_imported_workspace_authority(
-                    device,
-                    "c" * 64,
-                    "old-workspace",
-                    timeout=1,
-                )
-
-        self.assertEqual(["creation-karma-import-authority-timeout"], device.captures)
-
-    def test_public_import_rejects_new_workspace_with_wrong_payload_digest(self) -> None:
-        unexpected = driver.shared.WorkspaceAuthority(
-            "unexpected-workspace",
-            1,
-            0,
-            "e" * 64,
-            "f" * 64,
-        )
-
-        class WrongAuthorityDevice:
-            def __init__(self) -> None:
-                self.captures: list[str] = []
-
-            @staticmethod
-            def hierarchy():
-                return self_authority_nodes(unexpected)
-
-            def capture(self, name: str) -> None:
-                self.captures.append(name)
-
-        self_authority_nodes = self.authority_nodes
-        device = WrongAuthorityDevice()
-        with mock.patch.object(driver.shared, "reset_scroll_to_top"), \
-             mock.patch.object(
-                 driver.shared,
-                 "read_workspace_authority",
-                 return_value=unexpected,
-             ):
-            with self.assertRaisesRegex(
-                RuntimeError,
-                "Imported workspace payload does not match the exact verified fixture bytes",
-            ):
-                driver.wait_imported_workspace_authority(
-                    device,
-                    "c" * 64,
-                    "old-workspace",
-                    timeout=30,
-                )
-
-        self.assertEqual(["creation-karma-import-authority-mismatch"], device.captures)
+        for authority, message in invalid:
+            with self.subTest(message=message), self.assertRaisesRegex(RuntimeError, message):
+                driver.require_priority_created_workspace_authority(fresh, authority)
 
     def test_coordinator_uses_only_the_core_prerequisite_boundary_and_refreshes_receipt(self) -> None:
         source = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
@@ -489,7 +401,6 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('"profile": "phone"', source)
         self.assertIn('api != "36"', source)
         self.assertIn('"creation-stage-method"', source)
-        self.assertIn("validate_creation_karma_fixture", source)
         self.assertIn("require_creation_method_navigation", source)
         self.assertIn('device.find("creation-prerequisite-page") is not None', source)
         self.assertIn('blocked_after = device.find("creation-stage-method")', source)
@@ -500,19 +411,20 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('"clickable": node.attributes.get("clickable") == "true"', source)
         self.assertIn('"tapRemainedOnDashboard": True', source)
         self.assertIn('"freshNavigation": fresh_navigation', source)
-        self.assertIn("shared.select_android_document", source)
-        self.assertIn("shared.require_import_authority", source)
-        self.assertIn("wait_imported_workspace_authority", source)
-        self.assertIn('device.capture("creation-karma-import-authority-timeout")', source)
-        self.assertIn('device.capture("creation-karma-import-authority-mismatch")', source)
-        import_selection = source.index("shared.select_android_document")
-        authority_wait = source.index("wait_imported_workspace_authority(", import_selection)
-        alias_check = source.index("device.wait(CREATION_KARMA_FIXTURE_ALIAS", authority_wait)
-        self.assertLess(import_selection, authority_wait)
-        self.assertLess(authority_wait, alias_check)
+        self.assertIn("provision_creation_karma_through_priority_creation", source)
+        self.assertIn("priority.select_option(device, selector, option)", source)
+        self.assertIn('device.wait("Select Metatype Priority"', source)
+        self.assertIn('device.wait("Continue building"', source)
+        self.assertIn("require_priority_created_workspace_authority", source)
+        self.assertIn("prepared.workspace_id == fresh.workspace_id", source)
+        self.assertIn("prepared.payload_sha256 == fresh.payload_sha256", source)
+        self.assertIn("prepared.document_sha256 == fresh.document_sha256", source)
+        self.assertNotIn("shared.select_android_document", source)
+        self.assertNotIn("shared.require_import_authority", source)
+        self.assertNotIn("--creation-karma-runner", source)
         self.assertIn("read_source_authority_digests", source)
         self.assertIn('"freshRunnerCreationKarmaAuthorityBlocked": "pass"', source)
-        self.assertIn('"publicRulesValidFixtureImported": "pass"', source)
+        self.assertIn('"publicRulesValidPriorityRunnerCreated": "pass"', source)
         self.assertIn('"creation-prerequisite-karma-budget"', source)
         self.assertIn('"creation-prerequisite-rook"', source)
         self.assertIn("for category in CATEGORIES:", source)
@@ -549,8 +461,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('prerequisite_root="$evidence_root/creation-prerequisite"', runner)
         self.assertIn('--evidence "$prerequisite_root/screenshots"', runner)
         self.assertIn('--receipt "$prerequisite_root/receipt.json"', runner)
-        self.assertIn('--creation-karma-runner', runner)
-        self.assertIn('creation-group-membership-e2e.chum5', runner)
+        self.assertNotIn('--creation-karma-runner', runner)
+        self.assertNotIn('creation-group-membership-e2e.chum5', runner)
 
 
 if __name__ == "__main__":

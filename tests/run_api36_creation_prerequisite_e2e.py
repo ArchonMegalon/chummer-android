@@ -14,26 +14,34 @@ import re
 import subprocess
 import sys
 import time
-import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_api36_creation_wizard_foundation_e2e as foundation
 import run_api36_editing_e2e as shared
+import run_api36_new_character_priority_e2e as priority
 
 
 CATEGORIES = ("heritage", "talent", "attributes", "skills", "resources")
 CREATION_KARMA_AUTHORITY_BLOCKER = "creation-karma-authority-required"
-CREATION_KARMA_FIXTURE_ALIAS = "CreationGroupMembershipE2E"
-CREATION_KARMA_FIXTURE_SETTINGS = "223a11ff-80e0-428b-89a9-6ef1c243b8b6"
-IMPORT_AUTHORITY_TIMEOUT_SECONDS = 240
-WORKSPACE_AUTHORITY_SELECTORS = (
-    "home-e2e-workspace-id",
-    "home-e2e-content-revision",
-    "home-e2e-saved-revision",
-    "home-e2e-payload-sha256",
-    "home-e2e-document-sha256",
+PRIORITY_BUILD_METHOD_SELECTION = (
+    "dialog-field-newcharacterbuildmethod",
+    "Priority",
+)
+PRIORITY_CREATION_SELECTIONS = (
+    ("dialog-field-newcharactermetatypecategory", "Non-human choices"),
+    ("dialog-field-newcharactermetatype", "Elf"),
+    ("dialog-field-newcharacterpriorityheritage", "A"),
+    ("dialog-field-newcharactermetavariant", "Dryad"),
+    ("dialog-field-newcharacterpriorityattributes", "C"),
+    ("dialog-field-newcharacterprioritytalent", "B"),
+    ("dialog-field-newcharacterpriorityskills", "D"),
+    ("dialog-field-newcharacterpriorityresources", "E"),
+    ("dialog-field-newcharacterprioritytalentchoice", "Mystic Adept"),
+    ("dialog-field-newcharacterpriorityskillchoice1", "Summoning"),
+    ("dialog-field-newcharacterpriorityskillchoice2", "Binding"),
+    ("dialog-field-newcharacterpriorityskillchoice3", "Gymnastics"),
 )
 SHORT_AUTHORITY_BINDING = re.compile(
     r"^Revision (?P<revision>[1-9][0-9]*) · saved (?P<saved>[0-9]+) · "
@@ -50,124 +58,41 @@ def node_text(device: shared.Device, selector: str, *, scroll: bool = False) -> 
     return node.attributes.get("text") or node.attributes.get("content-desc") or ""
 
 
-def validate_creation_karma_fixture(path: Path) -> dict[str, object]:
-    try:
-        root = ET.parse(path).getroot()
-    except (OSError, ET.ParseError) as error:
-        raise RuntimeError(f"Creation Karma fixture is not valid XML: {path}") from error
-    if root.tag != "character":
-        raise RuntimeError("Creation Karma fixture must use <character> as its root")
-    expected = {
-        "alias": CREATION_KARMA_FIXTURE_ALIAS,
-        "created": "False",
-        "gameedition": "SR5",
-        "settings": CREATION_KARMA_FIXTURE_SETTINGS,
-    }
-    for element, value in expected.items():
-        if root.findtext(element) != value:
-            raise RuntimeError(
-                f"Creation Karma fixture requires exact <{element}>{value}</{element}>"
-            )
-    build_method = root.findtext("buildmethod")
-    if build_method not in {"Priority", "Sum-to-Ten"}:
-        raise RuntimeError(
-            "Creation Karma fixture requires a production-supported Priority or Sum-to-Ten method"
-        )
-    try:
-        karma = int(root.findtext("karma", default=""))
-    except ValueError as error:
-        raise RuntimeError("Creation Karma fixture requires an integer <karma>") from error
-    if karma < 0:
-        raise RuntimeError("Creation Karma fixture cannot have negative Karma")
-    return {
-        "alias": expected["alias"],
-        "buildMethod": build_method,
-        "settingsProfileId": expected["settings"],
-        "karma": karma,
-    }
+def require_priority_created_workspace_authority(
+    fresh: shared.WorkspaceAuthority,
+    prepared: shared.WorkspaceAuthority,
+) -> None:
+    shared.require_saved_authority(prepared)
+    if prepared.workspace_id == fresh.workspace_id:
+        raise RuntimeError("Priority creation did not publish a distinct runner workspace identity")
+    if prepared.payload_sha256 == fresh.payload_sha256:
+        raise RuntimeError("Priority creation did not publish a distinct character payload digest")
+    if prepared.document_sha256 == fresh.document_sha256:
+        raise RuntimeError("Priority creation did not publish a distinct document authority digest")
 
 
-def visible_workspace_authority(
+def provision_creation_karma_through_priority_creation(
     device: shared.Device,
-) -> shared.WorkspaceAuthority | None:
-    nodes = device.hierarchy()
-    values: dict[str, str] = {}
-    for selector in WORKSPACE_AUTHORITY_SELECTORS:
-        node = next(
-            (
-                candidate
-                for candidate in nodes
-                if candidate.attributes.get("resource-id", "").rsplit("/", 1)[-1]
-                == selector
-            ),
-            None,
-        )
-        if node is not None:
-            values[selector] = node.attributes.get("text", "").strip()
-    if not values or len(values) != len(WORKSPACE_AUTHORITY_SELECTORS):
-        return None
-    try:
-        content_revision = int(values["home-e2e-content-revision"])
-        saved_revision = int(values["home-e2e-saved-revision"])
-    except ValueError as error:
-        raise RuntimeError("Imported workspace authority revisions are not integers") from error
-    authority = shared.WorkspaceAuthority(
-        values["home-e2e-workspace-id"],
-        content_revision,
-        saved_revision,
-        values["home-e2e-payload-sha256"],
-        values["home-e2e-document-sha256"],
+) -> dict[str, str]:
+    """Create a rules-valid Priority runner exclusively through the production phone dialog."""
+    device.tap_until_visible("home-new-runner", "Select Build Method")
+    build_method_selector, build_method = PRIORITY_BUILD_METHOD_SELECTION
+    priority.select_option(device, build_method_selector, build_method)
+    device.tap("dialog-action-create-character", scroll=True, max_scrolls=16)
+    device.wait("Select Metatype Priority", timeout=60)
+    selected: dict[str, str] = {build_method_selector: build_method}
+    for selector, option in PRIORITY_CREATION_SELECTIONS:
+        priority.select_option(device, selector, option)
+        selected[selector] = option
+    device.tap(
+        "dialog-action-complete-new-character-workflow",
+        scroll=True,
+        max_scrolls=24,
+        scroll_distance_ratio=0.22,
     )
-    if not authority.workspace_id or authority.content_revision <= 0 or authority.saved_revision < 0:
-        raise RuntimeError("Imported workspace authority identity or revisions are invalid")
-    if shared.SHA256_TEXT.fullmatch(authority.payload_sha256) is None:
-        raise RuntimeError("Imported workspace authority payload SHA-256 is not canonical")
-    if shared.SHA256_TEXT.fullmatch(authority.document_sha256) is None:
-        raise RuntimeError("Imported workspace authority document SHA-256 is not canonical")
-    return authority
-
-
-def wait_imported_workspace_authority(
-    device: shared.Device,
-    expected_payload_sha256: str,
-    previous_workspace_id: str,
-    *,
-    timeout: int = IMPORT_AUTHORITY_TIMEOUT_SECONDS,
-) -> shared.WorkspaceAuthority:
-    # A created=False Priority import hydrates exact rules before OpenLocalAsync republishes the
-    # diagnostic authority. On the hosted x64 API-36 runner that transition can exceed the normal
-    # 90-second UI wait, so bind completion to the authority instead of accepting an alias alone.
-    shared.reset_scroll_to_top(device, swipes=12)
-    deadline = time.monotonic() + timeout
-    last_authority: shared.WorkspaceAuthority | None = None
-    while True:
-        candidate = visible_workspace_authority(device)
-        if candidate is not None:
-            last_authority = candidate
-            if candidate.workspace_id != previous_workspace_id:
-                stable = shared.read_workspace_authority(device)
-                try:
-                    shared.require_import_authority(
-                        stable,
-                        expected_payload_sha256,
-                        previous_workspace_id,
-                    )
-                except RuntimeError:
-                    device.capture("creation-karma-import-authority-mismatch")
-                    raise
-                if shared.SHA256_TEXT.fullmatch(stable.document_sha256) is None:
-                    device.capture("creation-karma-import-document-digest-invalid")
-                    raise RuntimeError("Imported Creation Karma document digest is not canonical")
-                return stable
-        if time.monotonic() >= deadline:
-            break
-        time.sleep(3)
-    device.capture("creation-karma-import-authority-timeout")
-    raise RuntimeError(
-        "Creation Karma public import did not publish a new exact workspace authority within "
-        f"{timeout} seconds: previousWorkspaceId={previous_workspace_id!r}, "
-        f"lastAuthority={last_authority!r}"
-    )
+    device.wait("Continue building", timeout=120)
+    device.capture("creation-karma-priority-runner-created")
+    return selected
 
 
 def require_creation_method_navigation(
@@ -185,7 +110,7 @@ def require_creation_method_navigation(
     if ready:
         if not clickable or not enabled or CREATION_KARMA_AUTHORITY_BLOCKER in description:
             raise RuntimeError(
-                "Prepared Creation Karma fixture did not enable the method navigation row: "
+                "Priority-created runner did not enable the method navigation row: "
                 f"clickable={clickable}, enabled={enabled}, detail={description!r}"
             )
     elif enabled or CREATION_KARMA_AUTHORITY_BLOCKER not in description:
@@ -332,23 +257,11 @@ def main() -> int:
     parser.add_argument("--serial", required=True)
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
-    parser.add_argument(
-        "--creation-karma-runner",
-        type=Path,
-        default=(
-            Path(__file__).resolve().parent
-            / "fixtures"
-            / "creation-group-membership-e2e.chum5"
-        ),
-    )
     args = parser.parse_args()
 
     driver_path = Path(__file__).resolve()
     shared_path = Path(shared.__file__).resolve()
-    creation_karma_runner = args.creation_karma_runner.resolve()
-    creation_karma_fixture = validate_creation_karma_fixture(creation_karma_runner)
-    creation_karma_fixture_sha256 = sha256(creation_karma_runner)
-    remote_fixture = "/sdcard/Download/creation-group-membership-e2e.chum5"
+    priority_driver_path = Path(priority.__file__).resolve()
     device = shared.Device(args.adb.resolve(), args.serial, args.evidence.resolve())
     api = device.shell("getprop", "ro.build.version.sdk")
     if api != "36":
@@ -368,27 +281,6 @@ def main() -> int:
         timeout=300,
     )
     device.shell("pm", "clear", shared.PACKAGE)
-    verified_remote_sha256 = device.push_verified(
-        creation_karma_runner,
-        remote_fixture,
-        creation_karma_fixture_sha256,
-    )
-    fixture_transport_receipt = {
-        "schema": "chummer.android.fixture-transport/v1",
-        "status": "pass",
-        "fixtures": [
-            {
-                "localPath": str(creation_karma_runner),
-                "remotePath": remote_fixture,
-                "capturedLocalSha256": creation_karma_fixture_sha256,
-                "verifiedRemoteSha256": verified_remote_sha256,
-            }
-        ],
-    }
-    (device.evidence / "fixture-transport-receipt.json").write_text(
-        json.dumps(fixture_transport_receipt, indent=2) + "\n",
-        encoding="utf-8",
-    )
     shared.launch_app(device)
     device.wait("Your runners", timeout=90)
     device.tap_until_visible("home-new-runner", "Select Build Method")
@@ -403,33 +295,24 @@ def main() -> int:
     device.capture("fresh-runner-creation-karma-authority-blocked")
     shared.reset_scroll_to_top(device, swipes=22)
 
-    # The fixture is provisioned through the same save + Home + Android document import path
-    # available to production users. Debug authority nodes are read-only evidence, never a bypass.
+    # Bind the blocked runner to its durable authority before creating a separate, exact Priority
+    # runner exclusively through the same public production dialog available to phone users.
     device.tap("build-save-runner", scroll=True, max_scrolls=48, scroll_distance_ratio=0.22)
     device.wait("Saved.", timeout=90, scroll=True, max_scrolls=48, scroll_distance_ratio=0.22)
     device.tap("Home")
     device.wait("home-open-file", timeout=90)
     fresh_authority = shared.read_workspace_authority(device)
     shared.require_saved_authority(fresh_authority)
-    device.tap("home-open-file")
-    shared.select_android_document(device, creation_karma_runner.name)
-    # Let the Android document activity finish returning before the bounded authority poll starts;
-    # this is a shell/activity precondition, not evidence that the selected dossier was accepted.
-    device.wait("Home", timeout=45)
-    imported_authority = wait_imported_workspace_authority(
-        device,
-        creation_karma_fixture_sha256,
-        fresh_authority.workspace_id,
-    )
-    device.wait(CREATION_KARMA_FIXTURE_ALIAS, timeout=45)
-    device.wait("Continue building", timeout=45)
+    priority_creation_selections = provision_creation_karma_through_priority_creation(device)
+    prepared_authority = shared.read_workspace_authority(device)
+    require_priority_created_workspace_authority(fresh_authority, prepared_authority)
 
     shared.open_build(device, "phone")
     device.wait("creation-wizard-dashboard", timeout=90)
     foundation.assert_creation_editor_gated(device)
     dashboard_binding = node_text(device, "creation-wizard-binding", scroll=True)
     if dashboard_binding == fresh_dashboard_binding:
-        raise RuntimeError("Public fixture import did not refresh the creation wizard binding")
+        raise RuntimeError("Priority creation did not refresh the creation wizard binding")
     ready_navigation = wait_creation_method_navigation(device, ready=True)
 
     open_prerequisite(device)
@@ -550,10 +433,12 @@ def main() -> int:
         "apkSha256": sha256(args.apk.resolve()),
         "driverSha256": sha256(driver_path),
         "sharedDriverSha256": sha256(shared_path),
+        "priorityCreationDriverSha256": sha256(priority_driver_path),
         "journeys": {
             "freshRunnerCreationKarmaAuthorityBlocked": "pass",
-            "publicRulesValidFixtureImported": "pass",
-            "fixturePayloadAndDocumentDigestsVerified": "pass",
+            "publicRulesValidPriorityRunnerCreated": "pass",
+            "priorityCreationUsedExplicitProductionSelections": "pass",
+            "distinctSavedWorkspacePayloadAndDocumentAuthority": "pass",
             "creationMethodNavigationEnabledAfterAuthority": "pass",
             "canonicalSourceAuthorityDigestsVisible": "pass",
             "priorityOrSumToTenAuthorityLoaded": "pass",
@@ -574,11 +459,10 @@ def main() -> int:
             "advancedEditorNeverExposedWhileCreatedFalse": "pass",
         },
         "creationKarmaProvisioning": {
-            "fixture": creation_karma_fixture,
-            "fixtureSha256": creation_karma_fixture_sha256,
-            "verifiedRemoteFixtureSha256": verified_remote_sha256,
+            "method": "production-priority-creation-dialog",
+            "explicitSelections": priority_creation_selections,
             "freshRunnerWorkspaceAuthority": shared.workspace_authority_json(fresh_authority),
-            "importedWorkspaceAuthority": shared.workspace_authority_json(imported_authority),
+            "preparedWorkspaceAuthority": shared.workspace_authority_json(prepared_authority),
             "freshNavigation": fresh_navigation,
             "readyNavigation": ready_navigation,
             "prerequisiteBinding": prerequisite_binding_authority,
