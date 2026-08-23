@@ -2,6 +2,7 @@ import ast
 import importlib.util
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -95,6 +96,77 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.require_prerequisite_binding(
                 "Revision 7 · saved 7 · snapshot unavailable · authority unavailable"
             )
+
+    def test_physical_blocked_tap_rechecks_same_row_before_scrolled_dashboard_marker(self) -> None:
+        blocked = driver.shared.UiNode(
+            {
+                "content-desc": "Creation method. creation-karma-authority-required",
+                "clickable": "true",
+                "enabled": "false",
+                "bounds": "[98,1510][984,1663]",
+            }
+        )
+
+        class FakeScrolledDevice:
+            def __init__(self) -> None:
+                self.reset_count = 0
+                self.taps: list[tuple[str, ...]] = []
+                self.captures: list[str] = []
+
+            def find(self, selector: str):
+                if selector == "creation-stage-method":
+                    return blocked
+                if selector == "creation-prerequisite-page":
+                    return None
+                if selector == "creation-wizard-dashboard":
+                    return None if self.reset_count < 2 else driver.shared.UiNode({})
+                return None
+
+            def shell(self, *arguments: str) -> str:
+                self.taps.append(arguments)
+                return ""
+
+            def capture(self, name: str) -> None:
+                self.captures.append(name)
+
+            def swipe_up(self, **_kwargs) -> None:
+                raise AssertionError("The already-visible blocked row must not need another scroll")
+
+            def wait(self, selector: str, *, timeout: int):
+                self.assert_dashboard_was_reset(selector, timeout)
+                return driver.shared.UiNode({})
+
+            def assert_dashboard_was_reset(self, selector: str, timeout: int) -> None:
+                if selector != "creation-wizard-dashboard" or timeout != 30:
+                    raise AssertionError((selector, timeout))
+                if self.reset_count < 2:
+                    raise AssertionError("Dashboard marker was checked before resetting the viewport")
+
+        device = FakeScrolledDevice()
+
+        def reset_scroll(_device, *, swipes: int) -> None:
+            self.assertIs(device, _device)
+            self.assertEqual(22, swipes)
+            device.reset_count += 1
+
+        with mock.patch.object(driver.shared, "reset_scroll_to_top", side_effect=reset_scroll), \
+             mock.patch.object(driver.time, "sleep"):
+            evidence = driver.wait_creation_method_navigation(device, ready=False)
+
+        self.assertEqual(2, device.reset_count)
+        self.assertEqual([("input", "tap", "541", "1586")], device.taps)
+        self.assertEqual(["creation-method-navigation-remained-blocked"], device.captures)
+        self.assertFalse(evidence["enabled"])
+        self.assertTrue(evidence["clickable"])
+        self.assertEqual(
+            {
+                "detail": "Creation method. creation-karma-authority-required",
+                "clickable": True,
+                "enabled": False,
+            },
+            evidence["afterTap"],
+        )
+        self.assertTrue(evidence["tapRemainedOnDashboard"])
 
     def test_coordinator_uses_only_the_core_prerequisite_boundary_and_refreshes_receipt(self) -> None:
         source = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
@@ -289,9 +361,13 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn("validate_creation_karma_fixture", source)
         self.assertIn("require_creation_method_navigation", source)
         self.assertIn('device.find("creation-prerequisite-page") is not None', source)
-        self.assertIn('device.find("creation-wizard-dashboard") is None', source)
+        self.assertIn('blocked_after = device.find("creation-stage-method")', source)
+        self.assertIn("require_creation_method_navigation(blocked_after, ready=False)", source)
+        self.assertIn("if after_tap != before_tap:", source)
+        self.assertIn('device.capture("creation-method-navigation-remained-blocked")', source)
+        self.assertIn('device.wait("creation-wizard-dashboard", timeout=30)', source)
         self.assertIn('"clickable": node.attributes.get("clickable") == "true"', source)
-        self.assertIn('"tapRemainedOnDashboard": True if not ready else None', source)
+        self.assertIn('"tapRemainedOnDashboard": True', source)
         self.assertIn('"freshNavigation": fresh_navigation', source)
         self.assertIn("shared.select_android_document", source)
         self.assertIn("shared.require_import_authority", source)

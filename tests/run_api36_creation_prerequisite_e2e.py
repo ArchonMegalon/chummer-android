@@ -116,6 +116,11 @@ def wait_creation_method_navigation(
         node = device.find("creation-stage-method")
         if node is not None:
             detail = require_creation_method_navigation(node, ready=ready)
+            before_tap = {
+                "detail": detail,
+                "clickable": node.attributes.get("clickable") == "true",
+                "enabled": node.attributes.get("enabled") == "true",
+            }
             if not ready:
                 # UIAutomator reports a MAUI Button with a Clicked handler as clickable even while
                 # IsEnabled=false. Prove the product gate itself: a physical tap must remain on the
@@ -128,17 +133,34 @@ def wait_creation_method_navigation(
                     raise RuntimeError(
                         "Disabled creation method navigation opened without Creation Karma authority"
                     )
-                if device.find("creation-wizard-dashboard") is None:
-                    device.capture("creation-method-navigation-left-dashboard-without-authority")
+                blocked_after = device.find("creation-stage-method")
+                if blocked_after is None:
+                    device.capture("creation-method-navigation-row-missing-after-blocked-tap")
                     raise RuntimeError(
-                        "Creation method tap left the wizard dashboard without exact authority"
+                        "Creation method row disappeared after its disabled no-authority tap"
                     )
-            return {
-                "detail": detail,
-                "clickable": node.attributes.get("clickable") == "true",
-                "enabled": node.attributes.get("enabled") == "true",
-                "tapRemainedOnDashboard": True if not ready else None,
-            }
+                after_tap = {
+                    "detail": require_creation_method_navigation(blocked_after, ready=False),
+                    "clickable": blocked_after.attributes.get("clickable") == "true",
+                    "enabled": blocked_after.attributes.get("enabled") == "true",
+                }
+                if after_tap != before_tap:
+                    device.capture("creation-method-navigation-changed-after-blocked-tap")
+                    raise RuntimeError(
+                        "Creation method no-authority state changed after its disabled tap: "
+                        f"before={before_tap!r}, after={after_tap!r}"
+                    )
+                device.capture("creation-method-navigation-remained-blocked")
+                # A ContentPage AutomationId is pruned from UIAutomator while this ScrollView is
+                # deep in its content. Reset before using the page marker as a second route proof.
+                shared.reset_scroll_to_top(device, swipes=max_scrolls)
+                device.wait("creation-wizard-dashboard", timeout=30)
+                return {
+                    **before_tap,
+                    "afterTap": after_tap,
+                    "tapRemainedOnDashboard": True,
+                }
+            return before_tap
         if scroll_index < max_scrolls:
             device.swipe_up(distance_ratio=0.22)
             time.sleep(0.75)
