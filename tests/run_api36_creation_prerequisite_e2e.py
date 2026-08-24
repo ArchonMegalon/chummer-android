@@ -25,9 +25,15 @@ import run_api36_new_character_priority_e2e as priority
 
 CATEGORIES = ("heritage", "talent", "attributes", "skills", "resources")
 CREATION_KARMA_AUTHORITY_BLOCKER = "creation-karma-authority-required"
+STANDARD_PRIORITY_SETTINGS_ID = "223a11ff-80e0-428b-89a9-6ef1c243b8b6"
 PRIORITY_BUILD_METHOD_SELECTION = (
     "dialog-field-newcharacterbuildmethod",
     "Priority",
+)
+PRIORITY_SETTINGS_SELECTION = (
+    "dialog-field-newcharactersetting",
+    "Character Setting",
+    STANDARD_PRIORITY_SETTINGS_ID,
 )
 PRIORITY_CREATION_SELECTIONS = (
     ("dialog-field-newcharactermetatypecategory", "Non-human choices"),
@@ -78,9 +84,21 @@ def provision_creation_karma_through_priority_creation(
     device.tap_until_visible("home-new-runner", "Select Build Method")
     build_method_selector, build_method = PRIORITY_BUILD_METHOD_SELECTION
     priority.select_option(device, build_method_selector, build_method)
+    settings_selector, settings_label, settings_id = PRIORITY_SETTINGS_SELECTION
+    device.set_text(
+        settings_selector,
+        settings_label,
+        settings_id,
+        scroll=True,
+        max_scrolls=16,
+        scroll_distance_ratio=0.22,
+    )
     device.tap("dialog-action-create-character", scroll=True, max_scrolls=16)
     device.wait("Select Metatype Priority", timeout=60)
-    selected: dict[str, str] = {build_method_selector: build_method}
+    selected: dict[str, str] = {
+        build_method_selector: build_method,
+        settings_selector: settings_id,
+    }
     for selector, option in PRIORITY_CREATION_SELECTIONS:
         priority.select_option(device, selector, option)
         selected[selector] = option

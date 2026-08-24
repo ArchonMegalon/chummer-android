@@ -5,6 +5,12 @@
   <customdatadirectorynames />
   <name>CareerActiveSkillAdvanceE2E</name>
   <alias>CareerActiveSkillAdvanceE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <gameedition>SR5</gameedition>
   <karma>20</karma>
   <nuyen>1000</nuyen>
   <newskills>

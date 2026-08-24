@@ -24,6 +24,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.PRIORITY_BUILD_METHOD_SELECTION,
         )
         self.assertEqual(
+            (
+                "dialog-field-newcharactersetting",
+                "Character Setting",
+                "223a11ff-80e0-428b-89a9-6ef1c243b8b6",
+            ),
+            driver.PRIORITY_SETTINGS_SELECTION,
+        )
+        self.assertEqual(
             {
                 "dialog-field-newcharactermetatypecategory": "Non-human choices",
                 "dialog-field-newcharactermetatype": "Elf",
@@ -52,6 +60,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             def tap(self, *args, **kwargs) -> None:
                 calls.append(("tap", args, kwargs))
+
+            def set_text(self, *args, **kwargs) -> None:
+                calls.append(("set_text", args, kwargs))
 
             def wait(self, *args, **kwargs):
                 if args == ("creation-wizard-dashboard",) and not self.viewport_reset:
@@ -87,7 +98,23 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             [driver.PRIORITY_BUILD_METHOD_SELECTION, *driver.PRIORITY_CREATION_SELECTIONS],
             selected_options,
         )
-        self.assertEqual(dict(selected_options), selected)
+        expected_selected = dict(selected_options)
+        expected_selected[driver.PRIORITY_SETTINGS_SELECTION[0]] = (
+            driver.PRIORITY_SETTINGS_SELECTION[2]
+        )
+        self.assertEqual(expected_selected, selected)
+        self.assertIn(
+            (
+                "set_text",
+                driver.PRIORITY_SETTINGS_SELECTION,
+                {
+                    "scroll": True,
+                    "max_scrolls": 16,
+                    "scroll_distance_ratio": 0.22,
+                },
+            ),
+            calls,
+        )
         route_index = calls.index(
             (
                 "open_creation_dashboard",

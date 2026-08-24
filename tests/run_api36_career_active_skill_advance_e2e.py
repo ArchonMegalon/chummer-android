@@ -19,6 +19,19 @@ CONTROLS = ("SkillControl.btnCareerIncrease",)
 SKILL_ID = "11111111-1111-1111-1111-111111111111"
 SOURCE_SKILL_ID = "ae91a8a6-80e7-4f52-b9eb-21725a5528a4"
 ORIGINAL_EXPENSE_ID = "22222222-2222-2222-2222-222222222222"
+CANONICAL_IMPORT_FIELDS = {
+    "name": "CareerActiveSkillAdvanceE2E",
+    "alias": "CareerActiveSkillAdvanceE2E",
+    "metatype": "Human",
+    "buildmethod": "Priority",
+    "createdversion": "5.225.0",
+    "appversion": "5.225.0",
+    "karma": "20",
+    "nuyen": "1000",
+    "created": "True",
+    "gameedition": "SR5",
+    "settings": "223a11ff-80e0-428b-89a9-6ef1c243b8b6",
+}
 CONTROL_PROOF_KEYS = (
     "stableSkillGuid",
     "exactSourceSkillGuid",
@@ -35,6 +48,18 @@ CONTROL_PROOF_KEYS = (
     "processRestartWorkspacePersisted",
     "processRestartUiReadback",
 )
+
+
+def require_canonical_import_fixture(root: ET.Element) -> None:
+    if root.tag != "character":
+        raise RuntimeError(f"Career Active-Skill fixture root was {root.tag!r}, not 'character'")
+    for field, expected in CANONICAL_IMPORT_FIELDS.items():
+        actual = root.findtext(field)
+        if actual != expected:
+            raise RuntimeError(
+                "Career Active-Skill fixture is not accepted by the canonical SR5 loader: "
+                f"<{field}> expected {expected!r}, got {actual!r}"
+            )
 
 
 def prepare_runner(
@@ -318,6 +343,7 @@ def main() -> int:
         raise RuntimeError(f"Career Active-Skill source graph is incomplete: {missing!r}")
 
     fixture = args.career_runner.resolve()
+    require_canonical_import_fixture(ET.parse(fixture).getroot())
     fixture_sha256 = shared.sha256(fixture)
     device = shared.Device(args.adb.resolve(), args.serial, args.evidence.resolve())
     api = device.shell("getprop", "ro.build.version.sdk")

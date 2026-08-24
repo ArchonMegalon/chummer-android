@@ -1,5 +1,8 @@
 import ast
+import copy
+import importlib.util
 from pathlib import Path
+import sys
 import unittest
 import uuid
 import xml.etree.ElementTree as ET
@@ -10,6 +13,12 @@ DRIVER = REPO / "tests/run_api36_career_active_skill_advance_e2e.py"
 FIXTURE = REPO / "tests/fixtures/career-active-skill-advance-e2e.chum5"
 SKILL_ID = "11111111-1111-1111-1111-111111111111"
 SOURCE_SKILL_ID = "ae91a8a6-80e7-4f52-b9eb-21725a5528a4"
+
+sys.path.insert(0, str(DRIVER.parent))
+SPEC = importlib.util.spec_from_file_location("career_active_skill_driver", DRIVER)
+assert SPEC is not None and SPEC.loader is not None
+driver = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(driver)
 
 
 class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
@@ -39,8 +48,18 @@ class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
 
     def test_fixture_has_exact_guid_source_balance_expense_and_nested_authority(self) -> None:
         root = ET.parse(FIXTURE).getroot()
+        driver.require_canonical_import_fixture(root)
         self.assertEqual("True", root.findtext("created"))
         self.assertEqual("CareerActiveSkillAdvanceE2E", root.findtext("alias"))
+        self.assertEqual("Human", root.findtext("metatype"))
+        self.assertEqual("Priority", root.findtext("buildmethod"))
+        self.assertEqual("5.225.0", root.findtext("createdversion"))
+        self.assertEqual("5.225.0", root.findtext("appversion"))
+        self.assertEqual("SR5", root.findtext("gameedition"))
+        self.assertEqual(
+            "223a11ff-80e0-428b-89a9-6ef1c243b8b6",
+            root.findtext("settings"),
+        )
         self.assertEqual("20", root.findtext("karma"))
         skills = root.findall("./newskills/skills/skill")
         self.assertEqual(1, len(skills))
@@ -56,6 +75,18 @@ class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
             "keep-nested-structure",
             root.findtext("./customstate/sentinel"),
         )
+
+    def test_fixture_preflight_rejects_every_missing_canonical_loader_field(self) -> None:
+        root = ET.parse(FIXTURE).getroot()
+        for field in driver.CANONICAL_IMPORT_FIELDS:
+            with self.subTest(field=field):
+                hostile = copy.deepcopy(root)
+                hostile.remove(hostile.find(field))
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    rf"canonical SR5 loader: <{field}>",
+                ):
+                    driver.require_canonical_import_fixture(hostile)
 
 
 if __name__ == "__main__":
