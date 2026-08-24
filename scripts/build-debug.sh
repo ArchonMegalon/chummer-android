@@ -5,6 +5,7 @@ repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 solution_path="$repo_dir/Chummer.Android.slnx"
 project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
 compile_check_path="$repo_dir/tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj"
+interaction_tests_path="$repo_dir/tests/Chummer.Android.Native.InteractionTests/Chummer.Android.Native.InteractionTests.csproj"
 compile_graph_verifier="$repo_dir/scripts/verify_native_compile_graph.py"
 dotnet_command="${CHUMMER_DOTNET:-dotnet}"
 framework="net10.0-android36.0"
@@ -54,3 +55,11 @@ python3 "$compile_graph_verifier" \
   -p:BuildInParallel=false \
   -p:ChummerDesktopRuntimeIdentifiers= \
   -p:ChummerUseLocalCompatibilityTree=true
+
+"$dotnet_command" run \
+  --project "$interaction_tests_path" \
+  --configuration Debug \
+  --no-restore \
+  --disable-build-servers \
+  -p:UseSharedCompilation=false \
+  -p:BuildInParallel=false

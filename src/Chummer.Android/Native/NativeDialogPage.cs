@@ -1,4 +1,7 @@
 using Chummer.Presentation.Overview;
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("Chummer.Android.Native.InteractionTests")]
 
 namespace Chummer.Android.Native;
 
@@ -6,15 +9,13 @@ public sealed class NativeDialogPage : ContentPage
 {
     private const string CompleteNewCharacterWorkflowActionId = "complete_new_character_workflow";
     private readonly RunnerSessionCoordinator _coordinator;
-    private readonly SemaphoreSlim _fieldUpdateGate = new(1, 1);
+    private readonly NativeDialogInteractionGate _interactionGate = new();
     private readonly List<PendingTextField> _pendingTextFields = [];
-    private bool _closing;
-    private bool _executing;
+    private DesktopDialogState? _renderedDialog;
+    private long _renderGeneration;
 
     private sealed record PendingTextField(
-        string DialogId,
-        string FieldId,
-        string InputType,
+        NativeDialogFieldBinding Binding,
         Func<string?> ReadValue);
 
     public NativeDialogPage(RunnerSessionCoordinator coordinator, DesktopDialogState dialog)
@@ -40,6 +41,8 @@ public sealed class NativeDialogPage : ContentPage
 
     private void Render(DesktopDialogState dialog)
     {
+        _renderGeneration = _interactionGate.BeginRender();
+        _renderedDialog = dialog;
         _pendingTextFields.Clear();
         VerticalStackLayout body = new()
         {
@@ -60,7 +63,7 @@ public sealed class NativeDialogPage : ContentPage
                 continue;
             }
 
-            body.Add(CreateField(dialog.Id, field));
+            body.Add(CreateField(dialog.Id, _renderGeneration, field));
         }
 
         Grid actions = new()
@@ -76,11 +79,17 @@ public sealed class NativeDialogPage : ContentPage
         int index = 0;
         foreach (DesktopDialogAction action in dialog.Actions)
         {
+            NativeDialogActionBinding binding = new(
+                _renderGeneration,
+                dialog.Id,
+                action.Id,
+                action.Label,
+                action.IsPrimary);
             Button button = action.IsPrimary
                 ? NativeTheme.PrimaryButton(action.Label)
                 : NativeTheme.SecondaryButton(action.Label);
             button.AutomationId = $"dialog-action-{Token(action.Id)}";
-            button.Clicked += async (_, _) => await ExecuteAsync(action.Id);
+            button.Clicked += async (_, _) => await ExecuteAsync(binding);
             actions.Add(button, index % 2, index / 2);
             index++;
         }
@@ -92,12 +101,13 @@ public sealed class NativeDialogPage : ContentPage
         Content = new ScrollView { Content = body };
     }
 
-    private View CreateField(string dialogId, DesktopDialogField field)
+    private View CreateField(string dialogId, long renderGeneration, DesktopDialogField field)
     {
         VerticalStackLayout fieldLayout = new() { Spacing = 7 };
         Label label = NativeTheme.Body(field.Label);
         label.FontAttributes = FontAttributes.Bold;
         fieldLayout.Add(label);
+        NativeDialogFieldBinding binding = CreateFieldBinding(dialogId, renderGeneration, field);
 
         if (string.Equals(field.InputType, "select", StringComparison.OrdinalIgnoreCase))
         {
@@ -115,13 +125,16 @@ public sealed class NativeDialogPage : ContentPage
                 TextColor = NativeTheme.Text,
                 HeightRequest = 52
             };
-            picker.SelectedIndexChanged += async (_, _) =>
+            if (!field.IsReadOnly)
             {
-                if (picker.SelectedIndex >= 0 && picker.SelectedIndex < options.Count)
+                picker.SelectedIndexChanged += async (_, _) =>
                 {
-                    await UpdateFieldAsync(field.Id, options[picker.SelectedIndex].Value);
-                }
-            };
+                    if (picker.SelectedIndex >= 0 && picker.SelectedIndex < options.Count)
+                    {
+                        await UpdateFieldAsync(binding, options[picker.SelectedIndex].Value);
+                    }
+                };
+            }
             fieldLayout.Add(picker);
             return NativeTheme.Card(fieldLayout, new Thickness(14));
         }
@@ -135,7 +148,11 @@ public sealed class NativeDialogPage : ContentPage
                 IsEnabled = !field.IsReadOnly,
                 OnColor = NativeTheme.Signal
             };
-            toggle.Toggled += async (_, args) => await UpdateFieldAsync(field.Id, args.Value ? "true" : "false");
+            if (!field.IsReadOnly)
+            {
+                toggle.Toggled += async (_, args) =>
+                    await UpdateFieldAsync(binding, args.Value ? "true" : "false");
+            }
             fieldLayout.Add(toggle);
             return NativeTheme.Card(fieldLayout, new Thickness(14));
         }
@@ -153,19 +170,12 @@ public sealed class NativeDialogPage : ContentPage
                 BackgroundColor = NativeTheme.Surface,
                 TextColor = NativeTheme.Text
             };
-            PendingTextField binding = new(
-                dialogId,
-                field.Id,
-                field.InputType,
-                () => editor.Text);
-            _pendingTextFields.Add(binding);
-            editor.Unfocused += async (_, _) =>
+            if (!field.IsReadOnly)
             {
-                if (!_executing)
-                {
-                    await UpdateFieldAsync(binding, editor.Text);
-                }
-            };
+                PendingTextField pending = new(binding, () => editor.Text);
+                _pendingTextFields.Add(pending);
+                editor.Unfocused += async (_, _) => await UpdateFieldAsync(binding, editor.Text);
+            }
             fieldLayout.Add(editor);
         }
         else
@@ -182,19 +192,12 @@ public sealed class NativeDialogPage : ContentPage
                     ? Keyboard.Numeric
                     : Keyboard.Default
             };
-            PendingTextField binding = new(
-                dialogId,
-                field.Id,
-                field.InputType,
-                () => entry.Text);
-            _pendingTextFields.Add(binding);
-            entry.Unfocused += async (_, _) =>
+            if (!field.IsReadOnly)
             {
-                if (!_executing)
-                {
-                    await UpdateFieldAsync(binding, entry.Text);
-                }
-            };
+                PendingTextField pending = new(binding, () => entry.Text);
+                _pendingTextFields.Add(pending);
+                entry.Unfocused += async (_, _) => await UpdateFieldAsync(binding, entry.Text);
+            }
             fieldLayout.Add(entry);
         }
 
@@ -204,95 +207,85 @@ public sealed class NativeDialogPage : ContentPage
     private static string Token(string value)
         => new(value.Trim().ToLowerInvariant().Select(character => char.IsLetterOrDigit(character) ? character : '-').ToArray());
 
-    private async Task UpdateFieldAsync(PendingTextField binding, string? value)
-    {
-        await _fieldUpdateGate.WaitAsync();
-        try
+    private static NativeDialogFieldBinding CreateFieldBinding(
+        string dialogId,
+        long renderGeneration,
+        DesktopDialogField field)
+        => new(
+            renderGeneration,
+            dialogId,
+            field.Id,
+            field.Label,
+            field.Placeholder,
+            field.InputType,
+            field.IsMultiline,
+            field.IsReadOnly,
+            field.LayoutSlot,
+            field.VisualKind,
+            OptionsSignature(field.Options));
+
+    private static string OptionsSignature(IReadOnlyList<DesktopDialogFieldOption>? options)
+        => string.Concat((options ?? []).Select(static option =>
+            $"{option.Value.Length}:{option.Value}{option.Label.Length}:{option.Label};"));
+
+    private Task UpdateFieldAsync(NativeDialogFieldBinding binding, string? value)
+        => _interactionGate.RunFieldUpdateAsync(binding.RenderGeneration, async () =>
         {
-            DesktopDialogState? previous = _coordinator.State.ActiveDialog;
-            if (!TryResolveActiveTextField(binding, out DesktopDialogField field)
-                || string.Equals(field.Value, value, StringComparison.Ordinal))
+            try
             {
-                return;
+                DesktopDialogState? previous = _coordinator.State.ActiveDialog;
+                if (!TryResolveActiveField(binding, out DesktopDialogField field)
+                    || string.Equals(field.Value, value, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                await _coordinator.UpdateDialogFieldAsync(binding.FieldId, value);
+                DesktopDialogState? next = _coordinator.State.ActiveDialog;
+                if (next is not null && RequiresStructuralRerender(previous, next, binding.FieldId))
+                {
+                    Title = next.Title;
+                    Render(next);
+                }
+            }
+            catch (Exception ex)
+            {
+                await HandleInteractionFailureAsync(ex);
+            }
+        });
+
+    private async Task CommitPendingTextFieldsCoreAsync()
+    {
+        PendingTextField[] pending = _pendingTextFields.ToArray();
+        foreach (PendingTextField pendingField in pending)
+        {
+            NativeDialogFieldBinding binding = pendingField.Binding;
+            if (!TryResolveActiveField(binding, out DesktopDialogField field))
+            {
+                throw new InvalidOperationException(
+                    $"Dialog field '{binding.FieldId}' changed before it could be committed.");
             }
 
-            await _coordinator.UpdateDialogFieldAsync(binding.FieldId, value);
-            DesktopDialogState? next = _coordinator.State.ActiveDialog;
-            if (next is not null && RequiresStructuralRerender(previous, next, binding.FieldId))
+            string? value = pendingField.ReadValue();
+            if (!string.Equals(field.Value, value, StringComparison.Ordinal))
             {
-                Title = next.Title;
-                Render(next);
-            }
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlertAsync("Chummer", ex.Message, "OK");
-        }
-        finally
-        {
-            _fieldUpdateGate.Release();
-        }
-    }
-
-    private async Task UpdateFieldAsync(string fieldId, string? value)
-    {
-        await _fieldUpdateGate.WaitAsync();
-        try
-        {
-            DesktopDialogState? previous = _coordinator.State.ActiveDialog;
-            await _coordinator.UpdateDialogFieldAsync(fieldId, value);
-            DesktopDialogState? next = _coordinator.State.ActiveDialog;
-            if (next is not null && RequiresStructuralRerender(previous, next, fieldId))
-            {
-                Title = next.Title;
-                Render(next);
-            }
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlertAsync("Chummer", ex.Message, "OK");
-        }
-        finally
-        {
-            _fieldUpdateGate.Release();
-        }
-    }
-
-    private async Task CommitPendingTextFieldsAsync()
-    {
-        await _fieldUpdateGate.WaitAsync();
-        try
-        {
-            PendingTextField[] pending = _pendingTextFields.ToArray();
-            foreach (PendingTextField binding in pending)
-            {
-                if (!TryResolveActiveTextField(binding, out DesktopDialogField field))
+                await _coordinator.UpdateDialogFieldAsync(binding.FieldId, value);
+                if (!TryResolveActiveField(binding, out _))
                 {
                     throw new InvalidOperationException(
-                        $"Dialog field '{binding.FieldId}' changed before it could be committed.");
-                }
-
-                string? value = binding.ReadValue();
-                if (!string.Equals(field.Value, value, StringComparison.Ordinal))
-                {
-                    await _coordinator.UpdateDialogFieldAsync(binding.FieldId, value);
+                        $"Dialog field '{binding.FieldId}' changed shape while it was committed.");
                 }
             }
         }
-        finally
-        {
-            _fieldUpdateGate.Release();
-        }
     }
 
-    private bool TryResolveActiveTextField(
-        PendingTextField binding,
+    private bool TryResolveActiveField(
+        NativeDialogFieldBinding binding,
         out DesktopDialogField field)
     {
         field = null!;
         DesktopDialogState? active = _coordinator.State.ActiveDialog;
-        if (active is null
-            || !string.Equals(active.Id, binding.DialogId, StringComparison.Ordinal))
+        if (active is null || !_interactionGate.IsCurrentRender(binding.RenderGeneration))
         {
             return false;
         }
@@ -301,14 +294,29 @@ public sealed class NativeDialogPage : ContentPage
             .Where(candidate => string.Equals(candidate.Id, binding.FieldId, StringComparison.Ordinal))
             .Take(2)
             .ToArray();
-        if (matches.Length != 1
-            || matches[0].IsReadOnly
-            || !string.Equals(matches[0].InputType, binding.InputType, StringComparison.Ordinal))
+        if (matches.Length != 1)
         {
             return false;
         }
 
-        field = matches[0];
+        DesktopDialogField candidate = matches[0];
+        if (!binding.Matches(
+                _interactionGate.CurrentRenderGeneration,
+                active.Id,
+                candidate.Id,
+                candidate.Label,
+                candidate.Placeholder,
+                candidate.InputType,
+                candidate.IsMultiline,
+                candidate.IsReadOnly,
+                candidate.LayoutSlot,
+                candidate.VisualKind,
+                OptionsSignature(candidate.Options)))
+        {
+            return false;
+        }
+
+        field = candidate;
         return true;
     }
 
@@ -362,73 +370,414 @@ public sealed class NativeDialogPage : ContentPage
         return previousOptions.SequenceEqual(nextOptions);
     }
 
-    private async Task ExecuteAsync(string actionId)
+    private static bool DialogShapeMatches(DesktopDialogState rendered, DesktopDialogState active)
     {
-        if (_executing)
+        if (!string.Equals(rendered.Id, active.Id, StringComparison.Ordinal)
+            || !string.Equals(rendered.Title, active.Title, StringComparison.Ordinal)
+            || !string.Equals(rendered.Message, active.Message, StringComparison.Ordinal)
+            || rendered.Fields.Count != active.Fields.Count
+            || rendered.Actions.Count != active.Actions.Count
+            || !rendered.Actions.SequenceEqual(active.Actions))
+        {
+            return false;
+        }
+
+        for (int index = 0; index < rendered.Fields.Count; index++)
+        {
+            DesktopDialogField renderedField = rendered.Fields[index];
+            DesktopDialogField activeField = active.Fields[index];
+            if (!string.Equals(renderedField.Id, activeField.Id, StringComparison.Ordinal)
+                || !FieldShapeMatches(renderedField, activeField))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool TryResolveActiveAction(
+        NativeDialogActionBinding binding,
+        out DesktopDialogAction action)
+    {
+        action = null!;
+        DesktopDialogState? active = _coordinator.State.ActiveDialog;
+        if (active is null
+            || _renderedDialog is null
+            || !_interactionGate.IsCurrentRender(binding.RenderGeneration)
+            || !DialogShapeMatches(_renderedDialog, active))
+        {
+            return false;
+        }
+
+        DesktopDialogAction[] matches = active.Actions
+            .Where(candidate => string.Equals(candidate.Id, binding.ActionId, StringComparison.Ordinal))
+            .Take(2)
+            .ToArray();
+        if (matches.Length != 1)
+        {
+            return false;
+        }
+
+        DesktopDialogAction candidate = matches[0];
+        if (!binding.Matches(
+                _interactionGate.CurrentRenderGeneration,
+                active.Id,
+                candidate.Id,
+                candidate.Label,
+                candidate.IsPrimary))
+        {
+            return false;
+        }
+
+        action = candidate;
+        return true;
+    }
+
+    private async Task ExecuteAsync(NativeDialogActionBinding binding)
+    {
+        if (!_interactionGate.TryClaimAction())
         {
             return;
         }
 
-        _executing = true;
+        await _interactionGate.RunClaimedActionAsync(
+            async () =>
+            {
+                await CommitPendingTextFieldsCoreAsync();
+                if (!TryResolveActiveAction(binding, out DesktopDialogAction action))
+                {
+                    throw new InvalidOperationException(
+                        $"Dialog action '{binding.ActionId}' changed before it could be executed.");
+                }
+
+                await _coordinator.ExecuteDialogActionAsync(action.Id);
+                DesktopDialogState? next = _coordinator.State.ActiveDialog;
+                if (next is null)
+                {
+                    bool routeToCreationWizard = string.Equals(
+                            action.Id,
+                            CompleteNewCharacterWorkflowActionId,
+                            StringComparison.Ordinal)
+                        && _coordinator.State.WorkspaceId is not null
+                        && _coordinator.State.Profile?.Created == false;
+                    await CloseCoreAsync(updatePresenter: false);
+                    if (routeToCreationWizard
+                        && Shell.Current is Chummer.Android.MainShell { UsesTabletComposition: false } shell)
+                    {
+                        await shell.GoToAsync("//build");
+                    }
+                }
+                else
+                {
+                    Title = next.Title;
+                    Render(next);
+                }
+            },
+            HandleInteractionFailureAsync);
+    }
+
+    private async Task HandleInteractionFailureAsync(Exception ex)
+    {
+        RerenderActiveDialogIfOpen();
+        await DisplayAlertAsync("Chummer", ex.Message, "OK");
+    }
+
+    private void RerenderActiveDialogIfOpen()
+    {
+        DesktopDialogState? active = _coordinator.State.ActiveDialog;
+        if (_interactionGate.IsClosed || active is null)
+        {
+            return;
+        }
+
+        Title = active.Title;
+        Render(active);
+    }
+
+    private Task CloseAsync(bool updatePresenter)
+        => _interactionGate.RunCloseAsync(() => CloseCoreAsync(updatePresenter));
+
+    private async Task CloseCoreAsync(bool updatePresenter)
+    {
+        if (_interactionGate.IsClosed)
+        {
+            return;
+        }
+
+        if (updatePresenter)
+        {
+            await _coordinator.CloseDialogAsync();
+        }
+        if (Navigation.ModalStack.Count > 0)
+        {
+            await Navigation.PopModalAsync();
+        }
+        _interactionGate.MarkClosed();
+        Closed?.Invoke(this, EventArgs.Empty);
+    }
+}
+
+internal sealed class NativeDialogInteractionGate
+{
+    private readonly object _sync = new();
+    private Task _tail = Task.CompletedTask;
+    private bool _actionClaimed;
+    private bool _closeRequested;
+    private bool _closed;
+    private long _renderGeneration;
+
+    public long CurrentRenderGeneration
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _renderGeneration;
+            }
+        }
+    }
+
+    public bool IsClosed
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _closed;
+            }
+        }
+    }
+
+    public long BeginRender()
+    {
+        lock (_sync)
+        {
+            if (_closed)
+            {
+                throw new InvalidOperationException("A closed dialog cannot be rendered again.");
+            }
+
+            return ++_renderGeneration;
+        }
+    }
+
+    public bool IsCurrentRender(long renderGeneration)
+    {
+        lock (_sync)
+        {
+            return !_closed && renderGeneration == _renderGeneration;
+        }
+    }
+
+    public bool TryClaimAction()
+    {
+        lock (_sync)
+        {
+            if (_closed || _closeRequested || _actionClaimed)
+            {
+                return false;
+            }
+
+            _actionClaimed = true;
+            return true;
+        }
+    }
+
+    public async Task RunClaimedActionAsync(
+        Func<Task> operation,
+        Func<Exception, Task> onFailure)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+        ArgumentNullException.ThrowIfNull(onFailure);
+        lock (_sync)
+        {
+            if (!_actionClaimed)
+            {
+                throw new InvalidOperationException("The dialog action was not claimed.");
+            }
+        }
+
         try
         {
-            await CommitPendingTextFieldsAsync();
-            await _coordinator.ExecuteDialogActionAsync(actionId);
-            DesktopDialogState? next = _coordinator.State.ActiveDialog;
-            if (next is null)
+            await EnqueueAsync(async () =>
             {
-                bool routeToCreationWizard = string.Equals(
-                        actionId,
-                        CompleteNewCharacterWorkflowActionId,
-                        StringComparison.Ordinal)
-                    && _coordinator.State.WorkspaceId is not null
-                    && _coordinator.State.Profile?.Created == false;
-                await CloseAsync(updatePresenter: false);
-                if (routeToCreationWizard
-                    && Shell.Current is Chummer.Android.MainShell { UsesTabletComposition: false } shell)
+                try
                 {
-                    await shell.GoToAsync("//build");
+                    await operation();
+                }
+                catch (Exception ex)
+                {
+                    await onFailure(ex);
+                }
+            });
+        }
+        finally
+        {
+            lock (_sync)
+            {
+                _actionClaimed = false;
+            }
+        }
+    }
+
+    public Task RunFieldUpdateAsync(long renderGeneration, Func<Task> operation)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+        return EnqueueAsync(async () =>
+        {
+            if (!IsCurrentRender(renderGeneration))
+            {
+                return;
+            }
+
+            await operation();
+        });
+    }
+
+    public Task RunCloseAsync(Func<Task> operation)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+        lock (_sync)
+        {
+            if (_closed || _closeRequested)
+            {
+                return Task.CompletedTask;
+            }
+
+            _closeRequested = true;
+        }
+
+        return RunClaimedCloseAsync(operation);
+    }
+
+    public void MarkClosed()
+    {
+        lock (_sync)
+        {
+            if (_closed)
+            {
+                return;
+            }
+
+            _closed = true;
+            _closeRequested = true;
+            _renderGeneration++;
+        }
+    }
+
+    private async Task RunClaimedCloseAsync(Func<Task> operation)
+    {
+        try
+        {
+            await EnqueueAsync(async () =>
+            {
+                if (IsClosed)
+                {
+                    return;
+                }
+
+                await operation();
+                MarkClosed();
+            });
+        }
+        finally
+        {
+            lock (_sync)
+            {
+                if (!_closed)
+                {
+                    _closeRequested = false;
                 }
             }
-            else
-            {
-                Title = next.Title;
-                Render(next);
-            }
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlertAsync("Chummer", ex.Message, "OK");
-        }
-        finally
-        {
-            _executing = false;
         }
     }
 
-    private async Task CloseAsync(bool updatePresenter)
+    private Task EnqueueAsync(Func<Task> operation)
     {
-        if (_closing)
+        Task predecessor;
+        TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        lock (_sync)
         {
-            return;
+            predecessor = _tail;
+            _tail = completion.Task;
         }
 
-        _closing = true;
+        return RunAfterAsync(predecessor, operation, completion);
+    }
+
+    private static async Task RunAfterAsync(
+        Task predecessor,
+        Func<Task> operation,
+        TaskCompletionSource completion)
+    {
         try
         {
-            if (updatePresenter)
-            {
-                await _coordinator.CloseDialogAsync();
-            }
-            if (Navigation.ModalStack.Count > 0)
-            {
-                await Navigation.PopModalAsync();
-            }
-            Closed?.Invoke(this, EventArgs.Empty);
+            await predecessor;
+            await operation();
         }
         finally
         {
-            _closing = false;
+            completion.TrySetResult();
         }
     }
+}
+
+internal sealed record NativeDialogFieldBinding(
+    long RenderGeneration,
+    string DialogId,
+    string FieldId,
+    string Label,
+    string Placeholder,
+    string InputType,
+    bool IsMultiline,
+    bool IsReadOnly,
+    string LayoutSlot,
+    string VisualKind,
+    string OptionsSignature)
+{
+    public bool Matches(
+        long currentRenderGeneration,
+        string dialogId,
+        string fieldId,
+        string label,
+        string placeholder,
+        string inputType,
+        bool isMultiline,
+        bool isReadOnly,
+        string layoutSlot,
+        string visualKind,
+        string optionsSignature)
+        => RenderGeneration == currentRenderGeneration
+            && string.Equals(DialogId, dialogId, StringComparison.Ordinal)
+            && string.Equals(FieldId, fieldId, StringComparison.Ordinal)
+            && string.Equals(Label, label, StringComparison.Ordinal)
+            && string.Equals(Placeholder, placeholder, StringComparison.Ordinal)
+            && string.Equals(InputType, inputType, StringComparison.Ordinal)
+            && IsMultiline == isMultiline
+            && IsReadOnly == isReadOnly
+            && !isReadOnly
+            && string.Equals(LayoutSlot, layoutSlot, StringComparison.Ordinal)
+            && string.Equals(VisualKind, visualKind, StringComparison.Ordinal)
+            && string.Equals(OptionsSignature, optionsSignature, StringComparison.Ordinal);
+}
+
+internal sealed record NativeDialogActionBinding(
+    long RenderGeneration,
+    string DialogId,
+    string ActionId,
+    string Label,
+    bool IsPrimary)
+{
+    public bool Matches(
+        long currentRenderGeneration,
+        string dialogId,
+        string actionId,
+        string label,
+        bool isPrimary)
+        => RenderGeneration == currentRenderGeneration
+            && string.Equals(DialogId, dialogId, StringComparison.Ordinal)
+            && string.Equals(ActionId, actionId, StringComparison.Ordinal)
+            && string.Equals(Label, label, StringComparison.Ordinal)
+            && IsPrimary == isPrimary;
 }

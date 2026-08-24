@@ -4,6 +4,7 @@ set -euo pipefail
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 project_path="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
 compile_check_path="$repo_dir/tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj"
+interaction_tests_path="$repo_dir/tests/Chummer.Android.Native.InteractionTests/Chummer.Android.Native.InteractionTests.csproj"
 dotnet_command="${CHUMMER_DOTNET:-dotnet}"
 framework="net10.0-android36.0"
 runtime_identifier="android-arm64"
@@ -18,6 +19,14 @@ python3 "$repo_dir/scripts/verify_native_compile_graph.py" \
   --repo-root "$repo_dir" \
   --project "$project_path" \
   --assets-only
+
+"$dotnet_command" run \
+  --project "$interaction_tests_path" \
+  --configuration Release \
+  --no-restore \
+  --disable-build-servers \
+  -p:UseSharedCompilation=false \
+  -p:BuildInParallel=false
 
 set +e
 "$dotnet_command" build "$project_path" \

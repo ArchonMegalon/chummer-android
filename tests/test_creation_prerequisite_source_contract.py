@@ -182,73 +182,135 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
     def test_dialog_action_atomically_flushes_pending_text_before_creation(self) -> None:
         source = (NATIVE / "NativeDialogPage.cs").read_text(encoding="utf-8")
+        gate = source[source.index("internal sealed class NativeDialogInteractionGate") :]
         render = source[
             source.index("private void Render(") : source.index(
                 "private static string Token("
             )
         ]
         commit = source[
-            source.index("private async Task CommitPendingTextFieldsAsync(") : source.index(
-                "private static bool RequiresStructuralRerender("
+            source.index("private async Task CommitPendingTextFieldsCoreAsync(") : source.index(
+                "private bool TryResolveActiveField("
             )
         ]
         execute = source[
             source.index("private async Task ExecuteAsync(") : source.index(
-                "private async Task CloseAsync("
+                "private async Task HandleInteractionFailureAsync("
+            )
+        ]
+        dialog_shape = source[
+            source.index("private static bool DialogShapeMatches(") : source.index(
+                "private bool TryResolveActiveAction("
             )
         ]
         unfocused_update = source[
-            source.index("private async Task UpdateFieldAsync(") : source.index(
-                "private async Task CommitPendingTextFieldsAsync("
+            source.index("private Task UpdateFieldAsync(") : source.index(
+                "private async Task CommitPendingTextFieldsCoreAsync("
             )
         ]
 
+        self.assertIn("_renderGeneration = _interactionGate.BeginRender();", render)
         self.assertIn("_pendingTextFields.Clear();", render)
-        self.assertEqual(2, render.count("PendingTextField binding = new("))
-        self.assertEqual(2, render.count("_pendingTextFields.Add(binding);"))
-        self.assertEqual(2, render.count("if (!_executing)"))
-        self.assertIn("() => editor.Text", render)
-        self.assertIn("() => entry.Text", render)
-        self.assertEqual(2, render.count("await UpdateFieldAsync(binding,"))
+        self.assertEqual(2, render.count("PendingTextField pending = new(binding,"))
+        self.assertEqual(2, render.count("_pendingTextFields.Add(pending);"))
+        self.assertEqual(4, render.count("await UpdateFieldAsync(binding,"))
+        self.assertIn("NativeDialogActionBinding binding = new(", render)
+        self.assertIn("await ExecuteAsync(binding)", render)
         for marker in (
-            "await _fieldUpdateGate.WaitAsync();",
             "PendingTextField[] pending = _pendingTextFields.ToArray();",
-            "foreach (PendingTextField binding in pending)",
-            "TryResolveActiveTextField(binding, out DesktopDialogField field)",
-            "DesktopDialogState? active = _coordinator.State.ActiveDialog",
-            "string.Equals(active.Id, binding.DialogId, StringComparison.Ordinal)",
-            ".Take(2)",
-            "matches.Length != 1",
-            "matches[0].IsReadOnly",
-            "string.Equals(matches[0].InputType, binding.InputType, StringComparison.Ordinal)",
+            "foreach (PendingTextField pendingField in pending)",
+            "NativeDialogFieldBinding binding = pendingField.Binding;",
+            "TryResolveActiveField(binding, out DesktopDialogField field)",
+            "string? value = pendingField.ReadValue();",
             "string.Equals(field.Value, value, StringComparison.Ordinal)",
             "await _coordinator.UpdateDialogFieldAsync(binding.FieldId, value);",
-            "_fieldUpdateGate.Release();",
+            "TryResolveActiveField(binding, out _)",
         ):
             self.assertIn(marker, commit)
-        for forbidden in ("Task.Delay", "SaveAsync(", "ExecuteDialogActionAsync"):
+        for forbidden in (
+            "Task.Delay",
+            "SaveAsync(",
+            "ExecuteDialogActionAsync",
+            "WaitAsync",
+            "Release()",
+        ):
             self.assertNotIn(forbidden, commit)
         for reordering in ("OrderBy", "Reverse", "Distinct"):
             self.assertNotIn(reordering, commit)
 
-        self.assertIn("TryResolveActiveTextField(binding", unfocused_update)
-        self.assertIn("return;", unfocused_update)
+        self.assertIn(
+            "_interactionGate.RunFieldUpdateAsync(binding.RenderGeneration",
+            unfocused_update,
+        )
+        self.assertIn("TryResolveActiveField(binding", unfocused_update)
+
+        self.assertIn("if (!_interactionGate.TryClaimAction())", execute)
+        self.assertIn("await _interactionGate.RunClaimedActionAsync(", execute)
+        self.assertIn("await CommitPendingTextFieldsCoreAsync();", execute)
+        self.assertIn("TryResolveActiveAction(binding, out DesktopDialogAction action)", execute)
+        self.assertEqual(1, execute.count("await _coordinator.ExecuteDialogActionAsync(action.Id);"))
         self.assertLess(
-            unfocused_update.index("TryResolveActiveTextField(binding"),
-            unfocused_update.index(
-                "await _coordinator.UpdateDialogFieldAsync(binding.FieldId, value);"
-            ),
+            execute.index("await CommitPendingTextFieldsCoreAsync();"),
+            execute.index("await _coordinator.ExecuteDialogActionAsync(action.Id);"),
+        )
+        for forbidden in ("Task.Delay", "SaveAsync(", "_executing"):
+            self.assertNotIn(forbidden, execute)
+
+        self.assertIn("for (int index = 0; index < rendered.Fields.Count; index++)", dialog_shape)
+        self.assertIn("DesktopDialogField activeField = active.Fields[index];", dialog_shape)
+        self.assertIn(
+            "string.Equals(renderedField.Id, activeField.Id, StringComparison.Ordinal)",
+            dialog_shape,
         )
 
-        self.assertIn("if (_executing)", execute)
-        self.assertIn("_executing = true;", execute)
-        self.assertIn("await CommitPendingTextFieldsAsync();", execute)
-        self.assertEqual(1, execute.count("await _coordinator.ExecuteDialogActionAsync(actionId);"))
-        self.assertLess(
-            execute.index("await CommitPendingTextFieldsAsync();"),
-            execute.index("await _coordinator.ExecuteDialogActionAsync(actionId);"),
+        for marker in (
+            "Task _tail = Task.CompletedTask;",
+            "TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);",
+            "predecessor = _tail;",
+            "_tail = completion.Task;",
+            "await predecessor;",
+            "if (!IsCurrentRender(renderGeneration))",
+            "if (_closed || _closeRequested || _actionClaimed)",
+            "await EnqueueAsync(async () =>",
+        ):
+            self.assertIn(marker, gate)
+        for field_shape in (
+            "RenderGeneration",
+            "IsMultiline",
+            "IsReadOnly",
+            "LayoutSlot",
+            "VisualKind",
+            "OptionsSignature",
+        ):
+            self.assertIn(field_shape, gate)
+        self.assertNotIn("Task.Delay", gate)
+
+    def test_native_dialog_hostile_runtime_harness_is_wired_into_builds(self) -> None:
+        test_root = REPO / "tests" / "Chummer.Android.Native.InteractionTests"
+        project = (test_root / "Chummer.Android.Native.InteractionTests.csproj").read_text(
+            encoding="utf-8"
         )
-        self.assertNotIn("Task.Delay", execute)
+        runtime = (test_root / "Program.cs").read_text(encoding="utf-8")
+        solution = (REPO / "Chummer.Android.slnx").read_text(encoding="utf-8")
+        debug_build = (REPO / "scripts" / "build-debug.sh").read_text(encoding="utf-8")
+        compile_build = (
+            REPO / "scripts" / "compile-native-release-no-package.sh"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("../Chummer.Android.Native.CompileCheck", project)
+        for hostile_test in (
+            "QueuedOlderUnfocusedCannotOverwriteActionInputAsync",
+            "StaleGenerationAndSameIdShapeChangesFailClosedAsync",
+            "ReadOnlyTransitionFailsClosedAsync",
+            "DoubleTapExecutesExactlyOnceAsync",
+            "CloseWaitsForClaimedActionAsync",
+            "FailureRerendersBeforeQueueAdvancesAsync",
+        ):
+            self.assertIn(hostile_test, runtime)
+        self.assertNotIn("Task.Delay", runtime)
+        self.assertIn("tests/Chummer.Android.Native.InteractionTests", solution)
+        self.assertIn('dotnet_command" run', debug_build)
+        self.assertIn('dotnet_command" run', compile_build)
 
     def test_creation_karma_navigation_precondition_remains_fail_closed(self) -> None:
         blocked = driver.shared.UiNode(

@@ -1239,11 +1239,11 @@ class AndroidContractTests(unittest.TestCase):
     def test_android_dynamic_dialog_fields_rerender_and_build_reads_metavariant(self) -> None:
         dialog = (PROJECT / "Native" / "NativeDialogPage.cs").read_text(encoding="utf-8")
         build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
-        update = dialog[dialog.index("private async Task UpdateFieldAsync") :]
-        self.assertIn("await _coordinator.UpdateDialogFieldAsync(fieldId, value)", update)
+        update = dialog[dialog.index("private Task UpdateFieldAsync") :]
+        self.assertIn("await _coordinator.UpdateDialogFieldAsync(binding.FieldId, value)", update)
         self.assertIn("DesktopDialogState? previous = _coordinator.State.ActiveDialog", update)
         self.assertIn("DesktopDialogState? next = _coordinator.State.ActiveDialog", update)
-        self.assertIn("RequiresStructuralRerender(previous, next, fieldId)", update)
+        self.assertIn("RequiresStructuralRerender(previous, next, binding.FieldId)", update)
         self.assertIn("!FieldShapeMatches(previousField, nextField)", update)
         self.assertIn("!previous.Actions.SequenceEqual(next.Actions)", update)
         self.assertIn("Render(next)", update)
