@@ -211,12 +211,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Weapon-Fire has no independent digest-bound device journey yet;
-        # this matrix makes no such proof claim.
         journey:
           - full-editing
           - creation-prerequisite
           - career-active-skill-advance
+          - career-weapon-fire
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
@@ -235,8 +234,8 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Check out the active-skill presentation evidence graph
-        if: ${{ matrix.journey == 'career-active-skill-advance' }}
+      - name: Check out the typed-mutation presentation evidence graph
+        if: ${{ matrix.journey == 'career-active-skill-advance' || matrix.journey == 'career-weapon-fire' }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-ui
@@ -245,8 +244,8 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Check out the active-skill Core evidence graph
-        if: ${{ matrix.journey == 'career-active-skill-advance' }}
+      - name: Check out the typed-mutation Core evidence graph
+        if: ${{ matrix.journey == 'career-active-skill-advance' || matrix.journey == 'career-weapon-fire' }}
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-core
@@ -328,14 +327,14 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Download the three stable journey evidence artifacts
+      - name: Download the four stable journey evidence artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: chummer-android-api36-phone-*-evidence-${{ github.run_id }}
           path: ${{ runner.temp }}/chummer-api36-journey-evidence
           merge-multiple: false
 
-      - name: Require one shared authority and exactly three passing journeys
+      - name: Require one shared authority and exactly four passing journeys
         env:
           CHUMMER_BUILD_RESULT: ${{ needs.build.result }}
           CHUMMER_MATRIX_RESULT: ${{ needs.phone-editing-e2e.result }}

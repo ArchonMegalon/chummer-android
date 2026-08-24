@@ -25,6 +25,10 @@ JOURNEYS = {
         "career-active-skill-advance",
         "chummer.android.editing-e2e/v1",
     ),
+    "career-weapon-fire": (
+        "career-weapon-fire",
+        "chummer.android.editing-e2e/v1",
+    ),
 }
 
 

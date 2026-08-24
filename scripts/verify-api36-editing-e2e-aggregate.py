@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Require exactly three API-36 phone journeys bound to one APK authority."""
+"""Require the exact API-36 phone journey set bound to one APK authority."""
 
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ JOURNEYS = {
     "full-editing": "full",
     "creation-prerequisite": "creation-prerequisite",
     "career-active-skill-advance": "career-active-skill-advance",
+    "career-weapon-fire": "career-weapon-fire",
 }
 STARTED_FIELDS = {
     "profile",
@@ -179,9 +180,9 @@ def validate_aggregate(
     expected_receipt_paths = {
         evidence_root / directory / "receipt.json" for directory in expected_directories
     }
-    if len(receipt_paths) != 3 or set(receipt_paths) != expected_receipt_paths:
+    if len(receipt_paths) != len(JOURNEYS) or set(receipt_paths) != expected_receipt_paths:
         raise ValueError(
-            "exactly three top-level named journey receipts are required; "
+            f"exactly {len(JOURNEYS)} top-level named journey receipts are required; "
             f"found={sorted(str(path) for path in receipt_paths)!r}"
         )
 
@@ -233,7 +234,7 @@ def validate_aggregate(
         "status": "pass",
         "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
         "artifactAuthority": authority,
-        "journeyCount": 3,
+        "journeyCount": len(JOURNEYS),
         "journeys": aggregate_journeys,
     }
 
@@ -298,7 +299,8 @@ def main() -> int:
     write_atomically(receipt_path, aggregate)
     print(
         "api36_phone_evidence_aggregate=pass "
-        f"journeys=3 artifact_id={args.artifact_id} apk_sha256={args.apk_sha256}"
+        f"journeys={len(JOURNEYS)} artifact_id={args.artifact_id} "
+        f"apk_sha256={args.apk_sha256}"
     )
     return 0
 
