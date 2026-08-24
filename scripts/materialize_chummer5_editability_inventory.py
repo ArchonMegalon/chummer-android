@@ -6564,6 +6564,21 @@ def _contains(path: Path, *markers: str) -> bool:
     return all(marker in text for marker in markers)
 
 
+def _career_weapon_ammo_equality_guarded(path: Path) -> bool:
+    if not path.is_file():
+        return False
+    text = _read_text(path)
+    required = (
+        "ammoGearQuantity is decimal quantity && quantity != savedAmmoRemaining",
+        "Linked Weapon ammo Gear quantity must exactly match the saved active clip count.",
+        "int ammoRemaining = savedAmmoRemaining;",
+    )
+    forbidden = ("Math.Min", "DecimalToInt32", "decimal.ToInt32")
+    return all(marker in text for marker in required) and all(
+        marker not in text for marker in forbidden
+    )
+
+
 def _android_token(value: str) -> str:
     return "".join(character if character.isalnum() else "-" for character in value.strip().lower())
 
@@ -20413,6 +20428,7 @@ def _known_phone_mapping(
                 "HasUnsupportedModeSemantics",
                 "CanDeleteAmmoGearExactly",
             )
+            and _career_weapon_ammo_equality_guarded(request)
             and _contains(
                 mutation,
                 "ApplyCareerWeaponFire",

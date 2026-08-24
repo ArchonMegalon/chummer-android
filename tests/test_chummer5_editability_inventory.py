@@ -3478,6 +3478,34 @@ namespace Chummer
             self.assertEqual("missing", row["e2e"]["tablet"]["status"])
             self.assertFalse(row["completionProven"])
 
+    def test_career_weapon_fire_materializer_rejects_truncating_ammo_projection(self) -> None:
+        exact_projection = """
+if (ammoGearQuantity is decimal quantity && quantity != savedAmmoRemaining)
+{
+    throw new InvalidOperationException(
+        "Linked Weapon ammo Gear quantity must exactly match the saved active clip count.");
+}
+int ammoRemaining = savedAmmoRemaining;
+"""
+        with tempfile.TemporaryDirectory() as temporary:
+            request = Path(temporary) / "CareerWeaponFireRequest.cs"
+            request.write_text(exact_projection, encoding="utf-8")
+            self.assertTrue(inventory._career_weapon_ammo_equality_guarded(request))
+
+            request.write_text(
+                exact_projection + "\nammoRemaining = Math.Min(ammoRemaining, 1);\n",
+                encoding="utf-8",
+            )
+            self.assertFalse(inventory._career_weapon_ammo_equality_guarded(request))
+
+            request.write_text(
+                "int ammoRemaining = ammoGearQuantity is decimal quantity "
+                "? Math.Min(savedAmmoRemaining, DecimalToInt32(quantity)) "
+                ": savedAmmoRemaining;\n",
+                encoding="utf-8",
+            )
+            self.assertFalse(inventory._career_weapon_ammo_equality_guarded(request))
+
     def test_career_manual_karma_phone_mapping_is_exact_phone_only_and_scripted(self) -> None:
         payload = json.loads(
             (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(

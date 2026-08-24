@@ -2254,6 +2254,18 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("CharacterWeaponFireIdentity Identity", request)
         self.assertIn("string ExpectedNodeRevision", request)
         self.assertIn("ExpectedContentRevision", request + presenter)
+        self.assertIn(
+            "ammoGearQuantity is decimal quantity && quantity != savedAmmoRemaining",
+            request,
+        )
+        self.assertIn(
+            "Linked Weapon ammo Gear quantity must exactly match the saved active clip count.",
+            request,
+        )
+        self.assertIn("int ammoRemaining = savedAmmoRemaining;", request)
+        self.assertNotIn("Math.Min", request)
+        self.assertNotIn("DecimalToInt32", request)
+        self.assertNotIn("decimal.ToInt32", request)
         self.assertIn("WorkspaceDocumentFormat.NativeXml", presenter)
         self.assertIn("ApplyWorkspaceXmlMutationAsync", presenter)
         self.assertIn("ApplyCareerWeaponFire", mutation)

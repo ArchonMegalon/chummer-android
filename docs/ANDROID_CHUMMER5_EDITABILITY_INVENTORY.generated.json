@@ -2024,7 +2024,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerWeaponFireRequest.cs",
         "exists": true,
-        "sha256": "3afc92a00c224989cd0e4f07b7d22996993ee463613f47fcb64b40031d7f860f"
+        "sha256": "387f65d88f099bb83cf74b7faac0cd13630f999b9a22abf9257fd902283bc874"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerManualKarmaEditRequest.cs",
@@ -2259,7 +2259,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "f96868eaf7b781549637c375cc4e75fa04e92bb077f801976a1a560dd7e2839a"
+      "sha256": "63416dfdaae82c850d3d0632f6cf08ecc534f19a8b4a61660b2465247a38e18d"
     }
   },
   "coverageByFamily": {
