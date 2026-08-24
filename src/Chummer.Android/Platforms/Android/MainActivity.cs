@@ -59,7 +59,7 @@ public sealed class MainActivity : MauiAppCompatActivity
     {
 #if DEBUG
         AndroidE2EAuthority.ConfigureForCurrentProcess(
-            Intent?.GetBooleanExtra(E2EAuthorityIntentExtra, false) == true);
+            ReadE2EAuthorityOptIn(Intent));
 #endif
         base.OnCreate(savedInstanceState);
         HandleAccountLinkIntent(Intent);
@@ -84,7 +84,7 @@ public sealed class MainActivity : MauiAppCompatActivity
         {
 #if DEBUG
             AndroidE2EAuthority.ConfigureForCurrentProcess(
-                intent.GetBooleanExtra(E2EAuthorityIntentExtra, false));
+                ReadE2EAuthorityOptIn(intent));
 #endif
             HandleAccountLinkIntent(intent);
         }
@@ -145,6 +145,16 @@ public sealed class MainActivity : MauiAppCompatActivity
         base.OnBackPressed();
 #pragma warning restore CS0612
     }
+
+#if DEBUG
+    private static bool ReadE2EAuthorityOptIn(Intent? intent)
+    {
+        // Deliberately require an Android Boolean extra (`am start --ez`). A
+        // String lookalike (`--es ... true`) must fail closed rather than
+        // enabling an instrumentation-only surface from untyped input.
+        return intent?.GetBooleanExtra(E2EAuthorityIntentExtra, false) == true;
+    }
+#endif
 
     private bool HandleBackNavigation()
     {

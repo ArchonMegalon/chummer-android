@@ -20,6 +20,13 @@ PACKAGE = "com.myexternalbrain.chummer"
 MAIN_ACTION = "android.intent.action.MAIN"
 LAUNCHER_CATEGORY = "android.intent.category.LAUNCHER"
 E2E_AUTHORITY_EXTRA = "com.myexternalbrain.chummer.extra.E2E_AUTHORITY"
+WORKSPACE_AUTHORITY_RESOURCE_IDS = (
+    "home-e2e-workspace-id",
+    "home-e2e-content-revision",
+    "home-e2e-saved-revision",
+    "home-e2e-payload-sha256",
+    "home-e2e-document-sha256",
+)
 BOUNDS = re.compile(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]")
 DISPLAY_SIZE = re.compile(r"(?:Physical|Override) size:\s*(\d+)x(\d+)")
 COMPONENT = re.compile(
@@ -252,6 +259,54 @@ class Device:
         return next(
             (node for node in matches if node.attributes.get("clickable") == "true"),
             matches[0],
+        )
+
+    def wait_for_single_exact_resource_id(
+        self,
+        selector: str,
+        *,
+        timeout: int = 45,
+        scroll: bool = False,
+        max_scrolls: int = 6,
+        scroll_distance_ratio: float = 0.52,
+    ) -> UiNode:
+        """Return exactly one accessibility node with an exact resource id.
+
+        Authority evidence must never use the driver's permissive text/prefix
+        selector. A missing node means no authority was published; duplicate
+        nodes make the rendered proof ambiguous. Both conditions fail closed.
+        """
+        deadline = time.monotonic() + timeout
+        scrolls = 0
+        while time.monotonic() < deadline:
+            matches = [
+                node
+                for node in self.hierarchy()
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == selector
+            ]
+            if len(matches) == 1:
+                return matches[0]
+            if len(matches) > 1:
+                self.capture("workspace-authority-cardinality-invalid")
+                raise RuntimeError(
+                    "Workspace authority accessibility node "
+                    f"{selector!r} has cardinality {len(matches)}; expected exactly one"
+                )
+            if self.dismiss_system_ui_anr():
+                time.sleep(2)
+                continue
+            if scroll and scrolls < max_scrolls:
+                self.swipe_up(
+                    x_ratio=self._scroll_x_ratio(selector),
+                    distance_ratio=scroll_distance_ratio,
+                )
+                scrolls += 1
+            time.sleep(0.75)
+        self.capture("workspace-authority-unavailable")
+        raise RuntimeError(
+            "Timed out waiting for exactly one workspace authority accessibility "
+            f"node {selector!r}"
         )
 
     def wait(
@@ -779,7 +834,16 @@ def validate_full_editing_fixture(path: Path) -> FullEditingFixtureContract:
 
 
 def _authority_value(device: Device, automation_id: str) -> str:
-    node = device.wait(automation_id, timeout=90, scroll=True, max_scrolls=12)
+    if automation_id not in WORKSPACE_AUTHORITY_RESOURCE_IDS:
+        raise RuntimeError(
+            f"Unknown workspace authority accessibility id {automation_id!r}"
+        )
+    node = device.wait_for_single_exact_resource_id(
+        automation_id,
+        timeout=90,
+        scroll=True,
+        max_scrolls=12,
+    )
     value = node.attributes.get("text", "").strip()
     if not value:
         device.capture("workspace-authority-empty")
@@ -1760,6 +1824,38 @@ def _start_output_matches_component(output: str, component: str) -> bool:
     return statuses == ["ok"] and activities == [component]
 
 
+def workspace_authority_start_arguments(component: str) -> tuple[str, ...]:
+    """Build the only supported runtime authority opt-in intent.
+
+    Android's ``--es`` creates a String extra. MainActivity intentionally reads
+    a Boolean extra and therefore rejects that lookalike. Keeping ``--ez`` in
+    one reusable builder prevents read-only continuations from silently
+    disabling the fail-closed authority surface.
+    """
+    normalized = normalize_component(component)
+    if normalized != component:
+        raise RuntimeError(
+            f"Workspace authority launch component is not canonical: {component!r}"
+        )
+    return (
+        "shell",
+        "am",
+        "start",
+        "--user",
+        "current",
+        "-W",
+        "-a",
+        MAIN_ACTION,
+        "-c",
+        LAUNCHER_CATEGORY,
+        "--ez",
+        E2E_AUTHORITY_EXTRA,
+        "true",
+        "-n",
+        component,
+    )
+
+
 def _wait_for_resumed_component(
     device: Device,
     component: str,
@@ -1793,21 +1889,7 @@ def launch_app(device: Device, attempts: int = 3, resume_timeout: float = 20) ->
             # combining that stop with this start via `-S` can return Status: ok and
             # LaunchState: UNKNOWN without ever scheduling the package process.
             start_result = device.run(
-                "shell",
-                "am",
-                "start",
-                "--user",
-                "current",
-                "-W",
-                "-a",
-                MAIN_ACTION,
-                "-c",
-                LAUNCHER_CATEGORY,
-                "--ez",
-                E2E_AUTHORITY_EXTRA,
-                "true",
-                "-n",
-                component,
+                *workspace_authority_start_arguments(component),
                 timeout=60,
                 check=False,
             )

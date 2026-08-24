@@ -156,6 +156,29 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         )
         self.assertNotIn("-S", device.run.call_args_list[1].args)
 
+    def test_workspace_authority_opt_in_is_one_typed_boolean_extra(self) -> None:
+        component = "com.myexternalbrain.chummer/crccurrent.MainActivity"
+        arguments = DRIVER.workspace_authority_start_arguments(component)
+
+        self.assertEqual(1, arguments.count("--ez"))
+        self.assertNotIn("--es", arguments)
+        self.assertEqual(1, arguments.count(DRIVER.E2E_AUTHORITY_EXTRA))
+        extra_index = arguments.index("--ez")
+        self.assertEqual(
+            (
+                "--ez",
+                DRIVER.E2E_AUTHORITY_EXTRA,
+                "true",
+            ),
+            arguments[extra_index : extra_index + 3],
+        )
+        self.assertEqual(("-n", component), arguments[-2:])
+
+        with self.assertRaisesRegex(RuntimeError, "not canonical"):
+            DRIVER.workspace_authority_start_arguments(
+                "com.myexternalbrain.chummer/.MainActivity"
+            )
+
     def test_launch_app_accepts_am_wait_timeout_only_with_exact_process_and_resume(self) -> None:
         component = "com.myexternalbrain.chummer/crccurrent.MainActivity"
         timeout = subprocess.TimeoutExpired(
@@ -1161,6 +1184,69 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 DRIVER.read_workspace_authority(device)
         device.capture.assert_called_with("workspace-authority-surface-changed")
 
+    def test_workspace_authority_accessibility_requires_exact_resource_and_cardinality(self) -> None:
+        selector = DRIVER.WORKSPACE_AUTHORITY_RESOURCE_IDS[0]
+        exact = DRIVER.UiNode(
+            {
+                "resource-id": f"com.myexternalbrain.chummer:id/{selector}",
+                "text": "workspace-1",
+            }
+        )
+        prefix_lookalike = DRIVER.UiNode(
+            {
+                "resource-id": f"com.myexternalbrain.chummer:id/{selector}-lookalike",
+                "text": "workspace-2",
+            }
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                Path(temporary),
+            )
+            device.hierarchy = Mock(return_value=[prefix_lookalike, exact])
+            device.capture = Mock()
+            device.dismiss_system_ui_anr = Mock(return_value=False)
+
+            self.assertIs(
+                exact,
+                device.wait_for_single_exact_resource_id(selector, timeout=1),
+            )
+            device.capture.assert_not_called()
+
+            device.hierarchy = Mock(return_value=[exact, exact])
+            with self.assertRaisesRegex(RuntimeError, "cardinality 2"):
+                device.wait_for_single_exact_resource_id(selector, timeout=1)
+            device.capture.assert_called_once_with(
+                "workspace-authority-cardinality-invalid"
+            )
+
+    def test_missing_workspace_authority_accessibility_fails_closed(self) -> None:
+        selector = DRIVER.WORKSPACE_AUTHORITY_RESOURCE_IDS[0]
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                Path(temporary),
+            )
+            device.hierarchy = Mock(return_value=[])
+            device.capture = Mock()
+            device.dismiss_system_ui_anr = Mock(return_value=False)
+
+            with self.assertRaisesRegex(RuntimeError, "exactly one"):
+                device.wait_for_single_exact_resource_id(selector, timeout=0)
+            device.capture.assert_called_once_with("workspace-authority-unavailable")
+
+        authority_device = Mock(spec=DRIVER.Device)
+        authority_device.wait_for_single_exact_resource_id.side_effect = RuntimeError(
+            "authority unavailable"
+        )
+        with self.assertRaisesRegex(RuntimeError, "authority unavailable"):
+            DRIVER._authority_value(authority_device, selector)
+
+        with self.assertRaisesRegex(RuntimeError, "Unknown workspace authority"):
+            DRIVER._authority_value(authority_device, f"{selector}-lookalike")
+
     def test_workspace_authority_is_runtime_opt_in_and_epoch_bound(self) -> None:
         coordinator = (
             REPO_ROOT
@@ -1212,11 +1298,25 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertIn("#if DEBUG\n        AddDebugWorkspaceAuthority();", home)
         debug_surface = home[home.index("private void AddDebugWorkspaceAuthority") :]
         debug_surface = debug_surface[: debug_surface.index("private void AddOnlineSection")]
+        self.assertIn(
+            "if (Coordinator.DebugWorkspaceAuthority is not { } authority)\n"
+            "        {\n"
+            "            return;",
+            debug_surface,
+        )
+        for resource_id in DRIVER.WORKSPACE_AUTHORITY_RESOURCE_IDS:
+            self.assertEqual(
+                1,
+                debug_surface.count(f'"{resource_id}"'),
+                resource_id,
+            )
         self.assertNotIn("ContentUri", debug_surface)
         self.assertNotIn("document.Content", debug_surface)
         self.assertNotIn(".Alias", debug_surface)
         self.assertIn("#if DEBUG", activity)
         self.assertIn(DRIVER.E2E_AUTHORITY_EXTRA, activity)
+        self.assertIn("GetBooleanExtra(E2EAuthorityIntentExtra, false)", activity)
+        self.assertNotIn("GetStringExtra(E2EAuthorityIntentExtra)", activity)
 
     def test_proof_refresh_failure_cannot_create_a_false_open_notice_or_locator(self) -> None:
         source = (
