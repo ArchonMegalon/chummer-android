@@ -38,6 +38,12 @@ jobs:
     name: Build x64 native APK
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    outputs:
+      apk-artifact-id: ${{ steps.upload-apk.outputs.artifact-id }}
+      apk-artifact-digest: ${{ steps.upload-apk.outputs.artifact-digest }}
+      apk-artifact-name: ${{ steps.apk.outputs.artifact-name }}
+      apk-artifact-attempt: ${{ steps.apk.outputs.artifact-attempt }}
+      apk-sha256: ${{ steps.apk.outputs.apk-sha256 }}
     steps:
       - name: Check out the Android candidate
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -164,9 +170,17 @@ jobs:
             "$RUNNER_TEMP/chummer-android-apk/chummer-android-x64-debug.apk"
           (
             cd "$RUNNER_TEMP/chummer-android-apk"
-            sha256sum chummer-android-x64-debug.apk \
+            apk_sha256="$(sha256sum chummer-android-x64-debug.apk | cut -d ' ' -f 1)"
+            printf '%s  %s\n' \
+              "$apk_sha256" \
+              chummer-android-x64-debug.apk \
               >chummer-android-x64-debug.apk.sha256
             sha256sum --check chummer-android-x64-debug.apk.sha256
+            {
+              echo "apk-sha256=$apk_sha256"
+              echo "artifact-name=chummer-android-api36-x64-debug-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+              echo "artifact-attempt=${GITHUB_RUN_ATTEMPT}"
+            } >>"$GITHUB_OUTPUT"
           )
 
       - name: Verify canonical content in the exact signed APK
@@ -179,9 +193,10 @@ jobs:
           --check
 
       - name: Upload the exact APK under test
+        id: upload-apk
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: chummer-android-api36-x64-debug-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ steps.apk.outputs.artifact-name }}
           path: ${{ runner.temp }}/chummer-android-apk
           if-no-files-found: error
           retention-days: 14
@@ -207,6 +222,11 @@ jobs:
     env:
       CHUMMER_E2E_PROFILE: phone
       CHUMMER_E2E_JOURNEY: ${{ matrix.journey }}
+      CHUMMER_E2E_APK_ARTIFACT_ID: ${{ needs.build.outputs.apk-artifact-id }}
+      CHUMMER_E2E_APK_ARTIFACT_DIGEST: ${{ needs.build.outputs.apk-artifact-digest }}
+      CHUMMER_E2E_APK_ARTIFACT_NAME: ${{ needs.build.outputs.apk-artifact-name }}
+      CHUMMER_E2E_APK_ARTIFACT_ATTEMPT: ${{ needs.build.outputs.apk-artifact-attempt }}
+      CHUMMER_E2E_APK_SHA256: ${{ needs.build.outputs.apk-sha256 }}
     steps:
       - name: Check out the exact E2E driver
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -235,103 +255,27 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Resolve the authoritative APK artifact
-        id: authoritative-apk
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-
-          artifact_prefix="chummer-android-api36-x64-debug-${GITHUB_RUN_ID}-"
-          artifacts_json="$RUNNER_TEMP/chummer-android-run-artifacts.json"
-          jobs_json="$RUNNER_TEMP/chummer-android-run-jobs.json"
-
-          gh api \
-            "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts?per_page=100" \
-            >"$artifacts_json"
-          gh api \
-            "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs?filter=all&per_page=100" \
-            >"$jobs_json"
-
-          artifact_total="$(jq -r '.total_count' "$artifacts_json")"
-          job_total="$(jq -r '.total_count' "$jobs_json")"
-          if (( artifact_total > 100 || job_total > 100 )); then
-            echo "APK authority error: the run exceeds the bounded 100-item artifact/job query." >&2
-            exit 1
-          fi
-
-          selected_attempt=0
-          selected_id=""
-          selected_name=""
-          while IFS=$'\t' read -r artifact_id artifact_name; do
-            artifact_attempt="${artifact_name#"$artifact_prefix"}"
-            if [[ ! "$artifact_attempt" =~ ^[1-9][0-9]*$ ]]; then
-              echo "APK authority error: malformed candidate artifact '$artifact_name'." >&2
-              exit 1
-            fi
-            if (( artifact_attempt > GITHUB_RUN_ATTEMPT )); then
-              echo "APK authority error: artifact '$artifact_name' comes from a future attempt." >&2
-              exit 1
-            fi
-
-            successful_builds="$(
-              jq \
-                --argjson attempt "$artifact_attempt" \
-                '[.jobs[] | select(
-                  .name == "Build x64 native APK"
-                  and .run_attempt == $attempt
-                  and .status == "completed"
-                  and .conclusion == "success"
-                )] | length' \
-                "$jobs_json"
-            )"
-            if (( successful_builds != 1 )); then
-              echo "APK authority error: '$artifact_name' is not bound to exactly one successful build job." >&2
-              exit 1
-            fi
-
-            if (( artifact_attempt > selected_attempt )); then
-              selected_attempt="$artifact_attempt"
-              selected_id="$artifact_id"
-              selected_name="$artifact_name"
-            elif (( artifact_attempt == selected_attempt )); then
-              echo "APK authority error: duplicate artifacts exist for build attempt $artifact_attempt." >&2
-              exit 1
-            fi
-          done < <(
-            jq -r \
-              --arg prefix "$artifact_prefix" \
-              '.artifacts[]
-               | select(.expired == false and .size_in_bytes > 0)
-               | select(.name | startswith($prefix))
-               | [.id, .name]
-               | @tsv' \
-              "$artifacts_json"
-          )
-
-          if [[ -z "$selected_id" ]]; then
-            echo "APK authority error: no non-expired APK artifact from a successful build attempt exists in run $GITHUB_RUN_ID." >&2
-            exit 1
-          fi
-
-          {
-            echo "artifact-id=$selected_id"
-            echo "artifact-name=$selected_name"
-            echo "artifact-attempt=$selected_attempt"
-          } >>"$GITHUB_OUTPUT"
-          echo "Resolved authoritative APK artifact '$selected_name' (id $selected_id) from build attempt $selected_attempt."
-
       - name: Download the exact APK under test
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          artifact-ids: ${{ steps.authoritative-apk.outputs.artifact-id }}
+          artifact-ids: ${{ needs.build.outputs.apk-artifact-id }}
           path: ${{ runner.temp }}/chummer-android-apk
           merge-multiple: true
 
-      - name: Verify the portable downloaded APK seal
+      - name: Verify the shared portable APK authority
         working-directory: ${{ runner.temp }}/chummer-android-apk
-        run: sha256sum --check chummer-android-x64-debug.apk.sha256
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$CHUMMER_E2E_APK_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$CHUMMER_E2E_APK_ARTIFACT_DIGEST" =~ ^(sha256:)?[0-9a-f]{64}$ ]]
+          [[ "$CHUMMER_E2E_APK_ARTIFACT_ATTEMPT" =~ ^[1-9][0-9]*$ ]]
+          [[ "$CHUMMER_E2E_APK_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          test "$CHUMMER_E2E_APK_ARTIFACT_NAME" = \
+            "chummer-android-api36-x64-debug-${GITHUB_RUN_ID}-${CHUMMER_E2E_APK_ARTIFACT_ATTEMPT}"
+          sha256sum --check chummer-android-x64-debug.apk.sha256
+          actual_sha256="$(sha256sum chummer-android-x64-debug.apk | cut -d ' ' -f 1)"
+          test "$actual_sha256" = "$CHUMMER_E2E_APK_SHA256"
 
       - name: Enable KVM for the disposable emulator
         shell: bash
@@ -358,9 +302,67 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: chummer-android-api36-phone-${{ matrix.journey }}-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          name: chummer-android-api36-phone-${{ matrix.journey }}-evidence-${{ github.run_id }}
           path: ${{ runner.temp }}/chummer-api36-evidence/phone/${{ matrix.journey }}
           if-no-files-found: warn
+          retention-days: 30
+          compression-level: 0
+          # Stable per-journey names make rerun-failed replace only that journey.
+          # A failed rerun cannot leave an earlier passing receipt authoritative.
+          overwrite: true
+          include-hidden-files: false
+
+  phone-evidence-aggregate:
+    name: Aggregate exact API 36 phone evidence
+    needs:
+      - build
+      - phone-editing-e2e
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out the exact aggregate verifier
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: chummer-android
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Download the three stable journey evidence artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: chummer-android-api36-phone-*-evidence-${{ github.run_id }}
+          path: ${{ runner.temp }}/chummer-api36-journey-evidence
+          merge-multiple: false
+
+      - name: Require one shared authority and exactly three passing journeys
+        env:
+          CHUMMER_BUILD_RESULT: ${{ needs.build.result }}
+          CHUMMER_MATRIX_RESULT: ${{ needs.phone-editing-e2e.result }}
+          CHUMMER_E2E_APK_ARTIFACT_ID: ${{ needs.build.outputs.apk-artifact-id }}
+          CHUMMER_E2E_APK_ARTIFACT_DIGEST: ${{ needs.build.outputs.apk-artifact-digest }}
+          CHUMMER_E2E_APK_ARTIFACT_NAME: ${{ needs.build.outputs.apk-artifact-name }}
+          CHUMMER_E2E_APK_ARTIFACT_ATTEMPT: ${{ needs.build.outputs.apk-artifact-attempt }}
+          CHUMMER_E2E_APK_SHA256: ${{ needs.build.outputs.apk-sha256 }}
+        run: >-
+          python3 chummer-android/scripts/verify-api36-editing-e2e-aggregate.py
+          --evidence-root "${{ runner.temp }}/chummer-api36-journey-evidence"
+          --receipt "${{ runner.temp }}/chummer-api36-aggregate/receipt.json"
+          --run-id "${{ github.run_id }}"
+          --build-result "$CHUMMER_BUILD_RESULT"
+          --matrix-result "$CHUMMER_MATRIX_RESULT"
+          --artifact-id "$CHUMMER_E2E_APK_ARTIFACT_ID"
+          --artifact-digest "$CHUMMER_E2E_APK_ARTIFACT_DIGEST"
+          --artifact-name "$CHUMMER_E2E_APK_ARTIFACT_NAME"
+          --artifact-attempt "$CHUMMER_E2E_APK_ARTIFACT_ATTEMPT"
+          --apk-sha256 "$CHUMMER_E2E_APK_SHA256"
+
+      - name: Upload the aggregate phone authority receipt
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: chummer-android-api36-phone-aggregate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/chummer-api36-aggregate/receipt.json
+          if-no-files-found: error
           retention-days: 30
           compression-level: 0
           overwrite: false

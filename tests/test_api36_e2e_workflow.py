@@ -52,9 +52,12 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         seal = self.text[seal_start:seal_end]
         self.assertIn('cd "$RUNNER_TEMP/chummer-android-apk"', seal)
         self.assertIn(
-            "sha256sum chummer-android-x64-debug.apk \\\n              >chummer-android-x64-debug.apk.sha256",
+            'apk_sha256="$(sha256sum chummer-android-x64-debug.apk | cut -d \' \' -f 1)"',
             seal,
         )
+        self.assertIn('echo "apk-sha256=$apk_sha256"', seal)
+        self.assertIn("artifact-name=chummer-android-api36-x64-debug-", seal)
+        self.assertIn('echo "artifact-attempt=${GITHUB_RUN_ATTEMPT}"', seal)
         self.assertIn(
             "sha256sum --check chummer-android-x64-debug.apk.sha256",
             seal,
@@ -145,6 +148,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertEqual(1, runner.count("tests/run_api36_editing_e2e.py"))
         self.assertIn("--serial emulator-5554", runner)
         self.assertIn('--profile "$profile"', runner)
+        self.assertIn("--journey full", runner)
         self.assertIn('--receipt "$evidence_root/receipt.json"', runner)
         self.assertNotIn('--journey contact-pet', runner)
         self.assertNotIn("contact_pet_root", runner)
@@ -177,6 +181,17 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             'evidence_root="$RUNNER_TEMP/chummer-api36-evidence/$profile/$journey"',
             runner,
         )
+        for authority_field in (
+            "CHUMMER_E2E_APK_ARTIFACT_ID",
+            "CHUMMER_E2E_APK_ARTIFACT_DIGEST",
+            "CHUMMER_E2E_APK_ARTIFACT_NAME",
+            "CHUMMER_E2E_APK_ARTIFACT_ATTEMPT",
+            "CHUMMER_E2E_APK_SHA256",
+        ):
+            with self.subTest(authority_field=authority_field):
+                self.assertIn(authority_field, runner)
+        self.assertIn("finalize-api36-e2e-journey-receipt.py", runner)
+        self.assertIn("sha256sum receipt.json >receipt.json.sha256", runner)
         for journey, driver in journeys:
             with self.subTest(journey=journey):
                 self.assertIn(f"  {journey})", runner)
@@ -210,49 +225,85 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             runner.index('case "$journey" in', runner.index('case "$journey" in') + 1),
         )
 
-    def test_downloaded_artifact_verifies_the_portable_apk_seal_before_emulation(self) -> None:
-        resolve = self.text.index("Resolve the authoritative APK artifact")
+    def test_matrix_consumes_single_build_job_artifact_authority(self) -> None:
+        upload = self.text.index("Upload the exact APK under test")
         download = self.text.index("Download the exact APK under test")
-        verify = self.text.index("Verify the portable downloaded APK seal")
+        verify = self.text.index("Verify the shared portable APK authority")
         emulator = self.text.index("Enable KVM for the disposable emulator")
 
-        self.assertLess(resolve, download)
+        self.assertLess(upload, download)
         self.assertLess(download, verify)
         self.assertLess(verify, emulator)
-        resolve_block = self.text[resolve:download]
-        self.assertIn("actions: read", self.text)
-        self.assertIn("GH_TOKEN: ${{ github.token }}", resolve_block)
-        self.assertIn(
-            "actions/runs/${GITHUB_RUN_ID}/artifacts?per_page=100",
-            resolve_block,
-        )
-        self.assertIn(
-            "actions/runs/${GITHUB_RUN_ID}/jobs?filter=all&per_page=100",
-            resolve_block,
-        )
-        self.assertIn('.name == "Build x64 native APK"', resolve_block)
-        self.assertIn('.run_attempt == $attempt', resolve_block)
-        self.assertIn('.conclusion == "success"', resolve_block)
-        self.assertIn("artifact_attempt > GITHUB_RUN_ATTEMPT", resolve_block)
-        self.assertIn("successful_builds != 1", resolve_block)
-        self.assertIn("duplicate artifacts exist", resolve_block)
-        self.assertIn("no non-expired APK artifact", resolve_block)
+        build_block = self.text[
+            self.text.index("  build:"):self.text.index("  phone-editing-e2e:")
+        ]
+        self.assertIn("id: upload-apk", build_block)
+        for output in (
+            "apk-artifact-id: ${{ steps.upload-apk.outputs.artifact-id }}",
+            "apk-artifact-digest: ${{ steps.upload-apk.outputs.artifact-digest }}",
+            "apk-artifact-name: ${{ steps.apk.outputs.artifact-name }}",
+            "apk-artifact-attempt: ${{ steps.apk.outputs.artifact-attempt }}",
+            "apk-sha256: ${{ steps.apk.outputs.apk-sha256 }}",
+        ):
+            with self.subTest(output=output):
+                self.assertIn(output, build_block)
+        phone_block = self.text[
+            self.text.index("  phone-editing-e2e:"):
+            self.text.index("  phone-evidence-aggregate:")
+        ]
+        self.assertNotIn("gh api", phone_block)
+        self.assertNotIn("/artifacts?", phone_block)
+        self.assertNotIn("/jobs?", phone_block)
         download_block = self.text[download:verify]
         self.assertIn(
-            "artifact-ids: ${{ steps.authoritative-apk.outputs.artifact-id }}",
+            "artifact-ids: ${{ needs.build.outputs.apk-artifact-id }}",
             download_block,
         )
         self.assertIn("merge-multiple: true", download_block)
-        self.assertNotIn("github.run_attempt", download_block)
+        self.assertNotIn("pattern:", download_block)
+        self.assertNotIn("\n          name:", download_block)
         verify_block = self.text[verify:emulator]
         self.assertIn(
             "working-directory: ${{ runner.temp }}/chummer-android-apk",
             verify_block,
         )
         self.assertIn(
-            "run: sha256sum --check chummer-android-x64-debug.apk.sha256",
+            'test "$actual_sha256" = "$CHUMMER_E2E_APK_SHA256"',
             verify_block,
         )
+
+    def test_aggregate_requires_three_stable_authority_bound_receipts(self) -> None:
+        aggregate = self.text[self.text.index("  phone-evidence-aggregate:"):]
+        self.assertIn("needs:\n      - build\n      - phone-editing-e2e", aggregate)
+        self.assertIn("if: ${{ always() }}", aggregate)
+        self.assertIn(
+            "pattern: chummer-android-api36-phone-*-evidence-"
+            "${{ github.run_id }}",
+            aggregate,
+        )
+        self.assertIn("merge-multiple: false", aggregate)
+        self.assertIn("verify-api36-editing-e2e-aggregate.py", aggregate)
+        for authority_output in (
+            "needs.build.outputs.apk-artifact-id",
+            "needs.build.outputs.apk-artifact-digest",
+            "needs.build.outputs.apk-artifact-name",
+            "needs.build.outputs.apk-artifact-attempt",
+            "needs.build.outputs.apk-sha256",
+        ):
+            with self.subTest(authority_output=authority_output):
+                self.assertIn(authority_output, aggregate)
+        matrix = self.text[
+            self.text.index("  phone-editing-e2e:"):
+            self.text.index("  phone-evidence-aggregate:")
+        ]
+        self.assertIn(
+            "chummer-android-api36-phone-"
+            "${{ matrix.journey }}-evidence-"
+            "${{ github.run_id }}",
+            matrix,
+        )
+        self.assertIn("overwrite: true", matrix)
+        self.assertNotIn("github.run_attempt }}", matrix)
 
     def test_actions_are_commit_pinned_and_evidence_survives_failure(self) -> None:
         self.assertNotIn("uses: actions/checkout@v", self.text)
