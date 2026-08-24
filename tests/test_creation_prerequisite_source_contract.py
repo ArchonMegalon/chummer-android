@@ -115,6 +115,26 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ),
             calls,
         )
+        setting_index = calls.index(
+            (
+                "set_text",
+                driver.PRIORITY_SETTINGS_SELECTION,
+                {
+                    "scroll": True,
+                    "max_scrolls": 16,
+                    "scroll_distance_ratio": 0.22,
+                },
+            )
+        )
+        self.assertEqual(
+            (
+                "tap",
+                ("dialog-action-create-character",),
+                {"scroll": True, "max_scrolls": 16},
+            ),
+            calls[setting_index + 1],
+            "The phone proof must exercise the action boundary without an artificial blur.",
+        )
         route_index = calls.index(
             (
                 "open_creation_dashboard",
@@ -159,6 +179,76 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertLess(saved_index, home_index)
         self.assertLess(home_index, authority_surface_index)
         self.assertNotIn(("wait", ("Continue building",), {"timeout": 120}), calls)
+
+    def test_dialog_action_atomically_flushes_pending_text_before_creation(self) -> None:
+        source = (NATIVE / "NativeDialogPage.cs").read_text(encoding="utf-8")
+        render = source[
+            source.index("private void Render(") : source.index(
+                "private static string Token("
+            )
+        ]
+        commit = source[
+            source.index("private async Task CommitPendingTextFieldsAsync(") : source.index(
+                "private static bool RequiresStructuralRerender("
+            )
+        ]
+        execute = source[
+            source.index("private async Task ExecuteAsync(") : source.index(
+                "private async Task CloseAsync("
+            )
+        ]
+        unfocused_update = source[
+            source.index("private async Task UpdateFieldAsync(") : source.index(
+                "private async Task CommitPendingTextFieldsAsync("
+            )
+        ]
+
+        self.assertIn("_pendingTextFields.Clear();", render)
+        self.assertEqual(2, render.count("PendingTextField binding = new("))
+        self.assertEqual(2, render.count("_pendingTextFields.Add(binding);"))
+        self.assertEqual(2, render.count("if (!_executing)"))
+        self.assertIn("() => editor.Text", render)
+        self.assertIn("() => entry.Text", render)
+        self.assertEqual(2, render.count("await UpdateFieldAsync(binding,"))
+        for marker in (
+            "await _fieldUpdateGate.WaitAsync();",
+            "PendingTextField[] pending = _pendingTextFields.ToArray();",
+            "foreach (PendingTextField binding in pending)",
+            "TryResolveActiveTextField(binding, out DesktopDialogField field)",
+            "DesktopDialogState? active = _coordinator.State.ActiveDialog",
+            "string.Equals(active.Id, binding.DialogId, StringComparison.Ordinal)",
+            ".Take(2)",
+            "matches.Length != 1",
+            "matches[0].IsReadOnly",
+            "string.Equals(matches[0].InputType, binding.InputType, StringComparison.Ordinal)",
+            "string.Equals(field.Value, value, StringComparison.Ordinal)",
+            "await _coordinator.UpdateDialogFieldAsync(binding.FieldId, value);",
+            "_fieldUpdateGate.Release();",
+        ):
+            self.assertIn(marker, commit)
+        for forbidden in ("Task.Delay", "SaveAsync(", "ExecuteDialogActionAsync"):
+            self.assertNotIn(forbidden, commit)
+        for reordering in ("OrderBy", "Reverse", "Distinct"):
+            self.assertNotIn(reordering, commit)
+
+        self.assertIn("TryResolveActiveTextField(binding", unfocused_update)
+        self.assertIn("return;", unfocused_update)
+        self.assertLess(
+            unfocused_update.index("TryResolveActiveTextField(binding"),
+            unfocused_update.index(
+                "await _coordinator.UpdateDialogFieldAsync(binding.FieldId, value);"
+            ),
+        )
+
+        self.assertIn("if (_executing)", execute)
+        self.assertIn("_executing = true;", execute)
+        self.assertIn("await CommitPendingTextFieldsAsync();", execute)
+        self.assertEqual(1, execute.count("await _coordinator.ExecuteDialogActionAsync(actionId);"))
+        self.assertLess(
+            execute.index("await CommitPendingTextFieldsAsync();"),
+            execute.index("await _coordinator.ExecuteDialogActionAsync(actionId);"),
+        )
+        self.assertNotIn("Task.Delay", execute)
 
     def test_creation_karma_navigation_precondition_remains_fail_closed(self) -> None:
         blocked = driver.shared.UiNode(
