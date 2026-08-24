@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-ui
-          ref: 967d602043e4de999ce2dc69e214bc9e51a03d42
+          ref: e906ec909d337b7a907ba7ae8c526c3aad89a1e3
           path: chummer-presentation
           persist-credentials: false
           fetch-depth: 1
@@ -59,7 +59,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-core
-          ref: 8cf2e1632ad9a221eabdc75b1cbd8adf872582ab
+          ref: e9874a31d8d25b98dd196dd629c423e9a9c39297
           path: chummer-core-engine
           persist-credentials: false
           fetch-depth: 1
@@ -68,7 +68,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-hub
-          ref: 20150e9e5ff9b750693f2ecf7e012c29efa1de50
+          ref: d29a880f624ec94aabedd0c2901ae8fed2f93ed4
           path: chummer.run-services
           persist-credentials: false
           fetch-depth: 1
@@ -77,7 +77,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-hub-registry
-          ref: 7b54afec574a9327616c4ad7566da3a7b6b906a5
+          ref: af9a7e19c3bf331e96411dfb8f9e7820a98cab29
           path: chummer-hub-registry
           persist-credentials: false
           fetch-depth: 1

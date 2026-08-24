@@ -584,7 +584,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "157da79b96a42226535c1f1c633f3a2d779a86e02ca661885b4e528033849051"
+        "sha256": "0b42e67d6c82fe2c7cae392f7b63b47de6ec905775e41e1c72654510ed3a46ba"
       },
       {
         "path": "tests/run_api36_gear_attack_swap_e2e.py",
@@ -1934,7 +1934,7 @@
       {
         "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "60022ccc36396a79950cb9cf319388419f636d77b91876786801f39a796ba4a5"
+        "sha256": "73b489cda7fbd60f4adecc29066ff3a956d201bebc931b192ac12acff73dd56f"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
@@ -1954,7 +1954,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "91c93769679796cfb4e1317a3fa50cfc82b62c2351780def66fbd530c28c220a"
+        "sha256": "9ae5d94c6fcb18c32f8aca1f35944123dc08202cd0f6f65ec452634a3cc7e0de"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -1974,7 +1974,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "e3e2dbb42c0ce5841b498168856a065d1186485a889b7be8c6849733179c19e2"
+        "sha256": "754bc553662f6ce093cf8a5f1dbf45d894c7fce0710c086a25d702a366a0b372"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -2194,7 +2194,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "ea274e666ba9cd8262d4512a6aea566b7e9b4165d695d95b9d326412098a92c9"
+        "sha256": "672f000233d6b907766ede4a0e1b42cb7096147de3047b3a4461eff4827d717a"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2249,7 +2249,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "420bbb273e4d51be1e087671c75e5be07f91e9e0ddf0832375383cc036a49e39"
+        "sha256": "9cd7cc122cab022991334c71e6768ef5364ee12ead79e04bcd3888e77cb08344"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
