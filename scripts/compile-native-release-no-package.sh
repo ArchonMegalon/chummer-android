@@ -20,13 +20,22 @@ python3 "$repo_dir/scripts/verify_native_compile_graph.py" \
   --project "$project_path" \
   --assets-only
 
+"$dotnet_command" build "$interaction_tests_path" \
+  --configuration Release \
+  --no-restore \
+  -m:1 \
+  --disable-build-servers \
+  -p:UseSharedCompilation=false \
+  -p:BuildInParallel=false \
+  -p:ChummerDesktopRuntimeIdentifiers= \
+  -p:ChummerUseLocalCompatibilityTree=true
+
 "$dotnet_command" run \
   --project "$interaction_tests_path" \
   --configuration Release \
+  --no-build \
   --no-restore \
-  --disable-build-servers \
-  -p:UseSharedCompilation=false \
-  -p:BuildInParallel=false
+  --disable-build-servers
 
 set +e
 "$dotnet_command" build "$project_path" \

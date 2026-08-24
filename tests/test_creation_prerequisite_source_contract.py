@@ -309,8 +309,22 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.assertIn(hostile_test, runtime)
         self.assertNotIn("Task.Delay", runtime)
         self.assertIn("tests/Chummer.Android.Native.InteractionTests", solution)
-        self.assertIn('dotnet_command" run', debug_build)
-        self.assertIn('dotnet_command" run', compile_build)
+        for script in (debug_build, compile_build):
+            interaction_build = script.index(
+                '"$dotnet_command" build "$interaction_tests_path"'
+            )
+            interaction_run = script.index('"$dotnet_command" run', interaction_build)
+            serial_build = script[interaction_build:interaction_run]
+            run_without_rebuild = script[interaction_run:]
+            for authority in (
+                "-m:1",
+                "-p:BuildInParallel=false",
+                "-p:ChummerDesktopRuntimeIdentifiers=",
+                "-p:ChummerUseLocalCompatibilityTree=true",
+            ):
+                self.assertIn(authority, serial_build)
+            self.assertIn("--no-build", run_without_rebuild)
+            self.assertLess(interaction_build, interaction_run)
 
     def test_creation_karma_navigation_precondition_remains_fail_closed(self) -> None:
         blocked = driver.shared.UiNode(

@@ -56,10 +56,19 @@ python3 "$compile_graph_verifier" \
   -p:ChummerDesktopRuntimeIdentifiers= \
   -p:ChummerUseLocalCompatibilityTree=true
 
+"$dotnet_command" build "$interaction_tests_path" \
+  --configuration Debug \
+  --no-restore \
+  -m:1 \
+  --disable-build-servers \
+  -p:UseSharedCompilation=false \
+  -p:BuildInParallel=false \
+  -p:ChummerDesktopRuntimeIdentifiers= \
+  -p:ChummerUseLocalCompatibilityTree=true
+
 "$dotnet_command" run \
   --project "$interaction_tests_path" \
   --configuration Debug \
+  --no-build \
   --no-restore \
-  --disable-build-servers \
-  -p:UseSharedCompilation=false \
-  -p:BuildInParallel=false
+  --disable-build-servers
