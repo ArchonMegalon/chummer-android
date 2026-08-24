@@ -134,7 +134,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
                 self.assertIn(f"repository: {repository}", self.preview_text)
                 self.assertIn(f"ref: {commit}", self.preview_text)
 
-    def test_executes_the_existing_persistence_driver(self) -> None:
+    def test_executes_every_persistence_driver_as_an_isolated_matrix_journey(self) -> None:
         runner = (
             REPO_ROOT / "scripts" / "run-api36-editing-e2e-ci.sh"
         ).read_text(encoding="utf-8")
@@ -158,22 +158,57 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn('if [[ "$profile" != "phone" ]]; then', runner)
         self.assertIn("tablet beta proof is deferred", runner)
         self.assertNotIn('phone|tablet', runner)
-        self.assertIn("tests/run_api36_creation_prerequisite_e2e.py", runner)
-        self.assertIn('--evidence "$prerequisite_root/screenshots"', runner)
-        self.assertIn('--receipt "$prerequisite_root/receipt.json"', runner)
-        self.assertIn("tests/run_api36_career_active_skill_advance_e2e.py", runner)
+        journeys = (
+            ("full-editing", "tests/run_api36_editing_e2e.py"),
+            (
+                "creation-prerequisite",
+                "tests/run_api36_creation_prerequisite_e2e.py",
+            ),
+            (
+                "career-active-skill-advance",
+                "tests/run_api36_career_active_skill_advance_e2e.py",
+            ),
+        )
+        self.assertIn(
+            'journey="${CHUMMER_E2E_JOURNEY:?CHUMMER_E2E_JOURNEY is required}"',
+            runner,
+        )
+        self.assertIn(
+            'evidence_root="$RUNNER_TEMP/chummer-api36-evidence/$profile/$journey"',
+            runner,
+        )
+        for journey, driver in journeys:
+            with self.subTest(journey=journey):
+                self.assertIn(f"  {journey})", runner)
+                self.assertEqual(1, runner.count(driver))
+                self.assertIn(f"          - {journey}", self.text)
+        self.assertIn("CHUMMER_E2E_JOURNEY: ${{ matrix.journey }}", self.text)
+        self.assertIn("fail-fast: false", self.text)
+        self.assertIn(
+            "phone API 36 persistence (${{ matrix.journey }})",
+            self.text,
+        )
+        self.assertIn(
+            "chummer-android-api36-phone-${{ matrix.journey }}-evidence-",
+            self.text,
+        )
+        self.assertIn(
+            "chummer-api36-evidence/phone/${{ matrix.journey }}",
+            self.text,
+        )
+        self.assertEqual(
+            2,
+            self.text.count(
+                "if: ${{ matrix.journey == 'career-active-skill-advance' }}"
+            ),
+        )
+        self.assertIn("path: chummer-presentation", self.text)
+        self.assertIn("path: chummer-core-engine", self.text)
         self.assertIn('--workspace-root "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is required}"', runner)
-        self.assertIn('--evidence "$active_skill_root/screenshots"', runner)
-        self.assertIn('--receipt "$active_skill_root/receipt.json"', runner)
         self.assertLess(
             runner.index('install -d -m 0755 "$evidence_root"'),
-            runner.index("python3 chummer-android/tests/run_api36_editing_e2e.py"),
+            runner.index('case "$journey" in', runner.index('case "$journey" in') + 1),
         )
-        full = runner.index("python3 chummer-android/tests/run_api36_editing_e2e.py")
-        prerequisite = runner.index("tests/run_api36_creation_prerequisite_e2e.py")
-        active_skill = runner.index("tests/run_api36_career_active_skill_advance_e2e.py")
-        self.assertLess(full, prerequisite)
-        self.assertLess(prerequisite, active_skill)
 
     def test_downloaded_artifact_verifies_the_portable_apk_seal_before_emulation(self) -> None:
         resolve = self.text.index("Resolve the authoritative APK artifact")

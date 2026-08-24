@@ -927,11 +927,13 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         creation = DRIVER.WorkspaceAuthority("creation", 1, 1, "b" * 64, "c" * 64)
         imported = DRIVER.WorkspaceAuthority("imported", 2, 2, fixture_sha256, "d" * 64)
 
-        with patch.object(DRIVER, "select_android_document") as select_document, patch.object(
-            DRIVER,
-            "read_workspace_authority",
-            side_effect=[creation, imported],
-        ):
+        with patch.object(DRIVER, "select_android_document") as select_document, \
+             patch.object(DRIVER, "open_creation_dashboard") as open_dashboard, \
+             patch.object(
+                 DRIVER,
+                 "read_workspace_authority",
+                 side_effect=[creation, imported],
+             ):
             result = DRIVER.prepare_full_editing_runner(
                 device,
                 "phone",
@@ -950,7 +952,6 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     scroll=True,
                 ),
                 call.tap("dialog-action-complete-new-character-workflow", scroll=True),
-                call.wait("creation-wizard-dashboard", timeout=90),
                 call.capture("new-runner-creation-wizard"),
                 call.tap("build-save-runner"),
                 call.wait(
@@ -970,6 +971,11 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         select_document.assert_called_once_with(
             device,
             "career-full-editing-e2e.chum5",
+        )
+        open_dashboard.assert_called_once_with(
+            device,
+            "phone",
+            open_build_route=False,
         )
         self.assertEqual(imported, result)
 
@@ -1219,6 +1225,153 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 device.wait_for_single_exact_resource_id(selector, timeout=1)
             device.capture.assert_called_once_with(
                 "workspace-authority-cardinality-invalid"
+            )
+
+    def test_exact_accessibility_value_rejects_prefix_and_duplicate_toolbar_nodes(self) -> None:
+        exact = DRIVER.UiNode(
+            {
+                "resource-id": "",
+                "content-desc": "build-save-runner",
+            }
+        )
+        prefix_lookalike = DRIVER.UiNode(
+            {
+                "resource-id": "",
+                "content-desc": "build-save-runner-lookalike",
+            }
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                Path(temporary),
+            )
+            device.hierarchy = Mock(return_value=[prefix_lookalike, exact])
+            device.capture = Mock()
+            device.dismiss_system_ui_anr = Mock(return_value=False)
+
+            self.assertIs(
+                exact,
+                device.wait_for_single_exact_accessibility_value(
+                    "build-save-runner",
+                    timeout=1,
+                    evidence_prefix="creation-dashboard-toolbar",
+                    surface_name="Creation dashboard toolbar accessibility node",
+                ),
+            )
+            device.capture.assert_not_called()
+
+            device.hierarchy = Mock(return_value=[exact, exact])
+            with self.assertRaisesRegex(RuntimeError, "cardinality 2"):
+                device.wait_for_single_exact_accessibility_value(
+                    "build-save-runner",
+                    timeout=1,
+                    evidence_prefix="creation-dashboard-toolbar",
+                    surface_name="Creation dashboard toolbar accessibility node",
+                )
+            device.capture.assert_called_once_with(
+                "creation-dashboard-toolbar-cardinality-invalid"
+            )
+
+    def test_open_creation_dashboard_resets_pruned_viewport_before_exact_binding(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        dashboard = DRIVER.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/creation-wizard-dashboard"
+                ),
+            }
+        )
+        events: list[str] = []
+        viewport = {"reset": False}
+
+        def bind_toolbar(*_args, **_kwargs):
+            events.append("toolbar")
+            self.assertFalse(viewport["reset"])
+            return DRIVER.UiNode({"content-desc": "build-save-runner"})
+
+        def reset(_device, *, swipes: int) -> None:
+            self.assertIs(device, _device)
+            self.assertEqual(48, swipes)
+            events.append("reset")
+            viewport["reset"] = True
+
+        def bind_dashboard(*_args, **_kwargs):
+            events.append("dashboard")
+            self.assertTrue(
+                viewport["reset"],
+                "The offscreen/pruned dashboard was queried before viewport reset",
+            )
+            return dashboard
+
+        device.wait_for_single_exact_accessibility_value.side_effect = bind_toolbar
+        device.wait_for_single_exact_resource_id.side_effect = bind_dashboard
+        with patch.object(
+            DRIVER,
+            "open_build",
+            side_effect=lambda *_args: events.append("open-build"),
+        ), patch.object(DRIVER, "reset_scroll_to_top", side_effect=reset):
+            actual = DRIVER.open_creation_dashboard(device)
+
+        self.assertIs(dashboard, actual)
+        self.assertEqual(["open-build", "toolbar", "reset", "dashboard"], events)
+        device.wait_for_single_exact_accessibility_value.assert_called_once_with(
+            "build-save-runner",
+            timeout=90,
+            evidence_prefix="creation-dashboard-toolbar",
+            surface_name="Creation dashboard toolbar accessibility node",
+        )
+        device.wait_for_single_exact_resource_id.assert_called_once_with(
+            "creation-wizard-dashboard",
+            timeout=90,
+            evidence_prefix="creation-dashboard",
+            surface_name="Creation dashboard resource node",
+        )
+
+    def test_creation_dashboard_exact_resource_cardinality_fails_closed(self) -> None:
+        dashboard = DRIVER.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/creation-wizard-dashboard"
+                ),
+            }
+        )
+        prefix_lookalike = DRIVER.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/creation-wizard-dashboard-lookalike"
+                ),
+            }
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            device = DRIVER.Device(
+                Path("/unused/adb"),
+                "emulator-5554",
+                Path(temporary),
+            )
+            device.capture = Mock()
+            device.dismiss_system_ui_anr = Mock(return_value=False)
+            device.hierarchy = Mock(return_value=[prefix_lookalike, dashboard])
+            self.assertIs(
+                dashboard,
+                device.wait_for_single_exact_resource_id(
+                    "creation-wizard-dashboard",
+                    timeout=1,
+                    evidence_prefix="creation-dashboard",
+                    surface_name="Creation dashboard resource node",
+                ),
+            )
+
+            device.hierarchy = Mock(return_value=[dashboard, dashboard])
+            with self.assertRaisesRegex(RuntimeError, "cardinality 2"):
+                device.wait_for_single_exact_resource_id(
+                    "creation-wizard-dashboard",
+                    timeout=1,
+                    evidence_prefix="creation-dashboard",
+                    surface_name="Creation dashboard resource node",
+                )
+            device.capture.assert_called_once_with(
+                "creation-dashboard-cardinality-invalid"
             )
 
     def test_missing_workspace_authority_accessibility_fails_closed(self) -> None:

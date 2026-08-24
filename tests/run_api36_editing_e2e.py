@@ -269,11 +269,13 @@ class Device:
         scroll: bool = False,
         max_scrolls: int = 6,
         scroll_distance_ratio: float = 0.52,
+        evidence_prefix: str = "workspace-authority",
+        surface_name: str = "Workspace authority accessibility node",
     ) -> UiNode:
         """Return exactly one accessibility node with an exact resource id.
 
-        Authority evidence must never use the driver's permissive text/prefix
-        selector. A missing node means no authority was published; duplicate
+        Exact evidence must never use the driver's permissive text/prefix
+        selector. A missing node means the surface was not published; duplicate
         nodes make the rendered proof ambiguous. Both conditions fail closed.
         """
         deadline = time.monotonic() + timeout
@@ -288,9 +290,9 @@ class Device:
             if len(matches) == 1:
                 return matches[0]
             if len(matches) > 1:
-                self.capture("workspace-authority-cardinality-invalid")
+                self.capture(f"{evidence_prefix}-cardinality-invalid")
                 raise RuntimeError(
-                    "Workspace authority accessibility node "
+                    f"{surface_name} "
                     f"{selector!r} has cardinality {len(matches)}; expected exactly one"
                 )
             if self.dismiss_system_ui_anr():
@@ -303,10 +305,46 @@ class Device:
                 )
                 scrolls += 1
             time.sleep(0.75)
-        self.capture("workspace-authority-unavailable")
+        self.capture(f"{evidence_prefix}-unavailable")
         raise RuntimeError(
-            "Timed out waiting for exactly one workspace authority accessibility "
-            f"node {selector!r}"
+            f"Timed out waiting for exactly one {surface_name.lower()} {selector!r}"
+        )
+
+    def wait_for_single_exact_accessibility_value(
+        self,
+        selector: str,
+        *,
+        timeout: int = 45,
+        evidence_prefix: str,
+        surface_name: str,
+    ) -> UiNode:
+        """Bind one exact resource-id/content-desc value without prefix fallback."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            matches = [
+                node
+                for node in self.hierarchy()
+                if selector
+                in {
+                    node.attributes.get("resource-id", "").rsplit("/", 1)[-1],
+                    node.attributes.get("content-desc", ""),
+                }
+            ]
+            if len(matches) == 1:
+                return matches[0]
+            if len(matches) > 1:
+                self.capture(f"{evidence_prefix}-cardinality-invalid")
+                raise RuntimeError(
+                    f"{surface_name} {selector!r} has cardinality {len(matches)}; "
+                    "expected exactly one"
+                )
+            if self.dismiss_system_ui_anr():
+                time.sleep(2)
+                continue
+            time.sleep(0.75)
+        self.capture(f"{evidence_prefix}-unavailable")
+        raise RuntimeError(
+            f"Timed out waiting for exactly one {surface_name.lower()} {selector!r}"
         )
 
     def wait(
@@ -985,6 +1023,45 @@ def reset_scroll_to_top(
         time.sleep(0.2)
     if swipes > 0:
         time.sleep(0.75)
+
+
+def open_creation_dashboard(
+    device: Device,
+    profile: str = "phone",
+    *,
+    open_build_route: bool = True,
+    toolbar_timeout: int = 90,
+    dashboard_timeout: int = 90,
+    reset_swipes: int = 48,
+) -> UiNode:
+    """Open and bind the phone creation dashboard without viewport assumptions.
+
+    MAUI preserves the inner Build ScrollView position across route visits. The
+    page-level dashboard resource can therefore exist thousands of pixels above
+    UIAutomator's visible hierarchy. Bind the fixed toolbar first, reset that
+    inner viewport, then require one exact dashboard resource id. Callers that
+    must prove an automatic handoff or Back route can disable the explicit Build
+    tap while retaining the same fail-closed binding sequence.
+    """
+    if profile != "phone":
+        raise RuntimeError(
+            "The creation dashboard API 36 proof is phone-only; tablet proof is deferred"
+        )
+    if open_build_route:
+        open_build(device, profile)
+    device.wait_for_single_exact_accessibility_value(
+        "build-save-runner",
+        timeout=toolbar_timeout,
+        evidence_prefix="creation-dashboard-toolbar",
+        surface_name="Creation dashboard toolbar accessibility node",
+    )
+    reset_scroll_to_top(device, swipes=reset_swipes)
+    return device.wait_for_single_exact_resource_id(
+        "creation-wizard-dashboard",
+        timeout=dashboard_timeout,
+        evidence_prefix="creation-dashboard",
+        surface_name="Creation dashboard resource node",
+    )
 
 
 def open_origin_dossier(device: Device, profile: str) -> None:
@@ -2050,7 +2127,11 @@ def prepare_full_editing_runner(
     if profile == "phone":
         # A new creation-mode runner now routes directly to the fail-closed wizard.
         # The unrestricted editor must remain unavailable until creation is complete.
-        device.wait("creation-wizard-dashboard", timeout=90)
+        open_creation_dashboard(
+            device,
+            profile,
+            open_build_route=False,
+        )
         device.capture("new-runner-creation-wizard")
         # Importing another dossier is correctly blocked while the current workspace
         # is dirty. Persist this incomplete creation draft without claiming that the

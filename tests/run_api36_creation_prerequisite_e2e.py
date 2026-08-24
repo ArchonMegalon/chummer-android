@@ -94,9 +94,13 @@ def provision_creation_karma_through_priority_creation(
     # The closing dialog can leave Build's ScrollView at the dialog's deep scroll offset, which
     # prunes the page-level AutomationId from UIAutomator. Bind the route to the fixed toolbar,
     # reset the viewport, and only then require the dashboard marker.
-    device.wait("build-save-runner", timeout=120)
-    shared.reset_scroll_to_top(device, swipes=48)
-    device.wait("creation-wizard-dashboard", timeout=30)
+    shared.open_creation_dashboard(
+        device,
+        open_build_route=False,
+        toolbar_timeout=120,
+        dashboard_timeout=30,
+        reset_swipes=48,
+    )
     device.capture("creation-karma-priority-runner-created")
     device.tap(
         "build-save-runner",
@@ -188,10 +192,14 @@ def wait_creation_method_navigation(
                         f"before={before_tap!r}, after={after_tap!r}"
                     )
                 device.capture("creation-method-navigation-remained-blocked")
-                # A ContentPage AutomationId is pruned from UIAutomator while this ScrollView is
-                # deep in its content. Reset before using the page marker as a second route proof.
-                shared.reset_scroll_to_top(device, swipes=max_scrolls)
-                device.wait("creation-wizard-dashboard", timeout=30)
+                # Rebind the fixed toolbar and exact dashboard resource after resetting the
+                # preserved inner Build viewport. Prefix lookalikes or duplicate nodes fail closed.
+                shared.open_creation_dashboard(
+                    device,
+                    open_build_route=False,
+                    dashboard_timeout=30,
+                    reset_swipes=max_scrolls,
+                )
                 return {
                     **before_tap,
                     "afterTap": after_tap,
@@ -308,7 +316,11 @@ def main() -> int:
     device.tap("dialog-action-create-character", scroll=True)
     device.wait("dialog-action-complete-new-character-workflow", timeout=45, scroll=True)
     device.tap("dialog-action-complete-new-character-workflow", scroll=True)
-    device.wait("creation-wizard-dashboard", timeout=90)
+    shared.open_creation_dashboard(
+        device,
+        open_build_route=False,
+        reset_swipes=22,
+    )
     foundation.assert_creation_editor_gated(device)
 
     fresh_dashboard_binding = node_text(device, "creation-wizard-binding", scroll=True)
@@ -328,8 +340,7 @@ def main() -> int:
     prepared_authority = shared.read_workspace_authority(device)
     require_priority_created_workspace_authority(fresh_authority, prepared_authority)
 
-    shared.open_build(device, "phone")
-    device.wait("creation-wizard-dashboard", timeout=90)
+    shared.open_creation_dashboard(device, reset_swipes=48)
     foundation.assert_creation_editor_gated(device)
     dashboard_binding = node_text(device, "creation-wizard-binding", scroll=True)
     if dashboard_binding == fresh_dashboard_binding:
@@ -415,7 +426,12 @@ def main() -> int:
         raise RuntimeError("Prerequisite receipt did not prove CharacterDocumentChanged=false")
     device.capture("creation-prerequisite-confirmed")
     device.tap("creation-prerequisite-back-to-build", scroll=True, max_scrolls=22)
-    device.wait("creation-wizard-dashboard", timeout=60)
+    shared.open_creation_dashboard(
+        device,
+        open_build_route=False,
+        dashboard_timeout=60,
+        reset_swipes=22,
+    )
     foundation.assert_creation_editor_gated(device)
     if node_text(device, "creation-wizard-binding", scroll=True) == dashboard_binding:
         raise RuntimeError("Atomic prerequisite confirmation did not refresh the wizard revision")
@@ -434,8 +450,7 @@ def main() -> int:
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
     device.wait("Your runners", timeout=90)
-    shared.open_build(device, "phone")
-    device.wait("creation-wizard-dashboard", timeout=90)
+    shared.open_creation_dashboard(device, reset_swipes=22)
     foundation.assert_creation_editor_gated(device)
     open_prerequisite(device)
     device.wait("creation-prerequisite-pending-draft", timeout=60, scroll=True, max_scrolls=22)

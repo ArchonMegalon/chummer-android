@@ -177,7 +177,11 @@ def main() -> int:
     device.tap("dialog-action-complete-new-character-workflow", scroll=True)
 
     # The completed setup must hand off directly; this driver never taps Continue building.
-    device.wait("creation-wizard-dashboard", timeout=90)
+    shared.open_creation_dashboard(
+        device,
+        open_build_route=False,
+        reset_swipes=18,
+    )
     device.wait("creation-stage-basics", timeout=60, scroll=True, max_scrolls=18)
     shared.reset_scroll_to_top(device, swipes=18)
     binding_before = node_text(device, "creation-wizard-binding", scroll=True)
@@ -322,7 +326,12 @@ def main() -> int:
     device.wait("creation-foundation-save", timeout=45, scroll=True, max_scrolls=22)
     device.capture("creation-foundation-confirmed-draft")
     device.tap("creation-foundation-back-to-build", scroll=True, max_scrolls=22)
-    device.wait("creation-wizard-dashboard", timeout=60)
+    shared.open_creation_dashboard(
+        device,
+        open_build_route=False,
+        dashboard_timeout=60,
+        reset_swipes=18,
+    )
     assert_creation_editor_gated(device)
     binding_after_foundation = node_text(device, "creation-wizard-binding", scroll=True)
     if binding_after_foundation == binding_before:
@@ -346,7 +355,12 @@ def main() -> int:
     if "selected" not in resumed_nationality.lower():
         raise RuntimeError("Pending Foundation draft did not resume its typed Nationality IDs")
     device.back()
-    device.wait("creation-wizard-dashboard", timeout=45)
+    shared.open_creation_dashboard(
+        device,
+        open_build_route=False,
+        dashboard_timeout=45,
+        reset_swipes=18,
+    )
 
     # Rook remains non-mutating after the Foundation revision advances.
     shared.reset_scroll_to_top(device, swipes=18)
@@ -361,7 +375,12 @@ def main() -> int:
         raise RuntimeError("A fresh local Rook answer was immediately marked stale")
     device.back()
 
-    device.wait("creation-wizard-dashboard", timeout=45)
+    shared.open_creation_dashboard(
+        device,
+        open_build_route=False,
+        dashboard_timeout=45,
+        reset_swipes=18,
+    )
     binding_after = node_text(device, "creation-wizard-binding", scroll=True)
     assert_same_binding(binding_before_rook, binding_after)
 
@@ -378,8 +397,7 @@ def main() -> int:
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
     device.wait("Your runners", timeout=90)
-    shared.open_build(device, "phone")
-    device.wait("creation-wizard-dashboard", timeout=90)
+    shared.open_creation_dashboard(device, reset_swipes=18)
     assert_creation_editor_gated(device)
     shared.reset_scroll_to_top(device, swipes=18)
     device.tap_until_visible(
@@ -399,7 +417,12 @@ def main() -> int:
         raise RuntimeError("Process restart did not resume the typed Nationality IDs")
     device.capture("creation-foundation-process-restart")
     device.back()
-    device.wait("creation-wizard-dashboard", timeout=45)
+    shared.open_creation_dashboard(
+        device,
+        open_build_route=False,
+        dashboard_timeout=45,
+        reset_swipes=18,
+    )
     shared.reset_scroll_to_top(device, swipes=18)
     device.tap("creation-wizard-rook", scroll=True)
     device.assert_text("What can I do next?", timeout=45)

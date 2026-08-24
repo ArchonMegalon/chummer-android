@@ -68,14 +68,19 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.assertIs(device, _device)
             selected_options.append((selector, value))
 
-        def reset_scroll(_device, *, swipes: int) -> None:
+        def open_dashboard(_device, **kwargs):
             self.assertIs(device, _device)
             device.viewport_reset = True
-            calls.append(("reset_scroll_to_top", (_device,), {"swipes": swipes}))
+            calls.append(("open_creation_dashboard", (_device,), kwargs))
+            return driver.shared.UiNode({})
 
         device = FakeDevice()
         with mock.patch.object(driver.priority, "select_option", side_effect=select_option), \
-             mock.patch.object(driver.shared, "reset_scroll_to_top", side_effect=reset_scroll):
+             mock.patch.object(
+                 driver.shared,
+                 "open_creation_dashboard",
+                 side_effect=open_dashboard,
+             ):
             selected = driver.provision_creation_karma_through_priority_creation(device)
 
         self.assertEqual(
@@ -83,12 +88,17 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             selected_options,
         )
         self.assertEqual(dict(selected_options), selected)
-        route_index = calls.index(("wait", ("build-save-runner",), {"timeout": 120}))
-        reset_index = calls.index(
-            ("reset_scroll_to_top", (device,), {"swipes": 48})
-        )
-        dashboard_index = calls.index(
-            ("wait", ("creation-wizard-dashboard",), {"timeout": 30})
+        route_index = calls.index(
+            (
+                "open_creation_dashboard",
+                (device,),
+                {
+                    "open_build_route": False,
+                    "toolbar_timeout": 120,
+                    "dashboard_timeout": 30,
+                    "reset_swipes": 48,
+                },
+            )
         )
         capture_index = calls.index(("capture", ("creation-karma-priority-runner-created",), {}))
         save_index = calls.index(
@@ -116,9 +126,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         home_index = calls.index(("tap", ("Home",), {}))
         authority_surface_index = calls.index(("wait", ("home-open-file",), {"timeout": 90}))
-        self.assertLess(route_index, reset_index)
-        self.assertLess(reset_index, dashboard_index)
-        self.assertLess(dashboard_index, capture_index)
+        self.assertLess(route_index, capture_index)
         self.assertLess(capture_index, save_index)
         self.assertLess(save_index, saved_index)
         self.assertLess(saved_index, home_index)
@@ -249,7 +257,27 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.assertEqual(22, swipes)
             device.reset_count += 1
 
+        def open_dashboard(_device, **kwargs):
+            self.assertIs(device, _device)
+            self.assertEqual(
+                {
+                    "open_build_route": False,
+                    "dashboard_timeout": 30,
+                    "reset_swipes": 22,
+                },
+                kwargs,
+            )
+            if device.reset_count != 1:
+                raise AssertionError("Blocked-row viewport was not reset before route proof")
+            device.reset_count += 1
+            return driver.shared.UiNode({})
+
         with mock.patch.object(driver.shared, "reset_scroll_to_top", side_effect=reset_scroll), \
+             mock.patch.object(
+                 driver.shared,
+                 "open_creation_dashboard",
+                 side_effect=open_dashboard,
+             ), \
              mock.patch.object(driver.time, "sleep"):
             evidence = driver.wait_creation_method_navigation(device, ready=False)
 
@@ -491,16 +519,17 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn("require_creation_method_navigation(blocked_after, ready=False)", source)
         self.assertIn("if after_tap != before_tap:", source)
         self.assertIn('device.capture("creation-method-navigation-remained-blocked")', source)
-        self.assertIn('device.wait("creation-wizard-dashboard", timeout=30)', source)
+        self.assertIn("shared.open_creation_dashboard(", source)
         self.assertIn('"clickable": node.attributes.get("clickable") == "true"', source)
         self.assertIn('"tapRemainedOnDashboard": True', source)
         self.assertIn('"freshNavigation": fresh_navigation', source)
         self.assertIn("provision_creation_karma_through_priority_creation", source)
         self.assertIn("priority.select_option(device, selector, option)", source)
         self.assertIn('device.wait("Select Metatype Priority"', source)
-        self.assertIn('device.wait("build-save-runner", timeout=120)', source)
-        self.assertIn('shared.reset_scroll_to_top(device, swipes=48)', source)
-        self.assertIn('device.wait("creation-wizard-dashboard", timeout=30)', source)
+        self.assertIn("toolbar_timeout=120", source)
+        self.assertIn("dashboard_timeout=30", source)
+        self.assertIn("reset_swipes=48", source)
+        self.assertNotIn('device.wait("creation-wizard-dashboard"', source)
         self.assertIn('"build-save-runner",', source)
         self.assertIn('device.wait("home-open-file", timeout=90)', source)
         self.assertNotIn('device.wait("Continue building", timeout=120)', source)
@@ -530,7 +559,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('"buildGhostCurrentAndNonMutating": "pass"', source)
         self.assertIn('"advancedEditorNeverExposedWhileCreatedFalse": "pass"', source)
 
-    def test_api36_phone_only_ci_runs_the_prerequisite_after_generic_e2e(self) -> None:
+    def test_api36_phone_only_ci_selects_the_isolated_prerequisite_journey(self) -> None:
         runner = (
             REPO / "scripts" / "run-api36-editing-e2e-ci.sh"
         ).read_text(encoding="utf-8")
@@ -542,14 +571,23 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn(prerequisite, runner)
         guard = runner.index('if [[ "$profile" != "phone" ]]; then')
         self.assertLess(guard, runner.index(generic))
-        self.assertLess(runner.index(generic), runner.index(prerequisite))
-        self.assertNotIn(
-            'if [[ "$profile"',
-            runner[runner.index(generic) : runner.index(prerequisite)],
+        self.assertIn(
+            'journey="${CHUMMER_E2E_JOURNEY:?CHUMMER_E2E_JOURNEY is required}"',
+            runner,
         )
-        self.assertIn('prerequisite_root="$evidence_root/creation-prerequisite"', runner)
-        self.assertIn('--evidence "$prerequisite_root/screenshots"', runner)
-        self.assertIn('--receipt "$prerequisite_root/receipt.json"', runner)
+        self.assertIn("  creation-prerequisite)", runner)
+        self.assertEqual(1, runner.count(prerequisite))
+        self.assertIn(
+            'evidence_root="$RUNNER_TEMP/chummer-api36-evidence/$profile/$journey"',
+            runner,
+        )
+        prerequisite_case = runner[
+            runner.index("  creation-prerequisite)") :
+            runner.index("  career-active-skill-advance)")
+        ]
+        self.assertIn('--evidence "$evidence_root/screenshots"', prerequisite_case)
+        self.assertIn('--receipt "$evidence_root/receipt.json"', prerequisite_case)
+        self.assertNotIn(generic, prerequisite_case)
         self.assertNotIn('--creation-karma-runner', runner)
         self.assertNotIn('creation-group-membership-e2e.chum5', runner)
 

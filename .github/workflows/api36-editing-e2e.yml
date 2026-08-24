@@ -191,17 +191,47 @@ jobs:
 
   phone-editing-e2e:
     # Tablet acceptance is deferred; this lane launches only pixel_6 and makes no tablet-readiness claim.
-    name: phone API 36 persistence
+    name: phone API 36 persistence (${{ matrix.journey }})
     needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        # Weapon-Fire has no independent digest-bound device journey yet;
+        # this matrix makes no such proof claim.
+        journey:
+          - full-editing
+          - creation-prerequisite
+          - career-active-skill-advance
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
       CHUMMER_E2E_PROFILE: phone
+      CHUMMER_E2E_JOURNEY: ${{ matrix.journey }}
     steps:
       - name: Check out the exact E2E driver
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           path: chummer-android
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the active-skill presentation evidence graph
+        if: ${{ matrix.journey == 'career-active-skill-advance' }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-ui
+          ref: e906ec909d337b7a907ba7ae8c526c3aad89a1e3
+          path: chummer-presentation
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the active-skill Core evidence graph
+        if: ${{ matrix.journey == 'career-active-skill-advance' }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-core
+          ref: e9874a31d8d25b98dd196dd629c423e9a9c39297
+          path: chummer-core-engine
           persist-credentials: false
           fetch-depth: 1
 
@@ -311,7 +341,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Run the native editing and process-restart journey
+      - name: Run the isolated native persistence journey
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
           api-level: 36
@@ -328,8 +358,8 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: chummer-android-api36-phone-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/chummer-api36-evidence/phone
+          name: chummer-android-api36-phone-${{ matrix.journey }}-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/chummer-api36-evidence/phone/${{ matrix.journey }}
           if-no-files-found: warn
           retention-days: 30
           compression-level: 0
