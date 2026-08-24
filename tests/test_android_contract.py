@@ -2211,6 +2211,63 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("Linked Capacity=[*] child", section)
         self.assertNotIn("ArmorDamage", page)
 
+    def test_phone_career_weapon_fire_is_typed_revision_bound_and_atomic(self) -> None:
+        page = (PROJECT / "Native" / "CareerWeaponFirePage.cs").read_text(encoding="utf-8")
+        editor = (PROJECT / "Native" / "CollectionEditorPages.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        presentation = WORKSPACE / "chummer-presentation" / "Chummer.Presentation" / "Overview"
+        core = WORKSPACE / "chummer-core-engine"
+        request = (presentation / "CareerWeaponFireRequest.cs").read_text(encoding="utf-8")
+        mutation = (presentation / "WorkspaceXmlMutationCatalog.cs").read_text(encoding="utf-8")
+        presenter = (presentation / "CharacterOverviewPresenter.WorkspaceMutations.cs").read_text(
+            encoding="utf-8"
+        )
+        persistence = (presentation / "CharacterOverviewPresenter.Persistence.cs").read_text(
+            encoding="utf-8"
+        )
+        rules = (
+            core / "Chummer.Contracts" / "Characters" / "CharacterWeaponFireRules.cs"
+        ).read_text(encoding="utf-8")
+        store = (core / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs").read_text(
+            encoding="utf-8"
+        )
+
+        for token in (
+            'AutomationId = $"career-weapon-fire-page-{token}"',
+            '$"career-weapon-fire-ammo-{token}"',
+            '$"career-weapon-fire-default-{token}"',
+            'CharacterWeaponFireMode.SingleShot => "single-shot"',
+            'CharacterWeaponFireMode.ShortBurst => "short-burst"',
+            'CharacterWeaponFireMode.LongBurst => "long-burst"',
+            'CharacterWeaponFireMode.FullBurst => "full-burst"',
+            'CharacterWeaponFireMode.SuppressiveFire => "suppressive-fire"',
+            "plan.RequiresPartialConfirmation",
+            '"Fire remaining"',
+        ):
+            self.assertIn(token, page)
+        self.assertIn('automationId: $"career-weapon-fire-open-{weaponId:N}"', editor)
+        self.assertIn("new CareerWeaponFirePage", editor)
+        self.assertIn("Coordinator.State.Profile?.Created != true", editor)
+        self.assertIn("PrepareCareerWeaponFireAsync", coordinator + presenter)
+        self.assertIn("ApplyCareerWeaponFireAsync", coordinator + presenter)
+        self.assertIn("_presenter.SaveAsync", coordinator)
+        self.assertIn("CharacterWeaponFireIdentity Identity", request)
+        self.assertIn("string ExpectedNodeRevision", request)
+        self.assertIn("ExpectedContentRevision", request + presenter)
+        self.assertIn("WorkspaceDocumentFormat.NativeXml", presenter)
+        self.assertIn("ApplyWorkspaceXmlMutationAsync", presenter)
+        self.assertIn("ApplyCareerWeaponFire", mutation)
+        self.assertIn("CharacterWeaponFireRules.TryValidateMutation", mutation)
+        self.assertIn('current.Clip.Elements("count").Single().Value', mutation)
+        self.assertIn('current.AmmoGear.Elements("qty").Single().Value', mutation)
+        self.assertIn("current.AmmoGear.Remove()", mutation)
+        self.assertIn("TryBeginCaptureIntent", persistence)
+        self.assertIn("WriteRecordAtomically", store)
+        self.assertIn("CharacterWeaponFireIdentity", rules)
+        self.assertIn("RequiresPartialConfirmation", rules)
+        self.assertIn("DeleteAmmoGear", rules)
+        self.assertNotIn("TabletBuildPage", page)
+
     @staticmethod
     def _png_header(path: Path) -> tuple[int, int, int]:
         data = path.read_bytes()[:33]

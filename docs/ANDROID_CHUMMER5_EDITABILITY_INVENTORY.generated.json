@@ -14,8 +14,8 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 478,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 556,
-      "missing": 917,
+      "implemented_pending_emulator": 562,
+      "missing": 911,
       "not_applicable_non_mutating": 478,
       "partial_create_only": 106,
       "partial_exact_saved_data": 172
@@ -240,6 +240,11 @@
         "path": "src/Chummer.Android/Native/CareerEdgeUsePage.cs",
         "exists": true,
         "sha256": "7924f8aa41a3ab9bc74e0f78816b05c2b8b9ee1ebc36ea7ea9ea4b52e2ba4f52"
+      },
+      {
+        "path": "src/Chummer.Android/Native/CareerWeaponFirePage.cs",
+        "exists": true,
+        "sha256": "ff786b0070280b0a97f129e77ba88e6d4116b7570b2cc0d09712ab104c7f82e4"
       },
       {
         "path": "src/Chummer.Android/Native/CareerManualKarmaPage.cs",
@@ -539,7 +544,7 @@
       {
         "path": "src/Chummer.Android/Native/CollectionEditorPages.cs",
         "exists": true,
-        "sha256": "c47ad867c5bb7e2870490392b3717631d6cb461cca092d13182dab094042d412"
+        "sha256": "c1b93003989c3ec680ed465d752abf637e9dbcbe5bf7a9b1a3961073e50330e6"
       },
       {
         "path": "src/Chummer.Android/Native/ConditionMonitorEditPage.cs",
@@ -564,7 +569,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "04adcf311f011737ba2c90253bb4d39c9177ff8b05d6bb44494b3c21750c798f"
+        "sha256": "ddc69249ccf78df795e13360118df5d302c03013cebf657160b0680082e941fc"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1897,6 +1902,11 @@
         "sha256": "d59db7c77f2a62d6a1d2541ae61eeb69f226066a0c4242a6089981269e00e610"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponFireRules.cs",
+        "exists": true,
+        "sha256": "1ed73fdb863ef3b7ac047079c3f1692e6357b836c1b721d0c08de590a11d0301"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerManualKarmaRules.cs",
         "exists": true,
         "sha256": "9bce1e3aab47a6fdd08499376f9ee8e95f2bc32ea21ffcac6860d76d35a5002b"
@@ -1964,7 +1974,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "1e0fbd2738833a9739789ae0ec9908e017476e24db41ee4f8cc82e8409ed27d4"
+        "sha256": "e3e2dbb42c0ce5841b498168856a065d1186485a889b7be8c6849733179c19e2"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -2010,6 +2020,11 @@
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerEdgeUseEditRequest.cs",
         "exists": true,
         "sha256": "114badd36a786fa11a201ebeac60b41acc3bfb50c59f6b0d5c5989da46767422"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/CareerWeaponFireRequest.cs",
+        "exists": true,
+        "sha256": "3afc92a00c224989cd0e4f07b7d22996993ee463613f47fcb64b40031d7f860f"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerManualKarmaEditRequest.cs",
@@ -2179,7 +2194,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "8f581f3dc610d58211bb2f0d59a1fbad5e42430ccce8ddd8de4d0d6bddb8d304"
+        "sha256": "ea274e666ba9cd8262d4512a6aea566b7e9b4165d695d95b9d326412098a92c9"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2234,7 +2249,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "d34351a188bb682a5c6764a976f83f42226cb6f657ee4959799734a96f4680a1"
+        "sha256": "420bbb273e4d51be1e087671c75e5be07f91e9e0ddf0832375383cc036a49e39"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -2244,7 +2259,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "a1f8e107adc2f49e04d9c9a89b772cbc4833c140406d4ad6449502fcf15ac489"
+      "sha256": "f96868eaf7b781549637c375cc4e75fa04e92bb077f801976a1a560dd7e2839a"
     }
   },
   "coverageByFamily": {
@@ -2622,7 +2637,7 @@
     "weapons": {
       "rowCount": 119,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 41,
+      "phoneMissingCount": 35,
       "tabletMissingCount": 72,
       "completionProvenCount": 23
     },
@@ -31902,11 +31917,23 @@
       "mutationFamily": "weapons",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
+        "surface": "CareerWeaponFirePage",
+        "automationId": "career-weapon-fire-default-{stable-weapon-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerWeaponFirePage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerWeaponFireRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponFireRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Career direct root Weapons only. Mirrors Chummer5 default Single/Short/Long selection, effective direct-accessory round counts, confirmed partial Short/Long bursts, and non-partial Full/Suppressive fire. Accessory-provided active clips, mode-affecting wireless/ammo bonuses, and ammo Gear deletion side effects outside the bounded leaf stack fail closed. API 36 execution remains outstanding."
       },
       "tablet": {
         "status": "missing",
@@ -31914,8 +31941,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerWeaponFireAsync / CareerWeaponFireRequest(default) on the stable active clip and linked ammo Gear",
+      "persistenceAssertion": "the selected direct Career Weapon's stable active clip count and linked ammo Gear quantity change together in one expected-revision atomic save; exhausted linked Gear and its now-unsaved empty clip are removed, and unrelated runner XML survives recovery/reopen",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -47338,11 +47365,23 @@
       "mutationFamily": "weapons",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
+        "surface": "CareerWeaponFirePage",
+        "automationId": "career-weapon-fire-single-shot-{stable-weapon-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerWeaponFirePage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerWeaponFireRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponFireRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Career direct root Weapons only. Mirrors Chummer5 default Single/Short/Long selection, effective direct-accessory round counts, confirmed partial Short/Long bursts, and non-partial Full/Suppressive fire. Accessory-provided active clips, mode-affecting wireless/ammo bonuses, and ammo Gear deletion side effects outside the bounded leaf stack fail closed. API 36 execution remains outstanding."
       },
       "tablet": {
         "status": "missing",
@@ -47350,8 +47389,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerWeaponFireAsync / CareerWeaponFireRequest(single-shot) on the stable active clip and linked ammo Gear",
+      "persistenceAssertion": "the selected direct Career Weapon's stable active clip count and linked ammo Gear quantity change together in one expected-revision atomic save; exhausted linked Gear and its now-unsaved empty clip are removed, and unrelated runner XML survives recovery/reopen",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -47395,11 +47434,23 @@
       "mutationFamily": "weapons",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
+        "surface": "CareerWeaponFirePage",
+        "automationId": "career-weapon-fire-short-burst-{stable-weapon-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerWeaponFirePage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerWeaponFireRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponFireRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Career direct root Weapons only. Mirrors Chummer5 default Single/Short/Long selection, effective direct-accessory round counts, confirmed partial Short/Long bursts, and non-partial Full/Suppressive fire. Accessory-provided active clips, mode-affecting wireless/ammo bonuses, and ammo Gear deletion side effects outside the bounded leaf stack fail closed. API 36 execution remains outstanding."
       },
       "tablet": {
         "status": "missing",
@@ -47407,8 +47458,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerWeaponFireAsync / CareerWeaponFireRequest(short-burst) on the stable active clip and linked ammo Gear",
+      "persistenceAssertion": "the selected direct Career Weapon's stable active clip count and linked ammo Gear quantity change together in one expected-revision atomic save; exhausted linked Gear and its now-unsaved empty clip are removed, and unrelated runner XML survives recovery/reopen",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -47452,11 +47503,23 @@
       "mutationFamily": "weapons",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
+        "surface": "CareerWeaponFirePage",
+        "automationId": "career-weapon-fire-long-burst-{stable-weapon-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerWeaponFirePage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerWeaponFireRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponFireRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Career direct root Weapons only. Mirrors Chummer5 default Single/Short/Long selection, effective direct-accessory round counts, confirmed partial Short/Long bursts, and non-partial Full/Suppressive fire. Accessory-provided active clips, mode-affecting wireless/ammo bonuses, and ammo Gear deletion side effects outside the bounded leaf stack fail closed. API 36 execution remains outstanding."
       },
       "tablet": {
         "status": "missing",
@@ -47464,8 +47527,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerWeaponFireAsync / CareerWeaponFireRequest(long-burst) on the stable active clip and linked ammo Gear",
+      "persistenceAssertion": "the selected direct Career Weapon's stable active clip count and linked ammo Gear quantity change together in one expected-revision atomic save; exhausted linked Gear and its now-unsaved empty clip are removed, and unrelated runner XML survives recovery/reopen",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -47509,11 +47572,23 @@
       "mutationFamily": "weapons",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
+        "surface": "CareerWeaponFirePage",
+        "automationId": "career-weapon-fire-full-burst-{stable-weapon-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerWeaponFirePage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerWeaponFireRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponFireRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Career direct root Weapons only. Mirrors Chummer5 default Single/Short/Long selection, effective direct-accessory round counts, confirmed partial Short/Long bursts, and non-partial Full/Suppressive fire. Accessory-provided active clips, mode-affecting wireless/ammo bonuses, and ammo Gear deletion side effects outside the bounded leaf stack fail closed. API 36 execution remains outstanding."
       },
       "tablet": {
         "status": "missing",
@@ -47521,8 +47596,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerWeaponFireAsync / CareerWeaponFireRequest(full-burst) on the stable active clip and linked ammo Gear",
+      "persistenceAssertion": "the selected direct Career Weapon's stable active clip count and linked ammo Gear quantity change together in one expected-revision atomic save; exhausted linked Gear and its now-unsaved empty clip are removed, and unrelated runner XML survives recovery/reopen",
       "e2e": {
         "phone": {
           "status": "missing",
@@ -47566,11 +47641,23 @@
       "mutationFamily": "weapons",
       "operation": "mutating_action",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
+        "surface": "CareerWeaponFirePage",
+        "automationId": "career-weapon-fire-suppressive-fire-{stable-weapon-guid}",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerWeaponFirePage.cs",
+          "src/Chummer.Android/Native/CollectionEditorPages.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerWeaponFireRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponFireRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Career direct root Weapons only. Mirrors Chummer5 default Single/Short/Long selection, effective direct-accessory round counts, confirmed partial Short/Long bursts, and non-partial Full/Suppressive fire. Accessory-provided active clips, mode-affecting wireless/ammo bonuses, and ammo Gear deletion side effects outside the bounded leaf stack fail closed. API 36 execution remains outstanding."
       },
       "tablet": {
         "status": "missing",
@@ -47578,8 +47665,8 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerWeaponFireAsync / CareerWeaponFireRequest(suppressive-fire) on the stable active clip and linked ammo Gear",
+      "persistenceAssertion": "the selected direct Career Weapon's stable active clip count and linked ammo Gear quantity change together in one expected-revision atomic save; exhausted linked Gear and its now-unsaved empty clip are removed, and unrelated runner XML survives recovery/reopen",
       "e2e": {
         "phone": {
           "status": "missing",

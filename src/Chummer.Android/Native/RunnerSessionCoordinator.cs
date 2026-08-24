@@ -1728,6 +1728,34 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
+    public Task<CareerWeaponFireEditorState?> PrepareCareerWeaponFireAsync(
+        Guid weaponId,
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCareerWeaponFireAsync(weaponId, cancellationToken);
+
+    public async Task ApplyCareerWeaponFireAsync(
+        CareerWeaponFireRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.Profile?.Created != true
+            || State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This Career runner changed while Weapon firing was open. Reopen it.");
+        }
+
+        await _presenter.ApplyCareerWeaponFireAsync(request, cancellationToken);
+        if (State.Error is null)
+        {
+            await _presenter.SaveAsync(cancellationToken);
+        }
+        _notice = State.Error is null ? "Weapon ammo updated." : null;
+        await SyncShellAsync(cancellationToken);
+        NotifyChanged();
+    }
+
     public Task<VehicleWeaponFiringModeEditorState?> PrepareVehicleWeaponFiringModeEditAsync(
         Guid vehicleId,
         CancellationToken cancellationToken = default)

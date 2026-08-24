@@ -124,6 +124,7 @@ public sealed class CollectionItemEditorPage : NativePageBase
         AddVehicleWeaponFiringModeAction(item);
         AddCyberwareMatrixSwapAction(item);
         AddWeaponMatrixSwapAction(item);
+        AddCareerWeaponFireAction(item);
         AddArmorHomeNodeAction(item);
         AddWeaponHomeNodeAction(item);
         AddWeaponActiveCommlinkAction(item);
@@ -878,6 +879,33 @@ public sealed class CollectionItemEditorPage : NativePageBase
                 }
             },
             automationId: $"weapon-matrix-swap-open-{weaponId:N}"));
+    }
+
+    private void AddCareerWeaponFireAction(WorkspaceCollectionItemEditorState item)
+    {
+        if (_target.Kind != WorkspaceCollectionKind.Weapon
+            || _target.NestedKind is not null
+            || Coordinator.State.Profile?.Created != true
+            || Coordinator.State.WorkspaceId is null
+            || !Guid.TryParseExact(_target.ItemId, "D", out Guid weaponId)
+            || weaponId == Guid.Empty)
+        {
+            return;
+        }
+
+        _body.Add(NativeTheme.NavigationRow(
+            "Fire weapon",
+            $"Spend ammunition from {item.Label}'s active saved clip using its exact Chummer5 Career firing modes",
+            async () =>
+            {
+                CareerWeaponFireEditorState? editor = await Coordinator
+                    .PrepareCareerWeaponFireAsync(weaponId);
+                if (editor is not null)
+                {
+                    await Navigation.PushAsync(new CareerWeaponFirePage(Coordinator, editor));
+                }
+            },
+            automationId: $"career-weapon-fire-open-{weaponId:N}"));
     }
 
     private void AddVehicleWeaponFiringModeAction(WorkspaceCollectionItemEditorState item)

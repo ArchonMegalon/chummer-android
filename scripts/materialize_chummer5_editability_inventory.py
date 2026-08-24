@@ -2132,6 +2132,38 @@ CAREER_EDGE_USE_CONTROLS = {
         "career-edge-use-regain",
     ),
 }
+CAREER_WEAPON_FIRE_CONTROLS = {
+    "cmdFireWeapon": (
+        "cmdFireWeapon_Click",
+        "default",
+        "career-weapon-fire-default-{stable-weapon-guid}",
+    ),
+    "cmsAmmoSingleShot": (
+        "cmsAmmoSingleShot_Click",
+        "single-shot",
+        "career-weapon-fire-single-shot-{stable-weapon-guid}",
+    ),
+    "cmsAmmoShortBurst": (
+        "cmsAmmoShortBurst_Click",
+        "short-burst",
+        "career-weapon-fire-short-burst-{stable-weapon-guid}",
+    ),
+    "cmsAmmoLongBurst": (
+        "cmsAmmoLongBurst_Click",
+        "long-burst",
+        "career-weapon-fire-long-burst-{stable-weapon-guid}",
+    ),
+    "cmsAmmoFullBurst": (
+        "cmsAmmoFullBurst_Click",
+        "full-burst",
+        "career-weapon-fire-full-burst-{stable-weapon-guid}",
+    ),
+    "cmsAmmoSuppressiveFire": (
+        "cmsAmmoSuppressiveFire_Click",
+        "suppressive-fire",
+        "career-weapon-fire-suppressive-fire-{stable-weapon-guid}",
+    ),
+}
 CAREER_MANUAL_KARMA_CONTROLS = {
     "cmdKarmaGained": (
         "cmdKarmaGained_Click",
@@ -20317,6 +20349,154 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name == "CharacterCareer" and control in CAREER_WEAPON_FIRE_CONTROLS:
+        handler, action, automation_id = CAREER_WEAPON_FIRE_CONTROLS[control]
+        native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
+        page = native_root / "CareerWeaponFirePage.cs"
+        collection_editor = native_root / "CollectionEditorPages.cs"
+        coordinator = native_root / "RunnerSessionCoordinator.cs"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "CareerWeaponFireRequest.cs"
+        mutation = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        presenter_interface = overview / "ICharacterOverviewPresenter.cs"
+        presenter_persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = character_notes_core_root / "Chummer.Contracts" / "Characters" / "CharacterWeaponFireRules.cs"
+        workspace_store = character_notes_core_root / "Chummer.Infrastructure" / "Workspaces" / "FileWorkspaceStore.cs"
+        legacy_handler_exact = any(
+            event.get("handler") == handler
+            for event in legacy.get("events", [])
+            if isinstance(event, dict)
+        )
+        action_marker = {
+            "default": 'career-weapon-fire-default-{token}',
+            "single-shot": 'CharacterWeaponFireMode.SingleShot => "single-shot"',
+            "short-burst": 'CharacterWeaponFireMode.ShortBurst => "short-burst"',
+            "long-burst": 'CharacterWeaponFireMode.LongBurst => "long-burst"',
+            "full-burst": 'CharacterWeaponFireMode.FullBurst => "full-burst"',
+            "suppressive-fire": 'CharacterWeaponFireMode.SuppressiveFire => "suppressive-fire"',
+        }[action]
+        implemented = (
+            legacy_handler_exact
+            and _contains(
+                page,
+                "class CareerWeaponFirePage",
+                'AutomationId = $"career-weapon-fire-page-{token}"',
+                action_marker,
+                "CharacterWeaponFireRules.TryCreatePlan",
+                "plan.RequiresPartialConfirmation",
+                "ApplyCareerWeaponFireAsync",
+            )
+            and _contains(
+                collection_editor,
+                'automationId: $"career-weapon-fire-open-{weaponId:N}"',
+                "PrepareCareerWeaponFireAsync",
+                "new CareerWeaponFirePage",
+                "Coordinator.State.Profile?.Created != true",
+            )
+            and _contains(
+                coordinator,
+                "PrepareCareerWeaponFireAsync",
+                "ApplyCareerWeaponFireAsync",
+                "ExpectedContentRevision",
+                "_presenter.SaveAsync",
+            )
+            and _contains(
+                request,
+                "CareerWeaponFireEditorState",
+                "CareerWeaponFireRequest",
+                "CharacterWeaponFireIdentity Identity",
+                "ExpectedNodeRevision",
+                'ReadPositiveInteger(weapon, "activeammoslot")',
+                'ReadNonNegativeInteger(clip, "count")',
+                'ReadNonNegativeDecimal(ammoGear, "qty")',
+                "HasUnsupportedModeSemantics",
+                "CanDeleteAmmoGearExactly",
+            )
+            and _contains(
+                mutation,
+                "ApplyCareerWeaponFire",
+                "CharacterWeaponFireRules.TryValidateMutation",
+                'current.Clip.Elements("count").Single().Value',
+                'current.AmmoGear.Elements("qty").Single().Value',
+                "current.AmmoGear.Remove()",
+            )
+            and _contains(
+                presenter,
+                "PrepareCareerWeaponFireAsync",
+                "ApplyCareerWeaponFireAsync",
+                "WorkspaceDocumentFormat.NativeXml",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                presenter_interface,
+                "PrepareCareerWeaponFireAsync",
+                "ApplyCareerWeaponFireAsync",
+            )
+            and _contains(
+                presenter_persistence,
+                "SaveAsync",
+                "expectedContentRevision",
+                "TryBeginCaptureIntent",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterWeaponFireIdentity",
+                "CharacterWeaponFireMode",
+                "RequiresPartialConfirmation",
+                "DeleteAmmoGear",
+                "TryValidateMutation",
+            )
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+                "File.Move",
+            )
+        )
+        return {
+            "status": "implemented_pending_emulator" if implemented else "missing",
+            "route": "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
+            "surface": "CareerWeaponFirePage",
+            "automationId": automation_id,
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CareerWeaponFirePage.cs",
+                "src/Chummer.Android/Native/CollectionEditorPages.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CareerWeaponFireRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponFireRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCareerWeaponFireAsync / "
+                f"CareerWeaponFireRequest({action}) on the stable active clip and linked ammo Gear"
+            ),
+            "persistenceAssertion": (
+                "the selected direct Career Weapon's stable active clip count and linked ammo Gear quantity change "
+                "together in one expected-revision atomic save; exhausted linked Gear and its now-unsaved empty clip "
+                "are removed, and unrelated runner XML survives recovery/reopen"
+            ),
+            "coverageLimit": (
+                "Career direct root Weapons only. Mirrors Chummer5 default Single/Short/Long selection, effective "
+                "direct-accessory round counts, confirmed partial Short/Long bursts, and non-partial Full/Suppressive "
+                "fire. Accessory-provided active clips, mode-affecting wireless/ammo bonuses, and ammo Gear deletion "
+                "side effects outside the bounded leaf stack fail closed. API 36 execution remains outstanding."
+            ),
+            "e2e": {"status": "missing", "ref": None},
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCareer" and control in CAREER_EDGE_USE_CONTROLS:
         handler, action, automation_id = CAREER_EDGE_USE_CONTROLS[control]
         page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerEdgeUsePage.cs"
@@ -22085,6 +22265,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TraditionDrainPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TraditionSpiritCategoryPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerEdgeUsePage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerWeaponFirePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerManualKarmaPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerManualNuyenPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerCreateExpensePage.cs",
@@ -22396,6 +22577,7 @@ def build_inventory(
         core_engine_root / "Chummer" / "data" / "traditions.xml",
         core_engine_root / "Chummer" / "data" / "streams.xml",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerEdgeUseRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterWeaponFireRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualKarmaRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualNuyenRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerCreateExpenseRules.cs",
@@ -22419,6 +22601,7 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "TraditionDrainEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "TraditionSpiritCategoryEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerEdgeUseEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CareerWeaponFireRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerManualKarmaEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerManualNuyenEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerCreateExpenseEditRequest.cs",

@@ -3441,6 +3441,43 @@ namespace Chummer
             self.assertEqual("missing", row["e2e"]["tablet"]["status"])
             self.assertFalse(row["completionProven"])
 
+    def test_career_weapon_fire_family_is_exact_phone_only_and_pending_api36(self) -> None:
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        controls = {
+            "cmdFireWeapon": "career-weapon-fire-default-{stable-weapon-guid}",
+            "cmsAmmoSingleShot": "career-weapon-fire-single-shot-{stable-weapon-guid}",
+            "cmsAmmoShortBurst": "career-weapon-fire-short-burst-{stable-weapon-guid}",
+            "cmsAmmoLongBurst": "career-weapon-fire-long-burst-{stable-weapon-guid}",
+            "cmsAmmoFullBurst": "career-weapon-fire-full-burst-{stable-weapon-guid}",
+            "cmsAmmoSuppressiveFire": "career-weapon-fire-suppressive-fire-{stable-weapon-guid}",
+        }
+        rows = {
+            row["legacy"]["controlName"]: row
+            for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == "CharacterCareer"
+            and row["legacy"]["controlName"] in controls
+        }
+        self.assertEqual(set(controls), set(rows))
+        for control, automation_id in controls.items():
+            row = rows[control]
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
+                row["phone"]["route"],
+            )
+            self.assertEqual("CareerWeaponFirePage", row["phone"]["surface"])
+            self.assertEqual(automation_id, row["phone"]["automationId"])
+            self.assertIn("active clip", row["presenterMutation"])
+            self.assertIn("expected-revision atomic save", row["persistenceAssertion"])
+            self.assertEqual("missing", row["e2e"]["phone"]["status"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertEqual("missing", row["e2e"]["tablet"]["status"])
+            self.assertFalse(row["completionProven"])
+
     def test_career_manual_karma_phone_mapping_is_exact_phone_only_and_scripted(self) -> None:
         payload = json.loads(
             (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
