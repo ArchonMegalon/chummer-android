@@ -556,14 +556,17 @@ def select_priority_rank(device: shared.Device, category: str) -> str:
     if category not in CATEGORIES:
         raise RuntimeError(f"Unsupported prerequisite category {category!r}")
 
-    shared.reset_scroll_to_top(device, swipes=22)
     category_selector = f"creation-prerequisite-category-{category}"
-    device.tap(
+    category_row = device.wait_exact_resource_id_bidirectional(
         category_selector,
-        scroll=True,
-        max_scrolls=22,
-        exact_resource_id=True,
+        timeout=90,
+        backward_scrolls=22,
+        forward_scrolls=22,
+        scroll_distance_ratio=0.22,
+        evidence_prefix=f"creation-prerequisite-{category}-category-row",
+        surface_name=f"{category} priority category row",
     )
+    device.shell("input", "tap", *(str(value) for value in category_row.center))
     device.wait_for_single_exact_resource_id(
         "creation-prerequisite-category-page",
         timeout=45,
@@ -605,15 +608,14 @@ def select_priority_rank(device: shared.Device, category: str) -> str:
         evidence_prefix=f"creation-prerequisite-{category}-parent-route",
         surface_name="Creation prerequisite parent route",
     )
-    # PopAsync returns to the same long ScrollView offset.  Reset before reading
-    # the exact row, then require the newly selected rank text.  This proves the
-    # shared in-memory phone draft survived the deep-navigation transition.
-    shared.reset_scroll_to_top(device, swipes=22)
-    row = device.wait_for_single_exact_resource_id(
+    # PopAsync returns to the same long ScrollView offset.  Reacquire the exact
+    # row with the same bounded overlapping scan, then require the selected rank
+    # text. This proves the shared in-memory phone draft survived deep navigation.
+    row = device.wait_exact_resource_id_bidirectional(
         category_selector,
-        timeout=45,
-        scroll=True,
-        max_scrolls=22,
+        timeout=90,
+        backward_scrolls=22,
+        forward_scrolls=22,
         scroll_distance_ratio=0.22,
         evidence_prefix=f"creation-prerequisite-{category}-selected-row",
         surface_name=f"Selected {category} category row",

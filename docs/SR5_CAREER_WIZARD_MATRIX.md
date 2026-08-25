@@ -54,7 +54,7 @@ untouched and must capture a dedicated digest-bound device journey without
 weakening existing gates.
 
 The isolated authority graph used for this slice is pinned exactly to integrated
-Core `5e98a92c6fd012aea0d9664f6619adc94e36ce8d` (Career commits
+Core `722f1d3690a5fffcd4590cd849d9d6e810783ac7` (Career commits
 `5537e99df72e1a8a347269ad3b02b5a2cc2f9da1` and
 `7b8241f87c911077f3f5c756c0d0978f784c8052` transplanted onto base
 `da43a509b1f41abe70f3426253acd7158352e589`, followed by the independent
