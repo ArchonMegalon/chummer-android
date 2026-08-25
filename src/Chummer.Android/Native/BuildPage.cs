@@ -528,7 +528,7 @@ public sealed class BuildPage : NativePageBase
                          + $"generation={request.Generation.ToString(CultureInfo.InvariantCulture)} "
                          + $"revision={request.Key.ContentRevision.ToString(CultureInfo.InvariantCulture)}";
 #if ANDROID
-        global::Android.Util.Log.Info("ChummerCreationAuthority", message);
+        global::Android.Util.Log.Info("ChummerCreation", message);
 #endif
         Console.WriteLine($"CHUMMER_CREATION_AUTHORITY {message}");
     }
