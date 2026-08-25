@@ -105,6 +105,18 @@ internal static class Program
                 out string blocker), $"{name} blocker must prevent a draft.");
             Require(!string.IsNullOrWhiteSpace(blocker), $"{name} blocker must be explainable.");
         }
+        CareerSkillGroupAdvanceEditorState wrongRuleset = Editor(41, Quote()) with
+        {
+            RulesetId = "sr6"
+        };
+        Require(!Sr5CareerSkillGroupDraft.TryCreate(
+            wrongRuleset,
+            wrongRuleset.SkillGroups.Single(),
+            OwnerId,
+            ActionId,
+            ExpenseDate,
+            out _,
+            out _), "A non-SR5 editor must never become an SR5 skill-group draft.");
     }
 
     private static void CheckpointRejectsTamperingAndPriorSchemaLocks()

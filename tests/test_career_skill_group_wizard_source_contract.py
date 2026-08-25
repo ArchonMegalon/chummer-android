@@ -24,6 +24,7 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
             "Quote.LogicalRevision",
             "Quote.SourceRevision",
             "Quote.RuleDigest",
+            "editor.RulesetId",
             "CharacterCareerSkillGroupAdvanceRules.RulesetId",
             "Sr5CareerSkillGroupRuntimeAuthority RuntimeAuthority",
             "RuntimeAuthority.ContentDigest",
@@ -107,6 +108,7 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
         for marker in (
             "PrepareCareerSkillGroupAdvanceAsync",
             "ApplyCareerSkillGroupAdvanceAsync",
+            "request.ExpectedRulesetId",
             "CharacterCareerSkillGroupAdvanceRules.TryPlanAdvance",
             "CharacterCareerSkillGroupAdvanceRules.IsCoherent(preparedReceipt)",
             "preparedReceipt.TransactionId == expectedPlan.TransactionId",

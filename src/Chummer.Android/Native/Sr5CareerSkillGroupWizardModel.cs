@@ -168,7 +168,11 @@ public sealed record Sr5CareerSkillGroupDraft(
         blocker = string.Empty;
         if (editor is null
             || string.IsNullOrWhiteSpace(editor.WorkspaceId.Value)
-            || editor.ContentRevision <= 0)
+            || editor.ContentRevision <= 0
+            || !string.Equals(
+                editor.RulesetId,
+                CharacterCareerSkillGroupAdvanceRules.RulesetId,
+                StringComparison.Ordinal))
         {
             blocker = "The runner identity or revision is unavailable. Reopen skill-group advancement.";
             return false;
