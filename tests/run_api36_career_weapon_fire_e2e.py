@@ -228,7 +228,14 @@ def open_page(device: shared.Device) -> None:
     shared.open_build(device, "phone")
     shared.reset_scroll_to_top(device, swipes=12)
     device.tap("build-section-tab-gear", scroll=True, timeout=120, max_scrolls=24)
-    device.tap("build-action-tab-gear-weapons", scroll=True, timeout=120, max_scrolls=24)
+    device.tap_single_exact_resource_id_bidirectional(
+        "build-action-tab-gear-weapons",
+        timeout=120,
+        backward_scrolls=48,
+        forward_scrolls=24,
+        evidence_prefix="career-weapon-fire-weapons-route",
+        surface_name="Gear Weapons route accessibility node",
+    )
     device.tap(
         f"collection-item-weapon-{WEAPON_ID}",
         scroll=True,

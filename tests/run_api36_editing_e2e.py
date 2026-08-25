@@ -531,6 +531,64 @@ class Device:
             "after a bounded bidirectional search"
         )
 
+    def tap_single_exact_resource_id_bidirectional(
+        self,
+        selector: str,
+        *,
+        timeout: int = 90,
+        backward_scrolls: int = 24,
+        forward_scrolls: int = 24,
+        scroll_distance_ratio: float = 0.22,
+        evidence_prefix: str = "exact-bidirectional-tap",
+        surface_name: str = "UI accessibility node",
+    ) -> None:
+        """Reset a preserved viewport, then tap one unambiguous exact resource ID."""
+        x_ratio = self._scroll_x_ratio(selector)
+        for _ in range(backward_scrolls):
+            self.swipe_down(
+                x_ratio=x_ratio,
+                distance_ratio=scroll_distance_ratio,
+            )
+            time.sleep(0.2)
+        if backward_scrolls > 0:
+            time.sleep(0.75)
+
+        deadline = time.monotonic() + timeout
+        forward = 0
+        while time.monotonic() < deadline:
+            matches = [
+                node
+                for node in self.hierarchy()
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == selector
+            ]
+            if len(matches) > 1:
+                self.capture(f"{evidence_prefix}-cardinality-invalid")
+                raise RuntimeError(
+                    f"{surface_name} {selector!r} has cardinality {len(matches)}; "
+                    "expected exactly one"
+                )
+            if len(matches) == 1 and self.node_has_tappable_bounds(matches[0]):
+                x, y = matches[0].center
+                self.shell("input", "tap", str(x), str(y))
+                return
+            if self.dismiss_system_ui_anr():
+                time.sleep(2)
+                continue
+            if forward >= forward_scrolls:
+                break
+            self.swipe_up(
+                x_ratio=x_ratio,
+                distance_ratio=scroll_distance_ratio,
+            )
+            forward += 1
+            time.sleep(0.75)
+        self.capture(f"{evidence_prefix}-unavailable")
+        raise RuntimeError(
+            f"Timed out waiting for exactly one tappable {surface_name.lower()} "
+            f"{selector!r} after a bounded bidirectional search"
+        )
+
     def node_has_tappable_bounds(self, node: UiNode) -> bool:
         match = BOUNDS.fullmatch(node.attributes.get("bounds", ""))
         if match is None:

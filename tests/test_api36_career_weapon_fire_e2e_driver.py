@@ -43,6 +43,17 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
         self.assertEqual(1, source.count("shared.force_stop_and_launch_new_process"))
         self.assertIn("shared.require_restored_authority(saved, restored)", source)
         self.assertIn('"afterForceStop": list(restart.after_force_stop.process_ids)', source)
+        self.assertIn(
+            'device.tap_single_exact_resource_id_bidirectional(\n'
+            '        "build-action-tab-gear-weapons"',
+            source,
+        )
+        self.assertIn("backward_scrolls=48", source)
+        self.assertIn('evidence_prefix="career-weapon-fire-weapons-route"', source)
+        self.assertNotIn(
+            'device.tap("build-action-tab-gear-weapons", scroll=True',
+            source,
+        )
 
     def test_fixture_binds_exact_root_weapon_active_clip_linked_ammo_and_burst(self) -> None:
         root = ET.parse(FIXTURE).getroot()
