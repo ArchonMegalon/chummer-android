@@ -471,6 +471,8 @@ def read_source_authority_digests(device: shared.Device) -> list[str]:
 def tap_first_exact_enabled_priority_rank(device: shared.Device, category: str) -> str:
     """Tap the first exact, enabled A-E rank after a cardinality scan."""
     prefix = f"creation-prerequisite-rank-{category}-"
+    expected_ids = {f"{prefix}{rank}" for rank in "abcde"}
+    observed_ids: set[str] = set()
     candidates: set[str] = set()
     invalid_ids: set[str] = set()
     duplicate_ids: set[str] = set()
@@ -486,6 +488,7 @@ def tap_first_exact_enabled_priority_rank(device: shared.Device, category: str) 
             if re.fullmatch(r"[a-e]", rank_token) is None:
                 invalid_ids.add(resource_id)
                 continue
+            observed_ids.add(resource_id)
             if (
                 node.attributes.get("enabled") == "true"
                 and node.attributes.get("clickable") == "true"
@@ -501,10 +504,16 @@ def tap_first_exact_enabled_priority_rank(device: shared.Device, category: str) 
             device.swipe_up(distance_ratio=0.22)
             time.sleep(0.2)
 
-    if invalid_ids or duplicate_ids or not candidates:
+    if (
+        invalid_ids
+        or duplicate_ids
+        or observed_ids != expected_ids
+        or not candidates
+    ):
         device.capture(f"creation-prerequisite-{category}-rank-cardinality-invalid")
         raise RuntimeError(
             f"Exact {category} rank scan was invalid: candidates={sorted(candidates)!r}, "
+            f"observedIds={sorted(observed_ids)!r}, expectedIds={sorted(expected_ids)!r}, "
             f"invalidIds={sorted(invalid_ids)!r}, duplicateIds={sorted(duplicate_ids)!r}"
         )
 

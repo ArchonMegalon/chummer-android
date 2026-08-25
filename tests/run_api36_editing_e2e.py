@@ -1069,6 +1069,7 @@ def _phone_runner_route_from_nodes(
     nodes: list[UiNode],
     *,
     created: bool | None,
+    require_tappable_bounds: bool,
 ) -> UiNode | None:
     expected_routes = {"phone-runner-create", "phone-runner-sheet"}
     desired_route = (
@@ -1086,7 +1087,6 @@ def _phone_runner_route_from_nodes(
             _node_has_canonical_resource_id(node, route_id)
             for route_id in expected_routes
         )
-        and node.attributes.get("visible-to-user") == "true"
     ]
     if len(matches) == 1:
         observed_route, node = matches[0]
@@ -1095,6 +1095,31 @@ def _phone_runner_route_from_nodes(
             raise RuntimeError(
                 f"Final phone runner route was {observed_route!r}; "
                 f"expected sole root {desired_route!r}"
+            )
+        if node.attributes.get("visible-to-user") != "true":
+            return None
+        expected_label = (
+            "CREATION RUNNER"
+            if observed_route == "phone-runner-create"
+            else "CAREER RUNNER"
+        )
+        if (
+            node.attributes.get("class") != "android.widget.TextView"
+            or node.attributes.get("enabled") != "true"
+            or node.attributes.get("clickable") != "false"
+            or node.attributes.get("focusable") != "false"
+            or node.attributes.get("text") != expected_label
+        ):
+            device.capture("phone-runner-route-structure-invalid")
+            raise RuntimeError(
+                "Exact phone runner lifecycle marker did not expose its pinned "
+                "noninteractive native role and label"
+            )
+        if require_tappable_bounds and not device.node_has_tappable_bounds(node):
+            device.capture("phone-runner-route-structure-invalid")
+            raise RuntimeError(
+                "Exact phone runner lifecycle marker was not visible with its "
+                "pinned native role after the root viewport reset"
             )
         return node
     if len(matches) > 1:
@@ -1599,7 +1624,12 @@ def return_to_phone_runner_root(
                 time.sleep(0.75)
             continue
 
-        route = _phone_runner_route_from_nodes(device, nodes, created=created)
+        route = _phone_runner_route_from_nodes(
+            device,
+            nodes,
+            created=created,
+            require_tappable_bounds=viewport_reset,
+        )
         page_matches = [
             node
             for node in nodes
@@ -1647,6 +1677,8 @@ def return_to_phone_runner_root(
                     route.attributes.get("class") != "android.widget.TextView"
                     or route.attributes.get("enabled") != "true"
                     or route.attributes.get("visible-to-user") != "true"
+                    or route.attributes.get("clickable") != "false"
+                    or route.attributes.get("focusable") != "false"
                     or route.attributes.get("text") != expected_label
                     or not device.node_has_tappable_bounds(route)
                 ):

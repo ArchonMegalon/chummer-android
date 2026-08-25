@@ -443,14 +443,17 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "bounds": "[100,400][900,600]",
             }
         )
-        disabled = driver.shared.UiNode(
-            {
-                "resource-id": "creation-prerequisite-rank-heritage-b",
-                "enabled": "false",
-                "clickable": "true",
-                "bounds": "[100,650][900,850]",
-            }
-        )
+        disabled = [
+            driver.shared.UiNode(
+                {
+                    "resource-id": f"creation-prerequisite-rank-heritage-{rank}",
+                    "enabled": "false",
+                    "clickable": "true",
+                    "bounds": "[100,650][900,850]",
+                }
+            )
+            for rank in "bcde"
+        ]
 
         class RankDevice:
             taps: list[tuple[str, ...]] = []
@@ -458,7 +461,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             up = 0
 
             def hierarchy(self):
-                return [enabled, disabled]
+                return [enabled, *disabled]
 
             def swipe_down(self, **_options: object) -> None:
                 self.down += 1
@@ -519,6 +522,26 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     driver.tap_first_exact_enabled_priority_rank(device, "heritage")
                 device.wait_for_single_exact_resource_id.assert_not_called()
                 device.shell.assert_not_called()
+
+    def test_exact_rank_scan_requires_the_complete_a_to_e_projection(self) -> None:
+        nodes = [
+            self.authority_option_node(
+                f"creation-prerequisite-rank-heritage-{rank}",
+                f"Rank {rank.upper()}",
+            )
+            for rank in "abcd"
+        ]
+        device = mock.Mock()
+        device.hierarchy.return_value = nodes
+        device.node_has_tappable_bounds.return_value = True
+
+        with mock.patch.object(driver.shared, "reset_scroll_to_top"), \
+             mock.patch.object(driver.time, "sleep"), \
+             self.assertRaisesRegex(RuntimeError, "expectedIds"):
+            driver.tap_first_exact_enabled_priority_rank(device, "heritage")
+
+        device.wait_for_single_exact_resource_id.assert_not_called()
+        device.shell.assert_not_called()
 
     def test_rank_selection_fails_closed_on_unbound_or_unrefreshed_rank(self) -> None:
         device = mock.Mock()

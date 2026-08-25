@@ -200,6 +200,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 "class": "android.widget.TextView",
                 "enabled": "true",
                 "visible-to-user": "true",
+                "clickable": "false",
+                "focusable": "false",
                 "text": (
                     "CREATION RUNNER"
                     if route_id == "phone-runner-create"
@@ -314,6 +316,39 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertIs(route, observed)
         reset_scroll.assert_called_once_with(device, swipes=48)
         device.shell.assert_not_called()
+
+    def test_phone_runner_route_rejects_hidden_duplicate_canonical_marker(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        visible = self.phone_runner_route()
+        hidden = self.phone_runner_route()
+        hidden.attributes["visible-to-user"] = "false"
+        device.hierarchy.return_value = [visible, hidden]
+
+        with self.assertRaisesRegex(RuntimeError, "both creation and career roots"):
+            DRIVER.wait_for_phone_runner_route(device, created=True, timeout=1)
+
+        device.capture.assert_called_once_with(
+            "phone-runner-route-cardinality-invalid"
+        )
+
+    def test_phone_runner_route_rejects_interactive_lifecycle_marker(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        route = self.phone_runner_route()
+        route.attributes["clickable"] = "true"
+        root = [self.phone_runner_page(), self.phone_runner_toolbar(), route]
+        device.hierarchy.side_effect = [root, root]
+        device.node_has_tappable_bounds.return_value = True
+
+        with (
+            patch.object(DRIVER, "reset_scroll_to_top") as reset_scroll,
+            self.assertRaisesRegex(RuntimeError, "pinned noninteractive native role"),
+        ):
+            DRIVER.return_to_phone_runner_root(device, created=True)
+
+        reset_scroll.assert_not_called()
+        device.capture.assert_called_once_with(
+            "phone-runner-route-structure-invalid"
+        )
 
     def test_phone_runner_root_unwinds_nested_pages_before_resetting_viewport(self) -> None:
         device = Mock(spec=DRIVER.Device)
@@ -505,7 +540,9 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         clipped_route = self.phone_runner_route(bounds="[53,-6506][1028,-6467]")
         root = [self.phone_runner_page(), self.phone_runner_toolbar(), clipped_route]
         device.hierarchy.side_effect = [root, root]
-        device.node_has_tappable_bounds.side_effect = [True, True, True, True, False]
+        device.node_has_tappable_bounds.side_effect = lambda node: (
+            node is not clipped_route
+        )
 
         with (
             patch.object(DRIVER, "reset_scroll_to_top") as reset_scroll,
