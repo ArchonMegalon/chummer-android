@@ -2251,6 +2251,22 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("PrepareCareerWeaponFireAsync", coordinator + presenter)
         self.assertIn("ApplyCareerWeaponFireAsync", coordinator + presenter)
         self.assertIn("_presenter.SaveAsync", coordinator)
+        fire_start = coordinator.index("public async Task ApplyCareerWeaponFireAsync")
+        fire_end = coordinator.index(
+            "public Task<VehicleWeaponFiringModeEditorState?>",
+            fire_start,
+        )
+        fire = coordinator[fire_start:fire_end]
+        for token in (
+            "State.ContentRevision == request.ExpectedContentRevision + 1",
+            "State.IsDirty",
+            "State.SavedRevision == appliedContentRevision",
+            "!State.IsDirty",
+            "TryRefreshWorkspaceAuthorityAsync",
+            "authority.Matches(State)",
+            '_notice = persisted ? "Weapon ammo updated." : null',
+        ):
+            self.assertIn(token, fire)
         self.assertIn("CharacterWeaponFireIdentity Identity", request)
         self.assertIn("string ExpectedNodeRevision", request)
         self.assertIn("ExpectedContentRevision", request + presenter)
