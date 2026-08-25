@@ -35,6 +35,27 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.assertIn("SemanticProperties.SetDescription(", source)
             self.assertIn(expected, source)
 
+    def test_source_authority_labels_keep_full_width_beside_long_digests(self) -> None:
+        page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
+
+        for label, automation_id in (
+            ("Authority digest", "creation-prerequisite-authority-digest"),
+            ("Profile inputs", "creation-prerequisite-profile-inputs-digest"),
+            ("Priorities XML", "creation-prerequisite-priorities-xml-digest"),
+        ):
+            self.assertIn(
+                f'card.Add(SourceAuthorityMetric(\n            "{label}",',
+                page,
+            )
+            self.assertIn(f'"{automation_id}"));', page)
+
+        helper = page[page.index("private static VerticalStackLayout SourceAuthorityMetric") :]
+        helper = helper[: helper.index("private void AddActions")]
+        self.assertIn('labelView.AutomationId = $"{automationId}-label";', helper)
+        self.assertIn("valueView.AutomationId = automationId;", helper)
+        self.assertIn("valueView.LineBreakMode = LineBreakMode.CharacterWrap;", helper)
+        self.assertNotIn("NativeTheme.Metric", helper)
+
     def test_readable_digest_prefix_is_canonical_and_twelve_hex_characters(self) -> None:
         helper = (NATIVE / "CreationPrerequisiteDigestText.cs").read_text(encoding="utf-8")
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")

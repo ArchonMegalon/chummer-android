@@ -339,14 +339,41 @@ public sealed class CreationPrerequisitePage : NativePageBase
     {
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Eyebrow("Source authority"));
-        card.Add(NativeTheme.Metric("Authority digest", state.Authority.AuthorityDigest));
-        card.Add(NativeTheme.Metric("Profile inputs", state.Authority.RawProfileInputsDigest));
-        card.Add(NativeTheme.Metric("Priorities XML", state.Authority.RawPrioritiesXmlDigest));
+        card.Add(SourceAuthorityMetric(
+            "Authority digest",
+            state.Authority.AuthorityDigest,
+            "creation-prerequisite-authority-digest"));
+        card.Add(SourceAuthorityMetric(
+            "Profile inputs",
+            state.Authority.RawProfileInputsDigest,
+            "creation-prerequisite-profile-inputs-digest"));
+        card.Add(SourceAuthorityMetric(
+            "Priorities XML",
+            state.Authority.RawPrioritiesXmlDigest,
+            "creation-prerequisite-priorities-xml-digest"));
         foreach (string anchor in state.Authority.SourceAnchorIds)
             card.Add(NativeTheme.Body($"Source anchor · {anchor}", NativeTheme.Muted));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-prerequisite-source-authority";
         _body.Add(border);
+    }
+
+    private static VerticalStackLayout SourceAuthorityMetric(
+        string label,
+        string value,
+        string automationId)
+    {
+        Label labelView = NativeTheme.Body(label, NativeTheme.Muted);
+        labelView.AutomationId = $"{automationId}-label";
+        Label valueView = NativeTheme.Body(string.IsNullOrWhiteSpace(value) ? "—" : value);
+        valueView.AutomationId = automationId;
+        valueView.FontAttributes = FontAttributes.Bold;
+        valueView.LineBreakMode = LineBreakMode.CharacterWrap;
+        return new VerticalStackLayout
+        {
+            Spacing = 2,
+            Children = { labelView, valueView }
+        };
     }
 
     private void AddActions(CharacterCreationPrerequisiteState state)
