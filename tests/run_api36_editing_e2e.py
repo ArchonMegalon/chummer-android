@@ -3110,9 +3110,12 @@ def main() -> int:
             device,
             initial_launch_state,
         )
-        wait_for_phone_runner_route(device, created=False)
-        tap_phone_destination(device, "phone-destination-runners")
-        wait_for_phone_runners(device)
+        if args.profile == "phone":
+            wait_for_phone_runner_route(device, created=False)
+            tap_phone_destination(device, "phone-destination-runners")
+            wait_for_phone_runners(device)
+        else:
+            device.wait("Continue building", timeout=90)
         restored_authority = (
             read_workspace_authority(device) if args.profile == "phone" else None
         )
@@ -3202,9 +3205,12 @@ def main() -> int:
             device,
             initial_launch_state,
         )
-        wait_for_phone_runner_route(device, created=True)
-        tap_phone_destination(device, "phone-destination-runners")
-        wait_for_phone_runners(device)
+        if args.profile == "phone":
+            wait_for_phone_runner_route(device, created=True)
+            tap_phone_destination(device, "phone-destination-runners")
+            wait_for_phone_runners(device)
+        else:
+            device.wait("Continue building", timeout=90)
         restored_authority = (
             read_workspace_authority(device) if args.profile == "phone" else None
         )
