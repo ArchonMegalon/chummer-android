@@ -92,11 +92,12 @@ public sealed record Sr5CareerSkillGroupDraft(
         => new(
             WorkspaceId,
             ExpectedContentRevision,
+            CharacterCareerSkillGroupAdvanceRules.RulesetId,
             Quote,
             Quote.LogicalRevision,
             Quote.SourceRevision,
             Quote.RuleDigest,
-            Confirmed: true,
+            true,
             Plan.TransactionId,
             Plan.ExpenseDateLocal);
 

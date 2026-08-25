@@ -24,6 +24,7 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
             "Quote.LogicalRevision",
             "Quote.SourceRevision",
             "Quote.RuleDigest",
+            "CharacterCareerSkillGroupAdvanceRules.RulesetId",
             "Sr5CareerSkillGroupRuntimeAuthority RuntimeAuthority",
             "RuntimeAuthority.ContentDigest",
             "RuntimeAuthority.RuntimeDigest",

@@ -54,6 +54,8 @@ internal static class Program
             "The verified bundled-content digest must remain bound.");
         Require(draft.RuntimeAuthority.RuntimeDigest == Sr5CareerSkillGroupRuntimeAuthority.CurrentRuntimeDigest,
             "The exact Core/Presentation/content runtime digest must remain bound.");
+        Require(draft.ToRequest().ExpectedRulesetId == CharacterCareerSkillGroupAdvanceRules.RulesetId,
+            "The exact SR5 ruleset must remain bound into the Presentation mutation request.");
         Require(draft.ToRequest().ExpectedLogicalRevision == quote.LogicalRevision, "Logical revision must remain bound.");
         Require(draft.ToRequest().ExpectedSourceRevision == quote.SourceRevision, "Source revision must remain bound.");
         Require(draft.ToRequest().ExpectedRuleDigest == quote.RuleDigest, "Rule digest must remain bound.");
@@ -394,10 +396,11 @@ internal static class Program
         => new(
             WorkspaceId,
             revision,
+            CharacterCareerSkillGroupAdvanceRules.RulesetId,
             [quote],
-            OmittedSkillGroupCount: 0,
+            0,
             recoverable ?? [],
-            OmittedReceiptCount: 0);
+            0);
 
     private static CharacterCareerSkillGroupAdvanceQuote Successor(Sr5CareerSkillGroupDraft draft)
     {

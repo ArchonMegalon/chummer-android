@@ -27,6 +27,7 @@ namespace Chummer.Presentation.Overview
     public sealed record CareerSkillGroupAdvanceEditorState(
         CharacterWorkspaceId WorkspaceId,
         long ContentRevision,
+        string RulesetId,
         IReadOnlyList<CharacterCareerSkillGroupAdvanceQuote> SkillGroups,
         int OmittedSkillGroupCount,
         IReadOnlyList<CharacterCareerSkillGroupAdvanceReceipt> RecoverableReceipts,
@@ -35,6 +36,7 @@ namespace Chummer.Presentation.Overview
     public sealed record CareerSkillGroupAdvanceRequest(
         CharacterWorkspaceId WorkspaceId,
         long ExpectedContentRevision,
+        string ExpectedRulesetId,
         CharacterCareerSkillGroupAdvanceQuote ExpectedSkillGroup,
         string ExpectedLogicalRevision,
         string ExpectedSourceRevision,
