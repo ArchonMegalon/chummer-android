@@ -1091,19 +1091,36 @@ namespace Chummer
         ]
         self.assertEqual(5, len(career_reputation))
         for row in career_reputation:
+            control = row["legacy"]["controlName"]
             xml_element, automation_id, _property = inventory.CAREER_REPUTATION_CONTROLS[
-                row["legacy"]["controlName"]
+                control
             ]
-            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            self.assertEqual(
+                "implemented_verified_api36"
+                if control == "nudNotoriety"
+                else "implemented_pending_emulator",
+                row["phone"]["status"],
+            )
             self.assertEqual("Build > Reputation", row["phone"]["route"])
             self.assertEqual("CareerReputationPage", row["phone"]["surface"])
             self.assertEqual(automation_id, row["phone"]["automationId"])
             self.assertEqual("missing", row["tablet"]["status"])
-            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
-            self.assertEqual(
-                "tests/run_api36_career_reputation_e2e.py",
-                row["e2e"]["phone"]["ref"],
-            )
+            if control == "nudNotoriety":
+                self.assertEqual("executed_api36", row["e2e"]["phone"]["status"])
+                self.assertEqual(
+                    9549763958,
+                    row["e2e"]["phone"]["hostedArtifact"]["artifactId"],
+                )
+                self.assertEqual(
+                    "hosted_api36_x86_64_phone_profile_not_arm64_hardware",
+                    row["e2e"]["phone"]["deviceScope"],
+                )
+            else:
+                self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+                self.assertEqual(
+                    "tests/run_api36_career_reputation_e2e.py",
+                    row["e2e"]["phone"]["ref"],
+                )
             self.assertIn(xml_element, row["persistenceAssertion"])
             self.assertFalse(row["completionProven"])
 
@@ -3062,8 +3079,9 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 562,
-                "missing": 911,
+                "implemented_pending_emulator": 560,
+                "implemented_verified_api36": 3,
+                "missing": 910,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 172,
@@ -3441,7 +3459,7 @@ namespace Chummer
             self.assertEqual("missing", row["e2e"]["tablet"]["status"])
             self.assertFalse(row["completionProven"])
 
-    def test_career_weapon_fire_family_is_exact_phone_only_and_pending_api36(self) -> None:
+    def test_career_weapon_fire_promotes_only_the_exact_short_burst_row(self) -> None:
         payload = json.loads(
             (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
                 encoding="utf-8"
@@ -3464,7 +3482,11 @@ namespace Chummer
         self.assertEqual(set(controls), set(rows))
         for control, automation_id in controls.items():
             row = rows[control]
-            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
+            proven = control == "cmsAmmoShortBurst"
+            self.assertEqual(
+                "implemented_verified_api36" if proven else "implemented_pending_emulator",
+                row["phone"]["status"],
+            )
             self.assertEqual(
                 "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
                 row["phone"]["route"],
@@ -3473,7 +3495,15 @@ namespace Chummer
             self.assertEqual(automation_id, row["phone"]["automationId"])
             self.assertIn("active clip", row["presenterMutation"])
             self.assertIn("expected-revision atomic save", row["persistenceAssertion"])
-            self.assertEqual("missing", row["e2e"]["phone"]["status"])
+            self.assertEqual(
+                "executed_api36" if proven else "missing",
+                row["e2e"]["phone"]["status"],
+            )
+            if proven:
+                self.assertEqual(
+                    9547946638,
+                    row["e2e"]["phone"]["hostedArtifact"]["artifactId"],
+                )
             self.assertEqual("missing", row["tablet"]["status"])
             self.assertEqual("missing", row["e2e"]["tablet"]["status"])
             self.assertFalse(row["completionProven"])
@@ -3505,6 +3535,39 @@ int ammoRemaining = savedAmmoRemaining;
                 encoding="utf-8",
             )
             self.assertFalse(inventory._career_weapon_ammo_equality_guarded(request))
+
+    def test_career_active_skill_promotes_only_skillcontrol_increase(self) -> None:
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = {
+            row["legacy"]["formOrControl"]: row
+            for row in payload["rows"]
+            if row["legacy"]["controlName"] == "btnCareerIncrease"
+            and row["legacy"]["formOrControl"]
+            in {"KnowledgeSkillControl", "SkillControl", "SkillGroupControl"}
+        }
+        self.assertEqual(
+            {"KnowledgeSkillControl", "SkillControl", "SkillGroupControl"},
+            set(rows),
+        )
+        proven = rows["SkillControl"]
+        self.assertEqual("implemented_verified_api36", proven["phone"]["status"])
+        self.assertEqual("CareerActiveSkillAdvancePage", proven["phone"]["surface"])
+        self.assertEqual("career-active-skill-advance", proven["phone"]["automationId"])
+        self.assertEqual("executed_api36", proven["e2e"]["phone"]["status"])
+        self.assertEqual(
+            9549892574,
+            proven["e2e"]["phone"]["hostedArtifact"]["artifactId"],
+        )
+        self.assertEqual("missing", proven["tablet"]["status"])
+        self.assertFalse(proven["completionProven"])
+        for control in ("KnowledgeSkillControl", "SkillGroupControl"):
+            self.assertEqual("missing", rows[control]["phone"]["status"])
+            self.assertEqual("missing", rows[control]["e2e"]["phone"]["status"])
+            self.assertFalse(rows[control]["completionProven"])
 
     def test_career_manual_karma_phone_mapping_is_exact_phone_only_and_scripted(self) -> None:
         payload = json.loads(
@@ -3962,22 +4025,39 @@ int ammoRemaining = savedAmmoRemaining;
             rows["cmdOK"]["phone"]["automationId"],
         )
 
-    def test_checked_in_inventory_downgrades_stale_shared_launch_driver_receipts(self) -> None:
+    def test_checked_in_inventory_promotes_only_three_exact_hosted_phone_rows(self) -> None:
         payload = json.loads(
             (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
                 encoding="utf-8"
             )
         )
 
-        self.assertNotIn("implemented_verified_api36", payload["summary"]["phoneStatusCounts"])
+        self.assertEqual(
+            3,
+            payload["summary"]["phoneStatusCounts"]["implemented_verified_api36"],
+        )
         self.assertNotIn("implemented_verified_api36", payload["summary"]["tabletStatusCounts"])
         executed = [
-            (row["id"], profile)
+            (
+                row["legacy"]["formOrControl"],
+                row["legacy"]["controlName"],
+                profile,
+                row["e2e"][profile].get("hostedArtifact", {}).get("artifactId"),
+            )
             for row in payload["rows"]
             for profile in ("phone", "tablet")
             if row["e2e"][profile]["status"] == "executed_api36"
         ]
-        self.assertEqual([], executed)
+        self.assertEqual(
+            [
+                ("SkillControl", "btnCareerIncrease", "phone", 9549892574),
+                ("CharacterCareer", "nudNotoriety", "phone", 9549763958),
+                ("CharacterCareer", "cmsAmmoShortBurst", "phone", 9547946638),
+            ],
+            executed,
+        )
+        self.assertEqual("incomplete_fail_closed", payload["status"])
+        self.assertFalse(payload["completionProven"])
         self.assertEqual(
             payload["summary"]["reviewedNonMutatingCount"],
             payload["summary"]["completionProvenCount"],
@@ -4010,6 +4090,77 @@ int ammoRemaining = savedAmmoRemaining;
                 receipt["driverSha256"] = "0" * 64
                 receipt_paths["phone"].write_text(json.dumps(receipt), encoding="utf-8")
                 self.assertEqual({}, inventory._validated_condition_e2e_receipts())
+
+    def test_hosted_phone_artifact_bindings_require_exact_receipt_sidecars(self) -> None:
+        evidence = (
+            (
+                inventory.CAREER_WEAPON_FIRE_PHONE_E2E_RECEIPT,
+                inventory.CAREER_WEAPON_FIRE_PHONE_E2E_ARTIFACT,
+                9547946638,
+            ),
+            (
+                inventory.CAREER_NOTORIETY_PHONE_E2E_RECEIPT,
+                inventory.CAREER_NOTORIETY_PHONE_E2E_ARTIFACT,
+                9549763958,
+            ),
+            (
+                inventory.CAREER_ACTIVE_SKILL_PHONE_E2E_RECEIPT,
+                inventory.CAREER_ACTIVE_SKILL_PHONE_E2E_ARTIFACT,
+                9549892574,
+            ),
+        )
+        for receipt_path, artifact_path, artifact_id in evidence:
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            binding = inventory._validated_hosted_phone_artifact_binding(
+                receipt_path,
+                artifact_path,
+                receipt,
+            )
+            self.assertIsNotNone(binding)
+            self.assertEqual(artifact_id, binding["artifactId"])
+
+        source_receipt, source_artifact, _ = evidence[0]
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            root = Path(temporary)
+            receipt_path = root / "receipt.json"
+            artifact_path = root / "artifact.json"
+            receipt_path.write_bytes(source_receipt.read_bytes())
+            artifact_path.write_bytes(source_artifact.read_bytes())
+            receipt_sha = inventory._sha256_file(receipt_path)
+            receipt_path.with_name("receipt.json.sha256").write_text(
+                f"{receipt_sha}  receipt.json\n",
+                encoding="utf-8",
+            )
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            self.assertIsNotNone(
+                inventory._validated_hosted_phone_artifact_binding(
+                    receipt_path,
+                    artifact_path,
+                    receipt,
+                )
+            )
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            artifact["evidenceArtifactDigest"] = "invalid"
+            artifact_path.write_text(json.dumps(artifact), encoding="utf-8")
+            self.assertIsNone(
+                inventory._validated_hosted_phone_artifact_binding(
+                    receipt_path,
+                    artifact_path,
+                    receipt,
+                )
+            )
+            artifact_path.write_bytes(source_artifact.read_bytes())
+            receipt_path.with_name("receipt.json.sha256").write_text(
+                "0" * 64 + "  receipt.json\n",
+                encoding="utf-8",
+            )
+            self.assertIsNone(
+                inventory._validated_hosted_phone_artifact_binding(
+                    receipt_path,
+                    artifact_path,
+                    receipt,
+                )
+            )
 
     def test_contact_pet_receipts_fail_closed_when_a_driver_hash_is_stale(self) -> None:
         self.assertEqual(

@@ -1,0 +1,105 @@
+{
+  "schema": "chummer.android.editing-e2e/v1",
+  "status": "pass",
+  "generatedAtUtc": "2026-08-25T03:29:43.087527+00:00",
+  "serial": "emulator-5554",
+  "profile": "phone",
+  "journey": "career-weapon-fire",
+  "apiLevel": 36,
+  "abi": "x86_64",
+  "package": "com.myexternalbrain.chummer",
+  "apk": "/home/runner/work/_temp/chummer-android-apk/chummer-android-x64-debug.apk",
+  "apkSha256": "0dd3a2ba951987898792354ee1d530a0fe8a16da9fc8bae27059aa5dc28e7ff7",
+  "driverSha256": "df7c049b88c3c26aa0d4ca8c3c554b3ac97884ad7dea8fe037e927c6b39b614c",
+  "sharedDriverSha256": "464545c29c43faea7f833c59360ba61df1267b09b5ed2712a7546c05f2dd5d49",
+  "careerWeaponFirePageSha256": "ff786b0070280b0a97f129e77ba88e6d4116b7570b2cc0d09712ab104c7f82e4",
+  "collectionRouteSha256": "c1b93003989c3ec680ed465d752abf637e9dbcbe5bf7a9b1a3961073e50330e6",
+  "coordinatorSha256": "28a17d15df81d1385d47199b5889811715b4557473f90162eb8354ad4ef55692",
+  "careerWeaponFireRequestSha256": "387f65d88f099bb83cf74b7faac0cd13630f999b9a22abf9257fd902283bc874",
+  "mutationCatalogSha256": "9cd7cc122cab022991334c71e6768ef5364ee12ead79e04bcd3888e77cb08344",
+  "presenterMutationSha256": "754bc553662f6ce093cf8a5f1dbf45d894c7fce0710c086a25d702a366a0b372",
+  "presenterPersistenceSha256": "5a37923234bfef0fdfa5a30118adfdcd66fd78cfd2d00f2c4830049db4edb13e",
+  "presenterInterfaceSha256": "672f000233d6b907766ede4a0e1b42cb7096147de3047b3a4461eff4827d717a",
+  "weaponFireRulesSha256": "1ed73fdb863ef3b7ac047079c3f1692e6357b836c1b721d0c08de590a11d0301",
+  "workspaceStoreSha256": "f553ab9151395824f0b035a9aa04c86a9403bb710f8edffe12b6138e56421c16",
+  "careerFixtureSha256": "eb1dee9e9c69c9303b0d772f8696e4531c12cfe360c761af85c6f0c79a6da7df",
+  "verifiedRemoteCareerFixtureSha256": "eb1dee9e9c69c9303b0d772f8696e4531c12cfe360c761af85c6f0c79a6da7df",
+  "controlCount": 1,
+  "controls": {
+    "CharacterCareer.cmsAmmoShortBurst": {
+      "sourceDigestBound": "pass",
+      "exactWeaponClipAmmoIdentity": "pass",
+      "exactShortBurstRoundDelta": "pass",
+      "expectedRevisionAtomicSave": "pass",
+      "payloadDigestChanged": "pass",
+      "documentDigestChanged": "pass",
+      "unrelatedXmlPreserved": "pass",
+      "sameSessionReopened": "pass",
+      "newPidAfterForceStop": "pass",
+      "processRestartWorkspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    }
+  },
+  "authorityProofStages": {
+    "mode": "short-burst",
+    "roundsConsumed": 3,
+    "weaponId": "f1111111-1111-4111-8111-111111111111",
+    "ammoSlot": 1,
+    "ammoGearId": "f2222222-2222-4222-8222-222222222222",
+    "unrelatedXmlAuthority": {
+      "targetWeaponExceptClipsSha256": "db6c0899aad2622d67002a6f94907422de7df2d12336a0fe3c42c50a5af11aa4",
+      "linkedAmmoExceptQuantitySha256": "5737c33db47b4409464f0a83151e97a35dee32b1ac2cc88f47c6e5c5dc9cef23",
+      "unrelatedWeaponSha256": "541592a464cc617204057c441467d653f334672317cb446b9044b0ba5e296d11",
+      "unrelatedGearSha256": "851a6c244dfdb0c1e7bd4db3d957a8a29d8e9a3ec55d75f40ba41d051261c740",
+      "customStateSha256": "829031068e74b65aff62f1b9b22038604b37794f93d653202af0a97cf69d62e2",
+      "karma": "19",
+      "nuyen": "8765"
+    },
+    "import": {
+      "workspaceId": "005d23f623fd4ed0b477c4026bcdfe70",
+      "contentRevision": 1,
+      "savedRevision": 0,
+      "payloadSha256": "eb1dee9e9c69c9303b0d772f8696e4531c12cfe360c761af85c6f0c79a6da7df",
+      "documentSha256": "7af6ce8828a5b4d1d5230b61b2dbb3349b7300555c2a03c4a43e9207d9a587b2"
+    },
+    "saved": {
+      "workspaceId": "005d23f623fd4ed0b477c4026bcdfe70",
+      "contentRevision": 2,
+      "savedRevision": 2,
+      "payloadSha256": "30d1ef0892120f8cb3e7305a35c7ef42ce7674804a9d6ba1a84dcf566c9e4150",
+      "documentSha256": "c40136ba472ef8ee8fb0cbe321a0ddbd28583b2889c2491b9995f046774d4b10"
+    },
+    "restored": {
+      "workspaceId": "005d23f623fd4ed0b477c4026bcdfe70",
+      "contentRevision": 2,
+      "savedRevision": 2,
+      "payloadSha256": "30d1ef0892120f8cb3e7305a35c7ef42ce7674804a9d6ba1a84dcf566c9e4150",
+      "documentSha256": "c40136ba472ef8ee8fb0cbe321a0ddbd28583b2889c2491b9995f046774d4b10"
+    },
+    "restartProcessIds": {
+      "beforeForceStop": [
+        "3328"
+      ],
+      "afterForceStop": [],
+      "restarted": [
+        "9801"
+      ]
+    }
+  },
+  "journeys": {
+    "exactShortBurst": "pass",
+    "sameSessionReopen": "pass",
+    "newProcessRestart": "pass"
+  },
+  "matrixJourney": "career-weapon-fire",
+  "driverJourney": "career-weapon-fire",
+  "artifactAuthority": {
+    "schema": "chummer.android.api36-apk-authority/v1",
+    "runId": 32803905793,
+    "artifactId": "9547573894",
+    "artifactDigest": "dd535bd39737bb2e200ae9497a0bc64294436487958745d10b240529ade4f6ac",
+    "artifactName": "chummer-android-api36-x64-debug-32803905793-1",
+    "artifactAttempt": 1,
+    "apkSha256": "0dd3a2ba951987898792354ee1d530a0fe8a16da9fc8bae27059aa5dc28e7ff7"
+  }
+}

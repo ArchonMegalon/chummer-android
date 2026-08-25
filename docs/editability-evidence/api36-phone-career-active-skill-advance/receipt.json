@@ -1,0 +1,103 @@
+{
+  "schema": "chummer.android.editing-e2e/v1",
+  "status": "pass",
+  "generatedAtUtc": "2026-08-25T05:04:04.878347+00:00",
+  "serial": "emulator-5554",
+  "profile": "phone",
+  "journey": "career-active-skill-advance",
+  "apiLevel": 36,
+  "abi": "x86_64",
+  "package": "com.myexternalbrain.chummer",
+  "apk": "/home/runner/work/_temp/chummer-android-apk/chummer-android-x64-debug.apk",
+  "apkSha256": "6834aa9437626dd9ef21833aee62d5f21d56b7f766454ed220a8081f99d1070c",
+  "driverSha256": "9d60386cbe52ec3ff6dbfac5cca0dc0820c1966b1f4d82e1b1e7bd5d4afc9a2c",
+  "sharedDriverSha256": "464545c29c43faea7f833c59360ba61df1267b09b5ed2712a7546c05f2dd5d49",
+  "careerActiveSkillPageSha256": "396e3f31151ca2b784e962e30d227cfab3ec6082957a4efb144cbac0573ff522",
+  "buildPageSha256": "799fe29dc2a4705e2d52abbbbf93f08591d866868ad0b451f75fcfc33d29637a",
+  "coordinatorSha256": "acb8e94cde3c5c2dcc02fb818652a0159a8c197ba51c19cc1422cdc04ca3447c",
+  "careerActiveSkillRequestSha256": "e96eea861758bec3462d0068a983c634ddeda2e033e8c61b3db07cb955d590af",
+  "careerActiveSkillMutationSha256": "bc081d4ad6684292b4514e1051f60a921ae94a0f6e774d5b14d70a84e4f8c03d",
+  "mutationCatalogSha256": "9cd7cc122cab022991334c71e6768ef5364ee12ead79e04bcd3888e77cb08344",
+  "presenterMutationSha256": "754bc553662f6ce093cf8a5f1dbf45d894c7fce0710c086a25d702a366a0b372",
+  "presenterPersistenceSha256": "5a37923234bfef0fdfa5a30118adfdcd66fd78cfd2d00f2c4830049db4edb13e",
+  "careerActiveSkillRulesSha256": "a7fe09fd82c0b44e703f9a416e8b28f4c753665649831e5436b00cbaae3ddb27",
+  "activeSkillSourceResolverSha256": "9ae5d94c6fcb18c32f8aca1f35944123dc08202cd0f6f65ec452634a3cc7e0de",
+  "workspaceStoreSha256": "f553ab9151395824f0b035a9aa04c86a9403bb710f8edffe12b6138e56421c16",
+  "careerFixtureSha256": "3506939b6b5c5cc2f1adb6d083d59ae0d4a548c51d366d0d0759719e92ffbf51",
+  "verifiedRemoteCareerFixtureSha256": "3506939b6b5c5cc2f1adb6d083d59ae0d4a548c51d366d0d0759719e92ffbf51",
+  "controlCount": 1,
+  "controls": {
+    "CharacterCareer.SkillControl.btnCareerIncrease": {
+      "stableSkillGuid": "pass",
+      "exactSourceSkillGuid": "pass",
+      "ruleDigestBound": "pass",
+      "confirmationRequired": "pass",
+      "karmaCostExact": "pass",
+      "expenseUndoExact": "pass",
+      "workspacePersisted": "pass",
+      "unrelatedXmlPreserved": "pass",
+      "expectedRevisionAtomicSave": "pass",
+      "savedPayloadDigestBound": "pass",
+      "surfaceReopened": "pass",
+      "twoProcessRestarts": "pass",
+      "processRestartWorkspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    }
+  },
+  "authorityProofStages": {
+    "import": {
+      "workspaceId": "1da72420817f4c6c8d9551ff26574a28",
+      "contentRevision": 1,
+      "savedRevision": 0,
+      "payloadSha256": "3506939b6b5c5cc2f1adb6d083d59ae0d4a548c51d366d0d0759719e92ffbf51",
+      "documentSha256": "429e34f3d77c9b9592224faa9be7d54ea7e90d9d530e1f710a8e45bbc38f56ea"
+    },
+    "saved": {
+      "workspaceId": "1da72420817f4c6c8d9551ff26574a28",
+      "contentRevision": 2,
+      "savedRevision": 2,
+      "payloadSha256": "cd8796529920a6e549f42c4805018a33dbcf7eed7f3876b574c67dd00cac191a",
+      "documentSha256": "631e79f81527d694e9a9ba0efdd2d7fa7e96c23db52ed8611faa70111920fcbd"
+    },
+    "firstRestored": {
+      "workspaceId": "1da72420817f4c6c8d9551ff26574a28",
+      "contentRevision": 2,
+      "savedRevision": 2,
+      "payloadSha256": "cd8796529920a6e549f42c4805018a33dbcf7eed7f3876b574c67dd00cac191a",
+      "documentSha256": "631e79f81527d694e9a9ba0efdd2d7fa7e96c23db52ed8611faa70111920fcbd"
+    },
+    "secondRestored": {
+      "workspaceId": "1da72420817f4c6c8d9551ff26574a28",
+      "contentRevision": 2,
+      "savedRevision": 2,
+      "payloadSha256": "cd8796529920a6e549f42c4805018a33dbcf7eed7f3876b574c67dd00cac191a",
+      "documentSha256": "631e79f81527d694e9a9ba0efdd2d7fa7e96c23db52ed8611faa70111920fcbd"
+    },
+    "generatedExpenseGuid": "51046750-472e-4e61-a8ea-c03e3f3cd96c",
+    "restartProcessIds": [
+      [
+        "9284"
+      ],
+      [
+        "11223"
+      ]
+    ]
+  },
+  "journeys": {
+    "cancelThenConfirmAdvance": "pass",
+    "exactExpenseUndo": "pass",
+    "sameSessionReopen": "pass",
+    "twoProcessRestarts": "pass"
+  },
+  "matrixJourney": "career-active-skill-advance",
+  "driverJourney": "career-active-skill-advance",
+  "artifactAuthority": {
+    "schema": "chummer.android.api36-apk-authority/v1",
+    "runId": 32809839213,
+    "artifactId": "9549524724",
+    "artifactDigest": "6d98ebd2d9848979d79246b651df0c1aa28746dede5784e1b9e6dbcd201f6864",
+    "artifactName": "chummer-android-api36-x64-debug-32809839213-1",
+    "artifactAttempt": 1,
+    "apkSha256": "6834aa9437626dd9ef21833aee62d5f21d56b7f766454ed220a8081f99d1070c"
+  }
+}
