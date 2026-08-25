@@ -1,7 +1,7 @@
 {
   "schema": "chummer.android.content-bundle/v1",
-  "coreRevision": "722f1d3690a5fffcd4590cd849d9d6e810783ac7",
-  "bundleDigest": "2e8122a4684695f59630f4064db638820882391ba4e8238213dda356e7170452",
+  "coreRevision": "8e2c53bf9c5ac85f675e738bf6e8ecd2ade4bb2a",
+  "bundleDigest": "3f6c14878487cbd96b7eb94752f19c60f4012a6156cfc02f60b75e46ba4af950",
   "files": [
     {
       "path": "data/SchemaExtensions.xsd",

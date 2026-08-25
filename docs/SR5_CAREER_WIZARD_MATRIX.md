@@ -54,15 +54,17 @@ untouched and must capture a dedicated digest-bound device journey without
 weakening existing gates.
 
 The isolated authority graph used for this slice is pinned exactly to integrated
-Core `722f1d3690a5fffcd4590cd849d9d6e810783ac7` (Career commits
+Core `8e2c53bf9c5ac85f675e738bf6e8ecd2ade4bb2a` (Career commits
 `5537e99df72e1a8a347269ad3b02b5a2cc2f9da1` and
 `7b8241f87c911077f3f5c756c0d0978f784c8052` transplanted onto base
 `da43a509b1f41abe70f3426253acd7158352e589`, followed by the independent
 Priority Skills authority commit
-`cd209c559b4ab8a520a48fd6335a070ca8505a0b`) and integrated Presentation
-`1c9b0d52af988bacacea9d682984264e79ab2c3c` (Career commit
+`cd209c559b4ab8a520a48fd6335a070ca8505a0b`) and the exact Career Attribute
+advancement authority at `8e2c53bf9c5ac85f675e738bf6e8ecd2ade4bb2a`. Integrated Presentation is
+`37b4f048fa50911db7cd493217e1b64005c37770` (Career commit
 `bd01091df3cdeb889c8336f9b2bf5e07af1c3c82` transplanted onto base
-`d276f1d0ed8f76938d26b92389e62676f48acf7b`). The unrelated Runner Library
+`d276f1d0ed8f76938d26b92389e62676f48acf7b`, followed by the Career Attribute
+projection at `37b4f048fa50911db7cd493217e1b64005c37770`). The unrelated Runner Library
 lifecycle commit was intentionally excluded. Android transplants the exact four
 Career commits from the `55d45cec842c4ced0ae5cabba441382fdfb1a477`
 lineage onto the hardened `15d6131bf67fb91cf9d3195724e2ef693aed4705`
