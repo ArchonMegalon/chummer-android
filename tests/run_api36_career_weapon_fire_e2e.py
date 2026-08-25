@@ -224,18 +224,30 @@ def prepare_runner(
     return launch, authority
 
 
+def tap_exact_weapons_route(device: shared.Device) -> None:
+    """Recover a preserved Gear viewport and tap one exact Weapons route."""
+    shared.reset_scroll_to_top(device, swipes=48)
+    node = device.wait_for_single_exact_resource_id(
+        "build-action-tab-gear-weapons",
+        timeout=120,
+        scroll=True,
+        max_scrolls=24,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="career-weapon-fire-weapons-route",
+        surface_name="Gear Weapons route accessibility node",
+    )
+    if not device.node_has_tappable_bounds(node):
+        device.capture("career-weapon-fire-weapons-route-untappable")
+        raise RuntimeError("The exact Gear Weapons route is not tappable")
+    x, y = node.center
+    device.shell("input", "tap", str(x), str(y))
+
+
 def open_page(device: shared.Device) -> None:
     shared.open_build(device, "phone")
     shared.reset_scroll_to_top(device, swipes=12)
     device.tap("build-section-tab-gear", scroll=True, timeout=120, max_scrolls=24)
-    device.tap_single_exact_resource_id_bidirectional(
-        "build-action-tab-gear-weapons",
-        timeout=120,
-        backward_scrolls=48,
-        forward_scrolls=24,
-        evidence_prefix="career-weapon-fire-weapons-route",
-        surface_name="Gear Weapons route accessibility node",
-    )
+    tap_exact_weapons_route(device)
     device.tap(
         f"collection-item-weapon-{WEAPON_ID}",
         scroll=True,

@@ -570,66 +570,6 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             device.swipe_up.call_args_list,
         )
 
-    def test_single_exact_bidirectional_tap_recovers_upward_and_is_bounded(self) -> None:
-        target = DRIVER.UiNode(
-            {
-                "resource-id": (
-                    "com.myexternalbrain.chummer:id/build-action-tab-gear-weapons"
-                ),
-                "clickable": "true",
-                "bounds": "[100,400][900,520]",
-            }
-        )
-        device = Mock(spec=DRIVER.Device)
-        device.hierarchy.side_effect = [[], [target]]
-        device.dismiss_system_ui_anr.return_value = False
-        device._scroll_x_ratio.return_value = 0.5
-        device.node_has_tappable_bounds.return_value = True
-
-        with patch.object(DRIVER.time, "sleep"):
-            DRIVER.Device.tap_single_exact_resource_id_bidirectional(
-                device,
-                "build-action-tab-gear-weapons",
-                backward_scrolls=48,
-                forward_scrolls=1,
-            )
-
-        self.assertEqual(48, device.swipe_down.call_count)
-        device.swipe_up.assert_called_once_with(
-            x_ratio=0.5,
-            distance_ratio=0.22,
-        )
-        self.assertEqual(2, device.hierarchy.call_count)
-        device.shell.assert_called_once_with("input", "tap", "500", "460")
-
-    def test_single_exact_bidirectional_tap_rejects_duplicate_cardinality(self) -> None:
-        duplicate = DRIVER.UiNode(
-            {
-                "resource-id": "build-action-tab-gear-weapons",
-                "clickable": "true",
-                "bounds": "[100,400][900,520]",
-            }
-        )
-        device = Mock(spec=DRIVER.Device)
-        device.hierarchy.return_value = [duplicate, duplicate]
-        device._scroll_x_ratio.return_value = 0.5
-
-        with patch.object(DRIVER.time, "sleep"):
-            with self.assertRaisesRegex(RuntimeError, "cardinality 2"):
-                DRIVER.Device.tap_single_exact_resource_id_bidirectional(
-                    device,
-                    "build-action-tab-gear-weapons",
-                    backward_scrolls=0,
-                    forward_scrolls=1,
-                    evidence_prefix="career-weapon-fire-weapons-route",
-                )
-
-        device.capture.assert_called_once_with(
-            "career-weapon-fire-weapons-route-cardinality-invalid"
-        )
-        device.swipe_up.assert_not_called()
-        device.shell.assert_not_called()
-
     def test_bidirectional_tap_reaches_hidden_target_with_expensive_hierarchy_dumps(self) -> None:
         target = DRIVER.UiNode(
             {
