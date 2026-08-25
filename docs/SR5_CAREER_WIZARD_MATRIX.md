@@ -1,7 +1,7 @@
 # SR5 Career Wizard authority matrix
 
-This matrix describes the native Android state at candidate base
-`55d45cec842c4ced0ae5cabba441382fdfb1a477`, plus the first integrated wizard
+This matrix describes the hardened native Android phone candidate
+`15d6131bf67fb91cf9d3195724e2ef693aed4705`, plus the first integrated wizard
 reference slice in this branch. It is deliberately narrower than Chummer5 Career
 parity: a visible route or an individual emulator receipt is not evidence that
 an end-to-end Career wizard exists.
@@ -53,16 +53,19 @@ SR5 on prepare, apply and restart resolution. The shared API-36 driver is still
 untouched and must capture a dedicated digest-bound device journey without
 weakening existing gates.
 
-The isolated authority graph used for this slice is pinned exactly to Core
-`7b8241f87c911077f3f5c756c0d0978f784c8052` (expense authority parent
-`5537e99df72e1a8a347269ad3b02b5a2cc2f9da1`, base
-`cc3997d5279e9ac7beda595940095f66cfc5366b`) and Presentation
-`bd01091df3cdeb889c8336f9b2bf5e07af1c3c82` (base
-`d276f1d0ed8f76938d26b92389e62676f48acf7b`). This integration transplants the
-foundation/hardening provenance through
-`40e39e1935705b671fa40f31cd75a9038c4f6fc0` onto the Android candidate base
-`55d45cec842c4ced0ae5cabba441382fdfb1a477`; substituting another projection,
-contract, or candidate revision is outside this proof.
+The isolated authority graph used for this slice is pinned exactly to integrated
+Core `74b1bc3c2a02023890cadc5c6f600390c3af1d56` (Career commits
+`5537e99df72e1a8a347269ad3b02b5a2cc2f9da1` and
+`7b8241f87c911077f3f5c756c0d0978f784c8052` transplanted onto base
+`da43a509b1f41abe70f3426253acd7158352e589`) and integrated Presentation
+`2909ceed887cf3638344b4fec9d5e66feea40e4d` (Career commit
+`bd01091df3cdeb889c8336f9b2bf5e07af1c3c82` transplanted onto base
+`d276f1d0ed8f76938d26b92389e62676f48acf7b`). The unrelated Runner Library
+lifecycle commit was intentionally excluded. Android transplants the exact four
+Career commits from the `55d45cec842c4ced0ae5cabba441382fdfb1a477`
+lineage onto the hardened `15d6131bf67fb91cf9d3195724e2ef693aed4705`
+candidate; substituting another projection, contract, or candidate revision is
+outside this proof.
 
 The second advancement checkpoint is blocked specifically on shared Android
 orchestration: expose the existing Presentation `Prepare/ApplyCareerSkillGroup`

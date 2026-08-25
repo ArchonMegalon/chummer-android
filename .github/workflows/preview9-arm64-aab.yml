@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-ui
-          ref: bd01091df3cdeb889c8336f9b2bf5e07af1c3c82
+          ref: 2909ceed887cf3638344b4fec9d5e66feea40e4d
           path: chummer-presentation
           persist-credentials: false
           fetch-depth: 1
@@ -41,7 +41,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-core
-          ref: 7b8241f87c911077f3f5c756c0d0978f784c8052
+          ref: 74b1bc3c2a02023890cadc5c6f600390c3af1d56
           path: chummer-core-engine
           persist-credentials: false
           fetch-depth: 1
