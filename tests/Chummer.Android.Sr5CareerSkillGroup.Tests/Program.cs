@@ -49,6 +49,11 @@ internal static class Program
         Require(draft.ActionPlan.Kind == Sr5CareerActionKind.SkillGroupAdvance, "Action kind must be typed.");
         Require(draft.ActionPlan.CostQuote.KarmaCost == 20, "Core quote must own Karma cost.");
         Require(draft.ActionPlan.IdempotencyKey.Length == 64, "Action must have a canonical idempotency key.");
+        Require(draft.RuntimeAuthority.IsCurrent(), "Content and runtime authority must match the exact product graph.");
+        Require(draft.RuntimeAuthority.ContentDigest == Sr5CareerSkillGroupRuntimeAuthority.CurrentContentDigest,
+            "The verified bundled-content digest must remain bound.");
+        Require(draft.RuntimeAuthority.RuntimeDigest == Sr5CareerSkillGroupRuntimeAuthority.CurrentRuntimeDigest,
+            "The exact Core/Presentation/content runtime digest must remain bound.");
         Require(draft.ToRequest().ExpectedLogicalRevision == quote.LogicalRevision, "Logical revision must remain bound.");
         Require(draft.ToRequest().ExpectedSourceRevision == quote.SourceRevision, "Source revision must remain bound.");
         Require(draft.ToRequest().ExpectedRuleDigest == quote.RuleDigest, "Rule digest must remain bound.");
@@ -111,6 +116,20 @@ internal static class Program
         {
             Draft = draft with { Plan = draft.Plan with { ExpenseAmount = draft.Plan.ExpenseAmount + 1 } }
         }).IsStructurallyValid(), "Tampered expense plan must invalidate the checkpoint.");
+        Require(!(checkpoint with
+        {
+            Draft = draft with
+            {
+                RuntimeAuthority = draft.RuntimeAuthority with { ContentDigest = new string('0', 64) }
+            }
+        }).IsStructurallyValid(), "Tampered content authority must invalidate the checkpoint.");
+        Require(!(checkpoint with
+        {
+            Draft = draft with
+            {
+                RuntimeAuthority = draft.RuntimeAuthority with { RuntimeDigest = new string('0', 64) }
+            }
+        }).IsStructurallyValid(), "Tampered runtime authority must invalidate the checkpoint.");
 
         MemoryBackend backend = new(JsonSerializer.Serialize(checkpoint with
         {

@@ -192,7 +192,9 @@ public sealed record Sr5CareerActionPlan(
         CharacterWorkspaceId workspaceId,
         long expectedContentRevision,
         CharacterCareerSkillGroupAdvanceQuote quote,
-        CharacterCareerSkillGroupAdvancePlan plan)
+        CharacterCareerSkillGroupAdvancePlan plan,
+        string contentDigest,
+        string runtimeDigest)
     {
         string identity = quote.Identity.InternalId.ToString("D");
         string idempotencyKey = ComputeSkillGroupIdempotencyKey(
@@ -204,6 +206,8 @@ public sealed record Sr5CareerActionPlan(
             quote.LogicalRevision,
             quote.SourceRevision,
             quote.RuleDigest,
+            contentDigest,
+            runtimeDigest,
             quote.Name,
             quote.BasePoints,
             quote.KarmaPoints,
@@ -386,6 +390,8 @@ public sealed record Sr5CareerActionPlan(
         string logicalRevision,
         string sourceRevision,
         string ruleDigest,
+        string contentDigest,
+        string runtimeDigest,
         string name,
         int basePoints,
         int previousKarmaPoints,
@@ -420,6 +426,8 @@ public sealed record Sr5CareerActionPlan(
             logicalRevision,
             sourceRevision,
             ruleDigest,
+            contentDigest,
+            runtimeDigest,
             name,
             basePoints.ToString(CultureInfo.InvariantCulture),
             previousKarmaPoints.ToString(CultureInfo.InvariantCulture),
