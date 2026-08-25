@@ -299,9 +299,33 @@ public sealed class BuildPage : NativePageBase
             "Advance · Before Run · Live · After Run · Downtime · Corrections",
             () => Navigation.PushAsync(new Sr5CareerWizardPage(Coordinator)),
             automationId: "build-sr5-career-wizard"));
+        card.Add(NativeTheme.NavigationRow(
+            "Change a quality",
+            "Direct deep link · exact InternalId/SourceId → atomic review → receipt/correction",
+            OpenSr5CareerQualityWizardAsync,
+            automationId: "build-career-quality"));
         Border route = NativeTheme.Card(card);
         route.AutomationId = Sr5CareerWizardRoutes.Hub;
         _body.Add(route);
+    }
+
+    private async Task OpenSr5CareerQualityWizardAsync()
+    {
+        Sr5CareerQualityCoordinator authority = new(
+            new RunnerSessionSr5CareerQualityPresenter(Coordinator),
+            new PreferencesSr5CareerCheckpointOwnerAuthority());
+        CareerQualityEditorState? editor = await authority.PrepareAsync();
+        if (editor is not null)
+        {
+            await Navigation.PushAsync(new Sr5CareerQualityWizardPage(Coordinator, editor));
+        }
+        else
+        {
+            await DisplayAlertAsync(
+                "Quality authority unavailable",
+                "This build does not have a complete atomic SR5 quality workspace. No fallback mutation is available.",
+                "OK");
+        }
     }
 
     private void AddFeedback()

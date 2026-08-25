@@ -157,8 +157,13 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
             "Choose exact Core quote → preview Karma and legality → durable apply → recovered receipt",
             OpenAttributeWizardAsync,
             "attribute");
+        AddAction(
+            "Acquire or remove a quality",
+            "Choose an exact source/identity operation, review all GM/effect prerequisites, and commit the full delta plus receipt atomically",
+            OpenQualityWizardAsync,
+            "quality");
         AddBlocked(
-            "Skill-group and specialization authorities exist upstream, but Android needs shared Coordinator routing and an atomic ApplyResult. Knowledge skills, qualities and initiation/submersion remain incomplete.",
+            "Skill-group and specialization authorities exist upstream, but Android needs shared Coordinator routing and an atomic ApplyResult. Knowledge skills and initiation/submersion remain incomplete.",
             "other-advancement");
         AddBlocked(
             "Gear, weapon, armor, bioware, vehicle and general ware acquisition need exact availability, cost, Essence, prerequisite and expense quotes.",
@@ -303,6 +308,25 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
         if (editor is not null)
         {
             await Navigation.PushAsync(new Sr5CareerAttributeWizardPage(Coordinator, editor));
+        }
+    }
+
+    private async Task OpenQualityWizardAsync()
+    {
+        Sr5CareerQualityCoordinator authority = new(
+            new RunnerSessionSr5CareerQualityPresenter(Coordinator),
+            new PreferencesSr5CareerCheckpointOwnerAuthority());
+        CareerQualityEditorState? editor = await authority.PrepareAsync();
+        if (editor is not null)
+        {
+            await Navigation.PushAsync(new Sr5CareerQualityWizardPage(Coordinator, editor));
+        }
+        else
+        {
+            await DisplayAlertAsync(
+                "Quality authority unavailable",
+                "Exact atomic SR5 quality authority is not connected. The wizard stays fail-closed.",
+                "OK");
         }
     }
 

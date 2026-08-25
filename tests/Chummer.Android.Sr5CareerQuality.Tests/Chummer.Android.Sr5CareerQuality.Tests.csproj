@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ChummerCoreRoot Condition="'$(ChummerCoreRoot)' == ''">../../../chummer-core-engine</ChummerCoreRoot>
+    <ChummerPresentationRoot Condition="'$(ChummerPresentationRoot)' == ''">../../../chummer-presentation</ChummerPresentationRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="AuthorityCompileStubs.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerActiveSkillAdvanceRules.cs" Link="Core/CharacterCareerActiveSkillAdvanceRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerAttributeAdvanceRules.cs" Link="Core/CharacterCareerAttributeAdvanceRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerSkillGroupAdvanceRules.cs" Link="Core/CharacterCareerSkillGroupAdvanceRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerQualityRules.cs" Link="Core/CharacterCareerQualityRules.cs" />
+    <Compile Include="$(ChummerPresentationRoot)/Chummer.Presentation/Overview/CareerQualityWorkflow.cs" Link="Presentation/CareerQualityWorkflow.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerWizardModel.cs" Link="Native/Sr5CareerWizardModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerQualityWizardModel.cs" Link="Native/Sr5CareerQualityWizardModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerQualityCoordinator.cs" Link="Native/Sr5CareerQualityCoordinator.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerQualityCheckpointStore.cs" Link="Native/Sr5CareerQualityCheckpointStore.cs" />
+  </ItemGroup>
+</Project>

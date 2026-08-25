@@ -144,6 +144,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly ICharacterCreationPrerequisiteService _creationPrerequisiteService;
     private readonly ICharacterCreationAttributesService? _creationAttributesService;
     private readonly ICharacterCreationSkillsService? _creationSkillsService;
+    private readonly CareerQualityInteractionPresenter? _careerQualityPresenter;
     private readonly IShellPresenter _shellPresenter;
     private readonly IShellSurfaceResolver _surfaceResolver;
     private readonly ICommandAvailabilityEvaluator _availability;
@@ -200,7 +201,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         CharacterRosterFavoritePresenter rosterFavoritePresenter,
         ApplicationDeleteConfirmationPresenter applicationSettingsPresenter,
         ICharacterCreationAttributesService? creationAttributesService = null,
-        ICharacterCreationSkillsService? creationSkillsService = null)
+        ICharacterCreationSkillsService? creationSkillsService = null,
+        ICareerQualityAtomicWorkspace? careerQualityWorkspace = null)
     {
         _presenter = presenter;
         _client = client;
@@ -209,6 +211,9 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _creationPrerequisiteService = creationPrerequisiteService;
         _creationAttributesService = creationAttributesService;
         _creationSkillsService = creationSkillsService;
+        _careerQualityPresenter = careerQualityWorkspace is null
+            ? null
+            : new CareerQualityInteractionPresenter(careerQualityWorkspace);
         _shellPresenter = shellPresenter;
         _surfaceResolver = surfaceResolver;
         _availability = availability;
@@ -3060,6 +3065,113 @@ public sealed class RunnerSessionCoordinator : IDisposable
         await SyncShellAsync(cancellationToken).ConfigureAwait(false);
         NotifyChanged();
         return persisted;
+    }
+
+    public async Task<CareerQualityEditorState?> PrepareCareerQualityAsync(
+        CancellationToken cancellationToken = default)
+    {
+        if (_careerQualityPresenter is null || State.WorkspaceId is not { } workspaceId)
+        {
+            return null;
+        }
+        return await _careerQualityPresenter.ProjectAsync(workspaceId, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<CareerQualityReview> ReviewCareerQualityAsync(
+        CareerQualityDraft draft,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(draft);
+        if (_careerQualityPresenter is null
+            || State.WorkspaceId != draft.WorkspaceId
+            || State.ContentRevision != draft.ExpectedWorkspaceRevision
+            || State.SavedRevision != draft.ExpectedSavedRevision
+            || State.IsDirty
+            || !string.IsNullOrWhiteSpace(State.Error))
+        {
+            throw new InvalidOperationException(
+                "Exact atomic SR5 quality authority is unavailable or the runner revision changed.");
+        }
+        return await _careerQualityPresenter.ReviewAsync(draft, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<CareerQualityConfirmation> ConfirmCareerQualityAsync(
+        CareerQualityReview review,
+        Guid transactionId,
+        DateTime expenseDateLocal,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(review);
+        CareerQualityDraft draft = review.Draft;
+        if (_careerQualityPresenter is null
+            || State.WorkspaceId != draft.WorkspaceId
+            || State.ContentRevision != draft.ExpectedWorkspaceRevision
+            || State.SavedRevision != draft.ExpectedSavedRevision
+            || State.IsDirty
+            || !string.IsNullOrWhiteSpace(State.Error))
+        {
+            throw new InvalidOperationException(
+                "The atomic quality transaction no longer owns this clean saved revision.");
+        }
+
+        CareerQualityConfirmation confirmation = await _careerQualityPresenter.ConfirmAsync(
+                review,
+                confirmed: true,
+                transactionId,
+                expenseDateLocal,
+                cancellationToken)
+            .ConfigureAwait(false);
+        await _presenter.LoadAsync(draft.WorkspaceId, cancellationToken)
+            .ConfigureAwait(false);
+        bool exact = State.Error is null
+            && State.WorkspaceId == draft.WorkspaceId
+            && State.ContentRevision == confirmation.PersistedState.WorkspaceRevision
+            && State.SavedRevision == confirmation.PersistedState.SavedRevision
+            && !State.IsDirty;
+        _notice = exact ? "Quality transaction and exact receipt saved atomically." : null;
+        await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+        NotifyChanged();
+        return exact
+            ? confirmation
+            : throw new InvalidOperationException(
+                "The atomically persisted quality receipt did not reopen as the exact saved runner revision.");
+    }
+
+    public async Task<CareerQualityCorrectionConfirmation> CorrectCareerQualityAsync(
+        CareerQualityCorrectionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (_careerQualityPresenter is null
+            || State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedWorkspaceRevision
+            || State.SavedRevision != request.ExpectedSavedRevision
+            || State.IsDirty
+            || !string.IsNullOrWhiteSpace(State.Error))
+        {
+            throw new InvalidOperationException(
+                "The atomic quality correction no longer owns this clean saved receipt revision.");
+        }
+
+        CareerQualityCorrectionConfirmation confirmation =
+            await _careerQualityPresenter.CorrectAsync(request, cancellationToken)
+                .ConfigureAwait(false);
+        await _presenter.LoadAsync(request.WorkspaceId, cancellationToken)
+            .ConfigureAwait(false);
+        bool exact = State.Error is null
+            && State.WorkspaceId == request.WorkspaceId
+            && State.ContentRevision == confirmation.PersistedState.WorkspaceRevision
+            && State.SavedRevision == confirmation.PersistedState.SavedRevision
+            && !State.IsDirty;
+        _notice = exact ? "Quality transaction corrected atomically." : null;
+        await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+        NotifyChanged();
+        return exact
+            ? confirmation
+            : throw new InvalidOperationException(
+                "The atomically corrected quality transaction did not reopen as the exact saved revision.");
     }
 
     public Task<SustainedObjectsEditorState?> PrepareSustainedObjectsEditAsync(

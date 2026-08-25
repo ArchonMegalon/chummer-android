@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Globalization;
+using System.Text.Json;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
 using Chummer.Presentation.Overview;
@@ -33,6 +34,9 @@ public static class Sr5CareerWizardRoutes
     public const string AttributeChoose = "sr5-career/advancement/attribute/choose";
     public const string AttributeReview = "sr5-career/advancement/attribute/review";
     public const string AttributeReceipt = "sr5-career/advancement/attribute/receipt";
+    public const string QualityChoose = "sr5-career/advancement/quality/choose";
+    public const string QualityReview = "sr5-career/advancement/quality/review";
+    public const string QualityReceipt = "sr5-career/advancement/quality/receipt";
 
     public static string Lane(Sr5CareerWizardLane lane)
         => $"sr5-career/{Sr5CareerWizardPage.LaneToken(lane)}";
@@ -75,7 +79,8 @@ public enum Sr5CareerActionKind
 {
     ActiveSkillAdvance,
     AttributeAdvance,
-    SkillGroupAdvance
+    SkillGroupAdvance,
+    QualityTransaction
 }
 
 public sealed record Sr5CareerCostQuote(
@@ -217,6 +222,47 @@ public sealed record Sr5CareerActionPlan(
                 Blocker: quote.CanAdvance ? string.Empty : quote.Blocker.ToString()));
     }
 
+    public static Sr5CareerActionPlan FromQuality(
+        Guid ownerId,
+        CareerQualityReview review,
+        Guid transactionId,
+        DateTime expenseDateLocal,
+        string contentDigest,
+        string runtimeDigest)
+    {
+        CharacterCareerQualityQuote quote = review.Quote;
+        string identity = $"{quote.Operation}:{quote.Identity.InternalId:D}:{quote.Identity.SourceId:D}";
+        string idempotencyKey = ComputeQualityIdempotencyKey(
+            ownerId,
+            review.Draft.WorkspaceId.Value,
+            review.Draft.ExpectedWorkspaceRevision,
+            review.Draft.ExpectedSavedRevision,
+            transactionId,
+            expenseDateLocal,
+            contentDigest,
+            runtimeDigest,
+            review);
+        return new Sr5CareerActionPlan(
+            ownerId,
+            transactionId,
+            idempotencyKey,
+            Sr5CareerWizardRoutes.QualityReview,
+            Sr5CareerActionKind.QualityTransaction,
+            review.Draft.WorkspaceId,
+            review.Draft.ExpectedWorkspaceRevision,
+            identity,
+            new Sr5CareerCostQuote(
+                quote.RuleKarmaCost,
+                NuyenCost: 0m,
+                EssenceCost: 0m,
+                Availability: null,
+                ElapsedTime: quote.ApplicationDuration,
+                RuleDigest: quote.RuleDigest,
+                LogicalRevision: quote.LogicalRevision,
+                IsExact: CharacterCareerQualityRules.IsCoherent(quote),
+                Blocker: quote.CanApply ? string.Empty : quote.Blocker.ToString()));
+    }
+
     public static string ComputeActiveSkillIdempotencyKey(
         Guid ownerId,
         string workspaceId,
@@ -343,6 +389,29 @@ public sealed record Sr5CareerActionPlan(
             undoObjectId,
             undoQuantity.ToString(CultureInfo.InvariantCulture),
             undoExtra);
+
+    public static string ComputeQualityIdempotencyKey(
+        Guid ownerId,
+        string workspaceId,
+        long expectedWorkspaceRevision,
+        long expectedSavedRevision,
+        Guid transactionId,
+        DateTime expenseDateLocal,
+        string contentDigest,
+        string runtimeDigest,
+        CareerQualityReview review)
+        => ComputeIdempotencyKey(
+            Sr5CareerWizardRoutes.QualityReview,
+            ownerId.ToString("D"),
+            workspaceId,
+            expectedWorkspaceRevision.ToString(CultureInfo.InvariantCulture),
+            expectedSavedRevision.ToString(CultureInfo.InvariantCulture),
+            transactionId.ToString("D"),
+            DateTime.SpecifyKind(expenseDateLocal, DateTimeKind.Unspecified)
+                .ToString("O", CultureInfo.InvariantCulture),
+            contentDigest,
+            runtimeDigest,
+            JsonSerializer.Serialize(review));
 
     private static string ComputeIdempotencyKey(params object[] values)
     {
