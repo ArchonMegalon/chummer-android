@@ -4,11 +4,51 @@ using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
 
+internal sealed class Sr5CareerLiveReviewedCheckpointAuthority(
+    ISr5CareerCheckpointOwnerAuthority ownerAuthority,
+    CareerActiveSkillAdvanceEditorState editor,
+    Func<Sr5CareerRunnerBinding> currentBinding) :
+    ISr5CareerReviewedCheckpointAuthority
+{
+    private readonly ISr5CareerCheckpointOwnerAuthority _ownerAuthority =
+        ownerAuthority ?? throw new ArgumentNullException(nameof(ownerAuthority));
+    private readonly CareerActiveSkillAdvanceEditorState _editor =
+        editor ?? throw new ArgumentNullException(nameof(editor));
+    private readonly Func<Sr5CareerRunnerBinding> _currentBinding =
+        currentBinding ?? throw new ArgumentNullException(nameof(currentBinding));
+
+    public Guid CurrentOwnerId => _ownerAuthority.CurrentOwnerId;
+
+    public bool Owns(Sr5CareerDraftCheckpoint checkpoint)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        if (!checkpoint.TryResume(
+                _editor,
+                out Sr5CareerActiveSkillDraft draft,
+                out _)
+            || !checkpoint.MatchesReviewedDraft(draft))
+        {
+            return false;
+        }
+        Sr5CareerReviewedCheckpointAccess currentAccess =
+            Sr5CareerReviewedCheckpointAccess.FromCurrent(
+                CurrentOwnerId,
+                draft,
+                _currentBinding());
+        return currentAccess.Owns(checkpoint);
+    }
+}
+
+internal sealed record Sr5CareerActiveSkillWizardDependencies(
+    Sr5CareerDraftCheckpointStore Store,
+    ISr5CareerReviewedCheckpointAuthority ReviewedAuthority);
+
 public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
 {
     private readonly CareerActiveSkillAdvanceEditorState _editor;
     private readonly Sr5CareerActiveSkillCoordinator _authority;
     private readonly Sr5CareerDraftCheckpointStore _store;
+    private readonly ISr5CareerReviewedCheckpointAuthority _reviewedAuthority;
     private readonly Picker _skills;
     private readonly Label _rating;
     private readonly Label _cost;
@@ -29,21 +69,51 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
         : this(
             coordinator,
             editor,
+            CreateDependencies(coordinator, editor))
+    {
+    }
+
+    private Sr5CareerActiveSkillWizardPage(
+        RunnerSessionCoordinator coordinator,
+        CareerActiveSkillAdvanceEditorState editor,
+        Sr5CareerActiveSkillWizardDependencies dependencies)
+        : this(
+            coordinator,
+            editor,
             new Sr5CareerActiveSkillCoordinator(
                 new RunnerSessionSr5CareerActiveSkillPresenter(coordinator)),
-            Sr5CareerDraftCheckpointStore.CreateDefault())
+            dependencies.Store,
+            dependencies.ReviewedAuthority)
     {
+    }
+
+    private static Sr5CareerActiveSkillWizardDependencies CreateDependencies(
+        RunnerSessionCoordinator coordinator,
+        CareerActiveSkillAdvanceEditorState editor)
+    {
+        ArgumentNullException.ThrowIfNull(coordinator);
+        ArgumentNullException.ThrowIfNull(editor);
+        PreferencesSr5CareerCheckpointOwnerAuthority ownerAuthority = new();
+        Sr5CareerLiveReviewedCheckpointAuthority reviewedAuthority = new(
+            ownerAuthority,
+            editor,
+            () => new RunnerSessionSr5CareerActiveSkillPresenter(coordinator).Binding);
+        return new(
+            Sr5CareerDraftCheckpointStore.CreateDefault(reviewedAuthority),
+            reviewedAuthority);
     }
 
     internal Sr5CareerActiveSkillWizardPage(
         RunnerSessionCoordinator coordinator,
         CareerActiveSkillAdvanceEditorState editor,
         Sr5CareerActiveSkillCoordinator authority,
-        Sr5CareerDraftCheckpointStore store) : base(coordinator)
+        Sr5CareerDraftCheckpointStore store,
+        ISr5CareerReviewedCheckpointAuthority reviewedAuthority) : base(coordinator)
     {
         _editor = editor ?? throw new ArgumentNullException(nameof(editor));
         _authority = authority ?? throw new ArgumentNullException(nameof(authority));
         _store = store ?? throw new ArgumentNullException(nameof(store));
+        _reviewedAuthority = reviewedAuthority ?? throw new ArgumentNullException(nameof(reviewedAuthority));
         Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(
             new RunnerSessionSr5CareerActiveSkillPresenter(coordinator).Binding);
         if (coordinator.State.WorkspaceId != editor.WorkspaceId
@@ -171,6 +241,10 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
         bool revisionMatches = sr5
             && Coordinator.State.WorkspaceId == _editor.WorkspaceId
             && Coordinator.State.ContentRevision == _editor.ContentRevision;
+        bool reviewedOwned = TryAuthenticateReviewedCheckpoint(
+            _checkpoint,
+            _recoveryDraft,
+            out _);
         _skills.IsEnabled = revisionMatches && _checkpoint is null && _editor.Skills.Count > 0;
         _rating.Text = _selected is null
             ? "No exact active-skill quote is available."
@@ -197,13 +271,13 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
             && _checkpoint is null
             && _selected is { CanAdvance: true }
             && CharacterCareerActiveSkillAdvanceRules.IsCoherent(_selected);
-        _resume.IsVisible = _recoveryDraft is not null;
-        _resume.IsEnabled = revisionMatches && _recoveryDraft is not null;
+        _resume.IsVisible = reviewedOwned;
+        _resume.IsEnabled = revisionMatches && reviewedOwned;
         _resolve.IsVisible = _checkpoint?.Phase is (Sr5CareerCheckpointPhase.Applying
             or Sr5CareerCheckpointPhase.Applied);
         _resolve.IsEnabled = _resolve.IsVisible;
-        _abandon.IsVisible = _checkpoint?.Phase == Sr5CareerCheckpointPhase.Reviewed;
-        _abandon.IsEnabled = _abandon.IsVisible;
+        _abandon.IsVisible = reviewedOwned;
+        _abandon.IsEnabled = revisionMatches && reviewedOwned;
     }
 
     private async Task OpenReviewAsync()
@@ -213,7 +287,7 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
         if (!Sr5CareerActiveSkillDraft.TryCreate(
                 _editor,
                 _selected,
-                Guid.NewGuid(),
+                _reviewedAuthority.CurrentOwnerId,
                 Guid.NewGuid(),
                 DateTime.Now,
                 out Sr5CareerActiveSkillDraft draft,
@@ -235,12 +309,14 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
             return;
         }
         _checkpoint = stored;
+        _recoveryDraft = draft;
         await Navigation.PushAsync(new Sr5CareerActiveSkillReviewPage(
             Coordinator,
             draft,
             stored,
             _authority,
-            _store));
+            _store,
+            _reviewedAuthority));
     }
 
     private async Task ResumeReviewAsync()
@@ -248,6 +324,7 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
         if (_recoveryDraft is null
             || _checkpoint is null
             || _checkpoint.Phase != Sr5CareerCheckpointPhase.Reviewed
+            || !TryAuthenticateReviewedCheckpoint(_checkpoint, _recoveryDraft, out _)
             || !_recoveryDraft.Matches(Coordinator.State.WorkspaceId, Coordinator.State.ContentRevision))
         {
             await DisplayAlertAsync("Draft cannot resume", "The saved review no longer owns this exact revision.", "OK");
@@ -258,7 +335,8 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
             _recoveryDraft,
             _checkpoint,
             _authority,
-            _store));
+            _store,
+            _reviewedAuthority));
     }
 
     private async Task ResolveCheckpointAsync()
@@ -313,11 +391,16 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
 
     private async Task AbandonReviewedAsync()
     {
-        if (_checkpoint is null || _checkpoint.Phase != Sr5CareerCheckpointPhase.Reviewed)
+        if (_checkpoint is null
+            || _checkpoint.Phase != Sr5CareerCheckpointPhase.Reviewed
+            || !TryAuthenticateReviewedCheckpoint(
+                _checkpoint,
+                _recoveryDraft,
+                out _))
         {
             await DisplayAlertAsync(
                 "Cannot abandon",
-                "An Applying action must first be resolved from authoritative skill and expense projections.",
+                "Only the current authenticated SR5 owner and exact runner revision may abandon this Reviewed action.",
                 "OK");
             return;
         }
@@ -330,7 +413,7 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
         {
             return;
         }
-        if (!_store.TryDeleteResolvedOrReviewed(
+        if (!_store.TryDeleteReviewed(
                 Sr5CareerCheckpointCas.From(_checkpoint),
                 out string blocker))
         {
@@ -354,10 +437,19 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
                 : NativeTheme.Danger;
             return;
         }
-        _checkpoint = checkpoint;
-        if (checkpoint.Phase == Sr5CareerCheckpointPhase.Reviewed
-            && checkpoint.TryResume(_editor, out Sr5CareerActiveSkillDraft draft, out string blocker))
+        if (checkpoint.Phase == Sr5CareerCheckpointPhase.Reviewed)
         {
+            if (!checkpoint.TryResume(
+                    _editor,
+                    out Sr5CareerActiveSkillDraft draft,
+                    out _)
+                || !TryAuthenticateReviewedCheckpoint(checkpoint, draft, out _))
+            {
+                _recovery.Text = "A saved reviewed action is not authorized for this current SR5 owner and runner revision.";
+                _recovery.TextColor = NativeTheme.Danger;
+                return;
+            }
+            _checkpoint = checkpoint;
             _recoveryDraft = draft;
             _recovery.Text = "A durable reviewed advancement can be resumed with the same owner and action identity.";
             _recovery.TextColor = NativeTheme.Muted;
@@ -368,6 +460,7 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
             _skills.SelectedIndex = selectedIndex;
             return;
         }
+        _checkpoint = checkpoint;
         _recovery.Text = checkpoint.Phase switch
         {
             Sr5CareerCheckpointPhase.Applying =>
@@ -380,6 +473,27 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
             ? NativeTheme.Danger
             : NativeTheme.Muted;
     }
+
+    private bool TryAuthenticateReviewedCheckpoint(
+        Sr5CareerDraftCheckpoint? checkpoint,
+        Sr5CareerActiveSkillDraft? draft,
+        out Sr5CareerReviewedCheckpointAccess currentAccess)
+    {
+        currentAccess = null!;
+        if (checkpoint is null
+            || draft is null
+            || checkpoint.Phase != Sr5CareerCheckpointPhase.Reviewed
+            || !checkpoint.MatchesReviewedDraft(draft))
+        {
+            return false;
+        }
+        currentAccess = Sr5CareerReviewedCheckpointAccess.FromCurrent(
+            _reviewedAuthority.CurrentOwnerId,
+            draft,
+            new RunnerSessionSr5CareerActiveSkillPresenter(Coordinator).Binding);
+        return currentAccess.Owns(checkpoint)
+            && _reviewedAuthority.Owns(checkpoint);
+    }
 }
 
 public sealed class Sr5CareerActiveSkillReviewPage : NativePageBase
@@ -388,6 +502,7 @@ public sealed class Sr5CareerActiveSkillReviewPage : NativePageBase
     private Sr5CareerDraftCheckpoint _checkpoint;
     private readonly Sr5CareerActiveSkillCoordinator _authority;
     private readonly Sr5CareerDraftCheckpointStore _store;
+    private readonly ISr5CareerReviewedCheckpointAuthority _reviewedAuthority;
     private readonly Button _apply;
     private readonly Label _blocker;
     private int _attempted;
@@ -397,19 +512,17 @@ public sealed class Sr5CareerActiveSkillReviewPage : NativePageBase
         Sr5CareerActiveSkillDraft draft,
         Sr5CareerDraftCheckpoint checkpoint,
         Sr5CareerActiveSkillCoordinator authority,
-        Sr5CareerDraftCheckpointStore store) : base(coordinator)
+        Sr5CareerDraftCheckpointStore store,
+        ISr5CareerReviewedCheckpointAuthority reviewedAuthority) : base(coordinator)
     {
         _draft = draft ?? throw new ArgumentNullException(nameof(draft));
         _checkpoint = checkpoint ?? throw new ArgumentNullException(nameof(checkpoint));
         _authority = authority ?? throw new ArgumentNullException(nameof(authority));
         _store = store ?? throw new ArgumentNullException(nameof(store));
+        _reviewedAuthority = reviewedAuthority ?? throw new ArgumentNullException(nameof(reviewedAuthority));
         Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(
             new RunnerSessionSr5CareerActiveSkillPresenter(coordinator).Binding);
-        if (checkpoint.Phase != Sr5CareerCheckpointPhase.Reviewed
-            || checkpoint.WorkspaceId != draft.WorkspaceId.Value
-            || checkpoint.OwnerId != draft.OwnerId
-            || checkpoint.ActionId != draft.Plan.ExpenseId
-            || checkpoint.IdempotencyKey != draft.ActionPlan.IdempotencyKey)
+        if (!OwnsCurrentReviewedCheckpoint())
         {
             throw new InvalidOperationException("The review does not own the durable Career checkpoint.");
         }
@@ -465,7 +578,7 @@ public sealed class Sr5CareerActiveSkillReviewPage : NativePageBase
             Coordinator.State.Rules?.GameEdition);
         bool current = sr5
             && _draft.Matches(Coordinator.State.WorkspaceId, Coordinator.State.ContentRevision)
-            && _checkpoint.Phase == Sr5CareerCheckpointPhase.Reviewed;
+            && OwnsCurrentReviewedCheckpoint();
         bool attempted = Volatile.Read(ref _attempted) != 0;
         _apply.IsEnabled = current && !attempted;
         _blocker.Text = !sr5
@@ -481,6 +594,14 @@ public sealed class Sr5CareerActiveSkillReviewPage : NativePageBase
     {
         Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(
             new RunnerSessionSr5CareerActiveSkillPresenter(Coordinator).Binding);
+        if (!OwnsCurrentReviewedCheckpoint())
+        {
+            await DisplayAlertAsync(
+                "Apply blocked",
+                "The current SR5 owner, runner revision, action or schema no longer owns this review.",
+                "OK");
+            return;
+        }
         if (!_store.TryBeginApply(
                 Sr5CareerCheckpointCas.From(_checkpoint),
                 out Sr5CareerDraftCheckpoint applying,
@@ -524,6 +645,18 @@ public sealed class Sr5CareerActiveSkillReviewPage : NativePageBase
             result.Receipt!,
             resolved,
             _store));
+    }
+
+    private bool OwnsCurrentReviewedCheckpoint()
+    {
+        Sr5CareerReviewedCheckpointAccess currentAccess =
+            Sr5CareerReviewedCheckpointAccess.FromCurrent(
+                _reviewedAuthority.CurrentOwnerId,
+                _draft,
+                new RunnerSessionSr5CareerActiveSkillPresenter(Coordinator).Binding);
+        return _checkpoint.MatchesReviewedDraft(_draft)
+            && currentAccess.Owns(_checkpoint)
+            && _reviewedAuthority.Owns(_checkpoint);
     }
 }
 
@@ -569,7 +702,14 @@ public sealed class Sr5CareerActiveSkillReceiptPage : NativePageBase
         details.Add(NativeTheme.Metric("Expense identity", receipt.ExpenseId.ToString("D")));
         details.Add(NativeTheme.Metric("Expense date", receipt.ExpenseDateLocal.ToString("O", CultureInfo.InvariantCulture)));
         details.Add(NativeTheme.Metric("Expense reason", receipt.ExpenseReason));
-        details.Add(NativeTheme.Metric("Undo type", receipt.KarmaUndoType));
+        details.Add(NativeTheme.Metric("Expense type", receipt.ExpenseType));
+        details.Add(NativeTheme.Metric("Refund", receipt.ExpenseRefund.ToString(CultureInfo.InvariantCulture)));
+        details.Add(NativeTheme.Metric("Career visible", receipt.ExpenseForceCareerVisible.ToString(CultureInfo.InvariantCulture)));
+        details.Add(NativeTheme.Metric("Karma undo type", receipt.KarmaUndoType));
+        details.Add(NativeTheme.Metric("Nuyen undo type", receipt.NuyenUndoType));
+        details.Add(NativeTheme.Metric("Undo object", receipt.UndoObjectId));
+        details.Add(NativeTheme.Metric("Undo quantity", receipt.UndoQuantity.ToString(CultureInfo.InvariantCulture)));
+        details.Add(NativeTheme.Metric("Undo extra", receipt.UndoExtra));
         body.Add(NativeTheme.Card(details));
         _durability = NativeTheme.Body(string.Empty, NativeTheme.Muted);
         body.Add(_durability);
@@ -583,7 +723,7 @@ public sealed class Sr5CareerActiveSkillReceiptPage : NativePageBase
         acknowledge.AutomationId = "sr5-career-active-skill-receipt-acknowledge";
         acknowledge.Clicked += async (_, _) => await RunAsync(async () =>
         {
-            if (!_store.TryDeleteResolvedOrReviewed(
+            if (!_store.TryDeleteApplied(
                     Sr5CareerCheckpointCas.From(_checkpoint),
                     out string blocker))
             {

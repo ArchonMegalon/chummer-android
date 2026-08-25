@@ -234,6 +234,8 @@ public sealed class Sr5CareerActiveSkillCoordinator(
             && expenses.AvailableKarma == checkpoint.SavedKarma)
         {
             CharacterCareerKarmaExpenseEntry loadedExpense = matchingExpenses[0];
+            CharacterCareerKarmaExpenseSourceAuthority loadedSource =
+                loadedExpense.SourceAuthority;
             Sr5CareerActiveSkillReceipt receipt = new(
                 checkpoint.OwnerId,
                 checkpoint.ActionId,
@@ -252,7 +254,14 @@ public sealed class Sr5CareerActiveSkillCoordinator(
                 loadedExpense.ExpenseId,
                 loadedExpense.ExpenseDateLocal,
                 loadedExpense.Reason,
+                loadedSource.RawExpenseType!,
+                loadedExpense.Refund,
+                loadedExpense.ForceCareerVisible,
                 loadedExpense.RawKarmaUndoType!,
+                loadedSource.RawNuyenUndoType!,
+                loadedSource.RawUndoObjectId!,
+                loadedSource.UndoQuantity!.Value,
+                loadedSource.RawUndoExtra!,
                 loadedSkill.RuleDigest,
                 loadedSkill.SourceRevision);
             return new Sr5CareerRecoveryResolution(
@@ -262,7 +271,7 @@ public sealed class Sr5CareerActiveSkillCoordinator(
                 checkpoint.ActionId,
                 checkpoint.Version,
                 receipt,
-                "Fresh typed projections verified the saved skill and exact Karma expense.");
+                "Fresh typed projections verified the saved skill and every exact Karma expense and undo value.");
         }
 
         int previousKarma;
@@ -300,15 +309,42 @@ public sealed class Sr5CareerActiveSkillCoordinator(
         Sr5CareerDraftCheckpoint checkpoint,
         CharacterCareerKarmaExpenseEntry expense)
         => expense.ExpenseId == checkpoint.ActionId
+           && expense.ExpenseDateLocal.Kind == DateTimeKind.Unspecified
            && expense.ExpenseDateLocal == DateTime.SpecifyKind(
                checkpoint.ExpenseDateLocal,
                DateTimeKind.Unspecified)
            && expense.Amount == checkpoint.ExpenseAmount
            && string.Equals(expense.Reason, checkpoint.ExpenseReason, StringComparison.Ordinal)
+           && expense.SourceAuthority.RefundElementPresent
+           && expense.Refund == checkpoint.ExpenseRefund
+           && expense.SourceAuthority.ForceCareerVisibleElementPresent
+           && expense.ForceCareerVisible == checkpoint.ExpenseForceCareerVisible
            && expense.KarmaUndoTypeElementPresent
            && string.Equals(
                expense.RawKarmaUndoType,
                checkpoint.KarmaUndoType,
+               StringComparison.Ordinal)
+           && expense.SourceAuthority.ExpenseTypeElementPresent
+           && string.Equals(
+               expense.SourceAuthority.RawExpenseType,
+               checkpoint.ExpenseType,
+               StringComparison.Ordinal)
+           && expense.SourceAuthority.NuyenUndoTypeElementPresent
+           && string.Equals(
+               expense.SourceAuthority.RawNuyenUndoType,
+               checkpoint.NuyenUndoType,
+               StringComparison.Ordinal)
+           && expense.SourceAuthority.UndoObjectIdElementPresent
+           && string.Equals(
+               expense.SourceAuthority.RawUndoObjectId,
+               checkpoint.UndoObjectId,
+               StringComparison.Ordinal)
+           && expense.SourceAuthority.UndoQuantityElementPresent
+           && expense.SourceAuthority.UndoQuantity == checkpoint.UndoQuantity
+           && expense.SourceAuthority.UndoExtraElementPresent
+           && string.Equals(
+               expense.SourceAuthority.RawUndoExtra,
+               checkpoint.UndoExtra,
                StringComparison.Ordinal);
 
     private static Sr5CareerRecoveryResolution Unknown(

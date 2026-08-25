@@ -10,6 +10,49 @@ public interface ISr5CareerCheckpointBackend
     void Remove();
 }
 
+internal interface ISr5CareerCheckpointOwnerAuthority
+{
+    Guid CurrentOwnerId { get; }
+}
+
+internal interface ISr5CareerReviewedCheckpointAuthority :
+    ISr5CareerCheckpointOwnerAuthority
+{
+    bool Owns(Sr5CareerDraftCheckpoint checkpoint);
+}
+
+internal sealed class PreferencesSr5CareerCheckpointOwnerAuthority :
+    ISr5CareerCheckpointOwnerAuthority
+{
+    private const string OwnerStorageKey = "sr5.career.owner.v1";
+    private static readonly object OwnerGate = new();
+
+    public PreferencesSr5CareerCheckpointOwnerAuthority()
+    {
+        lock (OwnerGate)
+        {
+            string payload = Preferences.Default.Get(OwnerStorageKey, string.Empty);
+            if (Guid.TryParse(payload, out Guid existing) && existing != Guid.Empty)
+            {
+                CurrentOwnerId = existing;
+                return;
+            }
+
+            Guid candidate = Guid.NewGuid();
+            Preferences.Default.Set(OwnerStorageKey, candidate.ToString("D"));
+            string readBack = Preferences.Default.Get(OwnerStorageKey, string.Empty);
+            if (!Guid.TryParse(readBack, out Guid stored) || stored != candidate)
+            {
+                throw new InvalidOperationException(
+                    "The local Career checkpoint owner identity was not durable.");
+            }
+            CurrentOwnerId = stored;
+        }
+    }
+
+    public Guid CurrentOwnerId { get; }
+}
+
 internal sealed class PreferencesSr5CareerCheckpointBackend : ISr5CareerCheckpointBackend
 {
     private const string StorageKey = "sr5.career.active-skill.draft.v1";
@@ -49,14 +92,26 @@ public sealed class Sr5CareerDraftCheckpointStore
 {
     private static readonly object Gate = new();
     private readonly ISr5CareerCheckpointBackend _backend;
+    private readonly ISr5CareerReviewedCheckpointAuthority? _reviewedAuthority;
 
     public Sr5CareerDraftCheckpointStore(ISr5CareerCheckpointBackend backend)
+        : this(backend, reviewedAuthority: null)
     {
-        _backend = backend ?? throw new ArgumentNullException(nameof(backend));
     }
 
-    public static Sr5CareerDraftCheckpointStore CreateDefault()
-        => new(new PreferencesSr5CareerCheckpointBackend());
+    internal Sr5CareerDraftCheckpointStore(
+        ISr5CareerCheckpointBackend backend,
+        ISr5CareerReviewedCheckpointAuthority? reviewedAuthority)
+    {
+        _backend = backend ?? throw new ArgumentNullException(nameof(backend));
+        _reviewedAuthority = reviewedAuthority;
+    }
+
+    internal static Sr5CareerDraftCheckpointStore CreateDefault(
+        ISr5CareerReviewedCheckpointAuthority reviewedAuthority)
+        => new(
+            new PreferencesSr5CareerCheckpointBackend(),
+            reviewedAuthority ?? throw new ArgumentNullException(nameof(reviewedAuthority)));
 
     public bool TryRead(out Sr5CareerDraftCheckpoint checkpoint, out string blocker)
     {
@@ -173,7 +228,7 @@ public sealed class Sr5CareerDraftCheckpointStore
         }
     }
 
-    public bool TryDeleteResolvedOrReviewed(
+    internal bool TryDeleteReviewed(
         Sr5CareerCheckpointCas expected,
         out string blocker)
     {
@@ -181,31 +236,60 @@ public sealed class Sr5CareerDraftCheckpointStore
         blocker = string.Empty;
         lock (Gate)
         {
-            if (expected.Phase is not (Sr5CareerCheckpointPhase.Reviewed
-                or Sr5CareerCheckpointPhase.Applied)
-                || !TryRequireCasLocked(expected, out _, out blocker))
+            if (expected.Phase != Sr5CareerCheckpointPhase.Reviewed
+                || !TryRequireCasLocked(
+                    expected,
+                    out Sr5CareerDraftCheckpoint current,
+                    out blocker)
+                || _reviewedAuthority is null
+                || !_reviewedAuthority.Owns(current))
             {
                 blocker = string.IsNullOrWhiteSpace(blocker)
-                    ? "An Applying checkpoint cannot be cleared without an authoritative outcome."
+                    ? "Only the current SR5 owner/workspace/revision/action may abandon this Reviewed checkpoint."
                     : blocker;
                 return false;
             }
-            try
+            return TryDeleteAndReadBackLocked(out blocker);
+        }
+    }
+
+    public bool TryDeleteApplied(
+        Sr5CareerCheckpointCas expected,
+        out string blocker)
+    {
+        ArgumentNullException.ThrowIfNull(expected);
+        blocker = string.Empty;
+        lock (Gate)
+        {
+            if (expected.Phase != Sr5CareerCheckpointPhase.Applied
+                || !TryRequireCasLocked(expected, out _, out blocker))
             {
-                _backend.Remove();
-                if (!string.IsNullOrWhiteSpace(_backend.Read()))
-                {
-                    blocker = "The Career checkpoint delete was not durable on read-back.";
-                    return false;
-                }
-                blocker = string.Empty;
-                return true;
-            }
-            catch (Exception exception)
-            {
-                blocker = $"The Career checkpoint could not be deleted: {exception.Message}";
+                blocker = string.IsNullOrWhiteSpace(blocker)
+                    ? "Only an exact Applied receipt checkpoint may be acknowledged."
+                    : blocker;
                 return false;
             }
+            return TryDeleteAndReadBackLocked(out blocker);
+        }
+    }
+
+    private bool TryDeleteAndReadBackLocked(out string blocker)
+    {
+        try
+        {
+            _backend.Remove();
+            if (!string.IsNullOrWhiteSpace(_backend.Read()))
+            {
+                blocker = "The Career checkpoint delete was not durable on read-back.";
+                return false;
+            }
+            blocker = string.Empty;
+            return true;
+        }
+        catch (Exception exception)
+        {
+            blocker = $"The Career checkpoint could not be deleted: {exception.Message}";
+            return false;
         }
     }
 
