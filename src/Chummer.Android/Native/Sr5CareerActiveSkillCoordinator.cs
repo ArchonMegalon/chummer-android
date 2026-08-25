@@ -58,7 +58,8 @@ internal sealed class RunnerSessionSr5CareerActiveSkillPresenter(
 /// skill and expense projections rather than the reviewed draft.
 /// </summary>
 public sealed class Sr5CareerActiveSkillCoordinator(
-    ISr5CareerActiveSkillPresenter presenter)
+    ISr5CareerActiveSkillPresenter presenter,
+    ISr5CareerCheckpointOwnerAuthority ownerAuthority)
 {
     public async Task<CareerActiveSkillAdvanceEditorState?> PrepareAsync(
         CancellationToken cancellationToken = default)
@@ -87,13 +88,15 @@ public sealed class Sr5CareerActiveSkillCoordinator(
         ArgumentNullException.ThrowIfNull(applyingCheckpoint);
         Sr5CareerRunnerBinding before = presenter.Binding;
         RequireCreatedSr5(before);
-        if (before.WorkspaceId != draft.WorkspaceId
+        if (ownerAuthority.CurrentOwnerId != draft.OwnerId
+            || before.WorkspaceId != draft.WorkspaceId
             || before.ContentRevision != draft.ExpectedContentRevision)
         {
             throw new InvalidOperationException(
                 "The reviewed SR5 action does not own the current runner revision.");
         }
         if (applyingCheckpoint.Phase != Sr5CareerCheckpointPhase.Applying
+            || !applyingCheckpoint.MatchesActionDraft(draft)
             || applyingCheckpoint.WorkspaceId != draft.WorkspaceId.Value
             || applyingCheckpoint.OwnerId != draft.OwnerId
             || applyingCheckpoint.ActionId != draft.Plan.ExpenseId
@@ -143,10 +146,13 @@ public sealed class Sr5CareerActiveSkillCoordinator(
         ArgumentNullException.ThrowIfNull(checkpoint);
         Sr5CareerRunnerBinding before = presenter.Binding;
         RequireCreatedSr5(before);
-        if (before.WorkspaceId?.Value != checkpoint.WorkspaceId)
+        if (!checkpoint.IsStructurallyValid()
+            || ownerAuthority.CurrentOwnerId == Guid.Empty
+            || ownerAuthority.CurrentOwnerId != checkpoint.OwnerId
+            || before.WorkspaceId?.Value != checkpoint.WorkspaceId)
         {
             throw new InvalidOperationException(
-                "The recovery checkpoint belongs to another SR5 runner.");
+                "The recovery checkpoint does not belong to the authenticated local SR5 owner and runner.");
         }
 
         CareerActiveSkillAdvanceEditorState? skills =
@@ -221,6 +227,15 @@ public sealed class Sr5CareerActiveSkillCoordinator(
             loadedSkill.SourceRevision,
             checkpoint.SourceRevision,
             StringComparison.Ordinal);
+        bool exactSuccessorQuote = CharacterCareerActiveSkillAdvanceRules.IsCoherent(loadedSkill)
+            && string.Equals(loadedSkill.RuleDigest, checkpoint.RuleDigest, StringComparison.Ordinal)
+            && string.Equals(loadedSkill.Name, checkpoint.SkillName, StringComparison.Ordinal)
+            && string.Equals(loadedSkill.SkillCategory, checkpoint.SkillCategory, StringComparison.Ordinal)
+            && loadedSkill.BasePoints == checkpoint.BasePoints
+            && checkpoint.PreviousKarmaPoints < int.MaxValue
+            && loadedSkill.KarmaPoints == checkpoint.PreviousKarmaPoints + 1
+            && loadedSkill.RatingMaximum == checkpoint.RatingMaximum
+            && loadedSkill.AvailableKarma == checkpoint.SavedKarma;
         bool appliedRevision = checkpoint.ExpectedContentRevision < long.MaxValue
             && binding.ContentRevision == checkpoint.ExpectedContentRevision + 1
             && binding.SavedRevision == binding.ContentRevision;
@@ -229,11 +244,23 @@ public sealed class Sr5CareerActiveSkillCoordinator(
             && ExpenseMatches(checkpoint, matchingExpenses[0]);
         if (appliedRevision
             && sourceMatches
+            && exactSuccessorQuote
             && skillApplied
             && expenseApplied
             && expenses.AvailableKarma == checkpoint.SavedKarma)
         {
             CharacterCareerKarmaExpenseEntry loadedExpense = matchingExpenses[0];
+            int loadedKarmaCost;
+            try
+            {
+                loadedKarmaCost = checked(-decimal.ToInt32(loadedExpense.Amount));
+            }
+            catch (OverflowException)
+            {
+                return Unknown(
+                    checkpoint,
+                    "The saved Karma expense amount is outside the supported receipt range.");
+            }
             CharacterCareerKarmaExpenseSourceAuthority loadedSource =
                 loadedExpense.SourceAuthority;
             Sr5CareerActiveSkillReceipt receipt = new(
@@ -247,10 +274,17 @@ public sealed class Sr5CareerActiveSkillCoordinator(
                 loadedSkill.Identity.SkillId,
                 loadedSkill.Identity.SourceSkillId,
                 loadedSkill.Name,
+                loadedSkill.SkillCategory,
+                loadedSkill.BasePoints,
+                loadedSkill.KarmaPoints,
+                loadedSkill.RatingMaximum,
                 checkpoint.PreviousRating,
                 loadedSkill.TotalBaseRating,
-                checked((int)-loadedExpense.Amount),
+                loadedKarmaCost,
                 expenses.AvailableKarma,
+                loadedSkill.KarmaCost,
+                loadedSkill.CanAdvance,
+                loadedSkill.Blocker,
                 loadedExpense.ExpenseId,
                 loadedExpense.ExpenseDateLocal,
                 loadedExpense.Reason,
@@ -262,14 +296,13 @@ public sealed class Sr5CareerActiveSkillCoordinator(
                 loadedSource.RawUndoObjectId!,
                 loadedSource.UndoQuantity!.Value,
                 loadedSource.RawUndoExtra!,
+                checkpoint.RuleDigest,
+                loadedSkill.LogicalRevision,
                 loadedSkill.RuleDigest,
                 loadedSkill.SourceRevision);
-            return new Sr5CareerRecoveryResolution(
+            return Sr5CareerRecoveryProof.Create(
+                checkpoint,
                 Sr5CareerRecoveryStatus.AppliedVerified,
-                checkpoint.WorkspaceId,
-                checkpoint.OwnerId,
-                checkpoint.ActionId,
-                checkpoint.Version,
                 receipt,
                 "Fresh typed projections verified the saved skill and every exact Karma expense and undo value.");
         }
@@ -287,16 +320,21 @@ public sealed class Sr5CareerActiveSkillCoordinator(
             && binding.SavedRevision == checkpoint.ExpectedContentRevision;
         bool skillNotApplied = loadedSkill.TotalBaseRating == checkpoint.PreviousRating
             && sourceMatches
+            && CharacterCareerActiveSkillAdvanceRules.IsCoherent(loadedSkill)
+            && string.Equals(loadedSkill.LogicalRevision, checkpoint.LogicalRevision, StringComparison.Ordinal)
+            && string.Equals(loadedSkill.RuleDigest, checkpoint.RuleDigest, StringComparison.Ordinal)
+            && string.Equals(loadedSkill.Name, checkpoint.SkillName, StringComparison.Ordinal)
+            && string.Equals(loadedSkill.SkillCategory, checkpoint.SkillCategory, StringComparison.Ordinal)
+            && loadedSkill.BasePoints == checkpoint.BasePoints
+            && loadedSkill.KarmaPoints == checkpoint.PreviousKarmaPoints
+            && loadedSkill.RatingMaximum == checkpoint.RatingMaximum
             && loadedSkill.AvailableKarma == previousKarma;
         if (notAppliedRevision && skillNotApplied && matchingExpenses.Length == 0)
         {
-            return new Sr5CareerRecoveryResolution(
+            return Sr5CareerRecoveryProof.Create(
+                checkpoint,
                 Sr5CareerRecoveryStatus.NotAppliedVerified,
-                checkpoint.WorkspaceId,
-                checkpoint.OwnerId,
-                checkpoint.ActionId,
-                checkpoint.Version,
-                Receipt: null,
+                receipt: null,
                 "Fresh typed projections prove that neither the skill nor expense mutation was saved.");
         }
 
@@ -350,12 +388,9 @@ public sealed class Sr5CareerActiveSkillCoordinator(
     private static Sr5CareerRecoveryResolution Unknown(
         Sr5CareerDraftCheckpoint checkpoint,
         string message)
-        => new(
+        => Sr5CareerRecoveryProof.Create(
+            checkpoint,
             Sr5CareerRecoveryStatus.OutcomeUnknown,
-            checkpoint.WorkspaceId,
-            checkpoint.OwnerId,
-            checkpoint.ActionId,
-            checkpoint.Version,
-            Receipt: null,
+            receipt: null,
             message);
 }

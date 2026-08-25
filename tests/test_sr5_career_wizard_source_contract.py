@@ -83,6 +83,8 @@ def test_shared_action_boundary_has_route_idempotency_and_fail_closed_crash_reco
     assert "JsonSerializer.Serialize" in store
     assert "TryBeginApply" in store
     assert "TryRecordAuthoritativeResolution" in store
+    assert "Sr5CareerRecoveryProof.Verifies" in store
+    assert "ReceiptMatchesCheckpoint" in store
     assert "TryWriteAndReadBackLocked" in store
     assert "OwnerId" in store
     assert "ExpenseMatches" in coordinator
@@ -134,6 +136,9 @@ def test_globally_loaded_reviewed_checkpoint_is_authenticated_before_ui_or_delet
     ):
         assert binding in model
     assert "_reviewedAuthority.Owns(current)" in store
+    assert "_reviewedAuthority.OwnsCurrentRunner(current)" in store
+    assert "MatchesActionDraft" in model
+    assert "OwnsCurrentRunner" in page
     assert 'StorageKey = "sr5.career.active-skill.draft.v1"' in store
 
 
