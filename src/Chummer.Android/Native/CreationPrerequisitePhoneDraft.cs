@@ -893,7 +893,10 @@ internal static class CreationPrerequisitePhoneAuthority
                      && metavariantSourceId != Guid.Empty
                      && !string.IsNullOrWhiteSpace(option.MetavariantName))
            && option.SpecialAttributePoints >= 0
-           && option.KarmaCost >= 0
+           && (option.KarmaCost >= 0
+               || option.Kind == CharacterCreationPriorityChildKinds.Metavariant
+                  && !option.IsEnabled
+                  && option.Blockers.Count > 0)
            && option.Attributes.Count > 0
            && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(
                option.PriorityChildNodeDigest)

@@ -808,6 +808,21 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, heritage)
 
+    def test_disabled_negative_metavariant_matches_core_authority_contract(self) -> None:
+        source = (NATIVE / "CreationPrerequisitePhoneDraft.cs").read_text(encoding="utf-8")
+        heritage = source[
+            source.index("public static bool IsExactHeritageOption(") :
+            source.index("public static bool HasExactNestedAuthority(")
+        ]
+        for marker in (
+            "option.KarmaCost >= 0",
+            "option.Kind == CharacterCreationPriorityChildKinds.Metavariant",
+            "!option.IsEnabled",
+            "option.Blockers.Count > 0",
+        ):
+            self.assertIn(marker, heritage)
+        self.assertNotIn("option.KarmaCost < 0 ||", heritage)
+
     def test_phone_pages_show_projected_typed_choices_and_core_attribute_gate(self) -> None:
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
         options = (NATIVE / "CreationPriorityCategoryPage.cs").read_text(encoding="utf-8")
