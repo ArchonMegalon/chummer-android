@@ -1,8 +1,70 @@
+using System.Security.Cryptography;
+using System.Text;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
 using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
+
+/// <summary>
+/// Build-time authority carried by every durable skill-group action. The
+/// content digest is the verified packaged Chummer data/lang generation; the
+/// runtime digest binds that generation to the exact Core and Presentation
+/// commits consumed by this Android product line.
+/// </summary>
+public sealed record Sr5CareerSkillGroupRuntimeAuthority(
+    string ContractName,
+    string CoreRevision,
+    string PresentationRevision,
+    string ContentDigest,
+    string RuntimeDigest)
+{
+    public const string CurrentContractName =
+        "chummer.android.sr5-career-skill-group-runtime/v1";
+    public const string CurrentCoreRevision =
+        "b1d6abd5ea0e00c5063bc6561a87c50ec1b7eb85";
+    public const string CurrentPresentationRevision =
+        "671289bb75994a686308cd3f3a1a52e5590f36a4";
+    public const string CurrentContentDigest =
+        "75f39aa795619d1d45341ebe12667fcc0b44bf77fbc7e6c534b0fe0cb86d917a";
+    public const string CurrentRuntimeDigest =
+        "24cdb751cd4e53afada3c9a70be5595e9231b149677d2f3002e8c7f9fe5e60df";
+
+    public static Sr5CareerSkillGroupRuntimeAuthority Embedded { get; } = new(
+        CurrentContractName,
+        CurrentCoreRevision,
+        CurrentPresentationRevision,
+        CurrentContentDigest,
+        CurrentRuntimeDigest);
+
+    public bool IsCurrent()
+        => this == Embedded
+            && string.Equals(
+                RuntimeDigest,
+                ComputeRuntimeDigest(
+                    ContractName,
+                    CoreRevision,
+                    PresentationRevision,
+                    ContentDigest),
+                StringComparison.Ordinal);
+
+    internal static string ComputeRuntimeDigest(
+        string contractName,
+        string coreRevision,
+        string presentationRevision,
+        string contentDigest)
+    {
+        string payload = string.Join(
+            "\n",
+            contractName,
+            coreRevision,
+            presentationRevision,
+            contentDigest,
+            string.Empty);
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)))
+            .ToLowerInvariant();
+    }
+}
 
 /// <summary>
 /// A reviewed SR5 skill-group advancement. The draft retains the exact typed
@@ -12,6 +74,7 @@ public sealed record Sr5CareerSkillGroupDraft(
     Guid OwnerId,
     CharacterWorkspaceId WorkspaceId,
     long ExpectedContentRevision,
+    Sr5CareerSkillGroupRuntimeAuthority RuntimeAuthority,
     CharacterCareerSkillGroupAdvanceQuote Quote,
     CharacterCareerSkillGroupAdvancePlan Plan)
 {
@@ -21,7 +84,9 @@ public sealed record Sr5CareerSkillGroupDraft(
             WorkspaceId,
             ExpectedContentRevision,
             Quote,
-            Plan);
+            Plan,
+            RuntimeAuthority.ContentDigest,
+            RuntimeAuthority.RuntimeDigest);
 
     public CareerSkillGroupAdvanceRequest ToRequest()
         => new(
@@ -43,6 +108,8 @@ public sealed record Sr5CareerSkillGroupDraft(
         if (OwnerId == Guid.Empty
             || string.IsNullOrWhiteSpace(WorkspaceId.Value)
             || ExpectedContentRevision <= 0
+            || RuntimeAuthority is null
+            || !RuntimeAuthority.IsCurrent()
             || !CharacterCareerSkillGroupAdvanceRules.IsCoherent(Quote)
             || !Quote.CanAdvance
             || !CharacterCareerSkillGroupAdvanceRules.IsCoherent(Plan)
@@ -165,6 +232,7 @@ public sealed record Sr5CareerSkillGroupDraft(
             ownerId,
             editor.WorkspaceId,
             editor.ContentRevision,
+            Sr5CareerSkillGroupRuntimeAuthority.Embedded,
             authoritative,
             plan);
         if (!candidate.IsExact())
@@ -209,7 +277,7 @@ public sealed record Sr5CareerSkillGroupCheckpoint(
     Sr5CareerSkillGroupDraft Draft,
     string IdempotencyKey)
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public static Sr5CareerSkillGroupCheckpoint FromDraft(
         Sr5CareerSkillGroupDraft draft,
@@ -287,6 +355,7 @@ public sealed record Sr5CareerSkillGroupCheckpoint(
             && Draft.OwnerId == draft.OwnerId
             && Draft.WorkspaceId == draft.WorkspaceId
             && Draft.ExpectedContentRevision == draft.ExpectedContentRevision
+            && Draft.RuntimeAuthority == draft.RuntimeAuthority
             && Draft.Quote.Identity == draft.Quote.Identity
             && string.Equals(Draft.Quote.LogicalRevision, draft.Quote.LogicalRevision, StringComparison.Ordinal)
             && string.Equals(Draft.Quote.SourceRevision, draft.Quote.SourceRevision, StringComparison.Ordinal)

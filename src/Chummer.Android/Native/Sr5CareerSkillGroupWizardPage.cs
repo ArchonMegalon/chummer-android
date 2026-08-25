@@ -522,6 +522,8 @@ public sealed class Sr5CareerSkillGroupReviewPage : NativePageBase
         diff.Add(NativeTheme.Metric("Expense", _draft.Plan.ExpenseReason));
         diff.Add(NativeTheme.Metric("Transaction", _draft.Plan.TransactionId.ToString("D")));
         diff.Add(NativeTheme.Metric("Expense identity", _draft.Plan.ExpenseId.ToString("D")));
+        diff.Add(NativeTheme.Metric("Content authority", _draft.RuntimeAuthority.ContentDigest));
+        diff.Add(NativeTheme.Metric("Runtime authority", _draft.RuntimeAuthority.RuntimeDigest));
         diff.Add(NativeTheme.Metric("Date", _draft.Plan.ExpenseDateLocal.ToString("O", CultureInfo.InvariantCulture)));
         diff.Add(NativeTheme.Metric("Undo", $"{_draft.Plan.KarmaUndoType} · {_draft.Plan.UndoObjectId}"));
         body.Add(NativeTheme.Card(diff));
@@ -683,7 +685,7 @@ public sealed class Sr5CareerSkillGroupReceiptPage : NativePageBase
         _durability = NativeTheme.Body(string.Empty, NativeTheme.Muted);
         body.Add(_durability);
         body.Add(NativeTheme.Body(
-            $"receipt {receipt.ReceiptDigest} · reviewed source {receipt.SourceRevisionBefore} · rule {receipt.RuleDigestBefore} · owner {checkpoint.Draft.OwnerId:D}",
+            $"receipt {receipt.ReceiptDigest} · reviewed source {receipt.SourceRevisionBefore} · rule {receipt.RuleDigestBefore} · content {checkpoint.Draft.RuntimeAuthority.ContentDigest} · runtime {checkpoint.Draft.RuntimeAuthority.RuntimeDigest} · owner {checkpoint.Draft.OwnerId:D}",
             NativeTheme.Muted));
         Button acknowledge = NativeTheme.PrimaryButton("Acknowledge receipt");
         acknowledge.AutomationId = "sr5-career-skill-group-receipt-acknowledge";

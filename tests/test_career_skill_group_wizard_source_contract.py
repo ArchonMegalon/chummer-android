@@ -1,4 +1,7 @@
+import hashlib
+import json
 import pathlib
+import re
 import unittest
 
 
@@ -21,12 +24,41 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
             "Quote.LogicalRevision",
             "Quote.SourceRevision",
             "Quote.RuleDigest",
+            "Sr5CareerSkillGroupRuntimeAuthority RuntimeAuthority",
+            "RuntimeAuthority.ContentDigest",
+            "RuntimeAuthority.RuntimeDigest",
             "CareerSkillGroupAdvanceRequest",
         ):
             self.assertIn(marker, model)
         self.assertIn("FromSkillGroup", shared)
         self.assertIn("ComputeSkillGroupIdempotencyKey", shared)
         self.assertIn("Sr5CareerActionKind.SkillGroupAdvance", shared)
+
+    def test_content_and_runtime_authority_match_the_exact_product_graph(self) -> None:
+        model = self.read("Sr5CareerSkillGroupWizardModel.cs")
+        manifest = json.loads(
+            (REPO / "src/Chummer.Android/Content/chummer-content-manifest.json")
+            .read_text(encoding="utf-8")
+        )
+
+        def constant(name: str) -> str:
+            match = re.search(rf'{name}\s*=\s*\n?\s*"([0-9a-z.\-/]+)"', model)
+            self.assertIsNotNone(match, f"missing {name}")
+            return match.group(1)
+
+        contract = constant("CurrentContractName")
+        core = constant("CurrentCoreRevision")
+        presentation = constant("CurrentPresentationRevision")
+        content = constant("CurrentContentDigest")
+        runtime = constant("CurrentRuntimeDigest")
+        self.assertEqual(core, manifest["coreRevision"])
+        self.assertEqual(content, manifest["bundleDigest"])
+        self.assertEqual(core, "b1d6abd5ea0e00c5063bc6561a87c50ec1b7eb85")
+        self.assertEqual(presentation, "671289bb75994a686308cd3f3a1a52e5590f36a4")
+        payload = f"{contract}\n{core}\n{presentation}\n{content}\n".encode()
+        self.assertEqual(runtime, hashlib.sha256(payload).hexdigest())
+        self.assertIn("contentDigest", shared := self.read("Sr5CareerWizardModel.cs"))
+        self.assertIn("runtimeDigest", shared)
 
     def test_preview_is_a_distinct_phone_navigation_step(self) -> None:
         page = self.read("Sr5CareerSkillGroupWizardPage.cs")
