@@ -1,10 +1,15 @@
 # SR5 Career Wizard authority matrix
 
-This matrix describes the hardened native Android phone candidate
-`15d6131bf67fb91cf9d3195724e2ef693aed4705`, plus the first integrated wizard
-reference slice in this branch. It is deliberately narrower than Chummer5 Career
-parity: a visible route or an individual emulator receipt is not evidence that
-an end-to-end Career wizard exists.
+This matrix describes the native Android Skill Group slice ported onto the
+current phone integration head `8f9118cd371081e86e20c3ce1203c07c47e6e8f4`.
+Active Skill is inherited; this slice is pinned to exact Core
+`b1d6abd5ea0e00c5063bc6561a87c50ec1b7eb85` and combined Presentation
+`671289bb75994a686308cd3f3a1a52e5590f36a4`, which carry the deterministic Core
+quote/plan/receipt/correction authority and Presentation projection/atomic XML
+mutation authority. This matrix claims source integration, a focused non-MAUI
+compile/harness, and lightweight static tests—not a full MAUI or API-36-proven
+Skill Group artifact. A visible route or an individual emulator receipt is not
+evidence of full Chummer5 Career parity.
 
 | Workflow | Exact typed mutation authority already present at the base | Status after this slice | Remaining blocker |
 | --- | --- | --- | --- |
@@ -105,10 +110,6 @@ lineage onto the hardened `15d6131bf67fb91cf9d3195724e2ef693aed4705`
 candidate; substituting another projection, contract, or candidate revision is
 outside this proof.
 
-The second advancement checkpoint is blocked specifically on shared Android
-orchestration: expose the existing Presentation `Prepare/ApplyCareerSkillGroup`
-(or Specialization) methods through `RunnerSessionCoordinator` with the same
-durable successor check as Active Skill, then adapt its exact Core quote and
-plan into the shared action boundary. The existing generic Attribute edit is
-not sufficient proof because it has no stable rule digest, expense identity or
-typed ApplyResult.
+The next advancement checkpoint is Specialization (then Knowledge Skill), each
+requiring its own exact typed authority, Android review/recovery lane and honest
+API-36 proof rather than reuse of this Skill Group transaction.

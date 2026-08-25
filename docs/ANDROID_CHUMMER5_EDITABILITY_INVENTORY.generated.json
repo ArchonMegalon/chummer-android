@@ -2089,7 +2089,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "d43d0b6e247bbf88ca36653f7ca471ce859cc09315372cc2e8350fe80781b675"
+        "sha256": "e2d4bf2fa29990dab8a99187a8b980ce16d579e1c50dac25b8251f08c9ee396d"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -2319,7 +2319,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "195d5ee2e59347bd6d60b2e1a81cf9186afabd361b23ae95b42d38d0c7ab6953"
+        "sha256": "9ab84f780365c4f1983f61c93816c3fcd9665d053af7cd920a53a7465b8b935f"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2374,7 +2374,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "9c3814e2c7fb2f93c60d193158984424fcefb3d9485e5a1efc0ecbb6b27a4806"
+        "sha256": "2b372c17d3ad04f20cc49f56a88de977373d63daf6e0b7e8b2993ee81683b1e0"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
