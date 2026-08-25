@@ -22,6 +22,7 @@
     <AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>
     <ChummerAndroidRuntimeIdentifier Condition="'$(ChummerAndroidRuntimeIdentifier)' == ''">android-arm64</ChummerAndroidRuntimeIdentifier>
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">$(ChummerAndroidRuntimeIdentifier)</RuntimeIdentifier>
+    <_GlobalPropertiesToRemoveFromProjectReferences>$(_GlobalPropertiesToRemoveFromProjectReferences);RuntimeIdentifier;RuntimeIdentifiers;SelfContained</_GlobalPropertiesToRemoveFromProjectReferences>
     <AndroidLinkMode Condition="'$(Configuration)' == 'Release'">SdkOnly</AndroidLinkMode>
     <AndroidEnableProfiledAot Condition="'$(Configuration)' == 'Release'">true</AndroidEnableProfiledAot>
     <AndroidKeyStore Condition="'$(AndroidSigningKeyStore)' != ''">true</AndroidKeyStore>
