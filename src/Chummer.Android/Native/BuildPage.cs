@@ -18,6 +18,7 @@ public sealed class BuildPage : NativePageBase
     public BuildPage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
         Title = "Runner";
+        AutomationId = "phone-runner-page";
         _save = new ToolbarItem
         {
             Text = "Save",
@@ -39,8 +40,7 @@ public sealed class BuildPage : NativePageBase
         if (Coordinator.State.Profile is null)
         {
             Title = "Runner";
-            AutomationId = "phone-runner-empty";
-            _body.Add(NativeTheme.Eyebrow("Runner"));
+            AddRouteMarker("phone-runner-empty", "No runner loaded");
             _body.Add(NativeTheme.Title("Open a runner first"));
             _body.Add(NativeTheme.Body("Your file stays on this device unless you choose to link it.", NativeTheme.Muted));
             Button open = NativeTheme.PrimaryButton("Open file");
@@ -52,7 +52,7 @@ public sealed class BuildPage : NativePageBase
         if (Coordinator.State.Profile.Created == false)
         {
             Title = "Create";
-            AutomationId = "phone-runner-create";
+            AddRouteMarker("phone-runner-create", "Creation runner");
             AddWorkspacePicker();
             AddCreationWizardDashboard();
             AddFeedback();
@@ -60,13 +60,20 @@ public sealed class BuildPage : NativePageBase
         }
 
         Title = "Sheet";
-        AutomationId = "phone-runner-sheet";
+        AddRouteMarker("phone-runner-sheet", "Career runner");
         AddWorkspacePicker();
         AddSummary();
         AddDossier();
         AddBuildAreas();
 
         AddFeedback();
+    }
+
+    private void AddRouteMarker(string automationId, string label)
+    {
+        Label marker = NativeTheme.Eyebrow(label);
+        marker.AutomationId = automationId;
+        _body.Add(marker);
     }
 
     private void AddFeedback()
