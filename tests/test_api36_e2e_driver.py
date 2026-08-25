@@ -166,7 +166,6 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 "package": DRIVER.PACKAGE,
                 "class": "android.view.ViewGroup",
                 "enabled": "true",
-                "visible-to-user": "true",
                 "bounds": "[0,275][1080,2190]",
             }
         )
@@ -182,7 +181,6 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 "enabled": "true",
                 "clickable": "true",
                 "focusable": "true",
-                "visible-to-user": "true",
                 "bounds": "[954,138][1080,264]",
             }
         )
@@ -199,7 +197,6 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 "package": DRIVER.PACKAGE,
                 "class": "android.widget.TextView",
                 "enabled": "true",
-                "visible-to-user": "true",
                 "clickable": "false",
                 "focusable": "false",
                 "text": (
@@ -222,7 +219,6 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 "enabled": "true",
                 "clickable": "true",
                 "focusable": "true",
-                "visible-to-user": "true",
                 "bounds": bounds,
             }
         )
@@ -420,36 +416,34 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         reset_scroll.assert_not_called()
         device.shell.assert_not_called()
 
-    def test_phone_runner_root_rejects_page_not_visible_to_user(self) -> None:
+    def test_phone_runner_root_accepts_raw_api36_dump_without_visibility_extension(self) -> None:
         device = Mock(spec=DRIVER.Device)
         page = self.phone_runner_page()
-        page.attributes["visible-to-user"] = "false"
-        device.hierarchy.return_value = [
-            page,
-            self.phone_runner_toolbar(),
-            self.phone_runner_route(),
-        ]
+        toolbar = self.phone_runner_toolbar()
+        route = self.phone_runner_route()
+        root = [page, toolbar, route]
+        device.hierarchy.side_effect = [root, root]
+        device.node_has_tappable_bounds.return_value = True
 
         with (
-            patch.object(DRIVER.time, "monotonic", side_effect=[0.0, 0.0, 2.0]),
-            patch.object(DRIVER.time, "sleep"),
             patch.object(DRIVER, "reset_scroll_to_top") as reset_scroll,
-            self.assertRaisesRegex(RuntimeError, "Timed out proving the exact"),
         ):
-            DRIVER.return_to_phone_runner_root(device, timeout=1)
+            observed = DRIVER.return_to_phone_runner_root(device, timeout=1)
 
-        reset_scroll.assert_not_called()
+        self.assertIs(route, observed)
+        reset_scroll.assert_called_once_with(device, swipes=48)
         device.shell.assert_not_called()
 
-    def test_phone_runner_root_rejects_toolbar_not_visible_to_user(self) -> None:
+    def test_phone_runner_root_rejects_toolbar_outside_viewport(self) -> None:
         device = Mock(spec=DRIVER.Device)
         toolbar = self.phone_runner_toolbar()
-        toolbar.attributes["visible-to-user"] = "false"
+        toolbar.attributes["bounds"] = "[954,2500][1080,2600]"
         device.hierarchy.return_value = [
             self.phone_runner_page(),
             toolbar,
             self.phone_runner_route(),
         ]
+        device.node_has_tappable_bounds.side_effect = lambda node: node is not toolbar
 
         with (
             patch.object(DRIVER.time, "monotonic", side_effect=[0.0, 0.0, 2.0]),
@@ -462,12 +456,11 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         reset_scroll.assert_not_called()
         device.shell.assert_not_called()
 
-    def test_phone_runner_root_rejects_route_not_visible_to_user(self) -> None:
+    def test_phone_runner_root_rejects_route_omitted_after_viewport_reset(self) -> None:
         device = Mock(spec=DRIVER.Device)
         route = self.phone_runner_route()
-        route.attributes["visible-to-user"] = "false"
         root = [self.phone_runner_page(), self.phone_runner_toolbar(), route]
-        device.hierarchy.return_value = root
+        device.hierarchy.side_effect = [root, root[:2], root[:2]]
         device.node_has_tappable_bounds.return_value = True
 
         with (
@@ -485,11 +478,11 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         reset_scroll.assert_called_once_with(device, swipes=48)
         device.shell.assert_not_called()
 
-    def test_phone_runner_root_rejects_navigate_up_not_visible_to_user(self) -> None:
+    def test_phone_runner_root_rejects_navigate_up_outside_viewport(self) -> None:
         device = Mock(spec=DRIVER.Device)
-        navigate_up = self.native_navigate_up("[20,100][120,200]")
-        navigate_up.attributes["visible-to-user"] = "false"
+        navigate_up = self.native_navigate_up("[20,2500][120,2600]")
         device.hierarchy.return_value = [navigate_up]
+        device.node_has_tappable_bounds.return_value = False
 
         with (
             patch.object(DRIVER.time, "monotonic", side_effect=[0.0, 0.0, 2.0]),
