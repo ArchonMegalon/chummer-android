@@ -38,12 +38,29 @@ class CertificateDigestError(ValueError):
     """Raised when apksigner output is not a single accepted certificate binding."""
 
 
+def _digest_character_class(value: str) -> str:
+    if re.fullmatch(r"[0-9A-Fa-f]+", value):
+        return "hex"
+    if re.fullmatch(r"(?:[0-9A-Fa-f]{2}:)+[0-9A-Fa-f]{2}", value):
+        return "colon-delimited-hex-bytes"
+    return "other"
+
+
 def extract_certificate_sha256(output: str) -> tuple[str, str]:
     matches: list[tuple[str, str]] = []
     certificate_digest_line_count = 0
+    observed_labels: list[str] = []
     for line in output.splitlines():
-        if "certificate SHA-256 digest:" in line:
+        delimiter = " certificate SHA-256 digest:"
+        if delimiter in line:
             certificate_digest_line_count += 1
+            raw_label, _, raw_digest = line.partition(delimiter)
+            safe_label = re.sub(r"[^A-Za-z0-9 #().,=+_-]", "?", raw_label)[:160]
+            digest_value = raw_digest.strip()
+            observed_labels.append(
+                f"{safe_label} (digest_length={len(digest_value)}, "
+                f"digest_class={_digest_character_class(digest_value)})"
+            )
         for label, pattern in _ACCEPTED_LABELS:
             match = pattern.fullmatch(line)
             if match is not None:
@@ -54,7 +71,7 @@ def extract_certificate_sha256(output: str) -> tuple[str, str]:
         raise CertificateDigestError(
             "expected exactly one certificate SHA-256 line and one accepted signer line; "
             f"accepted={len(matches)}, certificate_digest_lines="
-            f"{certificate_digest_line_count}"
+            f"{certificate_digest_line_count}, observed_labels={observed_labels!r}"
         )
 
     return matches[0]

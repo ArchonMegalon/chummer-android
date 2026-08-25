@@ -74,6 +74,56 @@ class ExtractApksignerCertificateSha256Tests(unittest.TestCase):
                 f"Future Signer certificate SHA-256 digest: {LOWER_DIGEST}\n"
             )
 
+    def test_rejection_reports_only_sanitized_label_and_digest_length(self) -> None:
+        try:
+            extract_certificate_sha256(
+                f"Future/Signer certificate SHA-256 digest: {UPPER_DIGEST}\n"
+            )
+        except CertificateDigestError as error:
+            message = str(error)
+        else:
+            self.fail("unallowlisted label unexpectedly succeeded")
+
+        self.assertIn(
+            "Future?Signer (digest_length=64, digest_class=hex)", message
+        )
+        self.assertNotIn(LOWER_DIGEST, message.lower())
+        self.assertNotIn(UPPER_DIGEST, message)
+
+    def test_malformed_digest_remains_redacted_and_fail_closed(self) -> None:
+        malformed_digest = "ab" * 31
+        try:
+            extract_certificate_sha256(
+                f"Signer #1 certificate SHA-256 digest: {malformed_digest}\n"
+            )
+        except CertificateDigestError as error:
+            message = str(error)
+        else:
+            self.fail("malformed digest unexpectedly succeeded")
+
+        self.assertIn(
+            "Signer #1 (digest_length=62, digest_class=hex)", message
+        )
+        self.assertNotIn(malformed_digest, message)
+
+    def test_colon_delimited_digest_diagnostic_is_classified_and_redacted(self) -> None:
+        colon_digest = ":".join(["ab"] * 32)
+        try:
+            extract_certificate_sha256(
+                f"Signer #1 certificate SHA-256 digest: {colon_digest}\n"
+            )
+        except CertificateDigestError as error:
+            message = str(error)
+        else:
+            self.fail("unallowlisted digest representation unexpectedly succeeded")
+
+        self.assertIn(
+            "Signer #1 (digest_length=95, "
+            "digest_class=colon-delimited-hex-bytes)",
+            message,
+        )
+        self.assertNotIn(colon_digest, message)
+
 
 if __name__ == "__main__":
     unittest.main()
