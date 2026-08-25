@@ -16,8 +16,12 @@ internal static class CreationAttributesPhoneAuthority
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(overview);
-        if (!MatchesOverview(state, overview)
-            || !string.Equals(
+        return MatchesOverview(state, overview) && StateShapeIsReady(state);
+    }
+
+    private static bool StateShapeIsReady(CharacterCreationAttributesState state)
+    {
+        if (!string.Equals(
                 state.Schema,
                 CharacterCreationAttributesSchemas.SnapshotV1,
                 StringComparison.Ordinal)
@@ -89,22 +93,29 @@ internal static class CreationAttributesPhoneAuthority
         CharacterCreationFoundationResult<CharacterCreationAttributesPreview> result,
         IReadOnlyList<CharacterCreationAttributeAllocation> allocations)
     {
-        if (!IsReady(state, overview)
+        if (!string.Equals(
+                result.Outcome,
+                CharacterCreationFoundationOutcomes.Success,
+                StringComparison.Ordinal)
+            || !IsReady(state, overview)
             || result.Value is not { } preview
             || !BindingEquals(state.Binding, preview.Binding)
             || !AllocationIdentitiesMatch(state, allocations)
             || !ProjectionIdentitiesMatch(state, preview.Attributes)
-            || !PreviewMatchesAllocations(preview, allocations))
+            || !PreviewMatchesAllocations(preview, allocations)
+            || !preview.RequiresExplicitConfirmation
+            || !preview.CanConfirm
+            || result.Blockers.Count != 0
+            || preview.Blockers.Count != 0
+            || !BudgetIsExact(preview.NormalPointBudget)
+            || !BudgetIsExact(preview.SpecialPointBudget)
+            || !BudgetIsExact(preview.CreationKarmaBudget)
+            || !IsCanonicalDigest(preview.PreviewDigest))
         {
             return false;
         }
 
-        return preview.Blockers.Count == 0
-               || preview.Blockers.Count == 1
-               && string.Equals(
-                   preview.Blockers[0],
-                   CharacterCreationAttributesBlockers.DraftDuplicate,
-                   StringComparison.Ordinal);
+        return true;
     }
 
     public static bool CanConfirmPreview(
@@ -125,20 +136,99 @@ internal static class CreationAttributesPhoneAuthority
            && BudgetIsExact(preview.CreationKarmaBudget)
            && IsCanonicalDigest(preview.PreviewDigest);
 
+    /// <summary>
+    /// Compares the complete immutable projection returned by Core. A canonical digest is
+    /// necessary but not sufficient at the Android trust boundary: the allocation projection,
+    /// budgets, blockers, confirmation flags, binding, and digest must all be the exact values
+    /// Core just re-projected for this confirmation attempt.
+    /// </summary>
+    public static bool CanonicallyEquals(
+        CharacterCreationAttributesPreview left,
+        CharacterCreationAttributesPreview right)
+        => string.Equals(left.Schema, right.Schema, StringComparison.Ordinal)
+           && BindingEquals(left.Binding, right.Binding)
+           && ProjectionsEqual(left.Attributes, right.Attributes)
+           && BudgetsEqual(left.NormalPointBudget, right.NormalPointBudget)
+           && BudgetsEqual(left.SpecialPointBudget, right.SpecialPointBudget)
+           && BudgetsEqual(left.CreationKarmaBudget, right.CreationKarmaBudget)
+           && left.Blockers.SequenceEqual(right.Blockers, StringComparer.Ordinal)
+           && left.RequiresExplicitConfirmation == right.RequiresExplicitConfirmation
+           && left.CanConfirm == right.CanConfirm
+           && DigestEquals(left.PreviewDigest, right.PreviewDigest);
+
+    public static bool ReceiptMatchesBeforeActivation(
+        CharacterCreationAttributesReceipt receipt,
+        CharacterCreationAttributesPreview preview,
+        IReadOnlyList<CharacterCreationAttributeAllocation> allocations,
+        CharacterCreationAttributesState refreshed,
+        CharacterOverviewState beforeActivation)
+        => BindingMatchesOverview(preview.Binding, beforeActivation)
+           && ReceiptMatchesAuthoritativeState(
+               receipt,
+               preview,
+               allocations,
+               refreshed);
+
     public static bool ReceiptMatches(
         CharacterCreationAttributesReceipt receipt,
         CharacterCreationAttributesPreview preview,
+        IReadOnlyList<CharacterCreationAttributeAllocation> allocations,
         CharacterCreationAttributesState refreshed,
         CharacterOverviewState overview)
         => IsReady(refreshed, overview)
+           && ReceiptMatchesAuthoritativeState(
+               receipt,
+               preview,
+               allocations,
+               refreshed);
+
+    private static bool ReceiptMatchesAuthoritativeState(
+        CharacterCreationAttributesReceipt receipt,
+        CharacterCreationAttributesPreview preview,
+        IReadOnlyList<CharacterCreationAttributeAllocation> allocations,
+        CharacterCreationAttributesState refreshed)
+        => StateShapeIsReady(refreshed)
            && refreshed.PendingDraft is { } pending
+           && PreviewMatchesAllocations(preview, allocations)
+           && preview.RequiresExplicitConfirmation
+           && preview.CanConfirm
+           && preview.Blockers.Count == 0
+           && IsCanonicalDigest(preview.PreviewDigest)
            && receipt.WorkspaceId == preview.Binding.WorkspaceId
            && receipt.WorkspaceId == refreshed.Binding.WorkspaceId
            && receipt.PreviousContentRevision == preview.Binding.ContentRevision
+           && receipt.PreviousContentRevision >= 0
+           && receipt.PreviousContentRevision < long.MaxValue
+           && receipt.ContentRevision == receipt.PreviousContentRevision + 1
            && receipt.ContentRevision == refreshed.Binding.ContentRevision
            && receipt.SavedRevision == refreshed.Binding.SavedRevision
+           && refreshed.Binding.PrerequisiteDraftRevision
+               == preview.Binding.PrerequisiteDraftRevision
+           && DigestEquals(
+               refreshed.Binding.PrerequisiteDraftDigest,
+               preview.Binding.PrerequisiteDraftDigest)
+           && DigestEquals(
+               refreshed.Binding.PrerequisiteAuthorityDigest,
+               preview.Binding.PrerequisiteAuthorityDigest)
+           && !DigestEquals(
+               refreshed.Binding.AuxiliaryStateDigest,
+               preview.Binding.AuxiliaryStateDigest)
            && receipt.DraftRevision == pending.DraftRevision
            && DigestEquals(receipt.DraftDigest, pending.DraftDigest)
+           && IsCanonicalDigest(receipt.DraftDigest)
+           && pending.BaseContentRevision == receipt.PreviousContentRevision
+           && AllocationsEqual(pending.Allocations, allocations)
+           && ProjectionsEqual(pending.Attributes, preview.Attributes)
+           && ProjectionsEqual(refreshed.Attributes, preview.Attributes)
+           && BudgetsEqual(refreshed.NormalPointBudget, preview.NormalPointBudget)
+           && BudgetsEqual(refreshed.SpecialPointBudget, preview.SpecialPointBudget)
+           && BudgetsEqual(refreshed.CreationKarmaBudget, preview.CreationKarmaBudget)
+           && pending.NormalPointTotal == preview.NormalPointBudget.Total
+           && pending.NormalPointUsed == preview.NormalPointBudget.Used
+           && pending.SpecialPointTotal == preview.SpecialPointBudget.Total
+           && pending.SpecialPointUsed == preview.SpecialPointBudget.Used
+           && pending.CreationKarmaTotal == preview.CreationKarmaBudget.Total
+           && pending.CreationKarmaUsed == preview.CreationKarmaBudget.Used
            && receipt.NormalPointsRemaining == refreshed.NormalPointBudget.Remaining
            && receipt.SpecialPointsRemaining == refreshed.SpecialPointBudget.Remaining
            && receipt.CreationKarmaRemaining == refreshed.CreationKarmaBudget.Remaining
@@ -219,13 +309,37 @@ internal static class CreationAttributesPhoneAuthority
                pending.PrerequisiteAuthorityDigest,
                state.Binding.PrerequisiteAuthorityDigest)
            && IsCanonicalDigest(pending.DraftDigest)
+           && !string.IsNullOrWhiteSpace(pending.MetatypeSourceId)
+           && IsCanonicalDigest(pending.MetatypeSourceNodeDigest)
+           && pending.SourceAnchorIds.Count > 0
+           && pending.SourceAnchorIds.All(anchor => !string.IsNullOrWhiteSpace(anchor))
            && !pending.CharacterEffectsApplied
            && pending.Attributes.Count == state.Attributes.Count
            && pending.Allocations.Count == state.Attributes.Count
            && ProjectionIdentitiesMatch(state, pending.Attributes)
            && AllocationIdentitiesMatch(state, pending.Allocations)
+           && ProjectionsEqual(pending.Attributes, state.Attributes)
+           && PreviewProjectionsMatchAllocations(pending.Attributes, pending.Allocations)
+           && pending.NormalPointTotal == state.NormalPointBudget.Total
+           && pending.NormalPointUsed == state.NormalPointBudget.Used
+           && pending.SpecialPointTotal == state.SpecialPointBudget.Total
+           && pending.SpecialPointUsed == state.SpecialPointBudget.Used
+           && pending.CreationKarmaTotal == state.CreationKarmaBudget.Total
+           && pending.CreationKarmaUsed == state.CreationKarmaBudget.Used
            && pending.Allocations.Select(allocation => allocation.AttributeId)
                .Distinct(StringComparer.Ordinal).Count() == pending.Allocations.Count;
+
+    private static bool BindingMatchesOverview(
+        CharacterCreationAttributesBinding binding,
+        CharacterOverviewState overview)
+        => overview.Profile?.Created == false
+           && overview.WorkspaceId == binding.WorkspaceId
+           && overview.ContentRevision == binding.ContentRevision
+           && overview.SavedRevision == binding.SavedRevision
+           && IsCanonicalDigest(binding.RawCharacterXmlDigest)
+           && IsCanonicalAuxiliaryDigest(binding.AuxiliaryStateDigest)
+           && IsCanonicalDigest(binding.PrerequisiteDraftDigest)
+           && IsCanonicalDigest(binding.PrerequisiteAuthorityDigest);
 
     private static bool AllocationIdentitiesMatch(
         CharacterCreationAttributesState state,
@@ -251,6 +365,59 @@ internal static class CreationAttributesPhoneAuthority
            && budget.Remaining >= 0m
            && budget.Used <= budget.Total
            && budget.Remaining == budget.Total - budget.Used;
+
+    private static bool BudgetsEqual(
+        CharacterCreationBudgetState left,
+        CharacterCreationBudgetState right)
+        => string.Equals(left.BudgetId, right.BudgetId, StringComparison.Ordinal)
+           && string.Equals(left.Label, right.Label, StringComparison.Ordinal)
+           && left.Total == right.Total
+           && left.Used == right.Used
+           && left.Remaining == right.Remaining
+           && left.IsExact == right.IsExact
+           && left.Blockers.SequenceEqual(right.Blockers, StringComparer.Ordinal)
+           && string.Equals(left.Unit, right.Unit, StringComparison.Ordinal);
+
+    private static bool AllocationsEqual(
+        IReadOnlyList<CharacterCreationAttributeAllocation> left,
+        IReadOnlyList<CharacterCreationAttributeAllocation> right)
+        => left.Count == right.Count
+           && left.Zip(right).All(pair =>
+               string.Equals(pair.First.AttributeId, pair.Second.AttributeId, StringComparison.Ordinal)
+               && pair.First.PriorityPoints == pair.Second.PriorityPoints
+               && pair.First.KarmaLevels == pair.Second.KarmaLevels);
+
+    private static bool ProjectionsEqual(
+        IReadOnlyList<CharacterCreationAttributeProjection> left,
+        IReadOnlyList<CharacterCreationAttributeProjection> right)
+        => left.Count == right.Count
+           && left.Zip(right).All(pair => ProjectionEquals(pair.First, pair.Second));
+
+    private static bool ProjectionEquals(
+        CharacterCreationAttributeProjection left,
+        CharacterCreationAttributeProjection right)
+        => string.Equals(left.AttributeId, right.AttributeId, StringComparison.Ordinal)
+           && string.Equals(left.Category, right.Category, StringComparison.Ordinal)
+           && left.Minimum == right.Minimum
+           && left.Maximum == right.Maximum
+           && left.AugmentedMaximum == right.AugmentedMaximum
+           && left.Current == right.Current
+           && left.PriorityPointsSpent == right.PriorityPointsSpent
+           && left.KarmaLevels == right.KarmaLevels
+           && left.PriorityPointCost == right.PriorityPointCost
+           && left.KarmaCost == right.KarmaCost
+           && left.IsEnabled == right.IsEnabled
+           && left.DisableReasons.SequenceEqual(right.DisableReasons, StringComparer.Ordinal)
+           && left.SourceAnchorIds.SequenceEqual(right.SourceAnchorIds, StringComparer.Ordinal);
+
+    private static bool PreviewProjectionsMatchAllocations(
+        IReadOnlyList<CharacterCreationAttributeProjection> projections,
+        IReadOnlyList<CharacterCreationAttributeAllocation> allocations)
+        => projections.Count == allocations.Count
+           && projections.Zip(allocations).All(pair =>
+               string.Equals(pair.First.AttributeId, pair.Second.AttributeId, StringComparison.Ordinal)
+               && pair.First.PriorityPointsSpent == pair.Second.PriorityPoints
+               && pair.First.KarmaLevels == pair.Second.KarmaLevels);
 
     private static bool DigestEquals(string? left, string? right)
         => CharacterCreationPrerequisiteAuthorityDigest.EqualsFixedTime(left, right);

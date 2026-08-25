@@ -533,6 +533,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     {
         ArgumentNullException.ThrowIfNull(preview);
         ArgumentNullException.ThrowIfNull(allocations);
+        CharacterOverviewState beforeActivation = State;
         CharacterCreationFoundationResult<CharacterCreationAttributesState> live =
             LoadCreationAttributes();
         if (_creationAttributesService is null
@@ -550,12 +551,34 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 [CharacterCreationAttributesBlockers.PreviewDigestMismatch]);
         }
 
+        CharacterCreationFoundationResult<CharacterCreationAttributesPreview> authoritativePreview =
+            _creationAttributesService.Preview(
+                new CharacterCreationAttributesPreviewRequest(
+                    preview.Binding,
+                    allocations.ToArray()));
+        if (!CreationAttributesPhoneAuthority.CanAdoptPreview(
+                state,
+                beforeActivation,
+                authoritativePreview,
+                allocations)
+            || authoritativePreview.Value is not { } canonicalPreview
+            || !CreationAttributesPhoneAuthority.CanonicallyEquals(
+                preview,
+                canonicalPreview))
+        {
+            return new CreationAttributesPhoneConfirmResult(
+                CharacterCreationFoundationOutcomes.Conflict,
+                null,
+                null,
+                [CharacterCreationAttributesBlockers.PreviewDigestMismatch]);
+        }
+
         CharacterCreationFoundationResult<CharacterCreationAttributesReceipt> result =
             _creationAttributesService.Confirm(
                 new CharacterCreationAttributesConfirmRequest(
-                    preview.Binding,
+                    canonicalPreview.Binding,
                     allocations.ToArray(),
-                    preview.PreviewDigest,
+                    canonicalPreview.PreviewDigest,
                     ExplicitlyConfirmed: true));
         if (!string.Equals(
                 result.Outcome,
@@ -570,6 +593,34 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 result.Blockers);
         }
 
+        CharacterCreationFoundationResult<CharacterCreationAttributesState> committed =
+            _creationAttributesService.Load(
+                new CharacterCreationAttributesLoadRequest(receipt.WorkspaceId));
+        if (!string.Equals(
+                committed.Outcome,
+                CharacterCreationFoundationOutcomes.Success,
+                StringComparison.Ordinal)
+            || committed.Value is not { } committedState
+            || !CreationAttributesPhoneAuthority.ReceiptMatchesBeforeActivation(
+                receipt,
+                canonicalPreview,
+                allocations,
+                committedState,
+                beforeActivation))
+        {
+            _notice = null;
+            NotifyChanged();
+            return new CreationAttributesPhoneConfirmResult(
+                CharacterCreationFoundationOutcomes.Conflict,
+                receipt,
+                null,
+                committed.Blockers
+                    .Append(CharacterCreationAttributesBlockers.DraftConflict)
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(blocker => blocker, StringComparer.Ordinal)
+                    .ToArray());
+        }
+
         await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken);
         await SyncShellAsync(cancellationToken);
         CharacterCreationFoundationResult<CharacterCreationAttributesState> refreshed =
@@ -577,7 +628,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         if (refreshed.Value is not { } refreshedState
             || !CreationAttributesPhoneAuthority.ReceiptMatches(
                 receipt,
-                preview,
+                canonicalPreview,
+                allocations,
                 refreshedState,
                 State))
         {

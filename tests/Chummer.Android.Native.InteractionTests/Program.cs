@@ -21,7 +21,10 @@ internal static class Program
             (nameof(CloseWaitsForClaimedActionAsync), CloseWaitsForClaimedActionAsync),
             (nameof(FailureRerendersBeforeQueueAdvancesAsync), FailureRerendersBeforeQueueAdvancesAsync),
             (nameof(CanonicalDigestPrefixIsTwelveLowerHexAsync), CanonicalDigestPrefixIsTwelveLowerHexAsync),
-            (nameof(CanonicalPriorityAuthorityIsPhoneReadyAsync), CanonicalPriorityAuthorityIsPhoneReadyAsync)
+            (nameof(CanonicalPriorityAuthorityIsPhoneReadyAsync), CanonicalPriorityAuthorityIsPhoneReadyAsync),
+            (nameof(AttributesPreviewAdoptionRequiresCanonicalSuccessAsync), AttributesPreviewAdoptionRequiresCanonicalSuccessAsync),
+            (nameof(AttributesBodPreviewCannotConfirmAgiDraftAsync), AttributesBodPreviewCannotConfirmAgiDraftAsync),
+            (nameof(AttributesReceiptMustMatchCommittedWorkspaceBeforeActivationAsync), AttributesReceiptMustMatchCommittedWorkspaceBeforeActivationAsync)
         ];
 
         foreach ((string name, Func<Task> run) in tests)
@@ -219,6 +222,420 @@ internal static class Program
         throw new DirectoryNotFoundException(
             "Set CHUMMER_CORE_ENGINE_ROOT or provide the governed sibling chummer-core-engine checkout.");
     }
+
+    private static Task AttributesPreviewAdoptionRequiresCanonicalSuccessAsync()
+    {
+        AttributesFixture fixture = NewAttributesFixture();
+        CharacterCreationFoundationResult<CharacterCreationAttributesPreview> success = new(
+            CharacterCreationFoundationOutcomes.Success,
+            fixture.Preview,
+            []);
+        Require(
+            CreationAttributesPhoneAuthority.CanAdoptPreview(
+                fixture.State,
+                fixture.Overview,
+                success,
+                fixture.Allocations),
+            "A complete canonical Core success preview must be adoptable.");
+
+        Require(
+            !CreationAttributesPhoneAuthority.CanAdoptPreview(
+                fixture.State,
+                fixture.Overview,
+                success with { Outcome = CharacterCreationFoundationOutcomes.Blocked },
+                fixture.Allocations),
+            "A value attached to a non-success outcome must never be adopted.");
+        Require(
+            !CreationAttributesPhoneAuthority.CanAdoptPreview(
+                fixture.State,
+                fixture.Overview,
+                new CharacterCreationFoundationResult<CharacterCreationAttributesPreview>(
+                    CharacterCreationFoundationOutcomes.Success,
+                    fixture.Preview with { CanConfirm = false },
+                    []),
+                fixture.Allocations),
+            "A preview which Core cannot confirm must never be adopted.");
+        Require(
+            !CreationAttributesPhoneAuthority.CanAdoptPreview(
+                fixture.State,
+                fixture.Overview,
+                new CharacterCreationFoundationResult<CharacterCreationAttributesPreview>(
+                    CharacterCreationFoundationOutcomes.Success,
+                    fixture.Preview with { RequiresExplicitConfirmation = false },
+                    []),
+                fixture.Allocations),
+            "The phone flow must reject a preview which does not require explicit confirmation.");
+        Require(
+            !CreationAttributesPhoneAuthority.CanAdoptPreview(
+                fixture.State,
+                fixture.Overview,
+                new CharacterCreationFoundationResult<CharacterCreationAttributesPreview>(
+                    CharacterCreationFoundationOutcomes.Success,
+                    fixture.Preview with { PreviewDigest = new string('a', 64) },
+                    []),
+                fixture.Allocations),
+            "The phone flow must reject a non-canonical preview digest.");
+        return Task.CompletedTask;
+    }
+
+    private static Task AttributesBodPreviewCannotConfirmAgiDraftAsync()
+    {
+        AttributesFixture fixture = NewAttributesFixture();
+        CharacterCreationAttributeAllocation[] agiDraft =
+        [
+            new("BOD", 0, 0),
+            new("AGI", 1, 0)
+        ];
+        Require(
+            !CreationAttributesPhoneAuthority.CanConfirmPreview(
+                fixture.State,
+                fixture.Overview,
+                fixture.Preview,
+                agiDraft),
+            "A BOD projection must not authorize an AGI allocation draft.");
+
+        CharacterCreationAttributeProjection[] agiProjection =
+        [
+            NewAttribute("BOD", current: 1, priorityPoints: 0),
+            NewAttribute("AGI", current: 2, priorityPoints: 1)
+        ];
+        Require(
+            !CreationAttributesPhoneAuthority.CanonicallyEquals(
+                fixture.Preview,
+                fixture.Preview with { Attributes = agiProjection }),
+            "Canonical preview equality must bind every projected attribute value.");
+        Require(
+            !CreationAttributesPhoneAuthority.CanonicallyEquals(
+                fixture.Preview,
+                fixture.Preview with
+                {
+                    NormalPointBudget = fixture.Preview.NormalPointBudget with
+                    {
+                        Used = 2,
+                        Remaining = 8
+                    }
+                }),
+            "Canonical preview equality must bind all exact budget values.");
+        return Task.CompletedTask;
+    }
+
+    private static Task AttributesReceiptMustMatchCommittedWorkspaceBeforeActivationAsync()
+    {
+        AttributesFixture fixture = NewAttributesFixture();
+        string committedAuxiliaryDigest = new('b', 64);
+        CharacterCreationAttributesBinding committedBinding = fixture.State.Binding with
+        {
+            ContentRevision = 6,
+            SavedRevision = 6,
+            AuxiliaryStateDigest = committedAuxiliaryDigest
+        };
+        CharacterCreationAttributesDraft draft = new(
+            CharacterCreationAttributesSchemas.DraftV1,
+            fixture.State.Binding.WorkspaceId,
+            DraftRevision: 1,
+            BaseContentRevision: 5,
+            fixture.State.Binding.RawCharacterXmlDigest,
+            fixture.State.Binding.PrerequisiteDraftRevision,
+            fixture.State.Binding.PrerequisiteDraftDigest,
+            fixture.State.Binding.PrerequisiteAuthorityDigest,
+            "11111111-1111-1111-1111-111111111111",
+            CanonicalDigest('e'),
+            HalvesNormalAttributePoints: false,
+            NormalPointTotal: 10,
+            NormalPointUsed: 1,
+            SpecialPointTotal: 0,
+            SpecialPointUsed: 0,
+            CreationKarmaTotal: 25,
+            CreationKarmaUsed: 0,
+            fixture.Allocations,
+            fixture.Preview.Attributes,
+            ["metatypes.xml#human"],
+            CharacterEffectsApplied: false,
+            CanonicalDigest('f'));
+        CharacterCreationAttributesState committedState = fixture.State with
+        {
+            Binding = committedBinding,
+            PendingDraft = draft,
+            Attributes = fixture.Preview.Attributes,
+            NormalPointBudget = fixture.Preview.NormalPointBudget,
+            SpecialPointBudget = fixture.Preview.SpecialPointBudget,
+            CreationKarmaBudget = fixture.Preview.CreationKarmaBudget,
+            SnapshotDigest = CanonicalDigest('9')
+        };
+        CharacterCreationAttributesReceipt receipt = new(
+            fixture.State.Binding.WorkspaceId,
+            PreviousContentRevision: 5,
+            ContentRevision: 6,
+            SavedRevision: 6,
+            DraftRevision: 1,
+            draft.DraftDigest,
+            NormalPointsRemaining: 9,
+            SpecialPointsRemaining: 0,
+            CreationKarmaRemaining: 25,
+            CharacterDocumentChanged: false);
+
+        Require(
+            CreationAttributesPhoneAuthority.ReceiptMatchesBeforeActivation(
+                receipt,
+                fixture.Preview,
+                fixture.Allocations,
+                committedState,
+                fixture.Overview),
+            "An exact receipt and direct Core reload must validate before presenter activation.");
+        Require(
+            !CreationAttributesPhoneAuthority.ReceiptMatchesBeforeActivation(
+                receipt with { ContentRevision = 7 },
+                fixture.Preview,
+                fixture.Allocations,
+                committedState,
+                fixture.Overview),
+            "A receipt which skips the committed revision must fail closed.");
+        Require(
+            !CreationAttributesPhoneAuthority.ReceiptMatchesBeforeActivation(
+                receipt,
+                fixture.Preview,
+                fixture.Allocations,
+                committedState with
+                {
+                    Binding = committedBinding with
+                    {
+                        AuxiliaryStateDigest = fixture.State.Binding.AuxiliaryStateDigest
+                    }
+                },
+                fixture.Overview),
+            "An unchanged auxiliary workspace digest must fail before activation.");
+
+        CharacterCreationAttributeAllocation[] agiDraft =
+        [
+            new("BOD", 0, 0),
+            new("AGI", 1, 0)
+        ];
+        CharacterCreationAttributeProjection[] agiProjection =
+        [
+            NewAttribute("BOD", current: 1, priorityPoints: 0),
+            NewAttribute("AGI", current: 2, priorityPoints: 1)
+        ];
+        CharacterCreationAttributesDraft substitutedDraft = draft with
+        {
+            Allocations = agiDraft,
+            Attributes = agiProjection
+        };
+        Require(
+            !CreationAttributesPhoneAuthority.ReceiptMatchesBeforeActivation(
+                receipt,
+                fixture.Preview,
+                fixture.Allocations,
+                committedState with
+                {
+                    PendingDraft = substitutedDraft,
+                    Attributes = agiProjection
+                },
+                fixture.Overview),
+            "A BOD preview receipt must not activate a workspace containing an AGI draft.");
+        return Task.CompletedTask;
+    }
+
+    private static AttributesFixture NewAttributesFixture()
+    {
+        CharacterWorkspaceId workspaceId = new("attributes-phone-authority");
+        CharacterCreationMetatypeAttributeProjection[] heritageAttributes =
+        [
+            new("BOD", 1, 6, 10),
+            new("AGI", 1, 6, 10)
+        ];
+        CharacterCreationPrerequisiteDraft prerequisite = new(
+            CharacterCreationPrerequisiteSchemas.DraftV1,
+            workspaceId,
+            DraftRevision: 4,
+            BaseContentRevision: 4,
+            CanonicalDigest('1'),
+            CanonicalDigest('2'),
+            CharacterCreationBuildMethods.Priority,
+            "223a11ff-80e0-428b-89a9-6ef1c243b8b6",
+            "Standard",
+            ["A", "B", "C", "D", "E"],
+            SumToTenTarget: null,
+            [],
+            CreationKarmaTotal: 25,
+            CreationKarmaUsed: 0,
+            ["priority.xml#standard"],
+            CanonicalDigest('3'))
+        {
+            HeritageSelection = new CharacterCreationPriorityHeritageSelection(
+                "human",
+                CharacterCreationPriorityChildKinds.Metatype,
+                "priority-heritage",
+                "11111111-1111-1111-1111-111111111111",
+                MetavariantSourceId: null,
+                "Human",
+                MetavariantName: null,
+                SpecialAttributePoints: 0,
+                KarmaCost: 0,
+                HalvesNormalAttributePoints: false,
+                heritageAttributes,
+                CanonicalDigest('4'),
+                CanonicalDigest('5'),
+                ["metatypes.xml#human"]),
+            TalentSelection = new CharacterCreationPriorityTalentSelection(
+                "mundane",
+                "priority-talent",
+                "Mundane",
+                "Mundane",
+                SpecialAttributePoints: 0,
+                Magic: null,
+                Resonance: null,
+                Depth: null,
+                [],
+                CanonicalDigest('6'),
+                ["priority.xml#mundane"]),
+            EffectiveNormalAttributePoints = 10,
+            TotalSpecialAttributePoints = 0
+        };
+        CharacterCreationAttributesBinding binding = new(
+            workspaceId,
+            ContentRevision: 5,
+            SavedRevision: 5,
+            CanonicalDigest('1'),
+            new string('a', 64),
+            prerequisite.DraftRevision,
+            prerequisite.DraftDigest,
+            prerequisite.AuthorityDigest);
+        CharacterCreationAttributeAllocation[] allocations =
+        [
+            new("BOD", 1, 0),
+            new("AGI", 0, 0)
+        ];
+        CharacterCreationAttributeProjection[] attributes =
+        [
+            NewAttribute("BOD", current: 2, priorityPoints: 1),
+            NewAttribute("AGI", current: 1, priorityPoints: 0)
+        ];
+        CharacterCreationBudgetState normal = NewBudget("normal", 10, 1);
+        CharacterCreationBudgetState special = NewBudget("special", 0, 0);
+        CharacterCreationBudgetState karma = NewBudget("karma", 25, 0);
+        CharacterCreationAttributesState state = new(
+            CharacterCreationAttributesSchemas.SnapshotV1,
+            binding,
+            prerequisite,
+            PendingDraft: null,
+            attributes,
+            normal,
+            special,
+            karma,
+            MaxNumberMaxAttributesCreate: 1,
+            [],
+            CanEdit: true,
+            CanonicalDigest('7'))
+        {
+            KarmaAttribute = 5
+        };
+        CharacterCreationAttributesPreview preview = new(
+            CharacterCreationAttributesSchemas.PreviewV1,
+            binding,
+            attributes,
+            normal,
+            special,
+            karma,
+            [],
+            RequiresExplicitConfirmation: true,
+            CanConfirm: true,
+            CanonicalDigest('8'));
+        return new AttributesFixture(
+            state,
+            NewCreationOverview(workspaceId, 5, 5),
+            preview,
+            allocations);
+    }
+
+    private static CharacterCreationAttributeProjection NewAttribute(
+        string id,
+        int current,
+        int priorityPoints)
+        => new(
+            id,
+            CharacterCreationAttributeCategories.Normal,
+            Minimum: 1,
+            Maximum: 6,
+            AugmentedMaximum: 10,
+            current,
+            PriorityPointsSpent: priorityPoints,
+            KarmaLevels: 0,
+            PriorityPointCost: priorityPoints,
+            KarmaCost: 0,
+            IsEnabled: true,
+            [],
+            [$"metatypes.xml#human:{id}"]);
+
+    private static CharacterCreationBudgetState NewBudget(
+        string id,
+        decimal total,
+        decimal used)
+        => new(
+            id,
+            id,
+            total,
+            used,
+            total - used,
+            IsExact: true,
+            [],
+            "points");
+
+    private static CharacterOverviewState NewCreationOverview(
+        CharacterWorkspaceId workspaceId,
+        long contentRevision,
+        long savedRevision)
+    {
+        OpenWorkspaceState openWorkspace = new(
+            workspaceId,
+            "Attributes Runner",
+            "Authority Probe",
+            DateTimeOffset.UtcNow,
+            RulesetDefaults.Sr5,
+            contentRevision,
+            savedRevision);
+        return CharacterOverviewState.Empty with
+        {
+            WorkspaceId = workspaceId,
+            OpenWorkspaces = [openWorkspace],
+            Session = new WorkspaceSessionState(workspaceId, [openWorkspace], [workspaceId]),
+            Profile = new CharacterProfileSection(
+                "Attributes Runner",
+                "Authority Probe",
+                string.Empty,
+                "Human",
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                "5.225.0",
+                "5.225.0",
+                CharacterCreationBuildMethods.Priority,
+                string.Empty,
+                Created: false,
+                Adept: false,
+                Magician: false,
+                Technomancer: false,
+                AI: false,
+                MainMugshotIndex: 0,
+                MugshotCount: 0)
+        };
+    }
+
+    private static string CanonicalDigest(char value)
+        => $"sha256:{new string(value, 64)}";
+
+    private sealed record AttributesFixture(
+        CharacterCreationAttributesState State,
+        CharacterOverviewState Overview,
+        CharacterCreationAttributesPreview Preview,
+        IReadOnlyList<CharacterCreationAttributeAllocation> Allocations);
 
     private static async Task QueuedOlderUnfocusedCannotOverwriteActionInputAsync()
     {
