@@ -69,22 +69,22 @@
       {
         "path": "src/Chummer.Android/Native/AttributeEditPage.cs",
         "exists": true,
-        "sha256": "b4cdd7bf9bd8045bbfc308992f9fa0ba0c9cc19c2c3c212bd814608704228302"
+        "sha256": "82a7b4647af8e7ae1d4e19389965bf50195c1b5233c85911ece972378aaec861"
       },
       {
         "path": "src/Chummer.Android/Native/BuildFlowPages.cs",
         "exists": true,
-        "sha256": "12db1e07475230efb0e9c8d5f31dd23700515dc70355405d20fe6352ffd399d6"
+        "sha256": "5072c95be3e918d5491d56a5fa4e8b732d6e6ca51c727dd2512cf1b8cd5a020f"
       },
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "7d3973b728f54bcf0ed01362f316308e4fbc2edafe60993d8e6fde6e340c7e35"
+        "sha256": "ed89a48c0f0267883d75e526767c8301ef7f78c50e7b489797afeecbf29b67fc"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
         "exists": true,
-        "sha256": "d467096092c111b6b4be60da9e317a62337bd55a134338f5d3b7d8f5e06ab0c6"
+        "sha256": "87496273e99a3f9fc4599f54f3d9453c918d7280a9f857526fd3bf5c1b988b58"
       },
       {
         "path": "src/Chummer.Android/Native/CareerReputationPage.cs",
@@ -119,12 +119,12 @@
       {
         "path": "src/Chummer.Android/Native/HomePage.cs",
         "exists": true,
-        "sha256": "1c57ee69593a848285629219f25bc31e03beb36f990fb183d9bf2e3bd981d552"
+        "sha256": "ce1cbd8256a87d8151163371a567c5eb1a9d31337de954db98ef30c7c5444a17"
       },
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "6758b3d1164c6dbe073595163c4e2643a65642844a015d48c670a074913f08c0"
+        "sha256": "d3877000e0d1d05bbbd2f82418bd8eb7d776ae9a20d84eee6259a73efaff34ff"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -159,7 +159,7 @@
       {
         "path": "tests/run_api36_application_date_time_settings_e2e.py",
         "exists": true,
-        "sha256": "d0eb4da6a54bf83064573a3ac02f33144425ae61e3863ebe397d21ad899d1ae1"
+        "sha256": "7230f98222007ab64d907d1108cd20a0cfb8e5fbcdef86b1c7fa8985f9598dc0"
       },
       {
         "path": "tests/fixtures/application-date-time-settings-e2e.chum5",
@@ -169,7 +169,7 @@
       {
         "path": "tests/run_api36_application_index_visibility_settings_e2e.py",
         "exists": true,
-        "sha256": "997a800c8211394c0370c7a65c4914ce7308cdf27d6f9c85ed2e6d1f5ce54556"
+        "sha256": "233e6af7c356a869103781afa31fcdbfd323e8ad270511d8ec4af4a1a5c4e45c"
       },
       {
         "path": "tests/fixtures/application-index-visibility-settings-e2e.chum5",
@@ -179,7 +179,7 @@
       {
         "path": "tests/run_api36_application_selection_behavior_settings_e2e.py",
         "exists": true,
-        "sha256": "43847411cb2c00c106b828f9775b1dad55b9a6255aebb092813437a7872c1f64"
+        "sha256": "9c913c2ef527b04c197aad932c295f739efb0cd898dbc067e3ac07de665759a8"
       },
       {
         "path": "tests/fixtures/application-selection-behavior-settings-e2e.chum5",
@@ -189,7 +189,7 @@
       {
         "path": "tests/run_api36_application_update_settings_e2e.py",
         "exists": true,
-        "sha256": "0f16ed82be7caefe7113c966a791a481afd552be177185245fa370490dd0f418"
+        "sha256": "989971f56b729937514e73ee80c20a9da6dfd79fb68cb36340b64e613742135a"
       },
       {
         "path": "tests/fixtures/application-update-settings-e2e.chum5",
@@ -564,7 +564,7 @@
       {
         "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
         "exists": true,
-        "sha256": "97810c6a26c7ff7f0a9660022aea9fceb8d2167e1ba71d40e7561fd1124b51af"
+        "sha256": "92926cbe23ee927a6b276fca98ab430e38792524068ddefa6d5fe15d1d8505f6"
       },
       {
         "path": "src/Chummer.Android/Native/NativeCommandPage.cs",
@@ -574,7 +574,7 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
         "exists": true,
-        "sha256": "dc1c6699c1aafe7debb98a3202e5897a5a481cd415bfac14638909ccc4a96cd5"
+        "sha256": "b5883a8747e36f961d9541c3f77546ac8061c542fc39acebb373c8eb134d56dd"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
@@ -589,7 +589,7 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
         "exists": true,
-        "sha256": "8453f7440366da70cf5328092bc9872cf431b19732e4b218d16b0b98882445e3"
+        "sha256": "03f3c0ab20201b0cdb6001b37d2f17a3720a1aea4616e1ca684d2ecede2750e8"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
@@ -599,7 +599,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "8c4538296738800af5751375d6755ded49ceea1cd35d365d8c1f5f5e64fd4d22"
+        "sha256": "b622f567b3e4703f0cfcd98b4e56b7c7a411d84bc4c03fda77264ee178a3a806"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -614,12 +614,12 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "464545c29c43faea7f833c59360ba61df1267b09b5ed2712a7546c05f2dd5d49"
+        "sha256": "d36e0a1fd0a92f1dc36d9b9fad5f683187ea8331a494904bfe8d1796bb1d6dc6"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
         "exists": true,
-        "sha256": "ade33b5c238913b8a206a5232f40183bea8e057090cf48ad2e7ea94bf961cb7b"
+        "sha256": "b1575170e40323f8f309a9e7fdb169e5ce1c8e0efcae1cfcd2c75f49d0832be9"
       },
       {
         "path": "tests/fixtures/career-active-skill-advance-e2e.chum5",
@@ -629,7 +629,7 @@
       {
         "path": "tests/run_api36_career_weapon_fire_e2e.py",
         "exists": true,
-        "sha256": "df7c049b88c3c26aa0d4ca8c3c554b3ac97884ad7dea8fe037e927c6b39b614c"
+        "sha256": "b1e424b10f20340a79ee998da8b97bd343251b80ccbace554e892d778dcecdb7"
       },
       {
         "path": "tests/fixtures/career-weapon-fire-e2e.chum5",
@@ -649,17 +649,17 @@
       {
         "path": "tests/run_api36_gear_attack_swap_e2e.py",
         "exists": true,
-        "sha256": "cc44628ac67da2528a6787ef0535f4e82ba4680bd5c251424185d84356006c83"
+        "sha256": "8b85ce595c1af3d3bf3275e6a112efa26f61ed225f560b6eacc7a2b159a46cfe"
       },
       {
         "path": "tests/run_api36_gear_sleaze_swap_e2e.py",
         "exists": true,
-        "sha256": "a66eddf5be20fcd6c4e8a3fef09ce2be363d7b86b6562eb3d70b6c55dea748d7"
+        "sha256": "d79c73fc144d4b8f248af5ff29f5fc1daf13423d8ee4c10143bf64ac81f5b22d"
       },
       {
         "path": "tests/run_api36_gear_dp_firewall_swap_e2e.py",
         "exists": true,
-        "sha256": "4ab5943d3f3f33053a754632f1883075d8be4a06516f0dd1921c1ff8f4b3eba0"
+        "sha256": "ae3885edbf77edff9cf3dcc54591f09d423a21fe381307729dc018882e4f20b5"
       },
       {
         "path": "tests/fixtures/creation-gear-dp-firewall-swap-e2e.chum5",
@@ -674,7 +674,7 @@
       {
         "path": "tests/run_api36_cyberware_matrix_swap_e2e.py",
         "exists": true,
-        "sha256": "a45f16b255032f569d3a470ec8b7fb4bf3bafdd0a9a05740fac8c8d2f51a410c"
+        "sha256": "c1b0c7187fcade5d065ab2d56c4d7b6a137ce4c0f319c865f250dc73f5dfa6cf"
       },
       {
         "path": "tests/fixtures/creation-cyberware-matrix-swap-e2e.chum5",
@@ -689,7 +689,7 @@
       {
         "path": "tests/run_api36_vehicle_weapon_firing_mode_e2e.py",
         "exists": true,
-        "sha256": "adab3dee6b33865bf49765f756a6abe27ff9cd17a5c45ef7cf70c3f8483cb80f"
+        "sha256": "6f233cdcdb39373138b7371f141b378ff3fb902114c4e89eae242fe2ec34f032"
       },
       {
         "path": "tests/fixtures/creation-vehicle-weapon-firing-mode-e2e.chum5",
@@ -704,162 +704,162 @@
       {
         "path": "tests/run_api36_character_notes_e2e.py",
         "exists": true,
-        "sha256": "0777732f792516a1230e2237ef96a51d6ba1571f0def6ee60422f9ed9c5ac2b4"
+        "sha256": "2321fe682773c66049a7eb80a294fbd9a9a62fb112860c543626c1c5b781777e"
       },
       {
         "path": "tests/run_api36_career_reputation_e2e.py",
         "exists": true,
-        "sha256": "f38224b6e6efdab313e12e5427ee3b0999ac672de79ed942e6ba58fa3f21d4b4"
+        "sha256": "c11ea8962d396df85484100f7cc60867133df65067e7a22204de388c82d9b1c2"
       },
       {
         "path": "tests/run_api36_situational_modifiers_e2e.py",
         "exists": true,
-        "sha256": "ce8cf51ee9f8d6c65923490cf876708d888052a9d84ba62e1ea03a85407711bb"
+        "sha256": "61d524593a19f7da8d9ca59adf8fdb679cecc0f7fc6fa4d4a9a334c00ed422e2"
       },
       {
         "path": "tests/run_api36_primary_arm_e2e.py",
         "exists": true,
-        "sha256": "a62a57a6eab0f697e62060e2679142f052f2c3a8c8e61610b46e7363c4db3d13"
+        "sha256": "48eca4ec43259ec71b7eadc175a30ef941c218531dcf0054926353bf2d348559"
       },
       {
         "path": "tests/run_api36_group_membership_e2e.py",
         "exists": true,
-        "sha256": "5de75ccee5eb37c39ed978d887a62fcd427d374326fc0abdc5b2b57e7929d305"
+        "sha256": "c88d63cc12365b376ba7f194a27a2d8ee4a37c8262bec254f14095e18629600e"
       },
       {
         "path": "tests/run_api36_group_name_e2e.py",
         "exists": true,
-        "sha256": "76dbaa59de8688f83717366df0513e6a5bd3eb4353b8614bd57f924e0ce91857"
+        "sha256": "30590578dfa092342652179869c9ffd9315be102ca1d4b6e585d81e380391a5b"
       },
       {
         "path": "tests/run_api36_tradition_name_e2e.py",
         "exists": true,
-        "sha256": "8a0d20c609e75b105d8fe95594440dda5975020e49741c489e0e3278222b9d6e"
+        "sha256": "e9ff1cef971484fffd8b5a782e0f4241ec7315a594d509a20d0cb03c7e63f2d3"
       },
       {
         "path": "tests/run_api36_tradition_drain_e2e.py",
         "exists": true,
-        "sha256": "e951dbebb9f8c4809771edcd5b3057406adca1ab88696bfd3555fddccd6a3a10"
+        "sha256": "36ab548027717c155b60b4ad5a338b0a29df0743368657e502145ce4e907c0ec"
       },
       {
         "path": "tests/run_api36_tradition_spirit_categories_e2e.py",
         "exists": true,
-        "sha256": "ef5a97df6ebb9529e8eedffda9ac43a4e3a48d58de9601b7590f3bbc706b6815"
+        "sha256": "d47748762262b9cf1f1784b6e247604aaefa7aa9d5f64c574d91b661de6dba42"
       },
       {
         "path": "tests/run_api36_gear_name_e2e.py",
         "exists": true,
-        "sha256": "baefd4e550a1a876f77b0fd0834fb4406d5a861c30321b8cdfdb1446c68d9ba7"
+        "sha256": "84527952980fc8557302ac62d332482a63b025e8a259b2faff5e806ac4d2a12c"
       },
       {
         "path": "tests/run_api36_lifestyle_name_e2e.py",
         "exists": true,
-        "sha256": "c746ee000338fa1c0302c25852830e864a1236350c7af80be1aea29673be826c"
+        "sha256": "1cb37c665c1471fb7852989b1ca1b0dba2efb532568d7f57e30a5f5ce30d9a4d"
       },
       {
         "path": "tests/run_api36_career_edge_use_e2e.py",
         "exists": true,
-        "sha256": "b4d7778468b1f84193b7163ca35ffb434b6d2fa494ec2559f7c0020d570ef320"
+        "sha256": "af61378a03431bb1e5501d252520bff378a99092b442e06196cfee80de657b45"
       },
       {
         "path": "tests/run_api36_career_manual_karma_e2e.py",
         "exists": true,
-        "sha256": "56a426b2cb102a01e678b1771eedd9d2022c5f17f99a2be61de91ee1f2c908e8"
+        "sha256": "f297b6b3be8049f4d8c235bf99587555edfafa4712ad800b2ec413b59a3a5a1c"
       },
       {
         "path": "tests/run_api36_career_create_expense_e2e.py",
         "exists": true,
-        "sha256": "5bef250533ef46225ee0fe4b98d6e131dec657ac0ba3ef4fc85d2e27a4cfca1a"
+        "sha256": "693ce9fc1ca5b824b51d3322e54e8b65bde329fa4b0333cf45abe6997d6e015a"
       },
       {
         "path": "tests/run_api36_career_nuyen_expense_edit_e2e.py",
         "exists": true,
-        "sha256": "ed5503def5a35b09519dca198d81c5af98ab716a2ec9ddfd21164079a3fcd6a2"
+        "sha256": "4f806ddb17d2bcf4f3ad9134b2a51af2bfb6859a97fe6dab2a02cfe6b3a94ed9"
       },
       {
         "path": "tests/run_api36_gear_location_e2e.py",
         "exists": true,
-        "sha256": "aa47940684d723878094cfd65550576c1a47471bda288c5a05828ec323107d62"
+        "sha256": "ff20b200961a549736e15255e5cce7268f9bd2897d1ef907d16964fa6f5f7ced"
       },
       {
         "path": "tests/run_api36_weapon_location_e2e.py",
         "exists": true,
-        "sha256": "1a8829dad201461349616169f4c14274975b5a97481c386cd4166751d1da566f"
+        "sha256": "47b145e85b6f272e3e08997a6ef97cca153ae1ac0ac692f3d0fc1ddab15cc02d"
       },
       {
         "path": "tests/run_api36_vehicle_location_e2e.py",
         "exists": true,
-        "sha256": "c246dda4b6013deffba24918c285be0d7f915208a68616ce827beec7194f92dc"
+        "sha256": "c418e96b1a242c639135ec0b4a6b89680057d1c5bb3c0f92edf33d4ebc0e201c"
       },
       {
         "path": "tests/run_api36_vehicle_home_node_e2e.py",
         "exists": true,
-        "sha256": "9eabbfdb80ec4279129b203a979848bf3db449d43dbba2c4260f813379cf6fb7"
+        "sha256": "7092af8865d2a51dd5c17e2fbcef1fc85608f0af65b41694995c4d739890aaa2"
       },
       {
         "path": "tests/run_api36_armor_home_node_e2e.py",
         "exists": true,
-        "sha256": "af8ed551995f5b632cb77456d557c18ea3791d79aa9e3cdebac3ea9923661aa3"
+        "sha256": "2fc138ee87b8ae38a4020451048a72c3522e5043660003470994d7fa69de709e"
       },
       {
         "path": "tests/run_api36_weapon_home_node_e2e.py",
         "exists": true,
-        "sha256": "fa142d3575f4bbb98f5a1a31453158bb5ebf4ce98715dbf181fee7259f8f5551"
+        "sha256": "0bf0574e4d4073609a10ca2b713e62aa299394bffa4bd7536f1925d7d85d965a"
       },
       {
         "path": "tests/run_api36_weapon_active_commlink_e2e.py",
         "exists": true,
-        "sha256": "3fb8745471d1381c5bf92ef957991e74c769452c55ace8459ec1df3af658209d"
+        "sha256": "0f3f49c634fb2f6cf3bc1baf4447bec36392ae5a26f3735320ee2a749443d4cc"
       },
       {
         "path": "tests/run_api36_armor_active_commlink_e2e.py",
         "exists": true,
-        "sha256": "4dc24b878429993976fea2b86e781d89c25705c69d94205a88153a1c38a293d3"
+        "sha256": "96974973bb3edb0c07d2de0b3c5043bffd91575019aeab6aed3981219ecfa430"
       },
       {
         "path": "tests/run_api36_gear_active_commlink_e2e.py",
         "exists": true,
-        "sha256": "2ed368c5defd9c06f52e94d170b6bc1c4d6610d0e188aba77c77f6bc12cdd98a"
+        "sha256": "84a4ec30ae143fc9b6a3acb381b14512ba43b72e95cf60d43d534dd7e4a20ad1"
       },
       {
         "path": "tests/run_api36_cyberware_active_commlink_e2e.py",
         "exists": true,
-        "sha256": "395fe9ea7cb0e3d278ea15358a5551c3e0d2fb604d0f412120108e40f44d2104"
+        "sha256": "f7703c2eae1d18e2e89f62b1dba8c72e24ab2e8e08951734c60a140a67c0d2fc"
       },
       {
         "path": "tests/run_api36_prototype_transhuman_e2e.py",
         "exists": true,
-        "sha256": "fe247145d548e64e15ceb5f5f3d22543669171e8b421a6bcd7fef967e1524183"
+        "sha256": "747a06115c3752acb9644b9f3dc6a21d82ff399cd18cacacfb6bbe97d6d3daac"
       },
       {
         "path": "tests/run_api36_armor_damage_e2e.py",
         "exists": true,
-        "sha256": "7fe2a8bc2d34d4946e346d8ec07f590eb269bf15af9a9dc5ed514dcde1e78f80"
+        "sha256": "a6c215b4a901d8f4d2f3d00349f6700e80ca278d414ee5414ca87962971db66a"
       },
       {
         "path": "tests/run_api36_armor_equipment_e2e.py",
         "exists": true,
-        "sha256": "10d3510fd823e5df31f1be47d5a0b2e09c094ecee205afc40b2e0edae22ac7c3"
+        "sha256": "b43b980ea1a2da45cf07941a5f5b4e6667dad4777dc6a57155a3c1aa66496b7a"
       },
       {
         "path": "tests/run_api36_armor_tree_flags_e2e.py",
         "exists": true,
-        "sha256": "f7de0d33e610c270eef1194134344cec1ac54217f5367bd2760913138fcf8d25"
+        "sha256": "76df1c00f4d70009bff2c483ebd8afe6263e985ffa8254a41415c1477bb39a7b"
       },
       {
         "path": "tests/run_api36_gear_stolen_e2e.py",
         "exists": true,
-        "sha256": "daa9af46a9658c8f5a944f698dc8ae214c47b62ccc19b0ddbcd07f8065085864"
+        "sha256": "02481dbd39795a40718be6eecbf2e52b9097167be617d8aaa6fb8fe7bf40b73a"
       },
       {
         "path": "tests/run_api36_weapon_stolen_e2e.py",
         "exists": true,
-        "sha256": "5b323cd5ca9ad4f6ff25604ddfe983167d1b8a1dfa50997bd1cfb91a857f4a3d"
+        "sha256": "f5a33cfb08e4dcf209026a4a09314c80746c028986c632b5697875790593787e"
       },
       {
         "path": "tests/run_api36_vehicle_equipment_installed_e2e.py",
         "exists": true,
-        "sha256": "8aea9a4d4316ea8f05506d1f8919ef3d6d8a8c5afce8f2cc8f3c524bd373bcfe"
+        "sha256": "0128159dbd38590bead60d38686c0919c16b5343957db83f992d24873a02cd36"
       },
       {
         "path": "tests/fixtures/creation-vehicle-equipment-installed-e2e.chum5",
@@ -874,132 +874,132 @@
       {
         "path": "tests/run_api36_gear_equipment_e2e.py",
         "exists": true,
-        "sha256": "b1f75c833dcc4b6551515415aed9e425fd6401c066fac29ac3388a487c65ac68"
+        "sha256": "7d5665fe86ef8808ad3506584fc95c3a1c456962f0f29221d605ba80cee30935"
       },
       {
         "path": "tests/run_api36_gear_wireless_e2e.py",
         "exists": true,
-        "sha256": "d2ec12bd8c076f70d942e7c0f3ffc912c4d1481701d2766ec75a1cf5d746c582"
+        "sha256": "542e4650f2d66543529cb662d40d506985e4c0e13e237878871f8c10d09861a0"
       },
       {
         "path": "tests/run_api36_career_mugshot_state_e2e.py",
         "exists": true,
-        "sha256": "bf79f85518f0de6b5533ff9ed8ab7f6e6a0d1a889543493b7b906fbc97ea236a"
+        "sha256": "22627b70e417bc778bdb4dc28a0bf80c7bf5cfea748df8eafed3b02cfcd10825"
       },
       {
         "path": "tests/run_api36_creation_mugshot_state_e2e.py",
         "exists": true,
-        "sha256": "689a282d3e00a12af658ae6d4c97d7941c8cdacd4152735a624b19246b480861"
+        "sha256": "3cefb4f90b857514119211efd0c9f467a4d961170a6b8a1ea7df57d6997b6f3d"
       },
       {
         "path": "tests/run_api36_gear_overclocker_e2e.py",
         "exists": true,
-        "sha256": "96e383e5130de1da8f0c9ebedef6a0e50b9a06b1e83b587d1561c24ecb7addeb"
+        "sha256": "72bb1bb8c1415a14ef5773082bb5d81918b4221f5fd5f337ecd2b3b138108e86"
       },
       {
         "path": "tests/run_api36_improvement_active_e2e.py",
         "exists": true,
-        "sha256": "4af8a6b701eb66f5ba6bfa4837a555205e8282653f999923f2426bb80b07142e"
+        "sha256": "060f4b50397dd46a344542136b3fc0fe5ec6aafc1e634ca0391531d29356d20f"
       },
       {
         "path": "tests/run_api36_improvement_notes_e2e.py",
         "exists": true,
-        "sha256": "32d6cd680e9f665916852381e2997381646310b658618227033877dbeda17d2f"
+        "sha256": "500bdaffebc9f251dbec74b467d2d57e93adc111b5860507b18999babcc668dd"
       },
       {
         "path": "tests/run_api36_improvement_group_add_e2e.py",
         "exists": true,
-        "sha256": "15a89522542c0256e0556e57c68ba4e31a9efe1d8e9668d374641c712b4c6f49"
+        "sha256": "02576785ca2f5c3c4a8452e18540571c945d211d7692af4b6390613dbd480563"
       },
       {
         "path": "tests/run_api36_free_sprite_conversion_e2e.py",
         "exists": true,
-        "sha256": "6141d606b12bd53e47391318e3579c97a155588a34ee0ea8c22e6cae73241a5e"
+        "sha256": "f5e9f33c61cb7bc7abf6091cd0c63d547e55491038bb1607dd9dd63e1f0a4434"
       },
       {
         "path": "tests/run_api36_martial_art_notes_e2e.py",
         "exists": true,
-        "sha256": "b8651265b85ed20df943654e48f7ef595567b1686926bef63a70edb43d6a71a1"
+        "sha256": "2abc1a116baf90e25732d52ff7d5ad9d37d39491f998414443847628f8ca38f9"
       },
       {
         "path": "tests/run_api36_martial_art_delete_e2e.py",
         "exists": true,
-        "sha256": "b3d51709d6ff03d7c111248e7497068b2ac5475b1e8cdc406d1a2a568a39b365"
+        "sha256": "1847e3df3d071307b58a233db685a8b1b5f61790d44b295683a8889690048de7"
       },
       {
         "path": "tests/run_api36_improvement_group_active_e2e.py",
         "exists": true,
-        "sha256": "c2945aefaa7e10c381d8c351a1775256aefa11efae027e3e59d74c23d83aad86"
+        "sha256": "f20fc9da2cb626e54747149f6a610caf9d479081b42e5564ba70b0323af0f8dc"
       },
       {
         "path": "tests/run_api36_weapon_accessory_included_e2e.py",
         "exists": true,
-        "sha256": "6f8544e5d320bfd1874a4387bc6b53fe90ae13f18980a5dab9e482ae13273df0"
+        "sha256": "e9c6c35d13e1432468fffb0f6f705c337b59d6060d9ad0263f3c1ea0c06d0d81"
       },
       {
         "path": "tests/run_api36_critter_power_count_e2e.py",
         "exists": true,
-        "sha256": "437c59c5ad15ef1e79d669d081694ab076c1f8b12f3d4357cc811d0f900b65b3"
+        "sha256": "48247fce162fe8b3816dd3289b9fd77ef755f5d1273a8d12e70f81683d07ba1c"
       },
       {
         "path": "tests/run_api36_spirit_fettered_e2e.py",
         "exists": true,
-        "sha256": "e3e0502ad3eacdd4c71004d8e3df608c4613c08fb298691222b9d0d346bd2cb9"
+        "sha256": "8958fc8ea84d386cd0c46e03f705e131a77e8ad09676129b57daf66eef0317b3"
       },
       {
         "path": "tests/run_api36_spirit_name_choice_e2e.py",
         "exists": true,
-        "sha256": "ae8cff06d774b68af1944ff5ede33abb93c5faf520a4bcd1481fd933259688cd"
+        "sha256": "106f1e03a85f4c516beb8317f203b2903d92a44451ad9c358c965d337c670d5f"
       },
       {
         "path": "tests/run_api36_sustained_effects_e2e.py",
         "exists": true,
-        "sha256": "0171d6cc2175b82837cccc3e86f3087ed7147d242257c197f373209d54675b7e"
+        "sha256": "3df1914b90b712058d563ead6e7fc1fbb694ea64d3f9e79fd9da3c26a2da7598"
       },
       {
         "path": "tests/run_api36_gear_quantity_e2e.py",
         "exists": true,
-        "sha256": "5c3450fdb51e0a4ae6ea8a07068621165001d31b26e91c710937bb216e6781df"
+        "sha256": "fc9f90d31137d8395a66ff2f7dd862abb47f6f1951899d5437d991714d68f927"
       },
       {
         "path": "tests/run_api36_quality_level_e2e.py",
         "exists": true,
-        "sha256": "583ea1d65561d62e504750485df88b31422d18e5f509e4aa6ec2a5c3d45c726a"
+        "sha256": "e5f438aa2061cbe36afef35327db4fb7090e965caa559a606ca2c49ac0f64fd9"
       },
       {
         "path": "tests/run_api36_cyberware_commerce_e2e.py",
         "exists": true,
-        "sha256": "88cbd194d8040a9e8612889dcb1e4e79f9f66491b34d183b6ffba03a15ac67e2"
+        "sha256": "d83384312a6a5db287715ced32c9adff0c36db062dcd112bebcd1bc11522be43"
       },
       {
         "path": "tests/run_api36_location_rename_e2e.py",
         "exists": true,
-        "sha256": "aa43d08c8588e855bf795c37d6da21b6419ec26309f719c1cb977fa55e40b176"
+        "sha256": "c6098e3f0013be5207b52589f21fd9c8155bb5e1b764ec5b080867d69511cdd0"
       },
       {
         "path": "tests/run_api36_explicit_save_e2e.py",
         "exists": true,
-        "sha256": "b3802c85e3933a1d0549fa6f26da31d13fa2baf89e9a28b34d7d1b57a8e2d08a"
+        "sha256": "364af8d5d12b0bc345b58610df7066fffa394ccbd3bd4792c70e42f1633075e7"
       },
       {
         "path": "tests/run_api36_nested_collection_notes_e2e.py",
         "exists": true,
-        "sha256": "ca36b18a9b13b10e9449a7462c24e5c58a645bc79a26b218404f5c730f3d3f19"
+        "sha256": "f4b2820ab2fb8407833f5e3468b04c942d13b8a6ac68a46539b4bcbce644e514"
       },
       {
         "path": "tests/run_api36_attribute_e2e.py",
         "exists": true,
-        "sha256": "7dedbbf4921d5db8f08c753199bc2500c7ea7aaf6affe1118beec0203ccdff57"
+        "sha256": "9f7f424a3c4ec740fba6d074da3f20c9c41e6b49a983df98583ba9d6d1c542b7"
       },
       {
         "path": "tests/run_api36_career_attribute_e2e.py",
         "exists": true,
-        "sha256": "9ff98cf631349137b8957ee062ffe5a78329116d44b64eb99e64fc1e327ea53e"
+        "sha256": "6dec7c7eb3fcd3e84b565542a938b0c03628b15fc9e368638e1eb4a86e4b690d"
       },
       {
         "path": "tests/run_api36_character_settings_e2e.py",
         "exists": true,
-        "sha256": "067331f50080d3971c9e62bcd162734321e771e72c8140cf88f09124f0281d7f"
+        "sha256": "a6036eb431c825649daf2fe052d163c367b10aa4dd0f50a222f060e459e3bea5"
       },
       {
         "path": "tests/run_api36_character_settings_actions_e2e.py",
@@ -1009,32 +1009,32 @@
       {
         "path": "tests/run_api36_origin_dossier_e2e.py",
         "exists": true,
-        "sha256": "ef9ba7c9f8148939e126bfacfa076b381559b1ce5742eb3b504ba92c30879900"
+        "sha256": "a3de7922a352b9411bcd4a699e1efa7082378fd15ecbcd4438b18e7750360099"
       },
       {
         "path": "tests/run_api36_linked_runner_e2e.py",
         "exists": true,
-        "sha256": "4c297f78259b5055dbd982610cb3e0cf20d73d6ced5d6f0ba89e9510111f14a4"
+        "sha256": "912b4502deef3eafc0f6082506d5c4635f864e579dc75aeb148b2f166841d3d4"
       },
       {
         "path": "tests/run_api36_new_character_settings_e2e.py",
         "exists": true,
-        "sha256": "ba8b93a395da79473fab4e2eb23a4829817966547ae499e9ddc895f44af7101b"
+        "sha256": "77b7cb8dd2d151523cbf3c200a5307d4fef76e7636166a29f6ea3b29697f6375"
       },
       {
         "path": "tests/run_api36_new_character_karma_e2e.py",
         "exists": true,
-        "sha256": "de02826030d27feb9e9f028f342d4cab11ca77db755ba63555534e165749c391"
+        "sha256": "efe76fcdcf453368f4f2fec8fc47256b4ba89fd6dad84ac6fe9aefcd1e95a063"
       },
       {
         "path": "tests/run_api36_new_character_priority_e2e.py",
         "exists": true,
-        "sha256": "d549ce6b1e1ca74fa93da21b5aa5296ba64a5aa4864416731f74123895096226"
+        "sha256": "2ebc6617aa5e32eb4aaeca1ea9b8d1023f786c28c46d603ab167eedc15c7344e"
       },
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "2dc6030bb48459d4c964d907428985c43a0511ae9327a6302baf2102d10a452e"
+        "sha256": "8ee8ef34fd10e08f9d3daf508c9e4320c94e742f8455b2180460b73c0d40678c"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
