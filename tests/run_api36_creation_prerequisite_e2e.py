@@ -468,6 +468,163 @@ def read_source_authority_digests(device: shared.Device) -> list[str]:
     )
 
 
+def tap_first_exact_enabled_priority_rank(device: shared.Device, category: str) -> str:
+    """Tap the first exact, enabled A-E rank after a cardinality scan."""
+    prefix = f"creation-prerequisite-rank-{category}-"
+    candidates: set[str] = set()
+    invalid_ids: set[str] = set()
+    duplicate_ids: set[str] = set()
+    shared.reset_scroll_to_top(device, swipes=22)
+    for scroll_index in range(23):
+        screen_ids: list[str] = []
+        for node in device.hierarchy():
+            resource_id = node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+            if not resource_id.startswith(prefix):
+                continue
+            screen_ids.append(resource_id)
+            rank_token = resource_id[len(prefix) :]
+            if re.fullmatch(r"[a-e]", rank_token) is None:
+                invalid_ids.add(resource_id)
+                continue
+            if (
+                node.attributes.get("enabled") == "true"
+                and node.attributes.get("clickable") == "true"
+                and device.node_has_tappable_bounds(node)
+            ):
+                candidates.add(resource_id)
+        duplicate_ids.update(
+            resource_id
+            for resource_id in set(screen_ids)
+            if screen_ids.count(resource_id) > 1
+        )
+        if scroll_index < 22:
+            device.swipe_up(distance_ratio=0.22)
+            time.sleep(0.2)
+
+    if invalid_ids or duplicate_ids or not candidates:
+        device.capture(f"creation-prerequisite-{category}-rank-cardinality-invalid")
+        raise RuntimeError(
+            f"Exact {category} rank scan was invalid: candidates={sorted(candidates)!r}, "
+            f"invalidIds={sorted(invalid_ids)!r}, duplicateIds={sorted(duplicate_ids)!r}"
+        )
+
+    selected_resource_id = min(
+        candidates,
+        key=lambda resource_id: resource_id[len(prefix) :],
+    )
+    shared.reset_scroll_to_top(device, swipes=22)
+    node = device.wait_for_single_exact_resource_id(
+        selected_resource_id,
+        timeout=45,
+        scroll=True,
+        max_scrolls=22,
+        scroll_distance_ratio=0.22,
+        evidence_prefix=f"creation-prerequisite-{category}-rank-option",
+        surface_name=f"Enabled {category} rank option",
+    )
+    if (
+        node.attributes.get("enabled") != "true"
+        or node.attributes.get("clickable") != "true"
+        or not device.node_has_tappable_bounds(node)
+    ):
+        device.capture(f"creation-prerequisite-{category}-rank-option-not-tappable")
+        raise RuntimeError(
+            f"Exact {category} rank option {selected_resource_id!r} was not enabled and tappable"
+        )
+    device.shell("input", "tap", *(str(value) for value in node.center))
+    return selected_resource_id
+
+
+def select_priority_rank(device: shared.Device, category: str) -> str:
+    """Select one exact projected rank and prove that the parent draft refreshed.
+
+    Source-authority collection intentionally finishes at the bottom of the long
+    prerequisite page.  The generic tap helper only scrolls forwards, so every
+    category transition must start from a deterministic origin.  A bare wait for
+    the parent page is insufficient because navigation can briefly expose the
+    parent's accessibility marker before its refreshed category row is ready.
+    """
+    if category not in CATEGORIES:
+        raise RuntimeError(f"Unsupported prerequisite category {category!r}")
+
+    shared.reset_scroll_to_top(device, swipes=22)
+    category_selector = f"creation-prerequisite-category-{category}"
+    device.tap(
+        category_selector,
+        scroll=True,
+        max_scrolls=22,
+        exact_resource_id=True,
+    )
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-category-page",
+        timeout=45,
+        evidence_prefix=f"creation-prerequisite-{category}-category-route",
+        surface_name=f"{category} priority category route",
+    )
+    selected_resource_id = tap_first_exact_enabled_priority_rank(device, category)
+
+    expected_prefix = f"creation-prerequisite-rank-{category}-"
+    if not selected_resource_id.startswith(expected_prefix):
+        device.capture(f"creation-prerequisite-{category}-rank-id-invalid")
+        raise RuntimeError(
+            f"Selected {category} rank did not expose its exact resource ID: "
+            f"{selected_resource_id!r}"
+        )
+    rank_token = selected_resource_id[len(expected_prefix) :]
+    if re.fullmatch(r"[a-e]", rank_token) is None:
+        device.capture(f"creation-prerequisite-{category}-rank-id-invalid")
+        raise RuntimeError(
+            f"Selected {category} rank resource ID carried an invalid SR5 rank: "
+            f"{selected_resource_id!r}"
+        )
+
+    deadline = time.monotonic() + 45
+    while time.monotonic() < deadline:
+        if device.find_exact_resource_id("creation-prerequisite-category-page") is None:
+            break
+        if device.dismiss_system_ui_anr():
+            time.sleep(2)
+            continue
+        time.sleep(0.25)
+    else:
+        device.capture(f"creation-prerequisite-{category}-category-pop-timeout")
+        raise RuntimeError(f"{category} rank selection did not leave the category route")
+
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-page",
+        timeout=45,
+        evidence_prefix=f"creation-prerequisite-{category}-parent-route",
+        surface_name="Creation prerequisite parent route",
+    )
+    # PopAsync returns to the same long ScrollView offset.  Reset before reading
+    # the exact row, then require the newly selected rank text.  This proves the
+    # shared in-memory phone draft survived the deep-navigation transition.
+    shared.reset_scroll_to_top(device, swipes=22)
+    row = device.wait_for_single_exact_resource_id(
+        category_selector,
+        timeout=45,
+        scroll=True,
+        max_scrolls=22,
+        scroll_distance_ratio=0.22,
+        evidence_prefix=f"creation-prerequisite-{category}-selected-row",
+        surface_name=f"Selected {category} category row",
+    )
+    detail = row.attributes.get("content-desc", "")
+    expected_rank = rank_token.upper()
+    if (
+        row.attributes.get("enabled") != "true"
+        or row.attributes.get("clickable") != "true"
+        or not device.node_has_tappable_bounds(row)
+        or re.search(rf"\bRank {re.escape(expected_rank)}\b", detail) is None
+    ):
+        device.capture(f"creation-prerequisite-{category}-draft-not-refreshed")
+        raise RuntimeError(
+            f"Selected {category} rank {expected_rank!r} was not projected by the "
+            f"refreshed phone draft row: {detail!r}"
+        )
+    return selected_resource_id
+
+
 def open_prerequisite(device: shared.Device) -> None:
     device.tap_bidirectional(
         "creation-stage-method",
@@ -762,18 +919,7 @@ def main() -> int:
 
     selected: dict[str, str] = {}
     for category in CATEGORIES:
-        device.tap(
-            f"creation-prerequisite-category-{category}",
-            scroll=True,
-            max_scrolls=22,
-        )
-        device.wait("creation-prerequisite-category-page", timeout=45)
-        selected[category] = foundation.tap_first_enabled_prefix(
-            device,
-            f"creation-prerequisite-rank-{category}-",
-            max_scrolls=22,
-        ) or ""
-        device.wait("creation-prerequisite-page", timeout=45)
+        selected[category] = select_priority_rank(device, category)
 
     typed_selections: dict[str, str] = {}
     typed_selection_ids: dict[str, str] = {}

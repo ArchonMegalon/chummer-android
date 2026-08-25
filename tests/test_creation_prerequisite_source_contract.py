@@ -285,6 +285,276 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         reset.assert_called_once_with(device, swipes=22)
 
+    def test_rank_selection_resets_bottom_viewport_and_proves_refreshed_draft_row(self) -> None:
+        calls: list[tuple[str, object]] = []
+        category_page = driver.shared.UiNode(
+            {"resource-id": "creation-prerequisite-category-page"}
+        )
+        parent_page = driver.shared.UiNode(
+            {"resource-id": "creation-prerequisite-page"}
+        )
+        selected_row = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-category-heritage",
+                "content-desc": "Heritage. 1. Rank A · Human or metatype · source SR5",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[10,100][900,300]",
+            }
+        )
+
+        class FakeDevice:
+            route = "parent"
+            viewport = "bottom"
+            category_poll_count = 0
+
+            def tap(self, selector: str, **options: object) -> None:
+                if self.route != "parent" or self.viewport != "top":
+                    raise AssertionError("Category tap ran before resetting the parent viewport")
+                calls.append(("tap", (selector, options)))
+                self.route = "category"
+
+            def find_exact_resource_id(self, selector: str):
+                calls.append(("find_exact", selector))
+                if selector == "creation-prerequisite-category-page" and self.route == "category":
+                    self.category_poll_count += 1
+                    if self.category_poll_count == 1:
+                        return category_page
+                    self.route = "parent"
+                    self.viewport = "bottom"
+                    return category_page
+                return None
+
+            def dismiss_system_ui_anr(self) -> bool:
+                return False
+
+            def wait_for_single_exact_resource_id(self, selector: str, **options: object):
+                calls.append(("wait_exact", (selector, options)))
+                if selector == "creation-prerequisite-category-page":
+                    if self.route != "category":
+                        raise AssertionError("Category route was not active")
+                    return category_page
+                if selector == "creation-prerequisite-page":
+                    if self.route != "parent":
+                        raise AssertionError("Parent route was checked before the category pop")
+                    return parent_page
+                if self.route != "parent" or self.viewport != "top":
+                    raise AssertionError("Selected row was checked before resetting the parent viewport")
+                return selected_row
+
+            def swipe_down(self, **options: object) -> None:
+                calls.append(("swipe_down", options))
+                self.viewport = "top"
+
+            @staticmethod
+            def node_has_tappable_bounds(node) -> bool:
+                return bool(node.attributes.get("bounds"))
+
+            def capture(self, name: str) -> None:
+                raise AssertionError(f"unexpected capture: {name}")
+
+        device = FakeDevice()
+
+        def select_rank(_device, category: str) -> str:
+            self.assertIs(device, _device)
+            self.assertEqual("heritage", category)
+            calls.append(("select", category))
+            return "creation-prerequisite-rank-heritage-a"
+
+        with mock.patch.object(
+                 driver,
+                 "tap_first_exact_enabled_priority_rank",
+                 side_effect=select_rank,
+             ), \
+             mock.patch.object(driver.time, "sleep"):
+            selected = driver.select_priority_rank(device, "heritage")
+
+        self.assertEqual("creation-prerequisite-rank-heritage-a", selected)
+        self.assertEqual(44, sum(call[0] == "swipe_down" for call in calls))
+        self.assertIn(
+            (
+                "tap",
+                (
+                    "creation-prerequisite-category-heritage",
+                    {
+                        "scroll": True,
+                        "max_scrolls": 22,
+                        "exact_resource_id": True,
+                    },
+                ),
+            ),
+            calls,
+        )
+        self.assertIn(
+            (
+                "wait_exact",
+                (
+                    "creation-prerequisite-category-page",
+                    {
+                        "timeout": 45,
+                        "evidence_prefix": "creation-prerequisite-heritage-category-route",
+                        "surface_name": "heritage priority category route",
+                    },
+                ),
+            ),
+            calls,
+        )
+        self.assertIn(
+            (
+                "wait_exact",
+                (
+                    "creation-prerequisite-page",
+                    {
+                        "timeout": 45,
+                        "evidence_prefix": "creation-prerequisite-heritage-parent-route",
+                        "surface_name": "Creation prerequisite parent route",
+                    },
+                ),
+            ),
+            calls,
+        )
+        self.assertIn(
+            (
+                "wait_exact",
+                (
+                    "creation-prerequisite-category-heritage",
+                    {
+                        "timeout": 45,
+                        "scroll": True,
+                        "max_scrolls": 22,
+                        "scroll_distance_ratio": 0.22,
+                        "evidence_prefix": "creation-prerequisite-heritage-selected-row",
+                        "surface_name": "Selected heritage category row",
+                    },
+                ),
+            ),
+            calls,
+        )
+
+    def test_exact_rank_scan_cardinality_checks_then_taps_one_exact_enabled_option(self) -> None:
+        enabled = driver.shared.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/"
+                    "creation-prerequisite-rank-heritage-a"
+                ),
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[100,400][900,600]",
+            }
+        )
+        disabled = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-rank-heritage-b",
+                "enabled": "false",
+                "clickable": "true",
+                "bounds": "[100,650][900,850]",
+            }
+        )
+
+        class RankDevice:
+            taps: list[tuple[str, ...]] = []
+            down = 0
+            up = 0
+
+            def hierarchy(self):
+                return [enabled, disabled]
+
+            def swipe_down(self, **_options: object) -> None:
+                self.down += 1
+
+            def swipe_up(self, **_options: object) -> None:
+                self.up += 1
+
+            @staticmethod
+            def node_has_tappable_bounds(node) -> bool:
+                return bool(node.attributes.get("bounds"))
+
+            def wait_for_single_exact_resource_id(self, selector: str, **_options: object):
+                self.assert_exact(selector)
+                return enabled
+
+            @staticmethod
+            def assert_exact(selector: str) -> None:
+                if selector != "creation-prerequisite-rank-heritage-a":
+                    raise AssertionError(selector)
+
+            def shell(self, *arguments: str) -> str:
+                self.taps.append(arguments)
+                return ""
+
+            def capture(self, name: str) -> None:
+                raise AssertionError(f"unexpected capture: {name}")
+
+        device = RankDevice()
+        with mock.patch.object(driver.time, "sleep"):
+            selected = driver.tap_first_exact_enabled_priority_rank(device, "heritage")
+
+        self.assertEqual("creation-prerequisite-rank-heritage-a", selected)
+        self.assertEqual(44, device.down)
+        self.assertEqual(22, device.up)
+        self.assertEqual([("input", "tap", "500", "500")], device.taps)
+
+    def test_exact_rank_scan_rejects_duplicate_or_malformed_resource_ids_before_tap(self) -> None:
+        duplicate = self.authority_option_node(
+            "creation-prerequisite-rank-heritage-a",
+            "Rank A",
+        )
+        malformed = self.authority_option_node(
+            "creation-prerequisite-rank-heritage-forged",
+            "Forged rank",
+        )
+
+        for nodes, expected in (
+            ([duplicate, duplicate], "duplicateIds"),
+            ([malformed], "invalidIds"),
+        ):
+            with self.subTest(expected=expected):
+                device = mock.Mock()
+                device.hierarchy.return_value = nodes
+                device.node_has_tappable_bounds.return_value = True
+                with mock.patch.object(driver.shared, "reset_scroll_to_top"), \
+                     mock.patch.object(driver.time, "sleep"), \
+                     self.assertRaisesRegex(RuntimeError, expected):
+                    driver.tap_first_exact_enabled_priority_rank(device, "heritage")
+                device.wait_for_single_exact_resource_id.assert_not_called()
+                device.shell.assert_not_called()
+
+    def test_rank_selection_fails_closed_on_unbound_or_unrefreshed_rank(self) -> None:
+        device = mock.Mock()
+        device.wait.return_value = driver.shared.UiNode({})
+        device.find_exact_resource_id.return_value = None
+        parent = driver.shared.UiNode({"resource-id": "creation-prerequisite-page"})
+        stale_row = driver.shared.UiNode(
+            {
+                "content-desc": "Heritage. 1. Select an authority-projected rank",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[10,100][900,300]",
+            }
+        )
+        device.wait_for_single_exact_resource_id.side_effect = (
+            lambda selector, **_options: parent
+            if selector == "creation-prerequisite-page"
+            else stale_row
+        )
+        device.node_has_tappable_bounds.return_value = True
+
+        for selected_id, expected_error in (
+            ("creation-prerequisite-rank-talent-a", "exact resource ID"),
+            ("creation-prerequisite-rank-heritage-z", "invalid SR5 rank"),
+            ("creation-prerequisite-rank-heritage-a", "was not projected"),
+        ):
+            with self.subTest(selected_id=selected_id), \
+                 mock.patch.object(driver.shared, "reset_scroll_to_top"), \
+                 mock.patch.object(
+                     driver,
+                     "tap_first_exact_enabled_priority_rank",
+                     return_value=selected_id,
+                 ), \
+                 self.assertRaisesRegex(RuntimeError, expected_error):
+                driver.select_priority_rank(device, "heritage")
+
     def test_priority_provisioning_follows_build_route_and_public_save_before_home(self) -> None:
         calls: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
         structural_snapshots: list[list[driver.shared.UiNode]] = []
