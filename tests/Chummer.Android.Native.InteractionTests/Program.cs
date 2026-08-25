@@ -35,7 +35,7 @@ internal static class Program
     private static Task CanonicalPriorityAuthorityIsPhoneReadyAsync()
     {
         const string settingsId = "223a11ff-80e0-428b-89a9-6ef1c243b8b6";
-        string chummer5Root = ResolveChummer5Root();
+        string coreRoot = ResolveCoreRoot();
         string workspaceRoot = Path.Combine(
             Path.GetTempPath(),
             $"chummer-android-prerequisite-{Guid.NewGuid():N}");
@@ -43,8 +43,8 @@ internal static class Program
         try
         {
             var overlays = new FileSystemContentOverlayCatalogService(
-                chummer5Root,
-                chummer5Root,
+                coreRoot,
+                coreRoot,
                 null);
             var resolver = new FileSystemCharacterSourceDataResolver(overlays);
             var store = new FileWorkspaceStore(workspaceRoot);
@@ -177,25 +177,21 @@ internal static class Program
         }
     }
 
-    private static string ResolveChummer5Root()
+    private static string ResolveCoreRoot()
     {
-        string? configured = Environment.GetEnvironmentVariable("CHUMMER5A_ROOT");
+        string? configured = Environment.GetEnvironmentVariable("CHUMMER_CORE_ENGINE_ROOT");
         if (!string.IsNullOrWhiteSpace(configured) && Directory.Exists(configured))
             return Path.GetFullPath(configured);
 
         string siblingCheckout = Path.GetFullPath(Path.Combine(
             Directory.GetCurrentDirectory(),
             "..",
-            "chummer5a"));
+            "chummer-core-engine"));
         if (Directory.Exists(siblingCheckout))
             return siblingCheckout;
 
-        const string localCheckout = "/docker/chummer5a";
-        if (Directory.Exists(localCheckout))
-            return localCheckout;
-
         throw new DirectoryNotFoundException(
-            "Set CHUMMER5A_ROOT or provide the governed sibling chummer5a checkout.");
+            "Set CHUMMER_CORE_ENGINE_ROOT or provide the governed sibling chummer-core-engine checkout.");
     }
 
     private static async Task QueuedOlderUnfocusedCannotOverwriteActionInputAsync()

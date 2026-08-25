@@ -44,6 +44,10 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
 
     def test_builds_the_native_x64_candidate_once(self) -> None:
         self.assertIn("CHUMMER_ANDROID_RUNTIME_ID: android-x64", self.text)
+        self.assertIn(
+            "CHUMMER_CORE_ENGINE_ROOT: ${{ github.workspace }}/chummer-core-engine",
+            self.text,
+        )
         self.assertIn("scripts/build-debug.sh", self.text)
         self.assertIn("test \"${#apks[@]}\" -eq 1", self.text)
         self.assertIn("chummer-android-x64-debug.apk.sha256", self.text)

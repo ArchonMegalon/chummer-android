@@ -152,6 +152,7 @@ jobs:
         working-directory: chummer-android
         env:
           CHUMMER_ANDROID_RUNTIME_ID: android-x64
+          CHUMMER_CORE_ENGINE_ROOT: ${{ github.workspace }}/chummer-core-engine
         run: scripts/build-debug.sh
 
       - name: Seal the unique signed debug APK
