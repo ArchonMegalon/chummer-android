@@ -73,8 +73,31 @@ class RecordingDevice(DRIVER.Device):
         ):
             self.input_method_output = "mImeWindowVis=0\n      mInputShown=false"
         elif arguments[:2] == ("input", "tap") and self.nodes:
-            for node in self.nodes:
-                node.attributes["focused"] = "true"
+            tap_x, tap_y = (int(value) for value in arguments[2:4])
+            native_tabs = [
+                node
+                for node in self.nodes
+                if node.attributes.get("class") == "android.widget.FrameLayout"
+                and node.attributes.get("content-desc")
+                in DRIVER.PHONE_SHELL_DESTINATION_LABELS
+            ]
+            tapped_tab = next(
+                (
+                    node
+                    for node in native_tabs
+                    if node.bounds[0] <= tap_x < node.bounds[2]
+                    and node.bounds[1] <= tap_y < node.bounds[3]
+                ),
+                None,
+            )
+            if tapped_tab is not None:
+                for node in native_tabs:
+                    selected = node is tapped_tab
+                    node.attributes["selected"] = str(selected).lower()
+                    node.attributes["clickable"] = str(not selected).lower()
+            else:
+                for node in self.nodes:
+                    node.attributes["focused"] = "true"
         elif arguments[:2] == ("input", "text"):
             value = arguments[2].replace("%s", " ")
             for node in self.nodes:
@@ -107,24 +130,40 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             stderr="",
         )
 
+    @staticmethod
+    def native_phone_tabs(
+        *,
+        selected_label: str = "Runner",
+        labels: tuple[str, ...] = DRIVER.PHONE_SHELL_DESTINATION_LABELS,
+        widths: tuple[tuple[int, int], ...] = (
+            (0, 360),
+            (360, 720),
+            (720, 1080),
+        ),
+    ) -> list[DRIVER.UiNode]:
+        return [
+            DRIVER.UiNode(
+                {
+                    "resource-id": "",
+                    "package": DRIVER.PACKAGE,
+                    "class": "android.widget.FrameLayout",
+                    "content-desc": label,
+                    "enabled": "true",
+                    "focusable": "true",
+                    "selected": str(label == selected_label).lower(),
+                    "clickable": str(label != selected_label).lower(),
+                    "bounds": f"[{left},2190][{right},2337]",
+                }
+            )
+            for label, (left, right) in zip(labels, widths, strict=True)
+        ]
+
     def test_phone_shell_observation_requires_exact_live_destinations(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             device = Mock(spec=DRIVER.Device)
             device.evidence = Path(temporary)
-            nodes = [
-                DRIVER.UiNode(
-                    {
-                        "resource-id": destination_id,
-                        "text": label,
-                        "clickable": "true",
-                    }
-                )
-                for destination_id, label in zip(
-                    DRIVER.PHONE_SHELL_DESTINATION_IDS,
-                    DRIVER.PHONE_SHELL_DESTINATION_LABELS,
-                    strict=True,
-                )
-            ]
+            device.display_size.return_value = (1080, 2400)
+            nodes = self.native_phone_tabs()
             device.hierarchy.return_value = nodes
 
             observed = DRIVER.assert_phone_shell_surface(
@@ -192,35 +231,61 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
     def test_open_build_binds_phone_navigation_to_one_final_runner_root(self) -> None:
         device = Mock(spec=DRIVER.Device)
-        with patch.object(DRIVER, "wait_for_phone_runner_route") as wait_route:
+        destinations = tuple(
+            zip(
+                DRIVER.PHONE_SHELL_DESTINATION_IDS,
+                self.native_phone_tabs(selected_label="Runners"),
+                strict=True,
+            )
+        )
+        with (
+            patch.object(
+                DRIVER,
+                "wait_for_phone_shell_destinations",
+                return_value=destinations,
+            ) as wait_destinations,
+            patch.object(
+                DRIVER,
+                "bind_phone_shell_destinations",
+                return_value=destinations,
+            ),
+            patch.object(DRIVER, "wait_for_phone_runner_route") as wait_route,
+        ):
             DRIVER.open_build(device, "phone")
 
-        device.tap_single_exact_resource_id.assert_called_once_with(
-            "phone-destination-runner",
-            timeout=45,
-            evidence_prefix="phone-destination-runner-tap",
-            surface_name="Phone shell destination",
+        self.assertEqual(
+            [
+                call(
+                    device,
+                    timeout=45,
+                    evidence_prefix="phone-destination-runner-tap-bind",
+                ),
+                call(
+                    device,
+                    timeout=45,
+                    evidence_prefix="phone-destination-runner-tap-select",
+                    selected_label="Runner",
+                ),
+            ],
+            wait_destinations.call_args_list,
         )
+        device.shell.assert_called_once_with("input", "tap", "540", "2263")
         device.tap.assert_not_called()
         wait_route.assert_called_once_with(device)
         device.open_navigation_drawer.assert_not_called()
 
-    def test_phone_destination_tap_uses_one_exact_cardinality_checked_resource(self) -> None:
+    def test_phone_destination_tap_uses_structural_native_tab_not_text_alias(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
             device.nodes = [
-                DRIVER.UiNode(
-                    {
-                        "resource-id": "phone-destination-runner",
-                        "text": "Runner",
-                        "clickable": "true",
-                        "bounds": "[80,2200][400,2320]",
-                    }
-                ),
+                *self.native_phone_tabs(selected_label="Runners"),
                 DRIVER.UiNode(
                     {
                         "resource-id": "open-workspace-runner",
+                        "package": DRIVER.PACKAGE,
+                        "class": "android.widget.Button",
                         "text": "Runner",
+                        "content-desc": "Runner",
                         "clickable": "true",
                         "bounds": "[80,400][800,520]",
                     }
@@ -232,49 +297,174 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 "phone-destination-runner",
             )
 
-            self.assertIn(("input", "tap", "240", "2260"), device.commands)
+            self.assertIn(("input", "tap", "540", "2263"), device.commands)
             self.assertNotIn(("input", "tap", "440", "460"), device.commands)
             with self.assertRaisesRegex(ValueError, "Unknown phone shell destination"):
                 DRIVER.tap_phone_destination(device, "phone-destination-play")
 
-    def test_phone_shell_observation_rejects_mapping_extras_and_tablet_roots(self) -> None:
-        valid_nodes = [
-            DRIVER.UiNode(
-                {
-                    "resource-id": destination_id,
-                    "text": label,
-                    "clickable": "true",
-                }
-            )
-            for destination_id, label in DRIVER.PHONE_SHELL_DESTINATION_MAPPING.items()
-        ]
-        adversarial_nodes = {
-            "swapped-label": [
+    def test_structural_phone_destination_binding_fails_closed_on_adversarial_nodes(self) -> None:
+        def altered(
+            index: int,
+            **attributes: str,
+        ) -> list[DRIVER.UiNode]:
+            nodes = self.native_phone_tabs()
+            nodes[index] = DRIVER.UiNode({**nodes[index].attributes, **attributes})
+            return nodes
+
+        duplicate_selected = self.native_phone_tabs()
+        duplicate_selected[0] = DRIVER.UiNode(
+            {
+                **duplicate_selected[0].attributes,
+                "selected": "true",
+                "clickable": "false",
+            }
+        )
+        adversarial = {
+            "missing": self.native_phone_tabs()[:2],
+            "wrong-class": altered(0, **{"class": "android.widget.Button"}),
+            "wrong-order": self.native_phone_tabs(
+                labels=("Runner", "Runners", "More")
+            ),
+            "wrong-geometry": altered(2, bounds="[700,2190][1080,2337]"),
+            "one-pixel-gap": altered(1, bounds="[361,2190][720,2337]"),
+            "disabled": altered(0, enabled="false"),
+            "not-focusable": altered(0, focusable="false"),
+            "bad-clickability": altered(1, clickable="true"),
+            "duplicate-selected": duplicate_selected,
+            "mismatched-resource": altered(
+                0,
+                **{"resource-id": "phone-destination-more"},
+            ),
+            "matching-but-nonempty-resource": altered(
+                0,
+                **{"resource-id": "phone-destination-runners"},
+            ),
+            "fourth-recognized": [
+                *self.native_phone_tabs(),
                 DRIVER.UiNode(
                     {
-                        "resource-id": "phone-destination-runners",
-                        "text": "Runner",
-                        "clickable": "true",
+                        **self.native_phone_tabs()[0].attributes,
+                        "bounds": "[0,2190][360,2337]",
                     }
                 ),
-                *valid_nodes[1:],
             ],
+            "fourth-unknown": [
+                *self.native_phone_tabs(),
+                DRIVER.UiNode(
+                    {
+                        **self.native_phone_tabs()[0].attributes,
+                        "content-desc": "Settings",
+                        "bounds": "[0,2190][360,2337]",
+                    }
+                ),
+            ],
+        }
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
+            for name, nodes in adversarial.items():
+                with self.subTest(name=name):
+                    with self.assertRaises(RuntimeError):
+                        DRIVER.bind_phone_shell_destinations(device, nodes)
+
+            decoys = [
+                *self.native_phone_tabs(),
+                DRIVER.UiNode(
+                    {
+                        "resource-id": "body-runner",
+                        "package": DRIVER.PACKAGE,
+                        "class": "android.widget.Button",
+                        "content-desc": "Runner",
+                        "bounds": "[80,400][800,520]",
+                    }
+                ),
+                DRIVER.UiNode(
+                    {
+                        "resource-id": "",
+                        "package": DRIVER.PACKAGE,
+                        "class": "android.widget.FrameLayout",
+                        "content-desc": "Runners",
+                        "bounds": "[0,300][1080,700]",
+                    }
+                ),
+            ]
+            bound = DRIVER.bind_phone_shell_destinations(device, decoys)
+            self.assertEqual(DRIVER.PHONE_SHELL_DESTINATION_IDS, tuple(
+                resource_id for resource_id, _ in bound
+            ))
+
+    def test_phone_destination_wait_requires_two_stable_selected_snapshots(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.display_size.return_value = (1080, 2400)
+        device.dismiss_system_ui_anr.return_value = False
+        device.hierarchy.side_effect = [
+            self.native_phone_tabs(selected_label="Runners"),
+            self.native_phone_tabs(selected_label="Runner"),
+            self.native_phone_tabs(selected_label="Runner"),
+        ]
+
+        with patch.object(DRIVER.time, "sleep"):
+            _, destinations = DRIVER.wait_for_phone_shell_destination_snapshot(
+                device,
+                timeout=5,
+                evidence_prefix="stable-transition",
+                selected_label="Runner",
+            )
+
+        self.assertEqual(3, device.hierarchy.call_count)
+        self.assertEqual(
+            ["Runner"],
+            [
+                DRIVER.PHONE_SHELL_DESTINATION_MAPPING[resource_id]
+                for resource_id, node in destinations
+                if node.attributes.get("selected") == "true"
+            ],
+        )
+        device.capture.assert_not_called()
+
+    def test_phone_destination_tap_refuses_changed_pre_tap_snapshot(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        stable_destinations = tuple(
+            zip(
+                DRIVER.PHONE_SHELL_DESTINATION_IDS,
+                self.native_phone_tabs(selected_label="Runners"),
+                strict=True,
+            )
+        )
+        changed_destinations = tuple(
+            zip(
+                DRIVER.PHONE_SHELL_DESTINATION_IDS,
+                self.native_phone_tabs(selected_label="More"),
+                strict=True,
+            )
+        )
+        with (
+            patch.object(
+                DRIVER,
+                "wait_for_phone_shell_destinations",
+                return_value=stable_destinations,
+            ),
+            patch.object(
+                DRIVER,
+                "bind_phone_shell_destinations",
+                return_value=changed_destinations,
+            ),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "stale coordinates"):
+                DRIVER.tap_phone_destination(device, "phone-destination-runner")
+
+        device.capture.assert_called_once_with("phone-destination-runner-tap-stale")
+        device.shell.assert_not_called()
+
+    def test_phone_shell_observation_rejects_mapping_extras_and_tablet_roots(self) -> None:
+        valid_nodes = self.native_phone_tabs()
+        adversarial_nodes = {
             "extra-phone-root": [
                 *valid_nodes,
                 DRIVER.UiNode(
                     {
                         "resource-id": "phone-destination-experimental",
                         "text": "Experimental",
-                        "clickable": "true",
-                    }
-                ),
-            ],
-            "duplicate-phone-root": [
-                *valid_nodes,
-                DRIVER.UiNode(
-                    {
-                        "resource-id": "phone-destination-runner",
-                        "text": "Runner",
                         "clickable": "true",
                     }
                 ),
@@ -324,6 +514,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
                 device = Mock(spec=DRIVER.Device)
                 device.evidence = Path(temporary)
+                device.display_size.return_value = (1080, 2400)
                 device.hierarchy.return_value = nodes
                 with self.assertRaisesRegex(RuntimeError, "postponed surface"):
                     DRIVER.assert_phone_shell_surface(
@@ -337,21 +528,9 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             device = Mock(spec=DRIVER.Device)
             device.evidence = Path(temporary)
+            device.display_size.return_value = (1080, 2400)
             device.hierarchy.return_value = [
-                *[
-                    DRIVER.UiNode(
-                        {
-                            "resource-id": destination_id,
-                            "text": label,
-                            "clickable": "true",
-                        }
-                    )
-                    for destination_id, label in zip(
-                        DRIVER.PHONE_SHELL_DESTINATION_IDS,
-                        DRIVER.PHONE_SHELL_DESTINATION_LABELS,
-                        strict=True,
-                    )
-                ],
+                *self.native_phone_tabs(),
                 DRIVER.UiNode(
                     {
                         "resource-id": "phone-destination-play",
@@ -381,17 +560,9 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             device = Mock(spec=DRIVER.Device)
             device.evidence = Path(temporary)
+            device.display_size.return_value = (1080, 2400)
             device.hierarchy.return_value = [
-                *[
-                    DRIVER.UiNode(
-                        {
-                            "resource-id": destination_id,
-                            "text": label,
-                            "clickable": "true",
-                        }
-                    )
-                    for destination_id, label in DRIVER.PHONE_SHELL_DESTINATION_MAPPING.items()
-                ],
+                *self.native_phone_tabs(),
                 *[
                     DRIVER.UiNode(
                         {
@@ -505,7 +676,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         shared_source = Path(DRIVER.__file__).read_text(encoding="utf-8")
         self.assertIn("def tap_phone_destination(", shared_source)
-        self.assertIn("device.tap_single_exact_resource_id(", shared_source)
+        self.assertIn("bind_phone_shell_destinations(", shared_source)
+        self.assertIn("wait_for_phone_shell_destinations(", shared_source)
+        self.assertNotIn(
+            "device.tap_single_exact_resource_id(\n        resource_id,",
+            shared_source,
+        )
         for resource_id in DRIVER.PHONE_SHELL_DESTINATION_IDS:
             self.assertIn(f'"{resource_id}"', shared_source)
 
@@ -1332,6 +1508,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         with patch.object(DRIVER, "select_android_document") as select_document, \
              patch.object(DRIVER, "open_creation_dashboard") as open_dashboard, \
              patch.object(DRIVER, "wait_for_phone_runner_route") as wait_route, \
+             patch.object(DRIVER, "tap_phone_destination") as tap_destination, \
              patch.object(
                  DRIVER,
                  "read_workspace_authority",
@@ -1364,12 +1541,6 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     max_scrolls=48,
                     scroll_distance_ratio=0.22,
                 ),
-                call.tap_single_exact_resource_id(
-                    "phone-destination-runners",
-                    timeout=45,
-                    evidence_prefix="phone-destination-runners-tap",
-                    surface_name="Phone shell destination",
-                ),
                 call.wait_for_single_exact_resource_id(
                     "phone-runners",
                     timeout=90,
@@ -1379,12 +1550,6 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 call.wait("home-open-file", timeout=90),
                 call.tap("home-open-file"),
                 call.wait("FullEditingE2E", timeout=90),
-                call.tap_single_exact_resource_id(
-                    "phone-destination-runners",
-                    timeout=45,
-                    evidence_prefix="phone-destination-runners-tap",
-                    surface_name="Phone shell destination",
-                ),
                 call.wait_for_single_exact_resource_id(
                     "phone-runners",
                     timeout=90,
@@ -1403,6 +1568,13 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             open_build_route=False,
         )
         wait_route.assert_called_once_with(device, created=True)
+        self.assertEqual(
+            [
+                call(device, "phone-destination-runners"),
+                call(device, "phone-destination-runners"),
+            ],
+            tap_destination.call_args_list,
+        )
         self.assertEqual(imported, result)
 
     def test_full_tablet_journey_remains_available_outside_the_phone_beta_lane(self) -> None:

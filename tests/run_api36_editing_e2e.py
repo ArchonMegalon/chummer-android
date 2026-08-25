@@ -38,6 +38,10 @@ PHONE_SHELL_DESTINATION_MAPPING = {
     "phone-destination-runner": "Runner",
     "phone-destination-more": "More",
 }
+PHONE_SHELL_DESTINATION_IDS_BY_LABEL = {
+    label: resource_id
+    for resource_id, label in PHONE_SHELL_DESTINATION_MAPPING.items()
+}
 PHONE_SHELL_FORBIDDEN_DESTINATION_LABELS = ("Play", "Table", "Campaign")
 PHONE_SHELL_FORBIDDEN_SUPPORT_LABELS = (
     "Rook",
@@ -86,11 +90,15 @@ class UiNode:
     attributes: dict[str, str]
 
     @property
-    def center(self) -> tuple[int, int]:
+    def bounds(self) -> tuple[int, int, int, int]:
         match = BOUNDS.fullmatch(self.attributes.get("bounds", ""))
         if match is None:
             raise RuntimeError(f"Node has no tappable bounds: {self.attributes}")
-        left, top, right, bottom = (int(value) for value in match.groups())
+        return tuple(int(value) for value in match.groups())
+
+    @property
+    def center(self) -> tuple[int, int]:
+        left, top, right, bottom = self.bounds
         return ((left + right) // 2, (top + bottom) // 2)
 
 
@@ -1113,6 +1121,200 @@ def _is_forbidden_launcher_resource_id(resource_id: str) -> bool:
     )
 
 
+def _native_phone_bottom_tab_bounds_are_plausible(
+    node: UiNode,
+    *,
+    display_width: int,
+    display_height: int,
+) -> bool:
+    """Identify only native Shell tab-shaped nodes in the phone bottom band."""
+    if (
+        node.attributes.get("package") != PACKAGE
+        or node.attributes.get("class") != "android.widget.FrameLayout"
+    ):
+        return False
+    try:
+        left, top, right, bottom = node.bounds
+    except RuntimeError:
+        return False
+    return (
+        0 <= left < right <= display_width
+        and int(display_height * 0.80) <= top < bottom <= display_height
+        and bottom >= int(display_height * 0.90)
+        and bottom - top <= int(display_height * 0.20)
+    )
+
+
+def bind_phone_shell_destinations(
+    device: Device,
+    nodes: list[UiNode] | None = None,
+) -> tuple[tuple[str, UiNode], ...]:
+    """Bind the pinned MAUI Android bottom bar without trusting text aliases.
+
+    MAUI's generated Android Shell tabs expose an empty resource-id on the
+    pinned API-36 build. Their native type, exact accessible name, geometry,
+    order, focus/click state and one selected destination form the fail-closed
+    identity instead. Any non-empty resource-id fails this pinned contract.
+    """
+    hierarchy = device.hierarchy() if nodes is None else nodes
+    display_width, display_height = device.display_size()
+    candidates = [
+        node
+        for node in hierarchy
+        if node.attributes.get("content-desc", "").strip()
+        and node.attributes.get("enabled") == "true"
+        and node.attributes.get("focusable") == "true"
+        and node.attributes.get("selected") in ("true", "false")
+        and node.attributes.get("clickable") in ("true", "false")
+        and _native_phone_bottom_tab_bounds_are_plausible(
+            node,
+            display_width=display_width,
+            display_height=display_height,
+        )
+    ]
+    if len(candidates) != len(PHONE_SHELL_DESTINATION_LABELS):
+        raise RuntimeError(
+            "Native phone bottom bar has "
+            f"{len(candidates)} recognized destinations; expected exactly three"
+        )
+
+    ordered = sorted(candidates, key=lambda node: node.bounds[0])
+    labels = tuple(node.attributes.get("content-desc", "") for node in ordered)
+    if labels != PHONE_SHELL_DESTINATION_LABELS:
+        raise RuntimeError(
+            f"Native phone bottom bar order is {labels!r}; expected "
+            f"{PHONE_SHELL_DESTINATION_LABELS!r}"
+        )
+
+    bounds = [node.bounds for node in ordered]
+    top = bounds[0][1]
+    bottom = bounds[0][3]
+    expected_edges = [
+        index * display_width // len(ordered)
+        for index in range(len(ordered) + 1)
+    ]
+    expected_bounds = [
+        (expected_edges[index], top, expected_edges[index + 1], bottom)
+        for index in range(len(ordered))
+    ]
+    if bounds != expected_bounds:
+        raise RuntimeError(
+            "Native phone bottom bar geometry is not three exact contiguous thirds: "
+            f"observed {bounds!r}, expected {expected_bounds!r}"
+        )
+
+    selected_labels: list[str] = []
+    result: list[tuple[str, UiNode]] = []
+    for label, node in zip(labels, ordered, strict=True):
+        expected_resource_id = PHONE_SHELL_DESTINATION_IDS_BY_LABEL[label]
+        actual_resource_id = node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+        selected = node.attributes.get("selected") == "true"
+        clickable = node.attributes.get("clickable") == "true"
+        if actual_resource_id:
+            raise RuntimeError(
+                f"Native phone destination {label!r} must expose the pinned empty "
+                f"resource-id, not {actual_resource_id!r}"
+            )
+        if (
+            node.attributes.get("enabled") != "true"
+            or node.attributes.get("focusable") != "true"
+            or clickable == selected
+        ):
+            raise RuntimeError(
+                f"Native phone destination {label!r} has invalid enabled/focus/"
+                "clickable/selected semantics"
+            )
+        if selected:
+            selected_labels.append(label)
+        result.append((expected_resource_id, node))
+    if len(selected_labels) != 1:
+        raise RuntimeError(
+            "Native phone bottom bar must expose exactly one selected destination; "
+            f"observed {selected_labels!r}"
+        )
+    return tuple(result)
+
+
+def _phone_shell_destination_signature(
+    destinations: tuple[tuple[str, UiNode], ...],
+) -> tuple[tuple[object, ...], ...]:
+    return tuple(
+        (
+            resource_id,
+            node.attributes.get("content-desc", ""),
+            node.attributes.get("resource-id", ""),
+            node.attributes.get("selected", ""),
+            node.attributes.get("clickable", ""),
+            node.attributes.get("enabled", ""),
+            node.attributes.get("focusable", ""),
+            node.bounds,
+        )
+        for resource_id, node in destinations
+    )
+
+
+def wait_for_phone_shell_destination_snapshot(
+    device: Device,
+    *,
+    timeout: int,
+    evidence_prefix: str,
+    selected_label: str | None = None,
+) -> tuple[list[UiNode], tuple[tuple[str, UiNode], ...]]:
+    deadline = time.monotonic() + timeout
+    last_error = "native phone bottom bar was absent"
+    previous_signature: tuple[tuple[object, ...], ...] | None = None
+    while time.monotonic() < deadline:
+        binding_failed = False
+        try:
+            hierarchy = device.hierarchy()
+            destinations = bind_phone_shell_destinations(device, hierarchy)
+            selected = [
+                PHONE_SHELL_DESTINATION_MAPPING[resource_id]
+                for resource_id, node in destinations
+                if node.attributes.get("selected") == "true"
+            ]
+            signature = _phone_shell_destination_signature(destinations)
+            if selected_label is not None and selected != [selected_label]:
+                last_error = (
+                    f"selected destination remained {selected!r}; "
+                    f"expected {selected_label!r}"
+                )
+                previous_signature = None
+            elif signature == previous_signature:
+                return hierarchy, destinations
+            else:
+                last_error = "native phone bottom bar has not remained stable for two dumps"
+                previous_signature = signature
+        except RuntimeError as error:
+            last_error = str(error)
+            previous_signature = None
+            binding_failed = True
+        if binding_failed and device.dismiss_system_ui_anr():
+            time.sleep(2)
+            continue
+        time.sleep(0.75)
+    device.capture(f"{evidence_prefix}-invalid")
+    raise RuntimeError(
+        f"Timed out waiting for structurally bound phone destinations: {last_error}"
+    )
+
+
+def wait_for_phone_shell_destinations(
+    device: Device,
+    *,
+    timeout: int,
+    evidence_prefix: str,
+    selected_label: str | None = None,
+) -> tuple[tuple[str, UiNode], ...]:
+    _, destinations = wait_for_phone_shell_destination_snapshot(
+        device,
+        timeout=timeout,
+        evidence_prefix=evidence_prefix,
+        selected_label=selected_label,
+    )
+    return destinations
+
+
 def wait_for_phone_runners(device: Device, *, timeout: int = 90) -> UiNode:
     return device.wait_for_single_exact_resource_id(
         "phone-runners",
@@ -1130,11 +1332,38 @@ def tap_phone_destination(
 ) -> None:
     if resource_id not in PHONE_SHELL_DESTINATION_MAPPING:
         raise ValueError(f"Unknown phone shell destination {resource_id!r}")
-    device.tap_single_exact_resource_id(
-        resource_id,
+    label = PHONE_SHELL_DESTINATION_MAPPING[resource_id]
+    destinations = wait_for_phone_shell_destinations(
+        device,
         timeout=timeout,
-        evidence_prefix=f"{resource_id}-tap",
-        surface_name="Phone shell destination",
+        evidence_prefix=f"{resource_id}-tap-bind",
+    )
+    selected_before_tap = next(
+        candidate_id
+        for candidate_id, node in destinations
+        if node.attributes.get("selected") == "true"
+    )
+    if selected_before_tap == resource_id:
+        return
+    fresh_destinations = bind_phone_shell_destinations(device)
+    if _phone_shell_destination_signature(fresh_destinations) != (
+        _phone_shell_destination_signature(destinations)
+    ):
+        device.capture(f"{resource_id}-tap-stale")
+        raise RuntimeError(
+            "Native phone bottom bar changed between stable binding and tap; "
+            "refusing stale coordinates"
+        )
+    node = next(
+        node for candidate_id, node in fresh_destinations if candidate_id == resource_id
+    )
+    x, y = node.center
+    device.shell("input", "tap", str(x), str(y))
+    wait_for_phone_shell_destinations(
+        device,
+        timeout=timeout,
+        evidence_prefix=f"{resource_id}-tap-select",
+        selected_label=label,
     )
 
 
@@ -1151,34 +1380,38 @@ def assert_phone_shell_surface(
         evidence_prefix=evidence_prefix,
         surface_name="Phone shell route",
     )
-    nodes = device.hierarchy()
+    try:
+        nodes, destinations = wait_for_phone_shell_destination_snapshot(
+            device,
+            timeout=45,
+            evidence_prefix=evidence_prefix,
+        )
+    except RuntimeError as error:
+        observation = {
+            "routeResourceId": route_resource_id,
+            "structuralError": str(error),
+        }
+        (device.evidence / f"{evidence_prefix}-observation.json").write_text(
+            json.dumps(observation, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        raise RuntimeError(
+            "Phone shell did not expose exactly Runners/Runner/More or exposed a "
+            f"postponed surface: {observation!r}"
+        ) from error
     resource_ids = [
         node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
         for node in nodes
     ]
-    destination_nodes = [
-        (resource_id, node)
-        for resource_id, node in zip(resource_ids, nodes, strict=True)
-        if resource_id.startswith("phone-destination-")
-    ]
-    observed_destination_mapping: dict[str, list[str]] = {}
-    for resource_id, node in destination_nodes:
-        labels = [
-            label
-            for label in (
-                *PHONE_SHELL_DESTINATION_LABELS,
-                *PHONE_SHELL_FORBIDDEN_DESTINATION_LABELS,
-            )
-            if _node_exposes_exact_accessibility_label(node, label)
-        ]
-        observed_destination_mapping.setdefault(resource_id, []).extend(labels)
-    observed_destination_ids = sorted(resource_id for resource_id, _ in destination_nodes)
+    observed_destination_mapping = {
+        resource_id: [PHONE_SHELL_DESTINATION_MAPPING[resource_id]]
+        for resource_id, _ in destinations
+    }
+    observed_destination_ids = sorted(observed_destination_mapping)
     observed_destination_labels = sorted(
-        label
-        for labels in observed_destination_mapping.values()
-        for label in labels
-        if label in PHONE_SHELL_DESTINATION_LABELS
+        label for labels in observed_destination_mapping.values() for label in labels
     )
+    display_width, display_height = device.display_size()
     recognized_navigation_nodes = [
         (resource_id, node)
         for resource_id, node in zip(resource_ids, nodes, strict=True)
@@ -1186,6 +1419,11 @@ def assert_phone_shell_surface(
         or resource_id.startswith("tablet-destination-")
         or resource_id in PHONE_SHELL_FORBIDDEN_ROUTE_RESOURCE_IDS
         or _is_forbidden_launcher_resource_id(resource_id)
+        or _native_phone_bottom_tab_bounds_are_plausible(
+            node,
+            display_width=display_width,
+            display_height=display_height,
+        )
     ]
     forbidden_destination_labels = sorted(
         label
@@ -1211,7 +1449,11 @@ def assert_phone_shell_surface(
         resource_id
         for resource_id, node in zip(resource_ids, nodes, strict=True)
         if (
-            resource_id.startswith("tablet-destination-")
+            (
+                resource_id.startswith("phone-destination-")
+                and resource_id not in PHONE_SHELL_DESTINATION_IDS
+            )
+            or resource_id.startswith("tablet-destination-")
             or resource_id in PHONE_SHELL_FORBIDDEN_ROUTE_RESOURCE_IDS
             or _is_forbidden_launcher_resource_id(resource_id)
         )
@@ -1221,6 +1463,20 @@ def assert_phone_shell_surface(
         "destinationResourceIds": observed_destination_ids,
         "destinationLabels": observed_destination_labels,
         "destinationMapping": observed_destination_mapping,
+        "selectedDestination": next(
+            PHONE_SHELL_DESTINATION_MAPPING[resource_id]
+            for resource_id, node in destinations
+            if node.attributes.get("selected") == "true"
+        ),
+        "nativeDestinationResourceIds": {
+            PHONE_SHELL_DESTINATION_MAPPING[resource_id]:
+                node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+            for resource_id, node in destinations
+        },
+        "nativeDestinationBounds": {
+            PHONE_SHELL_DESTINATION_MAPPING[resource_id]: node.attributes.get("bounds", "")
+            for resource_id, node in destinations
+        },
         "forbiddenDestinationLabels": forbidden_destination_labels,
         "forbiddenSupportLabels": forbidden_support_labels,
         "forbiddenRouteResourceIds": forbidden_route_ids,
