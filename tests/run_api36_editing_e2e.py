@@ -1057,51 +1057,64 @@ def optional_workspace_authority_json(
     return None if authority is None else workspace_authority_json(authority)
 
 
-def wait_for_phone_runner_route(
+def _node_has_canonical_resource_id(node: UiNode, selector: str) -> bool:
+    return (
+        node.attributes.get("package") == PACKAGE
+        and node.attributes.get("resource-id") == f"{PACKAGE}:id/{selector}"
+    )
+
+
+def _phone_runner_route_from_nodes(
     device: Device,
+    nodes: list[UiNode],
     *,
-    created: bool | None = None,
-    timeout: int = 90,
-) -> UiNode:
+    created: bool | None,
+) -> UiNode | None:
     expected_routes = {"phone-runner-create", "phone-runner-sheet"}
     desired_route = (
         None
         if created is None
         else "phone-runner-sheet" if created else "phone-runner-create"
     )
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        matches = [
-            (
-                node.attributes.get("resource-id", "").rsplit("/", 1)[-1],
-                node,
-            )
-            for node in device.hierarchy()
-            if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
-            in expected_routes
-        ]
-        if len(matches) == 1:
-            observed_route, node = matches[0]
-            if desired_route is not None and observed_route != desired_route:
-                device.capture("phone-runner-route-lifecycle-mismatch")
-                raise RuntimeError(
-                    f"Final phone runner route was {observed_route!r}; "
-                    f"expected sole root {desired_route!r}"
-                )
-            return node
-        if len(matches) > 1:
-            device.capture("phone-runner-route-cardinality-invalid")
+    matches = [
+        (
+            node.attributes["resource-id"].rsplit("/", 1)[-1],
+            node,
+        )
+        for node in nodes
+        if any(
+            _node_has_canonical_resource_id(node, route_id)
+            for route_id in expected_routes
+        )
+        and node.attributes.get("visible-to-user") == "true"
+    ]
+    if len(matches) == 1:
+        observed_route, node = matches[0]
+        if desired_route is not None and observed_route != desired_route:
+            device.capture("phone-runner-route-lifecycle-mismatch")
             raise RuntimeError(
-                "Final phone runner route exposed both creation and career roots"
+                f"Final phone runner route was {observed_route!r}; "
+                f"expected sole root {desired_route!r}"
             )
-        if device.dismiss_system_ui_anr():
-            time.sleep(2)
-            continue
-        time.sleep(0.75)
-    device.capture("phone-runner-route-unavailable")
-    raise RuntimeError(
-        "Timed out waiting for exact final phone route phone-runner-create or "
-        "phone-runner-sheet"
+        return node
+    if len(matches) > 1:
+        device.capture("phone-runner-route-cardinality-invalid")
+        raise RuntimeError(
+            "Final phone runner route exposed both creation and career roots"
+        )
+    return None
+
+
+def wait_for_phone_runner_route(
+    device: Device,
+    *,
+    created: bool | None = None,
+    timeout: int = 90,
+) -> UiNode:
+    return return_to_phone_runner_root(
+        device,
+        created=created,
+        timeout=timeout,
     )
 
 
@@ -1542,7 +1555,7 @@ def open_build(device: Device, profile: str) -> None:
         device.wait("tablet-build-layout", timeout=45)
         return
     tap_phone_destination(device, "phone-destination-runner")
-    wait_for_phone_runner_route(device)
+    return_to_phone_runner_root(device)
 
 
 def reset_scroll_to_top(
@@ -1556,6 +1569,146 @@ def reset_scroll_to_top(
         time.sleep(0.2)
     if swipes > 0:
         time.sleep(0.75)
+
+
+def return_to_phone_runner_root(
+    device: Device,
+    *,
+    created: bool | None = None,
+    timeout: int = 90,
+    max_back_steps: int = 8,
+) -> UiNode:
+    """Unwind a preserved Shell Build stack and prove its exact root.
+
+    Selecting an already-selected Shell destination does not pop MAUI's nested
+    navigation stack. Require the immutable BuildPage marker and its fixed Save
+    toolbar before resetting its preserved viewport, then require the lifecycle
+    route marker. Otherwise activate only the platform's exact ``Navigate up``
+    control. This keeps recovery bounded and prevents a stale collection editor
+    from being mistaken for the Build root.
+    """
+    deadline = time.monotonic() + timeout
+    back_steps = 0
+    viewport_reset = False
+    while time.monotonic() < deadline:
+        nodes = device.hierarchy()
+        if not nodes:
+            if device.dismiss_system_ui_anr():
+                time.sleep(2)
+            else:
+                time.sleep(0.75)
+            continue
+
+        route = _phone_runner_route_from_nodes(device, nodes, created=created)
+        page_matches = [
+            node
+            for node in nodes
+            if _node_has_canonical_resource_id(node, "phone-runner-page")
+            and node.attributes.get("class") == "android.view.ViewGroup"
+            and node.attributes.get("enabled") == "true"
+            and node.attributes.get("visible-to-user") == "true"
+        ]
+        if len(page_matches) > 1:
+            device.capture("phone-runner-root-page-cardinality-invalid")
+            raise RuntimeError(
+                "Phone runner root exposed more than one exact phone-runner-page marker"
+            )
+        toolbar_matches = [
+            node
+            for node in nodes
+            if node.attributes.get("package") == PACKAGE
+            and node.attributes.get("resource-id", "") == ""
+            and node.attributes.get("content-desc") == "build-save-runner"
+            and node.attributes.get("class") == "android.widget.Button"
+            and node.attributes.get("enabled") == "true"
+            and node.attributes.get("clickable") == "true"
+            and node.attributes.get("focusable") == "true"
+            and node.attributes.get("visible-to-user") == "true"
+        ]
+        if len(toolbar_matches) > 1:
+            device.capture("phone-runner-root-toolbar-cardinality-invalid")
+            raise RuntimeError(
+                "Phone runner root exposed more than one exact build-save-runner toolbar"
+            )
+        root_authority = (
+            len(page_matches) == 1
+            and len(toolbar_matches) == 1
+            and device.node_has_tappable_bounds(page_matches[0])
+            and device.node_has_tappable_bounds(toolbar_matches[0])
+        )
+        if root_authority:
+            if route is not None and viewport_reset:
+                expected_label = (
+                    "CREATION RUNNER"
+                    if route.attributes["resource-id"].endswith("phone-runner-create")
+                    else "CAREER RUNNER"
+                )
+                if (
+                    route.attributes.get("class") != "android.widget.TextView"
+                    or route.attributes.get("enabled") != "true"
+                    or route.attributes.get("visible-to-user") != "true"
+                    or route.attributes.get("text") != expected_label
+                    or not device.node_has_tappable_bounds(route)
+                ):
+                    device.capture("phone-runner-route-structure-invalid")
+                    raise RuntimeError(
+                        "Exact phone runner lifecycle marker was not visible with its "
+                        "pinned native role and label after the root viewport reset"
+                    )
+                return route
+            if not viewport_reset:
+                # The lifecycle marker is the first child of BuildPage's
+                # ScrollView and can be clipped by a preserved deep offset.
+                # The exact immutable page plus root-only toolbar authorizes the
+                # reset; the route marker must then become visible before return.
+                reset_scroll_to_top(device, swipes=48)
+                viewport_reset = True
+                continue
+            # Never treat the toolbar alone as final route authority.
+            time.sleep(0.75)
+            continue
+
+        if back_steps >= max_back_steps:
+            device.capture("phone-runner-root-unwind-exhausted")
+            raise RuntimeError(
+                "Phone runner root remained unavailable after "
+                f"{max_back_steps} exact Navigate up activations"
+            )
+
+        navigate_up = [
+            node
+            for node in nodes
+            if node.attributes.get("package") == PACKAGE
+            and node.attributes.get("resource-id", "") == ""
+            and node.attributes.get("content-desc") == "Navigate up"
+            and node.attributes.get("class") == "android.widget.ImageButton"
+            and node.attributes.get("enabled") == "true"
+            and node.attributes.get("clickable") == "true"
+            and node.attributes.get("focusable") == "true"
+            and node.attributes.get("visible-to-user") == "true"
+        ]
+        if len(navigate_up) > 1:
+            device.capture("phone-runner-root-navigation-cardinality-invalid")
+            raise RuntimeError(
+                "Phone runner stack exposed more than one exact Navigate up control"
+            )
+        if len(navigate_up) == 1 and device.node_has_tappable_bounds(navigate_up[0]):
+            x, y = navigate_up[0].center
+            device.shell("input", "tap", str(x), str(y))
+            back_steps += 1
+            viewport_reset = False
+            time.sleep(0.75)
+            continue
+
+        if device.dismiss_system_ui_anr():
+            time.sleep(2)
+            continue
+        time.sleep(0.75)
+
+    device.capture("phone-runner-root-unavailable")
+    raise RuntimeError(
+        "Timed out proving the exact phone runner root and build-save-runner toolbar"
+    )
 
 
 def open_creation_dashboard(
@@ -1899,6 +2052,7 @@ def open_gear_section(device: Device, profile: str) -> None:
             scroll_distance_ratio=0.22,
         )
         return
+    return_to_phone_runner_root(device, created=True)
     device.tap_bidirectional(
         "build-section-tab-gear",
         timeout=120,

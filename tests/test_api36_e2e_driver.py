@@ -158,6 +158,73 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             for label, (left, right) in zip(labels, widths, strict=True)
         ]
 
+    @staticmethod
+    def phone_runner_page() -> DRIVER.UiNode:
+        return DRIVER.UiNode(
+            {
+                "resource-id": f"{DRIVER.PACKAGE}:id/phone-runner-page",
+                "package": DRIVER.PACKAGE,
+                "class": "android.view.ViewGroup",
+                "enabled": "true",
+                "visible-to-user": "true",
+                "bounds": "[0,275][1080,2190]",
+            }
+        )
+
+    @staticmethod
+    def phone_runner_toolbar() -> DRIVER.UiNode:
+        return DRIVER.UiNode(
+            {
+                "resource-id": "",
+                "package": DRIVER.PACKAGE,
+                "class": "android.widget.Button",
+                "content-desc": "build-save-runner",
+                "enabled": "true",
+                "clickable": "true",
+                "focusable": "true",
+                "visible-to-user": "true",
+                "bounds": "[954,138][1080,264]",
+            }
+        )
+
+    @staticmethod
+    def phone_runner_route(
+        route_id: str = "phone-runner-sheet",
+        *,
+        bounds: str = "[53,323][1028,362]",
+    ) -> DRIVER.UiNode:
+        return DRIVER.UiNode(
+            {
+                "resource-id": f"{DRIVER.PACKAGE}:id/{route_id}",
+                "package": DRIVER.PACKAGE,
+                "class": "android.widget.TextView",
+                "enabled": "true",
+                "visible-to-user": "true",
+                "text": (
+                    "CREATION RUNNER"
+                    if route_id == "phone-runner-create"
+                    else "CAREER RUNNER"
+                ),
+                "bounds": bounds,
+            }
+        )
+
+    @staticmethod
+    def native_navigate_up(bounds: str) -> DRIVER.UiNode:
+        return DRIVER.UiNode(
+            {
+                "resource-id": "",
+                "package": DRIVER.PACKAGE,
+                "class": "android.widget.ImageButton",
+                "content-desc": "Navigate up",
+                "enabled": "true",
+                "clickable": "true",
+                "focusable": "true",
+                "visible-to-user": "true",
+                "bounds": bounds,
+            }
+        )
+
     def test_phone_shell_observation_requires_exact_live_destinations(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             device = Mock(spec=DRIVER.Device)
@@ -218,7 +285,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             with self.subTest(name=name):
                 device = Mock(spec=DRIVER.Device)
                 device.hierarchy.return_value = [
-                    DRIVER.UiNode({"resource-id": route_id})
+                    self.phone_runner_route(route_id)
                     for route_id in route_ids
                 ]
                 with self.assertRaises(RuntimeError):
@@ -228,6 +295,257 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                         timeout=1,
                     )
                 device.capture.assert_called_once_with(expected_capture)
+
+    def test_phone_runner_route_resets_deep_root_before_binding_lifecycle(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        page = self.phone_runner_page()
+        toolbar = self.phone_runner_toolbar()
+        clipped_route = self.phone_runner_route(bounds="[53,-6506][1028,-6467]")
+        route = self.phone_runner_route()
+        device.hierarchy.side_effect = [
+            [page, toolbar, clipped_route],
+            [page, toolbar, route],
+        ]
+        device.node_has_tappable_bounds.return_value = True
+
+        with patch.object(DRIVER, "reset_scroll_to_top") as reset_scroll:
+            observed = DRIVER.wait_for_phone_runner_route(device, created=True)
+
+        self.assertIs(route, observed)
+        reset_scroll.assert_called_once_with(device, swipes=48)
+        device.shell.assert_not_called()
+
+    def test_phone_runner_root_unwinds_nested_pages_before_resetting_viewport(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        first_up = self.native_navigate_up("[20,100][120,200]")
+        second_up = self.native_navigate_up("[20,200][120,300]")
+        runner_route = self.phone_runner_route()
+        runner_toolbar = self.phone_runner_toolbar()
+        runner_page = self.phone_runner_page()
+        root_nodes = [runner_page, runner_route, runner_toolbar]
+        device.hierarchy.side_effect = [
+            [
+                DRIVER.UiNode({"resource-id": "collection-editor-gear-item"}),
+                first_up,
+            ],
+            [DRIVER.UiNode({"resource-id": "build-section-gear"}), second_up],
+            root_nodes,
+            root_nodes,
+        ]
+        device.node_has_tappable_bounds.return_value = True
+
+        with (
+            patch.object(DRIVER.time, "sleep"),
+            patch.object(DRIVER, "reset_scroll_to_top") as reset_scroll,
+        ):
+            observed = DRIVER.return_to_phone_runner_root(device, created=True)
+
+        self.assertIs(runner_route, observed)
+        self.assertEqual(
+            [
+                call("input", "tap", "70", "150"),
+                call("input", "tap", "70", "250"),
+            ],
+            device.shell.call_args_list,
+        )
+        reset_scroll.assert_called_once_with(device, swipes=48)
+
+    def test_phone_runner_root_does_not_accept_toolbar_without_exact_route(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.return_value = [self.phone_runner_toolbar()]
+
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=[0.0, 0.0, 2.0]),
+            patch.object(DRIVER.time, "sleep"),
+            patch.object(DRIVER, "reset_scroll_to_top") as reset_scroll,
+            self.assertRaisesRegex(RuntimeError, "Timed out proving the exact"),
+        ):
+            DRIVER.return_to_phone_runner_root(device, timeout=1)
+
+        device.shell.assert_not_called()
+        reset_scroll.assert_not_called()
+        device.capture.assert_called_once_with("phone-runner-root-unavailable")
+
+    def test_phone_runner_root_does_not_reset_for_hidden_root_toolbar(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.return_value = [
+            self.phone_runner_page(),
+            self.phone_runner_toolbar(),
+        ]
+        device.node_has_tappable_bounds.side_effect = [True, False]
+
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=[0.0, 0.0, 2.0]),
+            patch.object(DRIVER.time, "sleep"),
+            patch.object(DRIVER, "reset_scroll_to_top") as reset_scroll,
+            self.assertRaisesRegex(RuntimeError, "Timed out proving the exact"),
+        ):
+            DRIVER.return_to_phone_runner_root(device, timeout=1)
+
+        reset_scroll.assert_not_called()
+        device.shell.assert_not_called()
+
+    def test_phone_runner_root_rejects_page_not_visible_to_user(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        page = self.phone_runner_page()
+        page.attributes["visible-to-user"] = "false"
+        device.hierarchy.return_value = [
+            page,
+            self.phone_runner_toolbar(),
+            self.phone_runner_route(),
+        ]
+
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=[0.0, 0.0, 2.0]),
+            patch.object(DRIVER.time, "sleep"),
+            patch.object(DRIVER, "reset_scroll_to_top") as reset_scroll,
+            self.assertRaisesRegex(RuntimeError, "Timed out proving the exact"),
+        ):
+            DRIVER.return_to_phone_runner_root(device, timeout=1)
+
+        reset_scroll.assert_not_called()
+        device.shell.assert_not_called()
+
+    def test_phone_runner_root_rejects_toolbar_not_visible_to_user(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        toolbar = self.phone_runner_toolbar()
+        toolbar.attributes["visible-to-user"] = "false"
+        device.hierarchy.return_value = [
+            self.phone_runner_page(),
+            toolbar,
+            self.phone_runner_route(),
+        ]
+
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=[0.0, 0.0, 2.0]),
+            patch.object(DRIVER.time, "sleep"),
+            patch.object(DRIVER, "reset_scroll_to_top") as reset_scroll,
+            self.assertRaisesRegex(RuntimeError, "Timed out proving the exact"),
+        ):
+            DRIVER.return_to_phone_runner_root(device, timeout=1)
+
+        reset_scroll.assert_not_called()
+        device.shell.assert_not_called()
+
+    def test_phone_runner_root_rejects_route_not_visible_to_user(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        route = self.phone_runner_route()
+        route.attributes["visible-to-user"] = "false"
+        root = [self.phone_runner_page(), self.phone_runner_toolbar(), route]
+        device.hierarchy.return_value = root
+        device.node_has_tappable_bounds.return_value = True
+
+        with (
+            patch.object(
+                DRIVER.time,
+                "monotonic",
+                side_effect=[0.0, 0.0, 0.0, 2.0],
+            ),
+            patch.object(DRIVER.time, "sleep"),
+            patch.object(DRIVER, "reset_scroll_to_top") as reset_scroll,
+            self.assertRaisesRegex(RuntimeError, "Timed out proving the exact"),
+        ):
+            DRIVER.return_to_phone_runner_root(device, timeout=1)
+
+        reset_scroll.assert_called_once_with(device, swipes=48)
+        device.shell.assert_not_called()
+
+    def test_phone_runner_root_rejects_navigate_up_not_visible_to_user(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        navigate_up = self.native_navigate_up("[20,100][120,200]")
+        navigate_up.attributes["visible-to-user"] = "false"
+        device.hierarchy.return_value = [navigate_up]
+
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=[0.0, 0.0, 2.0]),
+            patch.object(DRIVER.time, "sleep"),
+            self.assertRaisesRegex(RuntimeError, "Timed out proving the exact"),
+        ):
+            DRIVER.return_to_phone_runner_root(device, timeout=1)
+
+        device.shell.assert_not_called()
+
+    def test_phone_runner_root_rejects_foreign_suffix_markers(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.return_value = [
+            DRIVER.UiNode(
+                {
+                    "resource-id": "evil.package:id/phone-runner-page",
+                    "package": "evil.package",
+                    "class": "android.view.ViewGroup",
+                    "enabled": "true",
+                }
+            ),
+            self.phone_runner_toolbar(),
+            DRIVER.UiNode(
+                {
+                    "resource-id": "evil.package:id/phone-runner-sheet",
+                    "package": "evil.package",
+                    "class": "android.widget.TextView",
+                    "enabled": "true",
+                    "text": "CAREER RUNNER",
+                    "bounds": "[53,323][1028,362]",
+                }
+            ),
+        ]
+
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=[0.0, 0.0, 2.0]),
+            patch.object(DRIVER.time, "sleep"),
+            patch.object(DRIVER, "reset_scroll_to_top") as reset_scroll,
+            self.assertRaisesRegex(RuntimeError, "Timed out proving the exact"),
+        ):
+            DRIVER.return_to_phone_runner_root(device, timeout=1)
+
+        reset_scroll.assert_not_called()
+        device.shell.assert_not_called()
+
+    def test_phone_runner_root_rejects_route_still_offscreen_after_reset(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        clipped_route = self.phone_runner_route(bounds="[53,-6506][1028,-6467]")
+        root = [self.phone_runner_page(), self.phone_runner_toolbar(), clipped_route]
+        device.hierarchy.side_effect = [root, root]
+        device.node_has_tappable_bounds.side_effect = [True, True, True, True, False]
+
+        with (
+            patch.object(DRIVER, "reset_scroll_to_top") as reset_scroll,
+            self.assertRaisesRegex(RuntimeError, "not visible"),
+        ):
+            DRIVER.return_to_phone_runner_root(device, created=True)
+
+        reset_scroll.assert_called_once_with(device, swipes=48)
+        device.capture.assert_called_once_with("phone-runner-route-structure-invalid")
+
+    def test_phone_runner_root_does_not_activate_disabled_navigate_up(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        disabled = self.native_navigate_up("[20,100][120,200]")
+        disabled.attributes["enabled"] = "false"
+        device.hierarchy.return_value = [disabled]
+
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=[0.0, 0.0, 2.0]),
+            patch.object(DRIVER.time, "sleep"),
+            self.assertRaisesRegex(RuntimeError, "Timed out proving the exact"),
+        ):
+            DRIVER.return_to_phone_runner_root(device, timeout=1)
+
+        device.shell.assert_not_called()
+
+    def test_phone_runner_root_unwind_is_bounded_and_fails_closed(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.return_value = [
+            self.native_navigate_up("[20,100][120,200]")
+        ]
+        device.node_has_tappable_bounds.return_value = True
+
+        with (
+            patch.object(DRIVER.time, "sleep"),
+            self.assertRaisesRegex(RuntimeError, "1 exact Navigate up activation"),
+        ):
+            DRIVER.return_to_phone_runner_root(device, max_back_steps=1)
+
+        device.shell.assert_called_once_with("input", "tap", "70", "150")
+        device.capture.assert_called_once_with("phone-runner-root-unwind-exhausted")
 
     def test_open_build_binds_phone_navigation_to_one_final_runner_root(self) -> None:
         device = Mock(spec=DRIVER.Device)
@@ -249,7 +567,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 "bind_phone_shell_destinations",
                 return_value=destinations,
             ),
-            patch.object(DRIVER, "wait_for_phone_runner_route") as wait_route,
+            patch.object(DRIVER, "return_to_phone_runner_root") as return_to_root,
         ):
             DRIVER.open_build(device, "phone")
 
@@ -271,7 +589,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         )
         device.shell.assert_called_once_with("input", "tap", "540", "2263")
         device.tap.assert_not_called()
-        wait_route.assert_called_once_with(device)
+        return_to_root.assert_called_once_with(device)
         device.open_navigation_drawer.assert_not_called()
 
     def test_phone_destination_tap_uses_structural_native_tab_not_text_alias(self) -> None:
@@ -3281,8 +3599,19 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 self.calls.append(("wait_exact", selector, options))
 
         device = GearRouteDevice()
-        DRIVER.open_gear_section(device, "phone")
+        with patch.object(
+            DRIVER,
+            "return_to_phone_runner_root",
+            side_effect=lambda actual, **options: actual.calls.append(
+                ("return_to_root", "", options)
+            ),
+        ):
+            DRIVER.open_gear_section(device, "phone")
 
+        self.assertEqual(
+            ("return_to_root", "", {"created": True}),
+            device.calls[0],
+        )
         self.assertEqual(
             (
                 "tap_bidirectional",
@@ -3295,7 +3624,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     "exact_resource_id": True,
                 },
             ),
-            device.calls[0],
+            device.calls[1],
         )
         self.assertEqual(
             [
@@ -3310,7 +3639,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     },
                 ),
             ],
-            device.calls[1:],
+            device.calls[2:],
         )
         self.assertNotIn(
             "build-action-tab-gear-gear",
@@ -3781,7 +4110,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device = Mock()
         device.assert_text = Mock()
 
-        DRIVER.add_and_edit_gear(device, "phone")
+        with patch.object(DRIVER, "return_to_phone_runner_root"):
+            DRIVER.add_and_edit_gear(device, "phone")
 
         name_edit = device.method_calls.index(
             call.set_text(
