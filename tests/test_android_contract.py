@@ -81,8 +81,8 @@ class AndroidContractTests(unittest.TestCase):
         )
 
         for dependency, commit, checkout_count in (
-            ("ArchonMegalon/chummer6-ui", "d276f1d0ed8f76938d26b92389e62676f48acf7b", 2),
-            ("ArchonMegalon/chummer6-core", "da43a509b1f41abe70f3426253acd7158352e589", 2),
+            ("ArchonMegalon/chummer6-ui", "bd01091df3cdeb889c8336f9b2bf5e07af1c3c82", 2),
+            ("ArchonMegalon/chummer6-core", "7b8241f87c911077f3f5c756c0d0978f784c8052", 2),
             ("ArchonMegalon/chummer6-hub", "d29a880f624ec94aabedd0c2901ae8fed2f93ed4", 1),
             ("ArchonMegalon/chummer6-ui-kit", "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61", 1),
             ("ArchonMegalon/chummer6-hub-registry", "af9a7e19c3bf331e96411dfb8f9e7820a98cab29", 1),
@@ -716,7 +716,11 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('save.AutomationId = "more-save-runner"', more)
         self.assertIn("Coordinator.SaveAsync", build + more)
         self.assertIn("await _presenter.SaveAsync", coordinator)
-        self.assertIn('_notice = State.Error is null ? "Saved." : null', coordinator)
+        self.assertIn("_durableSaveNotice = null;", coordinator)
+        self.assertIn("TryRefreshWorkspaceAuthorityAsync", coordinator)
+        self.assertIn("bool durableSaveVerified = State.Error is null", coordinator)
+        self.assertIn("_durableSaveNotice = new NativeDurableSaveNotice(", coordinator)
+        self.assertIn('_notice = "Saved.";', coordinator)
         self.assertIn('"journey": "explicit-save"', driver)
         self.assertIn('"creationBuildToolbarSaveInvoked": "pass"', driver)
         self.assertIn('"creationMorePageSaveInvoked": "pass"', driver)

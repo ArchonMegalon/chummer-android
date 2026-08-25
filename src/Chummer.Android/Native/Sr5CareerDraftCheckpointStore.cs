@@ -1,7 +1,78 @@
 using System.Text.Json;
+using System.Security.Cryptography;
+using System.Text;
+using Chummer.Contracts.Characters;
 using Microsoft.Maui.Storage;
 
 namespace Chummer.Android.Native;
+
+internal static class Sr5CareerRecoveryProof
+{
+    private static readonly byte[] ProcessKey = RandomNumberGenerator.GetBytes(32);
+
+    public static Sr5CareerRecoveryResolution Create(
+        Sr5CareerDraftCheckpoint checkpoint,
+        Sr5CareerRecoveryStatus status,
+        Sr5CareerActiveSkillReceipt? receipt,
+        string message)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        string proof = Sign(checkpoint, status, receipt, message);
+        return new(
+            status,
+            checkpoint.WorkspaceId,
+            checkpoint.OwnerId,
+            checkpoint.ActionId,
+            checkpoint.Version,
+            receipt,
+            message,
+            proof);
+    }
+
+    public static bool Verifies(
+        Sr5CareerDraftCheckpoint checkpoint,
+        Sr5CareerRecoveryResolution resolution)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(resolution);
+        if (resolution.AuthorityProof is not { Length: 64 })
+        {
+            return false;
+        }
+        try
+        {
+            byte[] actual = Convert.FromHexString(resolution.AuthorityProof);
+            byte[] expected = Convert.FromHexString(Sign(
+                checkpoint,
+                resolution.Status,
+                resolution.Receipt,
+                resolution.Message));
+            return actual.Length == expected.Length
+                && CryptographicOperations.FixedTimeEquals(actual, expected);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
+
+    private static string Sign(
+        Sr5CareerDraftCheckpoint checkpoint,
+        Sr5CareerRecoveryStatus status,
+        Sr5CareerActiveSkillReceipt? receipt,
+        string message)
+    {
+        string payload = string.Join(
+            "\n",
+            JsonSerializer.Serialize(checkpoint),
+            status.ToString(),
+            JsonSerializer.Serialize(receipt),
+            message);
+        return Convert.ToHexString(
+            HMACSHA256.HashData(ProcessKey, Encoding.UTF8.GetBytes(payload)))
+            .ToLowerInvariant();
+    }
+}
 
 public interface ISr5CareerCheckpointBackend
 {
@@ -10,7 +81,7 @@ public interface ISr5CareerCheckpointBackend
     void Remove();
 }
 
-internal interface ISr5CareerCheckpointOwnerAuthority
+public interface ISr5CareerCheckpointOwnerAuthority
 {
     Guid CurrentOwnerId { get; }
 }
@@ -19,6 +90,7 @@ internal interface ISr5CareerReviewedCheckpointAuthority :
     ISr5CareerCheckpointOwnerAuthority
 {
     bool Owns(Sr5CareerDraftCheckpoint checkpoint);
+    bool OwnsCurrentRunner(Sr5CareerDraftCheckpoint checkpoint);
 }
 
 internal sealed class PreferencesSr5CareerCheckpointOwnerAuthority :
@@ -196,14 +268,16 @@ public sealed class Sr5CareerDraftCheckpointStore
         lock (Gate)
         {
             if (expected.Phase != Sr5CareerCheckpointPhase.Applying
-                || !TryRequireCasLocked(expected, out Sr5CareerDraftCheckpoint current, out blocker))
+                || !TryRequireCasLocked(expected, out Sr5CareerDraftCheckpoint current, out blocker)
+                || _reviewedAuthority is null
+                || !_reviewedAuthority.OwnsCurrentRunner(current))
             {
                 blocker = string.IsNullOrWhiteSpace(blocker)
-                    ? "Only the exact Applying owner may record an outcome."
+                    ? "Only the live authenticated SR5 owner and runner may record this exact Applying outcome."
                     : blocker;
                 return false;
             }
-            if (!ResolutionMatches(expected, resolution)
+            if (!ResolutionMatches(current, expected, resolution)
                 || resolution.Status == Sr5CareerRecoveryStatus.OutcomeUnknown)
             {
                 blocker = "An unknown or foreign outcome cannot change the Applying checkpoint.";
@@ -253,25 +327,95 @@ public sealed class Sr5CareerDraftCheckpointStore
         }
     }
 
-    public bool TryDeleteApplied(
+    internal bool TryDeleteApplied(
         Sr5CareerCheckpointCas expected,
+        Sr5CareerActiveSkillReceipt receipt,
         out string blocker)
     {
         ArgumentNullException.ThrowIfNull(expected);
+        ArgumentNullException.ThrowIfNull(receipt);
         blocker = string.Empty;
         lock (Gate)
         {
             if (expected.Phase != Sr5CareerCheckpointPhase.Applied
-                || !TryRequireCasLocked(expected, out _, out blocker))
+                || !TryRequireCasLocked(
+                    expected,
+                    out Sr5CareerDraftCheckpoint current,
+                    out blocker)
+                || _reviewedAuthority is null
+                || !_reviewedAuthority.OwnsCurrentRunner(current)
+                || !ReceiptMatchesCheckpoint(current, receipt))
             {
                 blocker = string.IsNullOrWhiteSpace(blocker)
-                    ? "Only an exact Applied receipt checkpoint may be acknowledged."
+                    ? "Only the current authenticated SR5 owner may acknowledge this exact Applied receipt checkpoint."
                     : blocker;
                 return false;
             }
             return TryDeleteAndReadBackLocked(out blocker);
         }
     }
+
+    internal static bool ReceiptMatchesCheckpoint(
+        Sr5CareerDraftCheckpoint checkpoint,
+        Sr5CareerActiveSkillReceipt receipt)
+        => checkpoint.Phase is (Sr5CareerCheckpointPhase.Applying
+               or Sr5CareerCheckpointPhase.Applied)
+           && checkpoint.IsStructurallyValid()
+           && receipt.OwnerId == checkpoint.OwnerId
+           && receipt.ActionId == checkpoint.ActionId
+           && string.Equals(receipt.IdempotencyKey, checkpoint.IdempotencyKey, StringComparison.Ordinal)
+           && string.Equals(receipt.RouteId, Sr5CareerWizardRoutes.ActiveSkillReceipt, StringComparison.Ordinal)
+           && string.Equals(receipt.WorkspaceId.Value, checkpoint.WorkspaceId, StringComparison.Ordinal)
+           && receipt.PreviousContentRevision == checkpoint.ExpectedContentRevision
+           && checkpoint.ExpectedContentRevision < long.MaxValue
+           && receipt.SavedContentRevision == checkpoint.ExpectedContentRevision + 1
+           && receipt.SkillId == checkpoint.SkillId
+           && receipt.SourceSkillId == checkpoint.SourceSkillId
+           && string.Equals(receipt.SkillName, checkpoint.SkillName, StringComparison.Ordinal)
+           && string.Equals(receipt.SkillCategory, checkpoint.SkillCategory, StringComparison.Ordinal)
+           && receipt.BasePoints == checkpoint.BasePoints
+           && checkpoint.PreviousKarmaPoints < int.MaxValue
+           && receipt.SavedSkillKarmaPoints == checkpoint.PreviousKarmaPoints + 1
+           && receipt.RatingMaximum == checkpoint.RatingMaximum
+           && receipt.PreviousRating == checkpoint.PreviousRating
+           && receipt.SavedRating == checkpoint.TargetRating
+           && receipt.KarmaCost == -checkpoint.ExpenseAmount
+           && receipt.SavedKarma == checkpoint.SavedKarma
+           && receipt.ExpenseId == checkpoint.ActionId
+           && receipt.ExpenseDateLocal == checkpoint.ExpenseDateLocal
+           && string.Equals(receipt.ExpenseReason, checkpoint.ExpenseReason, StringComparison.Ordinal)
+           && string.Equals(receipt.ExpenseType, checkpoint.ExpenseType, StringComparison.Ordinal)
+           && receipt.ExpenseRefund == checkpoint.ExpenseRefund
+           && receipt.ExpenseForceCareerVisible == checkpoint.ExpenseForceCareerVisible
+           && string.Equals(receipt.KarmaUndoType, checkpoint.KarmaUndoType, StringComparison.Ordinal)
+           && string.Equals(receipt.NuyenUndoType, checkpoint.NuyenUndoType, StringComparison.Ordinal)
+           && string.Equals(receipt.UndoObjectId, checkpoint.UndoObjectId, StringComparison.Ordinal)
+           && receipt.UndoQuantity == checkpoint.UndoQuantity
+           && string.Equals(receipt.UndoExtra, checkpoint.UndoExtra, StringComparison.Ordinal)
+           && string.Equals(receipt.ReviewedRuleDigest, checkpoint.RuleDigest, StringComparison.Ordinal)
+           && string.Equals(receipt.RuleDigest, checkpoint.RuleDigest, StringComparison.Ordinal)
+           && string.Equals(receipt.SourceRevision, checkpoint.SourceRevision, StringComparison.Ordinal)
+           && ExactLoadedQuoteIsCoherent(receipt);
+
+    private static bool ExactLoadedQuoteIsCoherent(Sr5CareerActiveSkillReceipt receipt)
+        => CharacterCareerActiveSkillAdvanceRules.IsCoherent(
+            new CharacterCareerActiveSkillAdvanceQuote(
+                new CharacterCareerActiveSkillIdentity(
+                    receipt.SkillId,
+                    receipt.SourceSkillId),
+                receipt.SkillName,
+                receipt.SkillCategory,
+                receipt.BasePoints,
+                receipt.SavedSkillKarmaPoints,
+                receipt.SavedRating,
+                receipt.RatingMaximum,
+                receipt.SavedKarma,
+                receipt.NextKarmaCost,
+                receipt.CanAdvanceAgain,
+                receipt.NextAdvanceBlocker,
+                receipt.LogicalRevision,
+                receipt.SourceRevision,
+                receipt.RuleDigest));
 
     private bool TryDeleteAndReadBackLocked(out string blocker)
     {
@@ -396,10 +540,19 @@ public sealed class Sr5CareerDraftCheckpointStore
     }
 
     private static bool ResolutionMatches(
+        Sr5CareerDraftCheckpoint checkpoint,
         Sr5CareerCheckpointCas expected,
         Sr5CareerRecoveryResolution resolution)
         => string.Equals(expected.WorkspaceId, resolution.WorkspaceId, StringComparison.Ordinal)
            && expected.OwnerId == resolution.OwnerId
            && expected.ActionId == resolution.ActionId
-           && expected.Version == resolution.CheckpointVersion;
+           && expected.Version == resolution.CheckpointVersion
+           && Sr5CareerRecoveryProof.Verifies(checkpoint, resolution)
+           && (resolution.Status switch
+           {
+               Sr5CareerRecoveryStatus.AppliedVerified when resolution.Receipt is { } receipt =>
+                   ReceiptMatchesCheckpoint(checkpoint, receipt),
+               Sr5CareerRecoveryStatus.NotAppliedVerified => resolution.Receipt is null,
+               _ => false
+           });
 }

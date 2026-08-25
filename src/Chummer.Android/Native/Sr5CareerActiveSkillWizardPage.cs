@@ -37,6 +37,48 @@ internal sealed class Sr5CareerLiveReviewedCheckpointAuthority(
                 _currentBinding());
         return currentAccess.Owns(checkpoint);
     }
+
+    public bool OwnsCurrentRunner(Sr5CareerDraftCheckpoint checkpoint)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        Sr5CareerRunnerBinding binding = _currentBinding();
+        if (!checkpoint.IsStructurallyValid()
+            || CurrentOwnerId == Guid.Empty
+            || checkpoint.OwnerId != CurrentOwnerId
+            || !Sr5CareerWizardCatalog.IsSr5CareerRunner(
+                binding.Created,
+                binding.GameEdition)
+            || binding.WorkspaceId?.Value != checkpoint.WorkspaceId)
+        {
+            return false;
+        }
+
+        return checkpoint.Phase switch
+        {
+            Sr5CareerCheckpointPhase.Reviewed =>
+                binding.ContentRevision == checkpoint.ExpectedContentRevision
+                && binding.SavedRevision == checkpoint.ExpectedContentRevision
+                && !binding.IsDirty
+                && string.IsNullOrWhiteSpace(binding.Error),
+            Sr5CareerCheckpointPhase.Applying =>
+                (binding.ContentRevision == checkpoint.ExpectedContentRevision
+                    && binding.SavedRevision == checkpoint.ExpectedContentRevision
+                    && !binding.IsDirty
+                    && string.IsNullOrWhiteSpace(binding.Error))
+                || (checkpoint.ExpectedContentRevision < long.MaxValue
+                    && binding.ContentRevision == checkpoint.ExpectedContentRevision + 1
+                    && binding.SavedRevision == binding.ContentRevision
+                    && !binding.IsDirty
+                    && string.IsNullOrWhiteSpace(binding.Error)),
+            Sr5CareerCheckpointPhase.Applied =>
+                checkpoint.ExpectedContentRevision < long.MaxValue
+                && binding.ContentRevision == checkpoint.ExpectedContentRevision + 1
+                && binding.SavedRevision == binding.ContentRevision
+                && !binding.IsDirty
+                && string.IsNullOrWhiteSpace(binding.Error),
+            _ => false
+        };
+    }
 }
 
 internal sealed record Sr5CareerActiveSkillWizardDependencies(
@@ -81,7 +123,8 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
             coordinator,
             editor,
             new Sr5CareerActiveSkillCoordinator(
-                new RunnerSessionSr5CareerActiveSkillPresenter(coordinator)),
+                new RunnerSessionSr5CareerActiveSkillPresenter(coordinator),
+                dependencies.ReviewedAuthority),
             dependencies.Store,
             dependencies.ReviewedAuthority)
     {
@@ -207,6 +250,7 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
             await Coordinator.InitializeAsync();
             if (_checkpoint?.Phase is (Sr5CareerCheckpointPhase.Applying
                 or Sr5CareerCheckpointPhase.Applied)
+                && _reviewedAuthority.OwnsCurrentRunner(_checkpoint)
                 && Interlocked.CompareExchange(ref _automaticResolutionStarted, 1, 0) == 0)
             {
                 await RunAsync(ResolveCheckpointAsync);
@@ -343,8 +387,11 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
     {
         if (_checkpoint is null
             || _checkpoint.Phase is not (Sr5CareerCheckpointPhase.Applying
-                or Sr5CareerCheckpointPhase.Applied))
+                or Sr5CareerCheckpointPhase.Applied)
+            || !_reviewedAuthority.OwnsCurrentRunner(_checkpoint))
         {
+            _recovery.Text = "This recovery lock belongs to another local owner or SR5 runner context.";
+            _recovery.TextColor = NativeTheme.Danger;
             return;
         }
 
@@ -380,7 +427,8 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
                 Coordinator,
                 receipt,
                 stored,
-                _store));
+                _store,
+                _reviewedAuthority));
             return;
         }
 
@@ -458,6 +506,12 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
                 .First(pair => pair.candidate.Identity == draft.Quote.Identity)
                 .index;
             _skills.SelectedIndex = selectedIndex;
+            return;
+        }
+        if (!_reviewedAuthority.OwnsCurrentRunner(checkpoint))
+        {
+            _recovery.Text = "A saved apply lock is not authorized for this current local owner and SR5 runner.";
+            _recovery.TextColor = NativeTheme.Danger;
             return;
         }
         _checkpoint = checkpoint;
@@ -644,7 +698,8 @@ public sealed class Sr5CareerActiveSkillReviewPage : NativePageBase
             Coordinator,
             result.Receipt!,
             resolved,
-            _store));
+            _store,
+            _reviewedAuthority));
     }
 
     private bool OwnsCurrentReviewedCheckpoint()
@@ -665,21 +720,22 @@ public sealed class Sr5CareerActiveSkillReceiptPage : NativePageBase
     private readonly Sr5CareerActiveSkillReceipt _receipt;
     private readonly Sr5CareerDraftCheckpoint _checkpoint;
     private readonly Sr5CareerDraftCheckpointStore _store;
+    private readonly ISr5CareerReviewedCheckpointAuthority _checkpointAuthority;
     private readonly Label _durability;
 
     internal Sr5CareerActiveSkillReceiptPage(
         RunnerSessionCoordinator coordinator,
         Sr5CareerActiveSkillReceipt receipt,
         Sr5CareerDraftCheckpoint checkpoint,
-        Sr5CareerDraftCheckpointStore store) : base(coordinator)
+        Sr5CareerDraftCheckpointStore store,
+        ISr5CareerReviewedCheckpointAuthority checkpointAuthority) : base(coordinator)
     {
         _receipt = receipt ?? throw new ArgumentNullException(nameof(receipt));
         _checkpoint = checkpoint ?? throw new ArgumentNullException(nameof(checkpoint));
         _store = store ?? throw new ArgumentNullException(nameof(store));
-        if (checkpoint.Phase != Sr5CareerCheckpointPhase.Applied
-            || checkpoint.WorkspaceId != receipt.WorkspaceId.Value
-            || checkpoint.OwnerId != receipt.OwnerId
-            || checkpoint.ActionId != receipt.ActionId)
+        _checkpointAuthority = checkpointAuthority ?? throw new ArgumentNullException(nameof(checkpointAuthority));
+        if (!Sr5CareerDraftCheckpointStore.ReceiptMatchesCheckpoint(checkpoint, receipt)
+            || !_checkpointAuthority.OwnsCurrentRunner(checkpoint))
         {
             throw new InvalidOperationException("The typed receipt does not own the resolved checkpoint.");
         }
@@ -715,7 +771,8 @@ public sealed class Sr5CareerActiveSkillReceiptPage : NativePageBase
         body.Add(_durability);
         body.Add(NativeTheme.Body(
             $"skill {receipt.SkillId:D} · source {receipt.SourceSkillId:D} · "
-            + $"source digest {receipt.SourceRevision} · loaded rule {receipt.RuleDigest} · "
+            + $"source digest {receipt.SourceRevision} · reviewed rule {receipt.ReviewedRuleDigest} · "
+            + $"loaded rule {receipt.RuleDigest} · loaded quote {receipt.LogicalRevision} · "
             + $"owner {receipt.OwnerId:D} · action {receipt.ActionId:D}",
             NativeTheme.Muted));
 
@@ -725,6 +782,7 @@ public sealed class Sr5CareerActiveSkillReceiptPage : NativePageBase
         {
             if (!_store.TryDeleteApplied(
                     Sr5CareerCheckpointCas.From(_checkpoint),
+                    _receipt,
                     out string blocker))
             {
                 await DisplayAlertAsync("Receipt remains pending", blocker, "OK");

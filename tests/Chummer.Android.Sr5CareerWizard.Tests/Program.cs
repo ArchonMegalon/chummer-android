@@ -19,15 +19,17 @@ internal static class Program
         await CreatedSr5BoundaryRejectsOtherLifecycleAndEditionAsync();
         await CoordinatorBuildsReceiptOnlyFromReloadedSkillAndExpenseAsync();
         await CoordinatorRejectsWrongSkillAndMissingExpenseAsync();
+        await ApplyingCheckpointMustMatchCompleteReviewedDraftAsync();
         CheckpointStoreEnforcesOwnerActionCasAndReadBack();
         ReviewedCheckpointAccessRejectsForeignOwnerWorkspaceAndBindings();
+        await AppliedCheckpointAcknowledgementRequiresLiveOwnerAndExactReceiptAsync();
         PriorSchemaCheckpointRemainsAReplayBlockingLock();
         await ApplyingCrashIsResolvedWithoutReplayAsync();
 #if AUTHORITY_LIGHTWEIGHT
         await SavedExpenseXmlProjectionIsPresenceAwareAndMalformedValuesFailClosedAsync();
-        Console.WriteLine("SR5 Career authority tests passed: 8");
+        Console.WriteLine("SR5 Career authority tests passed: 10");
 #else
-        Console.WriteLine("SR5 Career authority tests passed: 7");
+        Console.WriteLine("SR5 Career authority tests passed: 9");
 #endif
     }
 
@@ -35,7 +37,7 @@ internal static class Program
     {
         FakePresenter nonSr5 = FakePresenter.BeforeApply();
         nonSr5.BindingValue = nonSr5.BindingValue with { GameEdition = "SR6" };
-        Sr5CareerActiveSkillCoordinator authority = new(nonSr5);
+        Sr5CareerActiveSkillCoordinator authority = new(nonSr5, new FixedOwnerAuthority(OwnerId));
         await RequireThrowsAsync<InvalidOperationException>(
             () => authority.PrepareAsync(),
             "A non-SR5 runner must be rejected at the public prepare boundary.");
@@ -50,7 +52,7 @@ internal static class Program
 
         FakePresenter creation = FakePresenter.BeforeApply();
         creation.BindingValue = creation.BindingValue with { Created = false };
-        authority = new Sr5CareerActiveSkillCoordinator(creation);
+        authority = new Sr5CareerActiveSkillCoordinator(creation, new FixedOwnerAuthority(OwnerId));
         await RequireThrowsAsync<InvalidOperationException>(
             () => authority.PrepareAsync(),
             "An uncreated runner must be rejected at the public prepare boundary.");
@@ -58,14 +60,30 @@ internal static class Program
         await RequireThrowsAsync<InvalidOperationException>(
             () => authority.ApplyAsync(draft, applying),
             "An uncreated runner must be rejected again at apply time.");
+
+        FakePresenter valid = FakePresenter.BeforeApply();
+        await RequireThrowsAsync<InvalidOperationException>(
+            () => new Sr5CareerActiveSkillCoordinator(
+                valid,
+                new FixedOwnerAuthority(Guid.NewGuid())).ResolveAsync(applying),
+            "A foreign local owner must not resolve another owner's Applying checkpoint.");
     }
 
     private static async Task CoordinatorBuildsReceiptOnlyFromReloadedSkillAndExpenseAsync()
     {
         Sr5CareerActiveSkillDraft draft = Draft();
         Sr5CareerDraftCheckpoint reviewed = Sr5CareerDraftCheckpoint.FromDraft(draft);
+        FakePresenter presenter = FakePresenter.BeforeApply();
+        Sr5CareerLiveReviewedCheckpointAuthority checkpointAuthority = new(
+            new FixedOwnerAuthority(OwnerId),
+            new CareerActiveSkillAdvanceEditorState(
+                draft.WorkspaceId,
+                draft.ExpectedContentRevision,
+                [draft.Quote],
+                OmittedSkillCount: 0),
+            () => presenter.Binding);
         MemoryBackend backend = new();
-        Sr5CareerDraftCheckpointStore store = new(backend);
+        Sr5CareerDraftCheckpointStore store = new(backend, checkpointAuthority);
         Require(store.TryCreate(reviewed, out reviewed, out string blocker), blocker);
         Require(
             store.TryBeginApply(
@@ -74,13 +92,12 @@ internal static class Program
                 out blocker),
             blocker);
 
-        FakePresenter presenter = FakePresenter.BeforeApply();
         presenter.ApplyHandler = _ =>
         {
             presenter.PublishApplied(draft, includeExpense: true);
             return Task.FromResult(true);
         };
-        Sr5CareerActiveSkillCoordinator authority = new(presenter);
+        Sr5CareerActiveSkillCoordinator authority = new(presenter, new FixedOwnerAuthority(OwnerId));
         Sr5CareerApplyResult result = await authority.ApplyAsync(draft, applying);
 
         Require(result.Status == Sr5CareerApplyStatus.Applied, result.Message);
@@ -102,6 +119,44 @@ internal static class Program
         Require(receipt.UndoQuantity == draft.Plan.UndoQuantity, "Receipt must use the reloaded undo quantity.");
         Require(receipt.UndoExtra == draft.Plan.UndoExtra, "Receipt must use the reloaded undo extra value.");
         Require(receipt.RuleDigest == presenter.Skills!.Skills.Single().RuleDigest, "Receipt must use the post-save rule digest.");
+        Sr5CareerRecoveryResolution forgedStatus = result.Resolution with
+        {
+            Status = Sr5CareerRecoveryStatus.NotAppliedVerified,
+            Receipt = null
+        };
+        Require(
+            !store.TryRecordAuthoritativeResolution(
+                Sr5CareerCheckpointCas.From(applying),
+                forgedStatus,
+                out _,
+                out _),
+            "A caller must not forge an authoritative NotApplied result from an Applied proof.");
+        Sr5CareerRecoveryResolution forgedReceipt = result.Resolution with
+        {
+            Receipt = receipt with { ExpenseReason = receipt.ExpenseReason + " forged" }
+        };
+        Require(
+            !store.TryRecordAuthoritativeResolution(
+                Sr5CareerCheckpointCas.From(applying),
+                forgedReceipt,
+                out _,
+                out _),
+            "A caller must not alter any signed authoritative receipt field.");
+        Sr5CareerRecoveryResolution malformedProof = result.Resolution with
+        {
+            AuthorityProof = null!
+        };
+        Require(
+            !store.TryRecordAuthoritativeResolution(
+                Sr5CareerCheckpointCas.From(applying),
+                malformedProof,
+                out _,
+                out _),
+            "A null or malformed authority proof must fail closed without escaping the store boundary.");
+        Require(
+            store.TryRead(out Sr5CareerDraftCheckpoint stillApplying, out blocker)
+            && stillApplying == applying,
+            "Forged resolutions must leave the exact Applying lock unchanged.");
         Require(
             store.TryRecordAuthoritativeResolution(
                 Sr5CareerCheckpointCas.From(applying),
@@ -110,6 +165,30 @@ internal static class Program
                 out blocker),
             blocker);
         Require(applied.Phase == Sr5CareerCheckpointPhase.Applied, "Verified apply must advance the checkpoint to Applied.");
+    }
+
+    private static async Task ApplyingCheckpointMustMatchCompleteReviewedDraftAsync()
+    {
+        Sr5CareerActiveSkillDraft draft = Draft();
+        Sr5CareerDraftCheckpoint applying = Sr5CareerDraftCheckpoint.FromDraft(
+            draft,
+            Sr5CareerCheckpointPhase.Applying) with { Version = 2 };
+        Sr5CareerDraftCheckpoint tampered = applying with
+        {
+            ExpenseReason = applying.ExpenseReason + " tampered"
+        };
+        FakePresenter presenter = FakePresenter.BeforeApply();
+        presenter.ApplyHandler = _ => Task.FromResult(true);
+        Sr5CareerActiveSkillCoordinator coordinator = new(
+            presenter,
+            new FixedOwnerAuthority(OwnerId));
+
+        await RequireThrowsAsync<InvalidOperationException>(
+            () => coordinator.ApplyAsync(draft, tampered),
+            "Apply must reject an Applying checkpoint whose non-identity plan fields differ from the reviewed draft.");
+        Require(
+            presenter.ApplyCalls == 0,
+            "A tampered Applying checkpoint must be rejected before any mutation call.");
     }
 
     private static async Task CoordinatorRejectsWrongSkillAndMissingExpenseAsync()
@@ -130,7 +209,7 @@ internal static class Program
             }]
         };
         Sr5CareerRecoveryResolution wrongSkillResult =
-            await new Sr5CareerActiveSkillCoordinator(wrongSkill).ResolveAsync(applying);
+            await new Sr5CareerActiveSkillCoordinator(wrongSkill, new FixedOwnerAuthority(OwnerId)).ResolveAsync(applying);
         Require(
             wrongSkillResult.Status == Sr5CareerRecoveryStatus.OutcomeUnknown
             && wrongSkillResult.Receipt is null,
@@ -139,11 +218,48 @@ internal static class Program
         FakePresenter missingExpense = FakePresenter.BeforeApply();
         missingExpense.PublishApplied(draft, includeExpense: false);
         Sr5CareerRecoveryResolution missingExpenseResult =
-            await new Sr5CareerActiveSkillCoordinator(missingExpense).ResolveAsync(applying);
+            await new Sr5CareerActiveSkillCoordinator(missingExpense, new FixedOwnerAuthority(OwnerId)).ResolveAsync(applying);
         Require(
             missingExpenseResult.Status == Sr5CareerRecoveryStatus.OutcomeUnknown
             && missingExpenseResult.Receipt is null,
             "A missing exact expense must not produce a receipt.");
+
+        FakePresenter changedRuleEnvironment = FakePresenter.BeforeApply();
+        changedRuleEnvironment.PublishApplied(draft, includeExpense: true);
+        changedRuleEnvironment.Skills = changedRuleEnvironment.Skills! with
+        {
+            Skills = [Quote(
+                karmaPoints: 2,
+                totalRating: 4,
+                availableKarma: draft.Plan.SavedCharacterKarma,
+                rawRuleState: "<settings changed='true' />")]
+        };
+        Sr5CareerRecoveryResolution changedRuleResult =
+            await new Sr5CareerActiveSkillCoordinator(
+                changedRuleEnvironment,
+                new FixedOwnerAuthority(OwnerId)).ResolveAsync(applying);
+        Require(
+            changedRuleResult.Status == Sr5CareerRecoveryStatus.OutcomeUnknown
+            && changedRuleResult.Receipt is null,
+            "A changed rule environment must not verify the reviewed advancement.");
+
+        FakePresenter mismatchedSkillKarma = FakePresenter.BeforeApply();
+        mismatchedSkillKarma.PublishApplied(draft, includeExpense: true);
+        mismatchedSkillKarma.Skills = mismatchedSkillKarma.Skills! with
+        {
+            Skills = [Quote(
+                karmaPoints: 2,
+                totalRating: 4,
+                availableKarma: draft.Plan.SavedCharacterKarma + 1)]
+        };
+        Sr5CareerRecoveryResolution mismatchedSkillKarmaResult =
+            await new Sr5CareerActiveSkillCoordinator(
+                mismatchedSkillKarma,
+                new FixedOwnerAuthority(OwnerId)).ResolveAsync(applying);
+        Require(
+            mismatchedSkillKarmaResult.Status == Sr5CareerRecoveryStatus.OutcomeUnknown
+            && mismatchedSkillKarmaResult.Receipt is null,
+            "Skill and expense projections that disagree on saved Karma must not verify.");
 
         FakePresenter wrongExpense = FakePresenter.BeforeApply();
         wrongExpense.PublishApplied(draft, includeExpense: true);
@@ -153,7 +269,7 @@ internal static class Program
             Expenses = [loadedExpense with { RawKarmaUndoType = "AddSkill" }]
         };
         Sr5CareerRecoveryResolution wrongExpenseResult =
-            await new Sr5CareerActiveSkillCoordinator(wrongExpense).ResolveAsync(applying);
+            await new Sr5CareerActiveSkillCoordinator(wrongExpense, new FixedOwnerAuthority(OwnerId)).ResolveAsync(applying);
         Require(
             wrongExpenseResult.Status == Sr5CareerRecoveryStatus.OutcomeUnknown
             && wrongExpenseResult.Receipt is null,
@@ -280,7 +396,7 @@ internal static class Program
             CharacterCareerKarmaExpenseEntry expense = presenter.Expenses!.Expenses.Single();
             presenter.Expenses = presenter.Expenses with { Expenses = [tamper(expense)] };
             Sr5CareerRecoveryResolution resolution =
-                await new Sr5CareerActiveSkillCoordinator(presenter).ResolveAsync(applying);
+                await new Sr5CareerActiveSkillCoordinator(presenter, new FixedOwnerAuthority(OwnerId)).ResolveAsync(applying);
             Require(
                 resolution.Status == Sr5CareerRecoveryStatus.OutcomeUnknown
                 && resolution.Receipt is null,
@@ -292,7 +408,7 @@ internal static class Program
         CharacterCareerKarmaExpenseEntry exact = duplicateExpense.Expenses!.Expenses.Single();
         duplicateExpense.Expenses = duplicateExpense.Expenses with { Expenses = [exact, exact] };
         Sr5CareerRecoveryResolution duplicateResult =
-            await new Sr5CareerActiveSkillCoordinator(duplicateExpense).ResolveAsync(applying);
+            await new Sr5CareerActiveSkillCoordinator(duplicateExpense, new FixedOwnerAuthority(OwnerId)).ResolveAsync(applying);
         Require(
             duplicateResult.Status == Sr5CareerRecoveryStatus.OutcomeUnknown
             && duplicateResult.Receipt is null,
@@ -306,7 +422,7 @@ internal static class Program
             Expenses = [exact, exact with { Reason = exact.Reason + " conflict" }]
         };
         Sr5CareerRecoveryResolution conflictingDuplicateResult =
-            await new Sr5CareerActiveSkillCoordinator(conflictingDuplicate).ResolveAsync(applying);
+            await new Sr5CareerActiveSkillCoordinator(conflictingDuplicate, new FixedOwnerAuthority(OwnerId)).ResolveAsync(applying);
         Require(
             conflictingDuplicateResult.Status == Sr5CareerRecoveryStatus.OutcomeUnknown
             && conflictingDuplicateResult.Receipt is null,
@@ -339,8 +455,18 @@ internal static class Program
                 out blocker),
             blocker);
         Require(applying.Phase == Sr5CareerCheckpointPhase.Applying && applying.Version == 2, "Reviewed→Applying must be one exact CAS transition.");
+        FakePresenter appliedPresenter = FakePresenter.BeforeApply();
+        appliedPresenter.PublishApplied(Draft(), includeExpense: true);
+        Sr5CareerActiveSkillReceipt receipt = Sr5CareerActiveSkillCoordinator.Resolve(
+            applying,
+            appliedPresenter.Binding,
+            appliedPresenter.Skills,
+            appliedPresenter.Expenses).Receipt!;
         Require(
-            !store.TryDeleteApplied(Sr5CareerCheckpointCas.From(applying), out _),
+            !store.TryDeleteApplied(
+                Sr5CareerCheckpointCas.From(applying),
+                receipt,
+                out _),
             "Applying cannot be blindly cleared.");
 
         MemoryBackend nondurableBackend = new() { DropWrites = true };
@@ -424,7 +550,7 @@ internal static class Program
             Draft(),
             Sr5CareerCheckpointPhase.Applying) with
         {
-            SchemaVersion = 1,
+            SchemaVersion = Sr5CareerDraftCheckpoint.CurrentSchemaVersion - 1,
             Version = 2
         };
         string legacyPayload = JsonSerializer.Serialize(legacy);
@@ -445,6 +571,165 @@ internal static class Program
         Require(
             backend.Read() == legacyPayload,
             "A prior-schema Applying lock must remain durable for explicit recovery instead of being deleted.");
+    }
+
+    private static async Task AppliedCheckpointAcknowledgementRequiresLiveOwnerAndExactReceiptAsync()
+    {
+        Sr5CareerActiveSkillDraft draft = Draft();
+        Sr5CareerDraftCheckpoint reviewed = Sr5CareerDraftCheckpoint.FromDraft(draft);
+        MutableOwnerAuthority ownerAuthority = new(OwnerId);
+        Sr5CareerRunnerBinding liveBinding = FakePresenter.BeforeApply().Binding;
+        CareerActiveSkillAdvanceEditorState reviewedEditor = new(
+            draft.WorkspaceId,
+            draft.ExpectedContentRevision,
+            [draft.Quote],
+            OmittedSkillCount: 0);
+        Sr5CareerLiveReviewedCheckpointAuthority checkpointAuthority = new(
+            ownerAuthority,
+            reviewedEditor,
+            () => liveBinding);
+        MemoryBackend backend = new();
+        Sr5CareerDraftCheckpointStore store = new(backend, checkpointAuthority);
+        Require(store.TryCreate(reviewed, out reviewed, out string blocker), blocker);
+        Require(
+            store.TryBeginApply(
+                Sr5CareerCheckpointCas.From(reviewed),
+                out Sr5CareerDraftCheckpoint applying,
+                out blocker),
+            blocker);
+
+        FakePresenter presenter = FakePresenter.BeforeApply();
+        presenter.PublishApplied(draft, includeExpense: true);
+        liveBinding = presenter.Binding;
+        Sr5CareerRecoveryResolution resolution = await new Sr5CareerActiveSkillCoordinator(
+            presenter,
+            new FixedOwnerAuthority(OwnerId)).ResolveAsync(applying);
+        Require(resolution.Status == Sr5CareerRecoveryStatus.AppliedVerified, resolution.Message);
+        ownerAuthority.CurrentOwnerId = Guid.NewGuid();
+        Require(
+            !store.TryRecordAuthoritativeResolution(
+                Sr5CareerCheckpointCas.From(applying),
+                resolution,
+                out _,
+                out _),
+            "A valid resolution must not commit after the authenticated local owner changes.");
+        Require(
+            store.TryRead(out Sr5CareerDraftCheckpoint unchangedApplying, out blocker)
+            && unchangedApplying == applying,
+            "A foreign-owner resolution commit must preserve the Applying lock.");
+        ownerAuthority.CurrentOwnerId = OwnerId;
+        Sr5CareerRunnerBinding exactResolvedBinding = liveBinding;
+        liveBinding = liveBinding with
+        {
+            WorkspaceId = new CharacterWorkspaceId("foreign-workspace")
+        };
+        Require(
+            !store.TryRecordAuthoritativeResolution(
+                Sr5CareerCheckpointCas.From(applying),
+                resolution,
+                out _,
+                out _),
+            "A valid resolution must not commit after the live workspace changes.");
+        Require(
+            store.TryRead(out unchangedApplying, out blocker)
+            && unchangedApplying == applying,
+            "A foreign-workspace resolution commit must preserve the Applying lock.");
+        liveBinding = exactResolvedBinding;
+        Require(
+            store.TryRecordAuthoritativeResolution(
+                Sr5CareerCheckpointCas.From(applying),
+                resolution,
+                out Sr5CareerDraftCheckpoint applied,
+                out blocker),
+            blocker);
+        Sr5CareerActiveSkillReceipt receipt = resolution.Receipt!;
+
+        ownerAuthority.CurrentOwnerId = Guid.NewGuid();
+        Require(
+            !store.TryDeleteApplied(
+                Sr5CareerCheckpointCas.From(applied),
+                receipt,
+                out _),
+            "A foreign local owner must not acknowledge or delete an Applied checkpoint.");
+        Require(store.TryRead(out Sr5CareerDraftCheckpoint unchanged, out blocker), blocker);
+        Require(unchanged == applied, "A foreign-owner acknowledgement must preserve the lock.");
+
+        ownerAuthority.CurrentOwnerId = OwnerId;
+        Sr5CareerRunnerBinding exactSavedBinding = liveBinding;
+        liveBinding = liveBinding with
+        {
+            WorkspaceId = new CharacterWorkspaceId("foreign-workspace")
+        };
+        Require(
+            !store.TryDeleteApplied(
+                Sr5CareerCheckpointCas.From(applied),
+                receipt,
+                out _),
+            "A foreign workspace must not acknowledge or delete an Applied checkpoint.");
+        Require(store.TryRead(out unchanged, out blocker), blocker);
+        Require(unchanged == applied, "A foreign-workspace acknowledgement must preserve the lock.");
+
+        liveBinding = exactSavedBinding with { IsDirty = true };
+        Require(
+            !store.TryDeleteApplied(
+                Sr5CareerCheckpointCas.From(applied),
+                receipt,
+                out _),
+            "A dirty live runner must not acknowledge or delete an Applied checkpoint.");
+        Require(store.TryRead(out unchanged, out blocker), blocker);
+        Require(unchanged == applied, "A dirty-runner acknowledgement must preserve the lock.");
+
+        liveBinding = exactSavedBinding with
+        {
+            ContentRevision = exactSavedBinding.ContentRevision + 1,
+            SavedRevision = exactSavedBinding.SavedRevision + 1
+        };
+        Require(
+            !store.TryDeleteApplied(
+                Sr5CareerCheckpointCas.From(applied),
+                receipt,
+                out _),
+            "A later live revision must not acknowledge an older Applied checkpoint.");
+        Require(store.TryRead(out unchanged, out blocker), blocker);
+        Require(unchanged == applied, "A later-revision acknowledgement must preserve the lock.");
+
+        liveBinding = exactSavedBinding;
+        Require(
+            !store.TryDeleteApplied(
+                Sr5CareerCheckpointCas.From(applied),
+                receipt with { IdempotencyKey = new string('0', 64) },
+                out _),
+            "A receipt with a foreign action binding must not delete the checkpoint.");
+        Require(store.TryRead(out unchanged, out blocker), blocker);
+        Require(unchanged == applied, "A mismatched receipt acknowledgement must preserve the lock.");
+
+        Require(
+            !store.TryDeleteApplied(
+                Sr5CareerCheckpointCas.From(applied),
+                receipt with { LogicalRevision = new string('0', 64) },
+                out _),
+            "A receipt with forged loaded logical authority must not delete the checkpoint.");
+        Require(store.TryRead(out unchanged, out blocker), blocker);
+        Require(unchanged == applied, "A forged logical revision must preserve the lock.");
+
+        Require(
+            !store.TryDeleteApplied(
+                Sr5CareerCheckpointCas.From(applied),
+                receipt with { RuleDigest = new string('0', 64) },
+                out _),
+            "A receipt with forged loaded rule authority must not delete the checkpoint.");
+        Require(store.TryRead(out unchanged, out blocker), blocker);
+        Require(unchanged == applied, "A forged rule digest must preserve the lock.");
+
+        Require(
+            store.TryDeleteApplied(
+                Sr5CareerCheckpointCas.From(applied),
+                receipt,
+                out blocker),
+            blocker);
+        Require(
+            !store.TryRead(out _, out blocker) && string.IsNullOrWhiteSpace(blocker),
+            "Only the live exact owner and receipt may durably acknowledge the Applied checkpoint.");
     }
 
     private static async Task ApplyingCrashIsResolvedWithoutReplayAsync()
@@ -471,17 +756,29 @@ internal static class Program
             presenter.PublishApplied(draft, includeExpense: true);
             throw new InvalidOperationException("simulated process death after durable save");
         };
-        Sr5CareerActiveSkillCoordinator firstProcess = new(presenter);
+        Sr5CareerActiveSkillCoordinator firstProcess = new(
+            presenter,
+            new FixedOwnerAuthority(OwnerId));
         await RequireThrowsAsync<InvalidOperationException>(
             () => firstProcess.ApplyAsync(draft, applying),
             "The simulated crash must escape while the checkpoint remains Applying.");
         Require(presenter.ApplyCalls == 1, "The first process must attempt apply exactly once.");
 
-        Sr5CareerDraftCheckpointStore restartedStore = new(backend);
+        Sr5CareerLiveReviewedCheckpointAuthority restartedAuthority = new(
+            new FixedOwnerAuthority(OwnerId),
+            new CareerActiveSkillAdvanceEditorState(
+                draft.WorkspaceId,
+                draft.ExpectedContentRevision,
+                [draft.Quote],
+                OmittedSkillCount: 0),
+            () => presenter.Binding);
+        Sr5CareerDraftCheckpointStore restartedStore = new(
+            backend,
+            restartedAuthority);
         Require(restartedStore.TryRead(out Sr5CareerDraftCheckpoint recovered, out blocker), blocker);
         Require(recovered.Phase == Sr5CareerCheckpointPhase.Applying, "Restart must observe the durable Applying phase.");
         Sr5CareerRecoveryResolution resolution =
-            await new Sr5CareerActiveSkillCoordinator(presenter).ResolveAsync(recovered);
+            await new Sr5CareerActiveSkillCoordinator(presenter, new FixedOwnerAuthority(OwnerId)).ResolveAsync(recovered);
         Require(resolution.Status == Sr5CareerRecoveryStatus.AppliedVerified, resolution.Message);
         Require(
             restartedStore.TryRecordAuthoritativeResolution(
@@ -532,7 +829,7 @@ internal static class Program
             draft,
             Sr5CareerCheckpointPhase.Applying) with { Version = 2 };
         Sr5CareerRecoveryResolution exact =
-            await new Sr5CareerActiveSkillCoordinator(presenter).ResolveAsync(applying);
+            await new Sr5CareerActiveSkillCoordinator(presenter, new FixedOwnerAuthority(OwnerId)).ResolveAsync(applying);
         Require(exact.Status == Sr5CareerRecoveryStatus.AppliedVerified, exact.Message);
 
         string[] malformedPayloads =
@@ -583,7 +880,8 @@ internal static class Program
     private static CharacterCareerActiveSkillAdvanceQuote Quote(
         int karmaPoints,
         int totalRating,
-        int availableKarma)
+        int availableKarma,
+        string rawRuleState = "<settings />")
     {
         CharacterCareerActiveSkillAdvanceInput input = new(
             new CharacterCareerActiveSkillIdentity(SkillId, SourceSkillId),
@@ -600,7 +898,7 @@ internal static class Program
             OtherGroupMembers: [],
             Modifiers: [],
             RawSourceState: "<skill><name>Sneaking</name></skill>",
-            RawRuleState: "<settings />");
+            RawRuleState: rawRuleState);
         Require(
             CharacterCareerActiveSkillAdvanceRules.TryCreateQuote(input, out CharacterCareerActiveSkillAdvanceQuote quote)
             && CharacterCareerActiveSkillAdvanceRules.IsCoherent(quote),
@@ -768,5 +1066,26 @@ internal static class Program
         public Guid CurrentOwnerId => CurrentAccess.OwnerId;
         public bool Owns(Sr5CareerDraftCheckpoint checkpoint)
             => CurrentAccess.Owns(checkpoint);
+        public bool OwnsCurrentRunner(Sr5CareerDraftCheckpoint checkpoint)
+            => CurrentAccess.OwnerId == checkpoint.OwnerId
+               && string.Equals(
+                   CurrentAccess.WorkspaceId,
+                   checkpoint.WorkspaceId,
+                   StringComparison.Ordinal)
+               && CurrentAccess.CharacterCreated
+               && string.Equals(CurrentAccess.GameEdition, "SR5", StringComparison.OrdinalIgnoreCase)
+               && checkpoint.IsStructurallyValid();
+    }
+
+    private sealed class FixedOwnerAuthority(Guid currentOwnerId) :
+        ISr5CareerCheckpointOwnerAuthority
+    {
+        public Guid CurrentOwnerId { get; } = currentOwnerId;
+    }
+
+    private sealed class MutableOwnerAuthority(Guid currentOwnerId) :
+        ISr5CareerCheckpointOwnerAuthority
+    {
+        public Guid CurrentOwnerId { get; set; } = currentOwnerId;
     }
 }

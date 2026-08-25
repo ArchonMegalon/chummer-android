@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Globalization;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
 using Chummer.Presentation.Overview;
@@ -71,15 +72,32 @@ public sealed record Sr5CareerActionPlan(
         CharacterCareerActiveSkillAdvancePlan plan)
     {
         string identity = $"{quote.Identity.SkillId:D}:{quote.Identity.SourceSkillId:D}";
-        string idempotencyKey = ComputeIdempotencyKey(
-            Sr5CareerWizardRoutes.ActiveSkillReview,
+        string idempotencyKey = ComputeActiveSkillIdempotencyKey(
             ownerId,
             workspaceId.Value,
             expectedContentRevision,
             plan.ExpenseId,
-            identity,
+            quote.Identity.SkillId,
+            quote.Identity.SourceSkillId,
             quote.LogicalRevision,
-            quote.RuleDigest);
+            quote.SourceRevision,
+            quote.RuleDigest,
+            quote.Name,
+            quote.SkillCategory,
+            quote.BasePoints,
+            quote.KarmaPoints,
+            quote.RatingMaximum,
+            plan.ExpenseDateLocal,
+            plan.ExpenseAmount,
+            plan.ExpenseReason,
+            plan.KarmaUndoType,
+            plan.NuyenUndoType,
+            plan.UndoObjectId,
+            plan.UndoQuantity,
+            plan.UndoExtra,
+            quote.TotalBaseRating,
+            quote.TotalBaseRating + 1,
+            plan.SavedCharacterKarma);
         return new Sr5CareerActionPlan(
             ownerId,
             plan.ExpenseId,
@@ -100,6 +118,63 @@ public sealed record Sr5CareerActionPlan(
                 IsExact: CharacterCareerActiveSkillAdvanceRules.IsCoherent(quote),
                 Blocker: quote.CanAdvance ? string.Empty : quote.Blocker.ToString()));
     }
+
+    public static string ComputeActiveSkillIdempotencyKey(
+        Guid ownerId,
+        string workspaceId,
+        long expectedContentRevision,
+        Guid actionId,
+        Guid skillId,
+        Guid sourceSkillId,
+        string logicalRevision,
+        string sourceRevision,
+        string ruleDigest,
+        string skillName,
+        string skillCategory,
+        int basePoints,
+        int previousKarmaPoints,
+        int ratingMaximum,
+        DateTime expenseDateLocal,
+        decimal expenseAmount,
+        string expenseReason,
+        string karmaUndoType,
+        string nuyenUndoType,
+        string undoObjectId,
+        decimal undoQuantity,
+        string undoExtra,
+        int previousRating,
+        int targetRating,
+        int savedKarma)
+        => ComputeIdempotencyKey(
+            Sr5CareerWizardRoutes.ActiveSkillReview,
+            ownerId.ToString("D"),
+            workspaceId,
+            expectedContentRevision.ToString(CultureInfo.InvariantCulture),
+            actionId.ToString("D"),
+            $"{skillId:D}:{sourceSkillId:D}",
+            logicalRevision,
+            sourceRevision,
+            ruleDigest,
+            skillName,
+            skillCategory,
+            basePoints.ToString(CultureInfo.InvariantCulture),
+            previousKarmaPoints.ToString(CultureInfo.InvariantCulture),
+            ratingMaximum.ToString(CultureInfo.InvariantCulture),
+            DateTime.SpecifyKind(expenseDateLocal, DateTimeKind.Unspecified)
+                .ToString("O", CultureInfo.InvariantCulture),
+            expenseAmount.ToString(CultureInfo.InvariantCulture),
+            expenseReason,
+            "Karma",
+            false.ToString(CultureInfo.InvariantCulture),
+            false.ToString(CultureInfo.InvariantCulture),
+            karmaUndoType,
+            nuyenUndoType,
+            undoObjectId,
+            undoQuantity.ToString(CultureInfo.InvariantCulture),
+            undoExtra,
+            previousRating.ToString(CultureInfo.InvariantCulture),
+            targetRating.ToString(CultureInfo.InvariantCulture),
+            savedKarma.ToString(CultureInfo.InvariantCulture));
 
     private static string ComputeIdempotencyKey(params object[] values)
     {
@@ -143,6 +218,11 @@ public sealed record Sr5CareerDraftCheckpoint(
     string LogicalRevision,
     string SourceRevision,
     string RuleDigest,
+    string SkillName,
+    string SkillCategory,
+    int BasePoints,
+    int PreviousKarmaPoints,
+    int RatingMaximum,
     Guid ActionId,
     DateTime ExpenseDateLocal,
     decimal ExpenseAmount,
@@ -161,7 +241,7 @@ public sealed record Sr5CareerDraftCheckpoint(
     string IdempotencyKey,
     Sr5CareerCheckpointPhase Phase)
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
     public bool IsStructurallyValid()
     {
@@ -180,12 +260,20 @@ public sealed record Sr5CareerDraftCheckpoint(
             && !string.IsNullOrWhiteSpace(LogicalRevision)
             && !string.IsNullOrWhiteSpace(SourceRevision)
             && !string.IsNullOrWhiteSpace(RuleDigest)
+            && !string.IsNullOrWhiteSpace(SkillName)
+            && SkillName.Length <= CharacterCareerActiveSkillAdvanceRules.MaximumNameLength
+            && !string.IsNullOrWhiteSpace(SkillCategory)
+            && SkillCategory.Length <= CharacterCareerActiveSkillAdvanceRules.MaximumNameLength
+            && BasePoints is >= 0 and <= CharacterCareerActiveSkillAdvanceRules.MaximumRating
+            && PreviousKarmaPoints is >= 0 and <= CharacterCareerActiveSkillAdvanceRules.MaximumRating
+            && RatingMaximum is >= 0 and <= CharacterCareerActiveSkillAdvanceRules.MaximumRating
             && ActionId != Guid.Empty
             && normalizedExpenseDate == ExpenseDateLocal
             && normalizedExpenseDate.Ticks % TimeSpan.TicksPerSecond == 0
             && normalizedExpenseDate >= CharacterCareerActiveSkillAdvanceRules.MinimumExpenseDate
             && normalizedExpenseDate <= CharacterCareerActiveSkillAdvanceRules.MaximumExpenseDate
             && ExpenseAmount < 0m
+            && ExpenseAmount >= -CharacterCareerActiveSkillAdvanceRules.MaximumKarma
             && decimal.Truncate(ExpenseAmount) == ExpenseAmount
             && !string.IsNullOrWhiteSpace(ExpenseReason)
             && string.Equals(ExpenseType, "Karma", StringComparison.Ordinal)
@@ -203,6 +291,35 @@ public sealed record Sr5CareerDraftCheckpoint(
             && IdempotencyKey.Length == 64
             && IdempotencyKey.All(static character =>
                 character is >= '0' and <= '9' or >= 'a' and <= 'f')
+            && string.Equals(
+                IdempotencyKey,
+                Sr5CareerActionPlan.ComputeActiveSkillIdempotencyKey(
+                    OwnerId,
+                    WorkspaceId,
+                    ExpectedContentRevision,
+                    ActionId,
+                    SkillId,
+                    SourceSkillId,
+                    LogicalRevision,
+                    SourceRevision,
+                    RuleDigest,
+                    SkillName,
+                    SkillCategory,
+                    BasePoints,
+                    PreviousKarmaPoints,
+                    RatingMaximum,
+                    ExpenseDateLocal,
+                    ExpenseAmount,
+                    ExpenseReason,
+                    KarmaUndoType,
+                    NuyenUndoType,
+                    UndoObjectId,
+                    UndoQuantity,
+                    UndoExtra,
+                    PreviousRating,
+                    TargetRating,
+                    SavedKarma),
+                StringComparison.Ordinal)
             && Enum.IsDefined(Phase);
     }
 
@@ -222,6 +339,11 @@ public sealed record Sr5CareerDraftCheckpoint(
             draft.Quote.LogicalRevision,
             draft.Quote.SourceRevision,
             draft.Quote.RuleDigest,
+            draft.Quote.Name,
+            draft.Quote.SkillCategory,
+            draft.Quote.BasePoints,
+            draft.Quote.KarmaPoints,
+            draft.Quote.RatingMaximum,
             draft.Plan.ExpenseId,
             draft.Plan.ExpenseDateLocal,
             draft.Plan.ExpenseAmount,
@@ -293,10 +415,13 @@ public sealed record Sr5CareerDraftCheckpoint(
     }
 
     public bool MatchesReviewedDraft(Sr5CareerActiveSkillDraft draft)
+        => Phase == Sr5CareerCheckpointPhase.Reviewed
+           && MatchesActionDraft(draft);
+
+    public bool MatchesActionDraft(Sr5CareerActiveSkillDraft draft)
     {
         ArgumentNullException.ThrowIfNull(draft);
         return IsStructurallyValid()
-            && Phase == Sr5CareerCheckpointPhase.Reviewed
             && string.Equals(WorkspaceId, draft.WorkspaceId.Value, StringComparison.Ordinal)
             && OwnerId == draft.OwnerId
             && ExpectedContentRevision == draft.ExpectedContentRevision
@@ -305,6 +430,11 @@ public sealed record Sr5CareerDraftCheckpoint(
             && string.Equals(LogicalRevision, draft.Quote.LogicalRevision, StringComparison.Ordinal)
             && string.Equals(SourceRevision, draft.Quote.SourceRevision, StringComparison.Ordinal)
             && string.Equals(RuleDigest, draft.Quote.RuleDigest, StringComparison.Ordinal)
+            && string.Equals(SkillName, draft.Quote.Name, StringComparison.Ordinal)
+            && string.Equals(SkillCategory, draft.Quote.SkillCategory, StringComparison.Ordinal)
+            && BasePoints == draft.Quote.BasePoints
+            && PreviousKarmaPoints == draft.Quote.KarmaPoints
+            && RatingMaximum == draft.Quote.RatingMaximum
             && ActionId == draft.Plan.ExpenseId
             && ExpenseDateLocal == draft.Plan.ExpenseDateLocal
             && ExpenseAmount == draft.Plan.ExpenseAmount
@@ -552,10 +682,17 @@ public sealed record Sr5CareerActiveSkillReceipt(
     Guid SkillId,
     Guid SourceSkillId,
     string SkillName,
+    string SkillCategory,
+    int BasePoints,
+    int SavedSkillKarmaPoints,
+    int RatingMaximum,
     int PreviousRating,
     int SavedRating,
     int KarmaCost,
     int SavedKarma,
+    int NextKarmaCost,
+    bool CanAdvanceAgain,
+    CharacterCareerActiveSkillAdvanceBlocker NextAdvanceBlocker,
     Guid ExpenseId,
     DateTime ExpenseDateLocal,
     string ExpenseReason,
@@ -567,6 +704,8 @@ public sealed record Sr5CareerActiveSkillReceipt(
     string UndoObjectId,
     decimal UndoQuantity,
     string UndoExtra,
+    string ReviewedRuleDigest,
+    string LogicalRevision,
     string RuleDigest,
     string SourceRevision);
 
@@ -584,4 +723,5 @@ public sealed record Sr5CareerRecoveryResolution(
     Guid ActionId,
     long CheckpointVersion,
     Sr5CareerActiveSkillReceipt? Receipt,
-    string Message);
+    string Message,
+    string AuthorityProof);

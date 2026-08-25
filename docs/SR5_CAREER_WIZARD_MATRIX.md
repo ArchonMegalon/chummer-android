@@ -1,8 +1,8 @@
 # SR5 Career Wizard authority matrix
 
-This matrix describes the native Android state at base
-`1c3b0a4d86a3d91c740c02645902cbb2bdb42f9d`, plus the first wizard
-foundation in this branch. It is deliberately narrower than Chummer5 Career
+This matrix describes the native Android state at candidate base
+`55d45cec842c4ced0ae5cabba441382fdfb1a477`, plus the first integrated wizard
+reference slice in this branch. It is deliberately narrower than Chummer5 Career
 parity: a visible route or an individual emulator receipt is not evidence that
 an end-to-end Career wizard exists.
 
@@ -24,7 +24,7 @@ an end-to-end Career wizard exists.
 | Live / Playtime | Career Edge; weapon fire from a stable weapon context; condition/damage leaves | Intent lane exposes Edge and refuses to guess a weapon identity | No atomic live-action session transaction; Play dice/notes are local table state rather than Career receipts |
 | After Run | Manual Karma, manual Nuyen, reputation and Burn Street Cred | Intent lane exposes the three independent typed editors | No atomic closeout bundle, no typed contact award/change and no typed Heat field in the current authority |
 | Downtime | Calendar add/edit/delete; Active Skill advancement | Intent lane exposes Calendar and the reviewed Active Skill slice | No training duration, healing, crafting, acquisition delivery or other planned-work execution contract |
-| Undo / correction / recovery | Karma/Nuyen expense field edits; every typed leaf rejects a stale revision | Active Skill uses workspace/owner/action/version/phase CAS with exact write read-back. A globally loaded `Reviewed` checkpoint is hidden and cannot be resumed, abandoned or deleted until the durable local owner, current workspace, created SR5 edition, revision, action, idempotency key, schema and route all match. `Reviewed -> Applying` happens before mutation; restart performs authoritative typed outcome lookup. Verified-not-applied returns to `Reviewed`; verified-applied becomes `Applied`; unknown remains locked and cannot be cleared or replayed | Chummer5 Undo Expense, `Correct this transaction`, shared recovery for every other action and API-36 restart proof are missing |
+| Undo / correction / recovery | Karma/Nuyen expense field edits; every typed leaf rejects a stale revision | Active Skill uses workspace/owner/action/version/phase CAS with exact write read-back. A globally loaded checkpoint is hidden and cannot be resumed, resolved, acknowledged, abandoned or deleted until the durable local owner, current workspace, created SR5 edition and exact clean pre-save/successor revision match. `Reviewed -> Applying` happens before mutation; restart performs authoritative typed outcome lookup. The proof-bound outcome is revalidated against the live owner/runner before its CAS transition. Verified-not-applied returns to `Reviewed`; verified-applied becomes `Applied`; unknown remains locked and cannot be cleared or replayed | Chummer5 Undo Expense, `Correct this transaction`, shared recovery for every other action and API-36 restart proof are missing |
 | Final review / apply | Active Skill Core quote, mutation and persistence authority | Shared typed `Sr5CareerCostQuote` -> `Sr5CareerActionPlan` -> `Sr5CareerApplyResult`; receipt values come from fresh revision-bound skill and Karma-expense projections and verify skill/source/rating plus expense GUID/date/amount/reason, exact `Karma` type, false refund/force-visible flags and presence-aware undo karmatype/nuyentype/objectid/qty/extra | Android owns this single-action wrapper because Core has no common Career transaction presenter; the slice does not claim a Core-declared atomic multi-action bundle |
 
 ## False-proof audit
@@ -38,8 +38,9 @@ an end-to-end Career wizard exists.
   post-save projections that match the exact saved successor revision, skill
   instance/source/rating and the entire typed Karma expense and undo record.
 - `Applying` is neither success nor permission to retry. Only authoritative
-  outcome lookup may transition it to `Applied` or back to `Reviewed`; a
-  partial/mismatched outcome remains locked.
+  outcome lookup may transition it to `Applied` or back to `Reviewed`; its
+  process-bound proof and live owner/workspace/revision binding are checked
+  again at the store CAS, and a partial/mismatched outcome remains locked.
 - This source slice has no digest-bound API-36 edit/save/reopen/process-restart
   receipt. Release parity remains unproven until that separate device journey
   is captured against integrated bytes.
@@ -53,12 +54,15 @@ untouched and must capture a dedicated digest-bound device journey without
 weakening existing gates.
 
 The isolated authority graph used for this slice is pinned exactly to Core
-`5537e99df72e1a8a347269ad3b02b5a2cc2f9da1` (base
+`7b8241f87c911077f3f5c756c0d0978f784c8052` (expense authority parent
+`5537e99df72e1a8a347269ad3b02b5a2cc2f9da1`, base
 `cc3997d5279e9ac7beda595940095f66cfc5366b`) and Presentation
 `bd01091df3cdeb889c8336f9b2bf5e07af1c3c82` (base
-`d276f1d0ed8f76938d26b92389e62676f48acf7b`). The Android hardening applies
-on `40c8ee2995ed88d764be7e15607fbce54c36e53c`; substituting another projection
-or contract revision is outside this proof.
+`d276f1d0ed8f76938d26b92389e62676f48acf7b`). This integration transplants the
+foundation/hardening provenance through
+`40e39e1935705b671fa40f31cd75a9038c4f6fc0` onto the Android candidate base
+`55d45cec842c4ced0ae5cabba441382fdfb1a477`; substituting another projection,
+contract, or candidate revision is outside this proof.
 
 The second advancement checkpoint is blocked specifically on shared Android
 orchestration: expose the existing Presentation `Prepare/ApplyCareerSkillGroup`
