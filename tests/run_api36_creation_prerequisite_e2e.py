@@ -257,12 +257,39 @@ def require_creation_method_navigation(
     return description
 
 
+def wait_creation_dashboard_authority(
+    device: shared.Device,
+    *,
+    timeout: float = 30.0,
+) -> bool:
+    """Wait for the explicitly asynchronous authority projection, never for a guessed row state."""
+    deadline = time.monotonic() + timeout
+    saw_loading = False
+    while True:
+        if device.find("creation-dashboard-authority-failed") is not None:
+            device.capture("creation-dashboard-authority-failed")
+            raise RuntimeError(
+                "Creation dashboard reported an explicit authority projection failure"
+            )
+        loading = device.find("creation-dashboard-authority-loading")
+        if loading is None:
+            return saw_loading
+        saw_loading = True
+        if time.monotonic() >= deadline:
+            device.capture("creation-dashboard-authority-loading-timeout")
+            raise RuntimeError(
+                "Creation dashboard authority projection remained pending past the bounded wait"
+            )
+        time.sleep(0.5)
+
+
 def wait_creation_method_navigation(
     device: shared.Device,
     *,
     ready: bool,
     max_scrolls: int = 22,
 ) -> dict[str, object]:
+    authority_projection_waited = wait_creation_dashboard_authority(device)
     shared.reset_scroll_to_top(device, swipes=max_scrolls)
     for scroll_index in range(max_scrolls + 1):
         node = device.find("creation-stage-method")
@@ -313,10 +340,14 @@ def wait_creation_method_navigation(
                 )
                 return {
                     **before_tap,
+                    "authorityProjectionWaited": authority_projection_waited,
                     "afterTap": after_tap,
                     "tapRemainedOnDashboard": True,
                 }
-            return before_tap
+            return {
+                **before_tap,
+                "authorityProjectionWaited": authority_projection_waited,
+            }
         if scroll_index < max_scrolls:
             device.swipe_up(distance_ratio=0.22)
             time.sleep(0.75)

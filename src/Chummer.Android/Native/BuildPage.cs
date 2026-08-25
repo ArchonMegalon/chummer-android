@@ -282,7 +282,7 @@ public sealed class BuildPage : NativePageBase
             _body.Add(NativeTheme.Card(failure));
         }
         AddBudgetRibbon(snapshot, attributes, skills);
-        AddWizardStages(snapshot, prerequisite, attributes, skills);
+        AddWizardStages(snapshot, projection, prerequisite, attributes, skills);
         AddCompletionBlockers(snapshot);
         AddLegalNextSteps(snapshot, prerequisite, attributes, skills);
     }
@@ -470,6 +470,7 @@ public sealed class BuildPage : NativePageBase
 
     private void AddWizardStages(
         CharacterCreationWizardSnapshot snapshot,
+        CreationDashboardAuthorityProjection? projection,
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite,
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributes,
         CharacterCreationFoundationResult<CharacterCreationSkillsState>? skills)
@@ -494,6 +495,10 @@ public sealed class BuildPage : NativePageBase
             bool skillStage = string.Equals(stage.StepId, CharacterCreationWizardStepIds.Skills, StringComparison.Ordinal);
             bool canOpenSkills = skillStage && HasAuthoritativeSkills(skills);
             bool canOpen = canOpenFoundation || canOpenPrerequisite || canOpenAttributes || canOpenSkills;
+            bool projectionBoundStage = priorityPrerequisite || attributeStage || skillStage;
+            string? projectionBlocker = projection is null
+                ? "creation-authority-loading"
+                : projection.FailureReason;
             Func<Task> selected = canOpenPrerequisite
                 ? OpenCreationPrerequisiteAsync
                 : canOpenAttributes
@@ -511,6 +516,8 @@ public sealed class BuildPage : NativePageBase
                     ? SkillsStageDetail(skills!.Value!)
                 : canOpenFoundation
                     ? "Choose an exact metatype and Nationality Life Module"
+                    : projectionBoundStage && !string.IsNullOrWhiteSpace(projectionBlocker)
+                        ? projectionBlocker
                     : priorityPrerequisite && prerequisite is not null
                         ? prerequisite.Blockers.FirstOrDefault()
                           ?? prerequisite.Value?.Blockers.FirstOrDefault()

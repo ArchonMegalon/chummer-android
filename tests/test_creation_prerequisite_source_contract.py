@@ -1248,6 +1248,98 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         self.assertTrue(evidence["tapRemainedOnDashboard"])
 
+    def test_method_navigation_waits_for_bound_async_authority_before_asserting_blocker(self) -> None:
+        blocked = driver.shared.UiNode(
+            {
+                "content-desc": "Creation method. creation-karma-authority-required",
+                "clickable": "true",
+                "enabled": "false",
+                "bounds": "[98,1510][984,1663]",
+            }
+        )
+
+        class AsyncAuthorityDevice:
+            def __init__(self) -> None:
+                self.loading_reads = 0
+                self.taps: list[tuple[str, ...]] = []
+                self.captures: list[str] = []
+
+            def find(self, selector: str):
+                if selector == "creation-dashboard-authority-failed":
+                    return None
+                if selector == "creation-dashboard-authority-loading":
+                    self.loading_reads += 1
+                    return driver.shared.UiNode({}) if self.loading_reads < 3 else None
+                if selector == "creation-stage-method":
+                    return blocked
+                if selector == "creation-prerequisite-page":
+                    return None
+                return None
+
+            def shell(self, *arguments: str) -> str:
+                self.taps.append(arguments)
+                return ""
+
+            def capture(self, name: str) -> None:
+                self.captures.append(name)
+
+            def swipe_up(self, **_kwargs) -> None:
+                raise AssertionError("The ready blocked row must not need a scroll")
+
+        device = AsyncAuthorityDevice()
+        with mock.patch.object(driver.shared, "reset_scroll_to_top"), \
+             mock.patch.object(driver.shared, "open_creation_dashboard"), \
+             mock.patch.object(driver.time, "sleep") as sleep:
+            evidence = driver.wait_creation_method_navigation(device, ready=False)
+
+        self.assertEqual(3, device.loading_reads)
+        self.assertEqual(
+            [mock.call(0.5), mock.call(0.5), mock.call(1.25)],
+            sleep.call_args_list,
+        )
+        self.assertTrue(evidence["authorityProjectionWaited"])
+        self.assertEqual(
+            "Creation method. creation-karma-authority-required",
+            evidence["detail"],
+        )
+        self.assertEqual([("input", "tap", "541", "1586")], device.taps)
+
+    def test_dashboard_never_labels_projection_bound_stage_complete_while_loading(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        self.assertIn('projection is null\n                ? "creation-authority-loading"', source)
+        self.assertIn(
+            "projectionBoundStage && !string.IsNullOrWhiteSpace(projectionBlocker)",
+            source,
+        )
+
+    def test_async_authority_wait_fails_closed_for_explicit_failure_and_timeout(self) -> None:
+        class ProjectionDevice:
+            def __init__(self, *, failed: bool) -> None:
+                self.failed = failed
+                self.captures: list[str] = []
+
+            def find(self, selector: str):
+                if selector == "creation-dashboard-authority-failed":
+                    return driver.shared.UiNode({}) if self.failed else None
+                if selector == "creation-dashboard-authority-loading":
+                    return driver.shared.UiNode({})
+                return None
+
+            def capture(self, name: str) -> None:
+                self.captures.append(name)
+
+        failed = ProjectionDevice(failed=True)
+        with self.assertRaisesRegex(RuntimeError, "explicit authority projection failure"):
+            driver.wait_creation_dashboard_authority(failed)
+        self.assertEqual(["creation-dashboard-authority-failed"], failed.captures)
+
+        pending = ProjectionDevice(failed=False)
+        with mock.patch.object(driver.time, "monotonic", side_effect=[10.0, 40.1]), \
+             mock.patch.object(driver.time, "sleep"):
+            with self.assertRaisesRegex(RuntimeError, "remained pending"):
+                driver.wait_creation_dashboard_authority(pending, timeout=30.0)
+        self.assertEqual(["creation-dashboard-authority-loading-timeout"], pending.captures)
+
     def test_priority_created_authority_is_distinct_saved_and_digest_bound(self) -> None:
         fresh = driver.shared.WorkspaceAuthority("fresh", 2, 2, "a" * 64, "b" * 64)
         prepared = driver.shared.WorkspaceAuthority("prepared", 1, 1, "c" * 64, "d" * 64)
