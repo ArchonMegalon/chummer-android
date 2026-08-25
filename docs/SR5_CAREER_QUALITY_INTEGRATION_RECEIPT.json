@@ -1,11 +1,13 @@
 {
   "schema": "chummer.android.sr5-career-quality-integration-receipt/v1",
-  "status": "source_lane_and_focused_atomic_harness_verified_runtime_executor_and_device_proof_pending",
+  "status": "source_lane_typed_android_registration_and_focused_atomic_harness_verified_backend_executor_and_device_proof_pending",
   "implementation": {
     "branch": "codex/android-sr5-career-quality-20260825",
     "baseCommit": "06f0bb1b3d8504f41bd47d082d09444035b36c5a",
     "commit": "2a253d8c0766d2f2dbc99190a5a558494a1747eb",
-    "tree": "fccd836a38ab19c27b6815e078fc869807efbfdf"
+    "registrationCommit": "d37d2eae8c0fe0e5bf1ced0fc01fc1563774bff4",
+    "tree": "fccd836a38ab19c27b6815e078fc869807efbfdf",
+    "registrationTree": "fcab4ff2b465e0d2741d9934c9f859e22d5b2c8e"
   },
   "authorities": {
     "coreCommit": "3a0ac44854004dff0c08807d839cd1fdae1c9a65",
@@ -19,6 +21,7 @@
     "Typed InternalId and SourceId, operation, exact SR5 definition/source/effect/eligibility/GM projections, workspace and saved revisions, runtime/content/source/rule/logical digests, transaction identity and idempotency are bound and fail closed.",
     "Only the Presentation ICareerQualityAtomicWorkspace boundary may persist; generic XML, label identity and Android-side rule calculations are absent from this lane.",
     "Unsupported or ambiguous effects, omitted authority rows, disabled sources, GM restrictions, dirty or drifting revisions, malformed checkpoints and unknown transport outcomes fail closed without replay.",
+    "Android registers a typed ICareerQualityAtomicWorkspace adapter that re-reads and deterministically replans before one delegated atomic call; clients without that exact capability remain unavailable and no document/XML fallback exists.",
     "The generated Chummer5 editability inventory, character-settings contract and canonical content manifest reproduce exactly from the pinned authorities."
   ],
   "receipts": {
@@ -32,9 +35,23 @@
       "failed": 0
     },
     "qualityAtomicHarness": {
-      "behaviorGroupsPassed": 6,
+      "behaviorGroupsPassed": 7,
       "buildWarnings": 0,
       "buildErrors": 0
+    },
+    "registrationSourceContracts": {
+      "passed": 13,
+      "failed": 0
+    },
+    "registrationNeutralCsharpCompile": {
+      "ownedSourceCount": 137,
+      "buildWarnings": 6,
+      "buildErrors": 0,
+      "warningScope": "pre-existing nullable warnings in exact Core Infrastructure"
+    },
+    "nativeInteractionHarness": {
+      "behaviorGroupsPassed": 15,
+      "failed": 0
     },
     "inheritedSkillGroupHarness": {
       "behaviorGroupsPassed": 7,
@@ -71,12 +88,18 @@
     "inheritedSkillGroupRequest": "The exact Presentation pin adds ExpectedRulesetId to CareerSkillGroupAdvanceRequest. The inherited Android request and its focused compile stubs were updated so the combined graph remains typed and fail closed.",
     "generatedInventoryAndSettings": "Only authority/source hashes changed after regeneration against complete exact checkouts; feature counts and reviewed classifications did not change. The settings hash follows the inventory hash."
   },
+  "requiredDependencyCommits": {
+    "core": "A successor to 3a0ac44854004dff0c08807d839cd1fdae1c9a65 must provide a concrete trusted Career Quality authority/executor over IWorkspaceStore: exact enabled source/custom data/GM/effect projection plus one CAS transaction for character, effects, expense, receipt and correction.",
+    "presentationRuntime": "A successor to ac4ebc482c632efa2e6ecadf1df884963fc56d28 must expose ICareerQualityAtomicWorkspace from InProcessChummerClient. HttpChummerClient additionally requires typed read/commit/correct endpoints; neither exact client currently implements the capability.",
+    "hubForHttpMode": "The Hub must add owner-bound, revision/digest-bound Career Quality read/commit/correct endpoints backed by the same atomic executor before HTTP mode can activate this lane. No dependency commit exists yet, so this Android commit remains fail closed and independently cherry-pickable."
+  },
   "notPerformed": {
     "mauiApi36Build": "not performed successfully: the host has no Java SDK/JDK; the MAUI build stops at XA5300 before Android compilation",
     "api36EmulatorJourney": "not performed",
     "physicalInstall": "not performed",
     "physicalSaveReopenRestart": "not performed",
-    "productionAtomicWorkspace": "not registered in the exact runtime; the visible app route intentionally reports authority unavailable and performs no fallback mutation",
+    "productionAtomicWorkspaceBackend": "the Android registration is present, but exact InProcessChummerClient and HttpChummerClient do not yet expose ICareerQualityAtomicWorkspace; until a trusted backend dependency implements it, the route intentionally reports authority unavailable and performs no fallback mutation",
+    "registrationNeutralGraphVerification": "the complete 137-source C# graph compiled successfully after the graph verifier was bypassed for diagnosis; the verifier itself remains blocked because the current ancillary Chummer.Run.Contracts restore resolves Chummer.Media.Contracts through /docker/fleet outside the verifier workspace boundary",
     "lunaOr1minReview": "unavailable in this worker tool context; no review claim made"
   }
 }
