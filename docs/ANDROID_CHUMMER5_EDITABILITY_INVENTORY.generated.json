@@ -14,11 +14,11 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 478,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 562,
-      "missing": 911,
+      "implemented_pending_emulator": 547,
+      "missing": 918,
       "not_applicable_non_mutating": 478,
       "partial_create_only": 106,
-      "partial_exact_saved_data": 172
+      "partial_exact_saved_data": 180
     },
     "tabletStatusCounts": {
       "implemented_pending_emulator": 79,
@@ -79,7 +79,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "799fe29dc2a4705e2d52abbbbf93f08591d866868ad0b451f75fcfc33d29637a"
+        "sha256": "7d3973b728f54bcf0ed01362f316308e4fbc2edafe60993d8e6fde6e340c7e35"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -90,6 +90,11 @@
         "path": "src/Chummer.Android/Native/CareerReputationPage.cs",
         "exists": true,
         "sha256": "c23d43d47d800ecdcc829013de0f4ea0f5d8ce62d2c5cb0eaded2e3247094334"
+      },
+      {
+        "path": "src/Chummer.Android/Native/CareerActiveSkillAdvancePage.cs",
+        "exists": true,
+        "sha256": "396e3f31151ca2b784e962e30d227cfab3ec6082957a4efb144cbac0573ff522"
       },
       {
         "path": "src/Chummer.Android/Native/SituationalModifiersPage.cs",
@@ -567,9 +572,34 @@
         "sha256": "0e72064df8520cc9f26a50fdfdf28e4fac27e720b3cbf3e8ac0b808b1ba6102c"
       },
       {
+        "path": "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
+        "exists": true,
+        "sha256": "06c1ac9d61aeb3cf4ca03d383b1304c3b41eb1288d3f14e1a3676810a04c5521"
+      },
+      {
+        "path": "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
+        "exists": true,
+        "sha256": "8ec5e42c8502470f57015832574cbb80644223948ad4be24273f6f06aa6af57b"
+      },
+      {
+        "path": "src/Chummer.Android/Native/CreationPriorityDetailPage.cs",
+        "exists": true,
+        "sha256": "4a563b7e5c260f54ab7ffaf13022b860d42b55d53e7ffd51f56c42090a596025"
+      },
+      {
+        "path": "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
+        "exists": true,
+        "sha256": "7f55c3b994d9a244fcb9847a83dfbdac459dcda164d4416c7a72f404b1da9fb2"
+      },
+      {
+        "path": "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
+        "exists": true,
+        "sha256": "cce8955a3f14729825a65a56db75700c16a769930dc007cf943d79d75b845c1a"
+      },
+      {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "28a17d15df81d1385d47199b5889811715b4557473f90162eb8354ad4ef55692"
+        "sha256": "c9e3739ec96be5fcdd03d5f52a769c9b14cd717d1fd2e582d73eba3d54ffb0d7"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -585,6 +615,36 @@
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
         "sha256": "464545c29c43faea7f833c59360ba61df1267b09b5ed2712a7546c05f2dd5d49"
+      },
+      {
+        "path": "tests/run_api36_career_active_skill_advance_e2e.py",
+        "exists": true,
+        "sha256": "ade33b5c238913b8a206a5232f40183bea8e057090cf48ad2e7ea94bf961cb7b"
+      },
+      {
+        "path": "tests/fixtures/career-active-skill-advance-e2e.chum5",
+        "exists": true,
+        "sha256": "3506939b6b5c5cc2f1adb6d083d59ae0d4a548c51d366d0d0759719e92ffbf51"
+      },
+      {
+        "path": "tests/run_api36_career_weapon_fire_e2e.py",
+        "exists": true,
+        "sha256": "df7c049b88c3c26aa0d4ca8c3c554b3ac97884ad7dea8fe037e927c6b39b614c"
+      },
+      {
+        "path": "tests/fixtures/career-weapon-fire-e2e.chum5",
+        "exists": true,
+        "sha256": "eb1dee9e9c69c9303b0d772f8696e4531c12cfe360c761af85c6f0c79a6da7df"
+      },
+      {
+        "path": "tests/run_api36_career_notoriety_e2e.py",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "tests/fixtures/career-notoriety-e2e.chum5",
+        "exists": false,
+        "sha256": null
       },
       {
         "path": "tests/run_api36_gear_attack_swap_e2e.py",
@@ -970,6 +1030,11 @@
         "path": "tests/run_api36_new_character_priority_e2e.py",
         "exists": true,
         "sha256": "d549ce6b1e1ca74fa93da21b5aa5296ba64a5aa4864416731f74123895096226"
+      },
+      {
+        "path": "tests/run_api36_creation_prerequisite_e2e.py",
+        "exists": true,
+        "sha256": "85499db4c3e64286219c5c661d63155a7e4bae7bec26d7487f98c4b71998f14a"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
@@ -1637,6 +1702,51 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-career-notoriety/receipt.json",
+        "exists": true,
+        "sha256": "0738849b99b2c28c195100390c14d96fc6819ac2ef19a45e38b2ea6daefb66c8"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-notoriety/receipt.json.sha256",
+        "exists": true,
+        "sha256": "d5b6c9998644fbbb8521b582acedaf626c00b4fa794157605a365e0ac8c6e42a"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-notoriety/artifact.json",
+        "exists": true,
+        "sha256": "a86e428f418d3e80763cd2d54f11cc83e17ec8addd233efe98f5f1838933f5c0"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-active-skill-advance/receipt.json",
+        "exists": true,
+        "sha256": "8b8e5b368bd0c3826a1dc351639dfe02149cd8bc3246aab3260e5499b04778cb"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-active-skill-advance/receipt.json.sha256",
+        "exists": true,
+        "sha256": "8b4d8da54492356352e19406d46f879ecb8403534c83cd0f2a4ba6f10c8857b0"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-active-skill-advance/artifact.json",
+        "exists": true,
+        "sha256": "3a9696ac3e6d1dc3ed9d97d6a89c73705ca89e0aee8e5a1fcb2e1eace2ecfab9"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-weapon-fire/receipt.json",
+        "exists": true,
+        "sha256": "f9f295083fd0f76920cbff6717b62b3a9b3c3e8f2931eae02dc204576839a3e8"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-weapon-fire/receipt.json.sha256",
+        "exists": true,
+        "sha256": "1e8c5f31f68e54c0bce915046d3a7ac3c42736a8536654625b009bec713c77c0"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-weapon-fire/artifact.json",
+        "exists": true,
+        "sha256": "04378debfec18d412d196bcfcca5332b01c46c0c8476e89e2e1e2840b213868e"
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-situational-modifiers/receipt.json",
         "exists": false,
         "sha256": null
@@ -1907,6 +2017,11 @@
         "sha256": "1ed73fdb863ef3b7ac047079c3f1692e6357b836c1b721d0c08de590a11d0301"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerActiveSkillAdvanceRules.cs",
+        "exists": true,
+        "sha256": "a7fe09fd82c0b44e703f9a416e8b28f4c753665649831e5436b00cbaae3ddb27"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerManualKarmaRules.cs",
         "exists": true,
         "sha256": "9bce1e3aab47a6fdd08499376f9ee8e95f2bc32ea21ffcac6860d76d35a5002b"
@@ -2025,6 +2140,16 @@
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerWeaponFireRequest.cs",
         "exists": true,
         "sha256": "387f65d88f099bb83cf74b7faac0cd13630f999b9a22abf9257fd902283bc874"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/CareerActiveSkillAdvanceEditRequest.cs",
+        "exists": true,
+        "sha256": "e96eea861758bec3462d0068a983c634ddeda2e033e8c61b3db07cb955d590af"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/CareerActiveSkillAdvanceMutation.cs",
+        "exists": true,
+        "sha256": "bc081d4ad6684292b4514e1051f60a921ae94a0f6e774d5b14d70a84e4f8c03d"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerManualKarmaEditRequest.cs",
@@ -2209,7 +2334,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
         "exists": true,
-        "sha256": "45b0507a4b1b30a8a77bd59c72040ce2e262960667d724f274260b12f35b8e1b"
+        "sha256": "12bf0a51a914a0f85653d8e350ed34170b8eaf041964301cfee91c2f9e6eeea6"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
@@ -2259,7 +2384,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "63416dfdaae82c850d3d0632f6cf08ecc534f19a8b4a61660b2465247a38e18d"
+      "sha256": "b066167e1b13e577c78d17ab51eedca6f833d2f80b7776df39b7404b5412dd14"
     }
   },
   "coverageByFamily": {
@@ -2329,7 +2454,7 @@
     "character_settings": {
       "rowCount": 209,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 9,
+      "phoneMissingCount": 17,
       "tabletMissingCount": 197,
       "completionProvenCount": 12
     },
@@ -2574,7 +2699,7 @@
     "skills": {
       "rowCount": 36,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 23,
+      "phoneMissingCount": 22,
       "tabletMissingCount": 24,
       "completionProvenCount": 12
     },
@@ -10824,11 +10949,24 @@
       "mutationFamily": "skills",
       "operation": "adjust",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_pending_emulator",
+        "route": "Build > Active Skills > Advance active skill",
+        "surface": "CareerActiveSkillAdvancePage",
+        "automationId": "career-active-skill-advance",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerActiveSkillAdvancePage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerActiveSkillAdvanceEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerActiveSkillAdvanceMutation.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerActiveSkillAdvanceRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Only SkillControl.btnCareerIncrease for source-resolved active Skills is covered. KnowledgeSkillControl and SkillGroupControl advancement remain separate unproven rows; hidden ambiguous source, Improvement, or group-compensation authority fails closed. Hosted execution is x86_64 and is not physical ARM64 proof."
       },
       "tablet": {
         "status": "missing",
@@ -10836,12 +10974,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerActiveSkillAdvanceAsync binds the stable saved Skill/source GUID pair, exact rule digest, confirmation, Karma delta, and undo expense identity",
+      "persistenceAssertion": "the selected active Skill rating increases exactly once, Karma and its undo expense change atomically at expected revision +1, unrelated XML survives, and exact saved payload/document authority survives same-session reopen and two disjoint process restarts",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "scripted_not_executed",
+          "ref": "tests/run_api36_career_active_skill_advance_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -14068,7 +14206,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Select Metatype Priority",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactermetatypecategory",
@@ -14188,7 +14326,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Select Metatype Priority",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactermetavariant",
@@ -14251,17 +14389,20 @@
       "mutationFamily": "character_settings",
       "operation": "commit",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
-        "surface": "NativeDialogPage",
-        "automationId": "dialog-action-complete-new-character-workflow",
+        "status": "partial_exact_saved_data",
+        "route": "Home > New runner > Build > Priorities",
+        "surface": "CreationPrerequisitePreviewPage",
+        "automationId": "creation-prerequisite-confirm",
         "sourceRefs": [
-          "src/Chummer.Android/Native/NativeDialogPage.cs",
-          "src/Chummer.Android/Native/BuildPage.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
-          "tests/run_api36_new_character_priority_e2e.py"
-        ]
+          "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
+          "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
+          "src/Chummer.Android/Native/CreationPriorityDetailPage.cs",
+          "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
+          "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "tests/run_api36_creation_prerequisite_e2e.py"
+        ],
+        "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
       },
       "tablet": {
         "status": "missing",
@@ -14269,12 +14410,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
-      "persistenceAssertion": "the committed metatype-priority workflow produces a durable workspace with every selected priority value, metavariant, and ordered free-skill choice",
+      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "persistenceAssertion": "the exact preview digest is explicitly confirmed into one revision-bound Core auxiliary draft; raw character XML remains unchanged and character finalization is still pending",
       "e2e": {
         "phone": {
           "status": "scripted_not_executed",
-          "ref": "tests/run_api36_new_character_priority_e2e.py"
+          "ref": "tests/run_api36_creation_prerequisite_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -14318,17 +14459,20 @@
       "mutationFamily": "character_settings",
       "operation": "select_or_mutate_collection",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
-        "surface": "NativeDialogPage",
-        "automationId": "dialog-field-newcharactermetatype",
+        "status": "partial_exact_saved_data",
+        "route": "Home > New runner > Build > Priorities",
+        "surface": "CreationPriorityDetailPage",
+        "automationId": "creation-prerequisite-heritage-option-{selection-id}",
         "sourceRefs": [
-          "src/Chummer.Android/Native/NativeDialogPage.cs",
-          "src/Chummer.Android/Native/BuildPage.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
-          "tests/run_api36_new_character_priority_e2e.py"
-        ]
+          "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
+          "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
+          "src/Chummer.Android/Native/CreationPriorityDetailPage.cs",
+          "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
+          "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "tests/run_api36_creation_prerequisite_e2e.py"
+        ],
+        "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
       },
       "tablet": {
         "status": "missing",
@@ -14336,12 +14480,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
-      "persistenceAssertion": "character/metatype equals the submitted metatype after workspace reopen and process restart",
+      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "persistenceAssertion": "the exact Core Heritage SelectionId remains the sole selected option in the revision-bound auxiliary draft after same-session reopen and process restart",
       "e2e": {
         "phone": {
           "status": "scripted_not_executed",
-          "ref": "tests/run_api36_new_character_priority_e2e.py"
+          "ref": "tests/run_api36_creation_prerequisite_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -14381,17 +14525,20 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
-        "surface": "NativeDialogPage",
-        "automationId": "dialog-field-newcharacterprioritytalentchoice",
+        "status": "partial_exact_saved_data",
+        "route": "Home > New runner > Build > Priorities",
+        "surface": "CreationPriorityDetailPage",
+        "automationId": "creation-prerequisite-talent-option-{selection-id}",
         "sourceRefs": [
-          "src/Chummer.Android/Native/NativeDialogPage.cs",
-          "src/Chummer.Android/Native/BuildPage.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
-          "tests/run_api36_new_character_priority_e2e.py"
-        ]
+          "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
+          "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
+          "src/Chummer.Android/Native/CreationPriorityDetailPage.cs",
+          "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
+          "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "tests/run_api36_creation_prerequisite_e2e.py"
+        ],
+        "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
       },
       "tablet": {
         "status": "missing",
@@ -14399,12 +14546,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
-      "persistenceAssertion": "character/prioritytalent equals the submitted talent after workspace reopen and process restart",
+      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "persistenceAssertion": "the exact Core Talent SelectionId remains the sole selected option in the revision-bound auxiliary draft after same-session reopen and process restart",
       "e2e": {
         "phone": {
           "status": "scripted_not_executed",
-          "ref": "tests/run_api36_new_character_priority_e2e.py"
+          "ref": "tests/run_api36_creation_prerequisite_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -14439,7 +14586,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Select Metatype Priority",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterpriorityskillchoice1",
@@ -14497,7 +14644,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Select Metatype Priority",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterpriorityskillchoice2",
@@ -14555,7 +14702,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Select Metatype Priority",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterpriorityskillchoice3",
@@ -14618,17 +14765,20 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
-        "surface": "NativeDialogPage",
-        "automationId": "dialog-field-newcharacterpriorityresources",
+        "status": "partial_exact_saved_data",
+        "route": "Home > New runner > Build > Priorities",
+        "surface": "CreationPriorityCategoryPage",
+        "automationId": "creation-prerequisite-rank-resources-{authority-rank}",
         "sourceRefs": [
-          "src/Chummer.Android/Native/NativeDialogPage.cs",
-          "src/Chummer.Android/Native/BuildPage.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
-          "tests/run_api36_new_character_priority_e2e.py"
-        ]
+          "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
+          "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
+          "src/Chummer.Android/Native/CreationPriorityDetailPage.cs",
+          "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
+          "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "tests/run_api36_creation_prerequisite_e2e.py"
+        ],
+        "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
       },
       "tablet": {
         "status": "missing",
@@ -14636,12 +14786,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
-      "persistenceAssertion": "character/priorityresources equals the submitted priority after workspace reopen and process restart",
+      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "persistenceAssertion": "the exact Core-projected resources rank remains in the revision-bound auxiliary creation draft after same-session reopen and a disjoint process restart",
       "e2e": {
         "phone": {
           "status": "scripted_not_executed",
-          "ref": "tests/run_api36_new_character_priority_e2e.py"
+          "ref": "tests/run_api36_creation_prerequisite_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -14681,17 +14831,20 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
-        "surface": "NativeDialogPage",
-        "automationId": "dialog-field-newcharacterpriorityskills",
+        "status": "partial_exact_saved_data",
+        "route": "Home > New runner > Build > Priorities",
+        "surface": "CreationPriorityCategoryPage",
+        "automationId": "creation-prerequisite-rank-skills-{authority-rank}",
         "sourceRefs": [
-          "src/Chummer.Android/Native/NativeDialogPage.cs",
-          "src/Chummer.Android/Native/BuildPage.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
-          "tests/run_api36_new_character_priority_e2e.py"
-        ]
+          "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
+          "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
+          "src/Chummer.Android/Native/CreationPriorityDetailPage.cs",
+          "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
+          "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "tests/run_api36_creation_prerequisite_e2e.py"
+        ],
+        "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
       },
       "tablet": {
         "status": "missing",
@@ -14699,12 +14852,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
-      "persistenceAssertion": "character/priorityskills equals the submitted priority after workspace reopen and process restart",
+      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "persistenceAssertion": "the exact Core-projected skills rank remains in the revision-bound auxiliary creation draft after same-session reopen and a disjoint process restart",
       "e2e": {
         "phone": {
           "status": "scripted_not_executed",
-          "ref": "tests/run_api36_new_character_priority_e2e.py"
+          "ref": "tests/run_api36_creation_prerequisite_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -14744,17 +14897,20 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
-        "surface": "NativeDialogPage",
-        "automationId": "dialog-field-newcharacterprioritytalent",
+        "status": "partial_exact_saved_data",
+        "route": "Home > New runner > Build > Priorities",
+        "surface": "CreationPriorityCategoryPage",
+        "automationId": "creation-prerequisite-rank-talent-{authority-rank}",
         "sourceRefs": [
-          "src/Chummer.Android/Native/NativeDialogPage.cs",
-          "src/Chummer.Android/Native/BuildPage.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
-          "tests/run_api36_new_character_priority_e2e.py"
-        ]
+          "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
+          "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
+          "src/Chummer.Android/Native/CreationPriorityDetailPage.cs",
+          "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
+          "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "tests/run_api36_creation_prerequisite_e2e.py"
+        ],
+        "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
       },
       "tablet": {
         "status": "missing",
@@ -14762,12 +14918,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
-      "persistenceAssertion": "character/priorityspecial equals the submitted priority after workspace reopen and process restart",
+      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "persistenceAssertion": "the exact Core-projected talent rank remains in the revision-bound auxiliary creation draft after same-session reopen and a disjoint process restart",
       "e2e": {
         "phone": {
           "status": "scripted_not_executed",
-          "ref": "tests/run_api36_new_character_priority_e2e.py"
+          "ref": "tests/run_api36_creation_prerequisite_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -14807,17 +14963,20 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
-        "surface": "NativeDialogPage",
-        "automationId": "dialog-field-newcharacterpriorityattributes",
+        "status": "partial_exact_saved_data",
+        "route": "Home > New runner > Build > Priorities",
+        "surface": "CreationPriorityCategoryPage",
+        "automationId": "creation-prerequisite-rank-attributes-{authority-rank}",
         "sourceRefs": [
-          "src/Chummer.Android/Native/NativeDialogPage.cs",
-          "src/Chummer.Android/Native/BuildPage.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
-          "tests/run_api36_new_character_priority_e2e.py"
-        ]
+          "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
+          "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
+          "src/Chummer.Android/Native/CreationPriorityDetailPage.cs",
+          "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
+          "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "tests/run_api36_creation_prerequisite_e2e.py"
+        ],
+        "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
       },
       "tablet": {
         "status": "missing",
@@ -14825,12 +14984,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
-      "persistenceAssertion": "character/priorityattributes equals the submitted priority after workspace reopen and process restart",
+      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "persistenceAssertion": "the exact Core-projected attributes rank remains in the revision-bound auxiliary creation draft after same-session reopen and a disjoint process restart",
       "e2e": {
         "phone": {
           "status": "scripted_not_executed",
-          "ref": "tests/run_api36_new_character_priority_e2e.py"
+          "ref": "tests/run_api36_creation_prerequisite_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -14870,17 +15029,20 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
-        "route": "Home > New runner > Select Build Method > Select Metatype Priority",
-        "surface": "NativeDialogPage",
-        "automationId": "dialog-field-newcharacterpriorityheritage",
+        "status": "partial_exact_saved_data",
+        "route": "Home > New runner > Build > Priorities",
+        "surface": "CreationPriorityCategoryPage",
+        "automationId": "creation-prerequisite-rank-heritage-{authority-rank}",
         "sourceRefs": [
-          "src/Chummer.Android/Native/NativeDialogPage.cs",
-          "src/Chummer.Android/Native/BuildPage.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
-          "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
-          "tests/run_api36_new_character_priority_e2e.py"
-        ]
+          "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
+          "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
+          "src/Chummer.Android/Native/CreationPriorityDetailPage.cs",
+          "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
+          "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "tests/run_api36_creation_prerequisite_e2e.py"
+        ],
+        "coverageLimit": "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core auxiliary creation draft. The character document is unchanged; metatype and other final character data are not committed, and creation finalization remains pending."
       },
       "tablet": {
         "status": "missing",
@@ -14888,12 +15050,12 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": "DialogCoordinator.CompleteNewCharacterWorkflowAsync",
-      "persistenceAssertion": "character/prioritymetatype equals the submitted priority after workspace reopen and process restart",
+      "presenterMutation": "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft",
+      "persistenceAssertion": "the exact Core-projected heritage rank remains in the revision-bound auxiliary creation draft after same-session reopen and a disjoint process restart",
       "e2e": {
         "phone": {
           "status": "scripted_not_executed",
-          "ref": "tests/run_api36_new_character_priority_e2e.py"
+          "ref": "tests/run_api36_creation_prerequisite_e2e.py"
         },
         "tablet": {
           "status": "missing",
@@ -14933,7 +15095,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Select Metatype Priority",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterpossessionbased",
@@ -14991,7 +15153,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Select Metatype Priority",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterpossessionmethod",
@@ -15049,7 +15211,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Select Metatype Priority",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterforce",
@@ -26244,7 +26406,8 @@
           "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
           "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
           "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs"
-        ]
+        ],
+        "coverageLimit": "The bound hosted proof covers only Notoriety 7 to 8 on the API 36 x86_64 phone profile and is not physical ARM64 proof. Other Reputation fields and Burn Street Cred remain separate rows."
       },
       "tablet": {
         "status": "missing",
@@ -26256,8 +26419,8 @@
       "persistenceAssertion": "career character/notoriety equals the submitted 0..100 value after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_career_reputation_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -47450,7 +47613,7 @@
           "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponFireRules.cs",
           "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
         ],
-        "coverageLimit": "Career direct root Weapons only. Mirrors Chummer5 default Single/Short/Long selection, effective direct-accessory round counts, confirmed partial Short/Long bursts, and non-partial Full/Suppressive fire. Accessory-provided active clips, mode-affecting wireless/ammo bonuses, and ammo Gear deletion side effects outside the bounded leaf stack fail closed. API 36 execution remains outstanding."
+        "coverageLimit": "Career direct root Weapons only. Mirrors Chummer5 default Single/Short/Long selection, effective direct-accessory round counts, confirmed partial Short/Long bursts, and non-partial Full/Suppressive fire. Accessory-provided active clips, mode-affecting wireless/ammo bonuses, and ammo Gear deletion side effects outside the bounded leaf stack fail closed. Short Burst has hosted API 36 x86_64 phone-profile proof; it is not physical ARM64 proof."
       },
       "tablet": {
         "status": "missing",

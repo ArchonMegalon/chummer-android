@@ -1095,26 +1095,13 @@ namespace Chummer
             xml_element, automation_id, _property = inventory.CAREER_REPUTATION_CONTROLS[
                 control
             ]
-            self.assertEqual(
-                "implemented_verified_api36"
-                if control == "nudNotoriety"
-                else "implemented_pending_emulator",
-                row["phone"]["status"],
-            )
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
             self.assertEqual("Build > Reputation", row["phone"]["route"])
             self.assertEqual("CareerReputationPage", row["phone"]["surface"])
             self.assertEqual(automation_id, row["phone"]["automationId"])
             self.assertEqual("missing", row["tablet"]["status"])
             if control == "nudNotoriety":
-                self.assertEqual("executed_api36", row["e2e"]["phone"]["status"])
-                self.assertEqual(
-                    9549763958,
-                    row["e2e"]["phone"]["hostedArtifact"]["artifactId"],
-                )
-                self.assertEqual(
-                    "hosted_api36_x86_64_phone_profile_not_arm64_hardware",
-                    row["e2e"]["phone"]["deviceScope"],
-                )
+                self.assertEqual("missing", row["e2e"]["phone"]["status"])
             else:
                 self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
                 self.assertEqual(
@@ -3079,12 +3066,11 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 560,
-                "implemented_verified_api36": 3,
-                "missing": 910,
+                "implemented_pending_emulator": 547,
+                "missing": 918,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
-                "partial_exact_saved_data": 172,
+                "partial_exact_saved_data": 180,
             },
             payload["summary"]["phoneStatusCounts"],
         )
@@ -3482,11 +3468,7 @@ namespace Chummer
         self.assertEqual(set(controls), set(rows))
         for control, automation_id in controls.items():
             row = rows[control]
-            proven = control == "cmsAmmoShortBurst"
-            self.assertEqual(
-                "implemented_verified_api36" if proven else "implemented_pending_emulator",
-                row["phone"]["status"],
-            )
+            self.assertEqual("implemented_pending_emulator", row["phone"]["status"])
             self.assertEqual(
                 "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
                 row["phone"]["route"],
@@ -3495,15 +3477,7 @@ namespace Chummer
             self.assertEqual(automation_id, row["phone"]["automationId"])
             self.assertIn("active clip", row["presenterMutation"])
             self.assertIn("expected-revision atomic save", row["persistenceAssertion"])
-            self.assertEqual(
-                "executed_api36" if proven else "missing",
-                row["e2e"]["phone"]["status"],
-            )
-            if proven:
-                self.assertEqual(
-                    9547946638,
-                    row["e2e"]["phone"]["hostedArtifact"]["artifactId"],
-                )
+            self.assertEqual("missing", row["e2e"]["phone"]["status"])
             self.assertEqual("missing", row["tablet"]["status"])
             self.assertEqual("missing", row["e2e"]["tablet"]["status"])
             self.assertFalse(row["completionProven"])
@@ -3554,14 +3528,10 @@ int ammoRemaining = savedAmmoRemaining;
             set(rows),
         )
         proven = rows["SkillControl"]
-        self.assertEqual("implemented_verified_api36", proven["phone"]["status"])
+        self.assertEqual("implemented_pending_emulator", proven["phone"]["status"])
         self.assertEqual("CareerActiveSkillAdvancePage", proven["phone"]["surface"])
         self.assertEqual("career-active-skill-advance", proven["phone"]["automationId"])
-        self.assertEqual("executed_api36", proven["e2e"]["phone"]["status"])
-        self.assertEqual(
-            9549892574,
-            proven["e2e"]["phone"]["hostedArtifact"]["artifactId"],
-        )
+        self.assertEqual("scripted_not_executed", proven["e2e"]["phone"]["status"])
         self.assertEqual("missing", proven["tablet"]["status"])
         self.assertFalse(proven["completionProven"])
         for control in ("KnowledgeSkillControl", "SkillGroupControl"):
@@ -3926,39 +3896,40 @@ int ammoRemaining = savedAmmoRemaining;
             for row in payload["rows"]
             if row["legacy"]["formOrControl"] == "SelectMetatypePriority"
         }
-        proven = {
-            "cboCategory",
+        typed_auxiliary = {
             "lstMetatypes",
-            "cboMetavariant",
             "cboHeritage",
             "cboAttributes",
             "cboTalent",
             "cboSkills",
             "cboResources",
             "cboTalents",
+            "cmdOK",
+        }
+        unsupported = {
+            "cboCategory",
+            "cboMetavariant",
             "cboSkill1",
             "cboSkill2",
             "cboSkill3",
             "chkPossessionBased",
             "cboPossessionMethod",
             "nudForce",
-            "cmdOK",
         }
 
-        verified = inventory._validated_new_character_priority_phone_e2e_receipt() is not None
-        for control in proven:
+        for control in typed_auxiliary:
             row = rows[control]
             self.assertTrue(row["editParityRequired"])
-            self.assertEqual(
-                "implemented_verified_api36" if verified else "implemented_pending_emulator",
-                row["phone"]["status"],
-            )
-            self.assertEqual(
-                "executed_api36" if verified else "scripted_not_executed",
-                row["e2e"]["phone"]["status"],
-            )
+            self.assertEqual("partial_exact_saved_data", row["phone"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
             self.assertEqual("missing", row["tablet"]["status"])
-            self.assertIn("Select Metatype Priority", row["phone"]["route"])
+            self.assertIn("Priorities", row["phone"]["route"])
+            self.assertIn("auxiliary creation draft", row["phone"]["coverageLimit"])
+            self.assertIn("character document is unchanged", row["phone"]["coverageLimit"])
+        for control in unsupported:
+            self.assertTrue(rows[control]["editParityRequired"])
+            self.assertEqual("missing", rows[control]["phone"]["status"])
+            self.assertEqual("missing", rows[control]["tablet"]["status"])
 
         remaining: set[str] = set()
         self.assertEqual(
@@ -3966,7 +3937,7 @@ int ammoRemaining = savedAmmoRemaining;
             {
                 control
                 for control, row in rows.items()
-                if row["editParityRequired"] and control not in proven
+                if row["editParityRequired"] and control not in typed_auxiliary | unsupported
             },
         )
         self.assertTrue(
@@ -4025,7 +3996,7 @@ int ammoRemaining = savedAmmoRemaining;
             rows["cmdOK"]["phone"]["automationId"],
         )
 
-    def test_checked_in_inventory_promotes_only_three_exact_hosted_phone_rows(self) -> None:
+    def test_checked_in_inventory_fails_closed_on_historical_hosted_source_drift(self) -> None:
         payload = json.loads(
             (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
                 encoding="utf-8"
@@ -4033,8 +4004,8 @@ int ammoRemaining = savedAmmoRemaining;
         )
 
         self.assertEqual(
-            3,
-            payload["summary"]["phoneStatusCounts"]["implemented_verified_api36"],
+            0,
+            payload["summary"]["phoneStatusCounts"].get("implemented_verified_api36", 0),
         )
         self.assertNotIn("implemented_verified_api36", payload["summary"]["tabletStatusCounts"])
         executed = [
@@ -4048,14 +4019,10 @@ int ammoRemaining = savedAmmoRemaining;
             for profile in ("phone", "tablet")
             if row["e2e"][profile]["status"] == "executed_api36"
         ]
-        self.assertEqual(
-            [
-                ("SkillControl", "btnCareerIncrease", "phone", 9549892574),
-                ("CharacterCareer", "nudNotoriety", "phone", 9549763958),
-                ("CharacterCareer", "cmsAmmoShortBurst", "phone", 9547946638),
-            ],
-            executed,
-        )
+        self.assertEqual([], executed)
+        self.assertIsNone(inventory._validated_career_notoriety_phone_e2e_receipt(PRESENTATION_ROOT, CORE_ROOT))
+        self.assertIsNone(inventory._validated_career_active_skill_phone_e2e_receipt(PRESENTATION_ROOT, CORE_ROOT))
+        self.assertIsNone(inventory._validated_career_weapon_fire_phone_e2e_receipt(PRESENTATION_ROOT, CORE_ROOT))
         self.assertEqual("incomplete_fail_closed", payload["status"])
         self.assertFalse(payload["completionProven"])
         self.assertEqual(
@@ -6211,6 +6178,77 @@ public sealed class Demo
         self.assertEqual("missing", drifted["status"])
         self.assertEqual([], drifted["sourceRefs"])
         self.assertIn("authority drifted", drifted["coverageLimit"])
+
+    def test_priority_creation_rows_bind_only_exact_typed_auxiliary_draft_slice(self) -> None:
+        import inspect
+
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        rows = {
+            row["legacy"]["controlName"]: row
+            for row in payload["rows"]
+            if row["legacy"]["formOrControl"] == "SelectMetatypePriority"
+        }
+        supported = {
+            "cboHeritage": "creation-prerequisite-rank-heritage-{authority-rank}",
+            "cboAttributes": "creation-prerequisite-rank-attributes-{authority-rank}",
+            "cboTalent": "creation-prerequisite-rank-talent-{authority-rank}",
+            "cboSkills": "creation-prerequisite-rank-skills-{authority-rank}",
+            "cboResources": "creation-prerequisite-rank-resources-{authority-rank}",
+            "lstMetatypes": "creation-prerequisite-heritage-option-{selection-id}",
+            "cboTalents": "creation-prerequisite-talent-option-{selection-id}",
+            "cmdOK": "creation-prerequisite-confirm",
+        }
+        unsupported = {
+            "cboCategory",
+            "cboMetavariant",
+            "cboSkill1",
+            "cboSkill2",
+            "cboSkill3",
+            "chkPossessionBased",
+            "cboPossessionMethod",
+            "nudForce",
+        }
+
+        self.assertTrue(set(supported).issubset(rows))
+        self.assertTrue(unsupported.issubset(rows))
+        for control, automation_id in supported.items():
+            row = rows[control]
+            self.assertEqual("partial_exact_saved_data", row["phone"]["status"])
+            self.assertEqual(automation_id, row["phone"]["automationId"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
+            self.assertIn("auxiliary creation draft", row["phone"]["coverageLimit"])
+            self.assertIn("character document is unchanged", row["phone"]["coverageLimit"])
+            self.assertIn("finalization remains pending", row["phone"]["coverageLimit"])
+            self.assertEqual("missing", row["tablet"]["status"])
+            self.assertFalse(row["completionProven"])
+        for control in unsupported:
+            self.assertEqual("missing", rows[control]["phone"]["status"])
+
+        parameters = list(inspect.signature(inventory._known_phone_mapping).parameters)
+        receipt_arguments = {
+            name: {} if name in {"condition_e2e_receipts", "contact_pet_e2e_receipts"} else None
+            for name in parameters[4:]
+        }
+        original_contains = inventory._contains
+
+        def drift_category_authority(path: Path, *needles: str) -> bool:
+            if path.name == "CreationPriorityCategoryPage.cs":
+                return False
+            return original_contains(path, *needles)
+
+        with patch.object(inventory, "_contains", side_effect=drift_category_authority):
+            drifted = inventory._known_phone_mapping(
+                rows["cboHeritage"],
+                inventory.DEFAULT_CHUMMER5_ROOT,
+                PRESENTATION_ROOT,
+                CORE_ROOT,
+                **receipt_arguments,
+            )
+        self.assertEqual("missing", drifted["status"])
 
 
 if __name__ == "__main__":

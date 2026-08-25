@@ -7753,6 +7753,157 @@ def _known_phone_mapping(
                 "ref": e2e_driver.relative_to(REPO_ROOT).as_posix() if e2e_scripted else None,
             },
         }
+    typed_priority_control_categories = {
+        "cboHeritage": "heritage",
+        "cboAttributes": "attributes",
+        "cboTalent": "talent",
+        "cboSkills": "skills",
+        "cboResources": "resources",
+    }
+    typed_priority_controls = {
+        *typed_priority_control_categories,
+        "lstMetatypes",
+        "cboTalents",
+        "cmdOK",
+    }
+    if class_name == "SelectMetatypePriority" and control in typed_priority_controls:
+        prerequisite_page = (
+            REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPrerequisitePage.cs"
+        )
+        category_page = prerequisite_page.with_name("CreationPriorityCategoryPage.cs")
+        detail_page = prerequisite_page.with_name("CreationPriorityDetailPage.cs")
+        preview_page = prerequisite_page.with_name("CreationPrerequisitePreviewPage.cs")
+        phone_draft = prerequisite_page.with_name("CreationPrerequisitePhoneDraft.cs")
+        coordinator = prerequisite_page.with_name("RunnerSessionCoordinator.cs")
+        e2e_driver = REPO_ROOT / "tests" / "run_api36_creation_prerequisite_e2e.py"
+        shared_authority = (
+            _contains(
+                prerequisite_page,
+                "Coordinator.LoadCreationPrerequisite()",
+                "CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State)",
+                "Coordinator.PreviewCreationPrerequisite(state.Binding, assignments, selections)",
+                'automationId: "creation-prerequisite-heritage-selection"',
+                'automationId: "creation-prerequisite-talent-selection"',
+            )
+            and _contains(
+                phone_draft,
+                "CharacterCreationPrerequisiteState",
+                "CharacterCreationPriorityCategoryIds.Ordered",
+                "TrySelectHeritage",
+                "TrySelectTalent",
+            )
+            and _contains(
+                coordinator,
+                "ICharacterCreationPrerequisiteService",
+                "LoadCreationPrerequisite()",
+                "PreviewCreationPrerequisite(",
+                "ConfirmCreationPrerequisiteAsync(",
+                "CharacterCreationPrerequisitePreviewRequest",
+                "CharacterCreationPrerequisiteConfirmRequest",
+            )
+        )
+        rank_authority = shared_authority and _contains(
+            category_page,
+            "_draft.OptionsForCategory(state, Coordinator.State, _categoryId)",
+            "_draft.TrySelect(state, Coordinator.State, _categoryId, rank)",
+            '$"creation-prerequisite-rank-',
+        )
+        heritage_authority = shared_authority and _contains(
+            detail_page,
+            "_draft.HeritageOptions(state, Coordinator.State)",
+            "_draft.TrySelectHeritage(state, Coordinator.State, selectionId)",
+            '$"creation-prerequisite-heritage-option-',
+        )
+        talent_authority = shared_authority and _contains(
+            detail_page,
+            "_draft.TalentOptions(state, Coordinator.State)",
+            "_draft.TrySelectTalent(state, Coordinator.State, selectionId)",
+            "Skill-grant prompts are not yet available on phone",
+            '$"creation-prerequisite-talent-option-',
+        )
+        confirm_authority = shared_authority and _contains(
+            preview_page,
+            "The confirmed write is auxiliary draft state only.",
+            "Coordinator.ConfirmCreationPrerequisiteAsync(",
+            'confirm.AutomationId = "creation-prerequisite-confirm"',
+            "receipt.CharacterDocumentChanged",
+            '"creation-prerequisite-receipt-draft-digest"',
+            '"creation-prerequisite-receipt-auxiliary-state-digest"',
+        )
+        e2e_scripted = _contains(
+            e2e_driver,
+            '"schema": "chummer.android.creation-prerequisite-e2e/v1"',
+            '"fiveOrderedTypedCategorySelections": "pass"',
+            '"heritageAndTalentSelectionsProjectedByCore": "pass"',
+            '"atomicDraftReceiptVerified": "pass"',
+            '"characterDocumentChangedFalse": "pass"',
+            '"pendingDraftSameProcessResume": "pass"',
+            '"pendingDraftProcessRestartResume": "pass"',
+        )
+        if control in typed_priority_control_categories:
+            category = typed_priority_control_categories[control]
+            implemented = rank_authority
+            automation_id = f"creation-prerequisite-rank-{category}-{{authority-rank}}"
+            assertion = (
+                f"the exact Core-projected {category} rank remains in the revision-bound auxiliary "
+                "creation draft after same-session reopen and a disjoint process restart"
+            )
+        elif control == "lstMetatypes":
+            implemented = heritage_authority
+            automation_id = "creation-prerequisite-heritage-option-{selection-id}"
+            assertion = (
+                "the exact Core Heritage SelectionId remains the sole selected option in the "
+                "revision-bound auxiliary draft after same-session reopen and process restart"
+            )
+        elif control == "cboTalents":
+            implemented = talent_authority
+            automation_id = "creation-prerequisite-talent-option-{selection-id}"
+            assertion = (
+                "the exact Core Talent SelectionId remains the sole selected option in the "
+                "revision-bound auxiliary draft after same-session reopen and process restart"
+            )
+        else:
+            implemented = confirm_authority
+            automation_id = "creation-prerequisite-confirm"
+            assertion = (
+                "the exact preview digest is explicitly confirmed into one revision-bound Core "
+                "auxiliary draft; raw character XML remains unchanged and character finalization "
+                "is still pending"
+            )
+        return {
+            "status": "partial_exact_saved_data" if implemented else "missing",
+            "route": "Home > New runner > Build > Priorities",
+            "surface": (
+                "CreationPrerequisitePreviewPage"
+                if control == "cmdOK"
+                else "CreationPriorityDetailPage"
+                if control in {"lstMetatypes", "cboTalents"}
+                else "CreationPriorityCategoryPage"
+            ),
+            "automationId": automation_id,
+            "coverageLimit": (
+                "Priority/Sum-to-Ten prerequisite choices are stored only in the exact Core "
+                "auxiliary creation draft. The character document is unchanged; metatype and "
+                "other final character data are not committed, and creation finalization remains pending."
+            ),
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
+                "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
+                "src/Chummer.Android/Native/CreationPriorityDetailPage.cs",
+                "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
+                "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "tests/run_api36_creation_prerequisite_e2e.py",
+            ],
+            "presenterMutation": (
+                "ICharacterCreationPrerequisiteService.Preview / Confirm auxiliary draft"
+            ),
+            "persistenceAssertion": assertion,
+            "e2e": {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": e2e_driver.relative_to(REPO_ROOT).as_posix() if e2e_scripted else None,
+            },
+        }
     if class_name == "SelectMetatypePriority" and control in {
         "cboCategory",
         "lstMetatypes",
@@ -23143,6 +23294,11 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "OriginDossierPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "NativeDialogPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "NativeCommandPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPrerequisitePage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPriorityCategoryPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPriorityDetailPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPrerequisitePreviewPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPrerequisitePhoneDraft.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TabletBuildPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs",
@@ -23230,6 +23386,7 @@ def build_inventory(
         REPO_ROOT / "tests" / "run_api36_new_character_settings_e2e.py",
         REPO_ROOT / "tests" / "run_api36_new_character_karma_e2e.py",
         REPO_ROOT / "tests" / "run_api36_new_character_priority_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_creation_prerequisite_e2e.py",
         REPO_ROOT / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-full-editing-e2e.chum5",
         REPO_ROOT / "tests" / "fixtures" / "career-reputation-core-only-e2e.chum5",
