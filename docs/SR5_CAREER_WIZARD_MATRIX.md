@@ -60,7 +60,7 @@ Core `722f1d3690a5fffcd4590cd849d9d6e810783ac7` (Career commits
 `da43a509b1f41abe70f3426253acd7158352e589`, followed by the independent
 Priority Skills authority commit
 `cd209c559b4ab8a520a48fd6335a070ca8505a0b`) and integrated Presentation
-`2909ceed887cf3638344b4fec9d5e66feea40e4d` (Career commit
+`1c9b0d52af988bacacea9d682984264e79ab2c3c` (Career commit
 `bd01091df3cdeb889c8336f9b2bf5e07af1c3c82` transplanted onto base
 `d276f1d0ed8f76938d26b92389e62676f48acf7b`). The unrelated Runner Library
 lifecycle commit was intentionally excluded. Android transplants the exact four
