@@ -3231,9 +3231,8 @@ def _csharp_public_method_sha256(path: Path, method_name: str) -> str | None:
     if len(declarations) != 1:
         return None
     declaration = declarations[0]
-    member_start = source.find(method_name, declaration.start(), declaration.end())
     body_start = source.find("{", declaration.end())
-    if member_start < 0 or body_start < 0:
+    if body_start < 0:
         return None
     depth = 0
     for index in range(body_start, len(source)):
@@ -3243,7 +3242,9 @@ def _csharp_public_method_sha256(path: Path, method_name: str) -> str | None:
         elif character == "}":
             depth -= 1
             if depth == 0:
-                return _sha256_bytes(source[member_start : index + 1].encode("utf-8"))
+                return _sha256_bytes(
+                    source[declaration.start() : index + 1].encode("utf-8")
+                )
     return None
 
 
@@ -3312,11 +3313,11 @@ def _exact_atomic_workspace_transition(
     if not (
         isinstance(workspace_id, str)
         and workspace_id
-        and isinstance(import_revision, int)
-        and isinstance(saved_revision, int)
-        and saved_revision == import_revision + 1
+        and import_revision == 1
+        and imported.get("savedRevision") == 0
+        and saved_revision == 2
         and saved.get("workspaceId") == workspace_id
-        and saved.get("savedRevision") == saved_revision
+        and saved.get("savedRevision") == 2
         and imported.get("payloadSha256") != saved.get("payloadSha256")
         and imported.get("documentSha256") != saved.get("documentSha256")
         and re.fullmatch(r"[0-9a-f]{64}", str(saved.get("payloadSha256") or ""))
