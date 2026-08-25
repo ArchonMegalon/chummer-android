@@ -634,6 +634,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     def test_coordinator_uses_only_the_core_prerequisite_boundary_and_refreshes_receipt(self) -> None:
         source = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
         for marker in (
+            "internal CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>",
+            "internal async Task<CreationPrerequisitePhoneConfirmResult>",
             "ICharacterCreationPrerequisiteService creationPrerequisiteService",
             "_creationPrerequisiteService.Load(",
             "new CharacterCreationPrerequisiteLoadRequest(workspaceId)",

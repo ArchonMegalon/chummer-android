@@ -273,7 +273,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         return result;
     }
 
-    public CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>
+    internal CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>
         PreviewCreationPrerequisite(
             CharacterCreationPrerequisiteBinding binding,
             IReadOnlyDictionary<string, string> assignments,
@@ -314,7 +314,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
             });
     }
 
-    public async Task<CreationPrerequisitePhoneConfirmResult>
+    internal async Task<CreationPrerequisitePhoneConfirmResult>
         ConfirmCreationPrerequisiteAsync(
             CharacterCreationPrerequisitePreview preview,
             IReadOnlyDictionary<string, string> assignments,
