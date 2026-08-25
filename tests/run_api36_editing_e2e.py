@@ -1096,8 +1096,6 @@ def _phone_runner_route_from_nodes(
                 f"Final phone runner route was {observed_route!r}; "
                 f"expected sole root {desired_route!r}"
             )
-        if node.attributes.get("visible-to-user") != "true":
-            return None
         expected_label = (
             "CREATION RUNNER"
             if observed_route == "phone-runner-create"
@@ -1636,7 +1634,6 @@ def return_to_phone_runner_root(
             if _node_has_canonical_resource_id(node, "phone-runner-page")
             and node.attributes.get("class") == "android.view.ViewGroup"
             and node.attributes.get("enabled") == "true"
-            and node.attributes.get("visible-to-user") == "true"
         ]
         if len(page_matches) > 1:
             device.capture("phone-runner-root-page-cardinality-invalid")
@@ -1653,7 +1650,6 @@ def return_to_phone_runner_root(
             and node.attributes.get("enabled") == "true"
             and node.attributes.get("clickable") == "true"
             and node.attributes.get("focusable") == "true"
-            and node.attributes.get("visible-to-user") == "true"
         ]
         if len(toolbar_matches) > 1:
             device.capture("phone-runner-root-toolbar-cardinality-invalid")
@@ -1676,7 +1672,6 @@ def return_to_phone_runner_root(
                 if (
                     route.attributes.get("class") != "android.widget.TextView"
                     or route.attributes.get("enabled") != "true"
-                    or route.attributes.get("visible-to-user") != "true"
                     or route.attributes.get("clickable") != "false"
                     or route.attributes.get("focusable") != "false"
                     or route.attributes.get("text") != expected_label
@@ -1717,7 +1712,6 @@ def return_to_phone_runner_root(
             and node.attributes.get("enabled") == "true"
             and node.attributes.get("clickable") == "true"
             and node.attributes.get("focusable") == "true"
-            and node.attributes.get("visible-to-user") == "true"
         ]
         if len(navigate_up) > 1:
             device.capture("phone-runner-root-navigation-cardinality-invalid")
