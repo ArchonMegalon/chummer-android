@@ -523,10 +523,15 @@ public sealed class BuildPage : NativePageBase
         CreationDashboardAuthorityPhase phase,
         string activity,
         BackgroundProjectionRequest<CreationDashboardProjectionBinding> request)
-        => Console.WriteLine(
-            $"CHUMMER_CREATION_AUTHORITY phase={phase} activity={activity} "
-            + $"generation={request.Generation.ToString(CultureInfo.InvariantCulture)} "
-            + $"revision={request.Key.ContentRevision.ToString(CultureInfo.InvariantCulture)}");
+    {
+        string message = $"phase={phase} activity={activity} "
+                         + $"generation={request.Generation.ToString(CultureInfo.InvariantCulture)} "
+                         + $"revision={request.Key.ContentRevision.ToString(CultureInfo.InvariantCulture)}";
+#if ANDROID
+        Android.Util.Log.Info("ChummerCreationAuthority", message);
+#endif
+        Console.WriteLine($"CHUMMER_CREATION_AUTHORITY {message}");
+    }
 
     private bool CanAcceptCreationPhase(
         BackgroundProjectionRequest<CreationDashboardProjectionBinding> request)
