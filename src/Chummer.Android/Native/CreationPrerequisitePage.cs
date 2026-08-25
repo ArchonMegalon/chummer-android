@@ -4,7 +4,7 @@ using Chummer.Contracts.Characters;
 namespace Chummer.Android.Native;
 
 /// <summary>
-/// Phone-only Priority/Sum-to-Ten prerequisite stage. The page stores typed rank selections only;
+/// Phone-only Priority/Sum-to-Ten prerequisite stage. The page stores typed projected selections;
 /// Core evaluates and persists the revision-bound draft.
 /// </summary>
 public sealed class CreationPrerequisitePage : NativePageBase
@@ -166,7 +166,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
             "Base revision",
             pending.BaseContentRevision.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Body(
-            "These typed assignments were restored from Core auxiliary state after reload.",
+            "The rank, Heritage, and Talent selections were restored from Core auxiliary state after reload.",
             NativeTheme.Muted));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-prerequisite-pending-draft";
@@ -206,6 +206,51 @@ public sealed class CreationPrerequisitePage : NativePageBase
                     _draft,
                     category)),
                 automationId: $"creation-prerequisite-category-{Token(category)}"));
+
+            if (string.Equals(
+                    category,
+                    CharacterCreationPriorityCategoryIds.Heritage,
+                    StringComparison.Ordinal))
+            {
+                CharacterCreationPriorityHeritageOptionProjection? selectedHeritage =
+                    _draft.SelectedHeritage(state, Coordinator.State);
+                _body.Add(NativeTheme.NavigationRow(
+                    "Heritage choice",
+                    selectedHeritage is null
+                        ? "Select an exact Core-projected metatype or metavariant"
+                        : JoinDetails(
+                            selectedHeritage.MetatypeName,
+                            selectedHeritage.MetavariantName,
+                            $"selection {selectedHeritage.SelectionId}"),
+                    () => Navigation.PushAsync(new CreationPriorityDetailPage(
+                        Coordinator,
+                        _draft,
+                        category)),
+                    enabled: selected is not null,
+                    automationId: "creation-prerequisite-heritage-selection"));
+            }
+            else if (string.Equals(
+                         category,
+                         CharacterCreationPriorityCategoryIds.Talent,
+                         StringComparison.Ordinal))
+            {
+                CharacterCreationPriorityTalentOptionProjection? selectedTalent =
+                    _draft.SelectedTalent(state, Coordinator.State);
+                _body.Add(NativeTheme.NavigationRow(
+                    "Talent choice",
+                    selectedTalent is null
+                        ? "Select an exact Core-projected Talent without an unsupported phone prompt"
+                        : JoinDetails(
+                            selectedTalent.Name,
+                            selectedTalent.Value,
+                            $"selection {selectedTalent.SelectionId}"),
+                    () => Navigation.PushAsync(new CreationPriorityDetailPage(
+                        Coordinator,
+                        _draft,
+                        category)),
+                    enabled: selected is not null,
+                    automationId: "creation-prerequisite-talent-selection"));
+            }
         }
     }
 
@@ -220,17 +265,27 @@ public sealed class CreationPrerequisitePage : NativePageBase
     {
         string adjustmentReason = state.RequiresMetatypeAttributeAdjustment
             ? "Raw grant only: Heritage/metatype halveattributepoints adjustment is still required."
-            : "The prerequisite authority has not enabled Attributes navigation.";
+            : state.CanEnterAttributes
+                ? "Core resolved Heritage/metatype adjustment; the dedicated phone Attributes page is the next stage."
+                : "The prerequisite authority has not enabled Attributes navigation.";
         string detail = JoinDetails(
             $"Raw normal Attribute grant: {rawGrant?.ToString(CultureInfo.InvariantCulture) ?? "not selected"}",
+            state.EffectiveNormalAttributePoints is int effective
+                ? $"Effective normal Attribute grant: {effective.ToString(CultureInfo.InvariantCulture)}"
+                : null,
+            state.TotalSpecialAttributePoints is int special
+                ? $"Special Attribute points: {special.ToString(CultureInfo.InvariantCulture)}"
+                : null,
             adjustmentReason,
-            "Attributes remain disabled");
+            state.CanEnterAttributes ? "Core prerequisite complete" : "Attributes remain disabled");
         Border row = NativeTheme.NavigationRow(
             "Attributes",
             detail,
             () => Task.CompletedTask,
             enabled: false,
-            automationId: "creation-prerequisite-attributes-disabled");
+            automationId: state.CanEnterAttributes
+                ? "creation-prerequisite-attributes-ready"
+                : "creation-prerequisite-attributes-disabled");
         _body.Add(row);
     }
 
@@ -288,8 +343,17 @@ public sealed class CreationPrerequisitePage : NativePageBase
         IReadOnlyDictionary<string, string> assignments = _draft.Assignments(
             state,
             Coordinator.State);
+        CreationPrerequisitePhoneSelections? selections = _draft.Selections(
+            state,
+            Coordinator.State);
+        if (selections is null)
+        {
+            _prepareBlockers = [CharacterCreationPrerequisiteBlockers.SelectionIncomplete];
+            Refresh();
+            return;
+        }
         CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview> result =
-            Coordinator.PreviewCreationPrerequisite(state.Binding, assignments);
+            Coordinator.PreviewCreationPrerequisite(state.Binding, assignments, selections);
         if (!string.Equals(
                 result.Outcome,
                 CharacterCreationFoundationOutcomes.Success,
@@ -308,6 +372,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
             Coordinator,
             prepared,
             assignments,
+            selections,
             state.BuildMethod));
     }
 

@@ -8,6 +8,12 @@ internal sealed record CreationPrerequisitePhoneRankOption(
     bool IsEnabled,
     string? DisableReason);
 
+internal sealed record CreationPrerequisitePhoneSelections(
+    string HeritageSelectionId,
+    string TalentSelectionId,
+    IReadOnlyList<string> TalentActiveSkillSelectionIds,
+    IReadOnlyList<string> TalentSkillGroupSelectionIds);
+
 /// <summary>
 /// Holds only the typed Priority/Sum-to-Ten choices for one exact Core snapshot. Core remains the
 /// source of every option, cost, budget, preview, and persisted draft.
@@ -24,6 +30,8 @@ internal sealed class CreationPrerequisitePhoneDraft
     private string? _rulesetId;
     private string? _buildMethod;
     private readonly Dictionary<string, string> _assignments = new(StringComparer.Ordinal);
+    private string? _heritageSelectionId;
+    private string? _talentSelectionId;
 
     public bool Bind(
         CharacterCreationPrerequisiteState state,
@@ -39,6 +47,8 @@ internal sealed class CreationPrerequisitePhoneDraft
         _rulesetId = state.RulesetId;
         _buildMethod = state.BuildMethod;
         _assignments.Clear();
+        _heritageSelectionId = null;
+        _talentSelectionId = null;
         RestorePendingDraft(state, overview);
         return true;
     }
@@ -68,6 +78,46 @@ internal sealed class CreationPrerequisitePhoneDraft
            && _assignments.TryGetValue(categoryId, out string? rank)
             ? CreationPrerequisitePhoneAuthority.ResolveUniqueOption(state, categoryId, rank)
             : null;
+
+    public CharacterCreationPriorityHeritageOptionProjection? SelectedHeritage(
+        CharacterCreationPrerequisiteState state,
+        CharacterOverviewState overview)
+        => SelectedOption(state, overview, CharacterCreationPriorityCategoryIds.Heritage) is { } rank
+           && _heritageSelectionId is { } selectionId
+            ? CreationPrerequisitePhoneAuthority.ResolveUniqueHeritageOption(rank, selectionId)
+            : null;
+
+    public CharacterCreationPriorityTalentOptionProjection? SelectedTalent(
+        CharacterCreationPrerequisiteState state,
+        CharacterOverviewState overview)
+        => SelectedOption(state, overview, CharacterCreationPriorityCategoryIds.Talent) is { } rank
+           && _talentSelectionId is { } selectionId
+            ? CreationPrerequisitePhoneAuthority.ResolveUniqueTalentOption(rank, selectionId)
+            : null;
+
+    public IReadOnlyList<CharacterCreationPriorityHeritageOptionProjection> HeritageOptions(
+        CharacterCreationPrerequisiteState state,
+        CharacterOverviewState overview)
+        => SelectedOption(state, overview, CharacterCreationPriorityCategoryIds.Heritage) is { } rank
+            ? rank.HeritageOptions
+                .Where(CreationPrerequisitePhoneAuthority.IsExactHeritageOption)
+                .OrderBy(option => option.MetatypeName, StringComparer.Ordinal)
+                .ThenBy(option => option.MetavariantName, StringComparer.Ordinal)
+                .ThenBy(option => option.SelectionId, StringComparer.Ordinal)
+                .ToArray()
+            : [];
+
+    public IReadOnlyList<CharacterCreationPriorityTalentOptionProjection> TalentOptions(
+        CharacterCreationPrerequisiteState state,
+        CharacterOverviewState overview)
+        => SelectedOption(state, overview, CharacterCreationPriorityCategoryIds.Talent) is { } rank
+            ? rank.TalentOptions
+                .Where(CreationPrerequisitePhoneAuthority.IsExactTalentOption)
+                .OrderBy(option => option.Name, StringComparer.Ordinal)
+                .ThenBy(option => option.Value, StringComparer.Ordinal)
+                .ThenBy(option => option.SelectionId, StringComparer.Ordinal)
+                .ToArray()
+            : [];
 
     public IReadOnlyList<CreationPrerequisitePhoneRankOption> OptionsForCategory(
         CharacterCreationPrerequisiteState state,
@@ -114,16 +164,82 @@ internal sealed class CreationPrerequisitePhoneDraft
         if (matches is not [{ IsEnabled: true }])
             return false;
 
-        _assignments[categoryId] = matches[0].Projection.Rank;
+        string selectedRank = matches[0].Projection.Rank;
+        bool changed = !_assignments.TryGetValue(categoryId, out string? currentRank)
+                       || !string.Equals(currentRank, selectedRank, StringComparison.Ordinal);
+        _assignments[categoryId] = selectedRank;
+        if (changed && string.Equals(
+                categoryId,
+                CharacterCreationPriorityCategoryIds.Heritage,
+                StringComparison.Ordinal))
+        {
+            _heritageSelectionId = null;
+        }
+        if (changed && string.Equals(
+                categoryId,
+                CharacterCreationPriorityCategoryIds.Talent,
+                StringComparison.Ordinal))
+        {
+            _talentSelectionId = null;
+        }
         return true;
     }
+
+    public bool TrySelectHeritage(
+        CharacterCreationPrerequisiteState state,
+        CharacterOverviewState overview,
+        string selectionId)
+    {
+        CharacterCreationPriorityHeritageOptionProjection[] matches = HeritageOptions(state, overview)
+            .Where(option => string.Equals(option.SelectionId, selectionId, StringComparison.Ordinal))
+            .Take(2)
+            .ToArray();
+        if (matches is not [{ IsEnabled: true, Blockers: { Count: 0 } }])
+            return false;
+        _heritageSelectionId = matches[0].SelectionId;
+        return true;
+    }
+
+    public bool TrySelectTalent(
+        CharacterCreationPrerequisiteState state,
+        CharacterOverviewState overview,
+        string selectionId)
+    {
+        CharacterCreationPriorityTalentOptionProjection[] matches = TalentOptions(state, overview)
+            .Where(option => string.Equals(option.SelectionId, selectionId, StringComparison.Ordinal))
+            .Take(2)
+            .ToArray();
+        if (matches is not [{ IsEnabled: true, Blockers: { Count: 0 },
+                              ActiveSkillGrant: null, SkillGroupGrant: null }])
+        {
+            return false;
+        }
+        _talentSelectionId = matches[0].SelectionId;
+        return true;
+    }
+
+    public CreationPrerequisitePhoneSelections? Selections(
+        CharacterCreationPrerequisiteState state,
+        CharacterOverviewState overview)
+        => SelectedHeritage(state, overview) is { } heritage
+           && SelectedTalent(state, overview) is { } talent
+            ? new CreationPrerequisitePhoneSelections(
+                heritage.SelectionId,
+                talent.SelectionId,
+                [],
+                [])
+            : null;
 
     public void Reset(
         CharacterCreationPrerequisiteState state,
         CharacterOverviewState overview)
     {
         if (Matches(state, overview))
+        {
             _assignments.Clear();
+            _heritageSelectionId = null;
+            _talentSelectionId = null;
+        }
     }
 
     public bool CanPrepare(
@@ -134,7 +250,12 @@ internal sealed class CreationPrerequisitePhoneDraft
             || !CreationPrerequisitePhoneAuthority.IsReady(state, overview)
             || _assignments.Count != CharacterCreationPriorityCategoryIds.Ordered.Count
             || CharacterCreationPriorityCategoryIds.Ordered.Any(category =>
-                SelectedOption(state, overview, category) is null))
+                SelectedOption(state, overview, category) is null)
+            || SelectedHeritage(state, overview) is not
+                { IsEnabled: true, Blockers: { Count: 0 } }
+            || SelectedTalent(state, overview) is not
+                { IsEnabled: true, Blockers: { Count: 0 },
+                  ActiveSkillGrant: null, SkillGroupGrant: null })
         {
             return false;
         }
@@ -218,6 +339,8 @@ internal sealed class CreationPrerequisitePhoneDraft
             || pending.SumToTenTarget != state.Authority.SumToTenTarget
             || pending.CreationKarmaTotal != state.CreationKarmaBudget.Total
             || pending.CreationKarmaUsed != state.CreationKarmaBudget.Used
+            || pending.EffectiveNormalAttributePoints != state.EffectiveNormalAttributePoints
+            || pending.TotalSpecialAttributePoints != state.TotalSpecialAttributePoints
             || pending.Assignments.Count != CharacterCreationPriorityCategoryIds.Ordered.Count)
         {
             return;
@@ -240,8 +363,52 @@ internal sealed class CreationPrerequisitePhoneDraft
             _assignments[category] = assignment.Rank;
         }
 
-        if (!CanPrepare(state, overview))
+        CharacterCreationPriorityOptionProjection? heritageRank = SelectedOption(
+            state,
+            overview,
+            CharacterCreationPriorityCategoryIds.Heritage);
+        CharacterCreationPriorityOptionProjection? talentRank = SelectedOption(
+            state,
+            overview,
+            CharacterCreationPriorityCategoryIds.Talent);
+        CharacterCreationPriorityHeritageOptionProjection? heritage =
+            pending.HeritageSelection is { } pendingHeritage && heritageRank is not null
+                ? CreationPrerequisitePhoneAuthority.ResolveUniqueHeritageOption(
+                    heritageRank,
+                    pendingHeritage.SelectionId)
+                : null;
+        CharacterCreationPriorityTalentOptionProjection? talent =
+            pending.TalentSelection is { } pendingTalent && talentRank is not null
+                ? CreationPrerequisitePhoneAuthority.ResolveUniqueTalentOption(
+                    talentRank,
+                    pendingTalent.SelectionId)
+                : null;
+        if (heritage is null
+            || talent is null
+            || !CreationPrerequisitePhoneAuthority.HeritageSelectionMatchesOption(
+                pending.HeritageSelection!,
+                heritage,
+                heritageRank!.SourceId)
+            || !CreationPrerequisitePhoneAuthority.TalentSelectionMatchesOption(
+                pending.TalentSelection!,
+                talent,
+                talentRank!.SourceId)
+            || pending.CreationKarmaUsed != heritage.KarmaCost
+            || pending.EffectiveNormalAttributePoints < 0
+            || pending.TotalSpecialAttributePoints < 0)
+        {
             _assignments.Clear();
+            return;
+        }
+        _heritageSelectionId = heritage.SelectionId;
+        _talentSelectionId = talent.SelectionId;
+
+        if (!CanPrepare(state, overview))
+        {
+            _assignments.Clear();
+            _heritageSelectionId = null;
+            _talentSelectionId = null;
+        }
     }
 
     private string? CandidateBlocker(
@@ -343,8 +510,12 @@ internal static class CreationPrerequisitePhoneAuthority
                CharacterCreationPrerequisiteSchemas.AuthorityV1,
                StringComparison.Ordinal)
            && !state.CharacterCreated
-           && state.RequiresMetatypeAttributeAdjustment
-           && !state.CanEnterAttributes
+           && (state.PendingDraft is null
+               ? state.RequiresMetatypeAttributeAdjustment && !state.CanEnterAttributes
+               : !state.RequiresMetatypeAttributeAdjustment
+                 && state.CanEnterAttributes
+                 && state.EffectiveNormalAttributePoints is >= 0
+                 && state.TotalSpecialAttributePoints is >= 0)
            && state.Authority.IsAuthoritative
            && state.Blockers.Count == 0
            && state.Authority.Blockers.Count == 0
@@ -458,6 +629,75 @@ internal static class CreationPrerequisitePhoneAuthority
         return matches.Length == 1 && IsExactProjectedOption(matches[0]) ? matches[0] : null;
     }
 
+    public static CharacterCreationPriorityHeritageOptionProjection? ResolveUniqueHeritageOption(
+        CharacterCreationPriorityOptionProjection rank,
+        string selectionId)
+    {
+        CharacterCreationPriorityHeritageOptionProjection[] matches = rank.HeritageOptions
+            .Where(option => string.Equals(option.SelectionId, selectionId, StringComparison.Ordinal))
+            .Take(2)
+            .ToArray();
+        return matches.Length == 1 && IsExactHeritageOption(matches[0]) ? matches[0] : null;
+    }
+
+    public static CharacterCreationPriorityTalentOptionProjection? ResolveUniqueTalentOption(
+        CharacterCreationPriorityOptionProjection rank,
+        string selectionId)
+    {
+        CharacterCreationPriorityTalentOptionProjection[] matches = rank.TalentOptions
+            .Where(option => string.Equals(option.SelectionId, selectionId, StringComparison.Ordinal))
+            .Take(2)
+            .ToArray();
+        return matches.Length == 1 && IsExactTalentOption(matches[0]) ? matches[0] : null;
+    }
+
+    public static bool HeritageSelectionMatchesOption(
+        CharacterCreationPriorityHeritageSelection selection,
+        CharacterCreationPriorityHeritageOptionProjection option,
+        string prioritySourceId)
+        => string.Equals(selection.SelectionId, option.SelectionId, StringComparison.Ordinal)
+           && string.Equals(selection.PrioritySourceId, prioritySourceId, StringComparison.Ordinal)
+           && string.Equals(selection.Kind, option.Kind, StringComparison.Ordinal)
+           && string.Equals(selection.MetatypeSourceId, option.MetatypeSourceId, StringComparison.Ordinal)
+           && string.Equals(selection.MetavariantSourceId, option.MetavariantSourceId, StringComparison.Ordinal)
+           && string.Equals(selection.MetatypeName, option.MetatypeName, StringComparison.Ordinal)
+           && string.Equals(selection.MetavariantName, option.MetavariantName, StringComparison.Ordinal)
+           && selection.SpecialAttributePoints == option.SpecialAttributePoints
+           && selection.KarmaCost == option.KarmaCost
+           && selection.HalvesNormalAttributePoints == option.HalvesNormalAttributePoints
+           && string.Equals(
+               selection.PriorityChildNodeDigest,
+               option.PriorityChildNodeDigest,
+               StringComparison.Ordinal)
+           && string.Equals(
+               selection.MetatypeSourceNodeDigest,
+               option.MetatypeSourceNodeDigest,
+               StringComparison.Ordinal)
+           && selection.Attributes.SequenceEqual(option.Attributes)
+           && selection.SourceAnchorIds.SequenceEqual(option.SourceAnchorIds, StringComparer.Ordinal);
+
+    public static bool TalentSelectionMatchesOption(
+        CharacterCreationPriorityTalentSelection selection,
+        CharacterCreationPriorityTalentOptionProjection option,
+        string prioritySourceId)
+        => string.Equals(selection.SelectionId, option.SelectionId, StringComparison.Ordinal)
+           && string.Equals(selection.PrioritySourceId, prioritySourceId, StringComparison.Ordinal)
+           && string.Equals(selection.Name, option.Name, StringComparison.Ordinal)
+           && string.Equals(selection.Value, option.Value, StringComparison.Ordinal)
+           && selection.SpecialAttributePoints == option.SpecialAttributePoints
+           && selection.Magic == option.Magic
+           && selection.Resonance == option.Resonance
+           && selection.Depth == option.Depth
+           && selection.GrantedQualities.SequenceEqual(option.GrantedQualities, StringComparer.Ordinal)
+           && string.Equals(
+               selection.PriorityChildNodeDigest,
+               option.PriorityChildNodeDigest,
+               StringComparison.Ordinal)
+           && selection.SourceAnchorIds.SequenceEqual(option.SourceAnchorIds, StringComparer.Ordinal)
+           && selection.GrantPlan is null
+           && option.ActiveSkillGrant is null
+           && option.SkillGroupGrant is null;
+
     public static bool AssignmentMatchesOption(
         CharacterCreationPriorityAssignment assignment,
         CharacterCreationPriorityOptionProjection option)
@@ -471,6 +711,106 @@ internal static class CreationPrerequisitePhoneAuthority
            && assignment.SumToTenValue == option.SumToTenValue
            && assignment.BaseNormalAttributePoints == option.BaseNormalAttributePoints
            && assignment.SourceAnchorIds.SequenceEqual(option.SourceAnchorIds, StringComparer.Ordinal);
+
+    public static bool PendingDraftMatchesAuthority(
+        CharacterCreationPrerequisiteState state,
+        CharacterCreationPrerequisiteDraft pending)
+    {
+        if (!string.Equals(
+                pending.Schema,
+                CharacterCreationPrerequisiteSchemas.DraftV1,
+                StringComparison.Ordinal)
+            || pending.WorkspaceId != state.Binding.WorkspaceId
+            || !string.Equals(pending.BuildMethod, state.BuildMethod, StringComparison.Ordinal)
+            || !string.Equals(
+                pending.SettingsProfileId,
+                state.Authority.SettingsProfileId,
+                StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(
+                pending.PriorityTable,
+                state.Authority.PriorityTable,
+                StringComparison.Ordinal)
+            || !pending.PriorityArray.SequenceEqual(state.Authority.PriorityArray, StringComparer.Ordinal)
+            || pending.SumToTenTarget != state.Authority.SumToTenTarget
+            || pending.CreationKarmaTotal != state.CreationKarmaBudget.Total
+            || pending.CreationKarmaUsed != state.CreationKarmaBudget.Used
+            || pending.EffectiveNormalAttributePoints != state.EffectiveNormalAttributePoints
+            || pending.TotalSpecialAttributePoints != state.TotalSpecialAttributePoints
+            || pending.Assignments.Count != CharacterCreationPriorityCategoryIds.Ordered.Count)
+        {
+            return false;
+        }
+
+        for (int index = 0; index < CharacterCreationPriorityCategoryIds.Ordered.Count; index++)
+        {
+            string category = CharacterCreationPriorityCategoryIds.Ordered[index];
+            CharacterCreationPriorityAssignment assignment = pending.Assignments[index];
+            CharacterCreationPriorityOptionProjection? option = ResolveUniqueOption(
+                state,
+                category,
+                assignment.Rank);
+            if (assignment.Order != index
+                || !string.Equals(assignment.CategoryId, category, StringComparison.Ordinal)
+                || option is null
+                || !AssignmentMatchesOption(assignment, option))
+            {
+                return false;
+            }
+        }
+
+        CharacterCreationPriorityAssignment heritageAssignment = pending.Assignments.Single(
+            assignment => string.Equals(
+                assignment.CategoryId,
+                CharacterCreationPriorityCategoryIds.Heritage,
+                StringComparison.Ordinal));
+        CharacterCreationPriorityAssignment talentAssignment = pending.Assignments.Single(
+            assignment => string.Equals(
+                assignment.CategoryId,
+                CharacterCreationPriorityCategoryIds.Talent,
+                StringComparison.Ordinal));
+        CharacterCreationPriorityOptionProjection? heritageRank = ResolveUniqueOption(
+            state,
+            heritageAssignment.CategoryId,
+            heritageAssignment.Rank);
+        CharacterCreationPriorityOptionProjection? talentRank = ResolveUniqueOption(
+            state,
+            talentAssignment.CategoryId,
+            talentAssignment.Rank);
+        CharacterCreationPriorityHeritageOptionProjection? heritage =
+            heritageRank is not null && pending.HeritageSelection is { } pendingHeritage
+                ? ResolveUniqueHeritageOption(heritageRank, pendingHeritage.SelectionId)
+                : null;
+        CharacterCreationPriorityTalentOptionProjection? talent =
+            talentRank is not null && pending.TalentSelection is { } pendingTalent
+                ? ResolveUniqueTalentOption(talentRank, pendingTalent.SelectionId)
+                : null;
+        if (heritageRank is null
+            || talentRank is null
+            || heritage is null
+            || talent is null
+            || !HeritageSelectionMatchesOption(
+                pending.HeritageSelection!,
+                heritage,
+                heritageRank.SourceId)
+            || !TalentSelectionMatchesOption(
+                pending.TalentSelection!,
+                talent,
+                talentRank.SourceId)
+            || pending.CreationKarmaUsed != heritage.KarmaCost
+            || pending.EffectiveNormalAttributePoints < 0
+            || pending.TotalSpecialAttributePoints < 0)
+        {
+            return false;
+        }
+
+        string[] expectedAnchors = state.Authority.SourceAnchorIds
+            .Concat(pending.Assignments.SelectMany(assignment => assignment.SourceAnchorIds))
+            .Concat(pending.HeritageSelection!.SourceAnchorIds)
+            .Concat(pending.TalentSelection!.SourceAnchorIds)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        return pending.SourceAnchorIds.SequenceEqual(expectedAnchors, StringComparer.Ordinal);
+    }
 
     public static bool BindingEquals(
         CharacterCreationPrerequisiteBinding left,
@@ -507,11 +847,16 @@ internal static class CreationPrerequisitePhoneAuthority
                receipt.AuthorityDigest,
                refreshed.Binding.AuthorityDigest,
                StringComparison.Ordinal)
+           && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(receipt.RawCharacterXmlDigest)
+           && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(receipt.AuthorityDigest)
+           && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(receipt.DraftDigest)
            && receipt.CreationKarmaRemaining == refreshed.CreationKarmaBudget.Remaining
            && receipt.BaseNormalAttributePoints == refreshed.BaseNormalAttributePoints
+           && receipt.EffectiveNormalAttributePoints == refreshed.EffectiveNormalAttributePoints
+           && receipt.TotalSpecialAttributePoints == refreshed.TotalSpecialAttributePoints
            && !receipt.CharacterDocumentChanged
-           && refreshed.RequiresMetatypeAttributeAdjustment
-           && !refreshed.CanEnterAttributes
+           && !refreshed.RequiresMetatypeAttributeAdjustment
+           && refreshed.CanEnterAttributes
            && refreshed.PendingDraft is { } pending
            && pending.DraftRevision == receipt.DraftRevision
            && string.Equals(pending.DraftDigest, receipt.DraftDigest, StringComparison.Ordinal)
@@ -522,7 +867,42 @@ internal static class CreationPrerequisitePhoneAuthority
            && string.Equals(pending.AuthorityDigest, receipt.AuthorityDigest, StringComparison.Ordinal)
            && pending.CreationKarmaTotal - pending.CreationKarmaUsed
                == receipt.CreationKarmaRemaining
+           && pending.EffectiveNormalAttributePoints == receipt.EffectiveNormalAttributePoints
+           && pending.TotalSpecialAttributePoints == receipt.TotalSpecialAttributePoints
+           && PendingDraftMatchesAuthority(refreshed, pending)
            && MatchesOverview(refreshed, overview);
+
+    public static bool IsExactHeritageOption(
+        CharacterCreationPriorityHeritageOptionProjection option)
+        => !string.IsNullOrWhiteSpace(option.SelectionId)
+           && option.Kind is CharacterCreationPriorityChildKinds.Metatype
+               or CharacterCreationPriorityChildKinds.Metavariant
+           && Guid.TryParseExact(option.MetatypeSourceId, "D", out Guid metatypeSourceId)
+           && metatypeSourceId != Guid.Empty
+           && !string.IsNullOrWhiteSpace(option.MetatypeName)
+           && option.SpecialAttributePoints >= 0
+           && option.KarmaCost >= 0
+           && option.Attributes.Count > 0
+           && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(
+               option.PriorityChildNodeDigest)
+           && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(
+               option.MetatypeSourceNodeDigest)
+           && option.IsEnabled == (option.Blockers.Count == 0)
+           && option.SourceAnchorIds.Count > 0
+           && option.SourceAnchorIds.All(anchor => !string.IsNullOrWhiteSpace(anchor));
+
+    public static bool IsExactTalentOption(
+        CharacterCreationPriorityTalentOptionProjection option)
+        => !string.IsNullOrWhiteSpace(option.SelectionId)
+           && !string.IsNullOrWhiteSpace(option.Name)
+           && !string.IsNullOrWhiteSpace(option.Value)
+           && option.SpecialAttributePoints >= 0
+           && option.GrantedQualities is not null
+           && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(
+               option.PriorityChildNodeDigest)
+           && option.IsEnabled == (option.Blockers.Count == 0)
+           && option.SourceAnchorIds.Count > 0
+           && option.SourceAnchorIds.All(anchor => !string.IsNullOrWhiteSpace(anchor));
 
     private static bool IsExactProjectedOption(CharacterCreationPriorityOptionProjection option)
         => CharacterCreationPriorityCategoryIds.Ordered.Contains(

@@ -80,16 +80,16 @@ class AndroidContractTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-        for dependency, commit in (
-            ("ArchonMegalon/chummer6-ui", "e906ec909d337b7a907ba7ae8c526c3aad89a1e3"),
-            ("ArchonMegalon/chummer6-core", "e9874a31d8d25b98dd196dd629c423e9a9c39297"),
-            ("ArchonMegalon/chummer6-hub", "d29a880f624ec94aabedd0c2901ae8fed2f93ed4"),
-            ("ArchonMegalon/chummer6-ui-kit", "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61"),
-            ("ArchonMegalon/chummer6-hub-registry", "af9a7e19c3bf331e96411dfb8f9e7820a98cab29"),
-            ("ArchonMegalon/chummer6-media-factory", "415c8163d3d90b1211e4014fef332bdec6d75f73"),
+        for dependency, commit, checkout_count in (
+            ("ArchonMegalon/chummer6-ui", "d276f1d0ed8f76938d26b92389e62676f48acf7b", 2),
+            ("ArchonMegalon/chummer6-core", "e9874a31d8d25b98dd196dd629c423e9a9c39297", 2),
+            ("ArchonMegalon/chummer6-hub", "d29a880f624ec94aabedd0c2901ae8fed2f93ed4", 1),
+            ("ArchonMegalon/chummer6-ui-kit", "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61", 1),
+            ("ArchonMegalon/chummer6-hub-registry", "af9a7e19c3bf331e96411dfb8f9e7820a98cab29", 1),
+            ("ArchonMegalon/chummer6-media-factory", "415c8163d3d90b1211e4014fef332bdec6d75f73", 1),
         ):
             checkout = f"repository: {dependency}\n"
-            self.assertEqual(1, workflow.count(checkout), dependency)
+            self.assertEqual(checkout_count, workflow.count(checkout), dependency)
             dependency_block = workflow[workflow.index(checkout) :]
             dependency_block = dependency_block[: dependency_block.index("fetch-depth: 1")]
             self.assertIn(f"ref: {commit}", dependency_block, dependency)

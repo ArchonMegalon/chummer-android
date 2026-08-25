@@ -314,9 +314,9 @@ public sealed class BuildPage : NativePageBase
             bool canOpenFoundation = foundation
                                      && stage.IsAvailable
                                      && HasAuthoritativeFoundationOptions();
-            // Core exposes the raw Priority Attribute grant, but Heritage/metatype authority must
-            // still apply halveattributepoints. The post-create AttributeEditRequest path must
-            // never serve as a wizard fallback.
+            // The post-create AttributeEditRequest path must never serve as a wizard fallback.
+            // Even once Core resolves Heritage/metatype authority, the dedicated Creation
+            // Attributes phone page remains a separate stage.
             bool canOpen = canOpenFoundation;
             Func<Task> selected = canOpenFoundation
                 ? OpenCreationFoundationAsync
@@ -389,9 +389,14 @@ public sealed class BuildPage : NativePageBase
     }
 
     private static string AttributeGateDetail(CharacterCreationPrerequisiteState state)
-        => $"Raw normal Attribute grant "
-           + (state.BaseNormalAttributePoints?.ToString(CultureInfo.InvariantCulture) ?? "not selected")
-           + " · Heritage/metatype halveattributepoints adjustment required · Attributes remain disabled";
+        => state.CanEnterAttributes && !state.RequiresMetatypeAttributeAdjustment
+            ? $"Core prerequisite complete · effective normal Attribute grant "
+              + (state.EffectiveNormalAttributePoints?.ToString(CultureInfo.InvariantCulture)
+                 ?? "unavailable")
+              + " · dedicated Creation Attributes phone page not wired yet"
+            : $"Raw normal Attribute grant "
+              + (state.BaseNormalAttributePoints?.ToString(CultureInfo.InvariantCulture) ?? "not selected")
+              + " · Heritage/metatype halveattributepoints adjustment required · Attributes remain disabled";
 
     private static string StageLabel(CharacterCreationWizardSnapshot snapshot, string stepId)
         => snapshot.Steps.FirstOrDefault(stage => string.Equals(stage.StepId, stepId, StringComparison.Ordinal))?.Label

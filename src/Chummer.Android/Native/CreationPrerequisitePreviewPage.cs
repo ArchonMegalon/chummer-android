@@ -11,6 +11,7 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
 {
     private readonly CharacterCreationPrerequisitePreview _preview;
     private readonly IReadOnlyDictionary<string, string> _assignments;
+    private readonly CreationPrerequisitePhoneSelections _selections;
     private readonly string _buildMethod;
     private readonly VerticalStackLayout _body = new()
     {
@@ -23,12 +24,14 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
         RunnerSessionCoordinator coordinator,
         CharacterCreationPrerequisitePreview preview,
         IReadOnlyDictionary<string, string> assignments,
+        CreationPrerequisitePhoneSelections selections,
         string buildMethod) : base(coordinator)
     {
         _preview = preview ?? throw new ArgumentNullException(nameof(preview));
         _assignments = new Dictionary<string, string>(
             assignments ?? throw new ArgumentNullException(nameof(assignments)),
             StringComparer.Ordinal);
+        _selections = selections ?? throw new ArgumentNullException(nameof(selections));
         _buildMethod = buildMethod is (CharacterCreationBuildMethods.Priority
             or CharacterCreationBuildMethods.SumToTen)
             ? buildMethod
@@ -67,12 +70,63 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
         _body.Add(binding);
 
         AddAssignments();
+        AddHeritageAndTalent();
         AddBudget();
         AddSumToTen();
         AddAttributeGrant();
         AddBlockers();
         AddConfirmation();
         AddReceipt();
+    }
+
+    private void AddHeritageAndTalent()
+    {
+        if (_preview.HeritageSelection is { } heritage)
+        {
+            VerticalStackLayout card = new() { Spacing = 6 };
+            card.Add(NativeTheme.Eyebrow("Heritage selection"));
+            card.Add(NativeTheme.Title(
+                string.IsNullOrWhiteSpace(heritage.MetavariantName)
+                    ? heritage.MetatypeName
+                    : $"{heritage.MetatypeName} · {heritage.MetavariantName}",
+                18));
+            card.Add(NativeTheme.Metric("Selection ID", heritage.SelectionId));
+            card.Add(NativeTheme.Metric(
+                "Special Attribute points",
+                heritage.SpecialAttributePoints.ToString(CultureInfo.InvariantCulture)));
+            card.Add(NativeTheme.Metric(
+                "Karma cost",
+                heritage.KarmaCost.ToString(CultureInfo.InvariantCulture)));
+            card.Add(NativeTheme.Body(
+                heritage.HalvesNormalAttributePoints
+                    ? "Core applies halveattributepoints to the raw Attribute grant."
+                    : "Core keeps the raw normal Attribute grant.",
+                NativeTheme.Muted));
+            foreach (string anchor in heritage.SourceAnchorIds)
+                card.Add(NativeTheme.Body($"Source anchor · {anchor}", NativeTheme.Muted));
+            Border border = NativeTheme.Card(card);
+            border.AutomationId = "creation-prerequisite-preview-heritage";
+            _body.Add(border);
+        }
+
+        if (_preview.TalentSelection is { } talent)
+        {
+            VerticalStackLayout card = new() { Spacing = 6 };
+            card.Add(NativeTheme.Eyebrow("Talent selection"));
+            card.Add(NativeTheme.Title(talent.Name, 18));
+            card.Add(NativeTheme.Metric("Selection ID", talent.SelectionId));
+            card.Add(NativeTheme.Metric("Value", talent.Value));
+            card.Add(NativeTheme.Metric(
+                "Special Attribute points",
+                talent.SpecialAttributePoints.ToString(CultureInfo.InvariantCulture)));
+            foreach (string quality in talent.GrantedQualities)
+                card.Add(NativeTheme.Body($"Granted quality · {quality}", NativeTheme.Muted));
+            foreach (string anchor in talent.SourceAnchorIds)
+                card.Add(NativeTheme.Body($"Source anchor · {anchor}", NativeTheme.Muted));
+            Border border = NativeTheme.Card(card);
+            border.AutomationId = "creation-prerequisite-preview-talent";
+            _body.Add(border);
+        }
     }
 
     private void AddAssignments()
@@ -148,13 +202,21 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
         card.Add(NativeTheme.Metric(
             "Raw normal Attribute grant",
             _preview.BaseNormalAttributePoints.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            "Effective normal Attribute grant",
+            _preview.EffectiveNormalAttributePoints.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            "Total special Attribute points",
+            _preview.TotalSpecialAttributePoints.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Body(
             _preview.RequiresMetatypeAttributeAdjustment
                 ? "Heritage/metatype halveattributepoints adjustment is still required. Attributes remain disabled."
-                : "Attributes remain disabled until a later rules-authoritative stage opens them.",
-            NativeTheme.Danger));
+                : "Core resolved the Heritage/metatype adjustment; Attributes can enter their dedicated wizard stage after confirmation.",
+            _preview.RequiresMetatypeAttributeAdjustment ? NativeTheme.Danger : NativeTheme.Muted));
         Border border = NativeTheme.Card(card);
-        border.AutomationId = "creation-prerequisite-preview-attributes-disabled";
+        border.AutomationId = _preview.RequiresMetatypeAttributeAdjustment
+            ? "creation-prerequisite-preview-attributes-disabled"
+            : "creation-prerequisite-preview-attributes-ready";
         _body.Add(border);
     }
 
@@ -212,7 +274,8 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
         {
             _confirmation = await Coordinator.ConfirmCreationPrerequisiteAsync(
                 _preview,
-                _assignments);
+                _assignments,
+                _selections);
         });
         _body.Add(confirm);
 
@@ -259,13 +322,23 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
             "Raw normal Attribute grant",
             receipt.BaseNormalAttributePoints.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
+            "Effective normal Attribute grant",
+            receipt.EffectiveNormalAttributePoints.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            "Total special Attribute points",
+            receipt.TotalSpecialAttributePoints.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
             "Character document changed",
             receipt.CharacterDocumentChanged.ToString().ToLowerInvariant()));
         card.Add(NativeTheme.Body(
             refreshed.RequiresMetatypeAttributeAdjustment
                 ? "Attributes remain disabled: Heritage/metatype halveattributepoints adjustment is required."
-                : "Attributes remain disabled until their rules-authoritative stage opens.",
-            NativeTheme.Danger));
+                : refreshed.CanEnterAttributes
+                    ? "Core prerequisite complete: Attributes can enter their dedicated wizard stage."
+                    : "The rules-authoritative Attributes prerequisite remains closed.",
+            refreshed.CanEnterAttributes && !refreshed.RequiresMetatypeAttributeAdjustment
+                ? NativeTheme.Muted
+                : NativeTheme.Danger));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-prerequisite-confirm-receipt";
         _body.Add(border);

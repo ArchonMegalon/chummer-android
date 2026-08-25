@@ -297,6 +297,41 @@ def open_prerequisite(device: shared.Device) -> None:
     device.wait("creation-prerequisite-method", timeout=45, scroll=True, max_scrolls=22)
 
 
+def tap_enabled_authority_option(
+    device: shared.Device,
+    prefix: str,
+    required_label: str,
+    *,
+    max_scrolls: int = 40,
+) -> str:
+    required = required_label.casefold()
+    for scroll_index in range(max_scrolls + 1):
+        for node in device.hierarchy():
+            searchable = " ".join(
+                (
+                    node.attributes.get("text", ""),
+                    node.attributes.get("content-desc", ""),
+                )
+            ).casefold()
+            if (
+                shared.Device._matches(node, prefix)
+                and required in searchable
+                and node.attributes.get("enabled") == "true"
+                and node.attributes.get("clickable") == "true"
+                and device.node_has_tappable_bounds(node)
+            ):
+                resource_id = node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                x, y = node.center
+                device.shell("input", "tap", str(x), str(y))
+                return resource_id or prefix
+        if scroll_index < max_scrolls:
+            device.swipe_up(distance_ratio=0.22)
+    device.capture(f"missing-enabled-{prefix.rstrip('-')}-{required_label.casefold()}")
+    raise RuntimeError(
+        f"No enabled authoritative option matched {prefix!r} and label {required_label!r}"
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--adb", type=Path, required=True)
@@ -401,6 +436,32 @@ def main() -> int:
         ) or ""
         device.wait("creation-prerequisite-page", timeout=45)
 
+    typed_selections: dict[str, str] = {}
+    for category, label in (("heritage", "Human"), ("talent", "Mundane")):
+        device.tap(
+            f"creation-prerequisite-{category}-selection",
+            scroll=True,
+            max_scrolls=22,
+        )
+        device.wait(f"creation-prerequisite-{category}-page", timeout=45)
+        typed_selections[category] = tap_enabled_authority_option(
+            device,
+            f"creation-prerequisite-{category}-option-",
+            label,
+            max_scrolls=40,
+        )
+        device.wait("creation-prerequisite-page", timeout=45)
+        selection_row = node_text(
+            device,
+            f"creation-prerequisite-{category}-selection",
+            scroll=True,
+        )
+        if "selection" not in selection_row.lower():
+            raise RuntimeError(
+                f"Core-projected {category} choice did not bind to the typed phone draft: "
+                f"{selection_row!r}"
+            )
+
     # A plain Back from a category route preserves the exact in-memory typed rank choice.
     attributes_before = node_text(
         device,
@@ -436,12 +497,28 @@ def main() -> int:
             scroll=True,
             max_scrolls=22,
         )
-    device.wait("creation-prerequisite-preview-attributes-disabled", scroll=True, max_scrolls=22)
+    device.wait("creation-prerequisite-preview-heritage", scroll=True, max_scrolls=22)
+    device.wait("creation-prerequisite-preview-talent", scroll=True, max_scrolls=22)
+    preview_attributes = node_text(
+        device,
+        "creation-prerequisite-preview-attributes-ready",
+        scroll=True,
+    )
+    if "effective" not in preview_attributes.lower() or "special" not in preview_attributes.lower():
+        raise RuntimeError(
+            "Core preview did not expose effective normal and special Attribute authority: "
+            f"{preview_attributes!r}"
+        )
     device.tap("creation-prerequisite-confirm", scroll=True, max_scrolls=22)
     device.wait("creation-prerequisite-confirm-receipt", timeout=90, scroll=True, max_scrolls=22)
     receipt_text = node_text(device, "creation-prerequisite-confirm-receipt", scroll=True)
     if "false" not in receipt_text.lower():
         raise RuntimeError("Prerequisite receipt did not prove CharacterDocumentChanged=false")
+    if "core prerequisite complete" not in receipt_text.lower():
+        raise RuntimeError(
+            "Prerequisite receipt did not prove the post-confirm Attributes gate: "
+            f"{receipt_text!r}"
+        )
     device.capture("creation-prerequisite-confirmed")
     device.tap("creation-prerequisite-back-to-build", scroll=True, max_scrolls=22)
     shared.open_creation_dashboard(
@@ -464,6 +541,16 @@ def main() -> int:
     )
     if "rank" not in resumed_attributes.lower():
         raise RuntimeError("Confirmed prerequisite draft did not resume its Attribute rank")
+    for category in ("heritage", "talent"):
+        resumed_selection = node_text(
+            device,
+            f"creation-prerequisite-{category}-selection",
+            scroll=True,
+        )
+        if "selection" not in resumed_selection.lower():
+            raise RuntimeError(
+                f"Confirmed prerequisite draft did not resume its typed {category} selection"
+            )
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
@@ -472,7 +559,17 @@ def main() -> int:
     foundation.assert_creation_editor_gated(device)
     open_prerequisite(device)
     device.wait("creation-prerequisite-pending-draft", timeout=60, scroll=True, max_scrolls=22)
-    device.wait("creation-prerequisite-attributes-disabled", scroll=True, max_scrolls=22)
+    for category in ("heritage", "talent"):
+        restarted_selection = node_text(
+            device,
+            f"creation-prerequisite-{category}-selection",
+            scroll=True,
+        )
+        if "selection" not in restarted_selection.lower():
+            raise RuntimeError(
+                f"Process restart did not rehydrate Core's typed {category} selection"
+            )
+    device.wait("creation-prerequisite-attributes-ready", scroll=True, max_scrolls=22)
     device.capture("creation-prerequisite-process-restart")
 
     receipt = {
@@ -501,12 +598,15 @@ def main() -> int:
             "authorityProjectedRankOptionsOnly": "pass",
             "priorityMultisetOrSumTargetEnforced": "pass",
             "selectedRankAutomationIds": selected,
+            "selectedAuthorityOptionAutomationIds": typed_selections,
             "backRestoresDraftSelection": "pass",
+            "heritageAndTalentSelectionsProjectedByCore": "pass",
             "previewDigestBeforeExplicitConfirmation": "pass",
             "atomicDraftReceiptVerified": "pass",
             "characterDocumentChangedFalse": "pass",
             "rawAttributeGrantVisible": "pass",
-            "attributesBlockedForMetatypeAdjustment": "pass",
+            "metatypeAdjustmentResolvedByCore": "pass",
+            "attributesPrerequisiteOpenedByCore": "pass",
             "pendingDraftSameProcessResume": "pass",
             "pendingDraftProcessRestartResume": "pass",
             "buildGhostCurrentAndNonMutating": "pass",

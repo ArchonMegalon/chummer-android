@@ -276,10 +276,12 @@ public sealed class RunnerSessionCoordinator : IDisposable
     public CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>
         PreviewCreationPrerequisite(
             CharacterCreationPrerequisiteBinding binding,
-            IReadOnlyDictionary<string, string> assignments)
+            IReadOnlyDictionary<string, string> assignments,
+            CreationPrerequisitePhoneSelections selections)
     {
         ArgumentNullException.ThrowIfNull(binding);
         ArgumentNullException.ThrowIfNull(assignments);
+        ArgumentNullException.ThrowIfNull(selections);
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> load =
             LoadCreationPrerequisite();
         if (load.Value is not { } state
@@ -303,26 +305,39 @@ public sealed class RunnerSessionCoordinator : IDisposable
         return _creationPrerequisiteService.Preview(
             new CharacterCreationPrerequisitePreviewRequest(
                 binding,
-                new Dictionary<string, string>(assignments, StringComparer.Ordinal)));
+                new Dictionary<string, string>(assignments, StringComparer.Ordinal))
+            {
+                HeritageSelectionId = selections.HeritageSelectionId,
+                TalentSelectionId = selections.TalentSelectionId,
+                TalentActiveSkillSelectionIds = selections.TalentActiveSkillSelectionIds.ToArray(),
+                TalentSkillGroupSelectionIds = selections.TalentSkillGroupSelectionIds.ToArray()
+            });
     }
 
     public async Task<CreationPrerequisitePhoneConfirmResult>
         ConfirmCreationPrerequisiteAsync(
             CharacterCreationPrerequisitePreview preview,
             IReadOnlyDictionary<string, string> assignments,
+            CreationPrerequisitePhoneSelections selections,
             CancellationToken cancellationToken = default)
         => await WithWorkspaceActivationGateAsync(
-            () => ConfirmCreationPrerequisiteCoreAsync(preview, assignments, cancellationToken),
+            () => ConfirmCreationPrerequisiteCoreAsync(
+                preview,
+                assignments,
+                selections,
+                cancellationToken),
             cancellationToken);
 
     private async Task<CreationPrerequisitePhoneConfirmResult>
         ConfirmCreationPrerequisiteCoreAsync(
             CharacterCreationPrerequisitePreview preview,
             IReadOnlyDictionary<string, string> assignments,
+            CreationPrerequisitePhoneSelections selections,
             CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(preview);
         ArgumentNullException.ThrowIfNull(assignments);
+        ArgumentNullException.ThrowIfNull(selections);
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> before =
             LoadCreationPrerequisite();
         if (before.Value is not { } state
@@ -335,7 +350,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
         }
         if (!CreationPrerequisitePhoneAuthority.IsReady(state, State)
-            || !PreviewMatchesAssignments(preview, assignments, state)
+            || !PreviewMatchesSelections(preview, assignments, selections, state)
             || !preview.RequiresExplicitConfirmation
             || !preview.CanConfirm
             || preview.Blockers.Count != 0
@@ -354,7 +369,13 @@ public sealed class RunnerSessionCoordinator : IDisposable
                     preview.Binding,
                     new Dictionary<string, string>(assignments, StringComparer.Ordinal),
                     preview.PreviewDigest,
-                    ExplicitlyConfirmed: true));
+                    ExplicitlyConfirmed: true)
+                {
+                    HeritageSelectionId = selections.HeritageSelectionId,
+                    TalentSelectionId = selections.TalentSelectionId,
+                    TalentActiveSkillSelectionIds = selections.TalentActiveSkillSelectionIds.ToArray(),
+                    TalentSkillGroupSelectionIds = selections.TalentSkillGroupSelectionIds.ToArray()
+                });
         if (!string.Equals(
                 result.Outcome,
                 CharacterCreationFoundationOutcomes.Success,
@@ -391,7 +412,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
                     .ToArray());
         }
 
-        _notice = "Creation-method draft saved. Attributes remain blocked until metatype adjustment.";
+        _notice = "Creation-method draft saved. Core has opened the Attributes prerequisite.";
         NotifyChanged();
         return new CreationPrerequisitePhoneConfirmResult(
             CharacterCreationFoundationOutcomes.Success,
@@ -452,9 +473,10 @@ public sealed class RunnerSessionCoordinator : IDisposable
         return result;
     }
 
-    private static bool PreviewMatchesAssignments(
+    private static bool PreviewMatchesSelections(
         CharacterCreationPrerequisitePreview preview,
         IReadOnlyDictionary<string, string> assignments,
+        CreationPrerequisitePhoneSelections selections,
         CharacterCreationPrerequisiteState state)
     {
         if (!string.Equals(
@@ -490,18 +512,84 @@ public sealed class RunnerSessionCoordinator : IDisposable
             }
         }
 
-        return preview.CreationKarmaBudget.IsExact
+        CharacterCreationPriorityOptionProjection? heritageRank = preview.Assignments
+            .Where(assignment => string.Equals(
+                assignment.CategoryId,
+                CharacterCreationPriorityCategoryIds.Heritage,
+                StringComparison.Ordinal))
+            .Select(assignment => CreationPrerequisitePhoneAuthority.ResolveUniqueOption(
+                state,
+                assignment.CategoryId,
+                assignment.Rank))
+            .SingleOrDefault();
+        CharacterCreationPriorityOptionProjection? talentRank = preview.Assignments
+            .Where(assignment => string.Equals(
+                assignment.CategoryId,
+                CharacterCreationPriorityCategoryIds.Talent,
+                StringComparison.Ordinal))
+            .Select(assignment => CreationPrerequisitePhoneAuthority.ResolveUniqueOption(
+                state,
+                assignment.CategoryId,
+                assignment.Rank))
+            .SingleOrDefault();
+        CharacterCreationPriorityOptionProjection? attributeRank = preview.Assignments
+            .Where(assignment => string.Equals(
+                assignment.CategoryId,
+                CharacterCreationPriorityCategoryIds.Attributes,
+                StringComparison.Ordinal))
+            .Select(assignment => CreationPrerequisitePhoneAuthority.ResolveUniqueOption(
+                state,
+                assignment.CategoryId,
+                assignment.Rank))
+            .SingleOrDefault();
+        CharacterCreationPriorityHeritageOptionProjection? heritageOption = heritageRank is null
+            ? null
+            : CreationPrerequisitePhoneAuthority.ResolveUniqueHeritageOption(
+                heritageRank,
+                selections.HeritageSelectionId);
+        CharacterCreationPriorityTalentOptionProjection? talentOption = talentRank is null
+            ? null
+            : CreationPrerequisitePhoneAuthority.ResolveUniqueTalentOption(
+                talentRank,
+                selections.TalentSelectionId);
+
+        return heritageRank is not null
+               && talentRank is not null
+               && attributeRank is not null
+               && heritageOption is not null
+               && talentOption is not null
+               && selections.TalentActiveSkillSelectionIds.Count == 0
+               && selections.TalentSkillGroupSelectionIds.Count == 0
+               && talentOption.ActiveSkillGrant is null
+               && talentOption.SkillGroupGrant is null
+               && preview.HeritageSelection is { } heritageSelection
+               && preview.TalentSelection is { } talentSelection
+               && CreationPrerequisitePhoneAuthority.HeritageSelectionMatchesOption(
+                   heritageSelection,
+                   heritageOption,
+                   heritageRank.SourceId)
+               && CreationPrerequisitePhoneAuthority.TalentSelectionMatchesOption(
+                   talentSelection,
+                   talentOption,
+                   talentRank.SourceId)
+               && preview.CreationKarmaBudget.IsExact
                && string.Equals(
                    preview.CreationKarmaBudget.BudgetId,
                    CharacterCreationBudgetIds.Karma,
                    StringComparison.Ordinal)
                && preview.CreationKarmaBudget.Blockers.Count == 0
                && preview.CreationKarmaBudget.Total == state.CreationKarmaBudget.Total
-               && preview.CreationKarmaBudget.Used == state.CreationKarmaBudget.Used
-               && preview.CreationKarmaBudget.Remaining == state.CreationKarmaBudget.Remaining
+               && preview.CreationKarmaBudget.Used == heritageSelection.KarmaCost
+               && preview.CreationKarmaBudget.Used >= 0m
+               && preview.CreationKarmaBudget.Used <= preview.CreationKarmaBudget.Total
+               && preview.CreationKarmaBudget.Remaining
+                  == preview.CreationKarmaBudget.Total - preview.CreationKarmaBudget.Used
                && preview.SumToTenTarget == state.Authority.SumToTenTarget
+               && preview.BaseNormalAttributePoints == attributeRank.BaseNormalAttributePoints
                && preview.BaseNormalAttributePoints >= 0
-               && preview.RequiresMetatypeAttributeAdjustment;
+               && preview.EffectiveNormalAttributePoints >= 0
+               && preview.TotalSpecialAttributePoints >= 0
+               && !preview.RequiresMetatypeAttributeAdjustment;
     }
 
     public void AskRook(string question)

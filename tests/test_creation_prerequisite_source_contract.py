@@ -524,6 +524,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "new CharacterCreationPrerequisiteLoadRequest(workspaceId)",
             "_creationPrerequisiteService.Preview(",
             "new CharacterCreationPrerequisitePreviewRequest(",
+            "HeritageSelectionId = selections.HeritageSelectionId",
+            "TalentSelectionId = selections.TalentSelectionId",
+            "TalentActiveSkillSelectionIds = selections.TalentActiveSkillSelectionIds.ToArray()",
+            "TalentSkillGroupSelectionIds = selections.TalentSkillGroupSelectionIds.ToArray()",
             "_creationPrerequisiteService.Confirm(",
             "new CharacterCreationPrerequisiteConfirmRequest(",
             "preview.PreviewDigest",
@@ -573,7 +577,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "pending.DraftRevision",
             "pending.DraftDigest",
             "pending.Assignments",
+            "pending.HeritageSelection",
+            "pending.TalentSelection",
             "AssignmentMatchesOption(assignment, option)",
+            "HeritageSelectionMatchesOption(",
+            "TalentSelectionMatchesOption(",
+            "PendingDraftMatchesAuthority(refreshed, pending)",
             "receipt.CharacterDocumentChanged",
             "refreshed.PendingDraft is { } pending",
         ):
@@ -589,9 +598,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, source)
 
-    def test_phone_pages_show_budget_source_blockers_and_keep_attributes_closed(self) -> None:
+    def test_phone_pages_show_projected_typed_choices_and_core_attribute_gate(self) -> None:
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
         options = (NATIVE / "CreationPriorityCategoryPage.cs").read_text(encoding="utf-8")
+        details = (NATIVE / "CreationPriorityDetailPage.cs").read_text(encoding="utf-8")
         preview = (NATIVE / "CreationPrerequisitePreviewPage.cs").read_text(encoding="utf-8")
         dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
 
@@ -613,9 +623,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "state.Authority.RawProfileInputsDigest",
             "state.Authority.RawPrioritiesXmlDigest",
             "state.PendingDraft is { } pending",
-            'automationId: "creation-prerequisite-attributes-disabled"',
+            'automationId: "creation-prerequisite-heritage-selection"',
+            'automationId: "creation-prerequisite-talent-selection"',
+            "new CreationPriorityDetailPage(",
+            '"creation-prerequisite-attributes-disabled"',
             "halveattributepoints adjustment",
-            "Coordinator.PreviewCreationPrerequisite(state.Binding, assignments)",
+            "Coordinator.PreviewCreationPrerequisite(state.Binding, assignments, selections)",
             "new CreationPrerequisitePreviewPage(",
         ):
             self.assertIn(marker, page)
@@ -636,6 +649,20 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.assertIn(marker, options)
 
         for marker in (
+            'AutomationId = $"creation-prerequisite-{Token(_categoryId)}-page"',
+            "_draft.HeritageOptions(state, Coordinator.State)",
+            "_draft.TalentOptions(state, Coordinator.State)",
+            "option.SelectionId",
+            "option.SourceAnchorIds",
+            "option.Blockers",
+            "option.ActiveSkillGrant is not null",
+            "option.SkillGroupGrant is not null",
+            "_draft.TrySelectHeritage(state, Coordinator.State, selectionId)",
+            "_draft.TrySelectTalent(state, Coordinator.State, selectionId)",
+        ):
+            self.assertIn(marker, details)
+
+        for marker in (
             'AutomationId = "creation-prerequisite-preview-page"',
             "_preview.PreviewDigest",
             "_preview.Assignments",
@@ -646,6 +673,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "_preview.SumToTenUsed",
             "_preview.SumToTenTarget",
             "_preview.BaseNormalAttributePoints",
+            "_preview.EffectiveNormalAttributePoints",
+            "_preview.TotalSpecialAttributePoints",
+            "_preview.HeritageSelection",
+            "_preview.TalentSelection",
             "_preview.RequiresMetatypeAttributeAdjustment",
             "Coordinator.ConfirmCreationPrerequisiteAsync(",
             'AutomationId = "creation-prerequisite-confirm"',
@@ -669,7 +700,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, dashboard)
 
-        combined = page + options + preview
+        combined = page + options + details + preview
         for forbidden in (
             "AttributeEditRequest",
             "ApplyAttributeEditAsync",
@@ -741,12 +772,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn("for category in CATEGORIES:", source)
         self.assertIn('f"creation-prerequisite-category-{category}"', source)
         self.assertIn('f"creation-prerequisite-rank-{category}-"', source)
+        self.assertIn('f"creation-prerequisite-{category}-selection"', source)
+        self.assertIn('f"creation-prerequisite-{category}-option-"', source)
+        self.assertIn('"creation-prerequisite-preview-heritage"', source)
+        self.assertIn('"creation-prerequisite-preview-talent"', source)
+        self.assertIn('"creation-prerequisite-preview-attributes-ready"', source)
         self.assertIn("Back navigation did not restore", source)
         self.assertIn('"creation-prerequisite-attributes-disabled"', source)
         self.assertIn('"creation-prerequisite-prepare-preview"', source)
         self.assertIn('"creation-prerequisite-confirm"', source)
         self.assertIn('"creation-prerequisite-confirm-receipt"', source)
         self.assertIn('"creation-prerequisite-pending-draft"', source)
+        self.assertIn('"creation-prerequisite-attributes-ready"', source)
         self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', source)
         self.assertIn('"characterDocumentChangedFalse": "pass"', source)
         self.assertIn('"buildGhostCurrentAndNonMutating": "pass"', source)
