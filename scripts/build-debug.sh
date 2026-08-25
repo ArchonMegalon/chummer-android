@@ -42,6 +42,7 @@ python3 "$compile_graph_verifier" \
   --disable-build-servers \
   -p:UseSharedCompilation=false \
   -p:BuildInParallel=false \
+  -p:AndroidPackageFormats=apk \
   -p:ChummerAndroidRuntimeIdentifier="$runtime_identifier" \
   -p:ChummerDesktopRuntimeIdentifiers= \
   -p:ChummerUseLocalCompatibilityTree=true

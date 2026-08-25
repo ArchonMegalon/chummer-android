@@ -33,6 +33,14 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         cls.text = WORKFLOW.read_text(encoding="utf-8")
         cls.preview_text = PREVIEW_WORKFLOW.read_text(encoding="utf-8")
 
+    def preview_step(self, name: str) -> str:
+        marker = f"      - name: {name}\n"
+        start = self.preview_text.index(marker)
+        end = self.preview_text.find("\n      - name: ", start + len(marker))
+        if end == -1:
+            end = len(self.preview_text)
+        return self.preview_text[start:end]
+
     def test_runs_only_the_phone_beta_profile_on_api_36(self) -> None:
         self.assertIn("api-level: 36", self.text)
         self.assertIn("CHUMMER_E2E_PROFILE: phone", self.text)
@@ -164,6 +172,112 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             project,
         )
         self.assertIn("<ApplicationVersion>10</ApplicationVersion>", project)
+
+    def test_preview_release_separates_installable_arm64_apk_from_unsigned_aab(self) -> None:
+        debug_script = (REPO_ROOT / "scripts" / "build-debug.sh").read_text(
+            encoding="utf-8"
+        )
+        build_step = self.preview_step(
+            "Build the installable ARM64 debug APK and native gates"
+        )
+        seal_step = self.preview_step("Seal the unique installable ARM64 debug APK")
+        content_step = self.preview_step(
+            "Verify canonical content in the exact ARM64 debug APK"
+        )
+        recheck_step = self.preview_step(
+            "Recheck the immutable ARM64 APK after verification"
+        )
+        upload_step = self.preview_step(
+            "Upload the exact installable ARM64 debug candidate"
+        )
+        release_step = self.preview_step("Build the unsigned ARM64 release bundle")
+        aab_seal_step = self.preview_step("Seal the unique unsigned AAB")
+        aab_upload_step = self.preview_step("Upload the exact unsigned candidate")
+
+        self.assertIn("CHUMMER_ANDROID_RUNTIME_ID: android-arm64", build_step)
+        self.assertIn("run: scripts/build-debug.sh", build_step)
+        self.assertIn(
+            'runtime_identifier="${CHUMMER_ANDROID_RUNTIME_ID:-android-arm64}"',
+            debug_script,
+        )
+        self.assertIn("android-arm64|android-x64", debug_script)
+        self.assertGreaterEqual(
+            debug_script.count(
+                '-p:ChummerAndroidRuntimeIdentifier="$runtime_identifier"'
+            ),
+            2,
+        )
+        self.assertEqual(1, debug_script.count("-p:AndroidPackageFormats=apk"))
+        self.assertIn('"$interaction_tests_path"', debug_script)
+        self.assertIn('"$dotnet_command" run', debug_script)
+        self.assertIn(
+            'debug_root="chummer-android/src/Chummer.Android/bin/Debug/net10.0-android36.0/android-arm64"',
+            seal_step,
+        )
+        self.assertIn("test \"${#apks[@]}\" -eq 1", seal_step)
+        self.assertIn("test \"${#apk_abis[@]}\" -eq 1", seal_step)
+        self.assertIn('test "${apk_abis[0]}" = "arm64-v8a"', seal_step)
+        self.assertIn('^lib/arm64-v8a/[^/]+\\.so$', seal_step)
+        self.assertIn('if [[ ! "$native_entry" =~', seal_step)
+        self.assertIn("readelf -h", seal_step)
+        self.assertIn("Machine:[[:space:]]+AArch64", seal_step)
+        self.assertIn('test ! -e "$sealed_apk"', seal_step)
+        self.assertIn('chmod 0444 "$sealed_apk"', seal_step)
+        self.assertIn('-type f -name apksigner -print', seal_step)
+        self.assertIn(
+            '"$apksigner" verify --verbose --print-certs "$sealed_apk"',
+            seal_step,
+        )
+        self.assertIn('test -s "$signature_receipt"', seal_step)
+        self.assertIn(
+            "chummer-android-0.1.0-preview.10-arm64-debug.apk",
+            seal_step,
+        )
+        self.assertIn(
+            "python3 chummer-android/scripts/verify_android_content_bundle.py",
+            content_step,
+        )
+        self.assertIn("--repo-root chummer-android", content_step)
+        self.assertIn("--core-root chummer-core-engine", content_step)
+        self.assertIn(
+            '--apk "$RUNNER_TEMP/chummer-preview10-arm64-apk/chummer-android-0.1.0-preview.10-arm64-debug.apk"',
+            content_step,
+        )
+        self.assertIn(
+            '--receipt "$RUNNER_TEMP/chummer-preview10-arm64-apk/chummer-android-content-bundle-receipt.json"',
+            content_step,
+        )
+        self.assertIn("--check", content_step)
+        self.assertIn("sha256sum --check", recheck_step)
+        self.assertIn("test \"$(find . -maxdepth 1 -type f | wc -l)\" -eq 4", recheck_step)
+        self.assertIn(
+            "chummer-android-preview10-arm64-debug-${{ github.run_id }}-${{ github.run_attempt }}",
+            upload_step,
+        )
+        self.assertIn("path: ${{ runner.temp }}/chummer-preview10-arm64-apk", upload_step)
+        self.assertIn("-p:ChummerAndroidRuntimeIdentifier=android-arm64", release_step)
+        self.assertIn("-p:AndroidPackageFormats=aab", release_step)
+        self.assertIn(
+            "chummer-android-preview10-arm64-unsigned-${{ github.run_id }}-${{ github.run_attempt }}",
+            aab_upload_step,
+        )
+        self.assertIn("path: ${{ runner.temp }}/chummer-preview10-aab", aab_upload_step)
+        self.assertIn("test \"${#release_packages[@]}\" -eq 1", aab_seal_step)
+        self.assertIn('test "${release_packages[0]}" = "$source_aab"', aab_seal_step)
+        self.assertIn("test \"${#sealed_files[@]}\" -eq 2", aab_seal_step)
+        self.assertIn("-type f -name '*.apk' -print -quit", aab_seal_step)
+        order = (
+            "Build the installable ARM64 debug APK and native gates",
+            "Seal the unique installable ARM64 debug APK",
+            "Verify canonical content in the exact ARM64 debug APK",
+            "Recheck the immutable ARM64 APK after verification",
+            "Upload the exact installable ARM64 debug candidate",
+            "Build the unsigned ARM64 release bundle",
+            "Seal the unique unsigned AAB",
+            "Upload the exact unsigned candidate",
+        )
+        indexes = [self.preview_text.index(marker) for marker in order]
+        self.assertEqual(indexes, sorted(indexes))
 
     def test_executes_every_persistence_driver_as_an_isolated_matrix_journey(self) -> None:
         runner = (

@@ -95,6 +95,115 @@ jobs:
       - name: Restore the MAUI Android workload
         run: dotnet workload restore chummer-android/Chummer.Android.slnx
 
+      - name: Build the installable ARM64 debug APK and native gates
+        working-directory: chummer-android
+        env:
+          CHUMMER_ANDROID_RUNTIME_ID: android-arm64
+          CHUMMER_CORE_ENGINE_ROOT: ${{ github.workspace }}/chummer-core-engine
+          CHUMMER_COMPLETE_ROOT: ${{ github.workspace }}
+          CHUMMER_RUN_SERVICES_ROOT: ${{ github.workspace }}/chummer.run-services
+          CHUMMER_MEDIA_FACTORY_ROOT: ${{ github.workspace }}/fleet/repos/chummer-media-factory
+        run: scripts/build-debug.sh
+
+      - name: Seal the unique installable ARM64 debug APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          debug_root="chummer-android/src/Chummer.Android/bin/Debug/net10.0-android36.0/android-arm64"
+          test -d "$debug_root"
+          mapfile -t apks < <(
+            find "$debug_root" \
+              -type f -name '*-Signed.apk' -print
+          )
+          test "${#apks[@]}" -eq 1
+          mapfile -t apk_abis < <(
+            unzip -Z1 "${apks[0]}" \
+              | sed -n 's#^lib/\([^/]*\)/.*#\1#p' \
+              | sort -u
+          )
+          test "${#apk_abis[@]}" -eq 1
+          test "${apk_abis[0]}" = "arm64-v8a"
+          mapfile -t native_entries < <(
+            unzip -Z1 "${apks[0]}" \
+              | sed -n '/^lib\//p'
+          )
+          test "${#native_entries[@]}" -gt 0
+          for native_entry in "${native_entries[@]}"; do
+            if [[ ! "$native_entry" =~ ^lib/arm64-v8a/[^/]+\.so$ ]]; then
+              exit 1
+            fi
+          done
+          install -d -m 0755 "$RUNNER_TEMP/chummer-preview10-arm64-apk"
+          sealed_apk="$RUNNER_TEMP/chummer-preview10-arm64-apk/chummer-android-0.1.0-preview.10-arm64-debug.apk"
+          test ! -e "$sealed_apk"
+          install -m 0644 \
+            "${apks[0]}" \
+            "$sealed_apk"
+          mapfile -t apksigners < <(
+            find "${ANDROID_HOME:?}/build-tools" \
+              -mindepth 2 -maxdepth 2 -type f -name apksigner -print \
+              | sort -V
+          )
+          test "${#apksigners[@]}" -gt 0
+          apksigner="${apksigners[${#apksigners[@]}-1]}"
+          signature_receipt="$RUNNER_TEMP/chummer-preview10-arm64-apk/apk-signature-verification.txt"
+          test ! -e "$signature_receipt"
+          "$apksigner" verify --verbose --print-certs "$sealed_apk" \
+            >"$signature_receipt"
+          test -s "$signature_receipt"
+          native_verify_root="$RUNNER_TEMP/chummer-preview10-arm64-native-verify"
+          test ! -e "$native_verify_root"
+          install -d -m 0755 "$native_verify_root"
+          for native_entry in "${native_entries[@]}"; do
+            unzip -p "$sealed_apk" "$native_entry" \
+              >"$native_verify_root/$(basename "$native_entry")"
+          done
+          for native_library in "$native_verify_root"/*.so; do
+            readelf -h "$native_library" | grep -Eq 'Machine:[[:space:]]+AArch64'
+          done
+          (
+            cd "$RUNNER_TEMP/chummer-preview10-arm64-apk"
+            test ! -e chummer-android-0.1.0-preview.10-arm64-debug.apk.sha256
+            sha256sum chummer-android-0.1.0-preview.10-arm64-debug.apk \
+              >chummer-android-0.1.0-preview.10-arm64-debug.apk.sha256
+            sha256sum --check chummer-android-0.1.0-preview.10-arm64-debug.apk.sha256
+          )
+          chmod 0444 "$sealed_apk" \
+            "$sealed_apk.sha256" \
+            "$signature_receipt"
+
+      - name: Verify canonical content in the exact ARM64 debug APK
+        run: >-
+          python3 chummer-android/scripts/verify_android_content_bundle.py
+          --repo-root chummer-android
+          --core-root chummer-core-engine
+          --apk "$RUNNER_TEMP/chummer-preview10-arm64-apk/chummer-android-0.1.0-preview.10-arm64-debug.apk"
+          --receipt "$RUNNER_TEMP/chummer-preview10-arm64-apk/chummer-android-content-bundle-receipt.json"
+          --check
+
+      - name: Recheck the immutable ARM64 APK after verification
+        working-directory: ${{ runner.temp }}/chummer-preview10-arm64-apk
+        run: |
+          test -s chummer-android-content-bundle-receipt.json
+          chmod 0444 chummer-android-content-bundle-receipt.json
+          test "$(stat -c '%a' chummer-android-0.1.0-preview.10-arm64-debug.apk)" = "444"
+          test "$(stat -c '%a' chummer-android-0.1.0-preview.10-arm64-debug.apk.sha256)" = "444"
+          test "$(stat -c '%a' apk-signature-verification.txt)" = "444"
+          test "$(stat -c '%a' chummer-android-content-bundle-receipt.json)" = "444"
+          test "$(find . -maxdepth 1 -type f | wc -l)" -eq 4
+          sha256sum --check chummer-android-0.1.0-preview.10-arm64-debug.apk.sha256
+
+      - name: Upload the exact installable ARM64 debug candidate
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: chummer-android-preview10-arm64-debug-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/chummer-preview10-arm64-apk
+          if-no-files-found: error
+          retention-days: 2
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+
       - name: Build the unsigned ARM64 release bundle
         env:
           CHUMMER_COMPLETE_ROOT: ${{ github.workspace }}
@@ -116,12 +225,30 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          source_aab="chummer-android/src/Chummer.Android/bin/Release/net10.0-android36.0/android-arm64/publish/com.myexternalbrain.chummer.aab"
-          test -f "$source_aab"
+          release_root="chummer-android/src/Chummer.Android/bin/Release/net10.0-android36.0/android-arm64/publish"
+          mapfile -t release_packages < <(
+            find "$release_root" -maxdepth 1 -type f \
+              \( -name '*.aab' -o -name '*.apk' \) -print
+          )
+          test "${#release_packages[@]}" -eq 1
+          source_aab="$release_root/com.myexternalbrain.chummer.aab"
+          test "${release_packages[0]}" = "$source_aab"
           install -d -m 0755 "$RUNNER_TEMP/chummer-preview10-aab"
-          install -m 0644 "$source_aab" "$RUNNER_TEMP/chummer-preview10-aab/chummer-android-0.1.0-preview.10-unsigned.aab"
-          sha256sum "$RUNNER_TEMP/chummer-preview10-aab/chummer-android-0.1.0-preview.10-unsigned.aab" \
-            >"$RUNNER_TEMP/chummer-preview10-aab/chummer-android-0.1.0-preview.10-unsigned.aab.sha256"
+          sealed_aab="$RUNNER_TEMP/chummer-preview10-aab/chummer-android-0.1.0-preview.10-unsigned.aab"
+          test ! -e "$sealed_aab"
+          install -m 0644 "$source_aab" "$sealed_aab"
+          test ! -e "$sealed_aab.sha256"
+          sha256sum "$sealed_aab" >"$sealed_aab.sha256"
+          chmod 0444 "$sealed_aab" "$sealed_aab.sha256"
+          mapfile -t sealed_files < <(
+            find "$RUNNER_TEMP/chummer-preview10-aab" -maxdepth 1 -type f -print
+          )
+          test "${#sealed_files[@]}" -eq 2
+          test "$(find "$RUNNER_TEMP/chummer-preview10-aab" -maxdepth 1 -type f -name '*.apk' -print -quit)" = ""
+          (
+            cd "$RUNNER_TEMP/chummer-preview10-aab"
+            sha256sum --check chummer-android-0.1.0-preview.10-unsigned.aab.sha256
+          )
 
       - name: Upload the exact unsigned candidate
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
