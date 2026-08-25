@@ -204,6 +204,270 @@ jobs:
           overwrite: false
           include-hidden-files: false
 
+  physical-arm64-apk:
+    name: Build isolated arm64-v8a physical APK
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CHUMMER_PHYSICAL_PACKAGE_ID: com.myexternalbrain.chummer.codexproof.arm64
+    outputs:
+      apk-artifact-id: ${{ steps.upload-physical-apk.outputs.artifact-id }}
+      apk-artifact-digest: ${{ steps.upload-physical-apk.outputs.artifact-digest }}
+      apk-artifact-name: ${{ steps.physical-apk.outputs.artifact-name }}
+      apk-artifact-attempt: ${{ steps.physical-apk.outputs.artifact-attempt }}
+      apk-sha256: ${{ steps.physical-apk.outputs.apk-sha256 }}
+      package-id: ${{ steps.physical-apk.outputs.package-id }}
+      signing-certificate-sha256: ${{ steps.physical-apk.outputs.signing-certificate-sha256 }}
+    steps:
+      - name: Check out the exact Android candidate for arm64
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: chummer-android
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the pinned presentation dependency for arm64
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-ui
+          ref: e906ec909d337b7a907ba7ae8c526c3aad89a1e3
+          path: chummer-presentation
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the pinned engine dependency for arm64
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-core
+          ref: e9874a31d8d25b98dd196dd629c423e9a9c39297
+          path: chummer-core-engine
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the pinned Hub contract dependencies for arm64
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-hub
+          ref: d29a880f624ec94aabedd0c2901ae8fed2f93ed4
+          path: chummer.run-services
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the pinned registry contract dependency for arm64
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-hub-registry
+          ref: af9a7e19c3bf331e96411dfb8f9e7820a98cab29
+          path: chummer-hub-registry
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the pinned UI kit dependency for arm64
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-ui-kit
+          ref: d51ecd99cf72098d4adc8db0192bff7bf9fd8e61
+          path: chummer-ui-kit
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the pinned media contract dependency for arm64
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-media-factory
+          ref: 415c8163d3d90b1211e4014fef332bdec6d75f73
+          path: fleet/repos/chummer-media-factory
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Install the governed .NET SDK for arm64
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 10.0.110
+
+      - name: Restore the pinned MAUI Android workload for arm64
+        run: dotnet workload restore chummer-android/Chummer.Android.slnx
+
+      - name: Build the isolated arm64-v8a physical APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet restore chummer-android/Chummer.Android.slnx \
+            --disable-parallel \
+            -p:ChummerAndroidRuntimeIdentifier=android-arm64 \
+            -p:ApplicationId="$CHUMMER_PHYSICAL_PACKAGE_ID" \
+            -p:ChummerDesktopRuntimeIdentifiers= \
+            -p:ChummerUseLocalCompatibilityTree=true
+          dotnet build chummer-android/src/Chummer.Android/Chummer.Android.csproj \
+            --configuration Debug \
+            --framework net10.0-android36.0 \
+            --no-restore \
+            -m:1 \
+            --disable-build-servers \
+            -p:UseSharedCompilation=false \
+            -p:BuildInParallel=false \
+            -p:ChummerAndroidRuntimeIdentifier=android-arm64 \
+            -p:ApplicationId="$CHUMMER_PHYSICAL_PACKAGE_ID" \
+            -p:ChummerDesktopRuntimeIdentifiers= \
+            -p:ChummerUseLocalCompatibilityTree=true
+
+      - name: Seal and verify the isolated arm64-v8a physical APK
+        id: physical-apk
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t apks < <(
+            find chummer-android/src/Chummer.Android/bin/Debug/net10.0-android36.0 \
+              -path '*/android-arm64/*' -type f -name '*-Signed.apk' -print
+          )
+          test "${#apks[@]}" -eq 1
+          authority_dir="$RUNNER_TEMP/chummer-android-arm64-physical-apk"
+          install -d -m 0755 "$authority_dir"
+          install -m 0644 \
+            "${apks[0]}" \
+            "$authority_dir/chummer-android-arm64-physical-debug.apk"
+          apk="$authority_dir/chummer-android-arm64-physical-debug.apk"
+          apk_sha256="$(sha256sum "$apk" | cut -d ' ' -f 1)"
+          printf '%s  %s\n' \
+            "$apk_sha256" \
+            chummer-android-arm64-physical-debug.apk \
+            >"$authority_dir/chummer-android-arm64-physical-debug.apk.sha256"
+          (
+            cd "$authority_dir"
+            sha256sum --check chummer-android-arm64-physical-debug.apk.sha256
+          )
+          APK="$apk" python3 - <<'PY'
+          import os
+          import zipfile
+
+          with zipfile.ZipFile(os.environ["APK"]) as archive:
+              abis = sorted({
+                  name.split("/", 2)[1]
+                  for name in archive.namelist()
+                  if name.startswith("lib/") and name.count("/") >= 2
+              })
+          if abis != ["arm64-v8a"]:
+              raise SystemExit(f"expected exact arm64-v8a ABI set, found {abis!r}")
+          print("verified APK ABI set: arm64-v8a")
+          PY
+          build_tools="$(
+            find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d -print \
+              | sort -V \
+              | tail -n 1
+          )"
+          test -n "$build_tools"
+          test -x "$build_tools/apksigner"
+          test -x "$build_tools/aapt"
+          "$build_tools/apksigner" verify --verbose --print-certs "$apk" \
+            >"$authority_dir/apksigner-verify.txt"
+          grep -qx 'Verifies' "$authority_dir/apksigner-verify.txt"
+          grep -Eq '^Verified using v[23] scheme.*: true$' \
+            "$authority_dir/apksigner-verify.txt"
+          signing_certificate_sha256="$(
+            sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
+              "$authority_dir/apksigner-verify.txt" \
+              | head -n 1 \
+              | tr '[:upper:]' '[:lower:]'
+          )"
+          [[ "$signing_certificate_sha256" =~ ^[0-9a-f]{64}$ ]]
+          package_id="$(
+            "$build_tools/aapt" dump badging "$apk" \
+              | sed -n "s/^package: name='\([^']*\)'.*/\1/p" \
+              | head -n 1
+          )"
+          test "$package_id" = "$CHUMMER_PHYSICAL_PACKAGE_ID"
+          {
+            echo "apk-sha256=$apk_sha256"
+            echo "package-id=$package_id"
+            echo "signing-certificate-sha256=$signing_certificate_sha256"
+            echo "artifact-name=chummer-android-api36-arm64-physical-debug-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            echo "artifact-attempt=${GITHUB_RUN_ATTEMPT}"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Verify canonical content in the exact arm64-v8a APK
+        run: >-
+          python3 chummer-android/scripts/verify_android_content_bundle.py
+          --repo-root chummer-android
+          --core-root chummer-core-engine
+          --apk "$RUNNER_TEMP/chummer-android-arm64-physical-apk/chummer-android-arm64-physical-debug.apk"
+          --receipt "$RUNNER_TEMP/chummer-android-arm64-physical-apk/chummer-android-content-bundle-receipt.json"
+          --check
+
+      - name: Bind the physical APK provenance receipt
+        shell: bash
+        env:
+          APK_SHA256: ${{ steps.physical-apk.outputs.apk-sha256 }}
+          PACKAGE_ID: ${{ steps.physical-apk.outputs.package-id }}
+          SIGNING_CERTIFICATE_SHA256: ${{ steps.physical-apk.outputs.signing-certificate-sha256 }}
+        run: |
+          set -euo pipefail
+          authority_dir="$RUNNER_TEMP/chummer-android-arm64-physical-apk"
+          AUTHORITY_DIR="$authority_dir" python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          authority_dir = Path(os.environ["AUTHORITY_DIR"])
+          content_path = authority_dir / "chummer-android-content-bundle-receipt.json"
+          content_bytes = content_path.read_bytes()
+          content = json.loads(content_bytes)
+          apk_sha256 = os.environ["APK_SHA256"]
+          if content.get("status") != "pass" or content.get("apkVerified") is not True:
+              raise SystemExit("canonical content receipt is not passing")
+          if content.get("apkSha256") != apk_sha256:
+              raise SystemExit("canonical content receipt APK digest mismatch")
+          receipt = {
+              "schema": "chummer.android.physical-apk/v1",
+              "status": "pass",
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "headSha": os.environ["GITHUB_SHA"],
+              "ref": os.environ["GITHUB_REF"],
+              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
+              "runId": int(os.environ["GITHUB_RUN_ID"]),
+              "runAttempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "runtimeIdentifier": "android-arm64",
+              "abi": "arm64-v8a",
+              "distributionLane": "isolated-physical-proof",
+              "signingPosture": "ephemeral-hosted-debug-one-shot",
+              "stableUpdateSigningClaim": False,
+              "playBetaSigningClaim": False,
+              "packageId": os.environ["PACKAGE_ID"],
+              "signingCertificateSha256": os.environ["SIGNING_CERTIFICATE_SHA256"],
+              "apkFile": "chummer-android-arm64-physical-debug.apk",
+              "apkSha256": apk_sha256,
+              "contentReceiptFile": content_path.name,
+              "contentReceiptSha256": hashlib.sha256(content_bytes).hexdigest(),
+              "contentBundleDigest": content.get("bundleDigest"),
+              "contentManifestSha256": content.get("manifestSha256"),
+              "coreRevision": content.get("coreRevision"),
+          }
+          target = authority_dir / "chummer-android-arm64-physical-provenance.json"
+          target.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          digest = hashlib.sha256(target.read_bytes()).hexdigest()
+          (authority_dir / "chummer-android-arm64-physical-provenance.json.sha256").write_text(
+              f"{digest}  {target.name}\n",
+              encoding="utf-8",
+          )
+          PY
+          (
+            cd "$authority_dir"
+            sha256sum --check chummer-android-arm64-physical-provenance.json.sha256
+          )
+
+      - name: Upload the exact isolated arm64-v8a physical APK authority
+        id: upload-physical-apk
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ steps.physical-apk.outputs.artifact-name }}
+          path: ${{ runner.temp }}/chummer-android-arm64-physical-apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+
   phone-editing-e2e:
     # Tablet acceptance is deferred; this lane launches only pixel_6 and makes no tablet-readiness claim.
     name: phone API 36 persistence (${{ matrix.journey }})

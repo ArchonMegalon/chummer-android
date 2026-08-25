@@ -43,13 +43,16 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("makes no tablet-readiness claim", self.text)
 
     def test_builds_the_native_x64_candidate_once(self) -> None:
-        self.assertIn("CHUMMER_ANDROID_RUNTIME_ID: android-x64", self.text)
-        self.assertIn("scripts/build-debug.sh", self.text)
-        self.assertIn("test \"${#apks[@]}\" -eq 1", self.text)
-        self.assertIn("chummer-android-x64-debug.apk.sha256", self.text)
-        seal_start = self.text.index("Seal the unique signed debug APK")
-        seal_end = self.text.index("Verify canonical content in the exact signed APK")
-        seal = self.text[seal_start:seal_end]
+        x64_block = self.text[
+            self.text.index("  build:"):self.text.index("  physical-arm64-apk:")
+        ]
+        self.assertIn("CHUMMER_ANDROID_RUNTIME_ID: android-x64", x64_block)
+        self.assertIn("scripts/build-debug.sh", x64_block)
+        self.assertIn("test \"${#apks[@]}\" -eq 1", x64_block)
+        self.assertIn("chummer-android-x64-debug.apk.sha256", x64_block)
+        seal_start = x64_block.index("Seal the unique signed debug APK")
+        seal_end = x64_block.index("Verify canonical content in the exact signed APK")
+        seal = x64_block[seal_start:seal_end]
         self.assertIn('cd "$RUNNER_TEMP/chummer-android-apk"', seal)
         self.assertIn(
             'apk_sha256="$(sha256sum chummer-android-x64-debug.apk | cut -d \' \' -f 1)"',
@@ -67,29 +70,95 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             seal,
         )
         content_check = "python3 chummer-android/scripts/verify_android_content_bundle.py"
-        self.assertEqual(2, self.text.count(content_check))
-        self.assertEqual(2, self.text.count("--core-root chummer-core-engine"))
+        self.assertEqual(2, x64_block.count(content_check))
+        self.assertEqual(2, x64_block.count("--core-root chummer-core-engine"))
         self.assertIn(
             '--apk "$RUNNER_TEMP/chummer-android-apk/chummer-android-x64-debug.apk"',
-            self.text,
+            x64_block,
         )
         self.assertIn(
             '--receipt "$RUNNER_TEMP/chummer-android-apk/chummer-android-content-bundle-receipt.json"',
-            self.text,
+            x64_block,
         )
         self.assertLess(
-            self.text.index("Seal the unique signed debug APK"),
-            self.text.rindex(content_check),
+            x64_block.index("Seal the unique signed debug APK"),
+            x64_block.rindex(content_check),
         )
         self.assertLess(
-            self.text.rindex(content_check),
-            self.text.index("Upload the exact APK under test"),
+            x64_block.rindex(content_check),
+            x64_block.index("Upload the exact APK under test"),
         )
         self.assertLess(
-            self.text.index(content_check),
-            self.text.index("Install the governed .NET SDK"),
+            x64_block.index(content_check),
+            x64_block.index("Install the governed .NET SDK"),
         )
         self.assertIn("needs: build", self.text)
+
+    def test_builds_a_separate_bound_arm64_physical_install_authority(self) -> None:
+        arm64 = self.text[
+            self.text.index("  physical-arm64-apk:"):
+            self.text.index("  phone-editing-e2e:")
+        ]
+        self.assertIn("name: Build isolated arm64-v8a physical APK", arm64)
+        self.assertIn("needs: build", arm64)
+        self.assertIn(
+            "CHUMMER_PHYSICAL_PACKAGE_ID: "
+            "com.myexternalbrain.chummer.codexproof.arm64",
+            arm64,
+        )
+        self.assertIn("-p:ChummerAndroidRuntimeIdentifier=android-arm64", arm64)
+        self.assertIn('-p:ApplicationId="$CHUMMER_PHYSICAL_PACKAGE_ID"', arm64)
+        self.assertIn("-path '*/android-arm64/*'", arm64)
+        self.assertIn('abis != ["arm64-v8a"]', arm64)
+        self.assertIn("apksigner\" verify --verbose --print-certs", arm64)
+        self.assertIn("signing-certificate-sha256", arm64)
+        self.assertIn("aapt\" dump badging", arm64)
+        self.assertIn('test "$package_id" = "$CHUMMER_PHYSICAL_PACKAGE_ID"', arm64)
+        self.assertIn(
+            "chummer-android-api36-arm64-physical-debug-"
+            "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}",
+            arm64,
+        )
+        self.assertIn("chummer.android.physical-apk/v1", arm64)
+        self.assertIn('"runtimeIdentifier": "android-arm64"', arm64)
+        self.assertIn('"abi": "arm64-v8a"', arm64)
+        self.assertIn('"distributionLane": "isolated-physical-proof"', arm64)
+        self.assertIn(
+            '"signingPosture": "ephemeral-hosted-debug-one-shot"', arm64
+        )
+        self.assertIn('"stableUpdateSigningClaim": False', arm64)
+        self.assertIn('"playBetaSigningClaim": False', arm64)
+        self.assertIn('"packageId": os.environ["PACKAGE_ID"]', arm64)
+        self.assertIn('"signingCertificateSha256"', arm64)
+        self.assertIn('"contentReceiptSha256"', arm64)
+        self.assertIn(
+            "python3 chummer-android/scripts/verify_android_content_bundle.py",
+            arm64,
+        )
+        self.assertIn("id: upload-physical-apk", arm64)
+        self.assertIn("artifact-id", arm64)
+        self.assertIn("artifact-digest", arm64)
+        self.assertNotIn("android-emulator-runner", arm64)
+        self.assertNotIn(" adb ", arm64)
+        self.assertNotIn("Rook", arm64)
+        self.assertLess(
+            arm64.index("Seal and verify the isolated arm64-v8a physical APK"),
+            arm64.index("Verify canonical content in the exact arm64-v8a APK"),
+        )
+        self.assertLess(
+            arm64.index("Verify canonical content in the exact arm64-v8a APK"),
+            arm64.index("Bind the physical APK provenance receipt"),
+        )
+        self.assertLess(
+            arm64.index("Bind the physical APK provenance receipt"),
+            arm64.index("Upload the exact isolated arm64-v8a physical APK authority"),
+        )
+        phone = self.text[
+            self.text.index("  phone-editing-e2e:"):
+            self.text.index("  phone-evidence-aggregate:")
+        ]
+        self.assertIn("needs: build", phone)
+        self.assertNotIn("needs: physical-arm64-apk", phone)
 
     def test_full_local_compatibility_tree_is_commit_pinned(self) -> None:
         for repository, commit in COMPATIBILITY_GRAPH.items():

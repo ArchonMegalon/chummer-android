@@ -79,6 +79,12 @@ class AndroidContractTests(unittest.TestCase):
         workflow = (REPO / ".github" / "workflows" / "api36-editing-e2e.yml").read_text(
             encoding="utf-8"
         )
+        build_block = workflow[
+            workflow.index("  build:"):workflow.index("  physical-arm64-apk:")
+        ]
+        physical_block = workflow[
+            workflow.index("  physical-arm64-apk:"):workflow.index("  phone-editing-e2e:")
+        ]
 
         for dependency, commit in (
             ("ArchonMegalon/chummer6-ui", "e906ec909d337b7a907ba7ae8c526c3aad89a1e3"),
@@ -89,12 +95,15 @@ class AndroidContractTests(unittest.TestCase):
             ("ArchonMegalon/chummer6-media-factory", "415c8163d3d90b1211e4014fef332bdec6d75f73"),
         ):
             checkout = f"repository: {dependency}\n"
-            self.assertEqual(1, workflow.count(checkout), dependency)
-            dependency_block = workflow[workflow.index(checkout) :]
-            dependency_block = dependency_block[: dependency_block.index("fetch-depth: 1")]
-            self.assertIn(f"ref: {commit}", dependency_block, dependency)
+            for job_block in (build_block, physical_block):
+                self.assertEqual(1, job_block.count(checkout), dependency)
+                checkout_index = job_block.index(checkout)
+                dependency_block = job_block[checkout_index:]
+                dependency_block = dependency_block[: dependency_block.index("fetch-depth: 1")]
+                self.assertIn(f"ref: {commit}", dependency_block, dependency)
 
-        self.assertIn("path: fleet/repos/chummer-media-factory", workflow)
+        self.assertIn("path: fleet/repos/chummer-media-factory", build_block)
+        self.assertIn("path: fleet/repos/chummer-media-factory", physical_block)
 
     def test_android_uses_play_updates_and_verified_links(self) -> None:
         project = (PROJECT / "Chummer.Android.csproj").read_text(encoding="utf-8")
