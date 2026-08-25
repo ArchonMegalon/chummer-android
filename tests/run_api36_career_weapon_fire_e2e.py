@@ -249,6 +249,28 @@ def tap_exact_build_route(
     device.shell("input", "tap", str(x), str(y))
 
 
+def tap_exact_visible_route(
+    device: shared.Device,
+    selector: str,
+    *,
+    evidence_prefix: str,
+    surface_name: str,
+) -> None:
+    """Wait without gestures for an async route transition, then tap its exact node."""
+    node = device.wait_for_single_exact_resource_id(
+        selector,
+        timeout=120,
+        scroll=False,
+        evidence_prefix=evidence_prefix,
+        surface_name=surface_name,
+    )
+    if not device.node_has_tappable_bounds(node):
+        device.capture(f"{evidence_prefix}-untappable")
+        raise RuntimeError(f"The exact {surface_name.lower()} is not tappable")
+    x, y = node.center
+    device.shell("input", "tap", str(x), str(y))
+
+
 def open_page(device: shared.Device) -> None:
     shared.open_build(device, "phone")
     tap_exact_build_route(
@@ -263,11 +285,11 @@ def open_page(device: shared.Device) -> None:
         evidence_prefix="career-weapon-fire-weapons-route",
         surface_name="Gear Weapons route accessibility node",
     )
-    device.tap(
+    tap_exact_visible_route(
+        device,
         f"collection-item-weapon-{WEAPON_ID}",
-        scroll=True,
-        timeout=120,
-        max_scrolls=24,
+        evidence_prefix="career-weapon-fire-target-weapon-route",
+        surface_name="Target Weapon collection route accessibility node",
     )
     device.wait(f"collection-editor-weapon-{WEAPON_ID}", timeout=120)
     token = WEAPON_ID.replace("-", "")
