@@ -257,6 +257,12 @@ def open_page(device: shared.Device) -> None:
         evidence_prefix="career-weapon-fire-gear-section-route",
         surface_name="Build Gear section route accessibility node",
     )
+    device.wait_for_single_exact_resource_id(
+        f"collection-editor-gear-{AMMO_GEAR_ID}",
+        timeout=120,
+        evidence_prefix="career-weapon-fire-gear-section-entered",
+        surface_name="Exact fixture-linked Gear editor transition surface",
+    )
     tap_exact_build_route(
         device,
         "build-action-tab-gear-weapons",

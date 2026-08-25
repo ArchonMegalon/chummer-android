@@ -53,12 +53,20 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
             'evidence_prefix="career-weapon-fire-gear-section-route"',
             source,
         )
+        self.assertIn(
+            'evidence_prefix="career-weapon-fire-gear-section-entered"',
+            source,
+        )
         self.assertIn('evidence_prefix="career-weapon-fire-weapons-route"', source)
         self.assertIn(
             'evidence_prefix="career-weapon-fire-target-weapon-route"',
             source,
         )
         self.assertEqual(4, source.count("tap_exact_build_route("))
+        self.assertLess(
+            source.index('evidence_prefix="career-weapon-fire-gear-section-entered"'),
+            source.index('evidence_prefix="career-weapon-fire-weapons-route"'),
+        )
         self.assertLess(
             source.index('evidence_prefix="career-weapon-fire-weapons-route"'),
             source.index('evidence_prefix="career-weapon-fire-target-weapon-route"'),
@@ -136,6 +144,47 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
             "career-weapon-fire-weapons-route-untappable"
         )
         device.shell.assert_not_called()
+
+    def test_open_page_binds_exact_gear_transition_before_weapons_route(self) -> None:
+        device = Mock(spec=driver.shared.Device)
+        events: list[tuple[str, str]] = []
+
+        def record_route(
+            _device: object,
+            selector: str,
+            *,
+            evidence_prefix: str,
+            surface_name: str,
+        ) -> None:
+            del evidence_prefix, surface_name
+            events.append(("route", selector))
+
+        def record_transition(selector: str, **_kwargs: object) -> Mock:
+            events.append(("transition", selector))
+            return Mock()
+
+        device.wait_for_single_exact_resource_id.side_effect = record_transition
+        with (
+            patch.object(driver.shared, "open_build"),
+            patch.object(driver, "tap_exact_build_route", side_effect=record_route),
+        ):
+            driver.open_page(device)
+
+        self.assertEqual(
+            [
+                ("route", "build-section-tab-gear"),
+                ("transition", f"collection-editor-gear-{driver.AMMO_GEAR_ID}"),
+                ("route", "build-action-tab-gear-weapons"),
+                ("route", f"collection-item-weapon-{driver.WEAPON_ID}"),
+            ],
+            events,
+        )
+        device.wait_for_single_exact_resource_id.assert_called_once_with(
+            f"collection-editor-gear-{driver.AMMO_GEAR_ID}",
+            timeout=120,
+            evidence_prefix="career-weapon-fire-gear-section-entered",
+            surface_name="Exact fixture-linked Gear editor transition surface",
+        )
 
     def test_fixture_binds_exact_root_weapon_active_clip_linked_ammo_and_burst(self) -> None:
         root = ET.parse(FIXTURE).getroot()
