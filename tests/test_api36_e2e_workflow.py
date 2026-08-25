@@ -4,7 +4,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "api36-editing-e2e.yml"
-PREVIEW_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "preview9-arm64-aab.yml"
+PREVIEW_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "preview10-arm64-aab.yml"
 COMPATIBILITY_GRAPH = {
     "ArchonMegalon/chummer6-ui":
         "d276f1d0ed8f76938d26b92389e62676f48acf7b",
@@ -146,6 +146,24 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             with self.subTest(repository=repository):
                 self.assertIn(f"repository: {repository}", self.preview_text)
                 self.assertIn(f"ref: {commit}", self.preview_text)
+
+    def test_preview_release_identity_matches_the_canonical_app_version(self) -> None:
+        project = (
+            REPO_ROOT / "src" / "Chummer.Android" / "Chummer.Android.csproj"
+        ).read_text(encoding="utf-8")
+        self.assertIn("name: Preview.10 ARM64 AAB", self.preview_text)
+        self.assertIn("workflow_dispatch:", self.preview_text)
+        self.assertIn("release/preview10-internal-20260825", self.preview_text)
+        self.assertIn(
+            "chummer-android-0.1.0-preview.10-unsigned.aab",
+            self.preview_text,
+        )
+        self.assertNotIn("preview9", self.preview_text.lower())
+        self.assertIn(
+            "<ApplicationDisplayVersion>0.1.0-preview.10</ApplicationDisplayVersion>",
+            project,
+        )
+        self.assertIn("<ApplicationVersion>10</ApplicationVersion>", project)
 
     def test_executes_every_persistence_driver_as_an_isolated_matrix_journey(self) -> None:
         runner = (
