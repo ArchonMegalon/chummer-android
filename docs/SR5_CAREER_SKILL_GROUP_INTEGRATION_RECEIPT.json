@@ -1,13 +1,13 @@
 {
   "schema": "chummer.android.sr5-career-skill-group-integration-receipt/v1",
-  "generatedAtUtc": "2026-08-25T20:42:06Z",
+  "generatedAtUtc": "2026-08-25T20:49:29Z",
   "status": "source_integration_and_focused_compile_verified_device_proof_pending",
   "integration": {
     "branch": "codex/android-sr5-career-skill-group-20260825",
     "combinedAttributeBaseCommit": "f1bcb2d68160d76e6a4e5240d0e5ba490cf13f86",
     "combinedAttributeBaseTree": "10f4fd6252e1a2795215188220eac001a3dd3747",
-    "productIntegrationCommit": "4112eb6166be60447a62df638225ac3a3a24b6da",
-    "productIntegrationTree": "50417830f982a382d6c4b72758c8cf2d1adc529b",
+    "productIntegrationCommit": "0c2dd8db930a760d3867287e0204f84c3bd14984",
+    "productIntegrationTree": "6cc51171b50909bcf3947d4a1bec179573e33f21",
     "coreCommit": "b1d6abd5ea0e00c5063bc6561a87c50ec1b7eb85",
     "coreTree": "f07f68f3be0488745d5cd116e7e4b641fec05820",
     "presentationCommit": "671289bb75994a686308cd3f3a1a52e5590f36a4",
@@ -26,6 +26,10 @@
       "logicalRevision",
       "sourceRevision",
       "ruleDigest",
+      "contentBundleDigest",
+      "coreRevision",
+      "presentationRevision",
+      "runtimeDigest",
       "transactionId",
       "expenseId",
       "idempotencyKey",
@@ -45,6 +49,17 @@
       "checkpoint": "persistent owner/workspace/action/version/phase CAS journal with exact write/read-back",
       "restart": "fresh Presentation quote and RecoverableReceipts projection; no mutation replay",
       "correction": "typed Core/Presentation compensating correction; original receipt checkpoint retires only after the clean corrected revision is verified"
+    },
+    "runtimeAuthority": {
+      "contractName": "chummer.android.sr5-career-skill-group-runtime/v1",
+      "coreRevision": "b1d6abd5ea0e00c5063bc6561a87c50ec1b7eb85",
+      "presentationRevision": "671289bb75994a686308cd3f3a1a52e5590f36a4",
+      "contentDigest": "75f39aa795619d1d45341ebe12667fcc0b44bf77fbc7e6c534b0fe0cb86d917a",
+      "runtimeDigest": "24cdb751cd4e53afada3c9a70be5595e9231b149677d2f3002e8c7f9fe5e60df",
+      "digestSemantics": "sha256(contractName + newline + coreRevision + newline + presentationRevision + newline + contentDigest + newline)",
+      "checkpointSchema": 2,
+      "failClosedOnAppAuthorityChange": true,
+      "includedInIdempotencyKey": true
     }
   },
   "contentBundle": {
@@ -102,15 +117,15 @@
       "name": "focused-source-contract",
       "command": "python3 -m pytest -q tests/test_career_skill_group_wizard_source_contract.py",
       "status": "pass",
-      "testsPassed": 8
+      "testsPassed": 9
     },
     {
       "name": "full-lightweight-android-suite",
       "command": "python3 -m pytest -q with exact Core/Presentation/Design/Hub authority-root layout",
       "status": "pass",
-      "testsPassed": 654,
+      "testsPassed": 655,
       "subtestsPassed": 661,
-      "durationSeconds": 36.09,
+      "durationSeconds": 35.78,
       "authorityGraph": {
         "chummer5Commit": "fe4355d06c98cd9b7feade89f5fc1a0e438f7ce3",
         "designCommit": "c60c93f635e371d784812140f5d5181d1d954ae2",
