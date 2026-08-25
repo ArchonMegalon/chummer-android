@@ -1,0 +1,167 @@
+{
+  "schema": "chummer.android.physical-editing-e2e/v1",
+  "status": "pass",
+  "generatedAtUtc": "2026-08-25T07:26:41.312883+00:00",
+  "serial": "100.96.0.9:38939",
+  "model": "SM-S947B",
+  "profile": "phone",
+  "journey": "career-notoriety",
+  "apiLevel": 36,
+  "abi": "arm64-v8a",
+  "package": "com.myexternalbrain.chummer.codexproof.arm64",
+  "apkSha256": "4c28a73b0e4dbb5da49ecc0b454f39e1d0d0a8cbebea09a696bca047d2a2ddc0",
+  "provenanceSha256": "2365729a38e8eae9cdec395df67b1120cb4601f1ab3765cde1c17150e5dbf12e",
+  "provenance": {
+    "abi": "arm64-v8a",
+    "apkFile": "chummer-android-arm64-physical-debug.apk",
+    "apkSha256": "4c28a73b0e4dbb5da49ecc0b454f39e1d0d0a8cbebea09a696bca047d2a2ddc0",
+    "contentBundleDigest": "561c416e629f99048d4bad0872ab5d08abc7875de961bb6ee6cd5347f6b86d36",
+    "contentManifestSha256": "c78f66f8b386069eb42d024edd414d3c45a314a67c494c565395e92ff1a40135",
+    "contentReceiptFile": "chummer-android-content-bundle-receipt.json",
+    "contentReceiptSha256": "f87c18e161f996d94c2412e26c8ecad92cb809935dc7ac63fc129d34ec190a89",
+    "coreRevision": "e9874a31d8d25b98dd196dd629c423e9a9c39297",
+    "distributionLane": "isolated-physical-proof",
+    "headSha": "acc46f33b5201ea12d9fc1d1ca0b41051dc1b177",
+    "packageId": "com.myexternalbrain.chummer.codexproof.arm64",
+    "playBetaSigningClaim": false,
+    "ref": "refs/pull/23/merge",
+    "repository": "ArchonMegalon/chummer-android",
+    "runAttempt": 1,
+    "runId": 32812309411,
+    "runtimeIdentifier": "android-arm64",
+    "schema": "chummer.android.physical-apk/v1",
+    "signingCertificateSha256": "9e9acde9f4335eb1d8d16b79693ae8d6a180ddfac3f1f2ee158d7f5163d10b15",
+    "signingPosture": "ephemeral-hosted-debug-one-shot",
+    "stableUpdateSigningClaim": false,
+    "status": "pass",
+    "workflowRef": "ArchonMegalon/chummer-android/.github/workflows/api36-editing-e2e.yml@refs/pull/23/merge"
+  },
+  "driverSha256": "4c4bb3398561e47f20ba23e71c58ef1cbf6e6293a6526ecfb0d8b1ddcc8b4bea",
+  "sharedDriverSha256": "464545c29c43faea7f833c59360ba61df1267b09b5ed2712a7546c05f2dd5d49",
+  "journeyDriverSha256": "65448925b615924a044e804655ffd78424ff7a5793ebe493561f3cc8a0acd997",
+  "careerFixtureSha256": "089d134993f967dfb7a107d8a04a365bad4af189a884916102d7de392005f5cc",
+  "verifiedRemoteCareerFixtureSha256": "089d134993f967dfb7a107d8a04a365bad4af189a884916102d7de392005f5cc",
+  "installedPackagesBefore": {
+    "com.myexternalbrain.chummer": {
+      "package": "com.myexternalbrain.chummer",
+      "versionCode": "9",
+      "versionName": "0.1.0-preview.9",
+      "primaryCpuAbi": "arm64-v8a",
+      "lastUpdateTime": "2026-08-22 15:00:48"
+    },
+    "com.myexternalbrain.chummer.codexproof": {
+      "package": "com.myexternalbrain.chummer.codexproof",
+      "versionCode": "10",
+      "versionName": "0.1.0-preview.10",
+      "primaryCpuAbi": "arm64-v8a",
+      "lastUpdateTime": "2026-08-24 06:43:45"
+    },
+    "com.myexternalbrain.chummer.codexproof.arm64": {
+      "package": "com.myexternalbrain.chummer.codexproof.arm64",
+      "versionCode": "10",
+      "versionName": "0.1.0-preview.10",
+      "primaryCpuAbi": "arm64-v8a",
+      "lastUpdateTime": "2026-08-25 11:55:48"
+    }
+  },
+  "installedPackagesAfter": {
+    "com.myexternalbrain.chummer": {
+      "package": "com.myexternalbrain.chummer",
+      "versionCode": "9",
+      "versionName": "0.1.0-preview.9",
+      "primaryCpuAbi": "arm64-v8a",
+      "lastUpdateTime": "2026-08-22 15:00:48"
+    },
+    "com.myexternalbrain.chummer.codexproof": {
+      "package": "com.myexternalbrain.chummer.codexproof",
+      "versionCode": "10",
+      "versionName": "0.1.0-preview.10",
+      "primaryCpuAbi": "arm64-v8a",
+      "lastUpdateTime": "2026-08-24 06:43:45"
+    },
+    "com.myexternalbrain.chummer.codexproof.arm64": {
+      "package": "com.myexternalbrain.chummer.codexproof.arm64",
+      "versionCode": "10",
+      "versionName": "0.1.0-preview.10",
+      "primaryCpuAbi": "arm64-v8a",
+      "lastUpdateTime": "2026-08-25 11:55:48"
+    }
+  },
+  "installedApkBefore": {
+    "package": "com.myexternalbrain.chummer.codexproof.arm64",
+    "path": "/data/app/~~yqxL_JvRiJIfI9IOd6_2ow==/com.myexternalbrain.chummer.codexproof.arm64-HB9ZQaoFcYgPoll5nqRwkw==/base.apk",
+    "sha256": "4c28a73b0e4dbb5da49ecc0b454f39e1d0d0a8cbebea09a696bca047d2a2ddc0"
+  },
+  "installedApkAfter": {
+    "package": "com.myexternalbrain.chummer.codexproof.arm64",
+    "path": "/data/app/~~yqxL_JvRiJIfI9IOd6_2ow==/com.myexternalbrain.chummer.codexproof.arm64-HB9ZQaoFcYgPoll5nqRwkw==/base.apk",
+    "sha256": "4c28a73b0e4dbb5da49ecc0b454f39e1d0d0a8cbebea09a696bca047d2a2ddc0"
+  },
+  "controlCount": 1,
+  "controls": {
+    "CharacterCareer.nudNotoriety": {
+      "sourceDigestBound": "pass",
+      "exactWorkspaceFieldIdentity": "pass",
+      "exactNotorietyDelta": "pass",
+      "expectedRevisionAtomicSave": "pass",
+      "payloadDigestChanged": "pass",
+      "documentDigestChanged": "pass",
+      "unrelatedXmlPreserved": "pass",
+      "sameSessionReopened": "pass",
+      "newPidAfterForceStop": "pass",
+      "processRestartWorkspacePersisted": "pass",
+      "processRestartUiReadback": "pass"
+    }
+  },
+  "authorityProofStages": {
+    "field": "notoriety",
+    "initialValue": 7,
+    "savedValue": 8,
+    "unrelatedXmlAuthority": {
+      "streetCredSha256": "bfbdee6b8124feff65ca0711182fa1a0e0d4cc91aeb3984a151f0f6a4a05b947",
+      "publicAwarenessSha256": "af4f3d7c6f1ced4c1f889482867be51daae6cfa172ee695b40113467cefb7bde",
+      "astralReputationSha256": "3721c7a7f6ee26d0b476eb3d40e75c87bd07a2724651d2a3f7e2e106d1222bd2",
+      "wildReputationSha256": "154915caa3bb8e9f07305e55472b5deb246454247f7f5603fcfb85595a7500d3",
+      "burntStreetCredSha256": "d4c896f99c950a097952f08889d42363345c831a0e845feee868d2997431435e",
+      "unrelatedGearSha256": "bcde07e667338f43dc5cbaa1dc8453c8abc5f19c8f4af781b64693cbb2406023",
+      "customStateSha256": "3383d35645cbe5ed4a66851b27f1f6792bcf77cb6ac1067df5673534a1b3c29b",
+      "karma": "19",
+      "nuyen": "8765"
+    },
+    "import": {
+      "workspaceId": "dc274a26db8c4d6f82f873feb9c2d333",
+      "contentRevision": 1,
+      "savedRevision": 0,
+      "payloadSha256": "089d134993f967dfb7a107d8a04a365bad4af189a884916102d7de392005f5cc",
+      "documentSha256": "da8b6449f58cbda02d11b086509d5b9b65f74948d6451f92b74a0167cdeb7c8d"
+    },
+    "saved": {
+      "workspaceId": "dc274a26db8c4d6f82f873feb9c2d333",
+      "contentRevision": 2,
+      "savedRevision": 2,
+      "payloadSha256": "2a11cc6f8a86c91b410b530abfb1e2cf4a88059629a5dd7ead44a4e585513742",
+      "documentSha256": "0fbf9bba69337b90d1e4e6041b6de68f5439995e7d3dd9278779b3663911fdf3"
+    },
+    "restored": {
+      "workspaceId": "dc274a26db8c4d6f82f873feb9c2d333",
+      "contentRevision": 2,
+      "savedRevision": 2,
+      "payloadSha256": "2a11cc6f8a86c91b410b530abfb1e2cf4a88059629a5dd7ead44a4e585513742",
+      "documentSha256": "0fbf9bba69337b90d1e4e6041b6de68f5439995e7d3dd9278779b3663911fdf3"
+    },
+    "restartProcessIds": {
+      "beforeForceStop": [
+        "9106"
+      ],
+      "afterForceStop": [],
+      "restarted": [
+        "13588"
+      ]
+    }
+  },
+  "journeys": {
+    "exactNotorietyEdit": "pass",
+    "sameSessionReopen": "pass",
+    "newProcessRestart": "pass"
+  }
+}
