@@ -30,14 +30,15 @@ public sealed record CreationDashboardProjectionBinding(
             || snapshot.WorkspaceRevision != state.ContentRevision
             || !string.Equals(snapshot.WorkspaceId, workspaceId.Value, StringComparison.Ordinal)
             || string.IsNullOrWhiteSpace(snapshot.ContentDigest)
-            || string.IsNullOrWhiteSpace(snapshot.SourceDigest)
-            || string.IsNullOrWhiteSpace(snapshot.RuntimeFingerprint)
             || string.IsNullOrWhiteSpace(snapshot.BuildMethod)
             || string.IsNullOrWhiteSpace(snapshot.SnapshotDigest))
         {
             return false;
         }
 
+        // Source/runtime authority is intentionally absent from the initial presentation snapshot.
+        // This binding only schedules the Core prerequisite load that obtains and validates that
+        // authority; downstream acceptance remains revision-, content-, and digest-bound.
         binding = new CreationDashboardProjectionBinding(
             workspaceId.Value,
             state.ContentRevision,

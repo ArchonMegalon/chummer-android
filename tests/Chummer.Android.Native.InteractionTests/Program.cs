@@ -22,6 +22,7 @@ internal static class Program
             (nameof(FailureRerendersBeforeQueueAdvancesAsync), FailureRerendersBeforeQueueAdvancesAsync),
             (nameof(CanonicalDigestPrefixIsTwelveLowerHexAsync), CanonicalDigestPrefixIsTwelveLowerHexAsync),
             (nameof(CanonicalPriorityAuthorityIsPhoneReadyAsync), CanonicalPriorityAuthorityIsPhoneReadyAsync),
+            (nameof(PreAuthorityCreationSnapshotCanScheduleBootstrapAsync), PreAuthorityCreationSnapshotCanScheduleBootstrapAsync),
             (nameof(BuildPageProjectsExactlyOneLifecycleRouteAsync), BuildPageProjectsExactlyOneLifecycleRouteAsync),
             (nameof(DurableSaveNoticeFailsClosedAcrossStateChangesAsync), DurableSaveNoticeFailsClosedAcrossStateChangesAsync),
             (nameof(SlowCreationDashboardProjectionDoesNotBlockCallerAsync), SlowCreationDashboardProjectionDoesNotBlockCallerAsync),
@@ -72,6 +73,52 @@ internal static class Program
         Require(
             projected.Select(marker => marker.AutomationId).Distinct(StringComparer.Ordinal).Count() == 3,
             "Empty, creation, and career route identities must remain disjoint.");
+        return Task.CompletedTask;
+    }
+
+    private static Task PreAuthorityCreationSnapshotCanScheduleBootstrapAsync()
+    {
+        var workspaceId = new CharacterWorkspaceId("phone-pre-authority-bootstrap");
+        CharacterOverviewState overview = NewCreationOverview(workspaceId, 11, 10);
+        var snapshot = new CharacterCreationWizardSnapshot(
+            CharacterCreationWizardSchemas.SnapshotV1,
+            workspaceId.Value,
+            WorkspaceRevision: 11,
+            ContentDigest: CanonicalDigest('1'),
+            SourceDigest: string.Empty,
+            RulesetDefaults.Sr5,
+            RuntimeFingerprint: string.Empty,
+            CharacterCreationBuildMethods.Priority,
+            CharacterCreated: false,
+            CharacterCreationWizardStepIds.Foundation,
+            [],
+            [],
+            new Dictionary<string, IReadOnlyList<CharacterCreationLegalOption>>(),
+            [],
+            [],
+            CanFinalize: false,
+            SnapshotDigest: CanonicalDigest('2'));
+
+        Require(
+            CreationDashboardProjectionBinding.TryCreate(overview, snapshot, out CreationDashboardProjectionBinding? binding)
+            && binding is not null,
+            "The initial snapshot must be able to schedule the Core load that obtains source/runtime authority.");
+        CreationDashboardProjectionBinding bootstrapBinding = binding!;
+        Require(
+            bootstrapBinding.SourceDigest.Length == 0 && bootstrapBinding.RuntimeFingerprint.Length == 0,
+            "The bootstrap binding must preserve absent authority instead of inventing authority values.");
+        Require(
+            !CreationDashboardProjectionBinding.TryCreate(
+                overview,
+                snapshot with { ContentDigest = string.Empty },
+                out _),
+            "Bootstrap scheduling must still reject a snapshot without content identity.");
+        Require(
+            !CreationDashboardProjectionBinding.TryCreate(
+                overview,
+                snapshot with { WorkspaceRevision = 12 },
+                out _),
+            "Bootstrap scheduling must still reject revision drift.");
         return Task.CompletedTask;
     }
 

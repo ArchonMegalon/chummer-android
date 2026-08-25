@@ -1367,6 +1367,21 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn("Coordinator.LoadCreationAttributes()", resolver)
         self.assertNotIn("Coordinator.LoadCreationSkills()", resolver)
 
+    def test_dashboard_bootstrap_does_not_require_authority_before_loading_it(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        binding = source[
+            source.index("public sealed record CreationDashboardProjectionBinding") :
+            source.index("public enum CreationDashboardAuthorityPhaseState")
+        ]
+
+        self.assertNotIn("string.IsNullOrWhiteSpace(snapshot.SourceDigest)", binding)
+        self.assertNotIn("string.IsNullOrWhiteSpace(snapshot.RuntimeFingerprint)", binding)
+        self.assertIn("snapshot.SourceDigest,", binding)
+        self.assertIn("snapshot.RuntimeFingerprint,", binding)
+        self.assertIn("snapshot.ContentDigest", binding)
+        self.assertIn("snapshot.WorkspaceRevision != state.ContentRevision", binding)
+        self.assertIn("string.IsNullOrWhiteSpace(snapshot.SnapshotDigest)", binding)
+
     def test_dashboard_recovers_terminal_projection_after_deferred_page_dispatch(self) -> None:
         page_source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         queue_source = (NATIVE / "LatestBackgroundProjectionQueue.cs").read_text(
