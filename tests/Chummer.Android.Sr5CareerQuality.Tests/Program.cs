@@ -1,6 +1,7 @@
 using Chummer.Android.Native;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
+using Chummer.Presentation;
 using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Sr5CareerQuality.Tests;
@@ -19,8 +20,9 @@ internal static class Program
         await UnknownTransportOutcomesResolveWithoutRetryAsync();
         await UnsupportedAmbiguousAndDriftedAuthorityFailsClosedAsync();
         await CompensatingCorrectionRestoresAndRetiresAsync();
+        await RegisteredTypedPersistenceSeamFailsClosedOnAuthorityDriftAsync();
         MalformedSchemaAndCasConflictsRemainReplayLocks();
-        Console.WriteLine("PASS: 6 SR5 Career quality phone authority behavior groups");
+        Console.WriteLine("PASS: 7 SR5 Career quality phone authority behavior groups");
     }
 
     private static async Task ExactReviewBindsAllAuthorityAsync()
@@ -220,6 +222,101 @@ internal static class Program
         Require(fixture.Workspace.CorrectionCount == 1, "single compensation");
     }
 
+    private static async Task RegisteredTypedPersistenceSeamFailsClosedOnAuthorityDriftAsync()
+    {
+        FakeAtomicWorkspace backend = new();
+        CareerQualityAuthoritySnapshot initial = backend.Snapshot;
+        CareerQualityEditorState state = CareerQualityWorkflow.Project(initial);
+        CharacterCareerQualityQuote quote = state.Quotes.Single();
+        CareerQualityDraft draft = CareerQualityWorkflow.CreateDraft(state, quote);
+        CareerQualityReview review = CareerQualityWorkflow.Review(initial, draft);
+        CharacterCareerQualityPlan plan = CareerQualityWorkflow.PlanConfirmation(
+            initial,
+            review,
+            confirmed: true,
+            Guid.Parse("70000000-0000-4000-8000-000000000007"),
+            new DateTime(2026, 8, 26, 10, 15, 0));
+
+        using AndroidCareerQualityAtomicWorkspace unavailable = new(new PlainClient());
+        Require(await unavailable.ReadAsync(WorkspaceId, CancellationToken.None) is null,
+            "a client without the typed atomic capability must be unavailable");
+        Require(await unavailable.CommitAsync(plan, CancellationToken.None) is null,
+            "an unsupported client must never fall back to document mutation");
+        Require(backend.CommitCount == 0, "unsupported client cannot reach persistence");
+
+        using AndroidCareerQualityAtomicWorkspace registered = new(
+            new TypedPersistenceClient(backend));
+        CareerQualityAuthoritySnapshot? loaded = await registered.ReadAsync(
+            WorkspaceId,
+            CancellationToken.None);
+        Require(loaded is not null && loaded.Binding == initial.Binding,
+            "registered adapter delegates the exact typed authority snapshot");
+
+        CharacterCareerQualityPlan staleDigest = plan with
+        {
+            ExpectedContentDigest = new string('0', 64)
+        };
+        CareerQualityAtomicCommitResult? staleDigestResult = null;
+        try
+        {
+            staleDigestResult = await registered.CommitAsync(
+                staleDigest,
+                CancellationToken.None);
+        }
+        catch (InvalidOperationException)
+        {
+            // A coherent-but-drifted payload must throw; an internally incoherent
+            // payload may return unavailable. Both paths are fail closed.
+        }
+        Require(staleDigestResult is null, "content-digest drift must fail closed");
+        Require(backend.CommitCount == 0, "digest drift rejected before persistence");
+
+        backend.SetCandidate(backend.Candidate with
+        {
+            Binding = backend.Candidate.Binding with
+            {
+                WorkspaceRevision = 42,
+                SavedRevision = 42
+            }
+        });
+        await RequireThrowsAsync<InvalidOperationException>(
+            async () => _ = await registered.CommitAsync(plan, CancellationToken.None),
+            "workspace and saved revision drift must throw before persistence");
+        Require(backend.CommitCount == 0, "revision drift rejected before persistence");
+
+        backend.SetCandidate(backend.Candidate with { Binding = initial.Binding });
+        CareerQualityAtomicCommitResult committed = await registered.CommitAsync(
+                plan,
+                CancellationToken.None)
+            ?? throw new InvalidOperationException("typed atomic commit unavailable");
+        Require(backend.CommitCount == 1, "exact plan delegated exactly once");
+        Require(committed.Receipt.TransactionId == plan.TransactionId,
+            "exact receipt returned through registration seam");
+
+        CareerQualityAuthoritySnapshot correctionSnapshot = backend.Snapshot;
+        CharacterCareerQualityReceipt original = committed.Receipt;
+        CareerQualityCorrectionRequest correctionRequest = new(
+            WorkspaceId,
+            correctionSnapshot.Binding.OwnerId,
+            correctionSnapshot.Binding.WorkspaceRevision,
+            correctionSnapshot.Binding.SavedRevision,
+            correctionSnapshot.RulesetId,
+            original,
+            original.ReceiptDigest,
+            Confirmed: true,
+            Guid.Parse("70000000-0000-4000-8000-000000000008"),
+            "Registered seam correction");
+        CharacterCareerQualityCorrectionPlan correction =
+            CareerQualityWorkflow.PlanCorrection(correctionSnapshot, correctionRequest);
+        CareerQualityAtomicCorrectionResult corrected = await registered.CorrectAsync(
+                correction,
+                CancellationToken.None)
+            ?? throw new InvalidOperationException("typed atomic correction unavailable");
+        Require(backend.CorrectionCount == 1, "exact correction delegated exactly once");
+        Require(corrected.Correction.CorrectionId == correction.CorrectionId,
+            "exact correction returned through registration seam");
+    }
+
     private static void MalformedSchemaAndCasConflictsRemainReplayLocks()
     {
         MemoryBackend malformedBackend = new() { Payload = "{not-json" };
@@ -269,6 +366,36 @@ internal static class Program
     private sealed class OwnerAuthority : ISr5CareerCheckpointOwnerAuthority
     {
         public Guid CurrentOwnerId => OwnerId;
+    }
+
+    private sealed class PlainClient : IChummerClient
+    {
+    }
+
+    private sealed class TypedPersistenceClient : IChummerClient,
+        ICareerQualityAtomicWorkspace
+    {
+        private readonly FakeAtomicWorkspace _workspace;
+
+        public TypedPersistenceClient(FakeAtomicWorkspace workspace)
+        {
+            _workspace = workspace;
+        }
+
+        public Task<CareerQualityAuthoritySnapshot?> ReadAsync(
+            CharacterWorkspaceId workspaceId,
+            CancellationToken ct)
+            => _workspace.ReadAsync(workspaceId, ct);
+
+        public Task<CareerQualityAtomicCommitResult?> CommitAsync(
+            CharacterCareerQualityPlan plan,
+            CancellationToken ct)
+            => _workspace.CommitAsync(plan, ct);
+
+        public Task<CareerQualityAtomicCorrectionResult?> CorrectAsync(
+            CharacterCareerQualityCorrectionPlan correction,
+            CancellationToken ct)
+            => _workspace.CorrectAsync(correction, ct);
     }
 
     private sealed class MemoryBackend : ISr5CareerCheckpointBackend

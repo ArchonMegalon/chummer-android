@@ -14,6 +14,12 @@ PAGE = (NATIVE / "Sr5CareerQualityWizardPage.cs").read_text(encoding="utf-8")
 RUNNER = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
 CAREER = (NATIVE / "Sr5CareerWizardPage.cs").read_text(encoding="utf-8")
 BUILD = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+ATOMIC_WORKSPACE = (NATIVE / "AndroidCareerQualityAtomicWorkspace.cs").read_text(
+    encoding="utf-8"
+)
+MAUI_PROGRAM = (REPO / "src" / "Chummer.Android" / "MauiProgram.cs").read_text(
+    encoding="utf-8"
+)
 
 
 class CareerQualityWizardSourceContractTests(unittest.TestCase):
@@ -102,6 +108,41 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
         self.assertNotIn("ReplaceWorkspaceDocumentAsync", combined)
         self.assertNotIn("ApplyCollectionMutation", combined)
 
+    def test_production_registration_uses_only_the_typed_client_capability(self) -> None:
+        self.assertIn(
+            "AddSingleton<ICareerQualityAtomicWorkspace,\n"
+            "            AndroidCareerQualityAtomicWorkspace>()",
+            MAUI_PROGRAM,
+        )
+        self.assertIn("IChummerClient _client", ATOMIC_WORKSPACE)
+        self.assertIn("_client as ICareerQualityAtomicWorkspace", ATOMIC_WORKSPACE)
+        self.assertNotIn("ReplaceWorkspaceDocumentAsync", ATOMIC_WORKSPACE)
+        self.assertNotIn("XDocument", ATOMIC_WORKSPACE)
+        self.assertNotIn("XElement", ATOMIC_WORKSPACE)
+        self.assertNotIn("Definition.Name ==", ATOMIC_WORKSPACE)
+
+    def test_registration_seam_reloads_and_replans_before_one_atomic_call(self) -> None:
+        for token in (
+            "ReadRequiredAsync(",
+            "RequireExpectedBinding(",
+            "ResolveExactQuote(",
+            "ExpectedWorkspaceRevision",
+            "ExpectedSavedRevision",
+            "ExpectedRuntimeFingerprint",
+            "ExpectedContentDigest",
+            "ExpectedLogicalRevision",
+            "ExpectedSourceRevision",
+            "ExpectedRuleDigest",
+            "CareerQualityWorkflow.PlanConfirmation(",
+            "CareerQualityWorkflow.PlanCorrection(",
+            "CareerQualityWorkflow.ValidateAtomicCommit(",
+            "CareerQualityWorkflow.ValidateAtomicCorrection(",
+        ):
+            self.assertIn(token, ATOMIC_WORKSPACE)
+        self.assertEqual(ATOMIC_WORKSPACE.count(".CommitAsync(plan, ct)"), 1)
+        self.assertEqual(ATOMIC_WORKSPACE.count(".CorrectAsync(correction, ct)"), 1)
+        self.assertNotIn("catch (", ATOMIC_WORKSPACE)
+
     def test_phone_deep_choose_review_receipt_and_correction_routes_are_exposed(self) -> None:
         route_model = (NATIVE / "Sr5CareerWizardModel.cs").read_text(encoding="utf-8")
         for route in (
@@ -173,6 +214,7 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
         self.assertIn("CareerQualityWorkflow.cs", project)
         self.assertIn("Sr5CareerQualityCoordinator.cs", project)
         self.assertIn("Sr5CareerQualityCheckpointStore.cs", project)
+        self.assertIn("AndroidCareerQualityAtomicWorkspace.cs", project)
 
 
 if __name__ == "__main__":
