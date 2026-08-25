@@ -17,8 +17,8 @@
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerQualityRules.cs" Link="Core/CharacterCareerQualityRules.cs" />
     <Compile Include="$(ChummerPresentationRoot)/Chummer.Presentation/Overview/CareerQualityWorkflow.cs" Link="Presentation/CareerQualityWorkflow.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerWizardModel.cs" Link="Native/Sr5CareerWizardModel.cs" />
-    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerSkillGroupWizardModel.cs" Link="Native/Sr5CareerSkillGroupWizardModel.cs" />
-    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerSkillGroupCoordinator.cs" Link="Native/Sr5CareerSkillGroupCoordinator.cs" />
-    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerSkillGroupCheckpointStore.cs" Link="Native/Sr5CareerSkillGroupCheckpointStore.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerQualityWizardModel.cs" Link="Native/Sr5CareerQualityWizardModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerQualityCoordinator.cs" Link="Native/Sr5CareerQualityCoordinator.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerQualityCheckpointStore.cs" Link="Native/Sr5CareerQualityCheckpointStore.cs" />
   </ItemGroup>
 </Project>

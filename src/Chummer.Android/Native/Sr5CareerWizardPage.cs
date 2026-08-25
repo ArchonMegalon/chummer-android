@@ -244,6 +244,11 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
             "Preview and save one exact group advancement with Core-owned member projection, modifiers and immediate persistence time authority",
             OpenSkillGroupWizardAsync,
             "skill-group");
+        AddAction(
+            "Acquire or remove a quality",
+            "Choose an exact source/identity operation, review all GM/effect prerequisites, and commit the full delta plus receipt atomically",
+            OpenQualityWizardAsync,
+            "quality");
         AddBlocked(
             "Training duration, healing, crafting, acquisition delivery and other scheduled work lack a shared typed execution contract.",
             "execution");
@@ -325,6 +330,25 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
         if (editor is not null)
         {
             await Navigation.PushAsync(new Sr5CareerSkillGroupWizardPage(Coordinator, editor));
+        }
+    }
+
+    private async Task OpenQualityWizardAsync()
+    {
+        Sr5CareerQualityCoordinator authority = new(
+            new RunnerSessionSr5CareerQualityPresenter(Coordinator),
+            new PreferencesSr5CareerCheckpointOwnerAuthority());
+        CareerQualityEditorState? editor = await authority.PrepareAsync();
+        if (editor is not null)
+        {
+            await Navigation.PushAsync(new Sr5CareerQualityWizardPage(Coordinator, editor));
+        }
+        else
+        {
+            await DisplayAlertAsync(
+                "Quality authority unavailable",
+                "Exact atomic SR5 quality authority is not connected. The wizard stays fail-closed.",
+                "OK");
         }
     }
 

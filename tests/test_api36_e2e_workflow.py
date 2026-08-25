@@ -7,9 +7,9 @@ WORKFLOW = REPO_ROOT / ".github" / "workflows" / "api36-editing-e2e.yml"
 PREVIEW_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "preview9-arm64-aab.yml"
 COMPATIBILITY_GRAPH = {
     "ArchonMegalon/chummer6-ui":
-        "671289bb75994a686308cd3f3a1a52e5590f36a4",
+        "ac4ebc482c632efa2e6ecadf1df884963fc56d28",
     "ArchonMegalon/chummer6-core":
-        "b1d6abd5ea0e00c5063bc6561a87c50ec1b7eb85",
+        "3a0ac44854004dff0c08807d839cd1fdae1c9a65",
     "ArchonMegalon/chummer6-hub":
         "d29a880f624ec94aabedd0c2901ae8fed2f93ed4",
     "ArchonMegalon/chummer6-hub-registry":

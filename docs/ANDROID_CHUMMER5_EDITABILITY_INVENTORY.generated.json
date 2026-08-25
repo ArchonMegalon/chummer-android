@@ -79,7 +79,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "fc30adac571b86b30dc125425c4a768d52c8316b0abe05219541aa6719f60318"
+        "sha256": "c86fa62f3ecf7300fd4a2ebfcc2b747eeec5a9533997d03468df830c8eca00a1"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -599,7 +599,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "6a5f40a58dfacdfcffc55c798abb11ec84d60923c4a38d617adebbab17ba5cac"
+        "sha256": "0fb869bd61f28fbdc5b9ce4c4e06adde36fdec68de23e9b11f1f38a0d64e5f87"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",

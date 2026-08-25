@@ -143,6 +143,30 @@ namespace Chummer.Android.Native
             Chummer.Presentation.Overview.CareerSkillGroupCorrectionRequest request,
             CancellationToken cancellationToken)
             => Task.FromResult<CharacterCareerSkillGroupCorrectionPlan?>(null);
+
+        public Task<Chummer.Presentation.Overview.CareerQualityEditorState?>
+            PrepareCareerQualityAsync(CancellationToken cancellationToken)
+            => Task.FromResult<Chummer.Presentation.Overview.CareerQualityEditorState?>(null);
+
+        public Task<Chummer.Presentation.Overview.CareerQualityReview>
+            ReviewCareerQualityAsync(
+                Chummer.Presentation.Overview.CareerQualityDraft draft,
+                CancellationToken cancellationToken)
+            => throw new InvalidOperationException();
+
+        public Task<Chummer.Presentation.Overview.CareerQualityConfirmation>
+            ConfirmCareerQualityAsync(
+                Chummer.Presentation.Overview.CareerQualityReview review,
+                Guid transactionId,
+                DateTime expenseDateLocal,
+                CancellationToken cancellationToken)
+            => throw new InvalidOperationException();
+
+        public Task<Chummer.Presentation.Overview.CareerQualityCorrectionConfirmation>
+            CorrectCareerQualityAsync(
+                Chummer.Presentation.Overview.CareerQualityCorrectionRequest request,
+                CancellationToken cancellationToken)
+            => throw new InvalidOperationException();
     }
 
     public static class Sr5CareerActiveSkillCoordinator
