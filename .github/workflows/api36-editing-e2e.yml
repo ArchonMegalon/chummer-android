@@ -139,7 +139,15 @@ jobs:
           path: chummer5a
           persist-credentials: false
           fetch-depth: 1
-          sparse-checkout: Chummer
+          # Keep every source root consumed by the fail-closed inventory. The
+          # optional product roots affect the generated fingerprint when they
+          # exist, so omitting them would honestly fail --check.
+          sparse-checkout: |
+            Chummer
+            Plugins/ChummerHub.Client/UI
+            Translator
+            CrashHandler
+            ChummerDataViewer
 
       - name: Verify phone editability inventory truth
         working-directory: chummer-android

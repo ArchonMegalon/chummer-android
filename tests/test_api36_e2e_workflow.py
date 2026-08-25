@@ -114,6 +114,10 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             "products/chummer",
             "scripts/ai",
             "Chummer",
+            "Plugins/ChummerHub.Client/UI",
+            "Translator",
+            "CrashHandler",
+            "ChummerDataViewer",
         )
         for path in expected_sparse_paths:
             with self.subTest(path=path):
