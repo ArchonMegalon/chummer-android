@@ -79,7 +79,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "1d9ce3c1a73a415248b3b49a6ca7c6a27608b4875aa43057fcd149e8e566a9ba"
+        "sha256": "74b095bfa3a1da4ea59caf7b9483ece515fc22cb61f691ffa1c92d622830bff1"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -614,7 +614,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "a90ffbf890a935e5cfc66cae93f9b1fa2b1573694c98ecab7e0529ba014f234d"
+        "sha256": "0e7c6c3a2253654fc9f221c1d8d09ae3241d1ec3e064f668e7e779a5c1c40729"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
