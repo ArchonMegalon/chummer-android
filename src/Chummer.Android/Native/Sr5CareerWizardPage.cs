@@ -276,8 +276,10 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
 
     private async Task OpenActiveSkillWizardAsync()
     {
+        Sr5CareerActiveSkillCoordinator authority = new(
+            new RunnerSessionSr5CareerActiveSkillPresenter(Coordinator));
         CareerActiveSkillAdvanceEditorState? editor =
-            await Coordinator.PrepareCareerActiveSkillAdvanceAsync();
+            await authority.PrepareAsync();
         if (editor is not null)
         {
             await Navigation.PushAsync(new Sr5CareerActiveSkillWizardPage(Coordinator, editor));
