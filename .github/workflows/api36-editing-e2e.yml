@@ -110,7 +110,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-design
-          ref: 06603a9db904cf1d63aab323b1e501ccb4ed0422
+          ref: c60c93f635e371d784812140f5d5181d1d954ae2
           path: chummer-design
           persist-credentials: false
           fetch-depth: 1

@@ -21,7 +21,7 @@ COMPATIBILITY_GRAPH = {
 }
 INVENTORY_AUTHORITIES = {
     "ArchonMegalon/chummer6-design":
-        "06603a9db904cf1d63aab323b1e501ccb4ed0422",
+        "c60c93f635e371d784812140f5d5181d1d954ae2",
     "ArchonMegalon/chummer5a":
         "fe4355d06c98cd9b7feade89f5fc1a0e438f7ce3",
 }
