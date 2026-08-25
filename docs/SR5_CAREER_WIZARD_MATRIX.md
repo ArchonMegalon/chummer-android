@@ -1,16 +1,14 @@
 # SR5 Career Wizard authority matrix
 
-This matrix describes the integration of Attribute source slice
-`e58584fd2fddc45ad2a715c88a9d904091e619b9` onto combined phone-beta base
-`047d6fb7727cf22f71537303b416fd52a7ea91be`; both descend from shared Android
-base `da4f242652c1192256aed3a6bb2d262b65176a8d`. Active Skill is integrated in
-that shared base; the Attribute slice is pinned to combined Core
-`8e2c53bf9c5ac85f675e738bf6e8ecd2ade4bb2a` and combined Presentation
-`37b4f048fa50911db7cd493217e1b64005c37770`, which carry the exact Core authority
-and tree-identical Presentation authority. Integration result
-`ead84bf1a23e0a721364feb4b06d813262f71748` contains the product slice; this
-matrix claims only source integration and lightweight static tests—not a compiled or API-36-proven
-Attribute artifact. A visible route or an individual emulator receipt is not
+This matrix describes the native Android Skill Group slice built on the
+integrated Attribute phone head `f1bcb2d68160d76e6a4e5240d0e5ba490cf13f86`.
+Active Skill and Attribute are inherited; this slice is pinned to exact Core
+`b1d6abd5ea0e00c5063bc6561a87c50ec1b7eb85` and combined Presentation
+`671289bb75994a686308cd3f3a1a52e5590f36a4`, which carry the deterministic Core
+quote/plan/receipt/correction authority and Presentation projection/atomic XML
+mutation authority. This matrix claims source integration, a focused non-MAUI
+compile/harness, and lightweight static tests—not a full MAUI or API-36-proven
+Skill Group artifact. A visible route or an individual emulator receipt is not
 evidence of full Chummer5 Career parity.
 
 | Workflow | Exact typed mutation authority already present at the base | Status after this slice | Remaining blocker |
@@ -18,7 +16,7 @@ evidence of full Chummer5 Career parity.
 | Karma / Nuyen adjustments | Manual Career Karma and Nuyen plus four typed expense-create operations | **Partial:** exact leaves are linked from After Run | No shared quote/review/atomic closeout result |
 | Attribute advancement | Exact typed abbreviation/kind identity; Core quote/plan/receipt with logical, source, rule and receipt digests; Presentation atomic XML mutation plus recoverable receipt ledger | **Integrated source vertical slice:** created-SR5-only `Choose -> exact quote and blockers -> preview diff -> checkpointed apply once -> fresh recoverable receipt -> acknowledgement` | Compile the exact integrated graph, then capture digest-bound API-36 save/reopen/process-restart proof |
 | Active Skill advancement | Exact identity/source/rule/logical revisions, Core quote and plan, revision-bound request, expense undo metadata and durable Coordinator save | **Implemented source vertical slice:** created-SR5-only Build route and `Choose -> Quote -> Review diff -> Apply once -> fresh typed skill + expense reload -> receipt` | API-36 save/reopen/process-restart proof remains unavailable in this environment |
-| Skill Group / Specialization | The coherent compatibility graph contains exact Core and Presentation quote/plan authorities | **Missing Android route:** called out as the intended second path | Shared Android Coordinator has no prepare/apply/durable-result methods on this base |
+| Skill Group / Specialization | Exact Skill Group InternalId and member projection; Core quote/plan/receipt/correction with logical/source/rule/receipt digests; Presentation atomic XML mutation and recoverable receipt ledger | **Skill Group integrated source vertical slice:** Build and Career deep links; `Choose -> prerequisites/member authority -> exact cost/time review -> checkpointed apply once -> fresh recovered receipt -> acknowledge or compensating correction`. Specialization remains missing | Full MAUI compile plus digest-bound API-36 save/reopen/process-restart proof; specialization needs its own Android slice |
 | Knowledge Skill | No complete Android Career acquisition/advance route found | **Missing** | Exact source/rule quote, expense plan, mutation and receipt |
 | Qualities | Generic collection editing exists | **Missing; generic edit is false proof** | Career add/remove/refund prerequisites, cost and expense/undo authority |
 | Contacts | Generic contact editing exists | **Missing; generic edit is false proof** | Career add/change costs, loyalty/connection constraints and After Run award transaction |
@@ -30,9 +28,9 @@ evidence of full Chummer5 Career parity.
 | Before Run | Career Edge spend/regain; scattered stable-identity item leaves | Intent lane exposes only exact Edge authority | No typed loadout, healing, ammunition, contact, identity, license or acquisition checklist |
 | Live / Playtime | Career Edge; weapon fire from a stable weapon context; condition/damage leaves | Intent lane exposes Edge and refuses to guess a weapon identity | No atomic live-action session transaction; Play dice/notes are local table state rather than Career receipts |
 | After Run | Manual Karma, manual Nuyen, reputation and Burn Street Cred | Intent lane exposes the three independent typed editors | No atomic closeout bundle, no typed contact award/change and no typed Heat field in the current authority |
-| Downtime | Calendar add/edit/delete; Active Skill and Attribute advancement | Intent lane exposes Calendar and both separately reviewed advancement slices | No training duration, healing, crafting, acquisition delivery or other planned-work execution contract |
-| Undo / correction / recovery | Karma/Nuyen expense field edits; every typed leaf rejects a stale revision | Active Skill and Attribute use separate workspace/owner/action/version/phase CAS journals with exact write read-back. `Reviewed -> Applying` happens before mutation; restart performs fresh typed outcome lookup. Verified-not-applied returns to `Reviewed`; verified-applied becomes `Applied`; unknown remains a replay-blocking lock. Attribute recovery additionally requires the Presentation receipt ledger to reproduce one coherent Core receipt for the exact transaction | Attribute correction exists in Presentation but is intentionally not exposed by this advancement slice; shared recovery for every other action and API-36 restart proof remain missing |
-| Final review / apply | Active Skill and Attribute Core quote, mutation and persistence authorities | Both adapt into typed `Sr5CareerCostQuote` and `Sr5CareerActionPlan` boundaries. Active Skill verifies fresh skill and expense projections; Attribute verifies the fresh Presentation `RecoverableReceipts` projection against every reviewed quote/plan value and Core receipt digest | Android owns separate single-action wrappers because Core has no common Career transaction presenter; neither slice claims a Core-declared atomic multi-action bundle |
+| Downtime | Calendar add/edit/delete; Active Skill, Attribute and Skill Group advancement | Intent lane exposes Calendar and all three separately reviewed advancement slices | Healing, crafting, acquisition delivery and other planned-work execution contracts remain missing; current Skill Group time authority is exact immediate Chummer persistence (`TimeSpan.Zero`) |
+| Undo / correction / recovery | Karma/Nuyen expense field edits; every typed leaf rejects a stale revision | Skill Group adds a workspace/owner/action/version/phase CAS journal with exact durable read-back. `Reviewed -> Applying` happens before mutation; restart performs fresh typed receipt lookup; verified-not-applied returns to `Reviewed`, verified-applied becomes `Applied`, and unknown stays replay-blocked. Its receipt page exposes the exact Presentation/Core compensating correction and retires the checkpoint only after the clean corrected revision is verified | A process death after a durable correction but before checkpoint retirement remains deliberately replay-blocked because Presentation does not yet project recoverable correction receipts; API-36 restart proof remains missing |
+| Final review / apply | Active Skill, Attribute and Skill Group Core quote, mutation and persistence authorities | All three adapt into typed `Sr5CareerCostQuote` and `Sr5CareerActionPlan` boundaries. Skill Group binds exact InternalId, group/cost ratings, enabled-member count, every prerequisite authority, modifiers through `RuleDigest`, immediate application time, transaction/expense identities and the recovered Core receipt | Android owns separate single-action wrappers because Core has no common Career transaction presenter; no slice claims a Core-declared atomic multi-action bundle |
 
 ## False-proof audit
 
@@ -49,30 +47,28 @@ evidence of full Chummer5 Career parity.
   outcome lookup may transition it to `Applied` or back to `Reviewed`; its
   process-bound proof and live owner/workspace/revision binding are checked
   again at the store CAS, and a partial/mismatched outcome remains locked.
-- This integrated source slice has no digest-bound API-36 edit/save/reopen/process-restart
+- This integrated Skill Group source slice has no digest-bound API-36 edit/save/reopen/process-restart
   receipt. Release parity remains unproven until that separate device journey
   is captured against integrated bytes.
 
 ## Integration boundary
 
-`BuildPage` and the SR5 Career Advancement/Downtime journeys enter the Attribute
+`BuildPage` and the SR5 Career Advancement/Downtime journeys enter the Skill Group
 choose page. The public coordinator rechecks created + SR5 on prepare, apply and
 restart resolution. Phone navigation is deliberately deep: choose, review and
 receipt are separate pushed pages; only the review page can move the durable
-checkpoint to Applying. The existing direct attribute editor remains a separate
-generic leaf and is not proof for this wizard.
+checkpoint to Applying. The generic skill editors remain separate leaves and
+are not proof for this wizard.
 
 The Android integration points at combined Core
-`8e2c53bf9c5ac85f675e738bf6e8ecd2ade4bb2a` and combined Presentation
-`37b4f048fa50911db7cd493217e1b64005c37770`. Those heads contain the exact
-Career Attribute Core authority and tree-identical Presentation authority,
+`b1d6abd5ea0e00c5063bc6561a87c50ec1b7eb85` and combined Presentation
+`671289bb75994a686308cd3f3a1a52e5590f36a4`. Those heads contain the exact
+Career Skill Group Core authority and Presentation mutation authority,
 respectively. The Android compile and API 36 device proof against these exact
 heads remain explicit release gates. Substituting handwritten Android
-calculations or the generic Attribute editor for either authority is outside
+calculations or a generic group editor for either authority is outside
 this proof.
 
-The next advancement checkpoint is blocked specifically on shared Android
-orchestration: expose the existing Presentation `Prepare/ApplyCareerSkillGroup`
-(or Specialization) methods through `RunnerSessionCoordinator` with the same
-durable successor check as the two implemented slices, then adapt its exact Core
-quote and plan into the shared action boundary.
+The next advancement checkpoint is Specialization (then Knowledge Skill), each
+requiring its own exact typed authority, Android review/recovery lane and honest
+API-36 proof rather than reuse of this Skill Group transaction.

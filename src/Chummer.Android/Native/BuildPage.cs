@@ -107,9 +107,26 @@ public sealed class BuildPage : NativePageBase
             "Advance · Before Run · Live · After Run · Downtime · Corrections",
             () => Navigation.PushAsync(new Sr5CareerWizardPage(Coordinator)),
             automationId: "build-sr5-career-wizard"));
+        card.Add(NativeTheme.NavigationRow(
+            "Advance a skill group",
+            "Direct deep link · exact InternalId → review → receipt/recovery",
+            OpenSr5CareerSkillGroupWizardAsync,
+            automationId: "build-career-skill-group"));
         Border route = NativeTheme.Card(card);
         route.AutomationId = Sr5CareerWizardRoutes.Hub;
         _body.Add(route);
+    }
+
+    private async Task OpenSr5CareerSkillGroupWizardAsync()
+    {
+        Sr5CareerSkillGroupCoordinator authority = new(
+            new RunnerSessionSr5CareerSkillGroupPresenter(Coordinator),
+            new PreferencesSr5CareerCheckpointOwnerAuthority());
+        CareerSkillGroupAdvanceEditorState? editor = await authority.PrepareAsync();
+        if (editor is not null)
+        {
+            await Navigation.PushAsync(new Sr5CareerSkillGroupWizardPage(Coordinator, editor));
+        }
     }
 
     private void AddFeedback()

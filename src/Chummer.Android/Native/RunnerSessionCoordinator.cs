@@ -3062,6 +3062,199 @@ public sealed class RunnerSessionCoordinator : IDisposable
         return persisted;
     }
 
+    public Task<CareerSkillGroupAdvanceEditorState?> PrepareCareerSkillGroupAdvanceAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCareerSkillGroupAdvanceAsync(cancellationToken);
+
+    public async Task<bool> ApplyCareerSkillGroupAdvanceAsync(
+        CareerSkillGroupAdvanceRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while skill-group advancement was open. Reopen it before saving.");
+        }
+        if (!CharacterCareerSkillGroupAdvanceRules.IsCoherent(request.ExpectedSkillGroup)
+            || !request.ExpectedSkillGroup.CanAdvance
+            || !string.Equals(
+                request.ExpectedSkillGroup.LogicalRevision,
+                request.ExpectedLogicalRevision,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                request.ExpectedSkillGroup.SourceRevision,
+                request.ExpectedSourceRevision,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                request.ExpectedSkillGroup.RuleDigest,
+                request.ExpectedRuleDigest,
+                StringComparison.Ordinal)
+            || !CharacterCareerSkillGroupAdvanceRules.TryPlanAdvance(
+                request.ExpectedSkillGroup,
+                request.ExpectedLogicalRevision,
+                request.ExpectedSourceRevision,
+                request.ExpectedRuleDigest,
+                request.Confirmed,
+                transactionIdAlreadyExists: false,
+                request.ExpenseId,
+                request.ExpenseDateLocal,
+                out CharacterCareerSkillGroupAdvancePlan expectedPlan))
+        {
+            throw new InvalidOperationException(
+                "Core rejected the skill-group identity, exact member projection, legality, Karma budget, confirmation, expense, or reviewed revisions before mutation.");
+        }
+
+        CharacterCareerSkillGroupAdvanceReceipt? preparedReceipt =
+            await _presenter.ApplyCareerSkillGroupAdvanceAsync(request, cancellationToken)
+                .ConfigureAwait(false);
+        bool exactReceipt = preparedReceipt is not null
+            && CharacterCareerSkillGroupAdvanceRules.IsCoherent(preparedReceipt)
+            && preparedReceipt.TransactionId == expectedPlan.TransactionId
+            && preparedReceipt.ExpenseId == expectedPlan.ExpenseId
+            && preparedReceipt.Identity == expectedPlan.Identity
+            && preparedReceipt.GroupKarmaBefore == request.ExpectedSkillGroup.KarmaPoints
+            && preparedReceipt.GroupKarmaAfter == expectedPlan.SavedGroupKarmaPoints
+            && preparedReceipt.CharacterKarmaBefore == request.ExpectedSkillGroup.AvailableKarma
+            && preparedReceipt.CharacterKarmaAfter == expectedPlan.SavedCharacterKarma
+            && preparedReceipt.GroupRatingBefore == request.ExpectedSkillGroup.GroupRating
+            && preparedReceipt.GroupRatingAfter == expectedPlan.TargetGroupRating
+            && preparedReceipt.CostRatingBefore == request.ExpectedSkillGroup.CostRating
+            && preparedReceipt.CostRatingAfter == expectedPlan.TargetCostRating
+            && preparedReceipt.EnabledMemberCount == expectedPlan.EnabledMemberCount
+            && preparedReceipt.ExpenseAmount == expectedPlan.ExpenseAmount
+            && string.Equals(
+                preparedReceipt.ExpenseReason,
+                expectedPlan.ExpenseReason,
+                StringComparison.Ordinal)
+            && string.Equals(
+                preparedReceipt.LogicalRevisionBefore,
+                request.ExpectedLogicalRevision,
+                StringComparison.Ordinal)
+            && string.Equals(
+                preparedReceipt.SourceRevisionBefore,
+                request.ExpectedSourceRevision,
+                StringComparison.Ordinal)
+            && string.Equals(
+                preparedReceipt.RuleDigestBefore,
+                request.ExpectedRuleDigest,
+                StringComparison.Ordinal);
+        bool exactMutationApplied = exactReceipt
+            && State.Error is null
+            && State.WorkspaceId == request.WorkspaceId
+            && request.ExpectedContentRevision < long.MaxValue
+            && State.ContentRevision == request.ExpectedContentRevision + 1
+            && State.IsDirty;
+        long appliedContentRevision = exactMutationApplied ? State.ContentRevision : 0;
+        if (exactMutationApplied)
+        {
+            await _presenter.SaveAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        bool durableState = exactMutationApplied
+            && State.Error is null
+            && State.WorkspaceId == request.WorkspaceId
+            && State.ContentRevision == appliedContentRevision
+            && State.SavedRevision == appliedContentRevision
+            && !State.IsDirty;
+        NativeWorkspaceAuthoritySnapshot? authority = durableState
+            ? await TryRefreshWorkspaceAuthorityAsync(
+                expectedWorkspaceId: request.WorkspaceId,
+                expectedPayloadSha256: null,
+                cancellationToken).ConfigureAwait(false)
+            : null;
+        bool persisted = durableState
+            && (!AndroidE2EAuthority.Enabled
+                || authority is not null && authority.Matches(State));
+        _notice = persisted
+            ? "Skill group advanced and exact Karma expense receipt saved."
+            : null;
+        await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+        NotifyChanged();
+        return persisted;
+    }
+
+    public async Task<CharacterCareerSkillGroupCorrectionPlan?> CorrectCareerSkillGroupAdvanceAsync(
+        CareerSkillGroupCorrectionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision
+            || !request.Confirmed
+            || !CharacterCareerSkillGroupAdvanceRules.IsCoherent(request.OriginalReceipt)
+            || !string.Equals(
+                request.OriginalReceipt.ReceiptDigest,
+                request.ExpectedReceiptDigest,
+                StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "This runner or receipt changed while skill-group correction was open. Reopen it before saving.");
+        }
+
+        CharacterCareerSkillGroupCorrectionPlan? correction =
+            await _presenter.CorrectCareerSkillGroupAdvanceAsync(request, cancellationToken)
+                .ConfigureAwait(false);
+        bool exactMutationApplied = CharacterCareerSkillGroupAdvanceRules.IsCoherent(correction)
+            && correction!.CorrectionId == request.CorrectionId
+            && correction.OriginalTransactionId == request.OriginalReceipt.TransactionId
+            && correction.ExpenseIdToRemove == request.OriginalReceipt.ExpenseId
+            && correction.Identity == request.OriginalReceipt.Identity
+            && correction.SavedGroupKarmaPoints == request.OriginalReceipt.GroupKarmaBefore
+            && correction.SavedCharacterKarma == request.OriginalReceipt.CharacterKarmaBefore
+            && correction.RestoredGroupRating == request.OriginalReceipt.GroupRatingBefore
+            && correction.RestoredCostRating == request.OriginalReceipt.CostRatingBefore
+            && string.Equals(
+                correction.ExpectedPostLogicalRevision,
+                request.OriginalReceipt.LogicalRevisionAfter,
+                StringComparison.Ordinal)
+            && string.Equals(
+                correction.ExpectedPostSourceRevision,
+                request.OriginalReceipt.SourceRevisionAfter,
+                StringComparison.Ordinal)
+            && string.Equals(
+                correction.ExpectedPostRuleDigest,
+                request.OriginalReceipt.RuleDigestAfter,
+                StringComparison.Ordinal)
+            && string.Equals(
+                correction.OriginalReceiptDigest,
+                request.ExpectedReceiptDigest,
+                StringComparison.Ordinal)
+            && State.Error is null
+            && State.WorkspaceId == request.WorkspaceId
+            && request.ExpectedContentRevision < long.MaxValue
+            && State.ContentRevision == request.ExpectedContentRevision + 1
+            && State.IsDirty;
+        long appliedContentRevision = exactMutationApplied ? State.ContentRevision : 0;
+        if (exactMutationApplied)
+        {
+            await _presenter.SaveAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        bool durableState = exactMutationApplied
+            && State.Error is null
+            && State.WorkspaceId == request.WorkspaceId
+            && State.ContentRevision == appliedContentRevision
+            && State.SavedRevision == appliedContentRevision
+            && !State.IsDirty;
+        NativeWorkspaceAuthoritySnapshot? authority = durableState
+            ? await TryRefreshWorkspaceAuthorityAsync(
+                expectedWorkspaceId: request.WorkspaceId,
+                expectedPayloadSha256: null,
+                cancellationToken).ConfigureAwait(false)
+            : null;
+        bool persisted = durableState
+            && (!AndroidE2EAuthority.Enabled
+                || authority is not null && authority.Matches(State));
+        _notice = persisted
+            ? "Skill-group advancement corrected and saved."
+            : null;
+        await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+        NotifyChanged();
+        return persisted ? correction : null;
+    }
+
     public Task<SustainedObjectsEditorState?> PrepareSustainedObjectsEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareSustainedObjectsEditAsync(cancellationToken);
