@@ -1374,8 +1374,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             source.index("public enum CreationDashboardAuthorityPhaseState")
         ]
 
-        self.assertNotIn("string.IsNullOrWhiteSpace(snapshot.SourceDigest)", binding)
-        self.assertNotIn("string.IsNullOrWhiteSpace(snapshot.RuntimeFingerprint)", binding)
+        self.assertIn("!IsBootstrapAuthorityBindingValue(snapshot.SourceDigest)", binding)
+        self.assertIn("!IsBootstrapAuthorityBindingValue(snapshot.RuntimeFingerprint)", binding)
+        self.assertIn("value.Length == 0 || !string.IsNullOrWhiteSpace(value)", binding)
         self.assertIn("snapshot.SourceDigest,", binding)
         self.assertIn("snapshot.RuntimeFingerprint,", binding)
         self.assertIn("snapshot.ContentDigest", binding)

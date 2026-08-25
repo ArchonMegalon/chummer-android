@@ -30,6 +30,8 @@ public sealed record CreationDashboardProjectionBinding(
             || snapshot.WorkspaceRevision != state.ContentRevision
             || !string.Equals(snapshot.WorkspaceId, workspaceId.Value, StringComparison.Ordinal)
             || string.IsNullOrWhiteSpace(snapshot.ContentDigest)
+            || !IsBootstrapAuthorityBindingValue(snapshot.SourceDigest)
+            || !IsBootstrapAuthorityBindingValue(snapshot.RuntimeFingerprint)
             || string.IsNullOrWhiteSpace(snapshot.BuildMethod)
             || string.IsNullOrWhiteSpace(snapshot.SnapshotDigest))
         {
@@ -50,6 +52,10 @@ public sealed record CreationDashboardProjectionBinding(
             snapshot.SnapshotDigest);
         return true;
     }
+
+    private static bool IsBootstrapAuthorityBindingValue(string? value)
+        => value is not null
+           && (value.Length == 0 || !string.IsNullOrWhiteSpace(value));
 
     public bool Matches(
         CharacterOverviewState state,

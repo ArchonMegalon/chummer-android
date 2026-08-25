@@ -110,6 +110,24 @@ internal static class Program
         Require(
             !CreationDashboardProjectionBinding.TryCreate(
                 overview,
+                snapshot with { SourceDigest = null! },
+                out _)
+            && !CreationDashboardProjectionBinding.TryCreate(
+                overview,
+                snapshot with { SourceDigest = " " },
+                out _)
+            && !CreationDashboardProjectionBinding.TryCreate(
+                overview,
+                snapshot with { RuntimeFingerprint = null! },
+                out _)
+            && !CreationDashboardProjectionBinding.TryCreate(
+                overview,
+                snapshot with { RuntimeFingerprint = "\t" },
+                out _),
+            "Only the explicit empty bootstrap sentinel or a populated authority value may be bound.");
+        Require(
+            !CreationDashboardProjectionBinding.TryCreate(
+                overview,
                 snapshot with { ContentDigest = string.Empty },
                 out _),
             "Bootstrap scheduling must still reject a snapshot without content identity.");
@@ -119,6 +137,14 @@ internal static class Program
                 snapshot with { WorkspaceRevision = 12 },
                 out _),
             "Bootstrap scheduling must still reject revision drift.");
+        Require(
+            !bootstrapBinding.Matches(
+                overview,
+                snapshot with { SourceDigest = CanonicalDigest('3') })
+            && !bootstrapBinding.Matches(
+                overview,
+                snapshot with { RuntimeFingerprint = "runtime-authority-v1" }),
+            "Populated authority must change the binding key and invalidate the bootstrap request.");
         return Task.CompletedTask;
     }
 
