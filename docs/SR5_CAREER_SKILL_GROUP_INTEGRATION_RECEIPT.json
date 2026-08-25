@@ -1,0 +1,162 @@
+{
+  "schema": "chummer.android.sr5-career-skill-group-integration-receipt/v1",
+  "generatedAtUtc": "2026-08-25T20:42:06Z",
+  "status": "source_integration_and_focused_compile_verified_device_proof_pending",
+  "integration": {
+    "branch": "codex/android-sr5-career-skill-group-20260825",
+    "combinedAttributeBaseCommit": "f1bcb2d68160d76e6a4e5240d0e5ba490cf13f86",
+    "combinedAttributeBaseTree": "10f4fd6252e1a2795215188220eac001a3dd3747",
+    "productIntegrationCommit": "4112eb6166be60447a62df638225ac3a3a24b6da",
+    "productIntegrationTree": "50417830f982a382d6c4b72758c8cf2d1adc529b",
+    "coreCommit": "b1d6abd5ea0e00c5063bc6561a87c50ec1b7eb85",
+    "coreTree": "f07f68f3be0488745d5cd116e7e4b641fec05820",
+    "presentationCommit": "671289bb75994a686308cd3f3a1a52e5590f36a4",
+    "presentationTree": "af9a030d3ab5525d796ca2e9a0e6b96d0fa97cd0"
+  },
+  "authority": {
+    "ruleset": "sr5",
+    "typedIdentity": "CharacterCareerSkillGroupIdentity.InternalId",
+    "coreContract": "chummer.core.sr5-career-skill-group-advance/v2",
+    "androidReimplementsRules": false,
+    "bindings": [
+      "ownerId",
+      "workspaceId",
+      "expectedContentRevision",
+      "rulesetId",
+      "logicalRevision",
+      "sourceRevision",
+      "ruleDigest",
+      "transactionId",
+      "expenseId",
+      "idempotencyKey",
+      "receiptDigest"
+    ],
+    "reviewProjection": [
+      "groupRatingBeforeAfter",
+      "costRatingBeforeAfter",
+      "enabledMemberCount",
+      "allCorePrerequisiteResultsAndAuthorities",
+      "karmaCostAndBudget",
+      "applicationDurationAndTimeAuthority",
+      "expenseAndUndoIdentity"
+    ],
+    "persistence": {
+      "workspaceMutation": "Presentation atomic XML mutation followed by RunnerSession durable save verification",
+      "checkpoint": "persistent owner/workspace/action/version/phase CAS journal with exact write/read-back",
+      "restart": "fresh Presentation quote and RecoverableReceipts projection; no mutation replay",
+      "correction": "typed Core/Presentation compensating correction; original receipt checkpoint retires only after the clean corrected revision is verified"
+    }
+  },
+  "contentBundle": {
+    "status": "pass",
+    "canonicalFileCount": 110,
+    "canonicalByteCount": 17371170,
+    "bundleDigest": "75f39aa795619d1d45341ebe12667fcc0b44bf77fbc7e6c534b0fe0cb86d917a",
+    "manifestSha256": "cc999e58d2714571b8b346a079da0dd8503757aa676258e6fbc99714b42260fc"
+  },
+  "generatedArtifacts": [
+    {
+      "path": "docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json",
+      "sha256": "6e302b11ec804f8519ad7a3f3f5ac3e678ac4bed097aee5a76cd58f176c7f639",
+      "generator": "scripts/materialize_chummer5_editability_inventory.py",
+      "generatorSha256": "8bb0af96749e32f90f5a40fcdb82e29cefc65cf7584249aa9fb8e81502d3cc9b",
+      "checkStatus": "pass",
+      "rowCount": 2229,
+      "unclassifiedCount": 0
+    },
+    {
+      "path": "docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json",
+      "sha256": "572c6c2b65e5626537a9dd6b1a0771b50850176a2eb5b40cf3df8d8c258482ad",
+      "generator": "scripts/materialize_chummer5_character_settings_contract.py",
+      "generatorSha256": "10d5123c2edc455dc04bf78e2b84cd56f0b735d1d3a6af30a71c3a0c1a2ab982",
+      "checkStatus": "pass",
+      "controlCount": 162,
+      "resolvedControlCount": 162,
+      "unresolvedControlCount": 0
+    }
+  ],
+  "verification": [
+    {
+      "name": "focused-non-maui-compile",
+      "command": "dotnet build tests/Chummer.Android.Sr5CareerSkillGroup.Tests/Chummer.Android.Sr5CareerSkillGroup.Tests.csproj -c Release --no-restore -p:ChummerCoreRoot=<exact-b1d6abd-worktree>",
+      "status": "pass",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "name": "focused-authority-behavior-harness",
+      "command": "dotnet tests/Chummer.Android.Sr5CareerSkillGroup.Tests/bin/Release/net10.0/Chummer.Android.Sr5CareerSkillGroup.Tests.dll",
+      "status": "pass",
+      "behaviorGroupsPassed": 7,
+      "coverage": [
+        "typed InternalId and digest-bound draft",
+        "all typed blockers",
+        "malformed and prior-schema replay lock",
+        "fresh exact receipt verification",
+        "restart recovery without replay",
+        "signed owner/revision CAS",
+        "compensating correction retirement only at the exact corrected revision"
+      ]
+    },
+    {
+      "name": "focused-source-contract",
+      "command": "python3 -m pytest -q tests/test_career_skill_group_wizard_source_contract.py",
+      "status": "pass",
+      "testsPassed": 8
+    },
+    {
+      "name": "full-lightweight-android-suite",
+      "command": "python3 -m pytest -q with exact Core/Presentation/Design/Hub authority-root layout",
+      "status": "pass",
+      "testsPassed": 654,
+      "subtestsPassed": 661,
+      "durationSeconds": 36.09,
+      "authorityGraph": {
+        "chummer5Commit": "fe4355d06c98cd9b7feade89f5fc1a0e438f7ce3",
+        "designCommit": "c60c93f635e371d784812140f5d5181d1d954ae2",
+        "coreCommit": "b1d6abd5ea0e00c5063bc6561a87c50ec1b7eb85",
+        "presentationCommit": "671289bb75994a686308cd3f3a1a52e5590f36a4",
+        "hubCommit": "d29a880f624ec94aabedd0c2901ae8fed2f93ed4"
+      }
+    },
+    {
+      "name": "1min-ai-luna-supplied-diff-review",
+      "status": "completed",
+      "reviewFindings": 4,
+      "addressed": [
+        "correction ID, restored values, post-state revisions and expense removal are now checked redundantly",
+        "pre-save receipt gate now checks enabled member count, expense amount and reason",
+        "unsupported JSON checkpoint payloads now remain controlled replay locks",
+        "checkpoint wording no longer claims transactional durability beyond persistent exact read-back"
+      ]
+    },
+    {
+      "name": "1min-ai-worker-groundwork",
+      "status": "provider_session_unusable_no_changes",
+      "details": "The routed 1min.ai worker repeatedly malformed tool calls and ended with 'No user task is present yet'; no worker-authored change or test result is claimed."
+    }
+  ],
+  "unperformed": [
+    "full MAUI compile",
+    "ARM64 package build",
+    "API 36 journey",
+    "physical device install",
+    "save/reopen/process-restart device proof",
+    "Play Console upload or publication"
+  ],
+  "releaseClaims": {
+    "sourceIntegrationVerified": true,
+    "focusedCompileVerified": true,
+    "fullMauiArtifactVerified": false,
+    "api36Verified": false,
+    "physicalDeviceVerified": false,
+    "playPublicationClaimed": false,
+    "careerParityClaimed": false
+  },
+  "remainingRisks": [
+    "Preferences-backed checkpoint persistence is verified by exact immediate read-back but is not a cross-process transactional database.",
+    "A process death after the compensating correction is durably saved but before checkpoint retirement remains a fail-closed replay lock because Presentation does not project correction receipts for restart recovery.",
+    "The MAUI page graph is not compiled or exercised until this separate slice is integrated into the exact phone candidate."
+  ],
+  "sensitiveRuntimeActionsTaken": []
+}
