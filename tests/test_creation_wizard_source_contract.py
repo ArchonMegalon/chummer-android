@@ -361,22 +361,20 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         self.assertNotIn("new RookConversationPage", source)
         self.assertNotIn('"creation-wizard-rook"', source)
 
-    def test_attributes_fail_closed_without_creation_preview_authority(self) -> None:
+    def test_attributes_use_dedicated_creation_authority_not_post_create_editor(self) -> None:
         dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         editor = (NATIVE / "AttributeEditPage.cs").read_text(encoding="utf-8")
+        creation = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
 
-        self.assertFalse((NATIVE / "CreationAttributesPage.cs").exists())
-        self.assertIn("bool attributes = string.Equals(", dashboard)
-        self.assertIn(
-            "Rules-authoritative Attribute increments and metatype adjustment are not available yet",
-            dashboard,
-        )
-        self.assertIn("halveattributepoints adjustment required", dashboard)
-        self.assertNotIn("new CreationAttributesPage(Coordinator)", dashboard)
-        self.assertNotIn("OpenCreationAttributesAsync", dashboard)
+        self.assertIn("Coordinator.LoadCreationAttributes()", dashboard)
+        self.assertIn("CreationAttributesPhoneAuthority.IsReady", dashboard)
+        self.assertIn("new CreationAttributesPage(Coordinator)", dashboard)
+        self.assertIn("OpenCreationAttributesAsync", dashboard)
         self.assertIn("AttributeEditRequest path must", dashboard)
         self.assertIn("AttributeEditRequest", editor)
         self.assertIn("ApplyAttributeEditAsync", editor)
+        self.assertNotIn("AttributeEditRequest", creation)
+        self.assertNotIn("ApplyAttributeEditAsync", creation)
 
     def test_rook_is_workspace_revision_digest_bound_and_non_mutating(self) -> None:
         store = (NATIVE / "RookConversation.cs").read_text(encoding="utf-8")
@@ -422,7 +420,7 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         self.assertIn("UsesTabletComposition: false", route)
         self.assertIn("await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute)", route)
         self.assertLess(
-            route.index("await CloseCoreAsync"),
+            route.index("await CloseCoreAsync(updatePresenter: false)"),
             route.index("await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute)"),
         )
 
