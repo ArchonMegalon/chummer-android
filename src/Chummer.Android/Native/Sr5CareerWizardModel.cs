@@ -147,14 +147,21 @@ public sealed record Sr5CareerDraftCheckpoint(
     DateTime ExpenseDateLocal,
     decimal ExpenseAmount,
     string ExpenseReason,
+    string ExpenseType,
+    bool ExpenseRefund,
+    bool ExpenseForceCareerVisible,
     string KarmaUndoType,
+    string NuyenUndoType,
+    string UndoObjectId,
+    decimal UndoQuantity,
+    string UndoExtra,
     int PreviousRating,
     int TargetRating,
     int SavedKarma,
     string IdempotencyKey,
     Sr5CareerCheckpointPhase Phase)
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public bool IsStructurallyValid()
     {
@@ -181,7 +188,15 @@ public sealed record Sr5CareerDraftCheckpoint(
             && ExpenseAmount < 0m
             && decimal.Truncate(ExpenseAmount) == ExpenseAmount
             && !string.IsNullOrWhiteSpace(ExpenseReason)
+            && string.Equals(ExpenseType, "Karma", StringComparison.Ordinal)
+            && !ExpenseRefund
+            && !ExpenseForceCareerVisible
             && !string.IsNullOrWhiteSpace(KarmaUndoType)
+            && !string.IsNullOrWhiteSpace(NuyenUndoType)
+            && Guid.TryParse(UndoObjectId, out Guid undoObjectId)
+            && undoObjectId == SkillId
+            && UndoQuantity == 0m
+            && UndoExtra is not null
             && PreviousRating >= 0
             && TargetRating == PreviousRating + 1
             && SavedKarma >= 0
@@ -211,7 +226,14 @@ public sealed record Sr5CareerDraftCheckpoint(
             draft.Plan.ExpenseDateLocal,
             draft.Plan.ExpenseAmount,
             draft.Plan.ExpenseReason,
+            "Karma",
+            ExpenseRefund: false,
+            ExpenseForceCareerVisible: false,
             draft.Plan.KarmaUndoType,
+            draft.Plan.NuyenUndoType,
+            draft.Plan.UndoObjectId,
+            draft.Plan.UndoQuantity,
+            draft.Plan.UndoExtra,
             draft.Quote.TotalBaseRating,
             draft.Quote.TotalBaseRating + 1,
             draft.Plan.SavedCharacterKarma,
@@ -261,13 +283,99 @@ public sealed record Sr5CareerDraftCheckpoint(
         {
             return false;
         }
-        if (!string.Equals(draft.ActionPlan.IdempotencyKey, IdempotencyKey, StringComparison.Ordinal))
+        if (!MatchesReviewedDraft(draft))
         {
             draft = null!;
             blocker = "The saved Career draft idempotency binding no longer matches its exact plan.";
             return false;
         }
         return true;
+    }
+
+    public bool MatchesReviewedDraft(Sr5CareerActiveSkillDraft draft)
+    {
+        ArgumentNullException.ThrowIfNull(draft);
+        return IsStructurallyValid()
+            && Phase == Sr5CareerCheckpointPhase.Reviewed
+            && string.Equals(WorkspaceId, draft.WorkspaceId.Value, StringComparison.Ordinal)
+            && OwnerId == draft.OwnerId
+            && ExpectedContentRevision == draft.ExpectedContentRevision
+            && SkillId == draft.Quote.Identity.SkillId
+            && SourceSkillId == draft.Quote.Identity.SourceSkillId
+            && string.Equals(LogicalRevision, draft.Quote.LogicalRevision, StringComparison.Ordinal)
+            && string.Equals(SourceRevision, draft.Quote.SourceRevision, StringComparison.Ordinal)
+            && string.Equals(RuleDigest, draft.Quote.RuleDigest, StringComparison.Ordinal)
+            && ActionId == draft.Plan.ExpenseId
+            && ExpenseDateLocal == draft.Plan.ExpenseDateLocal
+            && ExpenseAmount == draft.Plan.ExpenseAmount
+            && string.Equals(ExpenseReason, draft.Plan.ExpenseReason, StringComparison.Ordinal)
+            && string.Equals(ExpenseType, "Karma", StringComparison.Ordinal)
+            && !ExpenseRefund
+            && !ExpenseForceCareerVisible
+            && string.Equals(KarmaUndoType, draft.Plan.KarmaUndoType, StringComparison.Ordinal)
+            && string.Equals(NuyenUndoType, draft.Plan.NuyenUndoType, StringComparison.Ordinal)
+            && string.Equals(UndoObjectId, draft.Plan.UndoObjectId, StringComparison.Ordinal)
+            && UndoQuantity == draft.Plan.UndoQuantity
+            && string.Equals(UndoExtra, draft.Plan.UndoExtra, StringComparison.Ordinal)
+            && PreviousRating == draft.Quote.TotalBaseRating
+            && TargetRating == draft.Quote.TotalBaseRating + 1
+            && SavedKarma == draft.Plan.SavedCharacterKarma
+            && string.Equals(draft.ActionPlan.IdempotencyKey, IdempotencyKey, StringComparison.Ordinal);
+    }
+}
+
+internal sealed record Sr5CareerReviewedCheckpointAccess(
+    Guid OwnerId,
+    string WorkspaceId,
+    long ExpectedContentRevision,
+    Guid ActionId,
+    string IdempotencyKey,
+    int SchemaVersion,
+    string RouteId,
+    bool CharacterCreated,
+    string? GameEdition)
+{
+    public static Sr5CareerReviewedCheckpointAccess FromCurrent(
+        Guid currentOwnerId,
+        Sr5CareerActiveSkillDraft draft,
+        Sr5CareerRunnerBinding currentBinding)
+    {
+        ArgumentNullException.ThrowIfNull(draft);
+        ArgumentNullException.ThrowIfNull(currentBinding);
+        return new(
+            currentOwnerId,
+            currentBinding.WorkspaceId?.Value ?? string.Empty,
+            currentBinding.ContentRevision,
+            draft.Plan.ExpenseId,
+            draft.ActionPlan.IdempotencyKey,
+            Sr5CareerDraftCheckpoint.CurrentSchemaVersion,
+            Sr5CareerWizardRoutes.ActiveSkillReview,
+            currentBinding.Created,
+            currentBinding.GameEdition);
+    }
+
+    public bool Owns(Sr5CareerDraftCheckpoint checkpoint)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        return Sr5CareerWizardCatalog.IsSr5CareerRunner(CharacterCreated, GameEdition)
+            && OwnerId != Guid.Empty
+            && !string.IsNullOrWhiteSpace(WorkspaceId)
+            && ExpectedContentRevision > 0
+            && ActionId != Guid.Empty
+            && SchemaVersion == Sr5CareerDraftCheckpoint.CurrentSchemaVersion
+            && string.Equals(
+                RouteId,
+                Sr5CareerWizardRoutes.ActiveSkillReview,
+                StringComparison.Ordinal)
+            && checkpoint.IsStructurallyValid()
+            && checkpoint.Phase == Sr5CareerCheckpointPhase.Reviewed
+            && checkpoint.SchemaVersion == SchemaVersion
+            && string.Equals(checkpoint.RouteId, RouteId, StringComparison.Ordinal)
+            && checkpoint.OwnerId == OwnerId
+            && string.Equals(checkpoint.WorkspaceId, WorkspaceId, StringComparison.Ordinal)
+            && checkpoint.ExpectedContentRevision == ExpectedContentRevision
+            && checkpoint.ActionId == ActionId
+            && string.Equals(checkpoint.IdempotencyKey, IdempotencyKey, StringComparison.Ordinal);
     }
 }
 
@@ -451,7 +559,14 @@ public sealed record Sr5CareerActiveSkillReceipt(
     Guid ExpenseId,
     DateTime ExpenseDateLocal,
     string ExpenseReason,
+    string ExpenseType,
+    bool ExpenseRefund,
+    bool ExpenseForceCareerVisible,
     string KarmaUndoType,
+    string NuyenUndoType,
+    string UndoObjectId,
+    decimal UndoQuantity,
+    string UndoExtra,
     string RuleDigest,
     string SourceRevision);
 

@@ -89,6 +89,68 @@ def test_shared_action_boundary_has_route_idempotency_and_fail_closed_crash_reco
     assert "loadedSkill.Identity.SourceSkillId" in coordinator
     assert "loadedExpense.ExpenseDateLocal" in coordinator
     assert "loadedExpense.RawKarmaUndoType" in coordinator
+    for exact_field in (
+        "ExpenseTypeElementPresent",
+        "RawExpenseType",
+        "RefundElementPresent",
+        "Refund",
+        "ForceCareerVisibleElementPresent",
+        "ForceCareerVisible",
+        "NuyenUndoTypeElementPresent",
+        "RawNuyenUndoType",
+        "UndoObjectIdElementPresent",
+        "RawUndoObjectId",
+        "UndoQuantityElementPresent",
+        "UndoQuantity",
+        "UndoExtraElementPresent",
+        "RawUndoExtra",
+    ):
+        assert exact_field in coordinator
+
+
+def test_globally_loaded_reviewed_checkpoint_is_authenticated_before_ui_or_delete() -> None:
+    model = MODEL.read_text(encoding="utf-8")
+    page = ACTIVE_SKILL.read_text(encoding="utf-8")
+    store = CHECKPOINT_STORE.read_text(encoding="utf-8")
+
+    assert "PreferencesSr5CareerCheckpointOwnerAuthority" in page
+    assert "_reviewedAuthority.CurrentOwnerId" in page
+    assert "TryAuthenticateReviewedCheckpoint(checkpoint, draft" in page
+    assert "checkpoint.MatchesReviewedDraft(draft)" in page
+    assert "currentAccess.Owns(checkpoint)" in page
+    assert "TryDeleteReviewed" in page
+    assert "TryDeleteApplied" in page
+    assert "Sr5CareerReviewedCheckpointAccess" in model
+    for binding in (
+        "CharacterCreated",
+        "GameEdition",
+        "OwnerId",
+        "WorkspaceId",
+        "ExpectedContentRevision",
+        "ActionId",
+        "IdempotencyKey",
+        "SchemaVersion",
+        "RouteId",
+    ):
+        assert binding in model
+    assert "_reviewedAuthority.Owns(current)" in store
+    assert 'StorageKey = "sr5.career.active-skill.draft.v1"' in store
+
+
+def test_authority_harness_explicitly_compiles_real_sources_and_projection_tests() -> None:
+    harness = (
+        ROOT / "tests/Chummer.Android.Sr5CareerAuthority.Tests/Chummer.Android.Sr5CareerAuthority.Tests.csproj"
+    ).read_text(encoding="utf-8")
+
+    assert "AUTHORITY_LIGHTWEIGHT" in harness
+    for real_source in (
+        "Sr5CareerActiveSkillCoordinator.cs",
+        "Sr5CareerActiveSkillWizardPage.cs",
+        "Sr5CareerDraftCheckpointStore.cs",
+        "Sr5CareerWizardModel.cs",
+        "CareerKarmaExpenseEditRequest.cs",
+    ):
+        assert real_source in harness
 
 
 def test_created_sr5_build_route_is_user_visible_and_action_boundary_is_rechecked() -> None:

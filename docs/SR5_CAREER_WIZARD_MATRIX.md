@@ -24,8 +24,8 @@ an end-to-end Career wizard exists.
 | Live / Playtime | Career Edge; weapon fire from a stable weapon context; condition/damage leaves | Intent lane exposes Edge and refuses to guess a weapon identity | No atomic live-action session transaction; Play dice/notes are local table state rather than Career receipts |
 | After Run | Manual Karma, manual Nuyen, reputation and Burn Street Cred | Intent lane exposes the three independent typed editors | No atomic closeout bundle, no typed contact award/change and no typed Heat field in the current authority |
 | Downtime | Calendar add/edit/delete; Active Skill advancement | Intent lane exposes Calendar and the reviewed Active Skill slice | No training duration, healing, crafting, acquisition delivery or other planned-work execution contract |
-| Undo / correction / recovery | Karma/Nuyen expense field edits; every typed leaf rejects a stale revision | Active Skill uses workspace/owner/action/version/phase CAS with exact write read-back. `Reviewed -> Applying` happens before mutation; restart performs authoritative typed outcome lookup. Verified-not-applied returns to `Reviewed`; verified-applied becomes `Applied`; unknown remains locked and cannot be cleared or replayed | Chummer5 Undo Expense, `Correct this transaction`, shared recovery for every other action and API-36 restart proof are missing |
-| Final review / apply | Active Skill Core quote, mutation and persistence authority | Shared typed `Sr5CareerCostQuote` -> `Sr5CareerActionPlan` -> `Sr5CareerApplyResult`; receipt values come from fresh revision-bound skill and Karma-expense projections and verify skill/source/rating plus expense GUID/date/amount/reason/undo | Android owns this single-action wrapper because Core has no common Career transaction presenter; the slice does not claim a Core-declared atomic multi-action bundle |
+| Undo / correction / recovery | Karma/Nuyen expense field edits; every typed leaf rejects a stale revision | Active Skill uses workspace/owner/action/version/phase CAS with exact write read-back. A globally loaded `Reviewed` checkpoint is hidden and cannot be resumed, abandoned or deleted until the durable local owner, current workspace, created SR5 edition, revision, action, idempotency key, schema and route all match. `Reviewed -> Applying` happens before mutation; restart performs authoritative typed outcome lookup. Verified-not-applied returns to `Reviewed`; verified-applied becomes `Applied`; unknown remains locked and cannot be cleared or replayed | Chummer5 Undo Expense, `Correct this transaction`, shared recovery for every other action and API-36 restart proof are missing |
+| Final review / apply | Active Skill Core quote, mutation and persistence authority | Shared typed `Sr5CareerCostQuote` -> `Sr5CareerActionPlan` -> `Sr5CareerApplyResult`; receipt values come from fresh revision-bound skill and Karma-expense projections and verify skill/source/rating plus expense GUID/date/amount/reason, exact `Karma` type, false refund/force-visible flags and presence-aware undo karmatype/nuyentype/objectid/qty/extra | Android owns this single-action wrapper because Core has no common Career transaction presenter; the slice does not claim a Core-declared atomic multi-action bundle |
 
 ## False-proof audit
 
@@ -36,7 +36,7 @@ an end-to-end Career wizard exists.
 - A successful in-memory mutation, a save boolean or a client `Atomic` flag is
   not a receipt. The Active Skill receipt is built only from fresh typed
   post-save projections that match the exact saved successor revision, skill
-  instance/source/rating and expense GUID/date/amount/reason/undo type.
+  instance/source/rating and the entire typed Karma expense and undo record.
 - `Applying` is neither success nor permission to retry. Only authoritative
   outcome lookup may transition it to `Applied` or back to `Reviewed`; a
   partial/mismatched outcome remains locked.
@@ -51,6 +51,14 @@ an end-to-end Career wizard exists.
 SR5 on prepare, apply and restart resolution. The shared API-36 driver is still
 untouched and must capture a dedicated digest-bound device journey without
 weakening existing gates.
+
+The isolated authority graph used for this slice is pinned exactly to Core
+`5537e99df72e1a8a347269ad3b02b5a2cc2f9da1` (base
+`cc3997d5279e9ac7beda595940095f66cfc5366b`) and Presentation
+`bd01091df3cdeb889c8336f9b2bf5e07af1c3c82` (base
+`d276f1d0ed8f76938d26b92389e62676f48acf7b`). The Android hardening applies
+on `40c8ee2995ed88d764be7e15607fbce54c36e53c`; substituting another projection
+or contract revision is outside this proof.
 
 The second advancement checkpoint is blocked specifically on shared Android
 orchestration: expose the existing Presentation `Prepare/ApplyCareerSkillGroup`
