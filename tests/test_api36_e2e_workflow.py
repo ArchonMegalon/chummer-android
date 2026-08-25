@@ -131,6 +131,15 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertNotIn("Chummer.Run.Api", hub_checkout)
         self.assertIn("fetch-depth: 1", hub_checkout)
 
+        presentation_checkout = self.text[
+            self.text.index("Check out the pinned presentation dependency") :
+            self.text.index("Check out the pinned engine dependency")
+        ]
+        self.assertIn("Chummer.Presentation", presentation_checkout)
+        self.assertIn("Chummer.Desktop.Runtime", presentation_checkout)
+        self.assertIn("Chummer.Tests", presentation_checkout)
+        self.assertIn("\n            Chummer\n", presentation_checkout)
+
     def test_phone_path_fails_closed_on_stale_inventory(self) -> None:
         for repository, commit in INVENTORY_AUTHORITIES.items():
             with self.subTest(repository=repository):

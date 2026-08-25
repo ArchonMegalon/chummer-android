@@ -63,6 +63,10 @@ jobs:
           sparse-checkout: |
             Chummer.Desktop.Runtime
             Chummer.Presentation
+            # The generated parity inventory authenticates exact legacy
+            # implementation and reviewed-test anchors from this pinned tree.
+            Chummer
+            Chummer.Tests
 
       - name: Check out the pinned engine dependency
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
