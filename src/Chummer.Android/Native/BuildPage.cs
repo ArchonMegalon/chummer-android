@@ -8,6 +8,62 @@ namespace Chummer.Android.Native;
 
 public sealed record BuildPageRouteMarker(string AutomationId, string Label);
 
+public sealed record CreationDashboardProjectionBinding(
+    string WorkspaceId,
+    long ContentRevision,
+    long SavedRevision,
+    string ContentDigest,
+    string SourceDigest,
+    string RuntimeFingerprint,
+    string BuildMethod,
+    string SnapshotDigest)
+{
+    public static bool TryCreate(
+        CharacterOverviewState state,
+        CharacterCreationWizardSnapshot snapshot,
+        out CreationDashboardProjectionBinding? binding)
+    {
+        binding = null;
+        if (state.Profile?.Created != false
+            || state.WorkspaceId is not { } workspaceId
+            || state.ContentRevision <= 0
+            || snapshot.WorkspaceRevision != state.ContentRevision
+            || !string.Equals(snapshot.WorkspaceId, workspaceId.Value, StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(snapshot.ContentDigest)
+            || string.IsNullOrWhiteSpace(snapshot.SourceDigest)
+            || string.IsNullOrWhiteSpace(snapshot.RuntimeFingerprint)
+            || string.IsNullOrWhiteSpace(snapshot.BuildMethod)
+            || string.IsNullOrWhiteSpace(snapshot.SnapshotDigest))
+        {
+            return false;
+        }
+
+        binding = new CreationDashboardProjectionBinding(
+            workspaceId.Value,
+            state.ContentRevision,
+            state.SavedRevision,
+            snapshot.ContentDigest,
+            snapshot.SourceDigest,
+            snapshot.RuntimeFingerprint,
+            snapshot.BuildMethod,
+            snapshot.SnapshotDigest);
+        return true;
+    }
+
+    public bool Matches(
+        CharacterOverviewState state,
+        CharacterCreationWizardSnapshot snapshot)
+        => TryCreate(state, snapshot, out CreationDashboardProjectionBinding? current)
+           && Equals(current);
+}
+
+public sealed record CreationDashboardAuthorityProjection(
+    BackgroundProjectionRequest<CreationDashboardProjectionBinding> Request,
+    CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? Prerequisite,
+    CharacterCreationFoundationResult<CharacterCreationAttributesState>? Attributes,
+    CharacterCreationFoundationResult<CharacterCreationSkillsState>? Skills,
+    string? FailureReason = null);
+
 public static class BuildPageUiProjection
 {
     public static BuildPageRouteMarker RouteMarker(CharacterProfileSection? profile)
@@ -30,6 +86,10 @@ public sealed class BuildPage : NativePageBase
         Spacing = 16
     };
     private readonly ToolbarItem _save;
+    private readonly LatestBackgroundProjectionQueue<
+        CreationDashboardProjectionBinding,
+        CreationDashboardAuthorityProjection> _creationProjectionQueue = new();
+    private CreationDashboardAuthorityProjection? _creationProjection;
 
     public BuildPage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
@@ -42,7 +102,15 @@ public sealed class BuildPage : NativePageBase
             Command = new Command(async () => await RunAsync(() => Coordinator.SaveAsync()))
         };
         ToolbarItems.Add(_save);
+        _creationProjectionQueue.Completed += OnCreationProjectionCompleted;
+        _creationProjectionQueue.Failed += OnCreationProjectionFailed;
         Content = new ScrollView { Content = _body };
+    }
+
+    protected override void OnDisappearing()
+    {
+        _creationProjectionQueue.Cancel();
+        base.OnDisappearing();
     }
 
     protected override void Refresh()
@@ -184,24 +252,153 @@ public sealed class BuildPage : NativePageBase
             _body.Add(NativeTheme.Card(blocked));
         }
 
+        CreationDashboardAuthorityProjection? projection = ResolveCreationProjection(snapshot);
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite =
-            snapshot.BuildMethod is (CharacterCreationBuildMethods.Priority
-                or CharacterCreationBuildMethods.SumToTen)
-                ? Coordinator.LoadCreationPrerequisite()
-                : null;
+            projection?.Prerequisite;
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributes =
-            snapshot.BuildMethod is (CharacterCreationBuildMethods.Priority
-                or CharacterCreationBuildMethods.SumToTen)
-                ? Coordinator.LoadCreationAttributes()
-                : null;
+            projection?.Attributes;
         CharacterCreationFoundationResult<CharacterCreationSkillsState>? skills =
-            string.Equals(snapshot.BuildMethod, CharacterCreationBuildMethods.Priority, StringComparison.Ordinal)
-                ? Coordinator.LoadCreationSkills()
-                : null;
+            projection?.Skills;
+        if (projection is null)
+        {
+            Label loading = NativeTheme.Body(
+                "Loading the revision- and source-bound creation authority. Editing remains fail-closed until it is ready.",
+                NativeTheme.Muted);
+            loading.AutomationId = "creation-dashboard-authority-loading";
+            _body.Add(NativeTheme.Card(loading));
+        }
+        else if (!string.IsNullOrWhiteSpace(projection.FailureReason))
+        {
+            VerticalStackLayout failure = new() { Spacing = 8 };
+            Label failed = NativeTheme.Body(
+                "The bound creation authority could not be loaded. No rules data was inferred; use Retry authority or reopen this runner.",
+                NativeTheme.Danger);
+            failed.AutomationId = "creation-dashboard-authority-failed";
+            failure.Add(failed);
+            Button retry = NativeTheme.SecondaryButton("Retry authority");
+            retry.AutomationId = "creation-dashboard-authority-retry";
+            retry.Clicked += (_, _) => RetryCreationProjection();
+            failure.Add(retry);
+            _body.Add(NativeTheme.Card(failure));
+        }
         AddBudgetRibbon(snapshot, attributes, skills);
         AddWizardStages(snapshot, prerequisite, attributes, skills);
         AddCompletionBlockers(snapshot);
         AddLegalNextSteps(snapshot, prerequisite, attributes, skills);
+    }
+
+    private CreationDashboardAuthorityProjection? ResolveCreationProjection(
+        CharacterCreationWizardSnapshot snapshot)
+    {
+        if (!CreationDashboardProjectionBinding.TryCreate(
+                Coordinator.State,
+                snapshot,
+                out CreationDashboardProjectionBinding? binding)
+            || binding is null)
+        {
+            _creationProjection = null;
+            _creationProjectionQueue.Cancel();
+            return null;
+        }
+
+        if (_creationProjection is { } current && current.Request.Key.Equals(binding))
+            return current;
+
+        _creationProjection = null;
+        _creationProjectionQueue.TryRequest(
+            binding,
+            (request, cancellationToken) => LoadCreationProjection(request, cancellationToken),
+            out _);
+        return null;
+    }
+
+    private CreationDashboardAuthorityProjection LoadCreationProjection(
+        BackgroundProjectionRequest<CreationDashboardProjectionBinding> request,
+        CancellationToken cancellationToken)
+    {
+        CreationDashboardProjectionBinding binding = request.Key;
+        try
+        {
+            CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite = null;
+            CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributes = null;
+            CharacterCreationFoundationResult<CharacterCreationSkillsState>? skills = null;
+            if (binding.BuildMethod is (CharacterCreationBuildMethods.Priority
+                or CharacterCreationBuildMethods.SumToTen))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                prerequisite = Coordinator.LoadCreationPrerequisite();
+                cancellationToken.ThrowIfCancellationRequested();
+                attributes = Coordinator.LoadCreationAttributes();
+            }
+            if (string.Equals(
+                    binding.BuildMethod,
+                    CharacterCreationBuildMethods.Priority,
+                    StringComparison.Ordinal))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                skills = Coordinator.LoadCreationSkills();
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            return new CreationDashboardAuthorityProjection(
+                request,
+                prerequisite,
+                attributes,
+                skills);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+    }
+
+    private void OnCreationProjectionCompleted(
+        BackgroundProjectionCompletion<
+            CreationDashboardProjectionBinding,
+            CreationDashboardAuthorityProjection> completion)
+    {
+        Dispatcher.Dispatch(() =>
+        {
+            CharacterCreationWizardSnapshot? snapshot = Coordinator.State.CreationWizard;
+            if (snapshot is null
+                || completion.Result.Request != completion.Request
+                || !completion.Request.Key.Matches(Coordinator.State, snapshot)
+                || !_creationProjectionQueue.TryAccept(completion.Request))
+            {
+                return;
+            }
+
+            _creationProjection = completion.Result;
+            Refresh();
+        });
+    }
+
+    private void OnCreationProjectionFailed(
+        BackgroundProjectionFailure<CreationDashboardProjectionBinding> failure)
+    {
+        Dispatcher.Dispatch(() =>
+        {
+            CharacterCreationWizardSnapshot? snapshot = Coordinator.State.CreationWizard;
+            if (snapshot is null
+                || !failure.Request.Key.Matches(Coordinator.State, snapshot)
+                || !_creationProjectionQueue.TryAccept(failure.Request))
+            {
+                return;
+            }
+
+            _creationProjection = new CreationDashboardAuthorityProjection(
+                failure.Request,
+                Prerequisite: null,
+                Attributes: null,
+                Skills: null,
+                FailureReason: "creation-dashboard-authority-load-failed");
+            Refresh();
+        });
+    }
+
+    private void RetryCreationProjection()
+    {
+        _creationProjection = null;
+        Refresh();
     }
 
     private void AddBudgetRibbon(

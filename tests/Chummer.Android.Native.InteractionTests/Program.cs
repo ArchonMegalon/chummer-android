@@ -24,6 +24,9 @@ internal static class Program
             (nameof(CanonicalPriorityAuthorityIsPhoneReadyAsync), CanonicalPriorityAuthorityIsPhoneReadyAsync),
             (nameof(BuildPageProjectsExactlyOneLifecycleRouteAsync), BuildPageProjectsExactlyOneLifecycleRouteAsync),
             (nameof(DurableSaveNoticeFailsClosedAcrossStateChangesAsync), DurableSaveNoticeFailsClosedAcrossStateChangesAsync),
+            (nameof(SlowCreationDashboardProjectionDoesNotBlockCallerAsync), SlowCreationDashboardProjectionDoesNotBlockCallerAsync),
+            (nameof(LateCreationDashboardProjectionCannotOverwriteNewerBindingAsync), LateCreationDashboardProjectionCannotOverwriteNewerBindingAsync),
+            (nameof(CancelledOrFaultedCreationDashboardProjectionIsObservedAsync), CancelledOrFaultedCreationDashboardProjectionIsObservedAsync),
             (nameof(AttributesPreviewAdoptionRequiresCanonicalSuccessAsync), AttributesPreviewAdoptionRequiresCanonicalSuccessAsync),
             (nameof(AttributesBodPreviewCannotConfirmAgiDraftAsync), AttributesBodPreviewCannotConfirmAgiDraftAsync),
             (nameof(AttributesReceiptMustMatchCommittedWorkspaceBeforeActivationAsync), AttributesReceiptMustMatchCommittedWorkspaceBeforeActivationAsync),
@@ -89,6 +92,142 @@ internal static class Program
             && BuildPageUiProjection.SaveToolbarText(hasDurableSaveNotice: false) == "Save",
             "The toolbar must expose Saved. only for an exact durable notice match.");
         return Task.CompletedTask;
+    }
+
+    private static async Task SlowCreationDashboardProjectionDoesNotBlockCallerAsync()
+    {
+        using var queue = new LatestBackgroundProjectionQueue<string, string>();
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        var completion = new TaskCompletionSource<BackgroundProjectionCompletion<string, string>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        queue.Completed += value => completion.TrySetResult(value);
+
+        bool scheduled = queue.TryRequest(
+            "workspace-1/revision-1/source-a",
+            (_, cancellationToken) =>
+            {
+                entered.Set();
+                release.Wait(cancellationToken);
+                return "authoritative";
+            },
+            out BackgroundProjectionRequest<string> request);
+
+        Require(scheduled, "The initial dashboard projection must be scheduled once.");
+        Require(entered.Wait(TimeSpan.FromSeconds(5)), "The slow projection never entered its worker.");
+        Require(
+            !completion.Task.IsCompleted,
+            "Request returned only after the slow projection completed; this would block Save rerendering.");
+        Require(
+            !queue.TryAccept(request),
+            "A projection must not be accepted before its background result is ready.");
+
+        release.Set();
+        BackgroundProjectionCompletion<string, string> completed = await completion.Task
+            .WaitAsync(TimeSpan.FromSeconds(5));
+        Require(completed.Request == request, "The completed generation changed unexpectedly.");
+        Require(completed.Result == "authoritative", "The worker result was not preserved.");
+        Require(queue.TryAccept(completed.Request), "The exact completed generation was not accepted.");
+    }
+
+    private static async Task LateCreationDashboardProjectionCannotOverwriteNewerBindingAsync()
+    {
+        using var queue = new LatestBackgroundProjectionQueue<string, string>();
+        using var oldEntered = new ManualResetEventSlim();
+        using var releaseOld = new ManualResetEventSlim();
+        var completions = new List<BackgroundProjectionCompletion<string, string>>();
+        var latest = new TaskCompletionSource<BackgroundProjectionCompletion<string, string>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        queue.Completed += completion =>
+        {
+            lock (completions)
+            {
+                completions.Add(completion);
+            }
+            if (completion.Request.Key == "workspace-1/revision-2/source-b")
+                latest.TrySetResult(completion);
+        };
+
+        queue.TryRequest(
+            "workspace-1/revision-1/source-a",
+            (_, _) =>
+            {
+                oldEntered.Set();
+                // Deliberately ignore cancellation to model an uncooperative
+                // filesystem projection already inside a synchronous read.
+                releaseOld.Wait();
+                return "stale";
+            },
+            out BackgroundProjectionRequest<string> oldRequest);
+        Require(oldEntered.Wait(TimeSpan.FromSeconds(5)), "The old projection never entered its worker.");
+        queue.TryRequest(
+            "workspace-1/revision-2/source-b",
+            (_, _) => "current",
+            out BackgroundProjectionRequest<string> currentRequest);
+        releaseOld.Set();
+
+        BackgroundProjectionCompletion<string, string> completed = await latest.Task
+            .WaitAsync(TimeSpan.FromSeconds(5));
+        Require(completed.Request == currentRequest, "The newer generation did not win.");
+        Require(completed.Result == "current", "The stale result replaced the current projection.");
+        Require(!queue.TryAccept(oldRequest), "The superseded generation remained admissible.");
+        Require(queue.TryAccept(currentRequest), "The current generation was rejected.");
+        lock (completions)
+        {
+            Require(
+                completions.All(item => item.Request != oldRequest),
+                "A cancelled late projection was published to the UI boundary.");
+        }
+    }
+
+    private static async Task CancelledOrFaultedCreationDashboardProjectionIsObservedAsync()
+    {
+        using var queue = new LatestBackgroundProjectionQueue<string, string>();
+        var failure = new TaskCompletionSource<BackgroundProjectionFailure<string>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        queue.Failed += value => failure.TrySetResult(value);
+        queue.TryRequest(
+            "workspace-1/revision-3/source-c",
+            (_, _) => throw new InvalidOperationException("deterministic projection failure"),
+            out BackgroundProjectionRequest<string> failedRequest);
+
+        BackgroundProjectionFailure<string> observed = await failure.Task
+            .WaitAsync(TimeSpan.FromSeconds(5));
+        Require(observed.Request == failedRequest, "The failure lost its bound generation.");
+        Require(
+            observed.Error is InvalidOperationException,
+            "The background failure was not observed at the fail-closed boundary.");
+        Require(queue.TryAccept(failedRequest), "An observed failure could not enter retryable failed state.");
+
+        var retry = new TaskCompletionSource<BackgroundProjectionCompletion<string, string>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        queue.Completed += value =>
+        {
+            if (value.Request.Key == "workspace-1/revision-3/source-c")
+                retry.TrySetResult(value);
+        };
+        queue.TryRequest(
+            "workspace-1/revision-3/source-c",
+            (_, _) => "retry-success",
+            out BackgroundProjectionRequest<string> retryRequest);
+        BackgroundProjectionCompletion<string, string> retried = await retry.Task
+            .WaitAsync(TimeSpan.FromSeconds(5));
+        queue.Cancel();
+        Require(
+            !queue.TryAccept(retried.Request),
+            "OnDisappearing cancellation admitted a callback that was already queued to the dispatcher.");
+
+        using var disposedQueue = new LatestBackgroundProjectionQueue<string, string>();
+        var disposedCompletion = new TaskCompletionSource<BackgroundProjectionCompletion<string, string>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        disposedQueue.Completed += value => disposedCompletion.TrySetResult(value);
+        disposedQueue.TryRequest("disposed", (_, _) => "done", out _);
+        BackgroundProjectionCompletion<string, string> beforeDispose = await disposedCompletion.Task
+            .WaitAsync(TimeSpan.FromSeconds(5));
+        disposedQueue.Dispose();
+        Require(
+            !disposedQueue.TryAccept(beforeDispose.Request),
+            "Dispose admitted a dispatcher callback after the page lifetime ended.");
     }
 
     private static Task CanonicalDigestPrefixIsTwelveLowerHexAsync()
