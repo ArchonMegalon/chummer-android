@@ -1,0 +1,10 @@
+{
+  "schema": "chummer.android.hosted-e2e-artifact/v1",
+  "repository": "ArchonMegalon/chummer-android",
+  "workflowRunId": 32809839213,
+  "headSha": "1c8d91d9ca0c55b5e8bdae0b4e3c37cfd90af226",
+  "evidenceArtifactId": 9549892574,
+  "evidenceArtifactName": "chummer-android-api36-phone-career-active-skill-advance-evidence-32809839213",
+  "evidenceArtifactDigest": "sha256:161ba85950217246518494bef0617d3c10c9d80174d53d0db957b33c44fc9357",
+  "receiptSha256": "8b8e5b368bd0c3826a1dc351639dfe02149cd8bc3246aab3260e5499b04778cb"
+}

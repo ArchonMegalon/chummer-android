@@ -23,6 +23,7 @@ from typing import Any, Iterable
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PHONE_E2E_PACKAGE = "com.myexternalbrain.chummer"
 PHONE_E2E_ABI = "arm64-v8a"
+HOSTED_PHONE_E2E_ABI = "x86_64"
 
 
 def _resolve_workspace_root() -> Path:
@@ -1170,6 +1171,94 @@ CAREER_REPUTATION_E2E_JOURNEYS = (
 CAREER_REPUTATION_CONTROL_E2E_PROOF_KEYS = (
     "mutated",
     "workspacePersisted",
+    "processRestartUiReadback",
+)
+CAREER_NOTORIETY_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-career-notoriety"
+    / "receipt.json"
+)
+CAREER_NOTORIETY_PHONE_E2E_ARTIFACT = CAREER_NOTORIETY_PHONE_E2E_RECEIPT.with_name(
+    "artifact.json"
+)
+CAREER_NOTORIETY_E2E_JOURNEYS = (
+    "exactNotorietyEdit",
+    "sameSessionReopen",
+    "newProcessRestart",
+)
+CAREER_NOTORIETY_CONTROL_E2E_PROOF_KEYS = (
+    "sourceDigestBound",
+    "exactWorkspaceFieldIdentity",
+    "exactNotorietyDelta",
+    "expectedRevisionAtomicSave",
+    "payloadDigestChanged",
+    "documentDigestChanged",
+    "unrelatedXmlPreserved",
+    "sameSessionReopened",
+    "newPidAfterForceStop",
+    "processRestartWorkspacePersisted",
+    "processRestartUiReadback",
+)
+CAREER_ACTIVE_SKILL_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-career-active-skill-advance"
+    / "receipt.json"
+)
+CAREER_ACTIVE_SKILL_PHONE_E2E_ARTIFACT = CAREER_ACTIVE_SKILL_PHONE_E2E_RECEIPT.with_name(
+    "artifact.json"
+)
+CAREER_ACTIVE_SKILL_E2E_JOURNEYS = (
+    "cancelThenConfirmAdvance",
+    "exactExpenseUndo",
+    "sameSessionReopen",
+    "twoProcessRestarts",
+)
+CAREER_ACTIVE_SKILL_CONTROL_E2E_PROOF_KEYS = (
+    "stableSkillGuid",
+    "exactSourceSkillGuid",
+    "ruleDigestBound",
+    "confirmationRequired",
+    "karmaCostExact",
+    "expenseUndoExact",
+    "workspacePersisted",
+    "unrelatedXmlPreserved",
+    "expectedRevisionAtomicSave",
+    "savedPayloadDigestBound",
+    "surfaceReopened",
+    "twoProcessRestarts",
+    "processRestartWorkspacePersisted",
+    "processRestartUiReadback",
+)
+CAREER_WEAPON_FIRE_PHONE_E2E_RECEIPT = (
+    REPO_ROOT
+    / "docs"
+    / "editability-evidence"
+    / "api36-phone-career-weapon-fire"
+    / "receipt.json"
+)
+CAREER_WEAPON_FIRE_PHONE_E2E_ARTIFACT = CAREER_WEAPON_FIRE_PHONE_E2E_RECEIPT.with_name(
+    "artifact.json"
+)
+CAREER_WEAPON_FIRE_E2E_JOURNEYS = (
+    "exactShortBurst",
+    "sameSessionReopen",
+    "newProcessRestart",
+)
+CAREER_WEAPON_FIRE_CONTROL_E2E_PROOF_KEYS = (
+    "sourceDigestBound",
+    "exactWeaponClipAmmoIdentity",
+    "exactShortBurstRoundDelta",
+    "expectedRevisionAtomicSave",
+    "payloadDigestChanged",
+    "documentDigestChanged",
+    "unrelatedXmlPreserved",
+    "sameSessionReopened",
+    "newPidAfterForceStop",
+    "processRestartWorkspacePersisted",
     "processRestartUiReadback",
 )
 SITUATIONAL_MODIFIERS_PHONE_E2E_RECEIPT = (
@@ -3126,6 +3215,141 @@ def _sha256_file(path: Path) -> str:
     return _sha256_bytes(path.read_bytes())
 
 
+def _csharp_public_method_sha256(path: Path, method_name: str) -> str | None:
+    """Hash one public C# method from its name through its balanced closing brace."""
+
+    try:
+        source = _read_text(path)
+    except (FileNotFoundError, OSError):
+        return None
+    declarations = list(
+        re.finditer(
+            rf"(?m)^    public\s+[^\n]*\b{re.escape(method_name)}\s*\(",
+            source,
+        )
+    )
+    if len(declarations) != 1:
+        return None
+    declaration = declarations[0]
+    member_start = source.find(method_name, declaration.start(), declaration.end())
+    body_start = source.find("{", declaration.end())
+    if member_start < 0 or body_start < 0:
+        return None
+    depth = 0
+    for index in range(body_start, len(source)):
+        character = source[index]
+        if character == "{":
+            depth += 1
+        elif character == "}":
+            depth -= 1
+            if depth == 0:
+                return _sha256_bytes(source[member_start : index + 1].encode("utf-8"))
+    return None
+
+
+def _validated_hosted_phone_artifact_binding(
+    receipt_path: Path,
+    artifact_path: Path,
+    receipt: dict[str, Any],
+) -> dict[str, Any] | None:
+    try:
+        artifact = json.loads(_read_text(artifact_path))
+        sidecar = _read_text(receipt_path.with_name("receipt.json.sha256")).strip()
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    receipt_sha = _sha256_file(receipt_path)
+    artifact_authority = receipt.get("artifactAuthority")
+    workflow_run_id = artifact.get("workflowRunId")
+    if not (
+        artifact.get("schema") == "chummer.android.hosted-e2e-artifact/v1"
+        and artifact.get("repository") == "ArchonMegalon/chummer-android"
+        and isinstance(workflow_run_id, int)
+        and workflow_run_id > 0
+        and re.fullmatch(r"[0-9a-f]{40}", str(artifact.get("headSha") or ""))
+        and isinstance(artifact.get("evidenceArtifactId"), int)
+        and artifact["evidenceArtifactId"] > 0
+        and artifact.get("evidenceArtifactName")
+        and re.fullmatch(
+            r"sha256:[0-9a-f]{64}",
+            str(artifact.get("evidenceArtifactDigest") or ""),
+        )
+        and artifact.get("receiptSha256") == receipt_sha
+        and sidecar == f"{receipt_sha}  receipt.json"
+        and isinstance(artifact_authority, dict)
+        and artifact_authority.get("schema")
+        == "chummer.android.api36-apk-authority/v1"
+        and artifact_authority.get("runId") == workflow_run_id
+        and str(artifact_authority.get("artifactId") or "").isdigit()
+        and re.fullmatch(
+            r"[0-9a-f]{64}",
+            str(artifact_authority.get("artifactDigest") or ""),
+        )
+        and artifact_authority.get("artifactName")
+        and artifact_authority.get("artifactAttempt") == 1
+        and artifact_authority.get("apkSha256") == receipt.get("apkSha256")
+    ):
+        return None
+    return {
+        "repository": artifact["repository"],
+        "runId": workflow_run_id,
+        "headSha": artifact["headSha"],
+        "artifactId": artifact["evidenceArtifactId"],
+        "artifactName": artifact["evidenceArtifactName"],
+        "artifactDigest": artifact["evidenceArtifactDigest"],
+    }
+
+
+def _exact_atomic_workspace_transition(
+    imported: Any,
+    saved: Any,
+    *restored_states: Any,
+) -> bool:
+    if not isinstance(imported, dict) or not isinstance(saved, dict):
+        return False
+    workspace_id = imported.get("workspaceId")
+    import_revision = imported.get("contentRevision")
+    saved_revision = saved.get("contentRevision")
+    if not (
+        isinstance(workspace_id, str)
+        and workspace_id
+        and isinstance(import_revision, int)
+        and isinstance(saved_revision, int)
+        and saved_revision == import_revision + 1
+        and saved.get("workspaceId") == workspace_id
+        and saved.get("savedRevision") == saved_revision
+        and imported.get("payloadSha256") != saved.get("payloadSha256")
+        and imported.get("documentSha256") != saved.get("documentSha256")
+        and re.fullmatch(r"[0-9a-f]{64}", str(saved.get("payloadSha256") or ""))
+        and re.fullmatch(r"[0-9a-f]{64}", str(saved.get("documentSha256") or ""))
+    ):
+        return False
+    return all(
+        isinstance(restored, dict)
+        and restored.get("workspaceId") == workspace_id
+        and restored.get("contentRevision") == saved_revision
+        and restored.get("savedRevision") == saved_revision
+        and restored.get("payloadSha256") == saved.get("payloadSha256")
+        and restored.get("documentSha256") == saved.get("documentSha256")
+        for restored in restored_states
+    )
+
+
+def _disjoint_process_ids(*process_groups: Any) -> bool:
+    normalized: list[set[str]] = []
+    for group in process_groups:
+        if not isinstance(group, list) or not group:
+            return False
+        values = {str(value) for value in group if str(value)}
+        if not values or len(values) != len(group):
+            return False
+        normalized.append(values)
+    return all(
+        left.isdisjoint(right)
+        for index, left in enumerate(normalized)
+        for right in normalized[index + 1 :]
+    )
+
+
 def _validated_condition_e2e_receipts() -> dict[str, dict[str, Any]]:
     driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
     fixture = REPO_ROOT / "tests" / "fixtures" / "career-condition-monitor-e2e.chum5"
@@ -3730,6 +3954,347 @@ def _validated_career_reputation_phone_e2e_receipt(
         "receiptSha256": _sha256_file(CAREER_REPUTATION_PHONE_E2E_RECEIPT),
         "apkSha256": apk_sha,
     }
+
+
+def _hosted_phone_e2e_result(
+    receipt_path: Path,
+    receipt: dict[str, Any],
+    artifact: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "status": "executed_api36",
+        "ref": receipt_path.relative_to(REPO_ROOT).as_posix(),
+        "receiptSha256": _sha256_file(receipt_path),
+        "apkSha256": receipt["apkSha256"],
+        "abi": receipt["abi"],
+        "package": receipt["package"],
+        "deviceScope": "hosted_api36_x86_64_phone_profile_not_arm64_hardware",
+        "hostedArtifact": artifact,
+    }
+
+
+def _validated_career_notoriety_phone_e2e_receipt(
+    presentation_root: Path,
+    core_root: Path,
+) -> dict[str, Any] | None:
+    native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
+    overview = presentation_root / "Chummer.Presentation" / "Overview"
+    driver = REPO_ROOT / "tests" / "run_api36_career_notoriety_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    fixture = REPO_ROOT / "tests" / "fixtures" / "career-notoriety-e2e.chum5"
+    source_digests = {
+        "careerReputationPageSha256": native_root / "CareerReputationPage.cs",
+        "buildPageSha256": native_root / "BuildPage.cs",
+        "coordinatorSha256": native_root / "RunnerSessionCoordinator.cs",
+        "careerReputationRequestSha256": overview / "CareerReputationEditRequest.cs",
+        "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+        "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "presenterPersistenceSha256": overview / "CharacterOverviewPresenter.Persistence.cs",
+        "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+        "characterSectionModelsSha256": core_root
+        / "Chummer.Contracts"
+        / "Characters"
+        / "CharacterSectionModels.cs",
+        "characterSectionServiceSha256": core_root
+        / "Chummer.Infrastructure"
+        / "Xml"
+        / "CharacterSectionService.cs",
+        "workspaceStoreSha256": core_root
+        / "Chummer.Infrastructure"
+        / "Workspaces"
+        / "FileWorkspaceStore.cs",
+    }
+    if not all(
+        path.is_file()
+        for path in (driver, shared_driver, fixture, *source_digests.values())
+    ):
+        return None
+    try:
+        receipt = json.loads(_read_text(CAREER_NOTORIETY_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    artifact = _validated_hosted_phone_artifact_binding(
+        CAREER_NOTORIETY_PHONE_E2E_RECEIPT,
+        CAREER_NOTORIETY_PHONE_E2E_ARTIFACT,
+        receipt,
+    )
+    stages = receipt.get("authorityProofStages")
+    controls = receipt.get("controls")
+    journeys = receipt.get("journeys")
+    restart_ids = stages.get("restartProcessIds") if isinstance(stages, dict) else None
+    unrelated = stages.get("unrelatedXmlAuthority") if isinstance(stages, dict) else None
+    control = "CharacterCareer.nudNotoriety"
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "career-notoriety"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("abi") == HOSTED_PHONE_E2E_ABI
+        and receipt.get("package") == PHONE_E2E_PACKAGE
+        and re.fullmatch(r"[0-9a-f]{64}", str(receipt.get("apkSha256") or ""))
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("careerFixtureSha256") == _sha256_file(fixture)
+        and receipt.get("verifiedRemoteCareerFixtureSha256") == _sha256_file(fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(artifact, dict)
+        and artifact.get("runId") == 32809839213
+        and artifact.get("headSha") == "1c8d91d9ca0c55b5e8bdae0b4e3c37cfd90af226"
+        and artifact.get("artifactId") == 9549763958
+        and isinstance(controls, dict)
+        and set(controls) == {control}
+        and receipt.get("controlCount") == 1
+        and set(controls[control]) == set(CAREER_NOTORIETY_CONTROL_E2E_PROOF_KEYS)
+        and all(controls[control][key] == "pass" for key in CAREER_NOTORIETY_CONTROL_E2E_PROOF_KEYS)
+        and isinstance(journeys, dict)
+        and set(journeys) == set(CAREER_NOTORIETY_E2E_JOURNEYS)
+        and all(journeys[key] == "pass" for key in CAREER_NOTORIETY_E2E_JOURNEYS)
+        and isinstance(stages, dict)
+        and stages.get("field") == "notoriety"
+        and stages.get("initialValue") == 7
+        and stages.get("savedValue") == 8
+        and _exact_atomic_workspace_transition(
+            stages.get("import"),
+            stages.get("saved"),
+            stages.get("restored"),
+        )
+        and isinstance(restart_ids, dict)
+        and restart_ids.get("afterForceStop") == []
+        and _disjoint_process_ids(
+            restart_ids.get("beforeForceStop"),
+            restart_ids.get("restarted"),
+        )
+        and isinstance(unrelated, dict)
+        and unrelated.get("karma") == "19"
+        and unrelated.get("nuyen") == "8765"
+        and all(
+            re.fullmatch(r"[0-9a-f]{64}", str(value or ""))
+            for key, value in unrelated.items()
+            if key.endswith("Sha256")
+        )
+    ):
+        return None
+    return _hosted_phone_e2e_result(
+        CAREER_NOTORIETY_PHONE_E2E_RECEIPT,
+        receipt,
+        artifact,
+    )
+
+
+def _validated_career_active_skill_phone_e2e_receipt(
+    presentation_root: Path,
+    core_root: Path,
+) -> dict[str, Any] | None:
+    native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
+    overview = presentation_root / "Chummer.Presentation" / "Overview"
+    driver = REPO_ROOT / "tests" / "run_api36_career_active_skill_advance_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    fixture = REPO_ROOT / "tests" / "fixtures" / "career-active-skill-advance-e2e.chum5"
+    source_digests = {
+        "careerActiveSkillPageSha256": native_root / "CareerActiveSkillAdvancePage.cs",
+        "buildPageSha256": native_root / "BuildPage.cs",
+        "coordinatorSha256": native_root / "RunnerSessionCoordinator.cs",
+        "careerActiveSkillRequestSha256": overview / "CareerActiveSkillAdvanceEditRequest.cs",
+        "careerActiveSkillMutationSha256": overview / "CareerActiveSkillAdvanceMutation.cs",
+        "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+        "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "presenterPersistenceSha256": overview / "CharacterOverviewPresenter.Persistence.cs",
+        "careerActiveSkillRulesSha256": core_root
+        / "Chummer.Contracts"
+        / "Characters"
+        / "CharacterCareerActiveSkillAdvanceRules.cs",
+        "activeSkillSourceResolverSha256": core_root
+        / "Chummer.Infrastructure"
+        / "Xml"
+        / "FileSystemCharacterSourceDataResolver.cs",
+        "workspaceStoreSha256": core_root
+        / "Chummer.Infrastructure"
+        / "Workspaces"
+        / "FileWorkspaceStore.cs",
+    }
+    if not all(
+        path.is_file()
+        for path in (driver, shared_driver, fixture, *source_digests.values())
+    ):
+        return None
+    try:
+        receipt = json.loads(_read_text(CAREER_ACTIVE_SKILL_PHONE_E2E_RECEIPT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    artifact = _validated_hosted_phone_artifact_binding(
+        CAREER_ACTIVE_SKILL_PHONE_E2E_RECEIPT,
+        CAREER_ACTIVE_SKILL_PHONE_E2E_ARTIFACT,
+        receipt,
+    )
+    stages = receipt.get("authorityProofStages")
+    controls = receipt.get("controls")
+    journeys = receipt.get("journeys")
+    restart_ids = stages.get("restartProcessIds") if isinstance(stages, dict) else None
+    control = "CharacterCareer.SkillControl.btnCareerIncrease"
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "career-active-skill-advance"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("abi") == HOSTED_PHONE_E2E_ABI
+        and receipt.get("package") == PHONE_E2E_PACKAGE
+        and re.fullmatch(r"[0-9a-f]{64}", str(receipt.get("apkSha256") or ""))
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("careerFixtureSha256") == _sha256_file(fixture)
+        and receipt.get("verifiedRemoteCareerFixtureSha256") == _sha256_file(fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(artifact, dict)
+        and artifact.get("runId") == 32809839213
+        and artifact.get("headSha") == "1c8d91d9ca0c55b5e8bdae0b4e3c37cfd90af226"
+        and artifact.get("artifactId") == 9549892574
+        and isinstance(controls, dict)
+        and set(controls) == {control}
+        and receipt.get("controlCount") == 1
+        and set(controls[control]) == set(CAREER_ACTIVE_SKILL_CONTROL_E2E_PROOF_KEYS)
+        and all(controls[control][key] == "pass" for key in CAREER_ACTIVE_SKILL_CONTROL_E2E_PROOF_KEYS)
+        and isinstance(journeys, dict)
+        and set(journeys) == set(CAREER_ACTIVE_SKILL_E2E_JOURNEYS)
+        and all(journeys[key] == "pass" for key in CAREER_ACTIVE_SKILL_E2E_JOURNEYS)
+        and isinstance(stages, dict)
+        and _exact_atomic_workspace_transition(
+            stages.get("import"),
+            stages.get("saved"),
+            stages.get("firstRestored"),
+            stages.get("secondRestored"),
+        )
+        and isinstance(restart_ids, list)
+        and len(restart_ids) == 2
+        and _disjoint_process_ids(*restart_ids)
+        and re.fullmatch(
+            r"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
+            str(stages.get("generatedExpenseGuid") or ""),
+        )
+    ):
+        return None
+    return _hosted_phone_e2e_result(
+        CAREER_ACTIVE_SKILL_PHONE_E2E_RECEIPT,
+        receipt,
+        artifact,
+    )
+
+
+def _validated_career_weapon_fire_phone_e2e_receipt(
+    presentation_root: Path,
+    core_root: Path,
+) -> dict[str, Any] | None:
+    native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
+    overview = presentation_root / "Chummer.Presentation" / "Overview"
+    driver = REPO_ROOT / "tests" / "run_api36_career_weapon_fire_e2e.py"
+    shared_driver = REPO_ROOT / "tests" / "run_api36_editing_e2e.py"
+    fixture = REPO_ROOT / "tests" / "fixtures" / "career-weapon-fire-e2e.chum5"
+    coordinator = native_root / "RunnerSessionCoordinator.cs"
+    source_digests = {
+        "careerWeaponFirePageSha256": native_root / "CareerWeaponFirePage.cs",
+        "collectionRouteSha256": native_root / "CollectionEditorPages.cs",
+        "careerWeaponFireRequestSha256": overview / "CareerWeaponFireRequest.cs",
+        "mutationCatalogSha256": overview / "WorkspaceXmlMutationCatalog.cs",
+        "presenterMutationSha256": overview / "CharacterOverviewPresenter.WorkspaceMutations.cs",
+        "presenterPersistenceSha256": overview / "CharacterOverviewPresenter.Persistence.cs",
+        "presenterInterfaceSha256": overview / "ICharacterOverviewPresenter.cs",
+        "weaponFireRulesSha256": core_root
+        / "Chummer.Contracts"
+        / "Characters"
+        / "CharacterWeaponFireRules.cs",
+        "workspaceStoreSha256": core_root
+        / "Chummer.Infrastructure"
+        / "Workspaces"
+        / "FileWorkspaceStore.cs",
+    }
+    if not all(
+        path.is_file()
+        for path in (driver, shared_driver, fixture, coordinator, *source_digests.values())
+    ):
+        return None
+    try:
+        receipt = json.loads(_read_text(CAREER_WEAPON_FIRE_PHONE_E2E_RECEIPT))
+        artifact_document = json.loads(_read_text(CAREER_WEAPON_FIRE_PHONE_E2E_ARTIFACT))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    artifact = _validated_hosted_phone_artifact_binding(
+        CAREER_WEAPON_FIRE_PHONE_E2E_RECEIPT,
+        CAREER_WEAPON_FIRE_PHONE_E2E_ARTIFACT,
+        receipt,
+    )
+    compatibility = artifact_document.get("sourceCompatibility")
+    stages = receipt.get("authorityProofStages")
+    controls = receipt.get("controls")
+    journeys = receipt.get("journeys")
+    restart_ids = stages.get("restartProcessIds") if isinstance(stages, dict) else None
+    unrelated = stages.get("unrelatedXmlAuthority") if isinstance(stages, dict) else None
+    control = "CharacterCareer.cmsAmmoShortBurst"
+    if not (
+        receipt.get("schema") == "chummer.android.editing-e2e/v1"
+        and receipt.get("status") == "pass"
+        and receipt.get("profile") == "phone"
+        and receipt.get("journey") == "career-weapon-fire"
+        and receipt.get("apiLevel") == 36
+        and receipt.get("abi") == HOSTED_PHONE_E2E_ABI
+        and receipt.get("package") == PHONE_E2E_PACKAGE
+        and re.fullmatch(r"[0-9a-f]{64}", str(receipt.get("apkSha256") or ""))
+        and receipt.get("driverSha256") == _sha256_file(driver)
+        and receipt.get("sharedDriverSha256") == _sha256_file(shared_driver)
+        and receipt.get("careerFixtureSha256") == _sha256_file(fixture)
+        and receipt.get("verifiedRemoteCareerFixtureSha256") == _sha256_file(fixture)
+        and all(receipt.get(key) == _sha256_file(path) for key, path in source_digests.items())
+        and isinstance(artifact, dict)
+        and artifact.get("runId") == 32803905793
+        and artifact.get("headSha") == "9296bd2c8e61f8dc8f224c4fce577a8c9643eb3c"
+        and artifact.get("artifactId") == 9547946638
+        and isinstance(compatibility, dict)
+        and compatibility.get("path") == "src/Chummer.Android/Native/RunnerSessionCoordinator.cs"
+        and compatibility.get("testedFileSha256") == receipt.get("coordinatorSha256")
+        and compatibility.get("ledgerFileSha256") == _sha256_file(coordinator)
+        and compatibility.get("scopedMember") == "ApplyCareerWeaponFireAsync"
+        and compatibility.get("scopedMemberSha256")
+        == _csharp_public_method_sha256(coordinator, "ApplyCareerWeaponFireAsync")
+        and isinstance(controls, dict)
+        and set(controls) == {control}
+        and receipt.get("controlCount") == 1
+        and set(controls[control]) == set(CAREER_WEAPON_FIRE_CONTROL_E2E_PROOF_KEYS)
+        and all(controls[control][key] == "pass" for key in CAREER_WEAPON_FIRE_CONTROL_E2E_PROOF_KEYS)
+        and isinstance(journeys, dict)
+        and set(journeys) == set(CAREER_WEAPON_FIRE_E2E_JOURNEYS)
+        and all(journeys[key] == "pass" for key in CAREER_WEAPON_FIRE_E2E_JOURNEYS)
+        and isinstance(stages, dict)
+        and stages.get("mode") == "short-burst"
+        and stages.get("roundsConsumed") == 3
+        and stages.get("weaponId") == "f1111111-1111-4111-8111-111111111111"
+        and stages.get("ammoSlot") == 1
+        and stages.get("ammoGearId") == "f2222222-2222-4222-8222-222222222222"
+        and _exact_atomic_workspace_transition(
+            stages.get("import"),
+            stages.get("saved"),
+            stages.get("restored"),
+        )
+        and isinstance(restart_ids, dict)
+        and restart_ids.get("afterForceStop") == []
+        and _disjoint_process_ids(
+            restart_ids.get("beforeForceStop"),
+            restart_ids.get("restarted"),
+        )
+        and isinstance(unrelated, dict)
+        and unrelated.get("karma") == "19"
+        and unrelated.get("nuyen") == "8765"
+        and all(
+            re.fullmatch(r"[0-9a-f]{64}", str(value or ""))
+            for key, value in unrelated.items()
+            if key.endswith("Sha256")
+        )
+    ):
+        return None
+    return _hosted_phone_e2e_result(
+        CAREER_WEAPON_FIRE_PHONE_E2E_RECEIPT,
+        receipt,
+        artifact,
+    )
 
 
 def _validated_situational_modifiers_phone_e2e_receipt(
@@ -6704,6 +7269,9 @@ def _known_phone_mapping(
     career_nuyen_expense_edit_phone_e2e_receipt: dict[str, Any] | None,
     spirit_name_choice_phone_e2e_receipt: dict[str, Any] | None,
     career_reputation_phone_e2e_receipt: dict[str, Any] | None,
+    career_notoriety_phone_e2e_receipt: dict[str, Any] | None,
+    career_active_skill_phone_e2e_receipt: dict[str, Any] | None,
+    career_weapon_fire_phone_e2e_receipt: dict[str, Any] | None,
     situational_modifiers_phone_e2e_receipt: dict[str, Any] | None,
     primary_arm_phone_e2e_receipt: dict[str, Any] | None,
     gear_location_phone_e2e_receipt: dict[str, Any] | None,
@@ -20364,6 +20932,179 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+    if class_name == "SkillControl" and control == "btnCareerIncrease":
+        native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
+        page = native_root / "CareerActiveSkillAdvancePage.cs"
+        build_page = native_root / "BuildPage.cs"
+        coordinator = native_root / "RunnerSessionCoordinator.cs"
+        driver = REPO_ROOT / "tests" / "run_api36_career_active_skill_advance_e2e.py"
+        fixture = REPO_ROOT / "tests" / "fixtures" / "career-active-skill-advance-e2e.chum5"
+        overview = presentation_root / "Chummer.Presentation" / "Overview"
+        request = overview / "CareerActiveSkillAdvanceEditRequest.cs"
+        mutation = overview / "CareerActiveSkillAdvanceMutation.cs"
+        catalog = overview / "WorkspaceXmlMutationCatalog.cs"
+        presenter = overview / "CharacterOverviewPresenter.WorkspaceMutations.cs"
+        persistence = overview / "CharacterOverviewPresenter.Persistence.cs"
+        core_rules = (
+            character_notes_core_root
+            / "Chummer.Contracts"
+            / "Characters"
+            / "CharacterCareerActiveSkillAdvanceRules.cs"
+        )
+        source_resolver = (
+            character_notes_core_root
+            / "Chummer.Infrastructure"
+            / "Xml"
+            / "FileSystemCharacterSourceDataResolver.cs"
+        )
+        workspace_store = (
+            character_notes_core_root
+            / "Chummer.Infrastructure"
+            / "Workspaces"
+            / "FileWorkspaceStore.cs"
+        )
+        legacy_handler_exact = any(
+            event.get("handler") == "btnCareerIncrease_Click"
+            for event in legacy.get("events", [])
+            if isinstance(event, dict)
+        )
+        implemented = (
+            legacy_handler_exact
+            and _contains(
+                page,
+                "class CareerActiveSkillAdvancePage",
+                'AutomationId = "career-active-skill-page"',
+                'AutomationId = "career-active-skill-advance"',
+                "CharacterCareerActiveSkillAdvanceRules.IsCoherent",
+                "ApplyCareerActiveSkillAdvanceAsync",
+            )
+            and _contains(
+                build_page,
+                'automationId: "build-career-active-skill"',
+                "PrepareCareerActiveSkillAdvanceAsync",
+                "new CareerActiveSkillAdvancePage",
+            )
+            and _contains(
+                coordinator,
+                "PrepareCareerActiveSkillAdvanceAsync",
+                "ApplyCareerActiveSkillAdvanceAsync",
+                "State.ContentRevision == request.ExpectedContentRevision + 1",
+                "State.SavedRevision == appliedContentRevision",
+                "TryRefreshWorkspaceAuthorityAsync",
+            )
+            and _contains(
+                request,
+                "CareerActiveSkillAdvanceEditorState",
+                "CareerActiveSkillAdvanceRequest",
+                "CharacterCareerActiveSkillIdentity",
+                "ExpectedRuleDigest",
+                "TryResolveActiveSkillSource",
+            )
+            and _contains(
+                mutation,
+                "CareerActiveSkillAdvanceMutation",
+                "CharacterCareerActiveSkillAdvanceRules.TryPlanAdvance",
+                'SetRequiredValue(\n            target,\n            "karma"',
+                'SetRequiredValue(\n            root,\n            "karma"',
+                "AddExpense(root, plan)",
+            )
+            and _contains(
+                catalog,
+                "CareerActiveSkillAdvanceMutation.Apply",
+            )
+            and _contains(
+                presenter,
+                "PrepareCareerActiveSkillAdvanceAsync",
+                "ApplyCareerActiveSkillAdvanceAsync",
+                "ApplyWorkspaceXmlMutationAsync",
+            )
+            and _contains(
+                persistence,
+                "expectedContentRevision",
+                "_workspacePersistenceService.SaveAsync",
+            )
+            and _contains(
+                core_rules,
+                "CharacterCareerActiveSkillIdentity",
+                "CharacterCareerActiveSkillAdvanceQuote",
+                "TryCreateQuote",
+                "TryPlanAdvance",
+            )
+            and _contains(source_resolver, "TryResolveActiveSkillSource", "skills.xml")
+            and _contains(
+                workspace_store,
+                "expectedContentRevision",
+                "Flush(flushToDisk: true)",
+                "File.Replace",
+            )
+        )
+        e2e_scripted = (
+            _contains(
+                driver,
+                '"journey": "career-active-skill-advance"',
+                'CONTROLS = ("SkillControl.btnCareerIncrease",)',
+                'f"CharacterCareer.{control}"',
+                '"cancelThenConfirmAdvance": "pass"',
+                '"exactExpenseUndo": "pass"',
+                '"twoProcessRestarts": "pass"',
+            )
+            and fixture.is_file()
+        )
+        phone_e2e = (
+            career_active_skill_phone_e2e_receipt
+            if implemented and e2e_scripted
+            else None
+        )
+        return {
+            "status": (
+                "implemented_verified_api36"
+                if phone_e2e
+                else "implemented_pending_emulator"
+                if implemented
+                else "missing"
+            ),
+            "route": "Build > Active Skills > Advance active skill",
+            "surface": "CareerActiveSkillAdvancePage",
+            "automationId": "career-active-skill-advance",
+            "sourceRefs": [
+                "src/Chummer.Android/Native/CareerActiveSkillAdvancePage.cs",
+                "src/Chummer.Android/Native/BuildPage.cs",
+                "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CareerActiveSkillAdvanceEditRequest.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CareerActiveSkillAdvanceMutation.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+                "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerActiveSkillAdvanceRules.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+                "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
+            ],
+            "presenterMutation": (
+                "ICharacterOverviewPresenter.ApplyCareerActiveSkillAdvanceAsync binds the stable saved Skill/source "
+                "GUID pair, exact rule digest, confirmation, Karma delta, and undo expense identity"
+            ),
+            "persistenceAssertion": (
+                "the selected active Skill rating increases exactly once, Karma and its undo expense change "
+                "atomically at expected revision +1, unrelated XML survives, and exact saved payload/document "
+                "authority survives same-session reopen and two disjoint process restarts"
+            ),
+            "coverageLimit": (
+                "Only SkillControl.btnCareerIncrease for source-resolved active Skills is covered. KnowledgeSkillControl "
+                "and SkillGroupControl advancement remain separate unproven rows; hidden ambiguous source, Improvement, "
+                "or group-compensation authority fails closed. Hosted execution is x86_64 and is not physical ARM64 proof."
+            ),
+            "e2e": phone_e2e or {
+                "status": "scripted_not_executed" if e2e_scripted else "missing",
+                "ref": driver.relative_to(REPO_ROOT).as_posix() if e2e_scripted else None,
+            },
+            "tablet": {
+                "status": "missing",
+                "surface": None,
+                "automationId": None,
+                "sourceRefs": [],
+            },
+            "tabletE2e": {"status": "missing", "ref": None},
+        }
     if class_name == "CharacterCareer" and control in CAREER_WEAPON_FIRE_CONTROLS:
         handler, action, automation_id = CAREER_WEAPON_FIRE_CONTROLS[control]
         native_root = REPO_ROOT / "src" / "Chummer.Android" / "Native"
@@ -20472,8 +21213,19 @@ def _known_phone_mapping(
                 "File.Move",
             )
         )
+        phone_e2e = (
+            career_weapon_fire_phone_e2e_receipt
+            if control == "cmsAmmoShortBurst" and implemented
+            else None
+        )
         return {
-            "status": "implemented_pending_emulator" if implemented else "missing",
+            "status": (
+                "implemented_verified_api36"
+                if phone_e2e
+                else "implemented_pending_emulator"
+                if implemented
+                else "missing"
+            ),
             "route": "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
             "surface": "CareerWeaponFirePage",
             "automationId": automation_id,
@@ -20502,9 +21254,14 @@ def _known_phone_mapping(
                 "Career direct root Weapons only. Mirrors Chummer5 default Single/Short/Long selection, effective "
                 "direct-accessory round counts, confirmed partial Short/Long bursts, and non-partial Full/Suppressive "
                 "fire. Accessory-provided active clips, mode-affecting wireless/ammo bonuses, and ammo Gear deletion "
-                "side effects outside the bounded leaf stack fail closed. API 36 execution remains outstanding."
+                "side effects outside the bounded leaf stack fail closed. "
+                + (
+                    "Short Burst has hosted API 36 x86_64 phone-profile proof; it is not physical ARM64 proof."
+                    if control == "cmsAmmoShortBurst"
+                    else "API 36 execution remains outstanding."
+                )
             ),
-            "e2e": {"status": "missing", "ref": None},
+            "e2e": phone_e2e or {"status": "missing", "ref": None},
             "tablet": {
                 "status": "missing",
                 "surface": None,
@@ -21420,6 +22177,7 @@ def _known_phone_mapping(
         build_page = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs"
         coordinator = REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs"
         e2e_driver = REPO_ROOT / "tests" / "run_api36_career_reputation_e2e.py"
+        notoriety_e2e_driver = REPO_ROOT / "tests" / "run_api36_career_notoriety_e2e.py"
         presentation_overview = presentation_root / "Chummer.Presentation" / "Overview"
         request = presentation_overview / "CareerReputationEditRequest.cs"
         mutation = presentation_overview / "WorkspaceXmlMutationCatalog.cs"
@@ -21493,8 +22251,24 @@ def _known_phone_mapping(
             '"careerProcessRestartUiReadback": "pass"',
             '"controls": controls',
         )
-        phone_e2e = career_reputation_phone_e2e_receipt if implemented and e2e_scripted else None
-        return {
+        notoriety_e2e_scripted = _contains(
+            notoriety_e2e_driver,
+            'SELECTOR = "career-reputation-notoriety"',
+            '"journey": "career-notoriety"',
+            '"CharacterCareer.nudNotoriety"',
+            '"exactNotorietyEdit": "pass"',
+            '"newProcessRestart": "pass"',
+        )
+        phone_e2e = (
+            career_notoriety_phone_e2e_receipt
+            if control == "nudNotoriety" and implemented and notoriety_e2e_scripted
+            else career_reputation_phone_e2e_receipt
+            if implemented and e2e_scripted
+            else None
+        )
+        pending_driver = notoriety_e2e_driver if control == "nudNotoriety" else e2e_driver
+        pending_scripted = notoriety_e2e_scripted if control == "nudNotoriety" else e2e_scripted
+        result = {
             "status": "implemented_verified_api36" if phone_e2e else "implemented_pending_emulator" if implemented else "missing",
             "route": "Build > Reputation",
             "surface": "CareerReputationPage",
@@ -21516,8 +22290,8 @@ def _known_phone_mapping(
                 f"career character/{xml_element} equals the submitted 0..100 value after save, reopen, and process restart"
             ),
             "e2e": phone_e2e or {
-                "status": "scripted_not_executed" if e2e_scripted else "missing",
-                "ref": e2e_driver.relative_to(REPO_ROOT).as_posix() if e2e_scripted else None,
+                "status": "scripted_not_executed" if pending_scripted else "missing",
+                "ref": pending_driver.relative_to(REPO_ROOT).as_posix() if pending_scripted else None,
             },
             "tablet": {
                 "status": "missing",
@@ -21527,6 +22301,12 @@ def _known_phone_mapping(
             },
             "tabletE2e": {"status": "missing", "ref": None},
         }
+        if control == "nudNotoriety":
+            result["coverageLimit"] = (
+                "The bound hosted proof covers only Notoriety 7 to 8 on the API 36 x86_64 phone profile and is not "
+                "physical ARM64 proof. Other Reputation fields and Burn Street Cred remain separate rows."
+            )
+        return result
     if class_name in {"CharacterCreate", "CharacterCareer"} and control in ORIGIN_FIELDS:
         xml_element, automation_id = ORIGIN_FIELDS[control]
         field_id = automation_id.removeprefix("origin-")
@@ -22017,6 +22797,18 @@ def enrich_rows(
         presentation_root,
         core_engine_root,
     )
+    career_notoriety_phone_e2e_receipt = _validated_career_notoriety_phone_e2e_receipt(
+        presentation_root,
+        core_engine_root,
+    )
+    career_active_skill_phone_e2e_receipt = _validated_career_active_skill_phone_e2e_receipt(
+        presentation_root,
+        core_engine_root,
+    )
+    career_weapon_fire_phone_e2e_receipt = _validated_career_weapon_fire_phone_e2e_receipt(
+        presentation_root,
+        core_engine_root,
+    )
     situational_modifiers_phone_e2e_receipt = _validated_situational_modifiers_phone_e2e_receipt(
         presentation_root,
         core_engine_root,
@@ -22142,6 +22934,9 @@ def enrich_rows(
             career_nuyen_expense_edit_phone_e2e_receipt,
             spirit_name_choice_phone_e2e_receipt,
             career_reputation_phone_e2e_receipt,
+            career_notoriety_phone_e2e_receipt,
+            career_active_skill_phone_e2e_receipt,
+            career_weapon_fire_phone_e2e_receipt,
             situational_modifiers_phone_e2e_receipt,
             primary_arm_phone_e2e_receipt,
             gear_location_phone_e2e_receipt,
@@ -22251,6 +23046,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "BuildPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "MorePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerReputationPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CareerActiveSkillAdvancePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "SituationalModifiersPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "PrimaryArmPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "GroupMembershipPage.cs",
@@ -22350,6 +23146,12 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TabletBuildPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs",
         REPO_ROOT / "tests" / "run_api36_editing_e2e.py",
+        REPO_ROOT / "tests" / "run_api36_career_active_skill_advance_e2e.py",
+        REPO_ROOT / "tests" / "fixtures" / "career-active-skill-advance-e2e.chum5",
+        REPO_ROOT / "tests" / "run_api36_career_weapon_fire_e2e.py",
+        REPO_ROOT / "tests" / "fixtures" / "career-weapon-fire-e2e.chum5",
+        REPO_ROOT / "tests" / "run_api36_career_notoriety_e2e.py",
+        REPO_ROOT / "tests" / "fixtures" / "career-notoriety-e2e.chum5",
         REPO_ROOT / "tests" / "run_api36_gear_attack_swap_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_sleaze_swap_e2e.py",
         REPO_ROOT / "tests" / "run_api36_gear_dp_firewall_swap_e2e.py",
@@ -22540,6 +23342,15 @@ def build_inventory(
             for journey in CAPTURE_ONLY_PHONE_E2E_DEFINITIONS
         ),
         CAREER_REPUTATION_PHONE_E2E_RECEIPT,
+        CAREER_NOTORIETY_PHONE_E2E_RECEIPT,
+        CAREER_NOTORIETY_PHONE_E2E_RECEIPT.with_name("receipt.json.sha256"),
+        CAREER_NOTORIETY_PHONE_E2E_ARTIFACT,
+        CAREER_ACTIVE_SKILL_PHONE_E2E_RECEIPT,
+        CAREER_ACTIVE_SKILL_PHONE_E2E_RECEIPT.with_name("receipt.json.sha256"),
+        CAREER_ACTIVE_SKILL_PHONE_E2E_ARTIFACT,
+        CAREER_WEAPON_FIRE_PHONE_E2E_RECEIPT,
+        CAREER_WEAPON_FIRE_PHONE_E2E_RECEIPT.with_name("receipt.json.sha256"),
+        CAREER_WEAPON_FIRE_PHONE_E2E_ARTIFACT,
         SITUATIONAL_MODIFIERS_PHONE_E2E_RECEIPT,
         PRIMARY_ARM_PHONE_E2E_RECEIPT,
         GEAR_LOCATION_PHONE_E2E_RECEIPT,
@@ -22594,6 +23405,7 @@ def build_inventory(
         core_engine_root / "Chummer" / "data" / "streams.xml",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerEdgeUseRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterWeaponFireRules.cs",
+        core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerActiveSkillAdvanceRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualKarmaRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerManualNuyenRules.cs",
         core_engine_root / "Chummer.Contracts" / "Characters" / "CharacterCareerCreateExpenseRules.cs",
@@ -22618,6 +23430,8 @@ def build_inventory(
         presentation_root / "Chummer.Presentation" / "Overview" / "TraditionSpiritCategoryEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerEdgeUseEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerWeaponFireRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CareerActiveSkillAdvanceEditRequest.cs",
+        presentation_root / "Chummer.Presentation" / "Overview" / "CareerActiveSkillAdvanceMutation.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerManualKarmaEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerManualNuyenEditRequest.cs",
         presentation_root / "Chummer.Presentation" / "Overview" / "CareerCreateExpenseEditRequest.cs",

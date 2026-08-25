@@ -1,0 +1,18 @@
+{
+  "schema": "chummer.android.hosted-e2e-artifact/v1",
+  "repository": "ArchonMegalon/chummer-android",
+  "workflowRunId": 32803905793,
+  "headSha": "9296bd2c8e61f8dc8f224c4fce577a8c9643eb3c",
+  "evidenceArtifactId": 9547946638,
+  "evidenceArtifactName": "chummer-android-api36-phone-career-weapon-fire-evidence-32803905793",
+  "evidenceArtifactDigest": "sha256:1f7c3b726ccfccb071a1aca0d3413b765bf97f0be58c1e6d56d719d3d20df0f7",
+  "receiptSha256": "f9f295083fd0f76920cbff6717b62b3a9b3c3e8f2931eae02dc204576839a3e8",
+  "sourceCompatibility": {
+    "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+    "testedFileSha256": "28a17d15df81d1385d47199b5889811715b4557473f90162eb8354ad4ef55692",
+    "ledgerFileSha256": "acb8e94cde3c5c2dcc02fb818652a0159a8c197ba51c19cc1422cdc04ca3447c",
+    "scopedMember": "ApplyCareerWeaponFireAsync",
+    "scopedMemberSha256": "c71b902a08004ef5ee294df12e4cfb54f11c4e9caf8a1d565ecc35673c6c2ae0",
+    "reason": "The exact weapon-fire member is byte-identical; the later coordinator-only delta hardens Career Notoriety persistence."
+  }
+}
