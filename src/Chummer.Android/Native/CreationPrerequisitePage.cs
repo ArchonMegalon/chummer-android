@@ -178,6 +178,9 @@ public sealed class CreationPrerequisitePage : NativePageBase
             "Draft revision",
             pending.DraftRevision.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric("Draft digest", ShortDigest(pending.DraftDigest)));
+        Label fullDraftDigest = NativeTheme.Body(pending.DraftDigest, NativeTheme.Muted);
+        fullDraftDigest.AutomationId = "creation-prerequisite-pending-draft-digest";
+        card.Add(fullDraftDigest);
         card.Add(NativeTheme.Metric(
             "Base revision",
             pending.BaseContentRevision.ToString(CultureInfo.InvariantCulture)));

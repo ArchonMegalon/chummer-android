@@ -97,6 +97,42 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 duplicate_resource_id=True,
             )
 
+    def test_persisted_authority_rejects_digest_and_revision_drift(self) -> None:
+        digest = "sha256:" + "a" * 64
+        authority = {
+            "binding": {"contentRevision": 7, "savedRevision": 3},
+            "bindingDigests": {
+                "rawCharacterXml": digest,
+                "auxiliaryState": digest,
+                "authority": digest,
+            },
+            "draftDigest": digest,
+        }
+        invalid = (
+            ({**authority, "draftDigest": "sha256:" + "b" * 64}, "DraftDigest"),
+            (
+                {
+                    **authority,
+                    "bindingDigests": {
+                        **authority["bindingDigests"],
+                        "auxiliaryState": "sha256:" + "b" * 64,
+                    },
+                },
+                "binding digests",
+            ),
+            ({**authority, "binding": {"contentRevision": 8, "savedRevision": 3}}, "content revision"),
+            ({**authority, "binding": {"contentRevision": 7, "savedRevision": 4}}, "saved revision"),
+        )
+        for actual, message in invalid:
+            with self.subTest(message=message), self.assertRaisesRegex(RuntimeError, message):
+                driver.assert_persisted_prerequisite_authority(
+                    actual,
+                    digest,
+                    authority["bindingDigests"],
+                    7,
+                    3,
+                )
+
     def test_priority_provisioning_declares_every_explicit_production_selection(self) -> None:
         self.assertEqual(
             ("dialog-field-newcharacterbuildmethod", "Priority"),
@@ -736,6 +772,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "state.Authority.RawProfileInputsDigest",
             "state.Authority.RawPrioritiesXmlDigest",
             "state.PendingDraft is { } pending",
+            '"creation-prerequisite-pending-draft-digest"',
             '"creation-prerequisite-raw-character-xml-digest"',
             '"creation-prerequisite-auxiliary-state-digest"',
             '"creation-prerequisite-authority-digest"',
@@ -802,6 +839,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "receipt.DraftDigest",
             '"creation-prerequisite-receipt-draft-digest"',
             '"creation-prerequisite-receipt-auxiliary-state-digest"',
+            '"creation-prerequisite-receipt-content-revision"',
+            '"creation-prerequisite-receipt-saved-revision"',
             "receipt.CharacterDocumentChanged",
             "refreshed.RequiresMetatypeAttributeAdjustment",
         ):
@@ -914,6 +953,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('"previewDigest": preview_digest', source)
         self.assertIn('"previewBindingDigests": preview_binding_digests', source)
         self.assertIn('"confirmedBindingDigests": confirmed_binding_digests', source)
+        self.assertIn('"sameSessionPersistedAuthority": resumed_authority', source)
+        self.assertIn('"restartedPersistedAuthority": restarted_authority', source)
+        self.assertIn("read_persisted_prerequisite_authority(device)", source)
         self.assertIn('"characterDocumentChangedFalse": "pass"', source)
         self.assertIn('"buildGhostCurrentAndNonMutating": "pass"', source)
         self.assertIn('"advancedEditorNeverExposedWhileCreatedFalse": "pass"', source)

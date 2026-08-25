@@ -73,6 +73,13 @@ def canonical_digest(device: shared.Device, selector: str, *, scroll: bool = Fal
     return value
 
 
+def nonnegative_integer(device: shared.Device, selector: str, *, scroll: bool = False) -> int:
+    value = node_text(device, selector, scroll=scroll).strip()
+    if re.fullmatch(r"[0-9]+", value) is None:
+        raise RuntimeError(f"{selector} did not expose one nonnegative integer: {value!r}")
+    return int(value)
+
+
 def require_priority_created_workspace_authority(
     fresh: shared.WorkspaceAuthority,
     prepared: shared.WorkspaceAuthority,
@@ -259,6 +266,56 @@ def require_prerequisite_binding(value: str) -> dict[str, object]:
         "snapshotDigestPrefix": match.group("snapshot"),
         "authorityDigestPrefix": match.group("authority"),
     }
+
+
+def read_persisted_prerequisite_authority(device: shared.Device) -> dict[str, object]:
+    return {
+        "binding": require_prerequisite_binding(
+            node_text(device, "creation-prerequisite-binding", scroll=True)
+        ),
+        "bindingDigests": {
+            "rawCharacterXml": canonical_digest(
+                device,
+                "creation-prerequisite-raw-character-xml-digest",
+                scroll=True,
+            ),
+            "auxiliaryState": canonical_digest(
+                device,
+                "creation-prerequisite-auxiliary-state-digest",
+                scroll=True,
+            ),
+            "authority": canonical_digest(
+                device,
+                "creation-prerequisite-authority-digest",
+                scroll=True,
+            ),
+        },
+        "draftDigest": canonical_digest(
+            device,
+            "creation-prerequisite-pending-draft-digest",
+            scroll=True,
+        ),
+    }
+
+
+def assert_persisted_prerequisite_authority(
+    actual: dict[str, object],
+    expected_draft_digest: str,
+    expected_binding_digests: dict[str, str],
+    expected_content_revision: int,
+    expected_saved_revision: int,
+) -> None:
+    if actual.get("draftDigest") != expected_draft_digest:
+        raise RuntimeError("Persisted prerequisite DraftDigest changed across re-entry")
+    if actual.get("bindingDigests") != expected_binding_digests:
+        raise RuntimeError("Persisted prerequisite binding digests changed across re-entry")
+    binding = actual.get("binding")
+    if not isinstance(binding, dict):
+        raise RuntimeError("Persisted prerequisite binding receipt is absent")
+    if binding.get("contentRevision") != expected_content_revision:
+        raise RuntimeError("Persisted prerequisite content revision changed across re-entry")
+    if binding.get("savedRevision") != expected_saved_revision:
+        raise RuntimeError("Persisted prerequisite saved revision changed across re-entry")
 
 
 def read_source_authority_digests(device: shared.Device) -> list[str]:
@@ -735,6 +792,25 @@ def main() -> int:
             scroll=True,
         ),
     }
+    confirmed_revisions = {
+        "contentRevision": nonnegative_integer(
+            device,
+            "creation-prerequisite-receipt-content-revision",
+            scroll=True,
+        ),
+        "savedRevision": nonnegative_integer(
+            device,
+            "creation-prerequisite-receipt-saved-revision",
+            scroll=True,
+        ),
+        "draftRevision": nonnegative_integer(
+            device,
+            "creation-prerequisite-receipt-draft-revision",
+            scroll=True,
+        ),
+    }
+    if confirmed_revisions["contentRevision"] <= 0 or confirmed_revisions["draftRevision"] <= 0:
+        raise RuntimeError(f"Prerequisite receipt revisions are invalid: {confirmed_revisions!r}")
     if confirmed_binding_digests["rawCharacterXml"] != preview_binding_digests["rawCharacterXml"]:
         raise RuntimeError("Auxiliary draft confirmation changed raw character XML authority")
     if confirmed_binding_digests["authority"] != preview_binding_digests["authority"]:
@@ -756,6 +832,14 @@ def main() -> int:
     # Same-process reload and a real process restart must both restore Core's persisted draft.
     open_prerequisite(device)
     device.wait("creation-prerequisite-pending-draft", timeout=60, scroll=True, max_scrolls=22)
+    resumed_authority = read_persisted_prerequisite_authority(device)
+    assert_persisted_prerequisite_authority(
+        resumed_authority,
+        confirmed_draft_digest,
+        confirmed_binding_digests,
+        confirmed_revisions["contentRevision"],
+        confirmed_revisions["savedRevision"],
+    )
     resumed_attributes = node_text(
         device,
         "creation-prerequisite-category-attributes",
@@ -777,6 +861,14 @@ def main() -> int:
     foundation.assert_creation_editor_gated(device)
     open_prerequisite(device)
     device.wait("creation-prerequisite-pending-draft", timeout=60, scroll=True, max_scrolls=22)
+    restarted_authority = read_persisted_prerequisite_authority(device)
+    assert_persisted_prerequisite_authority(
+        restarted_authority,
+        confirmed_draft_digest,
+        confirmed_binding_digests,
+        confirmed_revisions["contentRevision"],
+        confirmed_revisions["savedRevision"],
+    )
     for category in ("heritage", "talent"):
         require_exact_restored_authority_option(
             device,
@@ -819,6 +911,9 @@ def main() -> int:
             "previewDigest": preview_digest,
             "previewBindingDigests": preview_binding_digests,
             "confirmedBindingDigests": confirmed_binding_digests,
+            "confirmedRevisions": confirmed_revisions,
+            "sameSessionPersistedAuthority": resumed_authority,
+            "restartedPersistedAuthority": restarted_authority,
             "backRestoresDraftSelection": "pass",
             "heritageAndTalentSelectionsProjectedByCore": "pass",
             "previewDigestBeforeExplicitConfirmation": "pass",

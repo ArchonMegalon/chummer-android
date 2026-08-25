@@ -320,12 +320,24 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
         card.Add(NativeTheme.Metric(
             "Content revision",
             receipt.ContentRevision.ToString(CultureInfo.InvariantCulture)));
+        AddReceiptValue(
+            card,
+            "creation-prerequisite-receipt-content-revision",
+            receipt.ContentRevision.ToString(CultureInfo.InvariantCulture));
         card.Add(NativeTheme.Metric(
             "Saved revision",
             receipt.SavedRevision.ToString(CultureInfo.InvariantCulture)));
+        AddReceiptValue(
+            card,
+            "creation-prerequisite-receipt-saved-revision",
+            receipt.SavedRevision.ToString(CultureInfo.InvariantCulture));
         card.Add(NativeTheme.Metric(
             "Draft revision",
             receipt.DraftRevision.ToString(CultureInfo.InvariantCulture)));
+        AddReceiptValue(
+            card,
+            "creation-prerequisite-receipt-draft-revision",
+            receipt.DraftRevision.ToString(CultureInfo.InvariantCulture));
         card.Add(NativeTheme.Metric("Draft digest", receipt.DraftDigest));
         card.Add(NativeTheme.Metric(
             "Creation Karma remaining",
@@ -403,6 +415,16 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
         string digest)
     {
         Label label = NativeTheme.Body(digest, NativeTheme.Muted);
+        label.AutomationId = automationId;
+        card.Add(label);
+    }
+
+    private static void AddReceiptValue(
+        VerticalStackLayout card,
+        string automationId,
+        string value)
+    {
+        Label label = NativeTheme.Body(value, NativeTheme.Muted);
         label.AutomationId = automationId;
         card.Add(label);
     }
