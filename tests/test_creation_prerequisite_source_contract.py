@@ -290,6 +290,61 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         class FakeDevice:
             viewport_reset = False
+            selected_phone_destination = "Runner"
+
+            @staticmethod
+            def _phone_destination_node(
+                label: str,
+                bounds: str,
+                *,
+                selected: bool,
+            ):
+                return driver.shared.UiNode(
+                    {
+                        "resource-id": "",
+                        "class": "android.widget.FrameLayout",
+                        "package": driver.shared.PACKAGE,
+                        "content-desc": label,
+                        "enabled": "true",
+                        "focusable": "true",
+                        "selected": str(selected).lower(),
+                        "clickable": str(not selected).lower(),
+                        "bounds": bounds,
+                    }
+                )
+
+            def hierarchy(self):
+                calls.append(("hierarchy", (), {}))
+                return [
+                    self._phone_destination_node(
+                        "Runners",
+                        "[0,2190][360,2337]",
+                        selected=self.selected_phone_destination == "Runners",
+                    ),
+                    self._phone_destination_node(
+                        "Runner",
+                        "[360,2190][720,2337]",
+                        selected=self.selected_phone_destination == "Runner",
+                    ),
+                    self._phone_destination_node(
+                        "More",
+                        "[720,2190][1080,2337]",
+                        selected=self.selected_phone_destination == "More",
+                    ),
+                ]
+
+            def display_size(self):
+                calls.append(("display_size", (), {}))
+                return 1080, 2400
+
+            def dismiss_system_ui_anr(self) -> bool:
+                calls.append(("dismiss_system_ui_anr", (), {}))
+                return False
+
+            def shell(self, *args) -> None:
+                calls.append(("shell", args, {}))
+                if args == ("input", "tap", "180", "2263"):
+                    self.selected_phone_destination = "Runners"
 
             def tap_until_visible(self, *args, **kwargs) -> None:
                 calls.append(("tap_until_visible", args, kwargs))
@@ -422,17 +477,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 },
             )
         )
-        runners_index = calls.index(
-            (
-                "tap_single_exact_resource_id",
-                ("phone-destination-runners",),
-                {
-                    "timeout": 45,
-                    "evidence_prefix": "phone-destination-runners-tap",
-                    "surface_name": "Phone shell destination",
-                },
-            )
-        )
+        runners_index = calls.index(("shell", ("input", "tap", "180", "2263"), {}))
         authority_surface_index = calls.index(("wait", ("home-open-file",), {"timeout": 90}))
         self.assertLess(transition_index, route_index)
         self.assertLess(route_index, capture_index)
@@ -441,6 +486,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertLess(saved_index, runners_index)
         self.assertLess(runners_index, authority_surface_index)
         self.assertNotIn(("wait", ("Continue building",), {"timeout": 120}), calls)
+
+    def test_build_toolbar_exposes_the_exact_durable_save_notice_in_view(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+
+        refresh = source[source.index("protected override void Refresh()") :]
+        self.assertIn("_save.Text = Coordinator.State.Error is null", refresh)
+        self.assertIn(
+            'string.Equals(Coordinator.Notice, "Saved.", StringComparison.Ordinal)',
+            refresh,
+        )
+        self.assertIn('? "Saved."', refresh)
+        self.assertLess(refresh.index("_save.Text ="), refresh.index("_save.IsEnabled ="))
 
     def test_new_character_dialog_transition_requires_exact_route_or_product_error(self) -> None:
         route = driver.shared.UiNode({"content-desc": "build-save-runner"})

@@ -31,6 +31,10 @@ public sealed class BuildPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        _save.Text = Coordinator.State.Error is null
+            && string.Equals(Coordinator.Notice, "Saved.", StringComparison.Ordinal)
+                ? "Saved."
+                : "Save";
         _save.IsEnabled = Coordinator.State.Profile is not null;
         if (Coordinator.State.Profile is null)
         {
