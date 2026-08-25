@@ -79,7 +79,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "35177466c41571018a28bf51e6cfce8f0ce88a54e369289f0d9879c0737d3c3a"
+        "sha256": "76f9e35fab73057732828487bd02a9ffb49324ba188c34856a6a30d2eb878932"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -1034,7 +1034,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "a4de88d7b83d9ae06589d34c7cf71c7c8a00d9e91404953105b2cf8ea2427946"
+        "sha256": "11a1aa3bcf2a99129c8be2752e2b5d6abd40171518a627eb9fbd60d9d7821aba"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
@@ -2089,7 +2089,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "754bc553662f6ce093cf8a5f1dbf45d894c7fce0710c086a25d702a366a0b372"
+        "sha256": "d43d0b6e247bbf88ca36653f7ca471ce859cc09315372cc2e8350fe80781b675"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -2319,7 +2319,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "672f000233d6b907766ede4a0e1b42cb7096147de3047b3a4461eff4827d717a"
+        "sha256": "195d5ee2e59347bd6d60b2e1a81cf9186afabd361b23ae95b42d38d0c7ab6953"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2374,7 +2374,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "9cd7cc122cab022991334c71e6768ef5364ee12ead79e04bcd3888e77cb08344"
+        "sha256": "9c3814e2c7fb2f93c60d193158984424fcefb3d9485e5a1efc0ecbb6b27a4806"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
