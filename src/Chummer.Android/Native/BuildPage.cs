@@ -147,6 +147,18 @@ public static class BuildPageUiProjection
 
     public static string SaveToolbarText(bool hasDurableSaveNotice)
         => hasDurableSaveNotice ? "Saved." : "Save";
+
+    /// <summary>
+    /// Consumes a terminal outcome that can no longer be applied to the page's
+    /// current binding.  Returning true tells the UI boundary to refresh so it
+    /// can cancel the stale projection and request authority for the current
+    /// workspace revision.  Without that refresh, a completed stale outcome
+    /// can leave the page displaying its fail-closed loading state forever.
+    /// </summary>
+    public static bool ConsumeRejectedCreationPhaseForRefresh<TResult>(
+        LatestBackgroundProjectionQueue<CreationDashboardProjectionBinding, TResult> queue,
+        BackgroundProjectionRequest<CreationDashboardProjectionBinding> request)
+        => queue.TryAccept(request);
 }
 
 public sealed class BuildPage : NativePageBase
@@ -466,8 +478,14 @@ public sealed class BuildPage : NativePageBase
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            if (!CanAcceptCreationPhase(request)
-                || !queue.TryTake(request, out TResult completed, out Exception? error))
+            if (!CanAcceptCreationPhase(request))
+            {
+                if (BuildPageUiProjection.ConsumeRejectedCreationPhaseForRefresh(queue, request))
+                    Refresh();
+                return;
+            }
+
+            if (!queue.TryTake(request, out TResult completed, out Exception? error))
             {
                 return;
             }

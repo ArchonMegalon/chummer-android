@@ -28,6 +28,7 @@ internal static class Program
             (nameof(PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync), PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync),
             (nameof(CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync), CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync),
             (nameof(CompletedCreationProjectionSurvivesADeferredUiConsumerAsync), CompletedCreationProjectionSurvivesADeferredUiConsumerAsync),
+            (nameof(RejectedCreationProjectionForcesCurrentBindingRefreshAsync), RejectedCreationProjectionForcesCurrentBindingRefreshAsync),
             (nameof(LateCreationDashboardProjectionCannotOverwriteNewerBindingAsync), LateCreationDashboardProjectionCannotOverwriteNewerBindingAsync),
             (nameof(CancelledOrFaultedCreationDashboardProjectionIsObservedAsync), CancelledOrFaultedCreationDashboardProjectionIsObservedAsync),
             (nameof(AttributesPreviewAdoptionRequiresCanonicalSuccessAsync), AttributesPreviewAdoptionRequiresCanonicalSuccessAsync),
@@ -258,6 +259,38 @@ internal static class Program
         Require(
             !queue.TryTake(request, out _, out _),
             "A terminal projection was admitted more than once.");
+    }
+
+    private static async Task RejectedCreationProjectionForcesCurrentBindingRefreshAsync()
+    {
+        using var queue = new LatestBackgroundProjectionQueue<CreationDashboardProjectionBinding, string>();
+        var notification = new TaskCompletionSource<
+            BackgroundProjectionCompletion<CreationDashboardProjectionBinding, string>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        queue.Completed += value => notification.TrySetResult(value);
+        var binding = new CreationDashboardProjectionBinding(
+            "workspace-1",
+            ContentRevision: 1,
+            SavedRevision: 0,
+            ContentDigest: "content-a",
+            SourceDigest: "source-a",
+            RuntimeFingerprint: "runtime-a",
+            BuildMethod: CharacterCreationBuildMethods.Priority,
+            SnapshotDigest: "snapshot-a");
+        queue.TryRequest(binding, (_, _) => "stale-authority", out _);
+
+        BackgroundProjectionCompletion<CreationDashboardProjectionBinding, string> completed =
+            await notification.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        bool refreshCurrentBinding = BuildPageUiProjection.ConsumeRejectedCreationPhaseForRefresh(
+            queue,
+            completed.Request);
+
+        Require(
+            refreshCurrentBinding,
+            "A terminal projection rejected by a changed page binding did not request a current-binding refresh.");
+        Require(
+            !queue.TryAccept(completed.Request),
+            "The rejected terminal projection remained current and could strand the fail-closed loading UI.");
     }
 
     private static async Task LateCreationDashboardProjectionCannotOverwriteNewerBindingAsync()
