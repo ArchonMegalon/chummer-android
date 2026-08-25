@@ -1,4 +1,12 @@
 using Chummer.Android.Native;
+using Chummer.Application.Characters;
+using Chummer.Contracts.Characters;
+using Chummer.Contracts.Rulesets;
+using Chummer.Contracts.Workspaces;
+using Chummer.Infrastructure.Files;
+using Chummer.Infrastructure.Workspaces;
+using Chummer.Infrastructure.Xml;
+using Chummer.Presentation.Overview;
 
 internal static class Program
 {
@@ -11,7 +19,8 @@ internal static class Program
             (nameof(ReadOnlyTransitionFailsClosedAsync), ReadOnlyTransitionFailsClosedAsync),
             (nameof(DoubleTapExecutesExactlyOnceAsync), DoubleTapExecutesExactlyOnceAsync),
             (nameof(CloseWaitsForClaimedActionAsync), CloseWaitsForClaimedActionAsync),
-            (nameof(FailureRerendersBeforeQueueAdvancesAsync), FailureRerendersBeforeQueueAdvancesAsync)
+            (nameof(FailureRerendersBeforeQueueAdvancesAsync), FailureRerendersBeforeQueueAdvancesAsync),
+            (nameof(CanonicalPriorityAuthorityIsPhoneReadyAsync), CanonicalPriorityAuthorityIsPhoneReadyAsync)
         ];
 
         foreach ((string name, Func<Task> run) in tests)
@@ -21,6 +30,151 @@ internal static class Program
         }
 
         Console.WriteLine($"Native dialog interaction tests passed: {tests.Length}");
+    }
+
+    private static Task CanonicalPriorityAuthorityIsPhoneReadyAsync()
+    {
+        const string settingsId = "223a11ff-80e0-428b-89a9-6ef1c243b8b6";
+        string chummer5Root = Environment.GetEnvironmentVariable("CHUMMER5A_ROOT")
+                              ?? "/docker/chummer5a";
+        string workspaceRoot = Path.Combine(
+            Path.GetTempPath(),
+            $"chummer-android-prerequisite-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(workspaceRoot);
+        try
+        {
+            var overlays = new FileSystemContentOverlayCatalogService(
+                chummer5Root,
+                chummer5Root,
+                null);
+            var resolver = new FileSystemCharacterSourceDataResolver(overlays);
+            var store = new FileWorkspaceStore(workspaceRoot);
+            var workspaceId = new CharacterWorkspaceId("phone-canonical-priority");
+            string characterXml = $"""
+                                  <character>
+                                    <name>Canonical Priority Runner</name>
+                                    <alias>Authority Probe</alias>
+                                    <metatype>Human</metatype>
+                                    <buildmethod>Priority</buildmethod>
+                                    <createdversion>5.225.0</createdversion>
+                                    <appversion>5.225.0</appversion>
+                                    <karma>25</karma>
+                                    <nuyen>0</nuyen>
+                                    <created>false</created>
+                                    <settings>{settingsId}</settings>
+                                  </character>
+                                  """;
+            Require(
+                store.CreateWorkspaceDocument(
+                    workspaceId,
+                    new WorkspaceDocument(characterXml, RulesetDefaults.Sr5)).Success,
+                "The canonical Priority probe workspace must be created.");
+            var service = new CharacterCreationPrerequisiteService(
+                store,
+                new XmlCharacterFileQueries(new CharacterFileService()),
+                resolver);
+            CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> loaded =
+                service.Load(new CharacterCreationPrerequisiteLoadRequest(workspaceId));
+            Require(
+                loaded.Outcome == CharacterCreationFoundationOutcomes.Success
+                && loaded.Value is not null,
+                $"Core must publish a Priority prerequisite state: {loaded.Outcome} · "
+                + string.Join(",", loaded.Blockers));
+            CharacterCreationPrerequisiteState state = loaded.Value;
+            Require(
+                state.Blockers.Count == 0,
+                "The canonical Priority prerequisite state must be blocker-free: "
+                + string.Join(",", state.Blockers));
+            string auxiliaryStateDigest = state.Binding.AuxiliaryStateDigest;
+            Require(
+                CreationPrerequisitePhoneAuthority.IsCanonicalAuxiliaryStateDigest(
+                    auxiliaryStateDigest),
+                "The phone gate must accept Core's exact bare lower-hex auxiliary digest.");
+            foreach (string invalid in new[]
+                     {
+                         $"sha256:{auxiliaryStateDigest}",
+                         auxiliaryStateDigest.ToUpperInvariant(),
+                         auxiliaryStateDigest[..^1],
+                         new string('g', 64)
+                     })
+            {
+                Require(
+                    !CreationPrerequisitePhoneAuthority.IsCanonicalAuxiliaryStateDigest(invalid),
+                    $"The phone gate must reject a non-canonical auxiliary digest: {invalid}");
+            }
+
+            OpenWorkspaceState openWorkspace = new(
+                workspaceId,
+                "Canonical Priority Runner",
+                "Authority Probe",
+                DateTimeOffset.UtcNow,
+                RulesetDefaults.Sr5,
+                state.Binding.ContentRevision,
+                state.Binding.SavedRevision);
+            CharacterOverviewState overview = CharacterOverviewState.Empty with
+            {
+                WorkspaceId = workspaceId,
+                OpenWorkspaces = [openWorkspace],
+                Session = new WorkspaceSessionState(
+                    workspaceId,
+                    [openWorkspace],
+                    [workspaceId]),
+                Profile = new CharacterProfileSection(
+                    "Canonical Priority Runner",
+                    "Authority Probe",
+                    string.Empty,
+                    "Human",
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    "5.225.0",
+                    "5.225.0",
+                    CharacterCreationBuildMethods.Priority,
+                    string.Empty,
+                    Created: false,
+                    Adept: false,
+                    Magician: false,
+                    Technomancer: false,
+                    AI: false,
+                    MainMugshotIndex: 0,
+                    MugshotCount: 0),
+                CreationWizard = new CharacterCreationWizardSnapshot(
+                    CharacterCreationWizardSchemas.SnapshotV1,
+                    workspaceId.Value,
+                    state.Binding.ContentRevision,
+                    state.Binding.RawCharacterXmlDigest,
+                    state.Binding.AuthorityDigest,
+                    RulesetDefaults.Sr5,
+                    "test-runtime",
+                    CharacterCreationBuildMethods.Priority,
+                    CharacterCreated: false,
+                    CharacterCreationWizardStepIds.Foundation,
+                    [],
+                    [],
+                    new Dictionary<string, IReadOnlyList<CharacterCreationLegalOption>>(),
+                    [],
+                    [],
+                    CanFinalize: false,
+                    state.SnapshotDigest)
+            };
+
+            Require(
+                CreationPrerequisitePhoneAuthority.IsReady(state, overview),
+                "A canonical blocker-free Core Priority authority must be accepted by the phone gate.");
+            return Task.CompletedTask;
+        }
+        finally
+        {
+            Directory.Delete(workspaceRoot, recursive: true);
+        }
     }
 
     private static async Task QueuedOlderUnfocusedCannotOverwriteActionInputAsync()

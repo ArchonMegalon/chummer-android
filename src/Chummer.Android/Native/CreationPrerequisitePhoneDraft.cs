@@ -557,8 +557,7 @@ internal static class CreationPrerequisitePhoneAuthority
            && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(state.SnapshotDigest)
            && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(
                state.Binding.RawCharacterXmlDigest)
-           && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(
-               state.Binding.AuxiliaryStateDigest)
+           && IsCanonicalAuxiliaryStateDigest(state.Binding.AuxiliaryStateDigest)
            && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(
                state.Binding.AuthorityDigest)
            && string.Equals(
@@ -835,6 +834,20 @@ internal static class CreationPrerequisitePhoneAuthority
                StringComparison.Ordinal)
            && string.Equals(left.AuthorityDigest, right.AuthorityDigest, StringComparison.Ordinal);
 
+    public static bool IsCanonicalAuxiliaryStateDigest(string? digest)
+    {
+        if (digest is not { Length: 64 })
+            return false;
+
+        foreach (char character in digest)
+        {
+            if (character is not (>= '0' and <= '9' or >= 'a' and <= 'f'))
+                return false;
+        }
+
+        return true;
+    }
+
     public static bool ReceiptMatches(
         CharacterCreationPrerequisiteReceipt receipt,
         CharacterCreationPrerequisiteState refreshed,
@@ -855,6 +868,7 @@ internal static class CreationPrerequisitePhoneAuthority
                refreshed.Binding.AuthorityDigest,
                StringComparison.Ordinal)
            && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(receipt.RawCharacterXmlDigest)
+           && IsCanonicalAuxiliaryStateDigest(refreshed.Binding.AuxiliaryStateDigest)
            && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(receipt.AuthorityDigest)
            && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(receipt.DraftDigest)
            && receipt.CreationKarmaRemaining == refreshed.CreationKarmaBudget.Remaining

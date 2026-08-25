@@ -55,6 +55,7 @@ SHORT_AUTHORITY_BINDING = re.compile(
     r"snapshot (?P<snapshot>[0-9a-f]{12}) · authority (?P<authority>[0-9a-f]{12})$"
 )
 CANONICAL_AUTHORITY_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+CANONICAL_AUXILIARY_STATE_DIGEST = re.compile(r"^[0-9a-f]{64}$")
 
 
 def sha256(path: Path) -> str:
@@ -70,6 +71,20 @@ def canonical_digest(device: shared.Device, selector: str, *, scroll: bool = Fal
     value = node_text(device, selector, scroll=scroll).strip()
     if CANONICAL_AUTHORITY_DIGEST.fullmatch(value) is None:
         raise RuntimeError(f"{selector} did not expose one canonical digest: {value!r}")
+    return value
+
+
+def canonical_auxiliary_state_digest(
+    device: shared.Device,
+    selector: str,
+    *,
+    scroll: bool = False,
+) -> str:
+    value = node_text(device, selector, scroll=scroll).strip()
+    if CANONICAL_AUXILIARY_STATE_DIGEST.fullmatch(value) is None:
+        raise RuntimeError(
+            f"{selector} did not expose one canonical auxiliary-state digest: {value!r}"
+        )
     return value
 
 
@@ -341,7 +356,7 @@ def read_persisted_prerequisite_authority(device: shared.Device) -> dict[str, ob
                 "creation-prerequisite-raw-character-xml-digest",
                 scroll=True,
             ),
-            "auxiliaryState": canonical_digest(
+            "auxiliaryState": canonical_auxiliary_state_digest(
                 device,
                 "creation-prerequisite-auxiliary-state-digest",
                 scroll=True,
@@ -670,7 +685,7 @@ def main() -> int:
             "creation-prerequisite-raw-character-xml-digest",
             scroll=True,
         ),
-        "auxiliaryState": canonical_digest(
+        "auxiliaryState": canonical_auxiliary_state_digest(
             device,
             "creation-prerequisite-auxiliary-state-digest",
             scroll=True,
@@ -786,7 +801,7 @@ def main() -> int:
             "creation-prerequisite-preview-raw-character-xml-digest",
             scroll=True,
         ),
-        "auxiliaryState": canonical_digest(
+        "auxiliaryState": canonical_auxiliary_state_digest(
             device,
             "creation-prerequisite-preview-auxiliary-state-digest",
             scroll=True,
@@ -843,7 +858,7 @@ def main() -> int:
             "creation-prerequisite-receipt-raw-character-xml-digest",
             scroll=True,
         ),
-        "auxiliaryState": canonical_digest(
+        "auxiliaryState": canonical_auxiliary_state_digest(
             device,
             "creation-prerequisite-receipt-auxiliary-state-digest",
             scroll=True,

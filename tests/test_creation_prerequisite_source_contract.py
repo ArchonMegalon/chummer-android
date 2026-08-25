@@ -101,11 +101,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
     def test_persisted_authority_rejects_digest_and_revision_drift(self) -> None:
         digest = "sha256:" + "a" * 64
+        auxiliary_digest = "a" * 64
         authority = {
             "binding": {"contentRevision": 7, "savedRevision": 3},
             "bindingDigests": {
                 "rawCharacterXml": digest,
-                "auxiliaryState": digest,
+                "auxiliaryState": auxiliary_digest,
                 "authority": digest,
             },
             "draftDigest": digest,
@@ -117,7 +118,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     **authority,
                     "bindingDigests": {
                         **authority["bindingDigests"],
-                        "auxiliaryState": "sha256:" + "b" * 64,
+                        "auxiliaryState": "b" * 64,
                     },
                 },
                 "binding digests",
@@ -134,6 +135,28 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     7,
                     3,
                 )
+
+    def test_auxiliary_state_digest_uses_its_exact_core_wire_grammar(self) -> None:
+        device = mock.Mock()
+        node = mock.Mock()
+        device.wait.return_value = node
+        canonical = "a" * 64
+        node.attributes = {"text": canonical, "content-desc": ""}
+        self.assertEqual(
+            canonical,
+            driver.canonical_auxiliary_state_digest(device, "auxiliary-digest"),
+        )
+
+        for invalid in (
+            "sha256:" + canonical,
+            "A" * 64,
+            "a" * 63,
+            "g" * 64,
+        ):
+            with self.subTest(invalid=invalid):
+                node.attributes = {"text": invalid, "content-desc": ""}
+                with self.assertRaisesRegex(RuntimeError, "canonical auxiliary-state digest"):
+                    driver.canonical_auxiliary_state_digest(device, "auxiliary-digest")
 
     def test_priority_provisioning_declares_every_explicit_production_selection(self) -> None:
         self.assertEqual(

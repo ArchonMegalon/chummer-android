@@ -594,7 +594,7 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
         "exists": true,
-        "sha256": "c6895f1582842573860b1ec9d3176a64e5b847d9468ff368edc2567be7ad3185"
+        "sha256": "ea3ab02a526ad3962019898999bd824f82a13444476c75fc391dc03cd865f42c"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
@@ -1034,7 +1034,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "604b833319b99b56d90694345523847708fa6631181dd338ff6df75aa03ed0e6"
+        "sha256": "c7d910e90c7d578654b3e3de35f487962408b5ecdc752f44c95794538986f6e1"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
