@@ -614,7 +614,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "052767cef5ca38560ebf7e55c616a48f44eaad3e0f4a8b0486de1e7a7b07c57f"
+        "sha256": "a90ffbf890a935e5cfc66cae93f9b1fa2b1573694c98ecab7e0529ba014f234d"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
@@ -1034,7 +1034,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "2ccfbeaafd4263e46857f9219c1450431aedc984a6d7230f5f8e24129d8594c7"
+        "sha256": "b180fdbcb77457df71c8f52828bcc65f95aa254d3474a0ead0def1f73bd4b057"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
@@ -2069,7 +2069,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "a77c97558f6e9314827da2450d0738859fc819ba57b6a86e54d68c8158df0d13"
+        "sha256": "e94989c6a676dcea3ca034d6ed5a45edf3a063e86098e804ad5c937b79e0f871"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
