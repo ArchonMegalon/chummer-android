@@ -40,6 +40,19 @@ public sealed record NativeWorkspaceAuthoritySnapshot(
            && SavedRevision == state.SavedRevision;
 }
 
+public sealed record NativeDurableSaveNotice(
+    CharacterWorkspaceId WorkspaceId,
+    long SavedRevision)
+{
+    public bool Matches(CharacterOverviewState state)
+        => state.Error is null
+           && state.WorkspaceId is { } activeWorkspaceId
+           && string.Equals(WorkspaceId.Value, activeWorkspaceId.Value, StringComparison.Ordinal)
+           && SavedRevision > 0
+           && state.ContentRevision == SavedRevision
+           && state.SavedRevision == SavedRevision;
+}
+
 public static class AndroidE2EAuthority
 {
     private static int _enabled;
@@ -146,6 +159,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private long _handledExportVersion;
     private long _handledPrintVersion;
     private string? _notice;
+    private NativeDurableSaveNotice? _durableSaveNotice;
     private string _persistedCharacterSettingsCatalogJson = string.Empty;
     private IReadOnlyList<AndroidOnlineCharacter> _onlineCharacters = [];
     private IReadOnlyList<AndroidLinkedGroup> _groups = [];
@@ -276,6 +290,10 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 : State.Profile?.GroupNotes ?? string.Empty;
 
     public string? Notice => _notice ?? State.Notice ?? Surface.Notice;
+
+    public bool HasDurableSaveNotice
+        => string.Equals(_notice, "Saved.", StringComparison.Ordinal)
+           && _durableSaveNotice?.Matches(State) == true;
 
     public bool IsBusy => State.IsBusy || Surface.IsBusy;
 
@@ -3425,6 +3443,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
+        _notice = null;
+        _durableSaveNotice = null;
         await _presenter.SaveAsync(cancellationToken);
         if (State.Error is null)
         {
@@ -3433,7 +3453,16 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 expectedPayloadSha256: null,
                 cancellationToken);
         }
-        _notice = State.Error is null ? "Saved." : null;
+        bool durableSaveVerified = State.Error is null
+                                   && State.ContentRevision > 0
+                                   && State.ContentRevision == State.SavedRevision;
+        if (durableSaveVerified && State.WorkspaceId is { } verifiedWorkspaceId)
+        {
+            _durableSaveNotice = new NativeDurableSaveNotice(
+                verifiedWorkspaceId,
+                State.SavedRevision);
+            _notice = "Saved.";
+        }
         NotifyChanged();
     }
 

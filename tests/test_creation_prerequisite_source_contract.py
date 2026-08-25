@@ -287,6 +287,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
     def test_priority_provisioning_follows_build_route_and_public_save_before_home(self) -> None:
         calls: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
+        structural_snapshots: list[list[driver.shared.UiNode]] = []
 
         class FakeDevice:
             viewport_reset = False
@@ -315,7 +316,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             def hierarchy(self):
                 calls.append(("hierarchy", (), {}))
-                return [
+                nodes = [
                     self._phone_destination_node(
                         "Runners",
                         "[0,2190][360,2337]",
@@ -332,6 +333,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                         selected=self.selected_phone_destination == "More",
                     ),
                 ]
+                structural_snapshots.append(nodes)
+                return nodes
 
             def display_size(self):
                 calls.append(("display_size", (), {}))
@@ -478,25 +481,86 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
         )
         runners_index = calls.index(("shell", ("input", "tap", "180", "2263"), {}))
+        hierarchy_indexes = [
+            index for index, observed in enumerate(calls) if observed == ("hierarchy", (), {})
+        ]
+        display_indexes = [
+            index for index, observed in enumerate(calls) if observed == ("display_size", (), {})
+        ]
         authority_surface_index = calls.index(("wait", ("home-open-file",), {"timeout": 90}))
         self.assertLess(transition_index, route_index)
         self.assertLess(route_index, capture_index)
         self.assertLess(capture_index, save_index)
         self.assertLess(save_index, saved_index)
+        self.assertGreaterEqual(len(hierarchy_indexes), 4)
+        self.assertGreaterEqual(len(display_indexes), 4)
+        self.assertTrue(all(index < runners_index for index in hierarchy_indexes[:3]))
+        self.assertTrue(all(index < runners_index for index in display_indexes[:3]))
         self.assertLess(saved_index, runners_index)
         self.assertLess(runners_index, authority_surface_index)
         self.assertNotIn(("wait", ("Continue building",), {"timeout": 120}), calls)
+        self.assertGreaterEqual(len(structural_snapshots), 5)
+        bound_snapshots = [
+            driver.shared.bind_phone_shell_destinations(device, snapshot)
+            for snapshot in structural_snapshots
+        ]
+        for bound in bound_snapshots:
+            self.assertEqual(
+                driver.shared.PHONE_SHELL_DESTINATION_IDS,
+                tuple(resource_id for resource_id, _ in bound),
+            )
+            self.assertEqual(
+                driver.shared.PHONE_SHELL_DESTINATION_LABELS,
+                tuple(node.attributes["content-desc"] for _, node in bound),
+            )
+            self.assertTrue(
+                all(node.attributes["resource-id"] == "" for _, node in bound),
+                "The pinned API-36 MAUI tabs use structural identities, not synthetic Android IDs.",
+            )
+        self.assertEqual(
+            driver.shared._phone_shell_destination_signature(bound_snapshots[0]),
+            driver.shared._phone_shell_destination_signature(bound_snapshots[1]),
+            "The pre-tap structural binding must be stable across consecutive dumps.",
+        )
+        self.assertEqual(
+            ["Runner"],
+            [
+                node.attributes["content-desc"]
+                for _, node in bound_snapshots[2]
+                if node.attributes["selected"] == "true"
+            ],
+        )
+        self.assertEqual(
+            ["Runners"],
+            [
+                node.attributes["content-desc"]
+                for _, node in bound_snapshots[-1]
+                if node.attributes["selected"] == "true"
+            ],
+        )
 
     def test_build_toolbar_exposes_the_exact_durable_save_notice_in_view(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        coordinator = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
+        base = (NATIVE / "NativePageBase.cs").read_text(encoding="utf-8")
 
         refresh = source[source.index("protected override void Refresh()") :]
-        self.assertIn("_save.Text = Coordinator.State.Error is null", refresh)
         self.assertIn(
-            'string.Equals(Coordinator.Notice, "Saved.", StringComparison.Ordinal)',
+            "_save.Text = BuildPageUiProjection.SaveToolbarText(Coordinator.HasDurableSaveNotice)",
             refresh,
         )
-        self.assertIn('? "Saved."', refresh)
+        self.assertIn(
+            'string.Equals(_notice, "Saved.", StringComparison.Ordinal)',
+            coordinator,
+        )
+        self.assertIn("_durableSaveNotice?.Matches(State) == true", coordinator)
+        save = coordinator[coordinator.index("public async Task SaveAsync") :]
+        save = save[: save.index("public async Task ExportAsync")]
+        self.assertLess(save.index("_durableSaveNotice = null"), save.index("await _presenter.SaveAsync"))
+        self.assertIn("State.ContentRevision == State.SavedRevision", save)
+        exception = base[base.index("catch (Exception ex)") :]
+        exception = exception[: exception.index("finally")]
+        self.assertLess(exception.index("Refresh();"), exception.index("DisplayAlertAsync"))
         self.assertLess(refresh.index("_save.Text ="), refresh.index("_save.IsEnabled ="))
 
     def test_new_character_dialog_transition_requires_exact_route_or_product_error(self) -> None:

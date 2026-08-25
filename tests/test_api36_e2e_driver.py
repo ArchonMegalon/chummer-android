@@ -292,6 +292,16 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 ),
             ]
 
+            bound = DRIVER.bind_phone_shell_destinations(device)
+            self.assertEqual(
+                DRIVER.PHONE_SHELL_DESTINATION_IDS,
+                tuple(resource_id for resource_id, _ in bound),
+            )
+            self.assertTrue(
+                all(node.attributes.get("resource-id") == "" for _, node in bound),
+                "Pinned MAUI/API-36 tabs must be mapped from their strict native structure.",
+            )
+
             DRIVER.tap_phone_destination(
                 device,
                 "phone-destination-runner",

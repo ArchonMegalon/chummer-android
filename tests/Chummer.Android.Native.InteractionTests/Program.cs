@@ -22,6 +22,8 @@ internal static class Program
             (nameof(FailureRerendersBeforeQueueAdvancesAsync), FailureRerendersBeforeQueueAdvancesAsync),
             (nameof(CanonicalDigestPrefixIsTwelveLowerHexAsync), CanonicalDigestPrefixIsTwelveLowerHexAsync),
             (nameof(CanonicalPriorityAuthorityIsPhoneReadyAsync), CanonicalPriorityAuthorityIsPhoneReadyAsync),
+            (nameof(BuildPageProjectsExactlyOneLifecycleRouteAsync), BuildPageProjectsExactlyOneLifecycleRouteAsync),
+            (nameof(DurableSaveNoticeFailsClosedAcrossStateChangesAsync), DurableSaveNoticeFailsClosedAcrossStateChangesAsync),
             (nameof(AttributesPreviewAdoptionRequiresCanonicalSuccessAsync), AttributesPreviewAdoptionRequiresCanonicalSuccessAsync),
             (nameof(AttributesBodPreviewCannotConfirmAgiDraftAsync), AttributesBodPreviewCannotConfirmAgiDraftAsync),
             (nameof(AttributesReceiptMustMatchCommittedWorkspaceBeforeActivationAsync), AttributesReceiptMustMatchCommittedWorkspaceBeforeActivationAsync)
@@ -34,6 +36,57 @@ internal static class Program
         }
 
         Console.WriteLine($"Native dialog interaction tests passed: {tests.Length}");
+    }
+
+    private static Task BuildPageProjectsExactlyOneLifecycleRouteAsync()
+    {
+        var workspaceId = new CharacterWorkspaceId("phone-route-projection");
+        CharacterOverviewState creation = NewCreationOverview(workspaceId, 7, 7);
+        CharacterOverviewState career = creation with
+        {
+            Profile = creation.Profile! with { Created = true }
+        };
+
+        BuildPageRouteMarker[] projected =
+        [
+            BuildPageUiProjection.RouteMarker(null),
+            BuildPageUiProjection.RouteMarker(creation.Profile),
+            BuildPageUiProjection.RouteMarker(career.Profile)
+        ];
+        Require(
+            projected.Select(marker => marker.AutomationId).SequenceEqual(
+            ["phone-runner-empty", "phone-runner-create", "phone-runner-sheet"]),
+            "Each lifecycle must project exactly its one route marker.");
+        Require(
+            projected.All(marker => !string.IsNullOrWhiteSpace(marker.Label)),
+            "Every projected route marker must retain an accessible label.");
+        Require(
+            projected.Select(marker => marker.AutomationId).Distinct(StringComparer.Ordinal).Count() == 3,
+            "Empty, creation, and career route identities must remain disjoint.");
+        return Task.CompletedTask;
+    }
+
+    private static Task DurableSaveNoticeFailsClosedAcrossStateChangesAsync()
+    {
+        var workspaceId = new CharacterWorkspaceId("phone-save-proof");
+        NativeDurableSaveNotice notice = new(workspaceId, SavedRevision: 12);
+        CharacterOverviewState saved = NewCreationOverview(workspaceId, 12, 12);
+
+        Require(notice.Matches(saved), "An exact clean saved revision must match its durable notice.");
+        Require(
+            !notice.Matches(saved with { Error = "save failed" }),
+            "A failed rerender must invalidate the prior durable save notice.");
+        Require(
+            !notice.Matches(NewCreationOverview(workspaceId, 13, 12)),
+            "A later dirty revision must invalidate the prior durable save notice.");
+        Require(
+            !notice.Matches(NewCreationOverview(new CharacterWorkspaceId("foreign"), 12, 12)),
+            "A different workspace must not inherit a durable save notice.");
+        Require(
+            BuildPageUiProjection.SaveToolbarText(hasDurableSaveNotice: true) == "Saved."
+            && BuildPageUiProjection.SaveToolbarText(hasDurableSaveNotice: false) == "Save",
+            "The toolbar must expose Saved. only for an exact durable notice match.");
+        return Task.CompletedTask;
     }
 
     private static Task CanonicalDigestPrefixIsTwelveLowerHexAsync()

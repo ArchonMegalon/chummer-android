@@ -33,6 +33,7 @@ public abstract class NativePageBase : ContentPage
         }
         catch (Exception ex)
         {
+            Refresh();
             await DisplayAlertAsync("Chummer", ex.Message, "OK");
         }
     }

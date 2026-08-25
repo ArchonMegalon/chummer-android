@@ -6,6 +6,22 @@ using Microsoft.Maui.Layouts;
 
 namespace Chummer.Android.Native;
 
+public sealed record BuildPageRouteMarker(string AutomationId, string Label);
+
+public static class BuildPageUiProjection
+{
+    public static BuildPageRouteMarker RouteMarker(CharacterProfileSection? profile)
+        => profile switch
+        {
+            null => new("phone-runner-empty", "No runner loaded"),
+            { Created: false } => new("phone-runner-create", "Creation runner"),
+            _ => new("phone-runner-sheet", "Career runner")
+        };
+
+    public static string SaveToolbarText(bool hasDurableSaveNotice)
+        => hasDurableSaveNotice ? "Saved." : "Save";
+}
+
 public sealed class BuildPage : NativePageBase
 {
     private readonly VerticalStackLayout _body = new()
@@ -32,15 +48,13 @@ public sealed class BuildPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _save.Text = Coordinator.State.Error is null
-            && string.Equals(Coordinator.Notice, "Saved.", StringComparison.Ordinal)
-                ? "Saved."
-                : "Save";
+        _save.Text = BuildPageUiProjection.SaveToolbarText(Coordinator.HasDurableSaveNotice);
         _save.IsEnabled = Coordinator.State.Profile is not null;
+        BuildPageRouteMarker routeMarker = BuildPageUiProjection.RouteMarker(Coordinator.State.Profile);
+        AddRouteMarker(routeMarker.AutomationId, routeMarker.Label);
         if (Coordinator.State.Profile is null)
         {
             Title = "Runner";
-            AddRouteMarker("phone-runner-empty", "No runner loaded");
             _body.Add(NativeTheme.Title("Open a runner first"));
             _body.Add(NativeTheme.Body("Your file stays on this device unless you choose to link it.", NativeTheme.Muted));
             Button open = NativeTheme.PrimaryButton("Open file");
@@ -52,7 +66,6 @@ public sealed class BuildPage : NativePageBase
         if (Coordinator.State.Profile.Created == false)
         {
             Title = "Create";
-            AddRouteMarker("phone-runner-create", "Creation runner");
             AddWorkspacePicker();
             AddCreationWizardDashboard();
             AddFeedback();
@@ -60,7 +73,6 @@ public sealed class BuildPage : NativePageBase
         }
 
         Title = "Sheet";
-        AddRouteMarker("phone-runner-sheet", "Career runner");
         AddWorkspacePicker();
         AddSummary();
         AddDossier();

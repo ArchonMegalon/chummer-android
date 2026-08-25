@@ -7323,7 +7323,10 @@ def _known_phone_mapping(
                 coordinator,
                 "public async Task SaveAsync",
                 "_presenter.SaveAsync",
-                '_notice = State.Error is null ? "Saved." : null',
+                "public bool HasDurableSaveNotice",
+                "_durableSaveNotice?.Matches(State) == true",
+                "State.ContentRevision == State.SavedRevision",
+                '_notice = "Saved."',
             )
             and _contains(presenter_interface, "Task SaveAsync(CancellationToken ct)")
             and _contains(
