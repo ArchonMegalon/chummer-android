@@ -95,6 +95,22 @@ public sealed class CreationPrerequisitePage : NativePageBase
             NativeTheme.Muted);
         binding.AutomationId = "creation-prerequisite-binding";
         _body.Add(binding);
+        AddDigestBinding(
+            "creation-prerequisite-raw-character-xml-digest",
+            state.Binding.RawCharacterXmlDigest);
+        AddDigestBinding(
+            "creation-prerequisite-auxiliary-state-digest",
+            state.Binding.AuxiliaryStateDigest);
+        AddDigestBinding(
+            "creation-prerequisite-authority-digest",
+            state.Binding.AuthorityDigest);
+    }
+
+    private void AddDigestBinding(string automationId, string digest)
+    {
+        Label label = NativeTheme.Body(digest, NativeTheme.Muted);
+        label.AutomationId = automationId;
+        _body.Add(label);
     }
 
     private void AddCreationKarma(CharacterCreationBudgetState budget)
@@ -228,6 +244,15 @@ public sealed class CreationPrerequisitePage : NativePageBase
                         category)),
                     enabled: selected is not null,
                     automationId: "creation-prerequisite-heritage-selection"));
+                if (selectedHeritage is not null)
+                {
+                    Label selectionId = NativeTheme.Body(
+                        selectedHeritage.SelectionId,
+                        NativeTheme.Muted);
+                    selectionId.AutomationId =
+                        "creation-prerequisite-heritage-selection-id";
+                    _body.Add(selectionId);
+                }
             }
             else if (string.Equals(
                          category,
@@ -250,6 +275,15 @@ public sealed class CreationPrerequisitePage : NativePageBase
                         category)),
                     enabled: selected is not null,
                     automationId: "creation-prerequisite-talent-selection"));
+                if (selectedTalent is not null)
+                {
+                    Label selectionId = NativeTheme.Body(
+                        selectedTalent.SelectionId,
+                        NativeTheme.Muted);
+                    selectionId.AutomationId =
+                        "creation-prerequisite-talent-selection-id";
+                    _body.Add(selectionId);
+                }
             }
         }
     }

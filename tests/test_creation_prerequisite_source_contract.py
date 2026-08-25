@@ -83,6 +83,20 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
         device.capture.assert_called_once()
 
+    def test_restored_authority_option_rejects_mismatch_and_duplicate(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "did not mark exactly"):
+            driver.assert_exact_restored_authority_option_ids(
+                {"creation-prerequisite-heritage-option-forged"},
+                "creation-prerequisite-heritage-option-exact",
+                duplicate_resource_id=False,
+            )
+        with self.assertRaisesRegex(RuntimeError, "duplicateResourceId=True"):
+            driver.assert_exact_restored_authority_option_ids(
+                {"creation-prerequisite-heritage-option-exact"},
+                "creation-prerequisite-heritage-option-exact",
+                duplicate_resource_id=True,
+            )
+
     def test_priority_provisioning_declares_every_explicit_production_selection(self) -> None:
         self.assertEqual(
             ("dialog-field-newcharacterbuildmethod", "Priority"),
@@ -722,6 +736,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "state.Authority.RawProfileInputsDigest",
             "state.Authority.RawPrioritiesXmlDigest",
             "state.PendingDraft is { } pending",
+            '"creation-prerequisite-raw-character-xml-digest"',
+            '"creation-prerequisite-auxiliary-state-digest"',
+            '"creation-prerequisite-authority-digest"',
             'automationId: "creation-prerequisite-heritage-selection"',
             'automationId: "creation-prerequisite-talent-selection"',
             "new CreationPriorityDetailPage(",
@@ -764,6 +781,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         for marker in (
             'AutomationId = "creation-prerequisite-preview-page"',
             "_preview.PreviewDigest",
+            '"creation-prerequisite-preview-digest"',
+            '"creation-prerequisite-preview-auxiliary-state-digest"',
             "_preview.Assignments",
             "assignment.SourceId",
             "assignment.SourceNodeDigest",
@@ -781,6 +800,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             'AutomationId = "creation-prerequisite-confirm"',
             'AutomationId = "creation-prerequisite-confirm-receipt"',
             "receipt.DraftDigest",
+            '"creation-prerequisite-receipt-draft-digest"',
+            '"creation-prerequisite-receipt-auxiliary-state-digest"',
             "receipt.CharacterDocumentChanged",
             "refreshed.RequiresMetatypeAttributeAdjustment",
         ):
@@ -883,7 +904,16 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('"creation-prerequisite-confirm-receipt"', source)
         self.assertIn('"creation-prerequisite-pending-draft"', source)
         self.assertIn('"creation-prerequisite-attributes-ready"', source)
-        self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', source)
+        self.assertIn("shared.force_stop_and_launch_new_process(device, initial_launch)", source)
+        self.assertIn('"beforeForceStop": list(restart.before_force_stop.process_ids)', source)
+        self.assertIn('"afterForceStop": list(restart.after_force_stop.process_ids)', source)
+        self.assertIn('"restarted": list(restart.restarted.process_ids)', source)
+        self.assertIn("require_exact_restored_authority_option(", source)
+        self.assertIn('"selectedAuthoritySelectionIds": typed_selection_ids', source)
+        self.assertIn('"confirmedDraftDigest": confirmed_draft_digest', source)
+        self.assertIn('"previewDigest": preview_digest', source)
+        self.assertIn('"previewBindingDigests": preview_binding_digests', source)
+        self.assertIn('"confirmedBindingDigests": confirmed_binding_digests', source)
         self.assertIn('"characterDocumentChangedFalse": "pass"', source)
         self.assertIn('"buildGhostCurrentAndNonMutating": "pass"', source)
         self.assertIn('"advancedEditorNeverExposedWhileCreatedFalse": "pass"', source)

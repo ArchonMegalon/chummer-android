@@ -54,6 +54,7 @@ SHORT_AUTHORITY_BINDING = re.compile(
     r"^Revision (?P<revision>[1-9][0-9]*) · saved (?P<saved>[0-9]+) · "
     r"snapshot (?P<snapshot>[0-9a-f]{12}) · authority (?P<authority>[0-9a-f]{12})$"
 )
+CANONICAL_AUTHORITY_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
 def sha256(path: Path) -> str:
@@ -63,6 +64,13 @@ def sha256(path: Path) -> str:
 def node_text(device: shared.Device, selector: str, *, scroll: bool = False) -> str:
     node = device.wait(selector, timeout=60, scroll=scroll, max_scrolls=22)
     return node.attributes.get("text") or node.attributes.get("content-desc") or ""
+
+
+def canonical_digest(device: shared.Device, selector: str, *, scroll: bool = False) -> str:
+    value = node_text(device, selector, scroll=scroll).strip()
+    if CANONICAL_AUTHORITY_DIGEST.fullmatch(value) is None:
+        raise RuntimeError(f"{selector} did not expose one canonical digest: {value!r}")
+    return value
 
 
 def require_priority_created_workspace_authority(
@@ -375,6 +383,97 @@ def exact_enabled_authority_option_ids(
     return candidates
 
 
+def exact_current_authority_option_ids(
+    nodes: list[shared.UiNode],
+    prefix: str,
+    is_tappable: Callable[[shared.UiNode], bool],
+) -> list[str]:
+    candidates: list[str] = []
+    for node in nodes:
+        resource_id = node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+        accessible_values = (
+            node.attributes.get("text", "").casefold(),
+            node.attributes.get("content-desc", "").casefold(),
+        )
+        if (
+            resource_id.startswith(prefix)
+            and any("current typed draft selection" in value for value in accessible_values)
+            and node.attributes.get("enabled") == "true"
+            and node.attributes.get("clickable") == "true"
+            and is_tappable(node)
+        ):
+            candidates.append(resource_id)
+    return candidates
+
+
+def assert_exact_restored_authority_option_ids(
+    candidate_ids: set[str],
+    expected_resource_id: str,
+    *,
+    duplicate_resource_id: bool,
+) -> None:
+    if duplicate_resource_id or candidate_ids != {expected_resource_id}:
+        raise RuntimeError(
+            "Restored Core draft did not mark exactly the selected authority option: "
+            f"expected={expected_resource_id!r}, candidates={sorted(candidate_ids)!r}, "
+            f"duplicateResourceId={duplicate_resource_id}"
+        )
+
+
+def require_exact_restored_authority_option(
+    device: shared.Device,
+    category: str,
+    expected_resource_id: str,
+    expected_selection_id: str,
+    *,
+    max_scrolls: int = 40,
+) -> None:
+    restored_selection_id = node_text(
+        device,
+        f"creation-prerequisite-{category}-selection-id",
+        scroll=True,
+    ).strip()
+    if restored_selection_id != expected_selection_id:
+        device.capture(f"creation-prerequisite-{category}-selection-id-mismatch")
+        raise RuntimeError(
+            f"Restored {category} SelectionId changed: "
+            f"expected={expected_selection_id!r}, actual={restored_selection_id!r}"
+        )
+
+    device.tap(
+        f"creation-prerequisite-{category}-selection",
+        scroll=True,
+        max_scrolls=22,
+    )
+    device.wait(f"creation-prerequisite-{category}-page", timeout=45)
+    prefix = f"creation-prerequisite-{category}-option-"
+    candidate_ids: set[str] = set()
+    duplicate_resource_id = False
+    shared.reset_scroll_to_top(device, swipes=max_scrolls)
+    for scroll_index in range(max_scrolls + 1):
+        screen_ids = exact_current_authority_option_ids(
+            device.hierarchy(),
+            prefix,
+            device.node_has_tappable_bounds,
+        )
+        if len(screen_ids) != len(set(screen_ids)):
+            duplicate_resource_id = True
+        candidate_ids.update(screen_ids)
+        if scroll_index < max_scrolls:
+            device.swipe_up(distance_ratio=0.22)
+    try:
+        assert_exact_restored_authority_option_ids(
+            candidate_ids,
+            expected_resource_id,
+            duplicate_resource_id=duplicate_resource_id,
+        )
+    except RuntimeError:
+        device.capture(f"creation-prerequisite-{category}-restored-option-mismatch")
+        raise
+    device.back()
+    device.wait("creation-prerequisite-page", timeout=45)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--adb", type=Path, required=True)
@@ -406,7 +505,7 @@ def main() -> int:
         timeout=300,
     )
     device.shell("pm", "clear", shared.PACKAGE)
-    shared.launch_app(device)
+    initial_launch = shared.launch_app(device)
     device.wait("Your runners", timeout=90)
     device.tap_until_visible("home-new-runner", "Select Build Method")
     device.tap("dialog-action-create-character", scroll=True)
@@ -446,6 +545,23 @@ def main() -> int:
     open_prerequisite(device)
     prerequisite_binding = node_text(device, "creation-prerequisite-binding", scroll=True)
     prerequisite_binding_authority = require_prerequisite_binding(prerequisite_binding)
+    prerequisite_digests = {
+        "rawCharacterXml": canonical_digest(
+            device,
+            "creation-prerequisite-raw-character-xml-digest",
+            scroll=True,
+        ),
+        "auxiliaryState": canonical_digest(
+            device,
+            "creation-prerequisite-auxiliary-state-digest",
+            scroll=True,
+        ),
+        "authority": canonical_digest(
+            device,
+            "creation-prerequisite-authority-digest",
+            scroll=True,
+        ),
+    }
     karma = node_text(device, "creation-prerequisite-karma-budget", scroll=True)
     for label in ("Total", "Used", "Remaining"):
         if label.lower() not in karma.lower():
@@ -480,6 +596,7 @@ def main() -> int:
         device.wait("creation-prerequisite-page", timeout=45)
 
     typed_selections: dict[str, str] = {}
+    typed_selection_ids: dict[str, str] = {}
     for category, label in (("heritage", "Human"), ("talent", "Mundane")):
         device.tap(
             f"creation-prerequisite-{category}-selection",
@@ -504,6 +621,13 @@ def main() -> int:
                 f"Core-projected {category} choice did not bind to the typed phone draft: "
                 f"{selection_row!r}"
             )
+        typed_selection_ids[category] = node_text(
+            device,
+            f"creation-prerequisite-{category}-selection-id",
+            scroll=True,
+        ).strip()
+        if not typed_selection_ids[category]:
+            raise RuntimeError(f"Typed {category} SelectionId was not exposed by Core authority")
 
     # A plain Back from a category route preserves the exact in-memory typed rank choice.
     attributes_before = node_text(
@@ -532,6 +656,33 @@ def main() -> int:
 
     device.tap("creation-prerequisite-prepare-preview", scroll=True, max_scrolls=22)
     device.wait("creation-prerequisite-preview-page", timeout=60)
+    preview_digest = canonical_digest(
+        device,
+        "creation-prerequisite-preview-digest",
+        scroll=True,
+    )
+    preview_binding_digests = {
+        "rawCharacterXml": canonical_digest(
+            device,
+            "creation-prerequisite-preview-raw-character-xml-digest",
+            scroll=True,
+        ),
+        "auxiliaryState": canonical_digest(
+            device,
+            "creation-prerequisite-preview-auxiliary-state-digest",
+            scroll=True,
+        ),
+        "authority": canonical_digest(
+            device,
+            "creation-prerequisite-preview-authority-digest",
+            scroll=True,
+        ),
+    }
+    if preview_binding_digests != prerequisite_digests:
+        raise RuntimeError(
+            "Core preview binding changed from the selected prerequisite snapshot: "
+            f"before={prerequisite_digests!r}, preview={preview_binding_digests!r}"
+        )
     device.wait("creation-prerequisite-preview-karma-budget", timeout=45, scroll=True, max_scrolls=22)
     for category in CATEGORIES:
         device.wait(
@@ -562,6 +713,34 @@ def main() -> int:
             "Prerequisite receipt did not prove the post-confirm Attributes gate: "
             f"{receipt_text!r}"
         )
+    confirmed_draft_digest = canonical_digest(
+        device,
+        "creation-prerequisite-receipt-draft-digest",
+        scroll=True,
+    )
+    confirmed_binding_digests = {
+        "rawCharacterXml": canonical_digest(
+            device,
+            "creation-prerequisite-receipt-raw-character-xml-digest",
+            scroll=True,
+        ),
+        "auxiliaryState": canonical_digest(
+            device,
+            "creation-prerequisite-receipt-auxiliary-state-digest",
+            scroll=True,
+        ),
+        "authority": canonical_digest(
+            device,
+            "creation-prerequisite-receipt-authority-digest",
+            scroll=True,
+        ),
+    }
+    if confirmed_binding_digests["rawCharacterXml"] != preview_binding_digests["rawCharacterXml"]:
+        raise RuntimeError("Auxiliary draft confirmation changed raw character XML authority")
+    if confirmed_binding_digests["authority"] != preview_binding_digests["authority"]:
+        raise RuntimeError("Auxiliary draft confirmation changed rules authority")
+    if confirmed_binding_digests["auxiliaryState"] == preview_binding_digests["auxiliaryState"]:
+        raise RuntimeError("Auxiliary draft confirmation did not change auxiliary-state authority")
     device.capture("creation-prerequisite-confirmed")
     device.tap("creation-prerequisite-back-to-build", scroll=True, max_scrolls=22)
     shared.open_creation_dashboard(
@@ -585,33 +764,26 @@ def main() -> int:
     if "rank" not in resumed_attributes.lower():
         raise RuntimeError("Confirmed prerequisite draft did not resume its Attribute rank")
     for category in ("heritage", "talent"):
-        resumed_selection = node_text(
+        require_exact_restored_authority_option(
             device,
-            f"creation-prerequisite-{category}-selection",
-            scroll=True,
+            category,
+            typed_selections[category],
+            typed_selection_ids[category],
         )
-        if "selection" not in resumed_selection.lower():
-            raise RuntimeError(
-                f"Confirmed prerequisite draft did not resume its typed {category} selection"
-            )
 
-    device.shell("am", "force-stop", shared.PACKAGE)
-    shared.launch_app(device)
+    restart = shared.force_stop_and_launch_new_process(device, initial_launch)
     device.wait("Your runners", timeout=90)
     shared.open_creation_dashboard(device, reset_swipes=22)
     foundation.assert_creation_editor_gated(device)
     open_prerequisite(device)
     device.wait("creation-prerequisite-pending-draft", timeout=60, scroll=True, max_scrolls=22)
     for category in ("heritage", "talent"):
-        restarted_selection = node_text(
+        require_exact_restored_authority_option(
             device,
-            f"creation-prerequisite-{category}-selection",
-            scroll=True,
+            category,
+            typed_selections[category],
+            typed_selection_ids[category],
         )
-        if "selection" not in restarted_selection.lower():
-            raise RuntimeError(
-                f"Process restart did not rehydrate Core's typed {category} selection"
-            )
     device.wait("creation-prerequisite-attributes-ready", scroll=True, max_scrolls=22)
     device.capture("creation-prerequisite-process-restart")
 
@@ -642,6 +814,11 @@ def main() -> int:
             "priorityMultisetOrSumTargetEnforced": "pass",
             "selectedRankAutomationIds": selected,
             "selectedAuthorityOptionAutomationIds": typed_selections,
+            "selectedAuthoritySelectionIds": typed_selection_ids,
+            "confirmedDraftDigest": confirmed_draft_digest,
+            "previewDigest": preview_digest,
+            "previewBindingDigests": preview_binding_digests,
+            "confirmedBindingDigests": confirmed_binding_digests,
             "backRestoresDraftSelection": "pass",
             "heritageAndTalentSelectionsProjectedByCore": "pass",
             "previewDigestBeforeExplicitConfirmation": "pass",
@@ -654,6 +831,11 @@ def main() -> int:
             "pendingDraftProcessRestartResume": "pass",
             "buildGhostCurrentAndNonMutating": "pass",
             "advancedEditorNeverExposedWhileCreatedFalse": "pass",
+        },
+        "restartProcessIds": {
+            "beforeForceStop": list(restart.before_force_stop.process_ids),
+            "afterForceStop": list(restart.after_force_stop.process_ids),
+            "restarted": list(restart.restarted.process_ids),
         },
         "creationKarmaProvisioning": {
             "method": "production-priority-creation-dialog",

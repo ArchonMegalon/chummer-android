@@ -68,6 +68,18 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
             NativeTheme.Muted);
         binding.AutomationId = "creation-prerequisite-preview-binding";
         _body.Add(binding);
+        AddDigestBinding(
+            "creation-prerequisite-preview-digest",
+            _preview.PreviewDigest);
+        AddDigestBinding(
+            "creation-prerequisite-preview-raw-character-xml-digest",
+            _preview.Binding.RawCharacterXmlDigest);
+        AddDigestBinding(
+            "creation-prerequisite-preview-auxiliary-state-digest",
+            _preview.Binding.AuxiliaryStateDigest);
+        AddDigestBinding(
+            "creation-prerequisite-preview-authority-digest",
+            _preview.Binding.AuthorityDigest);
 
         AddAssignments();
         AddHeritageAndTalent();
@@ -339,6 +351,22 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
             refreshed.CanEnterAttributes && !refreshed.RequiresMetatypeAttributeAdjustment
                 ? NativeTheme.Muted
                 : NativeTheme.Danger));
+        AddReceiptDigest(
+            card,
+            "creation-prerequisite-receipt-draft-digest",
+            receipt.DraftDigest);
+        AddReceiptDigest(
+            card,
+            "creation-prerequisite-receipt-raw-character-xml-digest",
+            receipt.RawCharacterXmlDigest);
+        AddReceiptDigest(
+            card,
+            "creation-prerequisite-receipt-auxiliary-state-digest",
+            refreshed.Binding.AuxiliaryStateDigest);
+        AddReceiptDigest(
+            card,
+            "creation-prerequisite-receipt-authority-digest",
+            receipt.AuthorityDigest);
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-prerequisite-confirm-receipt";
         _body.Add(border);
@@ -361,6 +389,23 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
 
     private static string ShortDigest(string digest)
         => string.IsNullOrWhiteSpace(digest) ? "unavailable" : digest[..Math.Min(12, digest.Length)];
+
+    private void AddDigestBinding(string automationId, string digest)
+    {
+        Label label = NativeTheme.Body(digest, NativeTheme.Muted);
+        label.AutomationId = automationId;
+        _body.Add(label);
+    }
+
+    private static void AddReceiptDigest(
+        VerticalStackLayout card,
+        string automationId,
+        string digest)
+    {
+        Label label = NativeTheme.Body(digest, NativeTheme.Muted);
+        label.AutomationId = automationId;
+        card.Add(label);
+    }
 
     private static string Token(string value)
         => new(value.Trim().ToLowerInvariant().Select(character =>
