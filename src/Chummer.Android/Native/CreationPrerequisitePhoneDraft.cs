@@ -497,6 +497,12 @@ internal sealed class CreationPrerequisitePhoneDraft
 
 internal static class CreationPrerequisitePhoneAuthority
 {
+    private static readonly string[] s_AttributeIds =
+    [
+        "BOD", "AGI", "REA", "STR", "CHA", "INT", "LOG", "WIL",
+        "EDG", "MAG", "RES", "ESS", "DEP"
+    ];
+
     public static bool IsReady(
         CharacterCreationPrerequisiteState state,
         CharacterOverviewState overview)
@@ -875,36 +881,56 @@ internal static class CreationPrerequisitePhoneAuthority
 
     public static bool IsExactHeritageOption(
         CharacterCreationPriorityHeritageOptionProjection option)
-        => !string.IsNullOrWhiteSpace(option.SelectionId)
-           && option.Kind is CharacterCreationPriorityChildKinds.Metatype
-               or CharacterCreationPriorityChildKinds.Metavariant
-           && Guid.TryParseExact(option.MetatypeSourceId, "D", out Guid metatypeSourceId)
-           && metatypeSourceId != Guid.Empty
-           && !string.IsNullOrWhiteSpace(option.MetatypeName)
-           && (string.Equals(
-                   option.Kind,
-                   CharacterCreationPriorityChildKinds.Metatype,
-                   StringComparison.Ordinal)
-                   ? option.MetavariantSourceId is null && option.MetavariantName is null
-                   : Guid.TryParseExact(
-                         option.MetavariantSourceId,
-                         "D",
-                         out Guid metavariantSourceId)
-                     && metavariantSourceId != Guid.Empty
-                     && !string.IsNullOrWhiteSpace(option.MetavariantName))
-           && option.SpecialAttributePoints >= 0
-           && (option.KarmaCost >= 0
-               || option.Kind == CharacterCreationPriorityChildKinds.Metavariant
-                  && !option.IsEnabled
-                  && option.Blockers.Count > 0)
-           && option.Attributes.Count > 0
-           && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(
-               option.PriorityChildNodeDigest)
-           && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(
-               option.MetatypeSourceNodeDigest)
-           && option.IsEnabled == (option.Blockers.Count == 0)
-           && option.SourceAnchorIds.Count > 0
-           && option.SourceAnchorIds.All(anchor => !string.IsNullOrWhiteSpace(anchor));
+    {
+        bool isMetatype = string.Equals(
+            option.Kind,
+            CharacterCreationPriorityChildKinds.Metatype,
+            StringComparison.Ordinal);
+        bool isMetavariant = string.Equals(
+            option.Kind,
+            CharacterCreationPriorityChildKinds.Metavariant,
+            StringComparison.Ordinal);
+        if (string.IsNullOrWhiteSpace(option.SelectionId)
+            || !isMetatype && !isMetavariant
+            || string.IsNullOrWhiteSpace(option.MetatypeName)
+            || isMetatype
+               && (option.MetavariantSourceId is not null || option.MetavariantName is not null)
+            || isMetavariant && string.IsNullOrWhiteSpace(option.MetavariantName)
+            || option.SpecialAttributePoints < 0
+            || option.KarmaCost < 0
+               && !(isMetavariant && !option.IsEnabled && option.Blockers.Count > 0)
+            || !CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(
+                option.PriorityChildNodeDigest)
+            || option.IsEnabled != (option.Blockers.Count == 0)
+            || option.SourceAnchorIds.Count == 0
+            || option.SourceAnchorIds.Any(anchor => string.IsNullOrWhiteSpace(anchor)))
+        {
+            return false;
+        }
+
+        // Core intentionally keeps unsupported source children visible and blocked.
+        // Their source identity, digest, and attributes may be unresolved; only a
+        // selectable projection must carry the complete source-bound shape.
+        if (!option.IsEnabled)
+            return true;
+
+        return Guid.TryParseExact(option.MetatypeSourceId, "D", out Guid metatypeSourceId)
+               && metatypeSourceId != Guid.Empty
+               && (isMetatype
+                   || Guid.TryParseExact(
+                       option.MetavariantSourceId,
+                       "D",
+                       out Guid metavariantSourceId)
+                      && metavariantSourceId != Guid.Empty)
+               && CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(
+                   option.MetatypeSourceNodeDigest)
+               && option.Attributes.Count == s_AttributeIds.Length
+               && option.Attributes.Select(attribute => attribute.AttributeId)
+                   .SequenceEqual(s_AttributeIds, StringComparer.Ordinal)
+               && option.Attributes.All(attribute => attribute.Minimum >= 0
+                                                     && attribute.Minimum <= attribute.Maximum
+                                                     && attribute.Maximum <= attribute.AugmentedMaximum);
+    }
 
     public static bool HasExactNestedAuthority(
         IReadOnlyList<CharacterCreationPriorityOptionProjection> options)

@@ -1,7 +1,9 @@
 import ast
 import importlib.util
+import os
 import sys
 import unittest
+import xml.etree.ElementTree as ET
 from unittest import mock
 from pathlib import Path
 
@@ -800,11 +802,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ]
         for marker in (
             "CharacterCreationPriorityChildKinds.Metatype",
-            "option.MetavariantSourceId is null && option.MetavariantName is null",
+            "option.MetavariantSourceId is not null || option.MetavariantName is not null",
             "Guid.TryParseExact(",
             "option.MetavariantSourceId",
             "metavariantSourceId != Guid.Empty",
-            "!string.IsNullOrWhiteSpace(option.MetavariantName)",
+            "isMetavariant && string.IsNullOrWhiteSpace(option.MetavariantName)",
         ):
             self.assertIn(marker, heritage)
 
@@ -815,13 +817,106 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             source.index("public static bool HasExactNestedAuthority(")
         ]
         for marker in (
-            "option.KarmaCost >= 0",
-            "option.Kind == CharacterCreationPriorityChildKinds.Metavariant",
+            "option.KarmaCost < 0",
+            "isMetavariant",
             "!option.IsEnabled",
             "option.Blockers.Count > 0",
         ):
             self.assertIn(marker, heritage)
         self.assertNotIn("option.KarmaCost < 0 ||", heritage)
+
+    def test_disabled_unresolved_heritage_matches_pinned_core_projection(self) -> None:
+        chummer5 = Path(os.environ.get("CHUMMER5A_ROOT", "/docker/chummer5a"))
+        priorities_path = chummer5 / "Chummer" / "data" / "priorities.xml"
+        metatypes_path = chummer5 / "Chummer" / "data" / "metatypes.xml"
+        self.assertTrue(priorities_path.is_file(), priorities_path)
+        self.assertTrue(metatypes_path.is_file(), metatypes_path)
+
+        priorities = ET.parse(priorities_path).getroot()
+        metatypes = ET.parse(metatypes_path).getroot()
+        source_metatypes: dict[str, list[ET.Element]] = {}
+        for source in metatypes.find("metatypes").findall("metatype"):
+            source_metatypes.setdefault(source.findtext("name", ""), []).append(source)
+
+        unresolved: set[tuple[str, str, str]] = set()
+        for rank in priorities.find("priorities").findall("priority"):
+            if rank.findtext("category") != "Heritage":
+                continue
+            rank_id = rank.findtext("value", "")
+            for child in rank.find("metatypes").findall("metatype"):
+                metatype_name = child.findtext("name", "")
+                matches = source_metatypes.get(metatype_name, [])
+                if len(matches) != 1:
+                    unresolved.add((rank_id, "metatype", metatype_name))
+                    source_variants: list[ET.Element] = []
+                else:
+                    variants = matches[0].find("metavariants")
+                    source_variants = [] if variants is None else variants.findall("metavariant")
+                projected_variants = child.find("metavariants")
+                for variant in ([] if projected_variants is None else projected_variants.findall("metavariant")):
+                    variant_name = variant.findtext("name", "")
+                    if sum(item.findtext("name") == variant_name for item in source_variants) != 1:
+                        unresolved.add((rank_id, "metavariant", f"{metatype_name}/{variant_name}"))
+
+        self.assertEqual(
+            {
+                ("A,4", "metatype", "E-Ghost"),
+                ("A,4", "metavariant", "Troll/Cyclopean"),
+                ("B,3", "metavariant", "Troll/Cyclopean"),
+                ("C,2", "metavariant", "Dwarf/Goblin"),
+            },
+            unresolved,
+        )
+
+        source = (NATIVE / "CreationPrerequisitePhoneDraft.cs").read_text(encoding="utf-8")
+        heritage = source[
+            source.index("public static bool IsExactHeritageOption(") :
+            source.index("public static bool HasExactNestedAuthority(")
+        ]
+        disabled_gate = heritage.index("if (!option.IsEnabled)")
+        for enabled_only in (
+            "Guid.TryParseExact(option.MetatypeSourceId",
+            "option.MetatypeSourceNodeDigest",
+            "option.Attributes.Count == s_AttributeIds.Length",
+        ):
+            self.assertGreater(heritage.index(enabled_only), disabled_gate)
+
+    def test_enabled_heritage_requires_complete_identity_digest_and_attributes(self) -> None:
+        source = (NATIVE / "CreationPrerequisitePhoneDraft.cs").read_text(encoding="utf-8")
+        heritage = source[
+            source.index("public static bool IsExactHeritageOption(") :
+            source.index("public static bool HasExactNestedAuthority(")
+        ]
+        disabled_gate = heritage.index("if (!option.IsEnabled)")
+        for marker in (
+            'Guid.TryParseExact(option.MetatypeSourceId, "D", out Guid metatypeSourceId)',
+            "metatypeSourceId != Guid.Empty",
+            "Guid.TryParseExact(",
+            "option.MetavariantSourceId",
+            "metavariantSourceId != Guid.Empty",
+            "option.MetatypeSourceNodeDigest",
+            "option.Attributes.Count == s_AttributeIds.Length",
+            ".SequenceEqual(s_AttributeIds, StringComparer.Ordinal)",
+            "attribute.Minimum <= attribute.Maximum",
+            "attribute.Maximum <= attribute.AugmentedMaximum",
+        ):
+            self.assertIn(marker, heritage[disabled_gate:])
+
+    def test_disabled_heritage_still_requires_signed_shape_and_blockers(self) -> None:
+        source = (NATIVE / "CreationPrerequisitePhoneDraft.cs").read_text(encoding="utf-8")
+        heritage = source[
+            source.index("public static bool IsExactHeritageOption(") :
+            source.index("public static bool HasExactNestedAuthority(")
+        ]
+        disabled_gate = heritage.index("if (!option.IsEnabled)")
+        for marker in (
+            "option.PriorityChildNodeDigest",
+            "option.IsEnabled != (option.Blockers.Count == 0)",
+            "option.SourceAnchorIds.Count == 0",
+            "option.SourceAnchorIds.Any(anchor => string.IsNullOrWhiteSpace(anchor))",
+            "string.IsNullOrWhiteSpace(option.SelectionId)",
+        ):
+            self.assertIn(marker, heritage[:disabled_gate])
 
     def test_phone_pages_show_projected_typed_choices_and_core_attribute_gate(self) -> None:
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
