@@ -106,7 +106,7 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
         dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
 
         for marker in (
-            "Coordinator.LoadCreationAttributes()",
+            "Coordinator.LoadCreationAttributes",
             "HasAuthoritativeAttributes(attributes)",
             "CreationAttributesPhoneAuthority.IsReady(state, Coordinator.State)",
             "OpenCreationAttributesAsync",

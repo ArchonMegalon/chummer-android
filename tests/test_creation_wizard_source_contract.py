@@ -366,7 +366,7 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         editor = (NATIVE / "AttributeEditPage.cs").read_text(encoding="utf-8")
         creation = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
 
-        self.assertIn("Coordinator.LoadCreationAttributes()", dashboard)
+        self.assertIn("Coordinator.LoadCreationAttributes", dashboard)
         self.assertIn("CreationAttributesPhoneAuthority.IsReady", dashboard)
         self.assertIn("new CreationAttributesPage(Coordinator)", dashboard)
         self.assertIn("OpenCreationAttributesAsync", dashboard)

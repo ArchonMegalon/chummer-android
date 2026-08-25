@@ -57,12 +57,83 @@ public sealed record CreationDashboardProjectionBinding(
            && Equals(current);
 }
 
+public enum CreationDashboardAuthorityPhaseState
+{
+    NotApplicable,
+    Loading,
+    Ready,
+    Failed
+}
+
+public enum CreationDashboardAuthorityPhase
+{
+    Prerequisite,
+    Attributes,
+    Skills
+}
+
+public sealed record CreationDashboardAuthorityPhaseProgress(
+    CreationDashboardAuthorityPhaseState Prerequisite,
+    CreationDashboardAuthorityPhaseState Attributes,
+    CreationDashboardAuthorityPhaseState Skills)
+{
+    public static CreationDashboardAuthorityPhaseProgress ForBuildMethod(string buildMethod)
+    {
+        bool priorityOrSumToTen = buildMethod is (CharacterCreationBuildMethods.Priority
+            or CharacterCreationBuildMethods.SumToTen);
+        return new(
+            priorityOrSumToTen
+                ? CreationDashboardAuthorityPhaseState.Loading
+                : CreationDashboardAuthorityPhaseState.NotApplicable,
+            priorityOrSumToTen
+                ? CreationDashboardAuthorityPhaseState.Loading
+                : CreationDashboardAuthorityPhaseState.NotApplicable,
+            string.Equals(buildMethod, CharacterCreationBuildMethods.Priority, StringComparison.Ordinal)
+                ? CreationDashboardAuthorityPhaseState.Loading
+                : CreationDashboardAuthorityPhaseState.NotApplicable);
+    }
+
+    public CreationDashboardAuthorityPhaseProgress WithTerminal(
+        CreationDashboardAuthorityPhase phase,
+        bool failed)
+    {
+        CreationDashboardAuthorityPhaseState terminal = failed
+            ? CreationDashboardAuthorityPhaseState.Failed
+            : CreationDashboardAuthorityPhaseState.Ready;
+        return phase switch
+        {
+            CreationDashboardAuthorityPhase.Prerequisite => this with { Prerequisite = terminal },
+            CreationDashboardAuthorityPhase.Attributes => this with { Attributes = terminal },
+            CreationDashboardAuthorityPhase.Skills => this with { Skills = terminal },
+            _ => throw new ArgumentOutOfRangeException(nameof(phase), phase, null)
+        };
+    }
+}
+
 public sealed record CreationDashboardAuthorityProjection(
-    BackgroundProjectionRequest<CreationDashboardProjectionBinding> Request,
+    CreationDashboardProjectionBinding Binding,
+    CreationDashboardAuthorityPhaseProgress Progress,
     CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? Prerequisite,
     CharacterCreationFoundationResult<CharacterCreationAttributesState>? Attributes,
     CharacterCreationFoundationResult<CharacterCreationSkillsState>? Skills,
-    string? FailureReason = null);
+    string? PrerequisiteFailureReason = null,
+    string? AttributesFailureReason = null,
+    string? SkillsFailureReason = null)
+{
+    public static CreationDashboardAuthorityProjection Loading(
+        CreationDashboardProjectionBinding binding)
+        => new(
+            binding,
+            CreationDashboardAuthorityPhaseProgress.ForBuildMethod(binding.BuildMethod),
+            Prerequisite: null,
+            Attributes: null,
+            Skills: null);
+
+    public bool HasFailure
+        => Progress.Prerequisite == CreationDashboardAuthorityPhaseState.Failed
+           || Progress.Attributes == CreationDashboardAuthorityPhaseState.Failed
+           || Progress.Skills == CreationDashboardAuthorityPhaseState.Failed;
+}
 
 public static class BuildPageUiProjection
 {
@@ -88,7 +159,13 @@ public sealed class BuildPage : NativePageBase
     private readonly ToolbarItem _save;
     private readonly LatestBackgroundProjectionQueue<
         CreationDashboardProjectionBinding,
-        CreationDashboardAuthorityProjection> _creationProjectionQueue = new();
+        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>> _creationPrerequisiteQueue = new();
+    private readonly LatestBackgroundProjectionQueue<
+        CreationDashboardProjectionBinding,
+        CharacterCreationFoundationResult<CharacterCreationAttributesState>> _creationAttributesQueue = new();
+    private readonly LatestBackgroundProjectionQueue<
+        CreationDashboardProjectionBinding,
+        CharacterCreationFoundationResult<CharacterCreationSkillsState>> _creationSkillsQueue = new();
     private CreationDashboardAuthorityProjection? _creationProjection;
 
     public BuildPage(RunnerSessionCoordinator coordinator) : base(coordinator)
@@ -102,14 +179,36 @@ public sealed class BuildPage : NativePageBase
             Command = new Command(async () => await RunAsync(() => Coordinator.SaveAsync()))
         };
         ToolbarItems.Add(_save);
-        _creationProjectionQueue.Completed += OnCreationProjectionCompleted;
-        _creationProjectionQueue.Failed += OnCreationProjectionFailed;
+        _creationPrerequisiteQueue.Completed += completion => ScheduleCreationPhaseAcceptance(
+            _creationPrerequisiteQueue,
+            completion.Request,
+            AcceptCreationPrerequisite);
+        _creationPrerequisiteQueue.Failed += failure => ScheduleCreationPhaseAcceptance(
+            _creationPrerequisiteQueue,
+            failure.Request,
+            AcceptCreationPrerequisite);
+        _creationAttributesQueue.Completed += completion => ScheduleCreationPhaseAcceptance(
+            _creationAttributesQueue,
+            completion.Request,
+            AcceptCreationAttributes);
+        _creationAttributesQueue.Failed += failure => ScheduleCreationPhaseAcceptance(
+            _creationAttributesQueue,
+            failure.Request,
+            AcceptCreationAttributes);
+        _creationSkillsQueue.Completed += completion => ScheduleCreationPhaseAcceptance(
+            _creationSkillsQueue,
+            completion.Request,
+            AcceptCreationSkills);
+        _creationSkillsQueue.Failed += failure => ScheduleCreationPhaseAcceptance(
+            _creationSkillsQueue,
+            failure.Request,
+            AcceptCreationSkills);
         Content = new ScrollView { Content = _body };
     }
 
     protected override void OnDisappearing()
     {
-        _creationProjectionQueue.Cancel();
+        CancelCreationProjectionQueues();
         base.OnDisappearing();
     }
 
@@ -259,7 +358,8 @@ public sealed class BuildPage : NativePageBase
             projection?.Attributes;
         CharacterCreationFoundationResult<CharacterCreationSkillsState>? skills =
             projection?.Skills;
-        if (projection is null)
+        if (projection is null
+            || projection.Progress.Prerequisite == CreationDashboardAuthorityPhaseState.Loading)
         {
             Label loading = NativeTheme.Body(
                 "Loading the revision- and source-bound creation authority. Editing remains fail-closed until it is ready.",
@@ -267,13 +367,17 @@ public sealed class BuildPage : NativePageBase
             loading.AutomationId = "creation-dashboard-authority-loading";
             _body.Add(NativeTheme.Card(loading));
         }
-        else if (!string.IsNullOrWhiteSpace(projection.FailureReason))
+        else if (projection.HasFailure)
         {
             VerticalStackLayout failure = new() { Spacing = 8 };
             Label failed = NativeTheme.Body(
-                "The bound creation authority could not be loaded. No rules data was inferred; use Retry authority or reopen this runner.",
+                projection.Progress.Prerequisite == CreationDashboardAuthorityPhaseState.Failed
+                    ? "The prerequisite creation authority could not be loaded. No rules data was inferred; use Retry authority or reopen this runner."
+                    : "A later creation authority phase could not be loaded. Ready phases remain usable; the affected stage stays fail-closed until Retry authority succeeds.",
                 NativeTheme.Danger);
-            failed.AutomationId = "creation-dashboard-authority-failed";
+            failed.AutomationId = projection.Progress.Prerequisite == CreationDashboardAuthorityPhaseState.Failed
+                ? "creation-dashboard-authority-failed"
+                : "creation-dashboard-authority-partial-failed";
             failure.Add(failed);
             Button retry = NativeTheme.SecondaryButton("Retry authority");
             retry.AutomationId = "creation-dashboard-authority-retry";
@@ -284,7 +388,7 @@ public sealed class BuildPage : NativePageBase
         AddBudgetRibbon(snapshot, attributes, skills);
         AddWizardStages(snapshot, projection, prerequisite, attributes, skills);
         AddCompletionBlockers(snapshot);
-        AddLegalNextSteps(snapshot, prerequisite, attributes, skills);
+        AddLegalNextSteps(snapshot, projection, prerequisite, attributes, skills);
     }
 
     private CreationDashboardAuthorityProjection? ResolveCreationProjection(
@@ -297,121 +401,155 @@ public sealed class BuildPage : NativePageBase
             || binding is null)
         {
             _creationProjection = null;
-            _creationProjectionQueue.Cancel();
+            CancelCreationProjectionQueues();
             return null;
         }
 
-        if (_creationProjection is { } current && current.Request.Key.Equals(binding))
-            return current;
+        if (_creationProjection is not { } current || !current.Binding.Equals(binding))
+        {
+            CancelCreationProjectionQueues();
+            _creationProjection = CreationDashboardAuthorityProjection.Loading(binding);
+        }
 
-        _creationProjection = null;
-        _creationProjectionQueue.TryRequest(
+        ResolveCreationPhase(
             binding,
-            (request, cancellationToken) => LoadCreationProjection(request, cancellationToken),
-            out BackgroundProjectionRequest<CreationDashboardProjectionBinding> request);
-        if (_creationProjectionQueue.TryTake(
-                request,
-                out CreationDashboardAuthorityProjection completed,
-                out Exception? error))
+            _creationProjection?.Progress.Prerequisite,
+            _creationPrerequisiteQueue,
+            Coordinator.LoadCreationPrerequisite,
+            AcceptCreationPrerequisite);
+        if (_creationProjection is { Progress.Prerequisite: CreationDashboardAuthorityPhaseState.Ready })
         {
-            _creationProjection = error is null
-                ? completed
-                : FailedCreationProjection(request);
-            return _creationProjection;
+            ResolveCreationPhase(
+                binding,
+                _creationProjection.Progress.Attributes,
+                _creationAttributesQueue,
+                Coordinator.LoadCreationAttributes,
+                AcceptCreationAttributes);
+            ResolveCreationPhase(
+                binding,
+                _creationProjection.Progress.Skills,
+                _creationSkillsQueue,
+                Coordinator.LoadCreationSkills,
+                AcceptCreationSkills);
         }
-        return null;
+        return _creationProjection;
     }
 
-    private CreationDashboardAuthorityProjection LoadCreationProjection(
-        BackgroundProjectionRequest<CreationDashboardProjectionBinding> request,
-        CancellationToken cancellationToken)
+    private static void ResolveCreationPhase<TResult>(
+        CreationDashboardProjectionBinding binding,
+        CreationDashboardAuthorityPhaseState? state,
+        LatestBackgroundProjectionQueue<CreationDashboardProjectionBinding, TResult> queue,
+        Func<TResult> loader,
+        Action<CreationDashboardProjectionBinding, TResult, Exception?> accept)
     {
-        CreationDashboardProjectionBinding binding = request.Key;
-        try
-        {
-            CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite = null;
-            CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributes = null;
-            CharacterCreationFoundationResult<CharacterCreationSkillsState>? skills = null;
-            if (binding.BuildMethod is (CharacterCreationBuildMethods.Priority
-                or CharacterCreationBuildMethods.SumToTen))
+        if (state != CreationDashboardAuthorityPhaseState.Loading)
+            return;
+
+        queue.TryRequest(
+            binding,
+            (_, cancellationToken) =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                prerequisite = Coordinator.LoadCreationPrerequisite();
+                TResult result = loader();
                 cancellationToken.ThrowIfCancellationRequested();
-                attributes = Coordinator.LoadCreationAttributes();
-            }
-            if (string.Equals(
-                    binding.BuildMethod,
-                    CharacterCreationBuildMethods.Priority,
-                    StringComparison.Ordinal))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                skills = Coordinator.LoadCreationSkills();
-            }
-            cancellationToken.ThrowIfCancellationRequested();
-            return new CreationDashboardAuthorityProjection(
-                request,
-                prerequisite,
-                attributes,
-                skills);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
+                return result;
+            },
+            out BackgroundProjectionRequest<CreationDashboardProjectionBinding> request);
+        if (queue.TryTake(request, out TResult completed, out Exception? error))
+            accept(binding, completed, error);
     }
 
-    private void OnCreationProjectionCompleted(
-        BackgroundProjectionCompletion<
-            CreationDashboardProjectionBinding,
-            CreationDashboardAuthorityProjection> completion)
-        => ScheduleCreationProjectionAcceptance(completion.Request);
-
-    private void OnCreationProjectionFailed(
-        BackgroundProjectionFailure<CreationDashboardProjectionBinding> failure)
-        => ScheduleCreationProjectionAcceptance(failure.Request);
-
-    private void ScheduleCreationProjectionAcceptance(
-        BackgroundProjectionRequest<CreationDashboardProjectionBinding> request)
+    private void ScheduleCreationPhaseAcceptance<TResult>(
+        LatestBackgroundProjectionQueue<CreationDashboardProjectionBinding, TResult> queue,
+        BackgroundProjectionRequest<CreationDashboardProjectionBinding> request,
+        Action<CreationDashboardProjectionBinding, TResult, Exception?> accept)
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            CharacterCreationWizardSnapshot? snapshot = Coordinator.State.CreationWizard;
-            if (snapshot is null
-                || !request.Key.Matches(Coordinator.State, snapshot)
-                || !_creationProjectionQueue.TryTake(
-                    request,
-                    out CreationDashboardAuthorityProjection completed,
-                    out Exception? error))
+            if (!CanAcceptCreationPhase(request)
+                || !queue.TryTake(request, out TResult completed, out Exception? error))
             {
                 return;
             }
 
-            if (error is null && completed.Request != request)
-            {
-                _creationProjection = FailedCreationProjection(request);
-                Refresh();
-                return;
-            }
-
-            _creationProjection = error is null
-                ? completed
-                : FailedCreationProjection(request);
+            accept(request.Key, completed, error);
             Refresh();
         });
     }
 
-    private static CreationDashboardAuthorityProjection FailedCreationProjection(
+    private bool CanAcceptCreationPhase(
         BackgroundProjectionRequest<CreationDashboardProjectionBinding> request)
-        => new(
-            request,
-            Prerequisite: null,
-            Attributes: null,
-            Skills: null,
-            FailureReason: "creation-dashboard-authority-load-failed");
+        => Coordinator.State.CreationWizard is { } snapshot
+           && request.Key.Matches(Coordinator.State, snapshot)
+           && _creationProjection?.Binding.Equals(request.Key) == true;
+
+    private void AcceptCreationPrerequisite(
+        CreationDashboardProjectionBinding binding,
+        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> result,
+        Exception? error)
+    {
+        if (_creationProjection is not { } projection || !projection.Binding.Equals(binding))
+            return;
+        _creationProjection = projection with
+        {
+            Progress = projection.Progress.WithTerminal(
+                CreationDashboardAuthorityPhase.Prerequisite,
+                failed: error is not null),
+            Prerequisite = error is null ? result : null,
+            PrerequisiteFailureReason = error is null
+                ? null
+                : "creation-prerequisite-authority-load-failed"
+        };
+    }
+
+    private void AcceptCreationAttributes(
+        CreationDashboardProjectionBinding binding,
+        CharacterCreationFoundationResult<CharacterCreationAttributesState> result,
+        Exception? error)
+    {
+        if (_creationProjection is not { } projection || !projection.Binding.Equals(binding))
+            return;
+        _creationProjection = projection with
+        {
+            Progress = projection.Progress.WithTerminal(
+                CreationDashboardAuthorityPhase.Attributes,
+                failed: error is not null),
+            Attributes = error is null ? result : null,
+            AttributesFailureReason = error is null
+                ? null
+                : "creation-attributes-authority-load-failed"
+        };
+    }
+
+    private void AcceptCreationSkills(
+        CreationDashboardProjectionBinding binding,
+        CharacterCreationFoundationResult<CharacterCreationSkillsState> result,
+        Exception? error)
+    {
+        if (_creationProjection is not { } projection || !projection.Binding.Equals(binding))
+            return;
+        _creationProjection = projection with
+        {
+            Progress = projection.Progress.WithTerminal(
+                CreationDashboardAuthorityPhase.Skills,
+                failed: error is not null),
+            Skills = error is null ? result : null,
+            SkillsFailureReason = error is null
+                ? null
+                : "creation-skills-authority-load-failed"
+        };
+    }
+
+    private void CancelCreationProjectionQueues()
+    {
+        _creationPrerequisiteQueue.Cancel();
+        _creationAttributesQueue.Cancel();
+        _creationSkillsQueue.Cancel();
+    }
 
     private void RetryCreationProjection()
     {
+        CancelCreationProjectionQueues();
         _creationProjection = null;
         Refresh();
     }
@@ -511,9 +649,11 @@ public sealed class BuildPage : NativePageBase
             bool canOpenSkills = skillStage && HasAuthoritativeSkills(skills);
             bool canOpen = canOpenFoundation || canOpenPrerequisite || canOpenAttributes || canOpenSkills;
             bool projectionBoundStage = priorityPrerequisite || attributeStage || skillStage;
-            string? projectionBlocker = projection is null
-                ? "creation-authority-loading"
-                : projection.FailureReason;
+            string? projectionBlocker = ProjectionStageBlocker(
+                projection,
+                priorityPrerequisite,
+                attributeStage,
+                skillStage);
             Func<Task> selected = canOpenPrerequisite
                 ? OpenCreationPrerequisiteAsync
                 : canOpenAttributes
@@ -572,6 +712,7 @@ public sealed class BuildPage : NativePageBase
 
     private void AddLegalNextSteps(
         CharacterCreationWizardSnapshot snapshot,
+        CreationDashboardAuthorityProjection? projection,
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite,
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributeResult,
         CharacterCreationFoundationResult<CharacterCreationSkillsState>? skillsResult)
@@ -632,6 +773,18 @@ public sealed class BuildPage : NativePageBase
                     ? AttributeStageDetail(attributeResult!.Value!)
                 : canOpenSkills
                     ? SkillsStageDetail(skillsResult!.Value!)
+                : attributeStep
+                  && projection?.Progress.Attributes == CreationDashboardAuthorityPhaseState.Loading
+                    ? "creation-authority-loading"
+                : skillStep
+                  && projection?.Progress.Skills == CreationDashboardAuthorityPhaseState.Loading
+                    ? "creation-authority-loading"
+                : attributeStep
+                  && projection?.Progress.Attributes == CreationDashboardAuthorityPhaseState.Failed
+                    ? projection.AttributesFailureReason ?? "creation-attributes-authority-load-failed"
+                : skillStep
+                  && projection?.Progress.Skills == CreationDashboardAuthorityPhaseState.Failed
+                    ? projection.SkillsFailureReason ?? "creation-skills-authority-load-failed"
                 : attributeStep && prerequisite?.Value is { } prerequisiteState
                     ? AttributeGateDetail(prerequisiteState)
                 : attributeStep && stage.IsAvailable
@@ -646,6 +799,47 @@ public sealed class BuildPage : NativePageBase
                 canOpen,
                 $"creation-next-{Token(stepId)}"));
         }
+    }
+
+    private static string? ProjectionStageBlocker(
+        CreationDashboardAuthorityProjection? projection,
+        bool prerequisiteStage,
+        bool attributeStage,
+        bool skillStage)
+    {
+        if (projection is null)
+            return "creation-authority-loading";
+        if (prerequisiteStage)
+        {
+            return projection.Progress.Prerequisite switch
+            {
+                CreationDashboardAuthorityPhaseState.Loading => "creation-authority-loading",
+                CreationDashboardAuthorityPhaseState.Failed => projection.PrerequisiteFailureReason
+                    ?? "creation-prerequisite-authority-load-failed",
+                _ => null
+            };
+        }
+        if (attributeStage)
+        {
+            return projection.Progress.Attributes switch
+            {
+                CreationDashboardAuthorityPhaseState.Loading => "creation-authority-loading",
+                CreationDashboardAuthorityPhaseState.Failed => projection.AttributesFailureReason
+                    ?? "creation-attributes-authority-load-failed",
+                _ => null
+            };
+        }
+        if (skillStage)
+        {
+            return projection.Progress.Skills switch
+            {
+                CreationDashboardAuthorityPhaseState.Loading => "creation-authority-loading",
+                CreationDashboardAuthorityPhaseState.Failed => projection.SkillsFailureReason
+                    ?? "creation-skills-authority-load-failed",
+                _ => null
+            };
+        }
+        return null;
     }
 
     private bool HasAuthoritativeFoundationOptions()

@@ -1306,18 +1306,73 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
     def test_dashboard_never_labels_projection_bound_stage_complete_while_loading(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
-        self.assertIn('projection is null\n                ? "creation-authority-loading"', source)
+        self.assertIn('return "creation-authority-loading";', source)
+        self.assertIn(
+            'CreationDashboardAuthorityPhaseState.Loading => "creation-authority-loading"',
+            source,
+        )
         self.assertIn(
             "projectionBoundStage && !string.IsNullOrWhiteSpace(projectionBlocker)",
             source,
         )
+
+    def test_dashboard_loads_and_merges_creation_authority_in_independent_phases(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        for marker in (
+            "_creationPrerequisiteQueue",
+            "_creationAttributesQueue",
+            "_creationSkillsQueue",
+            "Progress.Prerequisite: CreationDashboardAuthorityPhaseState.Ready",
+            "Coordinator.LoadCreationPrerequisite",
+            "Coordinator.LoadCreationAttributes",
+            "Coordinator.LoadCreationSkills",
+            "AcceptCreationPrerequisite",
+            "AcceptCreationAttributes",
+            "AcceptCreationSkills",
+            "private static void ResolveCreationPhase<TResult>(",
+            "private void ScheduleCreationPhaseAcceptance<TResult>(",
+            "TResult result = loader();",
+            "accept(request.Key, completed, error);",
+            "request.Key.Matches(Coordinator.State, snapshot)",
+            "_creationProjection?.Binding.Equals(request.Key) == true",
+        ):
+            self.assertIn(marker, source)
+
+        global_loading = source[
+            source.index("if (projection is null") : source.index("AddBudgetRibbon(")
+        ]
+        self.assertIn(
+            "projection.Progress.Prerequisite == CreationDashboardAuthorityPhaseState.Loading",
+            global_loading,
+        )
+        self.assertNotIn("Progress.Attributes == CreationDashboardAuthorityPhaseState.Loading", global_loading)
+        self.assertNotIn("Progress.Skills == CreationDashboardAuthorityPhaseState.Loading", global_loading)
+
+        retry = source[source.index("private void RetryCreationProjection()") :]
+        retry = retry[: retry.index("private void AddBudgetRibbon(")]
+        self.assertIn("CancelCreationProjectionQueues();", retry)
+        self.assertIn("_creationProjection = null;", retry)
+        self.assertIn("Refresh();", retry)
+
+        resolver = source[source.index("private CreationDashboardAuthorityProjection? ResolveCreationProjection") :]
+        resolver = resolver[: resolver.index("private bool CanAcceptCreationPhase(")]
+        self.assertEqual(1, resolver.count("Coordinator.LoadCreationPrerequisite"))
+        self.assertEqual(1, resolver.count("Coordinator.LoadCreationAttributes"))
+        self.assertEqual(1, resolver.count("Coordinator.LoadCreationSkills"))
+        self.assertLess(resolver.index("queue.TryRequest("), resolver.index("TResult result = loader();"))
+        self.assertNotIn("Coordinator.LoadCreationPrerequisite()", resolver)
+        self.assertNotIn("Coordinator.LoadCreationAttributes()", resolver)
+        self.assertNotIn("Coordinator.LoadCreationSkills()", resolver)
 
     def test_dashboard_recovers_terminal_projection_after_deferred_page_dispatch(self) -> None:
         page_source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         queue_source = (NATIVE / "LatestBackgroundProjectionQueue.cs").read_text(
             encoding="utf-8"
         )
-        self.assertIn("_creationProjectionQueue.TryTake(", page_source)
+        self.assertIn("queue.TryTake(request, out TResult completed", page_source)
+        self.assertIn("_creationPrerequisiteQueue.Completed +=", page_source)
+        self.assertIn("_creationAttributesQueue.Completed +=", page_source)
+        self.assertIn("_creationSkillsQueue.Completed +=", page_source)
         self.assertIn("MainThread.BeginInvokeOnMainThread", page_source)
         self.assertIn("current.TryReadOutcome(out result, out error)", queue_source)
         self.assertIn("public bool TryTake(", queue_source)
@@ -1704,7 +1759,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.assertIn(marker, preview)
 
         for marker in (
-            "Coordinator.LoadCreationPrerequisite()",
+            "Coordinator.LoadCreationPrerequisite",
             "IsPrerequisiteStage(stage.StepId, snapshot.BuildMethod)",
             "CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State)",
             "new CreationPrerequisitePage(Coordinator)",

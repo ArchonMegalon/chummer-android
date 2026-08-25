@@ -145,7 +145,7 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
     def test_dashboard_uses_core_ledgers_and_never_post_create_editor(self) -> None:
         dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         for marker in (
-            "Coordinator.LoadCreationSkills()",
+            "Coordinator.LoadCreationSkills",
             "HasAuthoritativeSkills(skills)",
             "CreationSkillsPhoneAuthority.IsReady(state, Coordinator.State)",
             "OpenCreationSkillsAsync",

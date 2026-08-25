@@ -25,6 +25,8 @@ internal static class Program
             (nameof(BuildPageProjectsExactlyOneLifecycleRouteAsync), BuildPageProjectsExactlyOneLifecycleRouteAsync),
             (nameof(DurableSaveNoticeFailsClosedAcrossStateChangesAsync), DurableSaveNoticeFailsClosedAcrossStateChangesAsync),
             (nameof(SlowCreationDashboardProjectionDoesNotBlockCallerAsync), SlowCreationDashboardProjectionDoesNotBlockCallerAsync),
+            (nameof(PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync), PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync),
+            (nameof(CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync), CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync),
             (nameof(CompletedCreationProjectionSurvivesADeferredUiConsumerAsync), CompletedCreationProjectionSurvivesADeferredUiConsumerAsync),
             (nameof(LateCreationDashboardProjectionCannotOverwriteNewerBindingAsync), LateCreationDashboardProjectionCannotOverwriteNewerBindingAsync),
             (nameof(CancelledOrFaultedCreationDashboardProjectionIsObservedAsync), CancelledOrFaultedCreationDashboardProjectionIsObservedAsync),
@@ -129,6 +131,103 @@ internal static class Program
         Require(completed.Request == request, "The completed generation changed unexpectedly.");
         Require(completed.Result == "authoritative", "The worker result was not preserved.");
         Require(queue.TryAccept(completed.Request), "The exact completed generation was not accepted.");
+    }
+
+    private static async Task PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync()
+    {
+        using var prerequisiteQueue = new LatestBackgroundProjectionQueue<string, string>();
+        using var attributesQueue = new LatestBackgroundProjectionQueue<string, string>();
+        using var skillsQueue = new LatestBackgroundProjectionQueue<string, string>();
+        using var attributesEntered = new ManualResetEventSlim();
+        using var skillsEntered = new ManualResetEventSlim();
+        using var releaseLaterPhases = new ManualResetEventSlim();
+        var prerequisiteReady = new TaskCompletionSource<BackgroundProjectionCompletion<string, string>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var attributesReady = new TaskCompletionSource<BackgroundProjectionCompletion<string, string>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var skillsReady = new TaskCompletionSource<BackgroundProjectionCompletion<string, string>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        prerequisiteQueue.Completed += value => prerequisiteReady.TrySetResult(value);
+        attributesQueue.Completed += value => attributesReady.TrySetResult(value);
+        skillsQueue.Completed += value => skillsReady.TrySetResult(value);
+
+        attributesQueue.TryRequest(
+            "bound-revision",
+            (_, cancellationToken) =>
+            {
+                attributesEntered.Set();
+                releaseLaterPhases.Wait(cancellationToken);
+                return "attributes";
+            },
+            out _);
+        skillsQueue.TryRequest(
+            "bound-revision",
+            (_, cancellationToken) =>
+            {
+                skillsEntered.Set();
+                releaseLaterPhases.Wait(cancellationToken);
+                return "skills";
+            },
+            out _);
+        Require(attributesEntered.Wait(TimeSpan.FromSeconds(5)), "The Attributes phase never started.");
+        Require(skillsEntered.Wait(TimeSpan.FromSeconds(5)), "The Skills phase never started.");
+
+        prerequisiteQueue.TryRequest(
+            "bound-revision",
+            (_, _) => "prerequisite",
+            out BackgroundProjectionRequest<string> prerequisiteRequest);
+        BackgroundProjectionCompletion<string, string> prerequisite = await prerequisiteReady.Task
+            .WaitAsync(TimeSpan.FromSeconds(5));
+        Require(
+            prerequisiteQueue.TryTake(prerequisiteRequest, out string accepted, out Exception? error),
+            "The prerequisite terminal outcome was not independently consumable.");
+        Require(error is null && accepted == "prerequisite", "The prerequisite outcome changed during acceptance.");
+        Require(
+            !attributesReady.Task.IsCompleted && !skillsReady.Task.IsCompleted,
+            "A later phase had to finish before prerequisite authority was publishable.");
+
+        releaseLaterPhases.Set();
+        await Task.WhenAll(attributesReady.Task, skillsReady.Task).WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    private static Task CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync()
+    {
+        CreationDashboardAuthorityPhaseProgress initial =
+            CreationDashboardAuthorityPhaseProgress.ForBuildMethod(CharacterCreationBuildMethods.Priority);
+        Require(
+            initial.Prerequisite == CreationDashboardAuthorityPhaseState.Loading
+            && initial.Attributes == CreationDashboardAuthorityPhaseState.Loading
+            && initial.Skills == CreationDashboardAuthorityPhaseState.Loading,
+            "Priority must begin with all three authority phases explicitly fail-closed and loading.");
+
+        CreationDashboardAuthorityPhaseProgress prerequisiteAccepted = initial.WithTerminal(
+            CreationDashboardAuthorityPhase.Prerequisite,
+            failed: false);
+        Require(
+            prerequisiteAccepted.Prerequisite == CreationDashboardAuthorityPhaseState.Ready
+            && prerequisiteAccepted.Attributes == CreationDashboardAuthorityPhaseState.Loading
+            && prerequisiteAccepted.Skills == CreationDashboardAuthorityPhaseState.Loading,
+            "Accepting prerequisite authority must not wait for or invent later phase outcomes.");
+
+        CreationDashboardAuthorityPhaseProgress laterFailure = prerequisiteAccepted
+            .WithTerminal(CreationDashboardAuthorityPhase.Skills, failed: false)
+            .WithTerminal(CreationDashboardAuthorityPhase.Attributes, failed: true);
+        Require(
+            laterFailure.Prerequisite == CreationDashboardAuthorityPhaseState.Ready,
+            "A failed later phase erased already accepted prerequisite authority.");
+        Require(
+            laterFailure.Attributes == CreationDashboardAuthorityPhaseState.Failed
+            && laterFailure.Skills == CreationDashboardAuthorityPhaseState.Ready,
+            "Out-of-order later phase merges were not deterministic and isolated.");
+
+        CreationDashboardAuthorityPhaseProgress sumToTen =
+            CreationDashboardAuthorityPhaseProgress.ForBuildMethod(CharacterCreationBuildMethods.SumToTen);
+        Require(
+            sumToTen.Prerequisite == CreationDashboardAuthorityPhaseState.Loading
+            && sumToTen.Attributes == CreationDashboardAuthorityPhaseState.Loading
+            && sumToTen.Skills == CreationDashboardAuthorityPhaseState.NotApplicable,
+            "Sum-to-Ten must not schedule a Priority-only Skills authority phase.");
+        return Task.CompletedTask;
     }
 
     private static async Task CompletedCreationProjectionSurvivesADeferredUiConsumerAsync()
