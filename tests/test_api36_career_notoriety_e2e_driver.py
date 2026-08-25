@@ -51,7 +51,7 @@ class Api36CareerNotorietyDriverTests(unittest.TestCase):
         self.assertIn("max_back_steps: int = 6", source)
         self.assertIn("device.wait_for_single_exact_resource_id(", source)
         self.assertIn('"build-career-reputation"', source)
-        self.assertIn("device.wait_for_single_exact_accessibility_value(", source)
+        self.assertIn("wait_for_single_exact_picker_text(device, value)", source)
         self.assertIn("device.node_has_tappable_bounds", source)
 
     def test_coordinator_requires_exact_revision_dirty_save_and_durable_authority(self) -> None:
@@ -143,6 +143,55 @@ class Api36CareerNotorietyDriverTests(unittest.TestCase):
 
         device.capture.assert_called_once_with("career-notoriety-picker-open-untappable")
         device.shell.assert_not_called()
+
+    def test_picker_value_binds_one_exact_android_checked_text_row(self) -> None:
+        value = driver.shared.UiNode(
+            {
+                "text": "8",
+                "resource-id": "vendor:id/not-the-picker-row",
+                "content-desc": "not-8",
+                "class": "android.widget.CheckedTextView",
+                "bounds": "[91,589][989,715]",
+            }
+        )
+        unrelated = driver.shared.UiNode(
+            {
+                "text": "8 rounds",
+                "resource-id": "android:id/text1",
+                "class": "android.widget.CheckedTextView",
+            }
+        )
+        device = Mock(spec=driver.shared.Device)
+        device.hierarchy.return_value = [unrelated, value]
+
+        self.assertIs(value, driver.wait_for_single_exact_picker_text(device, 8))
+        device.capture.assert_not_called()
+
+    def test_picker_value_fails_closed_when_exact_text_is_missing(self) -> None:
+        device = Mock(spec=driver.shared.Device)
+
+        with self.assertRaisesRegex(RuntimeError, "one exact Career Notoriety"):
+            driver.wait_for_single_exact_picker_text(device, 8, timeout=0)
+
+        device.capture.assert_called_once_with("career-notoriety-value-unavailable")
+
+    def test_picker_value_fails_closed_on_duplicate_exact_rows(self) -> None:
+        value = driver.shared.UiNode(
+            {
+                "text": "8",
+                "resource-id": "android:id/text1",
+                "class": "android.widget.CheckedTextView",
+            }
+        )
+        device = Mock(spec=driver.shared.Device)
+        device.hierarchy.return_value = [value, value]
+
+        with self.assertRaisesRegex(RuntimeError, "cardinality 2"):
+            driver.wait_for_single_exact_picker_text(device, 8)
+
+        device.capture.assert_called_once_with(
+            "career-notoriety-value-cardinality-invalid"
+        )
 
     def test_open_page_resets_build_viewport_then_binds_exact_route_and_picker(self) -> None:
         device = Mock(spec=driver.shared.Device)

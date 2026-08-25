@@ -298,6 +298,40 @@ def exact_picker_value(device: shared.Device) -> int:
         raise RuntimeError("Career Notoriety picker did not expose an exact integer") from error
 
 
+def wait_for_single_exact_picker_text(
+    device: shared.Device,
+    value: int,
+    *,
+    timeout: int = 60,
+) -> shared.UiNode:
+    """Bind one exact visible Android picker row without permissive prefix matching."""
+    expected = str(value)
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        matches = [
+            node
+            for node in device.hierarchy()
+            if node.attributes.get("text", "") == expected
+            and node.attributes.get("class", "").endswith("CheckedTextView")
+        ]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            device.capture("career-notoriety-value-cardinality-invalid")
+            raise RuntimeError(
+                f"Career Notoriety picker value {expected!r} has cardinality "
+                f"{len(matches)}; expected exactly one"
+            )
+        if device.dismiss_system_ui_anr():
+            time.sleep(2)
+            continue
+        time.sleep(0.75)
+    device.capture("career-notoriety-value-unavailable")
+    raise RuntimeError(
+        f"Timed out waiting for one exact Career Notoriety picker value {expected!r}"
+    )
+
+
 def select_notoriety(device: shared.Device, value: int) -> None:
     tap_exact(
         device,
@@ -307,12 +341,7 @@ def select_notoriety(device: shared.Device, value: int) -> None:
         scroll=True,
         max_scrolls=12,
     )
-    item = device.wait_for_single_exact_accessibility_value(
-        str(value),
-        timeout=60,
-        evidence_prefix="career-notoriety-value",
-        surface_name="Career Notoriety picker value",
-    )
+    item = wait_for_single_exact_picker_text(device, value)
     if not device.node_has_tappable_bounds(item):
         device.capture("career-notoriety-value-untappable")
         raise RuntimeError("The exact Career Notoriety picker value is not tappable")
