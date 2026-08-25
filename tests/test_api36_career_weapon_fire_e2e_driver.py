@@ -58,6 +58,11 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
             'evidence_prefix="career-weapon-fire-target-weapon-route"',
             source,
         )
+        self.assertEqual(4, source.count("tap_exact_build_route("))
+        self.assertLess(
+            source.index('evidence_prefix="career-weapon-fire-weapons-route"'),
+            source.index('evidence_prefix="career-weapon-fire-target-weapon-route"'),
+        )
         self.assertIn("device.node_has_tappable_bounds(node)", source)
         self.assertNotIn(
             'device.tap("build-section-tab-gear", scroll=True',
@@ -131,36 +136,6 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
             "career-weapon-fire-weapons-route-untappable"
         )
         device.shell.assert_not_called()
-
-    def test_visible_route_waits_without_scroll_before_exact_tap(self) -> None:
-        node = driver.shared.UiNode(
-            {
-                "resource-id": f"collection-item-weapon-{driver.WEAPON_ID}",
-                "clickable": "true",
-                "bounds": "[98,400][984,560]",
-            }
-        )
-        device = Mock(spec=driver.shared.Device)
-        device.wait_for_single_exact_resource_id.return_value = node
-        device.node_has_tappable_bounds.return_value = True
-
-        driver.tap_exact_visible_route(
-            device,
-            f"collection-item-weapon-{driver.WEAPON_ID}",
-            evidence_prefix="career-weapon-fire-target-weapon-route",
-            surface_name="Target Weapon collection route accessibility node",
-        )
-
-        device.wait_for_single_exact_resource_id.assert_called_once_with(
-            f"collection-item-weapon-{driver.WEAPON_ID}",
-            timeout=120,
-            scroll=False,
-            evidence_prefix="career-weapon-fire-target-weapon-route",
-            surface_name="Target Weapon collection route accessibility node",
-        )
-        device.swipe_up.assert_not_called()
-        device.swipe_down.assert_not_called()
-        device.shell.assert_called_once_with("input", "tap", "541", "480")
 
     def test_fixture_binds_exact_root_weapon_active_clip_linked_ammo_and_burst(self) -> None:
         root = ET.parse(FIXTURE).getroot()
