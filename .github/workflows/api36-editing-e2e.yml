@@ -378,19 +378,19 @@ jobs:
             || true
           grep -qx 'Verifies' "$authority_dir/apksigner-verify.txt" \
             || fail_seal "apksigner did not emit an exact Verifies receipt"
+          grep -qx 'Number of signers: 1' "$authority_dir/apksigner-verify.txt" \
+            || fail_seal "apksigner did not report exactly one signer"
           grep -Eq '^Verified using v[23] scheme.*: true$' \
             "$authority_dir/apksigner-verify.txt" \
             || fail_seal "APK has no verified v2 or v3 signature scheme"
           signing_certificate_sha256="$(
-            sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
-              "$authority_dir/apksigner-verify.txt" \
-              | head -n 1 \
-              | tr '[:upper:]' '[:lower:]'
-          )"
+            python3 chummer-android/scripts/extract_apksigner_certificate_sha256.py \
+              "$authority_dir/apksigner-verify.txt"
+          )" || fail_seal "signing certificate SHA-256 extraction failed"
           [[ "$signing_certificate_sha256" =~ ^[0-9a-f]{64}$ ]] \
             || fail_seal \
               "unexpected signing certificate SHA-256 format (length ${#signing_certificate_sha256})"
-          echo "verified signing certificate SHA-256: $signing_certificate_sha256"
+          echo "verified signing certificate SHA-256 length: ${#signing_certificate_sha256}"
           package_id="$(
             "$aapt" dump badging "$apk" \
               | sed -n "s/^package: name='\([^']*\)'.*/\1/p" \
