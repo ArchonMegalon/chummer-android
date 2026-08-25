@@ -161,18 +161,25 @@ public sealed class BuildPage : NativePageBase
             _body.Add(NativeTheme.Card(blocked));
         }
 
-        AddBudgetRibbon(snapshot);
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite =
             snapshot.BuildMethod is (CharacterCreationBuildMethods.Priority
                 or CharacterCreationBuildMethods.SumToTen)
                 ? Coordinator.LoadCreationPrerequisite()
                 : null;
-        AddWizardStages(snapshot, prerequisite);
+        CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributes =
+            snapshot.BuildMethod is (CharacterCreationBuildMethods.Priority
+                or CharacterCreationBuildMethods.SumToTen)
+                ? Coordinator.LoadCreationAttributes()
+                : null;
+        AddBudgetRibbon(snapshot, attributes);
+        AddWizardStages(snapshot, prerequisite, attributes);
         AddCompletionBlockers(snapshot);
-        AddLegalNextSteps(snapshot, prerequisite);
+        AddLegalNextSteps(snapshot, prerequisite, attributes);
     }
 
-    private void AddBudgetRibbon(CharacterCreationWizardSnapshot snapshot)
+    private void AddBudgetRibbon(
+        CharacterCreationWizardSnapshot snapshot,
+        CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributes)
     {
         _body.Add(NativeTheme.Eyebrow("Budgets"));
         if (snapshot.Budgets.Count == 0)
@@ -190,8 +197,18 @@ public sealed class BuildPage : NativePageBase
             JustifyContent = FlexJustify.SpaceBetween,
             AlignItems = FlexAlignItems.Stretch
         };
-        foreach (CharacterCreationBudgetState budget in snapshot.Budgets)
+        foreach (CharacterCreationBudgetState projectedBudget in snapshot.Budgets)
         {
+            CharacterCreationBudgetState budget = HasAuthoritativeAttributes(attributes)
+                                                     && attributes!.Value is { } attributeState
+                ? projectedBudget.BudgetId switch
+                {
+                    CharacterCreationBudgetIds.NormalAttributes => attributeState.NormalPointBudget,
+                    CharacterCreationBudgetIds.SpecialAttributes => attributeState.SpecialPointBudget,
+                    CharacterCreationBudgetIds.Karma => attributeState.CreationKarmaBudget,
+                    _ => projectedBudget
+                }
+                : projectedBudget;
             string unit = string.IsNullOrWhiteSpace(budget.Unit) ? "points" : budget.Unit;
             VerticalStackLayout card = new()
             {
@@ -220,7 +237,8 @@ public sealed class BuildPage : NativePageBase
 
     private void AddWizardStages(
         CharacterCreationWizardSnapshot snapshot,
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite)
+        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite,
+        CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributes)
     {
         _body.Add(NativeTheme.Eyebrow("Generation steps"));
         foreach (CharacterCreationWizardStageState stage in snapshot.Steps)
@@ -233,14 +251,24 @@ public sealed class BuildPage : NativePageBase
             bool canOpenPrerequisite = priorityPrerequisite
                                        && stage.IsAvailable
                                        && HasAuthoritativePrerequisiteOptions(prerequisite);
-            bool canOpen = canOpenFoundation || canOpenPrerequisite;
+            bool attributeStage = string.Equals(
+                stage.StepId,
+                CharacterCreationWizardStepIds.Attributes,
+                StringComparison.Ordinal);
+            bool canOpenAttributes = attributeStage
+                                     && HasAuthoritativeAttributes(attributes);
+            bool canOpen = canOpenFoundation || canOpenPrerequisite || canOpenAttributes;
             Func<Task> selected = canOpenPrerequisite
                 ? OpenCreationPrerequisiteAsync
+                : canOpenAttributes
+                    ? OpenCreationAttributesAsync
                 : canOpenFoundation
                     ? OpenCreationFoundationAsync
                     : () => Task.CompletedTask;
             string detail = canOpenPrerequisite
                 ? PrerequisiteStageDetail(prerequisite!.Value!)
+                : canOpenAttributes
+                    ? AttributeStageDetail(attributes!.Value!)
                 : canOpenFoundation
                     ? "Choose an exact metatype and Nationality Life Module"
                     : priorityPrerequisite && prerequisite is not null
@@ -248,7 +276,7 @@ public sealed class BuildPage : NativePageBase
                           ?? prerequisite.Value?.Blockers.FirstOrDefault()
                           ?? HumanizeStatus(stage.Status)
                         : HumanizeStatus(stage.Status);
-            if (stage.Blockers.Count > 0)
+            if (stage.Blockers.Count > 0 && !canOpenAttributes)
             {
                 detail += $" · {stage.Blockers[0]}";
             }
@@ -282,12 +310,16 @@ public sealed class BuildPage : NativePageBase
 
     private void AddLegalNextSteps(
         CharacterCreationWizardSnapshot snapshot,
-        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite)
+        CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite,
+        CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributeResult)
     {
         CharacterCreationWizardStageState? active = snapshot.Steps.FirstOrDefault(stage =>
             string.Equals(stage.StepId, snapshot.ActiveStepId, StringComparison.Ordinal));
         string[] candidateIds = new[] { snapshot.ActiveStepId }
             .Concat(active?.LegalNextStepIds ?? [])
+            .Concat(HasAuthoritativeAttributes(attributeResult)
+                ? [CharacterCreationWizardStepIds.Attributes]
+                : [])
             .Where(static id => !string.IsNullOrWhiteSpace(id))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
@@ -306,7 +338,7 @@ public sealed class BuildPage : NativePageBase
                 continue;
             }
 
-            bool attributes = string.Equals(
+            bool attributeStep = string.Equals(
                 stepId,
                 CharacterCreationWizardStepIds.Attributes,
                 StringComparison.Ordinal);
@@ -314,18 +346,23 @@ public sealed class BuildPage : NativePageBase
             bool canOpenFoundation = foundation
                                      && stage.IsAvailable
                                      && HasAuthoritativeFoundationOptions();
+            bool canOpenAttributes = attributeStep
+                                     && HasAuthoritativeAttributes(attributeResult);
             // The post-create AttributeEditRequest path must never serve as a wizard fallback.
-            // Even once Core resolves Heritage/metatype authority, the dedicated Creation
-            // Attributes phone page remains a separate stage.
-            bool canOpen = canOpenFoundation;
+            // Core's dedicated creation authority is the only Attributes route here.
+            bool canOpen = canOpenFoundation || canOpenAttributes;
             Func<Task> selected = canOpenFoundation
                 ? OpenCreationFoundationAsync
+                : canOpenAttributes
+                    ? OpenCreationAttributesAsync
                 : () => Task.CompletedTask;
             string detail = canOpenFoundation
                 ? "Choose an exact metatype and Nationality Life Module"
-                : attributes && prerequisite?.Value is { } prerequisiteState
+                : canOpenAttributes
+                    ? AttributeStageDetail(attributeResult!.Value!)
+                : attributeStep && prerequisite?.Value is { } prerequisiteState
                     ? AttributeGateDetail(prerequisiteState)
-                : attributes && stage.IsAvailable
+                : attributeStep && stage.IsAvailable
                     ? "Rules-authoritative Attribute increments and metatype adjustment are not available yet"
                 : stage.IsAvailable
                     ? "Legal in the projection · dedicated phone step is not wired yet"
@@ -359,6 +396,15 @@ public sealed class BuildPage : NativePageBase
            }
            && CreationPrerequisitePhoneAuthority.IsReady(state, Coordinator.State);
 
+    private bool HasAuthoritativeAttributes(
+        CharacterCreationFoundationResult<CharacterCreationAttributesState>? result)
+        => result is
+           {
+               Outcome: CharacterCreationFoundationOutcomes.Success,
+               Value: { } state
+           }
+           && CreationAttributesPhoneAuthority.IsReady(state, Coordinator.State);
+
     private static bool IsPrerequisiteStage(string stepId, string buildMethod)
         => string.Equals(stepId, CharacterCreationWizardStepIds.Method, StringComparison.Ordinal)
            && buildMethod is (CharacterCreationBuildMethods.Priority
@@ -373,6 +419,9 @@ public sealed class BuildPage : NativePageBase
 
     private Task OpenCreationPrerequisiteAsync()
         => Navigation.PushAsync(new CreationPrerequisitePage(Coordinator));
+
+    private Task OpenCreationAttributesAsync()
+        => Navigation.PushAsync(new CreationAttributesPage(Coordinator));
 
     private static string PrerequisiteStageDetail(CharacterCreationPrerequisiteState state)
     {
@@ -397,6 +446,13 @@ public sealed class BuildPage : NativePageBase
             : $"Raw normal Attribute grant "
               + (state.BaseNormalAttributePoints?.ToString(CultureInfo.InvariantCulture) ?? "not selected")
               + " · Heritage/metatype halveattributepoints adjustment required · Attributes remain disabled";
+
+    private static string AttributeStageDetail(CharacterCreationAttributesState state)
+        => state.PendingDraft is null
+            ? $"Allocate exact Core ledgers · {state.NormalPointBudget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)} "
+              + "normal points left"
+            : $"Resume saved Attributes draft {state.PendingDraft.DraftRevision.ToString(CultureInfo.InvariantCulture)} · "
+              + $"{state.NormalPointBudget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)} normal points left";
 
     private static string StageLabel(CharacterCreationWizardSnapshot snapshot, string stepId)
         => snapshot.Steps.FirstOrDefault(stage => string.Equals(stage.StepId, stepId, StringComparison.Ordinal))?.Label

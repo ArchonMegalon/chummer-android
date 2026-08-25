@@ -359,22 +359,20 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         self.assertNotIn("new CharacterCreationBudgetState", source)
         self.assertNotIn("BuildNewCharacterKarmaWorkflowDialog", source)
 
-    def test_attributes_fail_closed_without_creation_preview_authority(self) -> None:
+    def test_attributes_use_dedicated_creation_authority_not_post_create_editor(self) -> None:
         dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         editor = (NATIVE / "AttributeEditPage.cs").read_text(encoding="utf-8")
+        creation = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
 
-        self.assertFalse((NATIVE / "CreationAttributesPage.cs").exists())
-        self.assertIn("bool attributes = string.Equals(", dashboard)
-        self.assertIn(
-            "Rules-authoritative Attribute increments and metatype adjustment are not available yet",
-            dashboard,
-        )
-        self.assertIn("halveattributepoints adjustment required", dashboard)
-        self.assertNotIn("new CreationAttributesPage(Coordinator)", dashboard)
-        self.assertNotIn("OpenCreationAttributesAsync", dashboard)
+        self.assertIn("Coordinator.LoadCreationAttributes()", dashboard)
+        self.assertIn("CreationAttributesPhoneAuthority.IsReady", dashboard)
+        self.assertIn("new CreationAttributesPage(Coordinator)", dashboard)
+        self.assertIn("OpenCreationAttributesAsync", dashboard)
         self.assertIn("AttributeEditRequest path must", dashboard)
         self.assertIn("AttributeEditRequest", editor)
         self.assertIn("ApplyAttributeEditAsync", editor)
+        self.assertNotIn("AttributeEditRequest", creation)
+        self.assertNotIn("ApplyAttributeEditAsync", creation)
 
     def test_rook_is_workspace_revision_digest_bound_and_non_mutating(self) -> None:
         store = (NATIVE / "RookConversation.cs").read_text(encoding="utf-8")
@@ -419,7 +417,10 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         self.assertIn("_coordinator.State.Profile?.Created == false", route)
         self.assertIn("UsesTabletComposition: false", route)
         self.assertIn('await shell.GoToAsync("//build")', route)
-        self.assertLess(route.index("await CloseAsync"), route.index('await shell.GoToAsync("//build")'))
+        self.assertLess(
+            route.index("await CloseCoreAsync(updatePresenter: false)"),
+            route.index('await shell.GoToAsync("//build")'),
+        )
 
     def test_api36_driver_is_scripted_but_not_executed_by_unit_tests(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
