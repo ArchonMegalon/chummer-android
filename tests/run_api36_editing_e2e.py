@@ -329,9 +329,16 @@ class Device:
         deadline = time.monotonic() + timeout
         scrolls = 0
         while time.monotonic() < deadline:
+            nodes = self.hierarchy()
+            if not nodes:
+                # A failed/empty UIAutomator dump is not evidence that the target is
+                # outside the viewport.  Advancing here can move a short row through
+                # the viewport without ever observing it.
+                time.sleep(0.75)
+                continue
             matches = [
                 node
-                for node in self.hierarchy()
+                for node in nodes
                 if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
                 == selector
             ]
@@ -343,7 +350,7 @@ class Device:
                     f"{surface_name} "
                     f"{selector!r} has cardinality {len(matches)}; expected exactly one"
                 )
-            if self.dismiss_system_ui_anr():
+            if self.dismiss_system_ui_anr(nodes):
                 time.sleep(2)
                 continue
             if scroll and scrolls < max_scrolls:
@@ -430,8 +437,12 @@ class Device:
         self.capture("failure")
         raise RuntimeError(f"Timed out waiting for UI node {selector!r}")
 
-    def dismiss_system_ui_anr(self) -> bool:
-        wait_button = self.find("aerr_wait")
+    def dismiss_system_ui_anr(self, nodes: list[UiNode] | None = None) -> bool:
+        wait_button = (
+            self.find("aerr_wait")
+            if nodes is None
+            else next((node for node in nodes if self._matches(node, "aerr_wait")), None)
+        )
         if wait_button is None:
             return False
         x, y = wait_button.center
@@ -512,8 +523,16 @@ class Device:
         backward_scrolls: int = 24,
         forward_scrolls: int = 24,
         scroll_distance_ratio: float = 0.22,
+        evidence_prefix: str = "exact-resource-bidirectional",
+        surface_name: str = "Exact resource-id control",
     ) -> UiNode:
-        """Reset a refreshed page to its top, then scan forward for one exact ID."""
+        """Reset to the top, then scan one exact, tappable ID without blind swipes.
+
+        Empty hierarchy reads are transient acquisition failures, not proof that the
+        row is elsewhere.  They never advance the viewport.  Small forward gestures
+        keep overlap between observations; if a rendered exact node is clipped above
+        the viewport, one bounded reverse gesture recovers it.
+        """
         x_ratio = self._scroll_x_ratio(selector)
         for _ in range(backward_scrolls):
             self.swipe_down(
@@ -526,11 +545,74 @@ class Device:
 
         deadline = time.monotonic() + timeout
         forward = 0
+        backtracks = 0
         while time.monotonic() < deadline:
-            node = self.find_exact_resource_id(selector)
-            if node is not None and self.node_has_tappable_bounds(node):
-                return node
-            if self.dismiss_system_ui_anr():
+            nodes = self.hierarchy()
+            if not nodes:
+                time.sleep(0.75)
+                continue
+
+            matches = [
+                node
+                for node in nodes
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == selector
+            ]
+            if len(matches) > 1:
+                self.capture(f"{evidence_prefix}-cardinality-invalid")
+                raise RuntimeError(
+                    f"{surface_name} {selector!r} has cardinality {len(matches)}; "
+                    "expected exactly one"
+                )
+            if len(matches) == 1:
+                node = matches[0]
+                if (
+                    node.attributes.get("enabled") == "true"
+                    and node.attributes.get("clickable") == "true"
+                    and self.node_has_tappable_bounds(node)
+                ):
+                    return node
+
+                bounds = BOUNDS.fullmatch(node.attributes.get("bounds", ""))
+                if bounds is None:
+                    self.capture(f"{evidence_prefix}-bounds-invalid")
+                    raise RuntimeError(
+                        f"{surface_name} {selector!r} exposed invalid bounds"
+                    )
+                _, top, _, bottom = (int(value) for value in bounds.groups())
+                _, height = self.display_size()
+                center_y = (top + bottom) // 2
+                clipped = bottom - top <= 8
+                clipped_above = top < 0 or (clipped and center_y < height // 2)
+                clipped_below = (
+                    bottom > height
+                    or center_y >= height * 0.96
+                    or (clipped and center_y >= height // 2)
+                )
+                if clipped_above and forward > 0 and backtracks < forward_scrolls:
+                    self.swipe_down(
+                        x_ratio=x_ratio,
+                        distance_ratio=scroll_distance_ratio,
+                    )
+                    forward -= 1
+                    backtracks += 1
+                    time.sleep(0.75)
+                    continue
+                if clipped_below and forward < forward_scrolls:
+                    self.swipe_up(
+                        x_ratio=x_ratio,
+                        distance_ratio=scroll_distance_ratio,
+                    )
+                    forward += 1
+                    time.sleep(0.75)
+                    continue
+
+                self.capture(f"{evidence_prefix}-not-tappable")
+                raise RuntimeError(
+                    f"{surface_name} {selector!r} was not enabled, clickable, and tappable"
+                )
+
+            if self.dismiss_system_ui_anr(nodes):
                 time.sleep(2)
                 continue
             if forward >= forward_scrolls:
@@ -541,9 +623,9 @@ class Device:
             )
             forward += 1
             time.sleep(0.75)
-        self.capture("failure")
+        self.capture(f"{evidence_prefix}-unavailable")
         raise RuntimeError(
-            f"Timed out waiting for exact UI resource {selector!r} "
+            f"Timed out waiting for exactly one tappable {surface_name.lower()} {selector!r} "
             "after a bounded bidirectional search"
         )
 

@@ -293,6 +293,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         parent_page = driver.shared.UiNode(
             {"resource-id": "creation-prerequisite-page"}
         )
+        initial_row = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-category-heritage",
+                "content-desc": "Heritage. 1. Select an authority-projected rank",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[10,100][900,300]",
+            }
+        )
         selected_row = driver.shared.UiNode(
             {
                 "resource-id": "creation-prerequisite-category-heritage",
@@ -308,11 +317,28 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             viewport = "bottom"
             category_poll_count = 0
 
-            def tap(self, selector: str, **options: object) -> None:
-                if self.route != "parent" or self.viewport != "top":
-                    raise AssertionError("Category tap ran before resetting the parent viewport")
-                calls.append(("tap", (selector, options)))
-                self.route = "category"
+            category_scan_count = 0
+
+            def wait_exact_resource_id_bidirectional(
+                self,
+                selector: str,
+                **options: object,
+            ):
+                if self.route != "parent":
+                    raise AssertionError("Category row was acquired outside the parent route")
+                self.category_scan_count += 1
+                self.viewport = "top"
+                calls.append(("wait_bidirectional", (selector, options)))
+                return initial_row if self.category_scan_count == 1 else selected_row
+
+            def shell(self, *arguments: str) -> None:
+                calls.append(("shell", arguments))
+                if arguments[:2] == ("input", "tap"):
+                    if self.route != "parent" or self.viewport != "top":
+                        raise AssertionError(
+                            "Category tap ran before exact bounded viewport acquisition"
+                        )
+                    self.route = "category"
 
             def find_exact_resource_id(self, selector: str):
                 calls.append(("find_exact", selector))
@@ -338,9 +364,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     if self.route != "parent":
                         raise AssertionError("Parent route was checked before the category pop")
                     return parent_page
-                if self.route != "parent" or self.viewport != "top":
-                    raise AssertionError("Selected row was checked before resetting the parent viewport")
-                return selected_row
+                raise AssertionError(f"unexpected exact wait: {selector}")
 
             def swipe_down(self, **options: object) -> None:
                 calls.append(("swipe_down", options))
@@ -370,16 +394,21 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             selected = driver.select_priority_rank(device, "heritage")
 
         self.assertEqual("creation-prerequisite-rank-heritage-a", selected)
-        self.assertEqual(44, sum(call[0] == "swipe_down" for call in calls))
+        self.assertEqual(2, sum(call[0] == "wait_bidirectional" for call in calls))
+        self.assertEqual(0, sum(call[0] == "swipe_down" for call in calls))
+        self.assertIn(("shell", ("input", "tap", "455", "200")), calls)
         self.assertIn(
             (
-                "tap",
+                "wait_bidirectional",
                 (
                     "creation-prerequisite-category-heritage",
                     {
-                        "scroll": True,
-                        "max_scrolls": 22,
-                        "exact_resource_id": True,
+                        "timeout": 90,
+                        "backward_scrolls": 22,
+                        "forward_scrolls": 22,
+                        "scroll_distance_ratio": 0.22,
+                        "evidence_prefix": "creation-prerequisite-heritage-category-row",
+                        "surface_name": "heritage priority category row",
                     },
                 ),
             ),
@@ -415,13 +444,13 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         self.assertIn(
             (
-                "wait_exact",
+                "wait_bidirectional",
                 (
                     "creation-prerequisite-category-heritage",
                     {
-                        "timeout": 45,
-                        "scroll": True,
-                        "max_scrolls": 22,
+                        "timeout": 90,
+                        "backward_scrolls": 22,
+                        "forward_scrolls": 22,
                         "scroll_distance_ratio": 0.22,
                         "evidence_prefix": "creation-prerequisite-heritage-selected-row",
                         "surface_name": "Selected heritage category row",
@@ -547,6 +576,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device = mock.Mock()
         device.wait.return_value = driver.shared.UiNode({})
         device.find_exact_resource_id.return_value = None
+        device.wait_exact_resource_id_bidirectional.return_value = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-category-heritage",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[10,100][900,300]",
+            }
+        )
         parent = driver.shared.UiNode({"resource-id": "creation-prerequisite-page"})
         stale_row = driver.shared.UiNode(
             {

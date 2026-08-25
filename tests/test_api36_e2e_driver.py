@@ -3912,6 +3912,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         target = DRIVER.UiNode(
             {
                 "resource-id": "com.myexternalbrain.chummer:id/section-quick-gear-add",
+                "enabled": "true",
                 "clickable": "true",
                 "bounds": "[100,100][300,300]",
             }
@@ -3925,10 +3926,11 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.swipe_up.side_effect = lambda **_: preserved_offset.update(
             rows_below_top=preserved_offset["rows_below_top"] + 1
         )
-        device.find_exact_resource_id.side_effect = lambda _: (
-            target if preserved_offset["rows_below_top"] == 0 else None
+        device.hierarchy.side_effect = lambda: (
+            [target] if preserved_offset["rows_below_top"] == 0 else []
         )
         device.node_has_tappable_bounds.return_value = True
+        device.dismiss_system_ui_anr.return_value = False
         with patch.object(DRIVER.time, "sleep"):
             actual = DRIVER.Device.wait_exact_resource_id_bidirectional(
                 device,
@@ -3975,6 +3977,131 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     scroll_distance_ratio=0.22,
                 )
         self.assertGreater(old_offset["rows_below_top"], 24)
+
+    def test_exact_bidirectional_wait_does_not_scroll_after_empty_hierarchy(self) -> None:
+        target = DRIVER.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/"
+                    "creation-prerequisite-category-heritage"
+                ),
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,500][984,720]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        device._scroll_x_ratio.return_value = 0.5
+        device.hierarchy.side_effect = [[], [target]]
+        device.node_has_tappable_bounds.return_value = True
+
+        with patch.object(DRIVER.time, "sleep"):
+            actual = DRIVER.Device.wait_exact_resource_id_bidirectional(
+                device,
+                "creation-prerequisite-category-heritage",
+                backward_scrolls=0,
+                forward_scrolls=4,
+            )
+
+        self.assertIs(target, actual)
+        self.assertEqual(2, device.hierarchy.call_count)
+        device.swipe_up.assert_not_called()
+        device.swipe_down.assert_not_called()
+        device.dismiss_system_ui_anr.assert_not_called()
+
+    def test_exact_bidirectional_wait_backtracks_after_clipped_overshoot(self) -> None:
+        decoy = DRIVER.UiNode(
+            {
+                "resource-id": "com.myexternalbrain.chummer:id/decoy",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,500][984,720]",
+            }
+        )
+        clipped = DRIVER.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/"
+                    "creation-prerequisite-category-heritage"
+                ),
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,275][984,276]",
+            }
+        )
+        target = DRIVER.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/"
+                    "creation-prerequisite-category-heritage"
+                ),
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,420][984,640]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        position = {"value": 0}
+        device._scroll_x_ratio.return_value = 0.5
+        device.display_size.return_value = (1080, 2400)
+        device.hierarchy.side_effect = lambda: (
+            [decoy]
+            if position["value"] == 0
+            else [clipped]
+            if position["value"] == 2
+            else [target]
+        )
+        device.swipe_up.side_effect = lambda **_: position.update(value=2)
+        device.swipe_down.side_effect = lambda **_: position.update(value=1)
+        device.node_has_tappable_bounds.side_effect = (
+            lambda node: DRIVER.Device.node_has_tappable_bounds(device, node)
+        )
+        device.dismiss_system_ui_anr.return_value = False
+
+        with patch.object(DRIVER.time, "sleep"):
+            actual = DRIVER.Device.wait_exact_resource_id_bidirectional(
+                device,
+                "creation-prerequisite-category-heritage",
+                backward_scrolls=0,
+                forward_scrolls=4,
+                scroll_distance_ratio=0.22,
+            )
+
+        self.assertIs(target, actual)
+        self.assertEqual(1, device.swipe_up.call_count)
+        self.assertEqual(1, device.swipe_down.call_count)
+        self.assertEqual(1, position["value"])
+        device.capture.assert_not_called()
+
+    def test_exact_bidirectional_wait_rejects_duplicate_resource_ids(self) -> None:
+        duplicate = DRIVER.UiNode(
+            {
+                "resource-id": "creation-prerequisite-category-heritage",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,420][984,640]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        device._scroll_x_ratio.return_value = 0.5
+        device.hierarchy.return_value = [duplicate, duplicate]
+
+        with patch.object(DRIVER.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "cardinality 2",
+        ):
+            DRIVER.Device.wait_exact_resource_id_bidirectional(
+                device,
+                "creation-prerequisite-category-heritage",
+                backward_scrolls=0,
+                evidence_prefix="creation-prerequisite-heritage-category-row",
+            )
+
+        device.capture.assert_called_once_with(
+            "creation-prerequisite-heritage-category-row-cardinality-invalid"
+        )
+        device.swipe_up.assert_not_called()
+        device.swipe_down.assert_not_called()
 
     def test_phone_condition_route_uses_overlapping_scrolls(self) -> None:
         class ConditionRouteDevice:
