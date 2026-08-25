@@ -1,19 +1,22 @@
 # SR5 Career Wizard authority matrix
 
-This matrix describes the native Android phone wizard sources based on
-`da4f242652c1192256aed3a6bb2d262b65176a8d`. Active Skill is integrated in that
-base; the Attribute slice is pinned to combined Core
+This matrix describes the integration of Attribute source slice
+`e58584fd2fddc45ad2a715c88a9d904091e619b9` onto combined phone-beta base
+`047d6fb7727cf22f71537303b416fd52a7ea91be`; both descend from shared Android
+base `da4f242652c1192256aed3a6bb2d262b65176a8d`. Active Skill is integrated in
+that shared base; the Attribute slice is pinned to combined Core
 `8e2c53bf9c5ac85f675e738bf6e8ecd2ade4bb2a` and combined Presentation
 `37b4f048fa50911db7cd493217e1b64005c37770`, which carry the exact Core authority
-and tree-identical Presentation authority. This document still claims source
-implementation and lightweight static tests only—not a compiled or API-36-proven
+and tree-identical Presentation authority. Integration result
+`ead84bf1a23e0a721364feb4b06d813262f71748` contains the product slice; this
+matrix claims only source integration and lightweight static tests—not a compiled or API-36-proven
 Attribute artifact. A visible route or an individual emulator receipt is not
 evidence of full Chummer5 Career parity.
 
 | Workflow | Exact typed mutation authority already present at the base | Status after this slice | Remaining blocker |
 | --- | --- | --- | --- |
 | Karma / Nuyen adjustments | Manual Career Karma and Nuyen plus four typed expense-create operations | **Partial:** exact leaves are linked from After Run | No shared quote/review/atomic closeout result |
-| Attribute advancement | Exact typed abbreviation/kind identity; Core quote/plan/receipt with logical, source, rule and receipt digests; Presentation atomic XML mutation plus recoverable receipt ledger | **Implemented source vertical slice:** created-SR5-only `Choose -> exact quote and blockers -> preview diff -> checkpointed apply once -> fresh recoverable receipt -> acknowledgement` | Integrate the exact Core and Presentation authority heads into the combined graph, compile, then capture digest-bound API-36 save/reopen/process-restart proof |
+| Attribute advancement | Exact typed abbreviation/kind identity; Core quote/plan/receipt with logical, source, rule and receipt digests; Presentation atomic XML mutation plus recoverable receipt ledger | **Integrated source vertical slice:** created-SR5-only `Choose -> exact quote and blockers -> preview diff -> checkpointed apply once -> fresh recoverable receipt -> acknowledgement` | Compile the exact integrated graph, then capture digest-bound API-36 save/reopen/process-restart proof |
 | Active Skill advancement | Exact identity/source/rule/logical revisions, Core quote and plan, revision-bound request, expense undo metadata and durable Coordinator save | **Implemented source vertical slice:** created-SR5-only Build route and `Choose -> Quote -> Review diff -> Apply once -> fresh typed skill + expense reload -> receipt` | API-36 save/reopen/process-restart proof remains unavailable in this environment |
 | Skill Group / Specialization | The coherent compatibility graph contains exact Core and Presentation quote/plan authorities | **Missing Android route:** called out as the intended second path | Shared Android Coordinator has no prepare/apply/durable-result methods on this base |
 | Knowledge Skill | No complete Android Career acquisition/advance route found | **Missing** | Exact source/rule quote, expense plan, mutation and receipt |
@@ -46,7 +49,7 @@ evidence of full Chummer5 Career parity.
   outcome lookup may transition it to `Applied` or back to `Reviewed`; its
   process-bound proof and live owner/workspace/revision binding are checked
   again at the store CAS, and a partial/mismatched outcome remains locked.
-- This source slice has no digest-bound API-36 edit/save/reopen/process-restart
+- This integrated source slice has no digest-bound API-36 edit/save/reopen/process-restart
   receipt. Release parity remains unproven until that separate device journey
   is captured against integrated bytes.
 

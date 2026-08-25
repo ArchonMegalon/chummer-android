@@ -1,0 +1,107 @@
+{
+  "schema": "chummer.android.sr5-career-attribute-integration-receipt/v1",
+  "generatedAtUtc": "2026-08-25T19:55:04Z",
+  "status": "source_integration_verified_device_proof_pending",
+  "integration": {
+    "branch": "codex/integrate-sr5-career-attribute-phone-20260825",
+    "sourceSliceCommit": "e58584fd2fddc45ad2a715c88a9d904091e619b9",
+    "sourceSliceTree": "6a3ef6c34317482cf9c136cbebb6b72885092290",
+    "combinedPhoneBetaBaseCommit": "047d6fb7727cf22f71537303b416fd52a7ea91be",
+    "combinedPhoneBetaBaseTree": "8b8a942e4c5adeba6b0c3257b93e74d1d51b9a45",
+    "sharedAndroidBaseCommit": "da4f242652c1192256aed3a6bb2d262b65176a8d",
+    "productIntegrationCommit": "ead84bf1a23e0a721364feb4b06d813262f71748",
+    "productIntegrationTree": "7823d97e59ade77ef725b193b6ae28bb64e38728",
+    "coreCommit": "8e2c53bf9c5ac85f675e738bf6e8ecd2ade4bb2a",
+    "coreTree": "31920075329002c450707d03037c08ab95ab2146",
+    "presentationCommit": "37b4f048fa50911db7cd493217e1b64005c37770",
+    "presentationTree": "9fbe971523c49ba8aee7041d0f73076a0c7e4b01"
+  },
+  "sourceFidelity": {
+    "nonConflictFilesCompared": 15,
+    "nonConflictFilesBlobIdentical": 15,
+    "expectedConflictFiles": [
+      ".github/workflows/api36-editing-e2e.yml",
+      ".github/workflows/preview9-arm64-aab.yml",
+      "docs/SR5_CAREER_WIZARD_MATRIX.md",
+      "tests/test_android_contract.py",
+      "tests/test_api36_e2e_workflow.py"
+    ],
+    "unexpectedConflictFiles": []
+  },
+  "contentBundle": {
+    "status": "pass",
+    "canonicalFileCount": 110,
+    "canonicalByteCount": 17371170,
+    "bundleDigest": "3f6c14878487cbd96b7eb94752f19c60f4012a6156cfc02f60b75e46ba4af950",
+    "manifestSha256": "c6af51517b2cbdab1f956bbc1c283dc965bcb5039d8f6d75bf93bdac8889fbdc"
+  },
+  "generatedArtifacts": [
+    {
+      "path": "docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json",
+      "sha256": "f76a3484d708b86eba4cad568543e6d8ae0ed97e6224a2ba7aaf815b482fe8d4",
+      "generator": "scripts/materialize_chummer5_editability_inventory.py",
+      "generatorSha256": "8bb0af96749e32f90f5a40fcdb82e29cefc65cf7584249aa9fb8e81502d3cc9b",
+      "checkStatus": "pass",
+      "rowCount": 2229,
+      "unclassifiedCount": 0
+    },
+    {
+      "path": "docs/CHUMMER5_CHARACTER_SETTINGS_CONTRACT.generated.json",
+      "sha256": "943e6ce06d5fb28b04aad7d11ea829ace6288abcba5be883b46bf049f67b58d0",
+      "generator": "scripts/materialize_chummer5_character_settings_contract.py",
+      "generatorSha256": "10d5123c2edc455dc04bf78e2b84cd56f0b735d1d3a6af30a71c3a0c1a2ab982",
+      "checkStatus": "pass",
+      "controlCount": 162,
+      "resolvedControlCount": 162,
+      "unresolvedControlCount": 0
+    }
+  ],
+  "verification": [
+    {
+      "name": "full-lightweight-android-suite",
+      "command": "python3 -m pytest -q",
+      "authorityGraph": {
+        "chummer5Commit": "fe4355d06c98cd9b7feade89f5fc1a0e438f7ce3",
+        "designCommit": "c60c93f635e371d784812140f5d5181d1d954ae2",
+        "coreCommit": "8e2c53bf9c5ac85f675e738bf6e8ecd2ade4bb2a",
+        "presentationCommit": "37b4f048fa50911db7cd493217e1b64005c37770",
+        "hubCommit": "d29a880f624ec94aabedd0c2901ae8fed2f93ed4"
+      },
+      "status": "pass",
+      "testsPassed": 646,
+      "subtestsPassed": 661,
+      "durationSeconds": 36.93
+    },
+    {
+      "name": "focused-career-attribute-dotnet-harness",
+      "command": "dotnet run --project tests/Chummer.Android.Sr5CareerAttribute.Tests/Chummer.Android.Sr5CareerAttribute.Tests.csproj -c Release -p:ChummerCoreRoot=<exact-core-root>",
+      "status": "inconclusive_timeout",
+      "timeoutSeconds": 75,
+      "exitCode": 124,
+      "outputBytes": 0,
+      "claimedPassing": false
+    }
+  ],
+  "unperformed": [
+    "full MAUI compile",
+    "ARM64 package build",
+    "API 36 journey",
+    "physical device install",
+    "save/reopen/process-restart device proof",
+    "Play Console upload or publication"
+  ],
+  "releaseClaims": {
+    "sourceIntegrationVerified": true,
+    "compiledArtifactVerified": false,
+    "api36Verified": false,
+    "physicalDeviceVerified": false,
+    "playPublicationClaimed": false,
+    "careerParityClaimed": false
+  },
+  "sensitiveRuntimeActionsTaken": [],
+  "remainingBlockers": [
+    "Resolve or rerun the focused .NET harness without a silent timeout.",
+    "Compile the exact integrated Core, Presentation and Android graph.",
+    "Capture digest-bound API 36 Attribute save, reopen and process-restart evidence."
+  ]
+}

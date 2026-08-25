@@ -79,7 +79,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "1d9ce3c1a73a415248b3b49a6ca7c6a27608b4875aa43057fcd149e8e566a9ba"
+        "sha256": "3f4c1ef4ff0af527b1ca8c27c7ee263edab8308d6ceddd0bee743fab3eaee116"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -599,7 +599,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "cd0ca4aef9e86157a7e782708090775ba41588ff7b7aaaf541771b79bc8409a7"
+        "sha256": "ee759e63ed7bc2935bbe6a9246a50824bcb2a40b950c7104fcfa9efa25242dc4"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -2089,7 +2089,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "754bc553662f6ce093cf8a5f1dbf45d894c7fce0710c086a25d702a366a0b372"
+        "sha256": "d43d0b6e247bbf88ca36653f7ca471ce859cc09315372cc2e8350fe80781b675"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -2319,7 +2319,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "672f000233d6b907766ede4a0e1b42cb7096147de3047b3a4461eff4827d717a"
+        "sha256": "195d5ee2e59347bd6d60b2e1a81cf9186afabd361b23ae95b42d38d0c7ab6953"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2374,7 +2374,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "9cd7cc122cab022991334c71e6768ef5364ee12ead79e04bcd3888e77cb08344"
+        "sha256": "9c3814e2c7fb2f93c60d193158984424fcefb3d9485e5a1efc0ecbb6b27a4806"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
