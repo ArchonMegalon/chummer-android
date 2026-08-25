@@ -1,5 +1,12 @@
 using Chummer.Contracts.Characters;
 
+namespace Chummer.Presentation
+{
+    public interface IChummerClient
+    {
+    }
+}
+
 namespace Chummer.Contracts.Workspaces
 {
     public readonly record struct CharacterWorkspaceId(string Value);

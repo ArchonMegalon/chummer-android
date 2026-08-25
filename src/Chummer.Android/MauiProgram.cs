@@ -52,6 +52,8 @@ public static class MauiProgram
             contentPath,
             contentPath,
             "android");
+        builder.Services.AddSingleton<ICareerQualityAtomicWorkspace,
+            AndroidCareerQualityAtomicWorkspace>();
         builder.Services.AddSingleton(new HttpClient
         {
             BaseAddress = new Uri("https://chummer.run"),

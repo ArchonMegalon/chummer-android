@@ -20,5 +20,6 @@
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerQualityWizardModel.cs" Link="Native/Sr5CareerQualityWizardModel.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerQualityCoordinator.cs" Link="Native/Sr5CareerQualityCoordinator.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerQualityCheckpointStore.cs" Link="Native/Sr5CareerQualityCheckpointStore.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/AndroidCareerQualityAtomicWorkspace.cs" Link="Native/AndroidCareerQualityAtomicWorkspace.cs" />
   </ItemGroup>
 </Project>
