@@ -317,6 +317,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          fail_seal() {
+            echo "::error::$*" >&2
+            exit 1
+          }
           mapfile -t apks < <(
             find chummer-android/src/Chummer.Android/bin/Debug/net10.0-android36.0 \
               -path '*/android-arm64/*' -type f -name '*-Signed.apk' -print
@@ -351,32 +355,52 @@ jobs:
               raise SystemExit(f"expected exact arm64-v8a ABI set, found {abis!r}")
           print("verified APK ABI set: arm64-v8a")
           PY
-          build_tools="$(
-            find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d -print \
+          apksigner="$(
+            find "$ANDROID_HOME/build-tools" -type f -name apksigner -perm -u+x -print \
               | sort -V \
               | tail -n 1
           )"
-          test -n "$build_tools"
-          test -x "$build_tools/apksigner"
-          test -x "$build_tools/aapt"
-          "$build_tools/apksigner" verify --verbose --print-certs "$apk" \
-            >"$authority_dir/apksigner-verify.txt"
-          grep -qx 'Verifies' "$authority_dir/apksigner-verify.txt"
+          aapt="$(
+            find "$ANDROID_HOME/build-tools" -type f -name aapt -perm -u+x -print \
+              | sort -V \
+              | tail -n 1
+          )"
+          test -n "$apksigner" || fail_seal "no executable apksigner found"
+          test -n "$aapt" || fail_seal "no executable aapt found"
+          echo "selected apksigner: ${apksigner#"$ANDROID_HOME/"}"
+          echo "selected aapt: ${aapt#"$ANDROID_HOME/"}"
+          "$apksigner" verify --verbose --print-certs "$apk" \
+            >"$authority_dir/apksigner-verify.txt" \
+            || fail_seal "apksigner rejected the sealed APK"
+          grep -E \
+            '^(Verifies|Verified using v[0-9].*|Signer #1 certificate SHA-256 digest: .*)$' \
+            "$authority_dir/apksigner-verify.txt" \
+            || true
+          grep -qx 'Verifies' "$authority_dir/apksigner-verify.txt" \
+            || fail_seal "apksigner did not emit an exact Verifies receipt"
           grep -Eq '^Verified using v[23] scheme.*: true$' \
-            "$authority_dir/apksigner-verify.txt"
+            "$authority_dir/apksigner-verify.txt" \
+            || fail_seal "APK has no verified v2 or v3 signature scheme"
           signing_certificate_sha256="$(
             sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
               "$authority_dir/apksigner-verify.txt" \
               | head -n 1 \
               | tr '[:upper:]' '[:lower:]'
           )"
-          [[ "$signing_certificate_sha256" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$signing_certificate_sha256" =~ ^[0-9a-f]{64}$ ]] \
+            || fail_seal \
+              "unexpected signing certificate SHA-256 format (length ${#signing_certificate_sha256})"
+          echo "verified signing certificate SHA-256: $signing_certificate_sha256"
           package_id="$(
-            "$build_tools/aapt" dump badging "$apk" \
+            "$aapt" dump badging "$apk" \
               | sed -n "s/^package: name='\([^']*\)'.*/\1/p" \
               | head -n 1
           )"
-          test "$package_id" = "$CHUMMER_PHYSICAL_PACKAGE_ID"
+          test -n "$package_id" || fail_seal "aapt returned no package ID"
+          echo "observed package ID: $package_id"
+          test "$package_id" = "$CHUMMER_PHYSICAL_PACKAGE_ID" \
+            || fail_seal \
+              "package ID mismatch: expected $CHUMMER_PHYSICAL_PACKAGE_ID, observed $package_id"
           {
             echo "apk-sha256=$apk_sha256"
             echo "package-id=$package_id"

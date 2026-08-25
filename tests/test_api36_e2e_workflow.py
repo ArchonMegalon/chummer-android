@@ -110,9 +110,15 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn('-p:ApplicationId="$CHUMMER_PHYSICAL_PACKAGE_ID"', arm64)
         self.assertIn("-path '*/android-arm64/*'", arm64)
         self.assertIn('abis != ["arm64-v8a"]', arm64)
-        self.assertIn("apksigner\" verify --verbose --print-certs", arm64)
+        self.assertIn('find "$ANDROID_HOME/build-tools" -type f -name apksigner', arm64)
+        self.assertIn('"$apksigner" verify --verbose --print-certs', arm64)
+        self.assertIn("apksigner did not emit an exact Verifies receipt", arm64)
+        self.assertIn("APK has no verified v2 or v3 signature scheme", arm64)
         self.assertIn("signing-certificate-sha256", arm64)
-        self.assertIn("aapt\" dump badging", arm64)
+        self.assertIn('find "$ANDROID_HOME/build-tools" -type f -name aapt', arm64)
+        self.assertIn('"$aapt" dump badging', arm64)
+        self.assertIn("observed package ID: $package_id", arm64)
+        self.assertIn("package ID mismatch:", arm64)
         self.assertIn('test "$package_id" = "$CHUMMER_PHYSICAL_PACKAGE_ID"', arm64)
         self.assertIn(
             "chummer-android-api36-arm64-physical-debug-"
