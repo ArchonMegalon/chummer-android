@@ -11,6 +11,15 @@ UPPER_DIGEST = LOWER_DIGEST.upper()
 
 
 class ExtractApksignerCertificateSha256Tests(unittest.TestCase):
+    def test_accepts_observed_v37_v30_signer_label_as_exact_32_bytes(self) -> None:
+        label, digest = extract_certificate_sha256(
+            f"V3.0 Signer: certificate SHA-256 digest: {UPPER_DIGEST}\n"
+        )
+
+        self.assertEqual("v3.0", label)
+        self.assertEqual(LOWER_DIGEST, digest)
+        self.assertEqual(32, len(bytes.fromhex(digest)))
+
     def test_accepts_numbered_signer_label_and_normalizes_case(self) -> None:
         label, digest = extract_certificate_sha256(
             f"Signer #1 certificate SHA-256 digest: {UPPER_DIGEST}\n"
@@ -74,7 +83,7 @@ class ExtractApksignerCertificateSha256Tests(unittest.TestCase):
                 f"Future Signer certificate SHA-256 digest: {LOWER_DIGEST}\n"
             )
 
-    def test_rejection_reports_only_sanitized_label_and_digest_length(self) -> None:
+    def test_rejection_redacts_unallowlisted_label_and_digest(self) -> None:
         try:
             extract_certificate_sha256(
                 f"Future/Signer certificate SHA-256 digest: {UPPER_DIGEST}\n"
@@ -84,9 +93,8 @@ class ExtractApksignerCertificateSha256Tests(unittest.TestCase):
         else:
             self.fail("unallowlisted label unexpectedly succeeded")
 
-        self.assertIn(
-            "Future?Signer (digest_length=64, digest_class=hex)", message
-        )
+        self.assertIn("accepted=0, certificate_digest_lines=1", message)
+        self.assertNotIn("Future/Signer", message)
         self.assertNotIn(LOWER_DIGEST, message.lower())
         self.assertNotIn(UPPER_DIGEST, message)
 
@@ -101,12 +109,10 @@ class ExtractApksignerCertificateSha256Tests(unittest.TestCase):
         else:
             self.fail("malformed digest unexpectedly succeeded")
 
-        self.assertIn(
-            "Signer #1 (digest_length=62, digest_class=hex)", message
-        )
+        self.assertIn("accepted=0, certificate_digest_lines=1", message)
         self.assertNotIn(malformed_digest, message)
 
-    def test_colon_delimited_digest_diagnostic_is_classified_and_redacted(self) -> None:
+    def test_colon_delimited_digest_is_rejected_and_redacted(self) -> None:
         colon_digest = ":".join(["ab"] * 32)
         try:
             extract_certificate_sha256(
@@ -117,11 +123,7 @@ class ExtractApksignerCertificateSha256Tests(unittest.TestCase):
         else:
             self.fail("unallowlisted digest representation unexpectedly succeeded")
 
-        self.assertIn(
-            "Signer #1 (digest_length=95, "
-            "digest_class=colon-delimited-hex-bytes)",
-            message,
-        )
+        self.assertIn("accepted=0, certificate_digest_lines=1", message)
         self.assertNotIn(colon_digest, message)
 
 
