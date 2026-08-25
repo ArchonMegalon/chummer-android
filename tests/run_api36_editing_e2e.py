@@ -135,6 +135,10 @@ class FullEditingFixtureContract:
     next_improvement_cost: int
 
 
+class ProductAnrDetected(RuntimeError):
+    """Raised when Android reports that the Chummer process is not responding."""
+
+
 class Device:
     def __init__(self, adb: Path, serial: str, evidence: Path) -> None:
         self.adb = adb
@@ -445,9 +449,75 @@ class Device:
         )
         if wait_button is None:
             return False
-        x, y = wait_button.center
-        self.shell("input", "tap", str(x), str(y))
-        return True
+        self.capture_product_anr_evidence()
+        raise ProductAnrDetected(
+            "Android reported that Chummer is not responding; captured product-ANR "
+            "diagnostics and refused to dismiss the dialog as success"
+        )
+
+    def capture_product_anr_evidence(self) -> None:
+        """Capture bounded diagnostics without mutating or dismissing the ANR dialog."""
+        try:
+            screenshot = self.run(
+                "exec-out",
+                "screencap",
+                "-p",
+                timeout=15,
+                text=False,
+            ).stdout
+            (self.evidence / "product-anr.png").write_bytes(screenshot)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+            _write_launch_evidence(self, "product-anr-screenshot-error.txt", error)
+
+        process_ids = tuple(
+            token
+            for token in _safe_shell(self, "pidof", PACKAGE, timeout=15).split()
+            if PROCESS_ID.fullmatch(token)
+        )
+        _write_launch_evidence(
+            self,
+            "product-anr-process-ids.txt",
+            "\n".join(process_ids) or "process id unavailable",
+        )
+        for process_id in process_ids:
+            _write_launch_evidence(
+                self,
+                f"product-anr-sigquit-{process_id}.txt",
+                _safe_shell(self, "kill", "-3", process_id, timeout=15),
+            )
+
+        diagnostics = (
+            (
+                "product-anr-lastanr.txt",
+                ("dumpsys", "activity", "lastanr"),
+            ),
+            (
+                "product-anr-processes.txt",
+                ("dumpsys", "activity", "processes"),
+            ),
+            (
+                "product-anr-exit-info.txt",
+                ("dumpsys", "activity", "exit-info", PACKAGE),
+            ),
+            (
+                "product-anr-windows.txt",
+                ("dumpsys", "window", "windows"),
+            ),
+            (
+                "product-anr-data-anr.txt",
+                ("ls", "-la", "/data/anr"),
+            ),
+            (
+                "product-anr-logcat.txt",
+                ("logcat", "-d", "-b", "all", "-v", "threadtime", "-t", "4000"),
+            ),
+        )
+        for name, arguments in diagnostics:
+            _write_launch_evidence(
+                self,
+                name,
+                _safe_shell(self, *arguments, timeout=15),
+            )
 
     def tap(
         self,

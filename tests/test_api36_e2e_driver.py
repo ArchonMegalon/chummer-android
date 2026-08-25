@@ -1808,33 +1808,36 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         self.assertEqual(("input", "tap", "82", "530"), device.commands[-1])
 
-    def test_system_ui_anr_wait_action_is_dismissed(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
-            device.nodes = [
-                DRIVER.UiNode(
-                    {
-                        "resource-id": "android:id/aerr_wait",
-                        "text": "Wait",
-                        "clickable": "true",
-                        "bounds": "[100,1200][900,1400]",
-                    }
-                )
-            ]
-
-            self.assertTrue(device.dismiss_system_ui_anr())
-
-        self.assertEqual(("input", "tap", "500", "1300"), device.commands[-1])
-
-    def test_wait_scrolls_after_anr_recovery_before_dumping_again(self) -> None:
+    def test_system_ui_anr_is_captured_and_fails_without_dismissal(self) -> None:
         device = Mock(spec=DRIVER.Device)
-        expected = DRIVER.UiNode({"text": "ContactE2E"})
-        device.find.side_effect = [None, expected]
-        device.dismiss_system_ui_anr.return_value = True
+        wait_button = DRIVER.UiNode(
+            {
+                "resource-id": "android:id/aerr_wait",
+                "text": "Wait",
+                "clickable": "true",
+                "bounds": "[100,1200][900,1400]",
+            }
+        )
+
+        with self.assertRaisesRegex(
+            DRIVER.ProductAnrDetected,
+            "refused to dismiss the dialog as success",
+        ):
+            DRIVER.Device.dismiss_system_ui_anr(device, [wait_button])
+
+        device.capture_product_anr_evidence.assert_called_once_with()
+        device.shell.assert_not_called()
+
+    def test_wait_hard_fails_on_anr_without_scrolling_or_retrying(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.find.return_value = None
+        device.dismiss_system_ui_anr.side_effect = DRIVER.ProductAnrDetected(
+            "captured product ANR"
+        )
         device._scroll_x_ratio.return_value = 0.5
 
-        with patch.object(DRIVER.time, "sleep") as sleep:
-            actual = DRIVER.Device.wait(
+        with self.assertRaisesRegex(DRIVER.ProductAnrDetected, "captured product ANR"):
+            DRIVER.Device.wait(
                 device,
                 "ContactE2E",
                 scroll=True,
@@ -1842,12 +1845,9 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 scroll_distance_ratio=0.22,
             )
 
-        self.assertIs(expected, actual)
-        device.swipe_up.assert_called_once_with(
-            x_ratio=0.5,
-            distance_ratio=0.22,
-        )
-        self.assertEqual([call(5), call(1)], sleep.call_args_list)
+        device.find.assert_called_once_with("ContactE2E")
+        device.swipe_up.assert_not_called()
+        device.capture.assert_not_called()
 
     def test_new_runner_launch_retries_until_the_build_method_dialog_is_visible(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
