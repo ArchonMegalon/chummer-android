@@ -574,7 +574,7 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
         "exists": true,
-        "sha256": "fa3ae7b7b45ab6ccbd7f462e04417356bb852c8ae409bac1b4640858d88a29e2"
+        "sha256": "44eb3d6d1965fa40f118e0bbfb09cfb7694841be54aeb47c970a6de84f78e474"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
@@ -589,7 +589,7 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
         "exists": true,
-        "sha256": "6b3c1207d0af49058bb3de7d365e11967acfaa5c0883f8b9ffff4efa1c684066"
+        "sha256": "8453f7440366da70cf5328092bc9872cf431b19732e4b218d16b0b98882445e3"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
