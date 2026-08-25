@@ -79,7 +79,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "2890318e9c30c3eb19323e8bda75aa81b05df84313cc602e4a08adad8c53cf06"
+        "sha256": "1d9ce3c1a73a415248b3b49a6ca7c6a27608b4875aa43057fcd149e8e566a9ba"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -599,7 +599,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "3cbeed65f34579f8d0e1ff8448ad2d9d631ce6a9ad63c1d844a26350db95b389"
+        "sha256": "cd0ca4aef9e86157a7e782708090775ba41588ff7b7aaaf541771b79bc8409a7"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -2019,7 +2019,7 @@
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerActiveSkillAdvanceRules.cs",
         "exists": true,
-        "sha256": "a7fe09fd82c0b44e703f9a416e8b28f4c753665649831e5436b00cbaae3ddb27"
+        "sha256": "5c3423e285047914804cfc76ee5051e5c0f5de7eeb8dae305ba6e4e3b77f1467"
       },
       {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerManualKarmaRules.cs",
@@ -2049,7 +2049,7 @@
       {
         "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "73b489cda7fbd60f4adecc29066ff3a956d201bebc931b192ac12acff73dd56f"
+        "sha256": "7adcbe6a2a0522ca85146148296e2fd2cc5b6be57aca4ee9bb8618886ef165b7"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
@@ -2064,12 +2064,12 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
         "exists": true,
-        "sha256": "60b99a6a4c9295640a535430bdada41540dc7cca9c9336b0d053388d4857fdc4"
+        "sha256": "cf67cffb9bc7c35146b01d22f22595f5ee77a4b84b1347cfe61da5538e5aa00c"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "08a12bab22c9d37fa64ac8578ecd5d10ca3d3c947a05d198bd4667eb9ccdd9e8"
+        "sha256": "a77c97558f6e9314827da2450d0738859fc819ba57b6a86e54d68c8158df0d13"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",

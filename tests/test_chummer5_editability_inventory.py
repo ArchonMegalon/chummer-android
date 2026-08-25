@@ -4455,11 +4455,17 @@ public sealed class Demo
     def test_career_attribute_receipt_is_fixture_and_driver_hash_bound(self) -> None:
         self.assertIsNone(
             inventory._validated_attribute_career_phone_e2e_receipt(),
-            "The checked-in device receipt must fail closed after shared launch-driver drift.",
+            "The checked-in device receipt must fail closed after exact driver-source drift.",
         )
 
         source = inventory.ATTRIBUTE_CAREER_PHONE_E2E_RECEIPT
         receipt = json.loads(source.read_text(encoding="utf-8"))
+        receipt["driverSha256"] = inventory._sha256_file(
+            REPO / "tests" / "run_api36_career_attribute_e2e.py"
+        )
+        receipt["creationAttributeDriverSha256"] = inventory._sha256_file(
+            REPO / "tests" / "run_api36_attribute_e2e.py"
+        )
         receipt["sharedDriverSha256"] = inventory._sha256_file(
             REPO / "tests" / "run_api36_editing_e2e.py"
         )

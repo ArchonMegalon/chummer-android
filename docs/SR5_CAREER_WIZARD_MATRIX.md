@@ -54,10 +54,12 @@ untouched and must capture a dedicated digest-bound device journey without
 weakening existing gates.
 
 The isolated authority graph used for this slice is pinned exactly to integrated
-Core `74b1bc3c2a02023890cadc5c6f600390c3af1d56` (Career commits
+Core `5e98a92c6fd012aea0d9664f6619adc94e36ce8d` (Career commits
 `5537e99df72e1a8a347269ad3b02b5a2cc2f9da1` and
 `7b8241f87c911077f3f5c756c0d0978f784c8052` transplanted onto base
-`da43a509b1f41abe70f3426253acd7158352e589`) and integrated Presentation
+`da43a509b1f41abe70f3426253acd7158352e589`, followed by the independent
+Priority Skills authority commit
+`cd209c559b4ab8a520a48fd6335a070ca8505a0b`) and integrated Presentation
 `2909ceed887cf3638344b4fec9d5e66feea40e4d` (Career commit
 `bd01091df3cdeb889c8336f9b2bf5e07af1c3c82` transplanted onto base
 `d276f1d0ed8f76938d26b92389e62676f48acf7b`). The unrelated Runner Library
