@@ -245,7 +245,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     def test_prerequisite_navigation_uses_exact_bounded_bidirectional_search(self) -> None:
         device = mock.Mock()
 
-        driver.open_prerequisite(device)
+        with mock.patch.object(driver.shared, "reset_scroll_to_top") as reset:
+            driver.open_prerequisite(device)
 
         device.tap_bidirectional.assert_called_once_with(
             "creation-stage-method",
@@ -255,12 +256,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             scroll_distance_ratio=0.22,
             exact_resource_id=True,
         )
+        reset.assert_called_once_with(device, swipes=22)
         device.tap_until_visible.assert_not_called()
 
     def test_prerequisite_navigation_proves_route_before_reading_content(self) -> None:
         device = mock.Mock()
 
-        driver.open_prerequisite(device)
+        with mock.patch.object(driver.shared, "reset_scroll_to_top") as reset:
+            driver.open_prerequisite(device)
 
         self.assertEqual(
             [
@@ -280,6 +283,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ],
             device.wait.call_args_list,
         )
+        reset.assert_called_once_with(device, swipes=22)
 
     def test_priority_provisioning_follows_build_route_and_public_save_before_home(self) -> None:
         calls: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
