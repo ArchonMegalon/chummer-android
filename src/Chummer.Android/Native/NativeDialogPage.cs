@@ -46,11 +46,18 @@ public sealed class NativeDialogPage : ContentPage
         _pendingTextFields.Clear();
         VerticalStackLayout body = new()
         {
+            AutomationId = "dialog-surface",
             Padding = new Thickness(20, 18, 20, 32),
             Spacing = 16
         };
         body.Add(NativeTheme.Eyebrow("Runner setup"));
         body.Add(NativeTheme.Title(dialog.Title, 24));
+        if (!string.IsNullOrWhiteSpace(_coordinator.State.Error))
+        {
+            Label errorLabel = NativeTheme.Body(_coordinator.State.Error!, NativeTheme.Danger);
+            errorLabel.AutomationId = "dialog-error";
+            body.Add(errorLabel);
+        }
         if (!string.IsNullOrWhiteSpace(dialog.Message))
         {
             body.Add(NativeTheme.Body(dialog.Message, NativeTheme.Muted));

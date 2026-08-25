@@ -82,7 +82,7 @@ class AndroidContractTests(unittest.TestCase):
 
         for dependency, commit, checkout_count in (
             ("ArchonMegalon/chummer6-ui", "d276f1d0ed8f76938d26b92389e62676f48acf7b", 2),
-            ("ArchonMegalon/chummer6-core", "e9874a31d8d25b98dd196dd629c423e9a9c39297", 2),
+            ("ArchonMegalon/chummer6-core", "da43a509b1f41abe70f3426253acd7158352e589", 2),
             ("ArchonMegalon/chummer6-hub", "d29a880f624ec94aabedd0c2901ae8fed2f93ed4", 1),
             ("ArchonMegalon/chummer6-ui-kit", "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61", 1),
             ("ArchonMegalon/chummer6-hub-registry", "af9a7e19c3bf331e96411dfb8f9e7820a98cab29", 1),

@@ -200,12 +200,21 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             calls.append(("open_creation_dashboard", (_device,), kwargs))
             return driver.shared.UiNode({})
 
+        def require_dialog_transition(_device, **kwargs) -> None:
+            self.assertIs(device, _device)
+            calls.append(("require_new_character_dialog_transition", (_device,), kwargs))
+
         device = FakeDevice()
         with mock.patch.object(driver.priority, "select_option", side_effect=select_option), \
              mock.patch.object(
                  driver.shared,
                  "open_creation_dashboard",
                  side_effect=open_dashboard,
+             ), \
+             mock.patch.object(
+                 driver,
+                 "require_new_character_dialog_transition",
+                 side_effect=require_dialog_transition,
              ):
             selected = driver.provision_creation_karma_through_priority_creation(device)
 
@@ -262,6 +271,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 },
             )
         )
+        transition_index = calls.index(
+            ("require_new_character_dialog_transition", (device,), {})
+        )
         capture_index = calls.index(("capture", ("creation-karma-priority-runner-created",), {}))
         save_index = calls.index(
             (
@@ -288,12 +300,57 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         home_index = calls.index(("tap", ("Home",), {}))
         authority_surface_index = calls.index(("wait", ("home-open-file",), {"timeout": 90}))
+        self.assertLess(transition_index, route_index)
         self.assertLess(route_index, capture_index)
         self.assertLess(capture_index, save_index)
         self.assertLess(save_index, saved_index)
         self.assertLess(saved_index, home_index)
         self.assertLess(home_index, authority_surface_index)
         self.assertNotIn(("wait", ("Continue building",), {"timeout": 120}), calls)
+
+    def test_new_character_dialog_transition_requires_exact_route_or_product_error(self) -> None:
+        route = driver.shared.UiNode({"content-desc": "build-save-runner"})
+        device = mock.Mock()
+        device.hierarchy.return_value = [route]
+
+        driver.require_new_character_dialog_transition(device, timeout=1)
+
+        device.capture.assert_not_called()
+
+    def test_new_character_dialog_transition_surfaces_exact_product_error(self) -> None:
+        surface = driver.shared.UiNode(
+            {"resource-id": "com.myexternalbrain.chummer:id/dialog-surface"}
+        )
+        error = driver.shared.UiNode(
+            {
+                "resource-id": "com.myexternalbrain.chummer:id/dialog-error",
+                "text": "Canonical ruleset loader rejected the pending runner.",
+            }
+        )
+        device = mock.Mock()
+        device.hierarchy.return_value = [surface, error]
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "Canonical ruleset loader rejected the pending runner",
+        ):
+            driver.require_new_character_dialog_transition(device, timeout=1)
+
+        device.capture.assert_called_once_with("creation-priority-dialog-product-error")
+
+    def test_new_character_dialog_transition_rejects_ambiguous_error_nodes(self) -> None:
+        error = driver.shared.UiNode(
+            {"resource-id": "com.myexternalbrain.chummer:id/dialog-error"}
+        )
+        device = mock.Mock()
+        device.hierarchy.return_value = [error, error]
+
+        with self.assertRaisesRegex(RuntimeError, "transition was ambiguous"):
+            driver.require_new_character_dialog_transition(device, timeout=1)
+
+        device.capture.assert_called_once_with(
+            "creation-priority-dialog-transition-cardinality-invalid"
+        )
 
     def test_dialog_action_atomically_flushes_pending_text_before_creation(self) -> None:
         source = (NATIVE / "NativeDialogPage.cs").read_text(encoding="utf-8")
@@ -326,6 +383,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         self.assertIn("_renderGeneration = _interactionGate.BeginRender();", render)
         self.assertIn("_pendingTextFields.Clear();", render)
+        self.assertIn('AutomationId = "dialog-surface"', render)
+        self.assertIn('errorLabel.AutomationId = "dialog-error";', render)
         self.assertEqual(2, render.count("PendingTextField pending = new(binding,"))
         self.assertEqual(2, render.count("_pendingTextFields.Add(pending);"))
         self.assertEqual(4, render.count("await UpdateFieldAsync(binding,"))

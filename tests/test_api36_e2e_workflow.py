@@ -9,7 +9,7 @@ COMPATIBILITY_GRAPH = {
     "ArchonMegalon/chummer6-ui":
         "d276f1d0ed8f76938d26b92389e62676f48acf7b",
     "ArchonMegalon/chummer6-core":
-        "e9874a31d8d25b98dd196dd629c423e9a9c39297",
+        "da43a509b1f41abe70f3426253acd7158352e589",
     "ArchonMegalon/chummer6-hub":
         "d29a880f624ec94aabedd0c2901ae8fed2f93ed4",
     "ArchonMegalon/chummer6-hub-registry":

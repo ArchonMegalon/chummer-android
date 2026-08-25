@@ -564,7 +564,7 @@
       {
         "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
         "exists": true,
-        "sha256": "410051daf35dec24de777ac71c4207fef18858e5567b7d98cf8cd520188a2fab"
+        "sha256": "97810c6a26c7ff7f0a9660022aea9fceb8d2167e1ba71d40e7561fd1124b51af"
       },
       {
         "path": "src/Chummer.Android/Native/NativeCommandPage.cs",
@@ -1034,7 +1034,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "85499db4c3e64286219c5c661d63155a7e4bae7bec26d7487f98c4b71998f14a"
+        "sha256": "604b833319b99b56d90694345523847708fa6631181dd338ff6df75aa03ed0e6"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
@@ -2054,7 +2054,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
         "exists": true,
-        "sha256": "11e9624d8cc65578e0d38c7d8091b615945f566a99cb281b7233796ba4199768"
+        "sha256": "0dcfdec98daddc6e94e89cb7b253bffb449a54807c67b711f82b686c170c9655"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
@@ -2064,12 +2064,12 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
         "exists": true,
-        "sha256": "f553ab9151395824f0b035a9aa04c86a9403bb710f8edffe12b6138e56421c16"
+        "sha256": "60b99a6a4c9295640a535430bdada41540dc7cca9c9336b0d053388d4857fdc4"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "9ae5d94c6fcb18c32f8aca1f35944123dc08202cd0f6f65ec452634a3cc7e0de"
+        "sha256": "08a12bab22c9d37fa64ac8578ecd5d10ca3d3c947a05d198bd4667eb9ccdd9e8"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",

@@ -93,6 +93,67 @@ def require_priority_created_workspace_authority(
         raise RuntimeError("Priority creation did not publish a distinct document authority digest")
 
 
+def require_new_character_dialog_transition(
+    device: shared.Device,
+    *,
+    timeout: int = 120,
+) -> None:
+    """Require the production modal to publish either Build or one exact error."""
+    deadline = time.monotonic() + timeout
+    selectors = ("dialog-surface", "dialog-error", "build-save-runner")
+    while time.monotonic() < deadline:
+        nodes = device.hierarchy()
+        matches = {
+            selector: [
+                node
+                for node in nodes
+                if selector
+                in {
+                    node.attributes.get("resource-id", "").rsplit("/", 1)[-1],
+                    node.attributes.get("content-desc", ""),
+                }
+            ]
+            for selector in selectors
+        }
+        ambiguous = {
+            selector: len(candidates)
+            for selector, candidates in matches.items()
+            if len(candidates) > 1
+        }
+        if ambiguous:
+            device.capture("creation-priority-dialog-transition-cardinality-invalid")
+            raise RuntimeError(
+                f"New-character modal transition was ambiguous: {ambiguous!r}"
+            )
+        if len(matches["dialog-error"]) == 1:
+            error = matches["dialog-error"][0]
+            message = (
+                error.attributes.get("text")
+                or error.attributes.get("content-desc")
+                or "unknown product import error"
+            ).strip()
+            device.capture("creation-priority-dialog-product-error")
+            raise RuntimeError(
+                f"New-character production import kept the modal open: {message}"
+            )
+        if len(matches["build-save-runner"]) == 1:
+            if matches["dialog-surface"]:
+                device.capture("creation-priority-dialog-route-overlap")
+                raise RuntimeError(
+                    "New-character modal and Build toolbar were published together"
+                )
+            return
+        if device.dismiss_system_ui_anr():
+            time.sleep(2)
+            continue
+        time.sleep(0.75)
+
+    device.capture("creation-priority-dialog-transition-unavailable")
+    raise RuntimeError(
+        "New-character production modal published neither one exact error nor the Build route"
+    )
+
+
 def provision_creation_karma_through_priority_creation(
     device: shared.Device,
 ) -> dict[str, str]:
@@ -124,6 +185,7 @@ def provision_creation_karma_through_priority_creation(
         max_scrolls=24,
         scroll_distance_ratio=0.22,
     )
+    require_new_character_dialog_transition(device)
     # Completing a created=false runner deliberately routes the phone shell straight to Build.
     # The closing dialog can leave Build's ScrollView at the dialog's deep scroll offset, which
     # prunes the page-level AutomationId from UIAutomator. Bind the route to the fixed toolbar,
