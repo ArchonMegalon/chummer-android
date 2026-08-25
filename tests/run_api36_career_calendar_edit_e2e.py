@@ -53,12 +53,14 @@ def prepare_runner(
     fixture_sha256: str,
 ) -> tuple[shared.LaunchState, shared.WorkspaceAuthority]:
     launch = shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
     device.wait("CareerCalendarEditE2E", timeout=120)
-    device.wait("Continue building", timeout=120)
-    authority = shared.read_workspace_authority(device)
+    shared.wait_for_phone_runner_route(device, created=True, timeout=120)
+    shared.tap_phone_destination(device, "phone-destination-runners")
+    shared.wait_for_phone_runners(device, timeout=120)
+    authority = shared.read_phone_workspace_authority(device)
     shared.require_import_authority(authority, fixture_sha256)
     return launch, authority
 
@@ -163,9 +165,9 @@ def assert_originals(root: ET.Element, edited: bool) -> None:
 
 
 def read_saved_authority(device: shared.Device) -> shared.WorkspaceAuthority:
-    device.tap("Home")
-    device.wait("Continue building", timeout=120)
-    authority = shared.read_workspace_authority(device)
+    shared.tap_phone_destination(device, "phone-destination-runners")
+    shared.wait_for_phone_runners(device, timeout=120)
+    authority = shared.read_phone_workspace_authority(device)
     shared.require_saved_authority(authority)
     return authority
 
@@ -189,8 +191,8 @@ def require_atomic_transition(
 def return_home_from_page(device: shared.Device) -> None:
     device.back()
     device.wait("build-career-calendar", timeout=90, scroll=True, max_scrolls=36)
-    device.tap("Home")
-    device.wait("Continue building", timeout=120)
+    shared.tap_phone_destination(device, "phone-destination-runners")
+    shared.wait_for_phone_runners(device, timeout=120)
 
 
 def assert_ui_readback(device: shared.Device) -> None:
@@ -284,8 +286,10 @@ def prove_calendar_crud(
     return_home_from_page(device)
 
     first_restart = shared.force_stop_and_launch_new_process(device, initial_launch)
-    device.wait("Continue building", timeout=120)
-    first_restored = shared.read_workspace_authority(device)
+    shared.wait_for_phone_runner_route(device, created=True, timeout=120)
+    shared.tap_phone_destination(device, "phone-destination-runners")
+    shared.wait_for_phone_runners(device, timeout=120)
+    first_restored = shared.read_phone_workspace_authority(device)
     shared.require_restored_authority(deleted, first_restored)
     assert_originals(root_for_authority(device, first_restored), edited=True)
     open_page(device)
@@ -294,8 +298,10 @@ def prove_calendar_crud(
     return_home_from_page(device)
 
     second_restart = shared.force_stop_and_launch_new_process(device, first_restart.restarted)
-    device.wait("Continue building", timeout=120)
-    second_restored = shared.read_workspace_authority(device)
+    shared.wait_for_phone_runner_route(device, created=True, timeout=120)
+    shared.tap_phone_destination(device, "phone-destination-runners")
+    shared.wait_for_phone_runners(device, timeout=120)
+    second_restored = shared.read_phone_workspace_authority(device)
     shared.require_restored_authority(deleted, second_restored)
     assert_originals(root_for_authority(device, second_restored), edited=True)
     open_page(device)

@@ -24,12 +24,22 @@ CONTROLS = (
 CONTROL_PROOF_KEYS = ("invoked", "workspacePersisted", "processRestartReadback")
 
 
-def prepare_runner(device: shared.Device, fixture_name: str) -> None:
+def prepare_runner(
+    device: shared.Device,
+    fixture_name: str,
+    *,
+    created: bool,
+) -> dict[str, object]:
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, created=created, timeout=120)
+    return shared.assert_phone_shell_surface(
+        device,
+        route_resource_id="phone-runner-sheet" if created else "phone-runner-create",
+        evidence_prefix=f"phone-shell-{'career' if created else 'creation'}",
+    )
 
 
 def workspace_record(device: shared.Device, alias: str) -> tuple[dict[str, object], ET.Element]:
@@ -93,11 +103,30 @@ def save_from_build_toolbar(device: shared.Device) -> None:
     )
 
 
-def save_from_more_page(device: shared.Device) -> None:
-    device.tap("More", timeout=60)
+def save_from_more_page(
+    device: shared.Device,
+    *,
+    created: bool,
+    evidence_prefix: str,
+) -> dict[str, object]:
+    shared.tap_phone_destination(
+        device,
+        "phone-destination-more",
+        timeout=60,
+    )
+    observation = shared.assert_phone_shell_surface(
+        device,
+        route_resource_id="phone-more",
+        evidence_prefix=evidence_prefix,
+    )
     device.wait("more-save-runner", timeout=60, scroll=True, max_scrolls=12)
     device.tap("more-save-runner", timeout=180, scroll=True, max_scrolls=12)
-    device.tap("Build", timeout=60)
+    shared.tap_phone_destination(
+        device,
+        "phone-destination-runner",
+        timeout=60,
+    )
+    shared.wait_for_phone_runner_route(device, created=created, timeout=60)
     device.wait(
         "Saved.",
         timeout=120,
@@ -105,6 +134,7 @@ def save_from_more_page(device: shared.Device) -> None:
         max_scrolls=24,
         scroll_distance_ratio=0.22,
     )
+    return observation
 
 
 def prove_profile(
@@ -114,24 +144,39 @@ def prove_profile(
     alias: str,
     expected_created: str,
     marker: str,
-) -> None:
+) -> dict[str, object]:
     device.shell("pm", "clear", shared.PACKAGE)
-    prepare_runner(device, fixture.name)
+    created = expected_created == "True"
+    imported_shell = prepare_runner(device, fixture.name, created=created)
     save_from_build_toolbar(device)
     assert_saved_workspace(device, alias, expected_created, marker)
     device.capture(f"explicit-save-{profile.lower()}-build-toolbar")
 
-    save_from_more_page(device)
+    more_shell = save_from_more_page(
+        device,
+        created=created,
+        evidence_prefix=f"phone-shell-{profile.lower()}-more",
+    )
     assert_saved_workspace(device, alias, expected_created, marker)
     device.capture(f"explicit-save-{profile.lower()}-more-page")
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, created=created, timeout=120)
+    restarted_shell = shared.assert_phone_shell_surface(
+        device,
+        route_resource_id="phone-runner-sheet" if created else "phone-runner-create",
+        evidence_prefix=f"phone-shell-{profile.lower()}-restart",
+    )
     assert_saved_workspace(device, alias, expected_created, marker)
     shared.open_build(device, "phone")
     device.wait("build-save-runner", timeout=60)
     device.capture(f"explicit-save-{profile.lower()}-process-restart")
+    return {
+        "afterImport": imported_shell,
+        "more": more_shell,
+        "afterRestart": restarted_shell,
+    }
 
 
 def main() -> int:
@@ -185,7 +230,7 @@ def main() -> int:
     for fixture in (creation_fixture, career_fixture):
         device.push(fixture, f"/sdcard/Download/{fixture.name}")
 
-    prove_profile(
+    creation_shell_observations = prove_profile(
         device,
         creation_fixture,
         "CharacterCreate",
@@ -193,7 +238,7 @@ def main() -> int:
         "False",
         "Creation explicit save proof marker",
     )
-    prove_profile(
+    career_shell_observations = prove_profile(
         device,
         career_fixture,
         "CharacterCareer",
@@ -222,6 +267,10 @@ def main() -> int:
         "careerFixtureSha256": shared.sha256(career_fixture),
         "controlCount": len(controls),
         "controls": controls,
+        "phoneShellObservations": {
+            "creation": creation_shell_observations,
+            "career": career_shell_observations,
+        },
         "journeys": {
             "creationRunnerImported": "pass",
             "creationBuildToolbarSaveInvoked": "pass",

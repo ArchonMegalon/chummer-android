@@ -24,10 +24,10 @@ KEEP = "73333333333333333333333333333333"
 
 def prepare_runner(device: shared.Device, fixture_name: str) -> None:
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
 
 def open_lifestyle(device: shared.Device, target: str) -> None:
@@ -152,7 +152,7 @@ def main() -> int:
     device.shell("am", "force-stop", PACKAGE)
     time.sleep(0.5)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_workspace(device, target_present=False)
     open_lifestyle(device, KEEP)
     device.capture("creation-lifestyle-delete-process-restart")

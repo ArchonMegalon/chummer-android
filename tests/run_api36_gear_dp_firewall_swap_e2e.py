@@ -116,7 +116,7 @@ def run_journey(device: shared.Device, journey: dict[str, str]) -> None:
                 timeout=60, scroll=True)
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_workspace(device, journey)
     open_page(device, journey)
     device.wait(f"{journey['changed']} {journey['firewall'] if journey['changed'] == 'Firewall' else journey['data_processing']}",

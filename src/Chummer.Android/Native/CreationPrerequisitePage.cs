@@ -21,13 +21,6 @@ public sealed class CreationPrerequisitePage : NativePageBase
     {
         Title = "Priorities";
         AutomationId = "creation-prerequisite-page";
-        ToolbarItems.Add(new ToolbarItem
-        {
-            Text = "Build Ghost",
-            AutomationId = "creation-prerequisite-build-ghost",
-            Command = new Command(async () =>
-                await Navigation.PushAsync(new RookConversationPage(Coordinator)))
-        });
         Content = new ScrollView { Content = _body };
     }
 
@@ -36,12 +29,6 @@ public sealed class CreationPrerequisitePage : NativePageBase
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow("Character creation"));
         _body.Add(NativeTheme.Title("Priority / Sum-to-Ten"));
-        _body.Add(NativeTheme.NavigationRow(
-            "Ask Build Ghost",
-            "Grounded in the current revision; advice cannot change this draft",
-            () => Navigation.PushAsync(new RookConversationPage(Coordinator)),
-            automationId: "creation-prerequisite-rook"));
-
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> load =
             Coordinator.LoadCreationPrerequisite();
         if (!string.Equals(

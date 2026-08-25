@@ -34,10 +34,10 @@ PROOF_KEYS = (
 
 def prepare_runner(device: shared.Device, fixture_name: str) -> None:
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
 
 def open_page(device: shared.Device, lifestyle_id: str) -> None:
@@ -144,7 +144,7 @@ def prove_creation(device: shared.Device, fixture: Path) -> None:
         raise RuntimeError("Creation Lifestyle intervals did not survive same-session reopen")
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_creation_workspace(device)
     open_page(device, CREATION_ID)
     if "Current month intervals: 100" not in device.wait(f"lifestyle-increments-current-{token}", timeout=60).attributes.get("text", ""):
@@ -168,7 +168,7 @@ def prove_career(device: shared.Device, fixture: Path) -> None:
         raise RuntimeError("Career Lifestyle purchase did not survive same-session reopen")
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_career_workspace(device)
     open_page(device, DECREASE_ID)
     if "Current month intervals: -1" not in device.wait(f"lifestyle-increments-current-{decrease_token}", timeout=60).attributes.get("text", ""):

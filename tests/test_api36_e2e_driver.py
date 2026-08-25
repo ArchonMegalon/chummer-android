@@ -107,6 +107,408 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             stderr="",
         )
 
+    def test_phone_shell_observation_requires_exact_live_destinations(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = Mock(spec=DRIVER.Device)
+            device.evidence = Path(temporary)
+            nodes = [
+                DRIVER.UiNode(
+                    {
+                        "resource-id": destination_id,
+                        "text": label,
+                        "clickable": "true",
+                    }
+                )
+                for destination_id, label in zip(
+                    DRIVER.PHONE_SHELL_DESTINATION_IDS,
+                    DRIVER.PHONE_SHELL_DESTINATION_LABELS,
+                    strict=True,
+                )
+            ]
+            device.hierarchy.return_value = nodes
+
+            observed = DRIVER.assert_phone_shell_surface(
+                device,
+                route_resource_id="phone-runner-create",
+                evidence_prefix="creation-shell",
+            )
+
+            self.assertEqual(
+                sorted(DRIVER.PHONE_SHELL_DESTINATION_IDS),
+                observed["destinationResourceIds"],
+            )
+            self.assertEqual(
+                sorted(DRIVER.PHONE_SHELL_DESTINATION_LABELS),
+                observed["destinationLabels"],
+            )
+            self.assertEqual(
+                {
+                    destination_id: [label]
+                    for destination_id, label in DRIVER.PHONE_SHELL_DESTINATION_MAPPING.items()
+                },
+                observed["destinationMapping"],
+            )
+            self.assertEqual([], observed["forbiddenDestinationLabels"])
+            self.assertEqual([], observed["forbiddenSupportLabels"])
+            self.assertTrue(
+                (Path(temporary) / "creation-shell-observation.json").is_file()
+            )
+            device.capture.assert_not_called()
+
+    def test_phone_runner_route_rejects_duplicate_and_wrong_lifecycle_roots(self) -> None:
+        for name, created, route_ids, expected_capture in (
+            (
+                "mixed",
+                False,
+                ("phone-runner-create", "phone-runner-sheet"),
+                "phone-runner-route-cardinality-invalid",
+            ),
+            (
+                "duplicate",
+                True,
+                ("phone-runner-sheet", "phone-runner-sheet"),
+                "phone-runner-route-cardinality-invalid",
+            ),
+            (
+                "wrong-lifecycle",
+                True,
+                ("phone-runner-create",),
+                "phone-runner-route-lifecycle-mismatch",
+            ),
+        ):
+            with self.subTest(name=name):
+                device = Mock(spec=DRIVER.Device)
+                device.hierarchy.return_value = [
+                    DRIVER.UiNode({"resource-id": route_id})
+                    for route_id in route_ids
+                ]
+                with self.assertRaises(RuntimeError):
+                    DRIVER.wait_for_phone_runner_route(
+                        device,
+                        created=created,
+                        timeout=1,
+                    )
+                device.capture.assert_called_once_with(expected_capture)
+
+    def test_open_build_binds_phone_navigation_to_one_final_runner_root(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        with patch.object(DRIVER, "wait_for_phone_runner_route") as wait_route:
+            DRIVER.open_build(device, "phone")
+
+        device.tap_single_exact_resource_id.assert_called_once_with(
+            "phone-destination-runner",
+            timeout=45,
+            evidence_prefix="phone-destination-runner-tap",
+            surface_name="Phone shell destination",
+        )
+        device.tap.assert_not_called()
+        wait_route.assert_called_once_with(device)
+        device.open_navigation_drawer.assert_not_called()
+
+    def test_phone_destination_tap_uses_one_exact_cardinality_checked_resource(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
+            device.nodes = [
+                DRIVER.UiNode(
+                    {
+                        "resource-id": "phone-destination-runner",
+                        "text": "Runner",
+                        "clickable": "true",
+                        "bounds": "[80,2200][400,2320]",
+                    }
+                ),
+                DRIVER.UiNode(
+                    {
+                        "resource-id": "open-workspace-runner",
+                        "text": "Runner",
+                        "clickable": "true",
+                        "bounds": "[80,400][800,520]",
+                    }
+                ),
+            ]
+
+            DRIVER.tap_phone_destination(
+                device,
+                "phone-destination-runner",
+            )
+
+            self.assertIn(("input", "tap", "240", "2260"), device.commands)
+            self.assertNotIn(("input", "tap", "440", "460"), device.commands)
+            with self.assertRaisesRegex(ValueError, "Unknown phone shell destination"):
+                DRIVER.tap_phone_destination(device, "phone-destination-play")
+
+    def test_phone_shell_observation_rejects_mapping_extras_and_tablet_roots(self) -> None:
+        valid_nodes = [
+            DRIVER.UiNode(
+                {
+                    "resource-id": destination_id,
+                    "text": label,
+                    "clickable": "true",
+                }
+            )
+            for destination_id, label in DRIVER.PHONE_SHELL_DESTINATION_MAPPING.items()
+        ]
+        adversarial_nodes = {
+            "swapped-label": [
+                DRIVER.UiNode(
+                    {
+                        "resource-id": "phone-destination-runners",
+                        "text": "Runner",
+                        "clickable": "true",
+                    }
+                ),
+                *valid_nodes[1:],
+            ],
+            "extra-phone-root": [
+                *valid_nodes,
+                DRIVER.UiNode(
+                    {
+                        "resource-id": "phone-destination-experimental",
+                        "text": "Experimental",
+                        "clickable": "true",
+                    }
+                ),
+            ],
+            "duplicate-phone-root": [
+                *valid_nodes,
+                DRIVER.UiNode(
+                    {
+                        "resource-id": "phone-destination-runner",
+                        "text": "Runner",
+                        "clickable": "true",
+                    }
+                ),
+            ],
+            "tablet-root": [
+                *valid_nodes,
+                DRIVER.UiNode(
+                    {
+                        "resource-id": "tablet-destination-tablet-home",
+                        "text": "Home",
+                        "clickable": "true",
+                    }
+                ),
+            ],
+            "postponed-page-id": [
+                *valid_nodes,
+                DRIVER.UiNode(
+                    {
+                        "resource-id": "phone-play-unavailable",
+                        "text": "Unavailable",
+                    }
+                ),
+            ],
+            "support-description": [
+                *valid_nodes,
+                DRIVER.UiNode(
+                    {
+                        "resource-id": "live-support",
+                        "content-desc": "Open Tough Tongue support",
+                        "clickable": "true",
+                    }
+                ),
+            ],
+            "forbidden-action-launcher": [
+                *valid_nodes,
+                DRIVER.UiNode(
+                    {
+                        "resource-id": "more-all-actions",
+                        "text": "All actions",
+                        "clickable": "true",
+                    }
+                ),
+            ],
+        }
+
+        for name, nodes in adversarial_nodes.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                device = Mock(spec=DRIVER.Device)
+                device.evidence = Path(temporary)
+                device.hierarchy.return_value = nodes
+                with self.assertRaisesRegex(RuntimeError, "postponed surface"):
+                    DRIVER.assert_phone_shell_surface(
+                        device,
+                        route_resource_id="phone-more",
+                        evidence_prefix=name,
+                    )
+                device.capture.assert_called_once_with(f"{name}-invalid")
+
+    def test_phone_shell_observation_rejects_device_visible_postponed_surfaces(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = Mock(spec=DRIVER.Device)
+            device.evidence = Path(temporary)
+            device.hierarchy.return_value = [
+                *[
+                    DRIVER.UiNode(
+                        {
+                            "resource-id": destination_id,
+                            "text": label,
+                            "clickable": "true",
+                        }
+                    )
+                    for destination_id, label in zip(
+                        DRIVER.PHONE_SHELL_DESTINATION_IDS,
+                        DRIVER.PHONE_SHELL_DESTINATION_LABELS,
+                        strict=True,
+                    )
+                ],
+                DRIVER.UiNode(
+                    {
+                        "resource-id": "phone-destination-play",
+                        "text": "Play",
+                        "clickable": "true",
+                    }
+                ),
+                DRIVER.UiNode(
+                    {
+                        "resource-id": "rook-launch",
+                        "text": "Ask Rook",
+                        "clickable": "true",
+                    }
+                ),
+            ]
+
+            with self.assertRaisesRegex(RuntimeError, "postponed surface"):
+                DRIVER.assert_phone_shell_surface(
+                    device,
+                    route_resource_id="phone-runner-sheet",
+                    evidence_prefix="career-shell",
+                )
+
+            device.capture.assert_called_once_with("career-shell-invalid")
+
+    def test_phone_shell_observation_allows_clickable_workspace_entries_with_postponed_names(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = Mock(spec=DRIVER.Device)
+            device.evidence = Path(temporary)
+            device.hierarchy.return_value = [
+                *[
+                    DRIVER.UiNode(
+                        {
+                            "resource-id": destination_id,
+                            "text": label,
+                            "clickable": "true",
+                        }
+                    )
+                    for destination_id, label in DRIVER.PHONE_SHELL_DESTINATION_MAPPING.items()
+                ],
+                *[
+                    DRIVER.UiNode(
+                        {
+                            "resource-id": f"open-workspace-{token}",
+                            "text": label,
+                            "clickable": "true",
+                        }
+                    )
+                    for token, label in (
+                        ("rook", "Rook"),
+                        ("campaign", "Campaign"),
+                        ("play", "Play"),
+                        ("table", "Table"),
+                        ("all-actions", "All actions"),
+                    )
+                ],
+                DRIVER.UiNode(
+                    {
+                        "resource-id": "character-notes",
+                        "text": "Ask about Tough Tongue after this run.",
+                        "clickable": "false",
+                    }
+                ),
+            ]
+
+            observed = DRIVER.assert_phone_shell_surface(
+                device,
+                route_resource_id="phone-runner-sheet",
+                evidence_prefix="runner-text",
+            )
+
+            self.assertEqual([], observed["forbiddenSupportLabels"])
+            self.assertEqual([], observed["forbiddenRouteResourceIds"])
+            device.capture.assert_not_called()
+
+    def test_phone_initial_route_requires_profile_and_workspace_identity(self) -> None:
+        source = (
+            REPO_ROOT / "src" / "Chummer.Android" / "MainShell.cs"
+        ).read_text(encoding="utf-8")
+        block = source[source.index("private async Task ResolveInitialPhoneRouteAsync") :]
+        block = block[: block.index("private void BuildTabletShell")]
+
+        self.assertIn(
+            "if (coordinator.State.Profile is not null\n"
+            "                && coordinator.State.WorkspaceId is not null)",
+            block,
+        )
+        self.assertLess(
+            block.index("coordinator.State.WorkspaceId is not null"),
+            block.index("GoToAsync(PhoneShellRoutes.RunnerAbsolute)"),
+        )
+        self.assertNotIn(
+            "if (coordinator.State.Profile is not null)\n"
+            "            {\n"
+            "                await GoToAsync",
+            block,
+        )
+
+    def test_cancelled_new_runner_cannot_route_from_a_stale_existing_profile(self) -> None:
+        source = (
+            REPO_ROOT / "src" / "Chummer.Android" / "Native" / "HomePage.cs"
+        ).read_text(encoding="utf-8")
+        handler = source[source.index('create.AutomationId = "home-new-runner"') :]
+        handler = handler[: handler.index("quick.Add(open)")]
+
+        self.assertIn(
+            "create.Clicked += async (_, _) => await RunAsync(() => "
+            "Coordinator.CreateRunnerAsync());",
+            handler,
+        )
+        self.assertNotIn("Coordinator.State.Profile", handler)
+        self.assertNotIn("Coordinator.State.WorkspaceId", handler)
+        self.assertNotIn("NativeWorkspaceActivationReceipt", handler)
+        self.assertNotIn("GoToAsync", handler)
+
+    def test_phone_route_migration_covers_drivers_without_rewriting_tablet_flow(self) -> None:
+        shared_path = Path(DRIVER.__file__).resolve()
+        migrated: list[str] = []
+        for path in sorted((REPO_ROOT / "tests").glob("run_api36*_e2e.py")):
+            source = path.read_text(encoding="utf-8")
+            if path == shared_path:
+                continue
+            if "shared.wait_for_phone_" not in source:
+                continue
+            migrated.append(path.name)
+            self.assertNotIn('device.wait("Continue building"', source, path.name)
+            self.assertNotIn('device.wait("Runner"', source, path.name)
+            self.assertNotIn('device.wait("Your runners"', source, path.name)
+            self.assertNotIn('device.wait("Home"', source, path.name)
+            self.assertNotIn('device.tap("Home"', source, path.name)
+
+        self.assertGreaterEqual(len(migrated), 80)
+        shared_source = shared_path.read_text(encoding="utf-8")
+        self.assertIn('if args.profile == "phone":\n        wait_for_phone_runners(device)', shared_source)
+        self.assertIn('else:\n        device.wait("Your runners", timeout=90)', shared_source)
+        self.assertIn('if profile == "tablet":', shared_source)
+        self.assertIn('device.tap("Build")', shared_source)
+        self.assertIn('device.wait("tablet-build-layout", timeout=45)', shared_source)
+
+    def test_phone_shell_destinations_are_never_tapped_by_ambiguous_text(self) -> None:
+        drivers = sorted((REPO_ROOT / "tests").glob("run_api36*_e2e.py"))
+        self.assertGreaterEqual(len(drivers), 80)
+        for path in drivers:
+            source = path.read_text(encoding="utf-8")
+            for label in ("Runner", "Runners", "More"):
+                for ambiguous_call in (
+                    f'device.tap("{label}"',
+                    f"device.tap('{label}'",
+                ):
+                    self.assertNotIn(ambiguous_call, source, path.name)
+
+        shared_source = Path(DRIVER.__file__).read_text(encoding="utf-8")
+        self.assertIn("def tap_phone_destination(", shared_source)
+        self.assertIn("device.tap_single_exact_resource_id(", shared_source)
+        for resource_id in DRIVER.PHONE_SHELL_DESTINATION_IDS:
+            self.assertIn(f'"{resource_id}"', shared_source)
+
     def test_launch_app_uses_exact_main_launcher_and_requires_resumed_activity(self) -> None:
         component = "com.myexternalbrain.chummer/crccurrent.MainActivity"
         with tempfile.TemporaryDirectory() as temporary:
@@ -929,6 +1331,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         with patch.object(DRIVER, "select_android_document") as select_document, \
              patch.object(DRIVER, "open_creation_dashboard") as open_dashboard, \
+             patch.object(DRIVER, "wait_for_phone_runner_route") as wait_route, \
              patch.object(
                  DRIVER,
                  "read_workspace_authority",
@@ -961,11 +1364,33 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     max_scrolls=48,
                     scroll_distance_ratio=0.22,
                 ),
-                call.tap("Home"),
+                call.tap_single_exact_resource_id(
+                    "phone-destination-runners",
+                    timeout=45,
+                    evidence_prefix="phone-destination-runners-tap",
+                    surface_name="Phone shell destination",
+                ),
+                call.wait_for_single_exact_resource_id(
+                    "phone-runners",
+                    timeout=90,
+                    evidence_prefix="phone-runners-route",
+                    surface_name="Phone runners route",
+                ),
                 call.wait("home-open-file", timeout=90),
                 call.tap("home-open-file"),
                 call.wait("FullEditingE2E", timeout=90),
-                call.wait("Continue building", timeout=90),
+                call.tap_single_exact_resource_id(
+                    "phone-destination-runners",
+                    timeout=45,
+                    evidence_prefix="phone-destination-runners-tap",
+                    surface_name="Phone shell destination",
+                ),
+                call.wait_for_single_exact_resource_id(
+                    "phone-runners",
+                    timeout=90,
+                    evidence_prefix="phone-runners-route",
+                    surface_name="Phone runners route",
+                ),
             ]
         )
         select_document.assert_called_once_with(
@@ -977,6 +1402,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             "phone",
             open_build_route=False,
         )
+        wait_route.assert_called_once_with(device, created=True)
         self.assertEqual(imported, result)
 
     def test_full_tablet_journey_remains_available_outside_the_phone_beta_lane(self) -> None:
@@ -1005,12 +1431,20 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 call.wait("home-open-file", timeout=90),
                 call.tap("home-open-file"),
                 call.wait("FullEditingE2E", timeout=90),
-                call.wait("Continue building", timeout=90),
+                call.wait("tablet-build-layout", timeout=90),
             ]
         )
         self.assertIsNone(result)
         device.capture.assert_not_called()
-        self.assertNotIn(call.tap("Home"), device.mock_calls)
+        self.assertNotIn(
+            call.tap_single_exact_resource_id(
+                "phone-destination-runners",
+                timeout=45,
+                evidence_prefix="phone-destination-runners-tap",
+                surface_name="Phone shell destination",
+            ),
+            device.mock_calls,
+        )
         select_document.assert_called_once_with(
             device,
             "career-full-editing-e2e.chum5",
@@ -1122,8 +1556,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             / "Native"
             / "RunnerSessionCoordinator.cs"
         ).read_text(encoding="utf-8")
-        block = source[source.index("public async Task OpenLocalAsync") :]
-        block = block[: block.index("public async Task OpenOnlineAsync")]
+        block = source[source.index("public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync") :]
+        block = block[
+            : block.index(
+                "public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync"
+            )
+        ]
 
         self.assertIn("CharacterOverviewState previousState = State;", block)
         self.assertIn("_notice = null;", block)
@@ -1479,8 +1917,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             / "Native"
             / "RunnerSessionCoordinator.cs"
         ).read_text(encoding="utf-8")
-        local = source[source.index("public async Task OpenLocalAsync") :]
-        local = local[: local.index("public async Task OpenOnlineAsync")]
+        local = source[source.index("public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync") :]
+        local = local[
+            : local.index(
+                "public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync"
+            )
+        ]
         save = source[source.index("public async Task SaveAsync") :]
         save = save[: save.index("public async Task ExportAsync")]
         refresh = source[source.index("private async Task<NativeWorkspaceAuthoritySnapshot?>") :]
@@ -1497,6 +1939,76 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertIn("ClearWorkspaceAuthority();", refresh)
         self.assertIn("return null;", refresh)
 
+    def test_import_receipts_require_verified_authority_after_final_state_restore(self) -> None:
+        source = (
+            REPO_ROOT
+            / "src"
+            / "Chummer.Android"
+            / "Native"
+            / "RunnerSessionCoordinator.cs"
+        ).read_text(encoding="utf-8")
+        local = source[
+            source.index("public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync") :
+            source.index("private static bool ActivatedNewWorkspace")
+        ]
+        online = source[
+            source.index("public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync") :
+            source.index("public async Task CreateRunnerAsync")
+        ]
+
+        for name, block in (("local", local), ("online", online)):
+            with self.subTest(name=name):
+                authority_guard = block[block.index("if (authority is not null)") :]
+                receipt_assignment = block.index("activation = new(")
+                self.assertIn("activatedWorkspaceId = importedWorkspaceId;", authority_guard)
+                self.assertIn("verifiedAuthority = authority;", authority_guard)
+                self.assertLess(block.index("await SyncShellAsync"), receipt_assignment)
+                self.assertLess(block.index("RestorePlayState();"), receipt_assignment)
+                self.assertIn(
+                    "verifiedAuthority?.Matches(State) == true",
+                    block[block.index("RestorePlayState();") : receipt_assignment],
+                )
+                self.assertIn(
+                    "WorkspaceIsActive(State, stableWorkspaceId)",
+                    block[block.index("RestorePlayState();") : receipt_assignment],
+                )
+                self.assertNotIn("catch (", block)
+
+        predicate = source[source.index("private static bool WorkspaceIsActive") :]
+        predicate = predicate[: predicate.index("public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync")]
+        self.assertIn("state.WorkspaceId is { } activeWorkspaceId", predicate)
+        self.assertIn("StringComparison.Ordinal", predicate)
+
+    def test_workspace_switch_receipt_binds_requested_identity_and_optional_proof(self) -> None:
+        source = (
+            REPO_ROOT
+            / "src"
+            / "Chummer.Android"
+            / "Native"
+            / "RunnerSessionCoordinator.cs"
+        ).read_text(encoding="utf-8")
+        block = source[
+            source.index("public async Task<NativeWorkspaceActivationReceipt?> SwitchWorkspaceAsync") :
+            source.index("public async Task CloseWorkspaceAsync")
+        ]
+
+        self.assertIn("bool authorityRequired = AndroidE2EAuthority.Enabled;", block)
+        self.assertIn("expectedWorkspaceId: workspace.Id", block)
+        self.assertLess(block.index("_presenter.SwitchWorkspaceAsync"), block.index("SyncShellAsync"))
+        self.assertLess(block.index("SyncShellAsync"), block.index("TryRefreshWorkspaceAuthorityAsync"))
+        self.assertLess(block.index("TryRefreshWorkspaceAuthorityAsync"), block.index("RestorePlayState();"))
+        self.assertLess(
+            block.index("RestorePlayState();"),
+            block.index("bool authorityRequired = AndroidE2EAuthority.Enabled;"),
+        )
+        self.assertLess(
+            block.index("bool authorityRequired = AndroidE2EAuthority.Enabled;"),
+            block.index("WorkspaceIsActive(State, workspace.Id)"),
+        )
+        self.assertIn("(!authorityRequired || authority?.Matches(State) == true)", block)
+        self.assertIn("NativeWorkspaceActivationKind.WorkspaceSwitch", block)
+        self.assertIn("workspace.Id)", block)
+
     def test_online_import_uses_the_same_guarded_activation_contract(self) -> None:
         source = (
             REPO_ROOT
@@ -1505,7 +2017,11 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             / "Native"
             / "RunnerSessionCoordinator.cs"
         ).read_text(encoding="utf-8")
-        block = source[source.index("public async Task OpenOnlineAsync") :]
+        block = source[
+            source.index(
+                "public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync"
+            ) :
+        ]
         block = block[: block.index("public async Task CreateRunnerAsync")]
 
         self.assertIn("CharacterOverviewState previousState = State;", block)
@@ -1543,9 +2059,13 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             / "Native"
             / "RunnerSessionCoordinator.cs"
         ).read_text(encoding="utf-8")
-        local = source[source.index("public async Task OpenLocalAsync") :]
+        local = source[source.index("public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync") :]
         local = local[: local.index("private static bool ActivatedNewWorkspace")]
-        online = source[source.index("public async Task OpenOnlineAsync") :]
+        online = source[
+            source.index(
+                "public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync"
+            ) :
+        ]
         online = online[: online.index("public async Task CreateRunnerAsync")]
 
         self.assertLess(local.index("_workspaceActivationGate.WaitAsync"), local.index("_documents.OpenAsync"))
@@ -1567,7 +2087,11 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         for method_name, start_marker, next_method in (
             ("ConfirmCreationPrerequisiteAsync", "ConfirmCreationPrerequisiteAsync(", "ConfirmCreationPrerequisiteCoreAsync"),
             ("ConfirmCreationFoundationAsync", "public async Task<CharacterCreationFoundationInteractionConfirmResult> ConfirmCreationFoundationAsync(", "ConfirmCreationFoundationCoreAsync"),
-            ("SwitchWorkspaceAsync", "public async Task SwitchWorkspaceAsync", "CloseWorkspaceAsync"),
+            (
+                "SwitchWorkspaceAsync",
+                "public async Task<NativeWorkspaceActivationReceipt?> SwitchWorkspaceAsync",
+                "CloseWorkspaceAsync",
+            ),
             ("CloseWorkspaceAsync", "public async Task CloseWorkspaceAsync", "private async Task WithWorkspaceActivationGateAsync"),
             ("EraseAccountAsync", "public async Task<NativeAccountErasureResult> EraseAccountAsync", "EraseAccountCoreAsync"),
             ("ExecuteCommandAsync", "public async Task ExecuteCommandAsync", "ExecuteCommandCoreAsync"),
@@ -1584,12 +2108,20 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             self.assertIn("WithWorkspaceActivationGateAsync", block, method_name)
 
         create = source[source.index("public async Task CreateRunnerAsync") :]
-        create = create[: create.index("public async Task SwitchWorkspaceAsync")]
+        create = create[
+            : create.index(
+                "public async Task<NativeWorkspaceActivationReceipt?> SwitchWorkspaceAsync"
+            )
+        ]
         self.assertIn('ExecuteCommandAsync("new_character", cancellationToken)', create)
         self.assertNotIn("WithWorkspaceActivationGateAsync", create)
 
         initialize = source[source.index("public async Task InitializeAsync") :]
-        initialize = initialize[: initialize.index("public async Task OpenLocalAsync")]
+        initialize = initialize[
+            : initialize.index(
+                "public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync"
+            )
+        ]
         self.assertLess(
             initialize.index("_workspaceActivationGate.WaitAsync"),
             initialize.index("_presenter.InitializeAsync"),
@@ -1637,15 +2169,27 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertLess(run_current.index("!execution.CanPublish"), run_current.index("execution.Value"))
         self.assertIn("ClearWorkspaceAuthority();\n                return null;", run_current)
 
-        for method_name, presenter_operation in (
-            ("InitializeAsync", "_presenter.InitializeAsync"),
-            ("OpenLocalAsync", "_presenter.ImportAsync"),
-            ("OpenOnlineAsync", "_presenter.ImportAsync"),
-            ("SwitchWorkspaceAsync", "_presenter.SwitchWorkspaceAsync"),
-            ("CloseWorkspaceAsync", "_presenter.CloseWorkspaceAsync"),
-            ("SaveAsync", "_presenter.SaveAsync"),
+        for method_name, start_marker, presenter_operation in (
+            ("InitializeAsync", "public async Task InitializeAsync", "_presenter.InitializeAsync"),
+            (
+                "OpenLocalAsync",
+                "public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync",
+                "_presenter.ImportAsync",
+            ),
+            (
+                "OpenOnlineAsync",
+                "public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync",
+                "_presenter.ImportAsync",
+            ),
+            (
+                "SwitchWorkspaceAsync",
+                "public async Task<NativeWorkspaceActivationReceipt?> SwitchWorkspaceAsync",
+                "_presenter.SwitchWorkspaceAsync",
+            ),
+            ("CloseWorkspaceAsync", "public async Task CloseWorkspaceAsync", "_presenter.CloseWorkspaceAsync"),
+            ("SaveAsync", "public async Task SaveAsync", "_presenter.SaveAsync"),
         ):
-            block = source[source.index(f"public async Task {method_name}") :]
+            block = source[source.index(start_marker) :]
             next_public = block.find("\n    public ", 10)
             if next_public >= 0:
                 block = block[:next_public]
@@ -1677,12 +2221,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         source = (
             REPO_ROOT / "src" / "Chummer.Android" / "Native" / "NativeDialogPage.cs"
         ).read_text(encoding="utf-8")
-        start = source.index("private async Task UpdateFieldAsync")
+        start = source.index("Task UpdateFieldAsync")
         end = source.index("private async Task ExecuteAsync", start)
         block = source[start:end]
 
         self.assertIn("DesktopDialogState? previous", block)
-        self.assertIn("RequiresStructuralRerender(previous, next, fieldId)", block)
+        self.assertIn("RequiresStructuralRerender(previous, next, binding.FieldId)", block)
         self.assertIn("FieldShapeMatches", block)
         self.assertIn("OptionsMatch", block)
         self.assertNotIn("dialog.new_character.priority_workflow", block)

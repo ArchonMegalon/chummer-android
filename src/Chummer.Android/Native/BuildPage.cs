@@ -14,11 +14,10 @@ public sealed class BuildPage : NativePageBase
         Spacing = 16
     };
     private readonly ToolbarItem _save;
-    private readonly ToolbarItem _actions;
 
     public BuildPage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
-        Title = "Build";
+        Title = "Runner";
         _save = new ToolbarItem
         {
             Text = "Save",
@@ -26,13 +25,6 @@ public sealed class BuildPage : NativePageBase
             Command = new Command(async () => await RunAsync(() => Coordinator.SaveAsync()))
         };
         ToolbarItems.Add(_save);
-        _actions = new ToolbarItem
-        {
-            Text = "Actions",
-            Order = ToolbarItemOrder.Primary,
-            Priority = 1,
-            Command = new Command(async () => await Navigation.PushAsync(new NativeCommandPage(Coordinator)))
-        };
         Content = new ScrollView { Content = _body };
     }
 
@@ -42,8 +34,9 @@ public sealed class BuildPage : NativePageBase
         _save.IsEnabled = Coordinator.State.Profile is not null;
         if (Coordinator.State.Profile is null)
         {
-            SetExhaustiveActionsVisible(false);
-            _body.Add(NativeTheme.Eyebrow("Build"));
+            Title = "Runner";
+            AutomationId = "phone-runner-empty";
+            _body.Add(NativeTheme.Eyebrow("Runner"));
             _body.Add(NativeTheme.Title("Open a runner first"));
             _body.Add(NativeTheme.Body("Your file stays on this device unless you choose to link it.", NativeTheme.Muted));
             Button open = NativeTheme.PrimaryButton("Open file");
@@ -54,19 +47,20 @@ public sealed class BuildPage : NativePageBase
 
         if (Coordinator.State.Profile.Created == false)
         {
-            SetExhaustiveActionsVisible(false);
+            Title = "Create";
+            AutomationId = "phone-runner-create";
             AddWorkspacePicker();
             AddCreationWizardDashboard();
             AddFeedback();
             return;
         }
 
-        SetExhaustiveActionsVisible(true);
+        Title = "Sheet";
+        AutomationId = "phone-runner-sheet";
         AddWorkspacePicker();
         AddSummary();
         AddDossier();
         AddBuildAreas();
-        AddTools();
 
         AddFeedback();
     }
@@ -80,18 +74,6 @@ public sealed class BuildPage : NativePageBase
         else if (!string.IsNullOrWhiteSpace(Coordinator.Notice))
         {
             _body.Add(NativeTheme.Body(Coordinator.Notice!, NativeTheme.Muted));
-        }
-    }
-
-    private void SetExhaustiveActionsVisible(bool visible)
-    {
-        if (visible && !ToolbarItems.Contains(_actions))
-        {
-            ToolbarItems.Add(_actions);
-        }
-        else if (!visible && ToolbarItems.Contains(_actions))
-        {
-            ToolbarItems.Remove(_actions);
         }
     }
 
@@ -111,12 +93,6 @@ public sealed class BuildPage : NativePageBase
             "Build this runner step by step. The full character editor unlocks after creation is complete.",
             NativeTheme.Muted));
         _body.Add(header);
-
-        _body.Add(NativeTheme.NavigationRow(
-            "Ask Rook",
-            "Persistent conversation grounded in this revision, budgets, blockers, and legal options",
-            () => Navigation.PushAsync(new RookConversationPage(Coordinator)),
-            automationId: "creation-wizard-rook"));
 
         CharacterCreationWizardSnapshot? snapshot = Coordinator.State.CreationWizard;
         if (snapshot is null)
@@ -875,12 +851,4 @@ public sealed class BuildPage : NativePageBase
         }
     }
 
-    private void AddTools()
-    {
-        _body.Add(NativeTheme.Eyebrow("Tools"));
-        _body.Add(NativeTheme.NavigationRow(
-            "All actions",
-            "Search every runner command",
-            () => Navigation.PushAsync(new NativeCommandPage(Coordinator))));
-    }
 }

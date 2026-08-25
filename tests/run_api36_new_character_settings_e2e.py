@@ -159,7 +159,7 @@ def main() -> int:
     )
     device.shell("pm", "clear", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Your runners", timeout=90)
+    shared.wait_for_phone_runners(device, timeout=90)
     device.tap_until_visible("home-new-runner", "Select Build Method")
     device.set_text(
         "dialog-field-newcharactersetting",
@@ -173,7 +173,7 @@ def main() -> int:
     device.tap("dialog-action-create-character", scroll=True, max_scrolls=16)
     device.wait("dialog-action-complete-new-character-workflow", timeout=60, scroll=True, max_scrolls=16)
     device.tap("dialog-action-complete-new-character-workflow", scroll=True, max_scrolls=16)
-    device.wait("Continue building", timeout=90)
+    shared.wait_for_phone_runner_route(device, timeout=90)
 
     assert_persisted_build_settings(device)
     assert_setting_readback(device)
@@ -181,7 +181,7 @@ def main() -> int:
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=90)
+    shared.wait_for_phone_runner_route(device, timeout=90)
     assert_persisted_build_settings(device)
     assert_setting_readback(device)
     device.capture("phone-build-settings-after-restart")

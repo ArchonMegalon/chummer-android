@@ -226,7 +226,7 @@ def provision_creation_karma_through_priority_creation(
         max_scrolls=48,
         scroll_distance_ratio=0.22,
     )
-    device.tap("Home")
+    shared.tap_phone_destination(device, "phone-destination-runners")
     device.wait("home-open-file", timeout=90)
     return selected
 
@@ -480,6 +480,10 @@ def open_prerequisite(device: shared.Device) -> None:
     device.wait("creation-prerequisite-page", timeout=60)
     device.wait("creation-prerequisite-karma-budget", timeout=60, scroll=True, max_scrolls=22)
     device.wait("creation-prerequisite-method", timeout=45, scroll=True, max_scrolls=22)
+    # Both authority cards can push the binding above UIAutomator's visible hierarchy.
+    # Leave this route at a deterministic origin so every caller can read the binding
+    # without depending on the height of the cards it just verified.
+    shared.reset_scroll_to_top(device, swipes=22)
 
 
 def tap_enabled_authority_option(
@@ -682,11 +686,12 @@ def main() -> int:
     )
     device.shell("pm", "clear", shared.PACKAGE)
     initial_launch = shared.launch_app(device)
-    device.wait("Your runners", timeout=90)
+    shared.wait_for_phone_runners(device)
     device.tap_until_visible("home-new-runner", "Select Build Method")
     device.tap("dialog-action-create-character", scroll=True)
     device.wait("dialog-action-complete-new-character-workflow", timeout=45, scroll=True)
     device.tap("dialog-action-complete-new-character-workflow", scroll=True)
+    shared.wait_for_phone_runner_route(device, created=False)
     shared.open_creation_dashboard(
         device,
         open_build_route=False,
@@ -703,12 +708,13 @@ def main() -> int:
     # runner exclusively through the same public production dialog available to phone users.
     device.tap("build-save-runner", scroll=True, max_scrolls=48, scroll_distance_ratio=0.22)
     device.wait("Saved.", timeout=90, scroll=True, max_scrolls=48, scroll_distance_ratio=0.22)
-    device.tap("Home")
+    shared.tap_phone_destination(device, "phone-destination-runners")
+    shared.wait_for_phone_runners(device)
     device.wait("home-open-file", timeout=90)
-    fresh_authority = shared.read_workspace_authority(device)
+    fresh_authority = shared.read_phone_workspace_authority(device)
     shared.require_saved_authority(fresh_authority)
     priority_creation_selections = provision_creation_karma_through_priority_creation(device)
-    prepared_authority = shared.read_workspace_authority(device)
+    prepared_authority = shared.read_phone_workspace_authority(device)
     require_priority_created_workspace_authority(fresh_authority, prepared_authority)
 
     shared.open_creation_dashboard(device, reset_swipes=48)
@@ -753,18 +759,6 @@ def main() -> int:
         if label.lower() not in karma.lower():
             raise RuntimeError(f"Global Creation Karma omitted {label!r}: {karma!r}")
     source_authority_digests = read_source_authority_digests(device)
-
-    # Build Ghost can answer from this state, but the chat route cannot touch Core mutation APIs.
-    shared.reset_scroll_to_top(device, swipes=22)
-    device.tap("creation-prerequisite-rook", scroll=True, max_scrolls=22)
-    device.wait("rook-local-grounded-fallback", timeout=45)
-    device.set_text("rook-question", "Priority question", "Which legal rank should I consider?")
-    device.tap("rook-send-question")
-    device.wait("rook-message-binding-1", timeout=45, scroll=True, max_scrolls=22)
-    device.back()
-    device.wait("creation-prerequisite-binding", timeout=45, scroll=True, max_scrolls=22)
-    if node_text(device, "creation-prerequisite-binding", scroll=True) != prerequisite_binding:
-        raise RuntimeError("Build Ghost changed the prerequisite workspace binding")
 
     selected: dict[str, str] = {}
     for category in CATEGORIES:
@@ -985,8 +979,12 @@ def main() -> int:
         )
 
     restart = shared.force_stop_and_launch_new_process(device, initial_launch)
-    device.wait("Your runners", timeout=90)
-    shared.open_creation_dashboard(device, reset_swipes=22)
+    shared.wait_for_phone_runner_route(device, created=False)
+    shared.open_creation_dashboard(
+        device,
+        open_build_route=False,
+        reset_swipes=22,
+    )
     foundation.assert_creation_editor_gated(device)
     open_prerequisite(device)
     device.wait("creation-prerequisite-pending-draft", timeout=60, scroll=True, max_scrolls=22)
@@ -1054,7 +1052,7 @@ def main() -> int:
             "attributesPrerequisiteOpenedByCore": "pass",
             "pendingDraftSameProcessResume": "pass",
             "pendingDraftProcessRestartResume": "pass",
-            "buildGhostCurrentAndNonMutating": "pass",
+            "buildGhostLaunchPostponedAndAbsent": "pass",
             "advancedEditorNeverExposedWhileCreatedFalse": "pass",
         },
         "restartProcessIds": {

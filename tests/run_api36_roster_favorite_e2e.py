@@ -130,10 +130,10 @@ def main() -> int:
     device.shell("pm", "clear", shared.PACKAGE)
     device.push(runner, f"/sdcard/Download/{runner.name}")
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, runner.name)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
     open_favorites(device)
     assert_toggle(device, False)

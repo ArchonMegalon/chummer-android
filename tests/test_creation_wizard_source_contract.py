@@ -325,14 +325,15 @@ class CreationWizardSourceContractTests(unittest.TestCase):
     def test_uncreated_build_is_gated_before_exhaustive_editor(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         start = source.index("if (Coordinator.State.Profile.Created == false)")
-        end = source.index("SetExhaustiveActionsVisible(true);", start)
+        end = source.index('Title = "Sheet";', start)
         creation_branch = source[start:end]
 
-        self.assertIn("SetExhaustiveActionsVisible(false);", creation_branch)
+        self.assertNotIn("SetExhaustiveActionsVisible", source)
         self.assertIn("AddCreationWizardDashboard();", creation_branch)
         self.assertIn("return;", creation_branch)
-        for forbidden in ("AddDossier();", "AddBuildAreas();", "AddTools();"):
+        for forbidden in ("AddDossier();", "AddBuildAreas();"):
             self.assertNotIn(forbidden, creation_branch)
+        self.assertNotIn("AddTools", source)
 
         self.assertLess(end, source.index("AddDossier();", end))
         self.assertIn('automationId: "build-free-sprite-conversion"', source)
@@ -347,7 +348,6 @@ class CreationWizardSourceContractTests(unittest.TestCase):
             "snapshot.Steps",
             "snapshot.CompletionBlockers",
             "active?.LegalNextStepIds",
-            '"creation-wizard-rook"',
             '"creation-wizard-binding"',
             '"creation-wizard-life-modules-blocked"',
             "CharacterCreationBuildMethods.LifeModules",
@@ -358,6 +358,8 @@ class CreationWizardSourceContractTests(unittest.TestCase):
             self.assertIn(marker, source)
         self.assertNotIn("new CharacterCreationBudgetState", source)
         self.assertNotIn("BuildNewCharacterKarmaWorkflowDialog", source)
+        self.assertNotIn("new RookConversationPage", source)
+        self.assertNotIn('"creation-wizard-rook"', source)
 
     def test_attributes_use_dedicated_creation_authority_not_post_create_editor(self) -> None:
         dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
@@ -416,10 +418,10 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         self.assertIn("_coordinator.State.WorkspaceId is not null", route)
         self.assertIn("_coordinator.State.Profile?.Created == false", route)
         self.assertIn("UsesTabletComposition: false", route)
-        self.assertIn('await shell.GoToAsync("//build")', route)
+        self.assertIn("await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute)", route)
         self.assertLess(
             route.index("await CloseCoreAsync(updatePresenter: false)"),
-            route.index('await shell.GoToAsync("//build")'),
+            route.index("await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute)"),
         )
 
     def test_api36_driver_is_scripted_but_not_executed_by_unit_tests(self) -> None:
@@ -430,10 +432,9 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         self.assertIn("shared.open_creation_dashboard(", source)
         self.assertNotIn('device.wait("creation-wizard-dashboard"', source)
         self.assertNotIn('device.tap("Continue building"', source)
-        self.assertIn('device.tap("creation-wizard-rook"', source)
-        self.assertIn('device.set_text("rook-question"', source)
-        self.assertIn('device.tap("rook-send-question"', source)
-        self.assertIn("assert_same_binding", source)
+        self.assertNotIn('device.tap("creation-wizard-rook"', source)
+        self.assertNotIn('device.set_text("rook-question"', source)
+        self.assertNotIn('device.tap("rook-send-question"', source)
         self.assertIn("def assert_creation_editor_gated", source)
         self.assertIn('"build-career-create-expense"', source)
         self.assertGreaterEqual(source.count("assert_creation_editor_gated(device)"), 3)
@@ -472,7 +473,7 @@ class CreationWizardSourceContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, source)
         self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', source)
-        self.assertIn('"rookTranscriptSurvivesProcessRestart": "pass"', source)
+        self.assertIn('"rookLaunchPostponedAndAbsent": "pass"', source)
         self.assertNotIn('"profile": "tablet"', source)
 
 

@@ -305,7 +305,7 @@ def main() -> int:
     )
     device.shell("pm", "clear", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Your runners", timeout=90)
+    shared.wait_for_phone_runners(device, timeout=90)
     device.tap_until_visible("home-new-runner", "Select Build Method")
     device.tap("dialog-action-create-character", scroll=True, max_scrolls=16)
     device.wait("Select Metatype Priority", timeout=60)
@@ -332,7 +332,7 @@ def main() -> int:
         max_scrolls=20,
         scroll_distance_ratio=0.22,
     )
-    device.wait("Continue building", timeout=90)
+    shared.wait_for_phone_runner_route(device, timeout=90)
 
     assert_persisted_priority(device)
     assert_profile_readback(device)
@@ -340,14 +340,14 @@ def main() -> int:
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=90)
+    shared.wait_for_phone_runner_route(device, timeout=90)
     assert_persisted_priority(device)
     assert_profile_readback(device)
     device.capture("phone-metatype-priority-after-restart")
 
     device.shell("pm", "clear", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Your runners", timeout=90)
+    shared.wait_for_phone_runners(device, timeout=90)
     device.tap_until_visible("home-new-runner", "Select Build Method")
     device.tap("dialog-action-create-character", scroll=True, max_scrolls=16)
     device.wait("Select Metatype Priority", timeout=60)
@@ -383,7 +383,7 @@ def main() -> int:
         max_scrolls=24,
         scroll_distance_ratio=0.22,
     )
-    device.wait("Continue building", timeout=90)
+    shared.wait_for_phone_runner_route(device, timeout=90)
 
     assert_persisted_spirit(device)
     assert_spirit_profile_readback(device)
@@ -391,7 +391,7 @@ def main() -> int:
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=90)
+    shared.wait_for_phone_runner_route(device, timeout=90)
     assert_persisted_spirit(device)
     assert_spirit_profile_readback(device)
     device.capture("phone-spirit-force-possession-after-restart")

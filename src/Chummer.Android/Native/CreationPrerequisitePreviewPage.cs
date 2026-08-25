@@ -40,13 +40,6 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
                 nameof(buildMethod));
         Title = "Review assignments";
         AutomationId = "creation-prerequisite-preview-page";
-        ToolbarItems.Add(new ToolbarItem
-        {
-            Text = "Build Ghost",
-            AutomationId = "creation-prerequisite-preview-build-ghost",
-            Command = new Command(async () =>
-                await Navigation.PushAsync(new RookConversationPage(Coordinator)))
-        });
         Content = new ScrollView { Content = _body };
     }
 

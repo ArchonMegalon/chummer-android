@@ -47,12 +47,14 @@ def prepare_runner(
     fixture_sha256: str,
 ) -> tuple[shared.LaunchState, shared.WorkspaceAuthority]:
     launch = shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
     device.wait("CareerKarmaExpenseEditE2E", timeout=120)
-    device.wait("Continue building", timeout=120)
-    authority = shared.read_workspace_authority(device)
+    shared.wait_for_phone_runner_route(device, created=True, timeout=120)
+    shared.tap_phone_destination(device, "phone-destination-runners")
+    shared.wait_for_phone_runners(device, timeout=120)
+    authority = shared.read_phone_workspace_authority(device)
     shared.require_import_authority(authority, fixture_sha256)
     return launch, authority
 
@@ -184,9 +186,9 @@ def assert_locked_metadata(root: ET.Element, expected_reason: str) -> None:
 
 
 def read_saved_authority(device: shared.Device) -> shared.WorkspaceAuthority:
-    device.tap("Home")
-    device.wait("Continue building", timeout=120)
-    authority = shared.read_workspace_authority(device)
+    shared.tap_phone_destination(device, "phone-destination-runners")
+    shared.wait_for_phone_runners(device, timeout=120)
+    authority = shared.read_phone_workspace_authority(device)
     shared.require_saved_authority(authority)
     return authority
 
@@ -216,8 +218,8 @@ def select_locked_expense(device: shared.Device) -> None:
 def return_home_from_page(device: shared.Device) -> None:
     device.back()
     device.wait("build-career-karma-expenses", timeout=90, scroll=True, max_scrolls=32)
-    device.tap("Home")
-    device.wait("Continue building", timeout=120)
+    shared.tap_phone_destination(device, "phone-destination-runners")
+    shared.wait_for_phone_runners(device, timeout=120)
 
 
 def prove_same_integer_bucket(
@@ -253,8 +255,10 @@ def prove_same_integer_bucket(
     device.capture("career-karma-same-bucket-reopened")
     return_home_from_page(device)
     restart = shared.force_stop_and_launch_new_process(device, initial_launch)
-    device.wait("Continue building", timeout=120)
-    restored = shared.read_workspace_authority(device)
+    shared.wait_for_phone_runner_route(device, created=True, timeout=120)
+    shared.tap_phone_destination(device, "phone-destination-runners")
+    shared.wait_for_phone_runners(device, timeout=120)
+    restored = shared.read_phone_workspace_authority(device)
     shared.require_restored_authority(saved, restored)
     restored_root = root_for_authority(device, restored)
     restored_manual = assert_manual_metadata(restored_root)
@@ -342,8 +346,10 @@ def prove_rounded_delta_and_locked_edit(
     device.capture("career-karma-rounded-and-locked-reopened")
     return_home_from_page(device)
     restart = shared.force_stop_and_launch_new_process(device, initial_launch)
-    device.wait("Continue building", timeout=120)
-    restored = shared.read_workspace_authority(device)
+    shared.wait_for_phone_runner_route(device, created=True, timeout=120)
+    shared.tap_phone_destination(device, "phone-destination-runners")
+    shared.wait_for_phone_runners(device, timeout=120)
+    restored = shared.read_phone_workspace_authority(device)
     shared.require_restored_authority(locked_saved, restored)
     restored_root = root_for_authority(device, restored)
     restored_manual = assert_manual_metadata(restored_root)

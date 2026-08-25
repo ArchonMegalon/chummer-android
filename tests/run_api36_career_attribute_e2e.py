@@ -111,10 +111,10 @@ def main() -> int:
     device.shell("pm", "clear", shared.PACKAGE)
     device.push(fixture_path, "/sdcard/Download/career-attribute-e2e.chum5")
     shared.launch_app(device)
-    device.wait("Your runners", timeout=90)
+    shared.wait_for_phone_runners(device, timeout=90)
     device.tap("home-open-file")
     shared.select_android_document(device, "career-attribute-e2e.chum5")
-    device.wait("Continue building", timeout=90)
+    shared.wait_for_phone_runner_route(device, timeout=90)
     shared.open_build(device, "phone")
 
     improve_body(device)
@@ -123,7 +123,7 @@ def main() -> int:
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=90)
+    shared.wait_for_phone_runner_route(device, timeout=90)
     shared.open_build(device, "phone")
     assert_attribute_total(device, "Body", 3)
     assert_attribute_total(device, "Edge", 1)

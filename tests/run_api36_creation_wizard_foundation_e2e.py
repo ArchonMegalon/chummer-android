@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scripted phone proof for wizard routing and durable local non-mutating Rook chat.
+"""Scripted phone proof for fail-closed wizard routing and durable Foundation state.
 
 This driver is intentionally committed without being executed in this change. It requires an
 operator-provided, already-booted API 36 target and a reviewed APK.
@@ -55,14 +55,6 @@ def assert_creation_editor_gated(device: shared.Device) -> None:
         if scroll_index < 18:
             device.swipe_up()
     shared.reset_scroll_to_top(device, swipes=18)
-
-
-def assert_same_binding(before: str, after: str) -> None:
-    if not before or before != after:
-        raise RuntimeError(
-            "Local Rook chat changed the wizard workspace binding; "
-            f"before={before!r}, after={after!r}"
-        )
 
 
 def tap_first_enabled_prefix(
@@ -170,11 +162,12 @@ def main() -> int:
     )
     device.shell("pm", "clear", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Your runners", timeout=90)
+    shared.wait_for_phone_runners(device)
     device.tap_until_visible("home-new-runner", "Select Build Method")
     device.tap("dialog-action-create-character", scroll=True)
     device.wait("dialog-action-complete-new-character-workflow", timeout=45, scroll=True)
     device.tap("dialog-action-complete-new-character-workflow", scroll=True)
+    shared.wait_for_phone_runner_route(device, created=False)
 
     # The completed setup must hand off directly; this driver never taps Continue building.
     shared.open_creation_dashboard(
@@ -362,42 +355,16 @@ def main() -> int:
         reset_swipes=18,
     )
 
-    # Rook remains non-mutating after the Foundation revision advances.
-    shared.reset_scroll_to_top(device, swipes=18)
-    binding_before_rook = node_text(device, "creation-wizard-binding", scroll=True)
-    shared.reset_scroll_to_top(device, swipes=18)
-    device.tap("creation-wizard-rook", scroll=True)
-    device.wait("rook-local-grounded-fallback", timeout=45)
-    device.set_text("rook-question", "Follow-up question", "What can I do next?")
-    device.tap("rook-send-question")
-    assistant_binding = node_text(device, "rook-message-binding-1", scroll=True)
-    if "stale" in assistant_binding.lower():
-        raise RuntimeError("A fresh local Rook answer was immediately marked stale")
-    device.back()
-
+    # A real process boundary is required: page navigation alone cannot prove durable draft
+    # storage. Do not clear app data or reinstall between stop and relaunch.
+    device.shell("am", "force-stop", shared.PACKAGE)
+    shared.launch_app(device)
+    shared.wait_for_phone_runner_route(device, created=False)
     shared.open_creation_dashboard(
         device,
         open_build_route=False,
-        dashboard_timeout=45,
         reset_swipes=18,
     )
-    binding_after = node_text(device, "creation-wizard-binding", scroll=True)
-    assert_same_binding(binding_before_rook, binding_after)
-
-    # Reopening proves that the workspace-scoped thread survives page visits.
-    shared.reset_scroll_to_top(device, swipes=18)
-    device.tap("creation-wizard-rook", scroll=True)
-    persisted_binding = node_text(device, "rook-message-binding-1", scroll=True)
-    if persisted_binding != assistant_binding:
-        raise RuntimeError("Rook transcript did not survive leaving and reopening the page")
-    device.capture("creation-wizard-rook-local-thread")
-
-    # A real process boundary is required: page navigation alone cannot prove durable local
-    # conversation storage. Do not clear app data or reinstall between stop and relaunch.
-    device.shell("am", "force-stop", shared.PACKAGE)
-    shared.launch_app(device)
-    device.wait("Your runners", timeout=90)
-    shared.open_creation_dashboard(device, reset_swipes=18)
     assert_creation_editor_gated(device)
     shared.reset_scroll_to_top(device, swipes=18)
     device.tap_until_visible(
@@ -417,20 +384,6 @@ def main() -> int:
         raise RuntimeError("Process restart did not resume the typed Nationality IDs")
     device.capture("creation-foundation-process-restart")
     device.back()
-    shared.open_creation_dashboard(
-        device,
-        open_build_route=False,
-        dashboard_timeout=45,
-        reset_swipes=18,
-    )
-    shared.reset_scroll_to_top(device, swipes=18)
-    device.tap("creation-wizard-rook", scroll=True)
-    device.assert_text("What can I do next?", timeout=45)
-    restarted_binding = node_text(device, "rook-message-binding-1", scroll=True)
-    if restarted_binding != assistant_binding:
-        raise RuntimeError("Rook transcript did not survive a force-stop and process restart")
-    device.capture("creation-wizard-rook-process-restart")
-
     receipt = {
         "schema": "chummer.android.creation-wizard-foundation-e2e/v1",
         "status": "scripted_not_executed",
@@ -464,10 +417,7 @@ def main() -> int:
             "foundationDraftSaveReloadAndProcessRestart": "pass",
             "foundationCharacterEffectsAppliedFalse": "pass",
             "foundationCompilationPending": "pass",
-            "rookLocalFallbackVisible": "pass",
-            "rookTranscriptSurvivesPageVisits": "pass",
-            "rookTranscriptSurvivesProcessRestart": "pass",
-            "rookQuestionDoesNotChangeRevisionOrSnapshotBinding": "pass",
+            "rookLaunchPostponedAndAbsent": "pass",
         },
     }
     args.receipt.parent.mkdir(parents=True, exist_ok=True)

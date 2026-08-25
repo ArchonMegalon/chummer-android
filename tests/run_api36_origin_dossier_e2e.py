@@ -239,7 +239,7 @@ def assert_origin_ui_after_restart(
 
 def prepare_creation_runner(device: shared.Device) -> None:
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap_until_visible("home-new-runner", "Select Build Method")
     device.tap("dialog-action-create-character", scroll=True, max_scrolls=16)
     device.wait(
@@ -253,15 +253,15 @@ def prepare_creation_runner(device: shared.Device) -> None:
         scroll=True,
         max_scrolls=16,
     )
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
 
 def prepare_career_runner(device: shared.Device, fixture_name: str) -> None:
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
 
 def exercise_case(
@@ -281,7 +281,7 @@ def exercise_case(
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_workspace_origin(device, expected, form_name)
     assert_origin_ui_after_restart(device, expected, form_name)
     device.capture(f"phone-origin-{form_name.lower()}-after-restart")

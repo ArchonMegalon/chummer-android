@@ -64,6 +64,28 @@ public sealed record NativeAccountErasureResult(
     AndroidAccountErasureReceipt Receipt,
     bool LocalRunnersRemoved);
 
+public enum NativeWorkspaceActivationKind
+{
+    LocalFile,
+    OnlineCharacter,
+    WorkspaceSwitch
+}
+
+public sealed record NativeWorkspaceActivationReceipt(
+    NativeWorkspaceActivationKind Kind,
+    CharacterWorkspaceId WorkspaceId)
+{
+    public bool Matches(
+        CharacterOverviewState state,
+        NativeWorkspaceActivationKind expectedKind)
+        => Kind == expectedKind
+           && state.WorkspaceId is { } activeWorkspaceId
+           && string.Equals(
+               WorkspaceId.Value,
+               activeWorkspaceId.Value,
+               StringComparison.Ordinal);
+}
+
 public sealed record CharacterNotesEditRequest(
     CharacterWorkspaceId WorkspaceId,
     long ExpectedContentRevision,
@@ -893,16 +915,20 @@ public sealed class RunnerSessionCoordinator : IDisposable
         NotifyChanged();
     }
 
-    public async Task OpenLocalAsync(CancellationToken cancellationToken = default)
+    public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync(
+        CancellationToken cancellationToken = default)
     {
         await _workspaceActivationGate.WaitAsync(cancellationToken);
         AndroidDocument? document = null;
+        NativeWorkspaceActivationReceipt? activation = null;
+        CharacterWorkspaceId? activatedWorkspaceId = null;
+        NativeWorkspaceAuthoritySnapshot? verifiedAuthority = null;
         try
         {
             document = await _documents.OpenAsync(cancellationToken);
             if (document is null)
             {
-                return;
+                return null;
             }
             CharacterOverviewState previousState = State;
             string expectedPayloadSha256 = ComputeExactImportPayloadSha256(document.Content);
@@ -921,6 +947,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 {
                     RememberRosterLocator(importedWorkspaceId, document.ContentUri);
                     _notice = $"Opened {document.DisplayName}.";
+                    activatedWorkspaceId = importedWorkspaceId;
+                    verifiedAuthority = authority;
                 }
                 else
                 {
@@ -929,6 +957,14 @@ public sealed class RunnerSessionCoordinator : IDisposable
             }
             await SyncShellAsync(cancellationToken);
             RestorePlayState();
+            if (activatedWorkspaceId is { } stableWorkspaceId
+                && verifiedAuthority?.Matches(State) == true
+                && WorkspaceIsActive(State, stableWorkspaceId))
+            {
+                activation = new(
+                    NativeWorkspaceActivationKind.LocalFile,
+                    stableWorkspaceId);
+            }
         }
         finally
         {
@@ -940,6 +976,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         }
 
         NotifyChanged();
+        return activation;
     }
 
     private static bool ActivatedNewWorkspace(
@@ -949,11 +986,25 @@ public sealed class RunnerSessionCoordinator : IDisposable
            && (previous.WorkspaceId is not { } previousWorkspace
                || !string.Equals(previousWorkspace.Value, currentWorkspace.Value, StringComparison.Ordinal));
 
-    public async Task OpenOnlineAsync(AndroidOnlineCharacter character, CancellationToken cancellationToken = default)
+    private static bool WorkspaceIsActive(
+        CharacterOverviewState state,
+        CharacterWorkspaceId expectedWorkspaceId)
+        => state.WorkspaceId is { } activeWorkspaceId
+           && string.Equals(
+               expectedWorkspaceId.Value,
+               activeWorkspaceId.Value,
+               StringComparison.Ordinal);
+
+    public async Task<NativeWorkspaceActivationReceipt?> OpenOnlineAsync(
+        AndroidOnlineCharacter character,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(character);
         await _workspaceActivationGate.WaitAsync(cancellationToken);
         byte[]? payload = null;
+        NativeWorkspaceActivationReceipt? activation = null;
+        CharacterWorkspaceId? activatedWorkspaceId = null;
+        NativeWorkspaceAuthoritySnapshot? verifiedAuthority = null;
         try
         {
             payload = StrictUtf8.GetBytes(character.Payload);
@@ -976,6 +1027,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
                         importedWorkspaceId,
                         $"chummer-run://workspace/{Uri.EscapeDataString(character.WorkspaceId)}");
                     _notice = $"Opened {DisplayName(character.Name, character.Alias)}.";
+                    activatedWorkspaceId = importedWorkspaceId;
+                    verifiedAuthority = authority;
                 }
                 else
                 {
@@ -984,6 +1037,14 @@ public sealed class RunnerSessionCoordinator : IDisposable
             }
             await SyncShellAsync(cancellationToken);
             RestorePlayState();
+            if (activatedWorkspaceId is { } stableWorkspaceId
+                && verifiedAuthority?.Matches(State) == true
+                && WorkspaceIsActive(State, stableWorkspaceId))
+            {
+                activation = new(
+                    NativeWorkspaceActivationKind.OnlineCharacter,
+                    stableWorkspaceId);
+            }
         }
         finally
         {
@@ -995,26 +1056,35 @@ public sealed class RunnerSessionCoordinator : IDisposable
         }
 
         NotifyChanged();
+        return activation;
     }
 
     public async Task CreateRunnerAsync(CancellationToken cancellationToken = default)
         => await ExecuteCommandAsync("new_character", cancellationToken);
 
-    public async Task SwitchWorkspaceAsync(OpenWorkspaceState workspace, CancellationToken cancellationToken = default)
-    {
-        await WithWorkspaceActivationGateAsync(
+    public async Task<NativeWorkspaceActivationReceipt?> SwitchWorkspaceAsync(
+        OpenWorkspaceState workspace,
+        CancellationToken cancellationToken = default)
+        => await WithWorkspaceActivationGateAsync(
             async () =>
             {
                 await _presenter.SwitchWorkspaceAsync(workspace.Id, cancellationToken);
                 await SyncShellAsync(cancellationToken);
-                _ = await TryRefreshWorkspaceAuthorityAsync(
-                    expectedWorkspaceId: State.WorkspaceId,
+                NativeWorkspaceAuthoritySnapshot? authority = await TryRefreshWorkspaceAuthorityAsync(
+                    expectedWorkspaceId: workspace.Id,
                     expectedPayloadSha256: null,
                     cancellationToken);
                 RestorePlayState();
+                bool authorityRequired = AndroidE2EAuthority.Enabled;
+
+                return WorkspaceIsActive(State, workspace.Id)
+                       && (!authorityRequired || authority?.Matches(State) == true)
+                    ? new NativeWorkspaceActivationReceipt(
+                        NativeWorkspaceActivationKind.WorkspaceSwitch,
+                        workspace.Id)
+                    : null;
             },
             cancellationToken);
-    }
 
     public async Task CloseWorkspaceAsync(OpenWorkspaceState workspace, CancellationToken cancellationToken = default)
     {
