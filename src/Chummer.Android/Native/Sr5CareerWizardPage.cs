@@ -62,7 +62,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         }
 
         Label boundary = NativeTheme.Body(
-            "The shared typed CostQuote → CareerActionPlan → atomic ApplyResult boundary is proven for one Active Skill action. Multi-action plans remain blocked until Core publishes an atomic bundle contract.",
+            "The shared typed CostQuote → CareerActionPlan → atomic ApplyResult boundary is proven independently for Active Skill and Attribute actions. Multi-action plans remain blocked until Core publishes an atomic bundle contract.",
             NativeTheme.Muted);
         boundary.AutomationId = "sr5-career-wizard-transaction-boundary";
         _body.Add(NativeTheme.Card(boundary));
@@ -152,11 +152,13 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
             "Choose → exact SR5 quote → review diff → durable apply → receipt",
             OpenActiveSkillWizardAsync,
             "active-skill");
-        AddBlocked(
-            "Attributes use an existing typed leaf but do not yet enter this common review/receipt boundary.",
+        AddAction(
+            "Advance an attribute",
+            "Choose exact Core quote → preview Karma and legality → durable apply → recovered receipt",
+            OpenAttributeWizardAsync,
             "attribute");
         AddBlocked(
-            "Skill-group and specialization authorities exist upstream, but Android needs shared Coordinator routing and an atomic ApplyResult before either can be the second advancement path. Knowledge skills, qualities and initiation/submersion remain incomplete.",
+            "Skill-group and specialization authorities exist upstream, but Android needs shared Coordinator routing and an atomic ApplyResult. Knowledge skills, qualities and initiation/submersion remain incomplete.",
             "other-advancement");
         AddBlocked(
             "Gear, weapon, armor, bioware, vehicle and general ware acquisition need exact availability, cost, Essence, prerequisite and expense quotes.",
@@ -227,6 +229,11 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
             "Execute one exact advancement through the reviewed transaction boundary",
             OpenActiveSkillWizardAsync,
             "active-skill");
+        AddAction(
+            "Advance an attribute",
+            "Preview and save one exact SR5 attribute advancement; elapsed time remains Chummer5's immediate persistence authority",
+            OpenAttributeWizardAsync,
+            "attribute");
         AddBlocked(
             "Training duration, healing, crafting, acquisition delivery and other scheduled work lack a shared typed execution contract.",
             "execution");
@@ -284,6 +291,18 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
         if (editor is not null)
         {
             await Navigation.PushAsync(new Sr5CareerActiveSkillWizardPage(Coordinator, editor));
+        }
+    }
+
+    private async Task OpenAttributeWizardAsync()
+    {
+        Sr5CareerAttributeCoordinator authority = new(
+            new RunnerSessionSr5CareerAttributePresenter(Coordinator),
+            new PreferencesSr5CareerCheckpointOwnerAuthority());
+        CareerAttributeAdvanceEditorState? editor = await authority.PrepareAsync();
+        if (editor is not null)
+        {
+            await Navigation.PushAsync(new Sr5CareerAttributeWizardPage(Coordinator, editor));
         }
     }
 
