@@ -26,7 +26,9 @@ internal static class Program
             (nameof(DurableSaveNoticeFailsClosedAcrossStateChangesAsync), DurableSaveNoticeFailsClosedAcrossStateChangesAsync),
             (nameof(AttributesPreviewAdoptionRequiresCanonicalSuccessAsync), AttributesPreviewAdoptionRequiresCanonicalSuccessAsync),
             (nameof(AttributesBodPreviewCannotConfirmAgiDraftAsync), AttributesBodPreviewCannotConfirmAgiDraftAsync),
-            (nameof(AttributesReceiptMustMatchCommittedWorkspaceBeforeActivationAsync), AttributesReceiptMustMatchCommittedWorkspaceBeforeActivationAsync)
+            (nameof(AttributesReceiptMustMatchCommittedWorkspaceBeforeActivationAsync), AttributesReceiptMustMatchCommittedWorkspaceBeforeActivationAsync),
+            (nameof(SkillsPreviewAdoptionPreservesOnlyCoreProjectionAsync), SkillsPreviewAdoptionPreservesOnlyCoreProjectionAsync),
+            (nameof(SkillsCommittedRefreshFailureRemainsCommittedAsync), SkillsCommittedRefreshFailureRemainsCommittedAsync)
         ];
 
         foreach ((string name, Func<Task> run) in tests)
@@ -488,6 +490,323 @@ internal static class Program
         return Task.CompletedTask;
     }
 
+    private static Task SkillsPreviewAdoptionPreservesOnlyCoreProjectionAsync()
+    {
+        SkillsFixture fixture = NewSkillsFixture();
+        Require(
+            CreationSkillsPhoneAuthority.IsReady(fixture.State, fixture.Overview),
+            "The phone gate must accept an exactly digest-valid Core Skills packet.");
+        Require(
+            !CreationSkillsPhoneAuthority.IsReady(
+                fixture.State with { SnapshotDigest = CanonicalDigest('9') },
+                fixture.Overview),
+            "The phone gate must recompute and reject a forged Skills snapshot digest.");
+        CharacterCreationSkillCatalogEntry tamperedCatalog = fixture.ActiveSource with
+        {
+            Name = "Forged Pistols"
+        };
+        CharacterCreationSkillsAuthority tamperedAuthority = fixture.State.Authority with
+        {
+            ActiveSkills = [tamperedCatalog],
+            AuthorityDigest = string.Empty
+        };
+        tamperedAuthority = tamperedAuthority with
+        {
+            AuthorityDigest = CharacterCreationSkillsDigest.Compute(
+                tamperedAuthority with { AuthorityDigest = string.Empty })
+        };
+        CharacterCreationSkillsState tamperedState = fixture.State with
+        {
+            Authority = tamperedAuthority,
+            Binding = fixture.State.Binding with
+            {
+                SkillsAuthorityDigest = tamperedAuthority.AuthorityDigest
+            },
+            SnapshotDigest = string.Empty
+        };
+        tamperedState = tamperedState with
+        {
+            SnapshotDigest = CharacterCreationSkillsDigest.Compute(
+                tamperedState with { SnapshotDigest = string.Empty })
+        };
+        Require(
+            !CreationSkillsPhoneAuthority.IsReady(tamperedState, fixture.Overview),
+            "A re-sealed packet with a forged catalog projection must fail Core integrity validation.");
+        var phoneDraft = new CreationSkillsPhoneDraft();
+        phoneDraft.Bind(fixture.State, fixture.Overview);
+        var success = new CharacterCreationFoundationResult<CharacterCreationSkillsPreview>(
+            CharacterCreationFoundationOutcomes.Success,
+            fixture.Preview,
+            []);
+        Require(
+            phoneDraft.TryAdopt(
+                fixture.State,
+                fixture.Overview,
+                success,
+                fixture.Allocations,
+                []),
+            "A canonical Core Skills projection must be adopted.");
+
+        CharacterCreationSkillAllocation increased = phoneDraft
+            .WithSkill(fixture.ActiveSource, 1)
+            .Single(item => item.SourceSkillId == fixture.ActiveSource.SourceSkillId);
+        Require(increased.Rating == 3, "The next request must start from Core's projected rating.");
+        Require(
+            increased.SpecializationOptionId == fixture.Specialization.OptionId,
+            "Rating changes must preserve the Core-projected specialization.");
+        Require(
+            phoneDraft.WithSpecialization(fixture.LanguageSource, "invented").SequenceEqual(phoneDraft.Skills),
+            "A specialization must never manufacture a missing or native allocation.");
+
+        CharacterCreationFoundationResult<CharacterCreationSkillsPreview> stale = success with
+        {
+            Value = fixture.Preview with
+            {
+                Binding = fixture.Preview.Binding with { ContentRevision = 99 }
+            }
+        };
+        Require(
+            !phoneDraft.TryAdopt(
+                fixture.State,
+                fixture.Overview,
+                stale,
+                fixture.Allocations,
+                []),
+            "A stale Core Skills projection must fail closed.");
+        return Task.CompletedTask;
+    }
+
+    private static Task SkillsCommittedRefreshFailureRemainsCommittedAsync()
+    {
+        SkillsFixture fixture = NewSkillsFixture();
+        CharacterCreationSkillsReceipt receipt = new(
+            CharacterCreationSkillsSchemas.ReceiptV1,
+            fixture.State.Binding.WorkspaceId,
+            PreviousContentRevision: 6,
+            ContentRevision: 7,
+            SavedRevision: 7,
+            DraftRevision: 1,
+            CanonicalDigest('1'),
+            fixture.Preview.PreviewDigest,
+            CanonicalDigest('2'),
+            CanonicalDigest('3'),
+            CharacterCreationSkillsDigest.ReceiptLedgerRootDigest,
+            fixture.State.Authority.AuthorityDigest,
+            fixture.State.Authority.RuntimeDigest,
+            ActivePointsRemaining: 25,
+            SkillGroupPointsRemaining: 2,
+            KnowledgePointsRemaining: 10,
+            KnowledgePointOverflowToActive: 0,
+            CharacterDocumentChanged: false,
+            CanonicalDigest('4'));
+        CreationSkillsPhoneConfirmResult result = CreationSkillsPhoneAuthority
+            .CommittedRefreshRequired(receipt, fixture.State, ["presenter-refresh-failed"]);
+        Require(
+            result.Outcome == CharacterCreationFoundationOutcomes.Success
+            && result.Receipt == receipt
+            && result.RefreshedState == fixture.State,
+            "A validated durable commit must not be relabeled as an uncommitted conflict.");
+        Require(
+            result.Blockers.Contains(
+                CharacterCreationSkillsBlockers.PostCommitRefreshRequired,
+                StringComparer.Ordinal),
+            "A durable commit with a failed phone refresh must carry explicit recovery semantics.");
+        return Task.CompletedTask;
+    }
+
+    private static SkillsFixture NewSkillsFixture()
+    {
+        AttributesFixture attributesFixture = NewAttributesFixture();
+        CharacterWorkspaceId workspaceId = attributesFixture.State.Binding.WorkspaceId;
+        CharacterCreationPrerequisiteDraft prerequisite = attributesFixture.State.PrerequisiteDraft!;
+        CharacterCreationAttributesDraft attributes = new(
+            CharacterCreationAttributesSchemas.DraftV1,
+            workspaceId,
+            DraftRevision: 5,
+            BaseContentRevision: 5,
+            attributesFixture.State.Binding.RawCharacterXmlDigest,
+            prerequisite.DraftRevision,
+            prerequisite.DraftDigest,
+            prerequisite.AuthorityDigest,
+            "11111111-1111-1111-1111-111111111111",
+            CanonicalDigest('4'),
+            HalvesNormalAttributePoints: false,
+            NormalPointTotal: 10,
+            NormalPointUsed: 1,
+            SpecialPointTotal: 0,
+            SpecialPointUsed: 0,
+            CreationKarmaTotal: 25,
+            CreationKarmaUsed: 0,
+            attributesFixture.Allocations,
+            attributesFixture.Preview.Attributes,
+            ["metatypes.xml#human"],
+            CharacterEffectsApplied: false,
+            CanonicalDigest('5'));
+        string effectiveInputs = CanonicalDigest('6');
+        var specialization = new CharacterCreationSkillSpecializationOption(
+            "spec-pistols",
+            "Semi-Automatics",
+            "skills.xml#pistols/spec:semi-automatics");
+        string activeId = "11111111-1111-1111-1111-111111111111";
+        string[] activeAnchors = [$"skills.xml#skill:{activeId}"];
+        var active = new CharacterCreationSkillCatalogEntry(
+            activeId,
+            CharacterCreationSkillKinds.Active,
+            "Pistols",
+            "Combat Active",
+            "AGI",
+            SkillGroup: null,
+            IsExotic: false,
+            CharacterCreationStandardPrioritySkillsRules.ComputeCatalogProjectionDigest(
+                effectiveInputs,
+                activeId,
+                CharacterCreationSkillKinds.Active,
+                "Pistols",
+                "Combat Active",
+                "AGI",
+                null,
+                false,
+                [specialization],
+                activeAnchors),
+            [specialization],
+            activeAnchors);
+        string languageId = "22222222-2222-2222-2222-222222222222";
+        string[] languageAnchors = [$"skills.xml#skill:{languageId}"];
+        var language = new CharacterCreationSkillCatalogEntry(
+            languageId,
+            CharacterCreationSkillKinds.Knowledge,
+            "English",
+            "Language",
+            "INT",
+            SkillGroup: null,
+            IsExotic: false,
+            CharacterCreationStandardPrioritySkillsRules.ComputeCatalogProjectionDigest(
+                effectiveInputs,
+                languageId,
+                CharacterCreationSkillKinds.Knowledge,
+                "English",
+                "Language",
+                "INT",
+                null,
+                false,
+                [],
+                languageAnchors),
+            [],
+            languageAnchors);
+        string runtimeDigest = CharacterCreationStandardPrioritySkillsRules.ComputeRuntimeDigest(
+            usePointsOnBrokenGroups: false,
+            strictSkillGroupsInCreateMode: false,
+            specializationsBreakSkillGroups: true);
+        var authority = new CharacterCreationSkillsAuthority(
+            CharacterCreationSkillsSchemas.AuthorityV1,
+            "standard",
+            effectiveInputs,
+            CanonicalDigest('7'),
+            CharacterCreationStandardPrioritySkillsRules.KnowledgePointsExpression,
+            6,
+            6,
+            6,
+            1,
+            false,
+            false,
+            true,
+            [active],
+            [language],
+            [],
+            [],
+            ["priorities.xml#category:Skills", "settings.xml#setting:standard", "skills.xml"],
+            [],
+            true,
+            runtimeDigest,
+            string.Empty);
+        authority = authority with
+        {
+            AuthorityDigest = CharacterCreationSkillsDigest.Compute(
+                authority with { AuthorityDigest = string.Empty })
+        };
+        CharacterCreationSkillsBinding binding = new(
+            workspaceId,
+            ContentRevision: 6,
+            SavedRevision: 6,
+            attributesFixture.State.Binding.RawCharacterXmlDigest,
+            new string('b', 64),
+            prerequisite.DraftRevision,
+            prerequisite.DraftDigest,
+            prerequisite.AuthorityDigest,
+            attributes.DraftRevision,
+            attributes.DraftDigest,
+            authority.AuthorityDigest,
+            authority.RuntimeDigest,
+            CharacterCreationSkillsDigest.Compute(Array.Empty<CharacterCreationKnowledgePointContribution>()));
+        CharacterCreationSkillAllocation[] allocations =
+        [
+            new(activeId, CharacterCreationSkillKinds.Active, 2, specialization.OptionId, false),
+            new(languageId, CharacterCreationSkillKinds.Knowledge, null, null, true)
+        ];
+        CharacterCreationSkillProjection[] projections =
+        [
+            new(activeId, CharacterCreationSkillKinds.Active, "Pistols", "Combat Active", "AGI", null,
+                2, 2, 3, specialization.OptionId, specialization.Name, false, true, [], activeAnchors),
+            new(languageId, CharacterCreationSkillKinds.Knowledge, "English", "Language", "INT", null,
+                null, null, 0, null, null, true, true, [], languageAnchors)
+        ];
+        CharacterCreationBudgetState stateActiveBudget = NewBudget("active-skills", 28, 0);
+        CharacterCreationBudgetState stateGroupBudget = NewBudget("skill-groups", 2, 0);
+        CharacterCreationBudgetState stateKnowledgeBudget = NewBudget("knowledge-skills", 10, 0);
+        CharacterCreationBudgetState previewActiveBudget = NewBudget("active-skills", 28, 3);
+        CharacterCreationBudgetState previewGroupBudget = NewBudget("skill-groups", 2, 0);
+        CharacterCreationBudgetState previewKnowledgeBudget = NewBudget("knowledge-skills", 10, 0);
+        var state = new CharacterCreationSkillsState(
+            CharacterCreationSkillsSchemas.SnapshotV1,
+            binding,
+            authority,
+            prerequisite,
+            attributes,
+            PendingDraft: null,
+            [],
+            [],
+            [],
+            stateActiveBudget,
+            stateGroupBudget,
+            stateKnowledgeBudget,
+            IntuitionUnaugmented: 3,
+            LogicUnaugmented: 2,
+            [],
+            CanEdit: true,
+            SnapshotDigest: string.Empty)
+        {
+            SelectedActiveSkillPoints = 28,
+            SelectedSkillGroupPoints = 2
+        };
+        state = state with
+        {
+            SnapshotDigest = CharacterCreationSkillsDigest.Compute(
+                state with { SnapshotDigest = string.Empty })
+        };
+        var preview = new CharacterCreationSkillsPreview(
+            CharacterCreationSkillsSchemas.PreviewV1,
+            binding,
+            projections,
+            [],
+            [],
+            previewActiveBudget,
+            previewGroupBudget,
+            previewKnowledgeBudget,
+            KnowledgePointOverflowToActive: 0,
+            [],
+            RequiresExplicitConfirmation: true,
+            CanConfirm: true,
+            CanonicalDigest('a'));
+        return new SkillsFixture(
+            state,
+            NewCreationOverview(workspaceId, 6, 6),
+            preview,
+            allocations,
+            active,
+            language,
+            specialization);
+    }
+
     private static AttributesFixture NewAttributesFixture()
     {
         CharacterWorkspaceId workspaceId = new("attributes-phone-authority");
@@ -683,6 +1002,15 @@ internal static class Program
 
     private static string CanonicalDigest(char value)
         => $"sha256:{new string(value, 64)}";
+
+    private sealed record SkillsFixture(
+        CharacterCreationSkillsState State,
+        CharacterOverviewState Overview,
+        CharacterCreationSkillsPreview Preview,
+        IReadOnlyList<CharacterCreationSkillAllocation> Allocations,
+        CharacterCreationSkillCatalogEntry ActiveSource,
+        CharacterCreationSkillCatalogEntry LanguageSource,
+        CharacterCreationSkillSpecializationOption Specialization);
 
     private sealed record AttributesFixture(
         CharacterCreationAttributesState State,

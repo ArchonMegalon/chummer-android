@@ -118,6 +118,12 @@ public sealed record CreationAttributesPhoneConfirmResult(
     CharacterCreationAttributesState? RefreshedState,
     IReadOnlyList<string> Blockers);
 
+public sealed record CreationSkillsPhoneConfirmResult(
+    string Outcome,
+    CharacterCreationSkillsReceipt? Receipt,
+    CharacterCreationSkillsState? RefreshedState,
+    IReadOnlyList<string> Blockers);
+
 public sealed class RunnerSessionCoordinator : IDisposable
 {
     private const string WorkspaceAuthorityDigestSchema =
@@ -137,6 +143,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly ICharacterCreationFoundationInteractionPresenter _foundationInteractionPresenter;
     private readonly ICharacterCreationPrerequisiteService _creationPrerequisiteService;
     private readonly ICharacterCreationAttributesService? _creationAttributesService;
+    private readonly ICharacterCreationSkillsService? _creationSkillsService;
     private readonly IShellPresenter _shellPresenter;
     private readonly IShellSurfaceResolver _surfaceResolver;
     private readonly ICommandAvailabilityEvaluator _availability;
@@ -192,7 +199,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         IAndroidAccountLinkService account,
         CharacterRosterFavoritePresenter rosterFavoritePresenter,
         ApplicationDeleteConfirmationPresenter applicationSettingsPresenter,
-        ICharacterCreationAttributesService? creationAttributesService = null)
+        ICharacterCreationAttributesService? creationAttributesService = null,
+        ICharacterCreationSkillsService? creationSkillsService = null)
     {
         _presenter = presenter;
         _client = client;
@@ -200,6 +208,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _foundationInteractionPresenter = foundationInteractionPresenter;
         _creationPrerequisiteService = creationPrerequisiteService;
         _creationAttributesService = creationAttributesService;
+        _creationSkillsService = creationSkillsService;
         _shellPresenter = shellPresenter;
         _surfaceResolver = surfaceResolver;
         _availability = availability;
@@ -671,6 +680,111 @@ public sealed class RunnerSessionCoordinator : IDisposable
             receipt,
             refreshedState,
             []);
+    }
+
+    public CharacterCreationFoundationResult<CharacterCreationSkillsState> LoadCreationSkills()
+    {
+        if (State.Profile?.Created != false || State.WorkspaceId is not { } workspaceId)
+            return new(CharacterCreationFoundationOutcomes.Blocked, null,
+                [CharacterCreationSkillsBlockers.WorkspaceUnavailable]);
+        if (_creationSkillsService is null)
+            return new(CharacterCreationFoundationOutcomes.Blocked, null,
+                [CharacterCreationSkillsBlockers.AuthorityUnavailable]);
+        CharacterCreationFoundationResult<CharacterCreationSkillsState> result =
+            _creationSkillsService.Load(new(workspaceId));
+        return result.Value is { } state && !CreationSkillsPhoneAuthority.MatchesOverview(state, State)
+            ? new(CharacterCreationFoundationOutcomes.Conflict, null,
+                [CharacterCreationSkillsBlockers.StaleWorkspaceRevision])
+            : result;
+    }
+
+    internal CharacterCreationFoundationResult<CharacterCreationSkillsPreview> PreviewCreationSkills(
+        CharacterCreationSkillsBinding binding,
+        IReadOnlyList<CharacterCreationSkillAllocation> allocations,
+        IReadOnlyList<CharacterCreationSkillGroupAllocation> groups)
+    {
+        CharacterCreationFoundationResult<CharacterCreationSkillsState> live = LoadCreationSkills();
+        if (_creationSkillsService is null || live.Value is not { } state
+            || !CreationSkillsPhoneAuthority.IsReady(state, State)
+            || !CreationSkillsPhoneAuthority.BindingEquals(binding, state.Binding))
+            return new(CharacterCreationFoundationOutcomes.Conflict, null,
+                [CharacterCreationSkillsBlockers.StaleWorkspaceRevision]);
+        return _creationSkillsService.Preview(new(binding, allocations.ToArray(), groups.ToArray()));
+    }
+
+    internal async Task<CreationSkillsPhoneConfirmResult> ConfirmCreationSkillsAsync(
+        CharacterCreationSkillsPreview preview,
+        IReadOnlyList<CharacterCreationSkillAllocation> allocations,
+        IReadOnlyList<CharacterCreationSkillGroupAllocation> groups,
+        string idempotencyKey,
+        CancellationToken cancellationToken = default) =>
+        await WithWorkspaceActivationGateAsync(
+            () => ConfirmCreationSkillsCoreAsync(preview, allocations, groups, idempotencyKey, cancellationToken),
+            cancellationToken);
+
+    private async Task<CreationSkillsPhoneConfirmResult> ConfirmCreationSkillsCoreAsync(
+        CharacterCreationSkillsPreview preview,
+        IReadOnlyList<CharacterCreationSkillAllocation> allocations,
+        IReadOnlyList<CharacterCreationSkillGroupAllocation> groups,
+        string idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        CharacterOverviewState beforeActivation = State;
+        CharacterCreationFoundationResult<CharacterCreationSkillsState> live = LoadCreationSkills();
+        if (_creationSkillsService is null || live.Value is not { } state
+            || !CreationSkillsPhoneAuthority.CanConfirmPreview(state, beforeActivation, preview, allocations, groups))
+            return new(CharacterCreationFoundationOutcomes.Conflict, null, null,
+                [CharacterCreationSkillsBlockers.PreviewDigestMismatch]);
+        CharacterCreationFoundationResult<CharacterCreationSkillsPreview> reprojection =
+            _creationSkillsService.Preview(new(preview.Binding, allocations.ToArray(), groups.ToArray()));
+        if (!CreationSkillsPhoneAuthority.CanAdoptPreview(state, beforeActivation, reprojection, allocations, groups)
+            || reprojection.Value is not { } canonical
+            || !CreationSkillsPhoneAuthority.CanonicallyEquals(preview, canonical))
+            return new(CharacterCreationFoundationOutcomes.Conflict, null, null,
+                [CharacterCreationSkillsBlockers.PreviewDigestMismatch]);
+        CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> confirmed =
+            _creationSkillsService.Confirm(new(canonical.Binding, allocations.ToArray(), groups.ToArray(),
+                canonical.PreviewDigest, idempotencyKey, true));
+        if (confirmed.Value is not { } receipt
+            || !string.Equals(confirmed.Outcome, CharacterCreationFoundationOutcomes.Success, StringComparison.Ordinal))
+            return new(confirmed.Outcome, confirmed.Value, null, confirmed.Blockers);
+        CharacterCreationFoundationResult<CharacterCreationSkillsState> committed =
+            _creationSkillsService.Load(new(receipt.WorkspaceId));
+        if (committed.Value is not { } committedState
+            || !CreationSkillsPhoneAuthority.ReceiptMatchesBeforeActivation(
+                receipt, canonical, committedState, beforeActivation, idempotencyKey))
+            return new(CharacterCreationFoundationOutcomes.Conflict, receipt, null,
+                committed.Blockers.Append(CharacterCreationSkillsBlockers.DraftConflict).Distinct().ToArray());
+        try
+        {
+            await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken);
+            await SyncShellAsync(cancellationToken);
+        }
+        catch (Exception)
+        {
+            return CommittedSkillsRefreshRequired(receipt, committedState, []);
+        }
+        CharacterCreationFoundationResult<CharacterCreationSkillsState> refreshed = LoadCreationSkills();
+        if (refreshed.Value is not { } refreshedState
+            || !CreationSkillsPhoneAuthority.ReceiptMatches(
+                receipt, canonical, refreshedState, State, idempotencyKey))
+            return CommittedSkillsRefreshRequired(receipt, committedState, refreshed.Blockers);
+        _notice = "Skills draft saved. Character effects remain pending finalization.";
+        NotifyChanged();
+        return new(CharacterCreationFoundationOutcomes.Success, receipt, refreshedState, []);
+    }
+
+    private CreationSkillsPhoneConfirmResult CommittedSkillsRefreshRequired(
+        CharacterCreationSkillsReceipt receipt,
+        CharacterCreationSkillsState committedState,
+        IEnumerable<string> blockers)
+    {
+        _notice = "Skills draft saved. Reopen the character to refresh the phone view.";
+        NotifyChanged();
+        return CreationSkillsPhoneAuthority.CommittedRefreshRequired(
+            receipt,
+            committedState,
+            blockers);
     }
 
     public CharacterCreationFoundationInteractionLoadResult LoadCreationFoundation()
