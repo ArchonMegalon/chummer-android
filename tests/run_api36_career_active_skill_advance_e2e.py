@@ -226,9 +226,35 @@ def assert_ui_readback(device: shared.Device) -> None:
         raise RuntimeError("Next exact advancement cost was not read back after reopen")
 
 
+def synchronize_build_active_skill_route(
+    device: shared.Device,
+    *,
+    timeout: int,
+    evidence_prefix: str,
+) -> None:
+    """Reset the preserved Build viewport, then bind one exact route going forward."""
+    shared.reset_scroll_to_top(device, swipes=48)
+    node = device.wait_for_single_exact_resource_id(
+        "build-career-active-skill",
+        timeout=timeout,
+        scroll=True,
+        max_scrolls=40,
+        scroll_distance_ratio=0.18,
+        evidence_prefix=evidence_prefix,
+        surface_name="Build Career Active Skill route accessibility node",
+    )
+    if not device.node_has_tappable_bounds(node):
+        device.capture(f"{evidence_prefix}-untappable")
+        raise RuntimeError("The exact Build Career Active Skill route is not tappable")
+
+
 def return_home_from_page(device: shared.Device) -> None:
     device.back()
-    device.wait("build-career-active-skill", timeout=90, scroll=True, max_scrolls=40)
+    synchronize_build_active_skill_route(
+        device,
+        timeout=90,
+        evidence_prefix="career-active-skill-return-route",
+    )
     device.tap("Home")
     device.wait("Continue building", timeout=120)
 
@@ -249,7 +275,11 @@ def prove_advancement(
     device.wait("career-active-skill-page", timeout=30)
     device.tap("career-active-skill-advance", timeout=60)
     device.tap("Advance", timeout=60)
-    device.wait("build-career-active-skill", timeout=180, scroll=True, max_scrolls=40)
+    synchronize_build_active_skill_route(
+        device,
+        timeout=180,
+        evidence_prefix="career-active-skill-post-advance-route",
+    )
     saved = read_saved_authority(device)
     if saved.workspace_id != imported.workspace_id:
         raise RuntimeError("Active-skill save changed workspace identity")

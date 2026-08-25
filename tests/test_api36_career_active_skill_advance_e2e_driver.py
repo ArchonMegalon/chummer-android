@@ -4,6 +4,7 @@ import importlib.util
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import Mock, patch
 import uuid
 import xml.etree.ElementTree as ET
 
@@ -45,6 +46,87 @@ class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
         self.assertIn('device.tap("Advance"', source)
         self.assertIn('"Active Skill Pilot Ground Craft 3 -> 4"', source)
         self.assertIn('"ImproveSkill"', source)
+        self.assertEqual(
+            2,
+            source.count("\n    synchronize_build_active_skill_route("),
+        )
+        self.assertNotIn(
+            'device.wait("build-career-active-skill", timeout=180, scroll=True',
+            source,
+        )
+
+    def test_return_route_resets_backward_then_binds_one_exact_forward_node(self) -> None:
+        node = driver.shared.UiNode(
+            {
+                "resource-id": "build-career-active-skill",
+                "bounds": "[98,930][984,1083]",
+            }
+        )
+        device = Mock(spec=driver.shared.Device)
+        device.wait_for_single_exact_resource_id.return_value = node
+        device.node_has_tappable_bounds.return_value = True
+
+        with patch.object(driver.shared, "reset_scroll_to_top") as reset:
+            driver.synchronize_build_active_skill_route(
+                device,
+                timeout=180,
+                evidence_prefix="career-active-skill-post-advance-route",
+            )
+
+        reset.assert_called_once_with(device, swipes=48)
+        device.wait_for_single_exact_resource_id.assert_called_once_with(
+            "build-career-active-skill",
+            timeout=180,
+            scroll=True,
+            max_scrolls=40,
+            scroll_distance_ratio=0.18,
+            evidence_prefix="career-active-skill-post-advance-route",
+            surface_name="Build Career Active Skill route accessibility node",
+        )
+        device.capture.assert_not_called()
+
+    def test_return_route_fails_closed_when_exact_node_is_untappable(self) -> None:
+        node = driver.shared.UiNode(
+            {
+                "resource-id": "build-career-active-skill",
+                "bounds": "[98,275][984,276]",
+            }
+        )
+        device = Mock(spec=driver.shared.Device)
+        device.wait_for_single_exact_resource_id.return_value = node
+        device.node_has_tappable_bounds.return_value = False
+
+        with (
+            patch.object(driver.shared, "reset_scroll_to_top"),
+            self.assertRaisesRegex(RuntimeError, "not tappable"),
+        ):
+            driver.synchronize_build_active_skill_route(
+                device,
+                timeout=90,
+                evidence_prefix="career-active-skill-return-route",
+            )
+
+        device.capture.assert_called_once_with(
+            "career-active-skill-return-route-untappable"
+        )
+
+    def test_return_route_propagates_duplicate_exact_id_cardinality_failure(self) -> None:
+        device = Mock(spec=driver.shared.Device)
+        device.wait_for_single_exact_resource_id.side_effect = RuntimeError(
+            "Build Career Active Skill route has cardinality 2; expected exactly one"
+        )
+
+        with (
+            patch.object(driver.shared, "reset_scroll_to_top"),
+            self.assertRaisesRegex(RuntimeError, "cardinality 2"),
+        ):
+            driver.synchronize_build_active_skill_route(
+                device,
+                timeout=90,
+                evidence_prefix="career-active-skill-return-route",
+            )
+
+        device.node_has_tappable_bounds.assert_not_called()
 
     def test_fixture_has_exact_guid_source_balance_expense_and_nested_authority(self) -> None:
         root = ET.parse(FIXTURE).getroot()
