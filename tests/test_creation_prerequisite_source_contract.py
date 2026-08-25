@@ -20,6 +20,23 @@ SPEC.loader.exec_module(driver)
 
 
 class CreationPrerequisiteSourceContractTests(unittest.TestCase):
+    def test_readable_digest_prefix_is_canonical_and_twelve_hex_characters(self) -> None:
+        helper = (NATIVE / "CreationPrerequisiteDigestText.cs").read_text(encoding="utf-8")
+        page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
+        preview = (NATIVE / "CreationPrerequisitePreviewPage.cs").read_text(encoding="utf-8")
+        for marker in (
+            "CharacterCreationPrerequisiteAuthorityDigest.IsCanonical(digest)",
+            'private const string Sha256Prefix = "sha256:"',
+            "private const int DisplayHexLength = 12",
+            "digest![Sha256Prefix.Length..(Sha256Prefix.Length + DisplayHexLength)]",
+            'return "unavailable"',
+        ):
+            self.assertIn(marker, helper)
+        self.assertIn("CreationPrerequisiteDigestText.CanonicalPrefix(digest)", page)
+        self.assertIn("CreationPrerequisiteDigestText.CanonicalPrefix(digest)", preview)
+        self.assertNotIn("digest[..Math.Min(12, digest.Length)]", page)
+        self.assertNotIn("digest[..Math.Min(12, digest.Length)]", preview)
+
     @staticmethod
     def authority_option_node(resource_id: str, label: str) -> driver.shared.UiNode:
         return driver.shared.UiNode(
@@ -1006,6 +1023,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "state.Authority.RawPrioritiesXmlDigest",
             "state.PendingDraft is { } pending",
             '"creation-prerequisite-pending-draft-digest"',
+            '"creation-prerequisite-snapshot-digest"',
             '"creation-prerequisite-raw-character-xml-digest"',
             '"creation-prerequisite-auxiliary-state-digest"',
             '"creation-prerequisite-authority-digest"',
@@ -1186,12 +1204,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('"previewDigest": preview_digest', source)
         self.assertIn('"previewBindingDigests": preview_binding_digests', source)
         self.assertIn('"confirmedBindingDigests": confirmed_binding_digests', source)
+        self.assertIn('"prerequisiteSnapshotDigest": prerequisite_snapshot_digest', source)
         self.assertIn('"sameSessionPersistedAuthority": resumed_authority', source)
         self.assertIn('"restartedPersistedAuthority": restarted_authority', source)
         self.assertIn("read_persisted_prerequisite_authority(device)", source)
         self.assertIn('"characterDocumentChangedFalse": "pass"', source)
         self.assertIn('"buildGhostCurrentAndNonMutating": "pass"', source)
         self.assertIn('"advancedEditorNeverExposedWhileCreatedFalse": "pass"', source)
+        self.assertIn("require_binding_matches_canonical_digests(", source)
 
     def test_api36_phone_only_ci_selects_the_isolated_prerequisite_journey(self) -> None:
         runner = (

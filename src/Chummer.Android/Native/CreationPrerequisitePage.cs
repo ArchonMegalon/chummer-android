@@ -96,6 +96,9 @@ public sealed class CreationPrerequisitePage : NativePageBase
         binding.AutomationId = "creation-prerequisite-binding";
         _body.Add(binding);
         AddDigestBinding(
+            "creation-prerequisite-snapshot-digest",
+            state.SnapshotDigest);
+        AddDigestBinding(
             "creation-prerequisite-raw-character-xml-digest",
             state.Binding.RawCharacterXmlDigest);
         AddDigestBinding(
@@ -431,7 +434,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
         => $"{value.ToString("0.##", CultureInfo.InvariantCulture)} {unit}".TrimEnd();
 
     private static string ShortDigest(string digest)
-        => string.IsNullOrWhiteSpace(digest) ? "unavailable" : digest[..Math.Min(12, digest.Length)];
+        => CreationPrerequisiteDigestText.CanonicalPrefix(digest);
 
     private static string JoinDetails(params string?[] parts)
         => string.Join(

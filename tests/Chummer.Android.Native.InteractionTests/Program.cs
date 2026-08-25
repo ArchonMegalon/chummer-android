@@ -20,6 +20,7 @@ internal static class Program
             (nameof(DoubleTapExecutesExactlyOnceAsync), DoubleTapExecutesExactlyOnceAsync),
             (nameof(CloseWaitsForClaimedActionAsync), CloseWaitsForClaimedActionAsync),
             (nameof(FailureRerendersBeforeQueueAdvancesAsync), FailureRerendersBeforeQueueAdvancesAsync),
+            (nameof(CanonicalDigestPrefixIsTwelveLowerHexAsync), CanonicalDigestPrefixIsTwelveLowerHexAsync),
             (nameof(CanonicalPriorityAuthorityIsPhoneReadyAsync), CanonicalPriorityAuthorityIsPhoneReadyAsync)
         ];
 
@@ -30,6 +31,31 @@ internal static class Program
         }
 
         Console.WriteLine($"Native dialog interaction tests passed: {tests.Length}");
+    }
+
+    private static Task CanonicalDigestPrefixIsTwelveLowerHexAsync()
+    {
+        const string hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+        const string canonical = $"sha256:{hex}";
+        Require(
+            CreationPrerequisiteDigestText.CanonicalPrefix(canonical) == "0123456789ab",
+            "The readable binding must expose twelve digest hex characters, not the sha256 prefix.");
+        foreach (string? invalid in new string?[]
+                 {
+                     null,
+                     string.Empty,
+                     hex,
+                     $"sha256:{hex.ToUpperInvariant()}",
+                     $"sha256:{hex[..^1]}",
+                     $"sha256:{new string('g', 64)}"
+                 })
+        {
+            Require(
+                CreationPrerequisiteDigestText.CanonicalPrefix(invalid) == "unavailable",
+                $"The readable binding must fail closed for a non-canonical digest: {invalid}");
+        }
+
+        return Task.CompletedTask;
     }
 
     private static Task CanonicalPriorityAuthorityIsPhoneReadyAsync()

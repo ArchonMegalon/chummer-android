@@ -400,7 +400,7 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
         => $"{value.ToString("0.##", CultureInfo.InvariantCulture)} {unit}".TrimEnd();
 
     private static string ShortDigest(string digest)
-        => string.IsNullOrWhiteSpace(digest) ? "unavailable" : digest[..Math.Min(12, digest.Length)];
+        => CreationPrerequisiteDigestText.CanonicalPrefix(digest);
 
     private void AddDigestBinding(string automationId, string digest)
     {

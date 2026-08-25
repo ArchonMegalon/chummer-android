@@ -345,28 +345,68 @@ def require_prerequisite_binding(value: str) -> dict[str, object]:
     }
 
 
+def require_binding_matches_canonical_digests(
+    binding: dict[str, object],
+    snapshot_digest: str,
+    authority_digest: str,
+) -> None:
+    if CANONICAL_AUTHORITY_DIGEST.fullmatch(snapshot_digest) is None:
+        raise RuntimeError(
+            f"Creation prerequisite snapshot digest is not canonical: {snapshot_digest!r}"
+        )
+    if CANONICAL_AUTHORITY_DIGEST.fullmatch(authority_digest) is None:
+        raise RuntimeError(
+            f"Creation prerequisite authority digest is not canonical: {authority_digest!r}"
+        )
+    expected_snapshot_prefix = snapshot_digest.removeprefix("sha256:")[:12]
+    expected_authority_prefix = authority_digest.removeprefix("sha256:")[:12]
+    if binding.get("snapshotDigestPrefix") != expected_snapshot_prefix:
+        raise RuntimeError(
+            "Creation prerequisite binding snapshot prefix does not match its full canonical "
+            f"digest: binding={binding!r}, snapshot={snapshot_digest!r}"
+        )
+    if binding.get("authorityDigestPrefix") != expected_authority_prefix:
+        raise RuntimeError(
+            "Creation prerequisite binding authority prefix does not match its full canonical "
+            f"digest: binding={binding!r}, authority={authority_digest!r}"
+        )
+
+
 def read_persisted_prerequisite_authority(device: shared.Device) -> dict[str, object]:
-    return {
-        "binding": require_prerequisite_binding(
-            node_text(device, "creation-prerequisite-binding", scroll=True)
+    binding = require_prerequisite_binding(
+        node_text(device, "creation-prerequisite-binding", scroll=True)
+    )
+    snapshot_digest = canonical_digest(
+        device,
+        "creation-prerequisite-snapshot-digest",
+        scroll=True,
+    )
+    binding_digests = {
+        "rawCharacterXml": canonical_digest(
+            device,
+            "creation-prerequisite-raw-character-xml-digest",
+            scroll=True,
         ),
-        "bindingDigests": {
-            "rawCharacterXml": canonical_digest(
-                device,
-                "creation-prerequisite-raw-character-xml-digest",
-                scroll=True,
-            ),
-            "auxiliaryState": canonical_auxiliary_state_digest(
-                device,
-                "creation-prerequisite-auxiliary-state-digest",
-                scroll=True,
-            ),
-            "authority": canonical_digest(
-                device,
-                "creation-prerequisite-authority-digest",
-                scroll=True,
-            ),
-        },
+        "auxiliaryState": canonical_auxiliary_state_digest(
+            device,
+            "creation-prerequisite-auxiliary-state-digest",
+            scroll=True,
+        ),
+        "authority": canonical_digest(
+            device,
+            "creation-prerequisite-authority-digest",
+            scroll=True,
+        ),
+    }
+    require_binding_matches_canonical_digests(
+        binding,
+        snapshot_digest,
+        binding_digests["authority"],
+    )
+    return {
+        "binding": binding,
+        "snapshotDigest": snapshot_digest,
+        "bindingDigests": binding_digests,
         "draftDigest": canonical_digest(
             device,
             "creation-prerequisite-pending-draft-digest",
@@ -681,6 +721,11 @@ def main() -> int:
     open_prerequisite(device)
     prerequisite_binding = node_text(device, "creation-prerequisite-binding", scroll=True)
     prerequisite_binding_authority = require_prerequisite_binding(prerequisite_binding)
+    prerequisite_snapshot_digest = canonical_digest(
+        device,
+        "creation-prerequisite-snapshot-digest",
+        scroll=True,
+    )
     prerequisite_digests = {
         "rawCharacterXml": canonical_digest(
             device,
@@ -698,6 +743,11 @@ def main() -> int:
             scroll=True,
         ),
     }
+    require_binding_matches_canonical_digests(
+        prerequisite_binding_authority,
+        prerequisite_snapshot_digest,
+        prerequisite_digests["authority"],
+    )
     karma = node_text(device, "creation-prerequisite-karma-budget", scroll=True)
     for label in ("Total", "Used", "Remaining"):
         if label.lower() not in karma.lower():
@@ -986,6 +1036,7 @@ def main() -> int:
             "selectedRankAutomationIds": selected,
             "selectedAuthorityOptionAutomationIds": typed_selections,
             "selectedAuthoritySelectionIds": typed_selection_ids,
+            "prerequisiteSnapshotDigest": prerequisite_snapshot_digest,
             "confirmedDraftDigest": confirmed_draft_digest,
             "previewDigest": preview_digest,
             "previewBindingDigests": preview_binding_digests,
