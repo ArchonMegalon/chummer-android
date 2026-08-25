@@ -4162,6 +4162,95 @@ int ammoRemaining = savedAmmoRemaining;
                 )
             )
 
+    def test_scoped_csharp_hash_includes_the_full_method_declaration(self) -> None:
+        source = """
+public sealed class Demo
+{
+    public async Task<bool> ApplyCareerWeaponFireAsync(
+        object request)
+    {
+        await Task.Yield();
+        return request is not null;
+    }
+}
+"""
+        with tempfile.TemporaryDirectory(dir=REPO / "docs") as temporary:
+            path = Path(temporary) / "Demo.cs"
+            path.write_text(source, encoding="utf-8")
+            original = inventory._csharp_public_method_sha256(
+                path,
+                "ApplyCareerWeaponFireAsync",
+            )
+            self.assertIsNotNone(original)
+            path.write_text(
+                source.replace(
+                    "public async Task<bool>",
+                    "public static async Task<bool>",
+                ),
+                encoding="utf-8",
+            )
+            self.assertNotEqual(
+                original,
+                inventory._csharp_public_method_sha256(
+                    path,
+                    "ApplyCareerWeaponFireAsync",
+                ),
+            )
+            path.write_text(
+                source.replace("public async Task<bool>", "internal async Task<bool>"),
+                encoding="utf-8",
+            )
+            self.assertIsNone(
+                inventory._csharp_public_method_sha256(
+                    path,
+                    "ApplyCareerWeaponFireAsync",
+                )
+            )
+
+    def test_atomic_workspace_transition_requires_literal_one_zero_to_two_two(self) -> None:
+        imported = {
+            "workspaceId": "workspace",
+            "contentRevision": 1,
+            "savedRevision": 0,
+            "payloadSha256": "1" * 64,
+            "documentSha256": "2" * 64,
+        }
+        saved = {
+            "workspaceId": "workspace",
+            "contentRevision": 2,
+            "savedRevision": 2,
+            "payloadSha256": "3" * 64,
+            "documentSha256": "4" * 64,
+        }
+        restored = dict(saved)
+        self.assertTrue(
+            inventory._exact_atomic_workspace_transition(imported, saved, restored)
+        )
+        mutations = (
+            ("imported", "contentRevision", 2),
+            ("imported", "savedRevision", 1),
+            ("saved", "contentRevision", 3),
+            ("saved", "savedRevision", 1),
+            ("restored", "savedRevision", 1),
+        )
+        for target, key, value in mutations:
+            changed_imported = dict(imported)
+            changed_saved = dict(saved)
+            changed_restored = dict(restored)
+            {
+                "imported": changed_imported,
+                "saved": changed_saved,
+                "restored": changed_restored,
+            }[target][key] = value
+            self.assertFalse(
+                inventory._exact_atomic_workspace_transition(
+                    changed_imported,
+                    changed_saved,
+                    changed_restored,
+                ),
+                f"{target}.{key}",
+            )
+
     def test_contact_pet_receipts_fail_closed_when_a_driver_hash_is_stale(self) -> None:
         self.assertEqual(
             {},
