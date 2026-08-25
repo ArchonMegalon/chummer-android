@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import time
 import xml.etree.ElementTree as ET
 
 import run_api36_editing_e2e as shared
@@ -209,6 +210,60 @@ def root_for_authority(
     return root
 
 
+def open_build_root(device: shared.Device, *, max_back_steps: int = 6) -> None:
+    """Open Build and unwind its preserved phone stack to one exact root toolbar."""
+    shared.open_build(device, "phone")
+    back_steps = 0
+    for _ in range(48):
+        nodes = device.hierarchy()
+        roots = [
+            node
+            for node in nodes
+            if "build-save-runner"
+            in {
+                node.attributes.get("resource-id", "").rsplit("/", 1)[-1],
+                node.attributes.get("content-desc", ""),
+            }
+        ]
+        if len(roots) == 1:
+            return
+        if len(roots) > 1:
+            device.capture("career-weapon-fire-build-root-cardinality-invalid")
+            raise RuntimeError(
+                f"Build root toolbar cardinality was {len(roots)}; expected exactly one"
+            )
+
+        navigate_up = [
+            node
+            for node in nodes
+            if node.attributes.get("content-desc", "") == "Navigate up"
+        ]
+        if len(navigate_up) > 1:
+            device.capture("career-weapon-fire-build-up-cardinality-invalid")
+            raise RuntimeError(
+                f"Build Navigate up cardinality was {len(navigate_up)}; expected at most one"
+            )
+        if len(navigate_up) == 1:
+            if back_steps >= max_back_steps:
+                device.capture("career-weapon-fire-build-root-depth-invalid")
+                raise RuntimeError(
+                    f"Build root remained unavailable after {max_back_steps} exact back steps"
+                )
+            node = navigate_up[0]
+            if not device.node_has_tappable_bounds(node):
+                device.capture("career-weapon-fire-build-up-untappable")
+                raise RuntimeError("The exact Build Navigate up node is not tappable")
+            x, y = node.center
+            device.shell("input", "tap", str(x), str(y))
+            back_steps += 1
+            time.sleep(1.25)
+            continue
+        time.sleep(0.5)
+
+    device.capture("career-weapon-fire-build-root-unavailable")
+    raise RuntimeError("Timed out waiting for the exact Build root toolbar")
+
+
 def prepare_runner(
     device: shared.Device,
     fixture_name: str,
@@ -250,7 +305,7 @@ def tap_exact_build_route(
 
 
 def open_page(device: shared.Device) -> None:
-    shared.open_build(device, "phone")
+    open_build_root(device)
     tap_exact_build_route(
         device,
         "build-section-tab-gear",

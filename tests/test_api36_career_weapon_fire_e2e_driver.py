@@ -45,6 +45,9 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
         self.assertIn("shared.require_restored_authority(saved, restored)", source)
         self.assertIn('"afterForceStop": list(restart.after_force_stop.process_ids)', source)
         self.assertIn("shared.reset_scroll_to_top(device, swipes=48)", source)
+        self.assertIn('"build-save-runner"', source)
+        self.assertIn('== "Navigate up"', source)
+        self.assertIn("max_back_steps: int = 6", source)
         self.assertIn("device.wait_for_single_exact_resource_id(", source)
         self.assertIn('"build-section-tab-gear"', source)
         self.assertIn('"build-action-tab-gear-weapons"', source)
@@ -165,7 +168,7 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
 
         device.wait_for_single_exact_resource_id.side_effect = record_transition
         with (
-            patch.object(driver.shared, "open_build"),
+            patch.object(driver, "open_build_root"),
             patch.object(driver, "tap_exact_build_route", side_effect=record_route),
         ):
             driver.open_page(device)
@@ -185,6 +188,52 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
             evidence_prefix="career-weapon-fire-gear-section-entered",
             surface_name="Exact fixture-linked Gear collection transition surface",
         )
+
+    def test_open_build_root_unwinds_exact_navigation_until_root_toolbar(self) -> None:
+        navigate_up = driver.shared.UiNode(
+            {
+                "content-desc": "Navigate up",
+                "clickable": "true",
+                "bounds": "[0,128][147,275]",
+            }
+        )
+        root = driver.shared.UiNode(
+            {
+                "content-desc": "build-save-runner",
+                "clickable": "true",
+                "bounds": "[786,138][912,264]",
+            }
+        )
+        device = Mock(spec=driver.shared.Device)
+        device.hierarchy.side_effect = [[navigate_up], [root]]
+        device.node_has_tappable_bounds.return_value = True
+
+        with (
+            patch.object(driver.shared, "open_build") as open_build,
+            patch.object(driver.time, "sleep") as sleep,
+        ):
+            driver.open_build_root(device)
+
+        open_build.assert_called_once_with(device, "phone")
+        device.shell.assert_called_once_with("input", "tap", "73", "201")
+        sleep.assert_called_once_with(1.25)
+        device.capture.assert_not_called()
+
+    def test_open_build_root_fails_closed_on_duplicate_root_toolbar(self) -> None:
+        root = driver.shared.UiNode({"content-desc": "build-save-runner"})
+        device = Mock(spec=driver.shared.Device)
+        device.hierarchy.return_value = [root, root]
+
+        with (
+            patch.object(driver.shared, "open_build"),
+            self.assertRaisesRegex(RuntimeError, "toolbar cardinality was 2"),
+        ):
+            driver.open_build_root(device)
+
+        device.capture.assert_called_once_with(
+            "career-weapon-fire-build-root-cardinality-invalid"
+        )
+        device.shell.assert_not_called()
 
     def test_fixture_binds_exact_root_weapon_active_clip_linked_ammo_and_burst(self) -> None:
         root = ET.parse(FIXTURE).getroot()
