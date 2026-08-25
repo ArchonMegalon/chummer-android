@@ -33,6 +33,9 @@ jobs:
           path: chummer-presentation
           persist-credentials: false
           fetch-depth: 1
+          sparse-checkout: |
+            Chummer.Desktop.Runtime
+            Chummer.Presentation
 
       - name: Check out the exact engine dependency
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -51,6 +54,10 @@ jobs:
           path: chummer.run-services
           persist-credentials: false
           fetch-depth: 1
+          sparse-checkout: |
+            Chummer.Campaign.Contracts
+            Chummer.Play.Contracts
+            Chummer.Run.Contracts
 
       - name: Check out the exact registry contract dependency
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -60,6 +67,7 @@ jobs:
           path: chummer-hub-registry
           persist-credentials: false
           fetch-depth: 1
+          sparse-checkout: Chummer.Hub.Registry.Contracts
 
       - name: Check out the exact UI kit dependency
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -69,6 +77,7 @@ jobs:
           path: chummer-ui-kit
           persist-credentials: false
           fetch-depth: 1
+          sparse-checkout: src/Chummer.Ui.Kit
 
       - name: Check out the exact media contract dependency
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -78,6 +87,7 @@ jobs:
           path: fleet/repos/chummer-media-factory
           persist-credentials: false
           fetch-depth: 1
+          sparse-checkout: src/Chummer.Media.Contracts
 
       - name: Verify the pinned canonical Android content manifest
         run: >-

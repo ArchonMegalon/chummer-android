@@ -101,6 +101,32 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
                 self.assertIn(f"repository: {repository}", self.text)
                 self.assertIn(f"ref: {commit}", self.text)
 
+    def test_large_dependencies_are_sparse_without_weakening_commit_pins(self) -> None:
+        expected_sparse_paths = (
+            "Chummer.Desktop.Runtime",
+            "Chummer.Presentation",
+            "Chummer.Campaign.Contracts",
+            "Chummer.Play.Contracts",
+            "Chummer.Run.Contracts",
+            "Chummer.Hub.Registry.Contracts",
+            "src/Chummer.Ui.Kit",
+            "src/Chummer.Media.Contracts",
+            "products/chummer",
+            "scripts/ai",
+            "Chummer",
+        )
+        for path in expected_sparse_paths:
+            with self.subTest(path=path):
+                self.assertIn(path, self.text)
+
+        hub_checkout = self.text[
+            self.text.index("Check out the pinned Hub contract dependencies") :
+            self.text.index("Check out the pinned registry contract dependency")
+        ]
+        self.assertIn("sparse-checkout:", hub_checkout)
+        self.assertNotIn("Chummer.Run.Api", hub_checkout)
+        self.assertIn("fetch-depth: 1", hub_checkout)
+
     def test_phone_path_fails_closed_on_stale_inventory(self) -> None:
         for repository, commit in INVENTORY_AUTHORITIES.items():
             with self.subTest(repository=repository):
