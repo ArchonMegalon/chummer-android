@@ -36,10 +36,10 @@ PROOF_KEYS = (
 
 def prepare_runner(device: shared.Device, fixture_name: str) -> None:
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
 
 def open_gear_item(device: shared.Device, gear_id: str) -> None:
@@ -241,7 +241,7 @@ def main() -> int:
     device.capture("gear-stolen-creation-after-reopen")
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_workspace(device)
     assert_reopened(device)
     device.capture("gear-stolen-creation-after-process-restart")

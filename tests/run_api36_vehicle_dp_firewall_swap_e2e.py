@@ -58,10 +58,10 @@ JOURNEYS = (
 
 def prepare(device: shared.Device, fixture: str) -> None:
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
 def open_page(device: shared.Device, journey: dict[str, str]) -> None:
     shared.open_build(device, "phone")
@@ -112,7 +112,7 @@ def run_journey(device: shared.Device, journey: dict[str, str]) -> None:
     prepare(device, journey["fixture"]); open_page(device, journey); select_and_save(device, journey)
     assert_workspace(device, journey); open_page(device, journey)
     device.shell("am", "force-stop", shared.PACKAGE); shared.launch_app(device)
-    device.wait("Continue building", timeout=120); assert_workspace(device, journey); open_page(device, journey)
+    shared.wait_for_phone_runner_route(device, timeout=120); assert_workspace(device, journey); open_page(device, journey)
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)

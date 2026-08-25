@@ -26,12 +26,6 @@ public sealed class CreationFoundationPage : NativePageBase
     {
         Title = "Foundation";
         AutomationId = "creation-foundation-page";
-        ToolbarItems.Add(new ToolbarItem
-        {
-            Text = "Rook",
-            AutomationId = "creation-foundation-rook",
-            Command = new Command(async () => await Navigation.PushAsync(new RookConversationPage(Coordinator)))
-        });
         Content = new ScrollView { Content = _body };
     }
 
@@ -96,11 +90,6 @@ public sealed class CreationFoundationPage : NativePageBase
         AddFollowUps(state);
         AddPrepareAction(state);
 
-        _body.Add(NativeTheme.NavigationRow(
-            "Ask Rook",
-            "Current revision, budgets, blockers, and exact legal options",
-            () => Navigation.PushAsync(new RookConversationPage(Coordinator)),
-            automationId: "creation-foundation-rook-entry"));
     }
 
     private void AddBudget(CharacterCreationBudgetState budget)

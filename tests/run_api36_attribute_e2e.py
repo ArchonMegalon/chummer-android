@@ -107,12 +107,12 @@ def main() -> int:
     )
     device.shell("pm", "clear", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Your runners", timeout=90)
+    shared.wait_for_phone_runners(device, timeout=90)
     device.tap_until_visible("home-new-runner", "Select Build Method")
     device.tap("dialog-action-create-character", scroll=True)
     device.wait("dialog-action-complete-new-character-workflow", timeout=45, scroll=True)
     device.tap("dialog-action-complete-new-character-workflow", scroll=True)
-    device.wait("Continue building", timeout=90)
+    shared.wait_for_phone_runner_route(device, timeout=90)
 
     shared.open_build(device, "phone")
     edit_body_values(device, base_value=2, karma_value=1)
@@ -122,7 +122,7 @@ def main() -> int:
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=90)
+    shared.wait_for_phone_runner_route(device, timeout=90)
     shared.open_build(device, "phone")
     assert_body_values(device, expected_base=2, expected_karma=1)
     device.capture("attribute-values-after-restart")

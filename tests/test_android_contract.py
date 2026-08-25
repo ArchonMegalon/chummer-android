@@ -230,11 +230,122 @@ class AndroidContractTests(unittest.TestCase):
 
     def test_android_navigation_is_compact_and_app_owned(self) -> None:
         shell = (PROJECT / "MainShell.cs").read_text(encoding="utf-8")
+        routes = (PROJECT / "PhoneShellRoutes.cs").read_text(encoding="utf-8")
+        phone_pages = (PROJECT / "Native" / "PhoneShellPages.cs").read_text(encoding="utf-8")
+        build = (PROJECT / "Native" / "BuildPage.cs").read_text(encoding="utf-8")
+        runners = (PROJECT / "Native" / "HomePage.cs").read_text(encoding="utf-8")
+        more = (PROJECT / "Native" / "MorePage.cs").read_text(encoding="utf-8")
+        coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(
+            encoding="utf-8"
+        )
         project = (PROJECT / "Chummer.Android.csproj").read_text(encoding="utf-8")
         page = (PROJECT / "Native" / "NativePageBase.cs").read_text(encoding="utf-8")
-        self.assertEqual(5, shell.count("tabs.Items.Add(CreateTab<"))
-        for label in ("Home", "Build", "Play", "Campaign", "More"):
-            self.assertIn(f'"{label}"', shell)
+        phone_shell = shell[shell.index("private void BuildPhoneShell"):shell.index("private void BuildTabletShell")]
+        tablet_shell = shell[shell.index("private void BuildTabletShell"):]
+        self.assertEqual(3, phone_shell.count("tabs.Items.Add(CreatePhoneTab<"))
+        for page_type, label, route in (
+            ("RunnersPage", "Runners", "Runners"),
+            ("BuildPage", "Runner", "Runner"),
+            ("PhoneMorePage", "More", "More"),
+        ):
+            self.assertIn(
+                f'CreatePhoneTab<{page_type}>(services, "{label}", PhoneShellRoutes.{route}',
+                phone_shell,
+            )
+        for route in ("runners", "runner", "play", "table", "more"):
+            self.assertIn(f'"{route}"', routes)
+            self.assertIn('$"phone-destination-{route}"', shell)
+        self.assertIn('Title = "Create"', build)
+        self.assertIn('AutomationId = "phone-runner-create"', build)
+        self.assertIn('Title = "Sheet"', build)
+        self.assertIn('AutomationId = "phone-runner-sheet"', build)
+        self.assertIn('AutomationId = "phone-play-unavailable"', phone_pages)
+        self.assertIn('AutomationId = "phone-table-unavailable"', phone_pages)
+        self.assertIn("showUnrestrictedActions: false", phone_pages)
+        self.assertIn("runnerRouteAfterOpen: PhoneShellRoutes.RunnerAbsolute", phone_pages)
+        self.assertIn("if (_showUnrestrictedActions)", more)
+        self.assertIn('allActions.AutomationId = "more-all-actions"', more)
+        self.assertIn('open.AutomationId = "more-open-file"', more)
+        more_open = more[
+            more.index('open.AutomationId = "more-open-file"'):
+            more.index('Button save = NativeTheme.SecondaryButton("Save")')
+        ]
+        self.assertIn(
+            "NativeWorkspaceActivationReceipt? activation = await Coordinator.OpenLocalAsync()",
+            more_open,
+        )
+        self.assertIn("activation?.Matches(", more_open)
+        self.assertIn("NativeWorkspaceActivationKind.LocalFile", more_open)
+        self.assertNotIn("Coordinator.State.Profile is not null", more_open)
+        self.assertNotIn("Coordinator.State.WorkspaceId is not null", more_open)
+        self.assertIn("await Shell.Current.GoToAsync(_runnerRouteAfterOpen)", more_open)
+        home_open = runners[
+            runners.index('open.AutomationId = "home-open-file"'):
+            runners.index('create.AutomationId = "home-new-runner"')
+        ]
+        self.assertIn(
+            "NativeWorkspaceActivationReceipt? activation = await Coordinator.OpenLocalAsync()",
+            home_open,
+        )
+        self.assertIn("NativeWorkspaceActivationKind.LocalFile", home_open)
+        self.assertNotIn("Coordinator.State.Profile is not null", home_open)
+        switch_handler = runners[
+            runners.index("await Coordinator.SwitchWorkspaceAsync(workspace)") - 120:
+            runners.index("AddOnlineSection();")
+        ]
+        self.assertIn("NativeWorkspaceActivationKind.WorkspaceSwitch", switch_handler)
+        self.assertIn("activation.WorkspaceId.Value", switch_handler)
+        self.assertIn("workspace.Id.Value", switch_handler)
+        self.assertIn("NativeWorkspaceActivationReceipt", coordinator)
+        self.assertIn("return null;", coordinator)
+        self.assertIn("ActivatedNewWorkspace(previousState, State)", coordinator)
+        self.assertIn("NativeWorkspaceActivationKind.LocalFile", coordinator)
+        self.assertIn("ResolveInitialPhoneRouteAsync", phone_shell)
+        initial_phone_route = shell[
+            shell.index("private async Task ResolveInitialPhoneRouteAsync"):
+            shell.index("private void BuildTabletShell")
+        ]
+        self.assertIn("coordinator.State.Profile is not null", initial_phone_route)
+        self.assertIn("coordinator.State.WorkspaceId is not null", initial_phone_route)
+        self.assertLess(
+            initial_phone_route.index("coordinator.State.Profile is not null"),
+            initial_phone_route.index("GoToAsync(PhoneShellRoutes.RunnerAbsolute)"),
+        )
+        self.assertLess(
+            initial_phone_route.index("coordinator.State.WorkspaceId is not null"),
+            initial_phone_route.index("GoToAsync(PhoneShellRoutes.RunnerAbsolute)"),
+        )
+        create_handler = runners[
+            runners.index('create.AutomationId = "home-new-runner"'):
+            runners.index("quick.Add(open)")
+        ]
+        self.assertIn("Coordinator.CreateRunnerAsync()", create_handler)
+        self.assertNotIn("Coordinator.State.Profile", create_handler)
+        self.assertNotIn("Coordinator.State.WorkspaceId", create_handler)
+        self.assertNotIn("GoToAsync", create_handler)
+        self.assertNotIn("CreatePhoneTab<PlayPage>", phone_shell)
+        self.assertNotIn("CreatePhoneTab<CampaignPage>", phone_shell)
+        self.assertNotIn("CreatePhoneTab<PhonePlayPage>", phone_shell)
+        self.assertNotIn("CreatePhoneTab<PhoneTablePage>", phone_shell)
+        self.assertNotIn("AddTransient<PhonePlayPage>", (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8"))
+        self.assertNotIn("AddTransient<PhoneTablePage>", (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8"))
+        self.assertNotIn("new NativeCommandPage", build)
+        self.assertNotIn("SetExhaustiveActionsVisible", build)
+        self.assertNotIn("AddTools", build)
+        self.assertNotIn(
+            "new NativeCommandPage",
+            (PROJECT / "Native" / "BuildFlowPages.cs").read_text(encoding="utf-8"),
+        )
+        for marker in (
+            'CreateTabletDestination<HomePage>',
+            'CreateTabletDestination<TabletBuildPage>',
+            'CreateTabletDestination<PlayPage>',
+            'CreateTabletDestination<CampaignPage>',
+            'CreateTabletDestination<MorePage>',
+        ):
+            self.assertIn(marker, tablet_shell)
+        self.assertIn('this(coordinator, "//tablet-build", "Home")', runners)
+        self.assertNotIn('this(coordinator, "//build", "Home")', runners)
         self.assertIn("TabBar", shell)
         self.assertIn("Shell.SetTabBar", shell)
         self.assertIn("ContentPage", page)
@@ -245,10 +356,31 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn("Components.WebView.Maui", project)
         self.assertNotIn("Chummer.Blazor", project)
 
+    def test_phone_beta_hides_rook_launches_but_keeps_dormant_implementation(self) -> None:
+        launch_surfaces = "\n".join(
+            (PROJECT / "Native" / filename).read_text(encoding="utf-8")
+            for filename in (
+                "BuildPage.cs",
+                "CreationFoundationPage.cs",
+                "CreationPrerequisitePage.cs",
+                "CreationPrerequisitePreviewPage.cs",
+                "AttributeEditPage.cs",
+            )
+        )
+        self.assertNotIn("new RookConversationPage", launch_surfaces)
+        self.assertNotIn("Ask Build Ghost", launch_surfaces)
+        self.assertNotIn("Ask Rook", launch_surfaces)
+        self.assertTrue((PROJECT / "Native" / "RookConversationPage.cs").is_file())
+        self.assertTrue((PROJECT / "Native" / "RookConversation.cs").is_file())
+
     def test_android_restores_the_last_local_workspace_after_process_restart(self) -> None:
         coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
         initialize = coordinator[coordinator.index("public async Task InitializeAsync") :]
-        initialize = initialize[: initialize.index("public async Task OpenLocalAsync")]
+        initialize = initialize[
+            : initialize.index(
+                "public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync"
+            )
+        ]
         restore = coordinator[coordinator.index("private async Task RestoreSelectedWorkspaceAsync") :]
         restore = restore[: restore.index("private void RefreshSurface")]
 
@@ -271,7 +403,11 @@ class AndroidContractTests(unittest.TestCase):
         coordinator = (PROJECT / "Native" / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
 
         initialize = coordinator[coordinator.index("public async Task InitializeAsync") :]
-        initialize = initialize[: initialize.index("public async Task OpenLocalAsync")]
+        initialize = initialize[
+            : initialize.index(
+                "public async Task<NativeWorkspaceActivationReceipt?> OpenLocalAsync"
+            )
+        ]
         state_changed = coordinator[coordinator.index("private void OnPresenterStateChanged") :]
         state_changed = state_changed[: state_changed.index("private void OnShellStateChanged")]
 
@@ -567,6 +703,9 @@ class AndroidContractTests(unittest.TestCase):
         driver = (REPO / "tests" / "run_api36_explicit_save_e2e.py").read_text(
             encoding="utf-8"
         )
+        shared_driver = (REPO / "tests" / "run_api36_editing_e2e.py").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn('AutomationId = "build-save-runner"', build)
         self.assertIn('save.AutomationId = "more-save-runner"', more)
@@ -580,6 +719,16 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('"careerMorePageSaveInvoked": "pass"', driver)
         self.assertIn('saved_revision != content_revision', driver)
         self.assertIn('device.shell("am", "force-stop", shared.PACKAGE)', driver)
+        self.assertIn("shared.assert_phone_shell_surface(", driver)
+        self.assertIn('"phoneShellObservations": {', driver)
+        self.assertIn('route_resource_id="phone-more"', driver)
+        self.assertIn("observed_destination_ids != expected_ids", shared_driver)
+        self.assertIn("forbidden_destination_labels", shared_driver)
+        self.assertIn("forbidden_support_labels", shared_driver)
+        for postponed in ("Play", "Table", "Campaign", "Rook", "Tough Tongue", "All actions"):
+            self.assertIn(f'"{postponed}"', shared_driver)
+        self.assertNotIn('device.wait("Continue building"', driver)
+        self.assertNotIn('device.wait("Runner"', driver)
         self.assertIn('"controls": controls', driver)
         self.assertIn('api != "36"', driver)
         self.assertIn('"apkSha256": shared.sha256(args.apk.resolve())', driver)
@@ -1608,6 +1757,7 @@ class AndroidContractTests(unittest.TestCase):
             inputs,
         )
         self.assertIn("IAndroidImageDocumentService.cs", inputs)
+        self.assertIn("PhoneShellRoutes.cs", inputs)
         self.assertIn(
             "class AndroidImageDocumentService : IAndroidImageDocumentService",
             stubs,

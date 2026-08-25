@@ -29,10 +29,10 @@ CONTROL_PROOF_KEYS = (
 
 def prepare_runner(device: shared.Device, fixture_name: str) -> None:
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
 
 def open_page(device: shared.Device) -> None:
@@ -115,7 +115,7 @@ def prove(device: shared.Device, fixture: Path) -> None:
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_workspace(device, "2")
     open_page(device)
     assert_summary(device, "2 available · 2 used · 4 total")
@@ -125,7 +125,7 @@ def prove(device: shared.Device, fixture: Path) -> None:
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_workspace(device, "1")
     open_page(device)
     assert_summary(device, "3 available · 1 used · 4 total")
@@ -158,7 +158,7 @@ def prove(device: shared.Device, fixture: Path) -> None:
     assert_workspace(device, "3")
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_workspace(device, "3")
     open_page(device)
     assert_summary(device, "1 available · 3 used · 4 total")

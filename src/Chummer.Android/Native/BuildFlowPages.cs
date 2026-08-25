@@ -24,13 +24,6 @@ public sealed class BuildSectionPage : NativePageBase
             Text = "Save",
             Command = new Command(async () => await RunAsync(() => Coordinator.SaveAsync()))
         });
-        ToolbarItems.Add(new ToolbarItem
-        {
-            Text = "Actions",
-            Order = ToolbarItemOrder.Primary,
-            Priority = 1,
-            Command = new Command(async () => await Navigation.PushAsync(new NativeCommandPage(Coordinator)))
-        });
         Content = new ScrollView { Content = _body };
     }
 

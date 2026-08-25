@@ -59,10 +59,10 @@ def token(kind: str, item_id: str, occurrence: int) -> str:
 
 def prepare_runner(device: shared.Device, fixture_name: str) -> None:
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
 
 def open_sustained_list(device: shared.Device) -> None:
@@ -213,7 +213,7 @@ def prove_profile(device: shared.Device, fixture: Path, profile: str) -> None:
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_workspace_state(device, expected, critter_deleted=False)
     assert_spell_ui_readback(device, expected)
 
@@ -221,7 +221,7 @@ def prove_profile(device: shared.Device, fixture: Path, profile: str) -> None:
     assert_workspace_state(device, expected, critter_deleted=True)
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_workspace_state(device, expected, critter_deleted=True)
     open_sustained_list(device)
     if device.find(f"sustained-effect-open-{token('CritterPower', expected['critter_id'], 0)}") is not None:

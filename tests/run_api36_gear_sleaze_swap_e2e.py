@@ -64,7 +64,7 @@ def run_journey(device: shared.Device, fixture: Path, journey: dict[str, str]) -
     device.shell("pm", "clear", shared.PACKAGE); attack_shared.prepare_runner(device, fixture.name)
     open_page(device, journey); select_and_save(device, journey); assert_workspace(device, journey)
     open_page(device, journey); device.wait(f"Sleaze {journey['after']}", timeout=60, scroll=True)
-    device.shell("am", "force-stop", shared.PACKAGE); shared.launch_app(device); device.wait("Continue building", timeout=120)
+    device.shell("am", "force-stop", shared.PACKAGE); shared.launch_app(device); shared.wait_for_phone_runner_route(device, timeout=120)
     assert_workspace(device, journey); open_page(device, journey); device.wait(f"Sleaze {journey['after']}", timeout=60, scroll=True)
 
 def main() -> int:

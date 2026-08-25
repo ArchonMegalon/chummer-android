@@ -171,7 +171,7 @@ def main() -> int:
     )
     device.shell("pm", "clear", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Your runners", timeout=90)
+    shared.wait_for_phone_runners(device, timeout=90)
     open_karma_workflow(device)
 
     priority_helpers.select_option(
@@ -203,7 +203,7 @@ def main() -> int:
         max_scrolls=20,
         scroll_distance_ratio=0.22,
     )
-    device.wait("Continue building", timeout=90)
+    shared.wait_for_phone_runner_route(device, timeout=90)
 
     assert_persisted_character(device, EXPECTED_KARMA_XML)
     assert_standard_profile_readback(device)
@@ -211,14 +211,14 @@ def main() -> int:
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=90)
+    shared.wait_for_phone_runner_route(device, timeout=90)
     assert_persisted_character(device, EXPECTED_KARMA_XML)
     assert_standard_profile_readback(device)
     device.capture("phone-metatype-karma-after-restart")
 
     device.shell("pm", "clear", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Your runners", timeout=90)
+    shared.wait_for_phone_runners(device, timeout=90)
     open_karma_workflow(device)
 
     priority_helpers.select_option(
@@ -256,7 +256,7 @@ def main() -> int:
         max_scrolls=24,
         scroll_distance_ratio=0.22,
     )
-    device.wait("Continue building", timeout=90)
+    shared.wait_for_phone_runner_route(device, timeout=90)
 
     assert_persisted_character(
         device,
@@ -268,7 +268,7 @@ def main() -> int:
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=90)
+    shared.wait_for_phone_runner_route(device, timeout=90)
     assert_persisted_character(
         device,
         EXPECTED_SPIRIT_XML,

@@ -297,6 +297,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             def tap(self, *args, **kwargs) -> None:
                 calls.append(("tap", args, kwargs))
 
+            def tap_single_exact_resource_id(self, *args, **kwargs) -> None:
+                calls.append(("tap_single_exact_resource_id", args, kwargs))
+
             def set_text(self, *args, **kwargs) -> None:
                 calls.append(("set_text", args, kwargs))
 
@@ -419,14 +422,24 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 },
             )
         )
-        home_index = calls.index(("tap", ("Home",), {}))
+        runners_index = calls.index(
+            (
+                "tap_single_exact_resource_id",
+                ("phone-destination-runners",),
+                {
+                    "timeout": 45,
+                    "evidence_prefix": "phone-destination-runners-tap",
+                    "surface_name": "Phone shell destination",
+                },
+            )
+        )
         authority_surface_index = calls.index(("wait", ("home-open-file",), {"timeout": 90}))
         self.assertLess(transition_index, route_index)
         self.assertLess(route_index, capture_index)
         self.assertLess(capture_index, save_index)
         self.assertLess(save_index, saved_index)
-        self.assertLess(saved_index, home_index)
-        self.assertLess(home_index, authority_surface_index)
+        self.assertLess(saved_index, runners_index)
+        self.assertLess(runners_index, authority_surface_index)
         self.assertNotIn(("wait", ("Continue building",), {"timeout": 120}), calls)
 
     def test_new_character_dialog_transition_requires_exact_route_or_product_error(self) -> None:
@@ -1046,8 +1059,6 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         for marker in (
             'AutomationId = "creation-prerequisite-page"',
-            '"Ask Build Ghost"',
-            'automationId: "creation-prerequisite-rook"',
             "Coordinator.LoadCreationPrerequisite()",
             "budget.Total",
             "budget.Used",
@@ -1163,13 +1174,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, combined)
 
-    def test_build_ghost_remains_navigation_only_without_prerequisite_mutation(self) -> None:
+    def test_build_ghost_is_dormant_and_has_no_phone_prerequisite_launch(self) -> None:
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
         preview = (NATIVE / "CreationPrerequisitePreviewPage.cs").read_text(encoding="utf-8")
         rook = (NATIVE / "RookConversation.cs").read_text(encoding="utf-8")
         combined = page + preview
-        self.assertIn("new RookConversationPage(Coordinator)", page)
-        self.assertIn("new RookConversationPage(Coordinator)", preview)
+        self.assertNotIn("new RookConversationPage(Coordinator)", combined)
+        self.assertNotIn("Build Ghost", combined)
+        self.assertTrue((NATIVE / "RookConversationPage.cs").is_file())
         for forbidden in (
             "AskRook(",
             "PreviewCreationPrerequisite(",
@@ -1218,7 +1230,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('"freshRunnerCreationKarmaAuthorityBlocked": "pass"', source)
         self.assertIn('"publicRulesValidPriorityRunnerCreated": "pass"', source)
         self.assertIn('"creation-prerequisite-karma-budget"', source)
-        self.assertIn('"creation-prerequisite-rook"', source)
+        self.assertNotIn('"creation-prerequisite-rook"', source)
+        self.assertIn('"buildGhostLaunchPostponedAndAbsent": "pass"', source)
         self.assertIn("for category in CATEGORIES:", source)
         self.assertIn('f"creation-prerequisite-category-{category}"', source)
         self.assertIn('f"creation-prerequisite-rank-{category}-"', source)
@@ -1249,7 +1262,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('"restartedPersistedAuthority": restarted_authority', source)
         self.assertIn("read_persisted_prerequisite_authority(device)", source)
         self.assertIn('"characterDocumentChangedFalse": "pass"', source)
-        self.assertIn('"buildGhostCurrentAndNonMutating": "pass"', source)
+        self.assertIn('"buildGhostLaunchPostponedAndAbsent": "pass"', source)
         self.assertIn('"advancedEditorNeverExposedWhileCreatedFalse": "pass"', source)
         self.assertIn("require_binding_matches_canonical_digests(", source)
 

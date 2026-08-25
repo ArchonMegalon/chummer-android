@@ -126,10 +126,10 @@ def main() -> int:
         device.push(fixture, f"/sdcard/Download/{fixture.name}")
 
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, args.runner.name)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     shared.open_build(device, "phone")
 
     shared.open_contact_section(device, "phone", expected_item="ContactE2E")
@@ -148,7 +148,7 @@ def main() -> int:
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     shared.open_build(device, "phone")
     shared.assert_link_persisted_then_remove(device, "phone", "contact", "ContactE2E")
     device.back()
@@ -158,7 +158,7 @@ def main() -> int:
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     shared.open_build(device, "phone")
     assert_unlinked_after_restart(device, "contact", "ContactE2E")
     device.back()

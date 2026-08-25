@@ -2,8 +2,10 @@ using Chummer.Android.Platform;
 
 namespace Chummer.Android.Native;
 
-public sealed class MorePage : NativePageBase
+public class MorePage : NativePageBase
 {
+    private readonly bool _showUnrestrictedActions;
+    private readonly string? _runnerRouteAfterOpen;
     private string? _updateStatus;
     private readonly VerticalStackLayout _body = new()
     {
@@ -11,8 +13,18 @@ public sealed class MorePage : NativePageBase
         Spacing = 16
     };
 
-    public MorePage(RunnerSessionCoordinator coordinator) : base(coordinator)
+    public MorePage(RunnerSessionCoordinator coordinator)
+        : this(coordinator, showUnrestrictedActions: true, runnerRouteAfterOpen: null)
     {
+    }
+
+    protected MorePage(
+        RunnerSessionCoordinator coordinator,
+        bool showUnrestrictedActions,
+        string? runnerRouteAfterOpen) : base(coordinator)
+    {
+        _showUnrestrictedActions = showUnrestrictedActions;
+        _runnerRouteAfterOpen = runnerRouteAfterOpen;
         Title = "More";
         Content = new ScrollView { Content = _body };
     }
@@ -32,7 +44,18 @@ public sealed class MorePage : NativePageBase
         VerticalStackLayout files = new() { Spacing = 10 };
         files.Add(NativeTheme.Eyebrow("Runner file"));
         Button open = NativeTheme.SecondaryButton("Open file");
-        open.Clicked += async (_, _) => await RunAsync(() => Coordinator.OpenLocalAsync());
+        open.AutomationId = "more-open-file";
+        open.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            NativeWorkspaceActivationReceipt? activation = await Coordinator.OpenLocalAsync();
+            if (_runnerRouteAfterOpen is not null
+                && activation?.Matches(
+                    Coordinator.State,
+                    NativeWorkspaceActivationKind.LocalFile) == true)
+            {
+                await Shell.Current.GoToAsync(_runnerRouteAfterOpen);
+            }
+        });
         Button save = NativeTheme.SecondaryButton("Save");
         save.AutomationId = "more-save-runner";
         save.IsEnabled = Coordinator.State.Profile is not null;
@@ -43,13 +66,17 @@ public sealed class MorePage : NativePageBase
         Button print = NativeTheme.SecondaryButton("Print");
         print.IsEnabled = Coordinator.State.Profile is not null;
         print.Clicked += async (_, _) => await RunAsync(() => Coordinator.PrintAsync());
-        Button allActions = NativeTheme.PrimaryButton("All actions");
-        allActions.Clicked += async (_, _) => await Navigation.PushAsync(new NativeCommandPage(Coordinator));
         files.Add(open);
         files.Add(save);
         files.Add(export);
         files.Add(print);
-        files.Add(allActions);
+        if (_showUnrestrictedActions)
+        {
+            Button allActions = NativeTheme.PrimaryButton("All actions");
+            allActions.AutomationId = "more-all-actions";
+            allActions.Clicked += async (_, _) => await Navigation.PushAsync(new NativeCommandPage(Coordinator));
+            files.Add(allActions);
+        }
         _body.Add(NativeTheme.Card(files));
     }
 

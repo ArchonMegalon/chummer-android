@@ -25,10 +25,10 @@ CONTROL_PROOF_KEYS = (
 
 def prepare_runner(device: shared.Device, fixture_name: str) -> None:
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
 
 def open_gear_locations(device: shared.Device) -> None:
@@ -131,7 +131,7 @@ def prove_profile(
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_workspace_location(device, expected, existing)
     open_gear_locations(device)
     device.capture(f"gear-location-{profile.lower()}-after-process-restart")

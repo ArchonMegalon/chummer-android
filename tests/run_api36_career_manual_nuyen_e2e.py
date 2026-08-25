@@ -33,10 +33,10 @@ CONTROL_PROOF_KEYS = (
 
 def prepare_runner(device: shared.Device, fixture_name: str) -> None:
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
 
 def open_page(device: shared.Device) -> None:
@@ -130,7 +130,7 @@ def prove(device: shared.Device, fixture: Path) -> None:
     assert_summary(device, "5", "10150")
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     matching_root(device, "5", "10150")
     open_page(device)
     assert_summary(device, "5", "10150")
@@ -164,7 +164,7 @@ def prove(device: shared.Device, fixture: Path) -> None:
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     matching_root(device, "7", "7150")
     open_page(device)
     assert_summary(device, "7", "7150")

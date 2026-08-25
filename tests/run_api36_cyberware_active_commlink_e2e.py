@@ -54,10 +54,10 @@ PROFILES = {
 
 def prepare_runner(device: shared.Device, fixture_name: str) -> None:
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
 
 def open_cyberware_editor(device: shared.Device, cyberware_id: str) -> None:
@@ -190,7 +190,7 @@ def prove_profile(device: shared.Device, fixture: Path, profile: str) -> None:
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_workspace(device, expected, True)
     open_active_commlink_page(device, cyberware_id)
     assert_toggle(device, cyberware_id, True)
@@ -206,7 +206,7 @@ def prove_profile(device: shared.Device, fixture: Path, profile: str) -> None:
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_workspace(device, expected, False)
     open_active_commlink_page(device, cyberware_id)
     assert_toggle(device, cyberware_id, False)

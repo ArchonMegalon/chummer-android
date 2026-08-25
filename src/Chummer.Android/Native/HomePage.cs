@@ -3,17 +3,26 @@ using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
 
-public sealed class HomePage : NativePageBase
+public class HomePage : NativePageBase
 {
+    private readonly string _runnerRoute;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 20, 20, 36),
         Spacing = 18
     };
 
-    public HomePage(RunnerSessionCoordinator coordinator) : base(coordinator)
+    public HomePage(RunnerSessionCoordinator coordinator) : this(coordinator, "//tablet-build", "Home")
     {
-        Title = "Home";
+    }
+
+    protected HomePage(
+        RunnerSessionCoordinator coordinator,
+        string runnerRoute,
+        string title) : base(coordinator)
+    {
+        _runnerRoute = runnerRoute;
+        Title = title;
         Content = new ScrollView { Content = _body };
     }
 
@@ -41,7 +50,7 @@ public sealed class HomePage : NativePageBase
         if (Coordinator.State.Profile is not null)
         {
             Button continueButton = NativeTheme.PrimaryButton("Continue building");
-            continueButton.Clicked += async (_, _) => await Shell.Current.GoToAsync("//build");
+            continueButton.Clicked += async (_, _) => await Shell.Current.GoToAsync(_runnerRoute);
             current.Add(continueButton);
         }
         _body.Add(NativeTheme.Card(current));
@@ -62,7 +71,16 @@ public sealed class HomePage : NativePageBase
         };
         Button open = NativeTheme.PrimaryButton("Open file");
         open.AutomationId = "home-open-file";
-        open.Clicked += async (_, _) => await RunAsync(() => Coordinator.OpenLocalAsync());
+        open.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            NativeWorkspaceActivationReceipt? activation = await Coordinator.OpenLocalAsync();
+            if (activation?.Matches(
+                    Coordinator.State,
+                    NativeWorkspaceActivationKind.LocalFile) == true)
+            {
+                await Shell.Current.GoToAsync(_runnerRoute);
+            }
+        });
         Button create = NativeTheme.SecondaryButton("New runner");
         create.AutomationId = "home-new-runner";
         create.Clicked += async (_, _) => await RunAsync(() => Coordinator.CreateRunnerAsync());
@@ -91,7 +109,21 @@ public sealed class HomePage : NativePageBase
             {
                 string label = !string.IsNullOrWhiteSpace(workspace.Alias) ? workspace.Alias : workspace.Name;
                 Button button = NativeTheme.SecondaryButton(string.IsNullOrWhiteSpace(label) ? "Runner" : label);
-                button.Clicked += async (_, _) => await RunAsync(() => Coordinator.SwitchWorkspaceAsync(workspace));
+                button.Clicked += async (_, _) => await RunAsync(async () =>
+                {
+                    NativeWorkspaceActivationReceipt? activation =
+                        await Coordinator.SwitchWorkspaceAsync(workspace);
+                    if (activation?.Matches(
+                            Coordinator.State,
+                            NativeWorkspaceActivationKind.WorkspaceSwitch) == true
+                        && string.Equals(
+                            activation.WorkspaceId.Value,
+                            workspace.Id.Value,
+                            StringComparison.Ordinal))
+                    {
+                        await Shell.Current.GoToAsync(_runnerRoute);
+                    }
+                });
                 _body.Add(button);
             }
         }
@@ -165,8 +197,14 @@ public sealed class HomePage : NativePageBase
                 Button button = NativeTheme.SecondaryButton(name);
                 button.Clicked += async (_, _) => await RunAsync(async () =>
                 {
-                    await Coordinator.OpenOnlineAsync(character);
-                    await Shell.Current.GoToAsync("//build");
+                    NativeWorkspaceActivationReceipt? activation =
+                        await Coordinator.OpenOnlineAsync(character);
+                    if (activation?.Matches(
+                            Coordinator.State,
+                            NativeWorkspaceActivationKind.OnlineCharacter) == true)
+                    {
+                        await Shell.Current.GoToAsync(_runnerRoute);
+                    }
                 });
                 online.Add(button);
             }

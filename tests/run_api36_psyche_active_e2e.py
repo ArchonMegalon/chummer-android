@@ -32,10 +32,10 @@ PROOF_KEYS = (
 
 def prepare_runner(device: shared.Device, fixture_name: str) -> None:
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
 
 def open_psyche_controls(device: shared.Device) -> None:
@@ -121,7 +121,7 @@ def prove(device: shared.Device, fixture: Path) -> None:
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_workspace(device, False)
     open_psyche_controls(device)
     assert_toggle(device, MAGICIAN, False)

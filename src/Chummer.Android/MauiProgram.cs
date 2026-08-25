@@ -60,6 +60,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IShellSurfaceResolver, ShellSurfaceResolver>();
         builder.Services.AddSingleton<RunnerSessionCoordinator>();
         builder.Services.AddTransient<HomePage>();
+        builder.Services.AddTransient<RunnersPage>();
         builder.Services.AddTransient<RosterFavoritesPage>();
         builder.Services.AddTransient<ApplicationSettingsPage>();
         builder.Services.AddTransient<BuildPage>();
@@ -67,6 +68,7 @@ public static class MauiProgram
         builder.Services.AddTransient<PlayPage>();
         builder.Services.AddTransient<CampaignPage>();
         builder.Services.AddTransient<MorePage>();
+        builder.Services.AddTransient<PhoneMorePage>();
         builder.Services.AddSingleton<MainShell>();
 
 #if DEBUG

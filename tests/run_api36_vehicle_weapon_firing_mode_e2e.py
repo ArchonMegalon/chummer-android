@@ -63,10 +63,10 @@ JOURNEYS = (
 
 def prepare(device: shared.Device, fixture: str) -> None:
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
 
 def token(journey: dict[str, str]) -> str:
@@ -171,7 +171,7 @@ def run_journey(device: shared.Device, journey: dict[str, str]) -> None:
     open_page(device, journey)
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_workspace(device, journey)
     open_page(device, journey)
 

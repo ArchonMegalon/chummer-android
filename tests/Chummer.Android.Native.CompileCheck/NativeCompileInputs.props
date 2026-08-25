@@ -8,6 +8,7 @@
   <ItemGroup>
     <Compile Include="../../src/Chummer.Android/Native/*.cs" Link="Native/%(Filename)%(Extension)" />
     <Compile Include="../../src/Chummer.Android/MainShell.cs" Link="MainShell.cs" />
+    <Compile Include="../../src/Chummer.Android/PhoneShellRoutes.cs" Link="PhoneShellRoutes.cs" />
     <Compile Include="../../src/Chummer.Android/MauiProgram.cs" Link="MauiProgram.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/IAndroidAccountLinkService.cs" Link="Platform/IAndroidAccountLinkService.cs" />
     <Compile Include="../../src/Chummer.Android/Platform/IAndroidDocumentService.cs" Link="Platform/IAndroidDocumentService.cs" />

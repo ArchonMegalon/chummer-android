@@ -472,7 +472,7 @@ public sealed class NativeDialogPage : ContentPage
                     if (routeToCreationWizard
                         && Shell.Current is Chummer.Android.MainShell { UsesTabletComposition: false } shell)
                     {
-                        await shell.GoToAsync("//build");
+                        await shell.GoToAsync(PhoneShellRoutes.RunnerAbsolute);
                     }
                 }
                 else

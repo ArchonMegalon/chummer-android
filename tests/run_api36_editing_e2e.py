@@ -27,6 +27,46 @@ WORKSPACE_AUTHORITY_RESOURCE_IDS = (
     "home-e2e-payload-sha256",
     "home-e2e-document-sha256",
 )
+PHONE_SHELL_DESTINATION_IDS = (
+    "phone-destination-runners",
+    "phone-destination-runner",
+    "phone-destination-more",
+)
+PHONE_SHELL_DESTINATION_LABELS = ("Runners", "Runner", "More")
+PHONE_SHELL_DESTINATION_MAPPING = {
+    "phone-destination-runners": "Runners",
+    "phone-destination-runner": "Runner",
+    "phone-destination-more": "More",
+}
+PHONE_SHELL_FORBIDDEN_DESTINATION_LABELS = ("Play", "Table", "Campaign")
+PHONE_SHELL_FORBIDDEN_SUPPORT_LABELS = (
+    "Rook",
+    "Ask Rook",
+    "Tough Tongue",
+    "Open Tough Tongue support",
+    "All actions",
+)
+PHONE_SHELL_FORBIDDEN_ROUTE_RESOURCE_IDS = (
+    "phone-play-unavailable",
+    "phone-table-unavailable",
+    "creation-rook-conversation",
+)
+PHONE_SHELL_FORBIDDEN_LAUNCHER_RESOURCE_IDS = (
+    "rook-launch",
+    "more-all-actions",
+    "live-support",
+    "avatar-support",
+)
+PHONE_SHELL_FORBIDDEN_LAUNCHER_ID_PREFIXES = (
+    "build-ghost-",
+    "build_ghost_",
+    "buildghost-",
+    "rook-",
+    "rook_",
+    "tough-tongue-",
+    "tough_tongue_",
+    "toughtongue-",
+)
 BOUNDS = re.compile(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]")
 DISPLAY_SIZE = re.compile(r"(?:Physical|Override) size:\s*(\d+)x(\d+)")
 COMPONENT = re.compile(
@@ -431,6 +471,29 @@ class Device:
             match = BOUNDS.fullmatch(node.attributes.get("bounds", ""))
             if match is not None:
                 x = max(1, int(match.group(1)) - text_leading_offset)
+        self.shell("input", "tap", str(x), str(y))
+
+    def tap_single_exact_resource_id(
+        self,
+        selector: str,
+        *,
+        timeout: int = 45,
+        evidence_prefix: str = "exact-resource-tap",
+        surface_name: str = "Exact resource-id control",
+    ) -> None:
+        """Tap one cardinality-checked resource ID without text/prefix fallback."""
+        node = self.wait_for_single_exact_resource_id(
+            selector,
+            timeout=timeout,
+            evidence_prefix=evidence_prefix,
+            surface_name=surface_name,
+        )
+        if not self.node_has_tappable_bounds(node):
+            self.capture(f"{evidence_prefix}-bounds-invalid")
+            raise RuntimeError(
+                f"{surface_name} {selector!r} has no tappable on-screen bounds"
+            )
+        x, y = node.center
         self.shell("input", "tap", str(x), str(y))
 
     def wait_exact_resource_id_bidirectional(
@@ -928,6 +991,13 @@ def read_workspace_authority(device: Device) -> WorkspaceAuthority:
     return verified
 
 
+def read_phone_workspace_authority(device: Device) -> WorkspaceAuthority:
+    """Navigate to the phone Runners proof surface before reading authority."""
+    tap_phone_destination(device, "phone-destination-runners")
+    wait_for_phone_runners(device)
+    return read_workspace_authority(device)
+
+
 def require_import_authority(
     authority: WorkspaceAuthority,
     expected_payload_sha256: str,
@@ -979,14 +1049,220 @@ def optional_workspace_authority_json(
     return None if authority is None else workspace_authority_json(authority)
 
 
+def wait_for_phone_runner_route(
+    device: Device,
+    *,
+    created: bool | None = None,
+    timeout: int = 90,
+) -> UiNode:
+    expected_routes = {"phone-runner-create", "phone-runner-sheet"}
+    desired_route = (
+        None
+        if created is None
+        else "phone-runner-sheet" if created else "phone-runner-create"
+    )
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        matches = [
+            (
+                node.attributes.get("resource-id", "").rsplit("/", 1)[-1],
+                node,
+            )
+            for node in device.hierarchy()
+            if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+            in expected_routes
+        ]
+        if len(matches) == 1:
+            observed_route, node = matches[0]
+            if desired_route is not None and observed_route != desired_route:
+                device.capture("phone-runner-route-lifecycle-mismatch")
+                raise RuntimeError(
+                    f"Final phone runner route was {observed_route!r}; "
+                    f"expected sole root {desired_route!r}"
+                )
+            return node
+        if len(matches) > 1:
+            device.capture("phone-runner-route-cardinality-invalid")
+            raise RuntimeError(
+                "Final phone runner route exposed both creation and career roots"
+            )
+        if device.dismiss_system_ui_anr():
+            time.sleep(2)
+            continue
+        time.sleep(0.75)
+    device.capture("phone-runner-route-unavailable")
+    raise RuntimeError(
+        "Timed out waiting for exact final phone route phone-runner-create or "
+        "phone-runner-sheet"
+    )
+
+
+def _node_exposes_exact_accessibility_label(node: UiNode, label: str) -> bool:
+    for attribute in ("text", "content-desc"):
+        value = node.attributes.get(attribute, "")
+        if value == label or value.startswith(f"{label},"):
+            return True
+    return False
+
+
+def _is_forbidden_launcher_resource_id(resource_id: str) -> bool:
+    normalized = resource_id.casefold()
+    return normalized in PHONE_SHELL_FORBIDDEN_LAUNCHER_RESOURCE_IDS or any(
+        normalized.startswith(prefix)
+        for prefix in PHONE_SHELL_FORBIDDEN_LAUNCHER_ID_PREFIXES
+    )
+
+
+def wait_for_phone_runners(device: Device, *, timeout: int = 90) -> UiNode:
+    return device.wait_for_single_exact_resource_id(
+        "phone-runners",
+        timeout=timeout,
+        evidence_prefix="phone-runners-route",
+        surface_name="Phone runners route",
+    )
+
+
+def tap_phone_destination(
+    device: Device,
+    resource_id: str,
+    *,
+    timeout: int = 45,
+) -> None:
+    if resource_id not in PHONE_SHELL_DESTINATION_MAPPING:
+        raise ValueError(f"Unknown phone shell destination {resource_id!r}")
+    device.tap_single_exact_resource_id(
+        resource_id,
+        timeout=timeout,
+        evidence_prefix=f"{resource_id}-tap",
+        surface_name="Phone shell destination",
+    )
+
+
+def assert_phone_shell_surface(
+    device: Device,
+    *,
+    route_resource_id: str,
+    evidence_prefix: str,
+) -> dict[str, object]:
+    """Observe the live hierarchy and fail unless the phone shell is exactly the proven set."""
+    device.wait_for_single_exact_resource_id(
+        route_resource_id,
+        timeout=90,
+        evidence_prefix=evidence_prefix,
+        surface_name="Phone shell route",
+    )
+    nodes = device.hierarchy()
+    resource_ids = [
+        node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+        for node in nodes
+    ]
+    destination_nodes = [
+        (resource_id, node)
+        for resource_id, node in zip(resource_ids, nodes, strict=True)
+        if resource_id.startswith("phone-destination-")
+    ]
+    observed_destination_mapping: dict[str, list[str]] = {}
+    for resource_id, node in destination_nodes:
+        labels = [
+            label
+            for label in (
+                *PHONE_SHELL_DESTINATION_LABELS,
+                *PHONE_SHELL_FORBIDDEN_DESTINATION_LABELS,
+            )
+            if _node_exposes_exact_accessibility_label(node, label)
+        ]
+        observed_destination_mapping.setdefault(resource_id, []).extend(labels)
+    observed_destination_ids = sorted(resource_id for resource_id, _ in destination_nodes)
+    observed_destination_labels = sorted(
+        label
+        for labels in observed_destination_mapping.values()
+        for label in labels
+        if label in PHONE_SHELL_DESTINATION_LABELS
+    )
+    recognized_navigation_nodes = [
+        (resource_id, node)
+        for resource_id, node in zip(resource_ids, nodes, strict=True)
+        if resource_id.startswith("phone-destination-")
+        or resource_id.startswith("tablet-destination-")
+        or resource_id in PHONE_SHELL_FORBIDDEN_ROUTE_RESOURCE_IDS
+        or _is_forbidden_launcher_resource_id(resource_id)
+    ]
+    forbidden_destination_labels = sorted(
+        label
+        for label in PHONE_SHELL_FORBIDDEN_DESTINATION_LABELS
+        if any(
+            _node_exposes_exact_accessibility_label(node, label)
+            for _, node in recognized_navigation_nodes
+        )
+    )
+    forbidden_support_labels = sorted(
+        label
+        for label in PHONE_SHELL_FORBIDDEN_SUPPORT_LABELS
+        if any(
+            (
+                resource_id in PHONE_SHELL_FORBIDDEN_ROUTE_RESOURCE_IDS
+                or _is_forbidden_launcher_resource_id(resource_id)
+            )
+            and _node_exposes_exact_accessibility_label(node, label)
+            for resource_id, node in recognized_navigation_nodes
+        )
+    )
+    forbidden_route_ids = sorted(
+        resource_id
+        for resource_id, node in zip(resource_ids, nodes, strict=True)
+        if (
+            resource_id.startswith("tablet-destination-")
+            or resource_id in PHONE_SHELL_FORBIDDEN_ROUTE_RESOURCE_IDS
+            or _is_forbidden_launcher_resource_id(resource_id)
+        )
+    )
+    observation = {
+        "routeResourceId": route_resource_id,
+        "destinationResourceIds": observed_destination_ids,
+        "destinationLabels": observed_destination_labels,
+        "destinationMapping": observed_destination_mapping,
+        "forbiddenDestinationLabels": forbidden_destination_labels,
+        "forbiddenSupportLabels": forbidden_support_labels,
+        "forbiddenRouteResourceIds": forbidden_route_ids,
+    }
+    expected_ids = sorted(PHONE_SHELL_DESTINATION_IDS)
+    expected_labels = sorted(PHONE_SHELL_DESTINATION_LABELS)
+    expected_mapping = {
+        resource_id: [label]
+        for resource_id, label in PHONE_SHELL_DESTINATION_MAPPING.items()
+    }
+    if (
+        observed_destination_ids != expected_ids
+        or observed_destination_labels != expected_labels
+        or observed_destination_mapping != expected_mapping
+        or forbidden_destination_labels
+        or forbidden_support_labels
+        or forbidden_route_ids
+    ):
+        (device.evidence / f"{evidence_prefix}-observation.json").write_text(
+            json.dumps(observation, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        device.capture(f"{evidence_prefix}-invalid")
+        raise RuntimeError(
+            "Phone shell did not expose exactly Runners/Runner/More or exposed a "
+            f"postponed surface: {observation!r}"
+        )
+    (device.evidence / f"{evidence_prefix}-observation.json").write_text(
+        json.dumps(observation, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return observation
+
+
 def save_and_read_workspace_authority(
     device: Device,
     profile: str,
 ) -> WorkspaceAuthority:
     if profile != "phone":
         raise RuntimeError("The API 36 beta authority gate is phone-only; tablet proof is deferred")
-    device.tap("Home")
-    device.wait("Continue building", timeout=90)
+    tap_phone_destination(device, "phone-destination-runners")
+    wait_for_phone_runners(device)
     open_build(device, profile)
     device.tap("build-save-runner")
     device.wait(
@@ -996,8 +1272,8 @@ def save_and_read_workspace_authority(
         max_scrolls=48,
         scroll_distance_ratio=0.22,
     )
-    device.tap("Home")
-    device.wait("Continue building", timeout=90)
+    tap_phone_destination(device, "phone-destination-runners")
+    wait_for_phone_runners(device)
     authority = read_workspace_authority(device)
     require_saved_authority(authority)
     return authority
@@ -1009,7 +1285,8 @@ def open_build(device: Device, profile: str) -> None:
         device.tap("Build")
         device.wait("tablet-build-layout", timeout=45)
         return
-    device.tap("Build")
+    tap_phone_destination(device, "phone-destination-runner")
+    wait_for_phone_runner_route(device)
 
 
 def reset_scroll_to_top(
@@ -2144,7 +2421,8 @@ def prepare_full_editing_runner(
             max_scrolls=48,
             scroll_distance_ratio=0.22,
         )
-        device.tap("Home")
+        tap_phone_destination(device, "phone-destination-runners")
+        wait_for_phone_runners(device)
     else:
         # Tablet remains a standalone deferred journey and is not launched by the
         # authoritative phone beta lane.
@@ -2156,11 +2434,13 @@ def prepare_full_editing_runner(
         require_saved_authority(creation_authority)
     device.tap("home-open-file")
     select_android_document(device, completed_runner_name)
-    # Bind the transition to the selected career fixture. A picker dismissal or a
-    # guarded no-op can leave a generic Continue button on the prior workspace.
+    # Bind the transition to the selected career fixture and its final phone route.
+    # Picker dismissal, import failure, or a stale prior Profile cannot satisfy this.
     device.wait(completed_runner_alias, timeout=90)
-    device.wait("Continue building", timeout=90)
     if profile == "phone":
+        wait_for_phone_runner_route(device, created=True)
+        tap_phone_destination(device, "phone-destination-runners")
+        wait_for_phone_runners(device)
         imported_authority = read_workspace_authority(device)
         require_import_authority(
             imported_authority,
@@ -2168,6 +2448,7 @@ def prepare_full_editing_runner(
             creation_authority.workspace_id if creation_authority is not None else None,
         )
         return imported_authority
+    device.wait("tablet-build-layout", timeout=90)
     return None
 
 
@@ -2765,7 +3046,10 @@ def main() -> int:
         encoding="utf-8",
     )
     initial_launch_state = launch_app(device)
-    device.wait("Your runners", timeout=90)
+    if args.profile == "phone":
+        wait_for_phone_runners(device)
+    else:
+        device.wait("Your runners", timeout=90)
 
     imported_authority: WorkspaceAuthority | None
     if args.journey in {"condition-monitor", "contact-pet"}:
@@ -2785,11 +3069,17 @@ def main() -> int:
         )
         select_android_document(device, fixture_name)
         device.wait(fixture_alias, timeout=90)
-        device.wait("Continue building", timeout=90)
         if args.profile == "phone":
+            wait_for_phone_runner_route(
+                device,
+                created=args.journey != "contact-pet",
+            )
+            tap_phone_destination(device, "phone-destination-runners")
+            wait_for_phone_runners(device)
             imported_authority = read_workspace_authority(device)
             require_import_authority(imported_authority, expected_fixture_sha256)
         else:
+            device.wait("tablet-build-layout", timeout=90)
             imported_authority = None
     else:
         imported_authority = prepare_full_editing_runner(
@@ -2820,7 +3110,9 @@ def main() -> int:
             device,
             initial_launch_state,
         )
-        device.wait("Continue building", timeout=90)
+        wait_for_phone_runner_route(device, created=False)
+        tap_phone_destination(device, "phone-destination-runners")
+        wait_for_phone_runners(device)
         restored_authority = (
             read_workspace_authority(device) if args.profile == "phone" else None
         )
@@ -2910,7 +3202,9 @@ def main() -> int:
             device,
             initial_launch_state,
         )
-        device.wait("Continue building", timeout=90)
+        wait_for_phone_runner_route(device, created=True)
+        tap_phone_destination(device, "phone-destination-runners")
+        wait_for_phone_runners(device)
         restored_authority = (
             read_workspace_authority(device) if args.profile == "phone" else None
         )
@@ -3028,7 +3322,12 @@ def main() -> int:
         device,
         initial_launch_state,
     )
-    device.wait("Continue building", timeout=90)
+    if args.profile == "phone":
+        wait_for_phone_runner_route(device, created=True)
+        tap_phone_destination(device, "phone-destination-runners")
+        wait_for_phone_runners(device)
+    else:
+        device.wait("Continue building", timeout=90)
     restored_authority = (
         read_workspace_authority(device) if args.profile == "phone" else None
     )

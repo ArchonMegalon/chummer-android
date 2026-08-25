@@ -275,7 +275,7 @@ def set_exact_text(device: shared.Device, selector: str, value: str) -> None:
 
 def create_runner(device: shared.Device) -> None:
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap_until_visible("home-new-runner", "Select Build Method", timeout=90)
     device.tap("dialog-action-create-character", scroll=True, timeout=90, max_scrolls=20)
     device.wait(
@@ -290,7 +290,7 @@ def create_runner(device: shared.Device) -> None:
         timeout=90,
         max_scrolls=20,
     )
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
 
 def open_character_settings(device: shared.Device) -> None:

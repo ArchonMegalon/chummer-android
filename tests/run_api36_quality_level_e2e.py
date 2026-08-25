@@ -34,10 +34,10 @@ def prepare_runner(device: shared.Device, fixture: Path) -> None:
     device.push(fixture, f"/sdcard/Download/{fixture.name}")
     device.shell("pm", "clear", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture.name)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
 
 def open_quality_level(device: shared.Device, quality_id: str) -> None:
@@ -181,7 +181,7 @@ def run_journey(device: shared.Device, fixture: Path, quality_id: str, *, career
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_workspace_level(
         device,
         expected,

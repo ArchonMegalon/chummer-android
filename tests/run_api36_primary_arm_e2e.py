@@ -20,10 +20,10 @@ CONTROL_PROOF_KEYS = ("mutated", "workspacePersisted", "processRestartUiReadback
 
 def prepare_runner(device: shared.Device, fixture_name: str) -> None:
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
 
 def open_primary_arm(device: shared.Device) -> None:
@@ -118,7 +118,7 @@ def prove_editable_profile(
 
     device.shell("am", "force-stop", shared.PACKAGE)
     shared.launch_app(device)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
     assert_workspace_value(device, expected)
     open_primary_arm(device)
     assert_ui_value(device, expected)

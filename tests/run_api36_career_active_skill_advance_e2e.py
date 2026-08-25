@@ -68,12 +68,14 @@ def prepare_runner(
     fixture_sha256: str,
 ) -> tuple[shared.LaunchState, shared.WorkspaceAuthority]:
     launch = shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
     device.wait("CareerActiveSkillAdvanceE2E", timeout=120)
-    device.wait("Continue building", timeout=120)
-    authority = shared.read_workspace_authority(device)
+    shared.wait_for_phone_runner_route(device, created=True, timeout=120)
+    shared.tap_phone_destination(device, "phone-destination-runners")
+    shared.wait_for_phone_runners(device, timeout=120)
+    authority = shared.read_phone_workspace_authority(device)
     shared.require_import_authority(authority, fixture_sha256)
     return launch, authority
 
@@ -210,9 +212,9 @@ def assert_after(root: ET.Element) -> str:
 
 
 def read_saved_authority(device: shared.Device) -> shared.WorkspaceAuthority:
-    device.tap("Home")
-    device.wait("Continue building", timeout=120)
-    authority = shared.read_workspace_authority(device)
+    shared.tap_phone_destination(device, "phone-destination-runners")
+    shared.wait_for_phone_runners(device, timeout=120)
+    authority = shared.read_phone_workspace_authority(device)
     shared.require_saved_authority(authority)
     return authority
 
@@ -229,8 +231,8 @@ def assert_ui_readback(device: shared.Device) -> None:
 def return_home_from_page(device: shared.Device) -> None:
     device.back()
     device.wait("build-career-active-skill", timeout=90, scroll=True, max_scrolls=40)
-    device.tap("Home")
-    device.wait("Continue building", timeout=120)
+    shared.tap_phone_destination(device, "phone-destination-runners")
+    shared.wait_for_phone_runners(device, timeout=120)
 
 
 def prove_advancement(
@@ -265,8 +267,10 @@ def prove_advancement(
     return_home_from_page(device)
 
     first_restart = shared.force_stop_and_launch_new_process(device, initial_launch)
-    device.wait("Continue building", timeout=120)
-    first_restored = shared.read_workspace_authority(device)
+    shared.wait_for_phone_runner_route(device, created=True, timeout=120)
+    shared.tap_phone_destination(device, "phone-destination-runners")
+    shared.wait_for_phone_runners(device, timeout=120)
+    first_restored = shared.read_phone_workspace_authority(device)
     shared.require_restored_authority(saved, first_restored)
     assert_after(root_for_authority(device, first_restored))
     open_page(device)
@@ -275,8 +279,10 @@ def prove_advancement(
     return_home_from_page(device)
 
     second_restart = shared.force_stop_and_launch_new_process(device, first_restart.restarted)
-    device.wait("Continue building", timeout=120)
-    second_restored = shared.read_workspace_authority(device)
+    shared.wait_for_phone_runner_route(device, created=True, timeout=120)
+    shared.tap_phone_destination(device, "phone-destination-runners")
+    shared.wait_for_phone_runners(device, timeout=120)
+    second_restored = shared.read_phone_workspace_authority(device)
     shared.require_restored_authority(saved, second_restored)
     assert_after(root_for_authority(device, second_restored))
     open_page(device)

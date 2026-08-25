@@ -167,10 +167,10 @@ def main() -> int:
         device.run("exec-out", "cat", remote_runner, text=False).stdout
     ).hexdigest()
     shared.launch_app(device)
-    device.wait("Your runners", timeout=120)
+    shared.wait_for_phone_runners(device, timeout=120)
     device.tap("home-open-file")
     shared.select_android_document(device, runner.name)
-    device.wait("Continue building", timeout=120)
+    shared.wait_for_phone_runner_route(device, timeout=120)
 
     open_roster_for_seed(device)
     device.tap("roster-favorite-toggle")
