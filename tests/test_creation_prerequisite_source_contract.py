@@ -20,6 +20,21 @@ SPEC.loader.exec_module(driver)
 
 
 class CreationPrerequisiteSourceContractTests(unittest.TestCase):
+    def test_creation_karma_budget_cards_expose_readable_semantic_totals(self) -> None:
+        page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
+        preview = (NATIVE / "CreationPrerequisitePreviewPage.cs").read_text(encoding="utf-8")
+        expected = (
+            '$"Global Creation Karma. Total {total}. Used {used}. '
+            'Remaining {remaining}."'
+        )
+        for source, automation_id in (
+            (page, "creation-prerequisite-karma-budget"),
+            (preview, "creation-prerequisite-preview-karma-budget"),
+        ):
+            self.assertIn(f'border.AutomationId = "{automation_id}"', source)
+            self.assertIn("SemanticProperties.SetDescription(", source)
+            self.assertIn(expected, source)
+
     def test_readable_digest_prefix_is_canonical_and_twelve_hex_characters(self) -> None:
         helper = (NATIVE / "CreationPrerequisiteDigestText.cs").read_text(encoding="utf-8")
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")

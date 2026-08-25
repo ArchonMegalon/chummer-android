@@ -118,12 +118,15 @@ public sealed class CreationPrerequisitePage : NativePageBase
 
     private void AddCreationKarma(CharacterCreationBudgetState budget)
     {
+        string total = FormatBudget(budget.Total, budget.Unit);
+        string used = FormatBudget(budget.Used, budget.Unit);
+        string remaining = FormatBudget(budget.Remaining, budget.Unit);
         VerticalStackLayout card = new() { Spacing = 7 };
         card.Add(NativeTheme.Eyebrow("Global Creation Karma"));
         card.Add(NativeTheme.Metric("Budget ID", budget.BudgetId));
-        card.Add(NativeTheme.Metric("Total", FormatBudget(budget.Total, budget.Unit)));
-        card.Add(NativeTheme.Metric("Used", FormatBudget(budget.Used, budget.Unit)));
-        card.Add(NativeTheme.Metric("Remaining", FormatBudget(budget.Remaining, budget.Unit)));
+        card.Add(NativeTheme.Metric("Total", total));
+        card.Add(NativeTheme.Metric("Used", used));
+        card.Add(NativeTheme.Metric("Remaining", remaining));
         card.Add(NativeTheme.Body(
             budget.IsExact ? "Exact authoritative budget" : "Budget is not exact",
             budget.IsExact ? NativeTheme.Muted : NativeTheme.Danger));
@@ -131,6 +134,9 @@ public sealed class CreationPrerequisitePage : NativePageBase
             card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-prerequisite-karma-budget";
+        SemanticProperties.SetDescription(
+            border,
+            $"Global Creation Karma. Total {total}. Used {used}. Remaining {remaining}.");
         _body.Add(border);
     }
 
