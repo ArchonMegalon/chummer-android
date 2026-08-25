@@ -25,6 +25,7 @@ internal static class Program
             (nameof(BuildPageProjectsExactlyOneLifecycleRouteAsync), BuildPageProjectsExactlyOneLifecycleRouteAsync),
             (nameof(DurableSaveNoticeFailsClosedAcrossStateChangesAsync), DurableSaveNoticeFailsClosedAcrossStateChangesAsync),
             (nameof(SlowCreationDashboardProjectionDoesNotBlockCallerAsync), SlowCreationDashboardProjectionDoesNotBlockCallerAsync),
+            (nameof(CompletedCreationProjectionSurvivesADeferredUiConsumerAsync), CompletedCreationProjectionSurvivesADeferredUiConsumerAsync),
             (nameof(LateCreationDashboardProjectionCannotOverwriteNewerBindingAsync), LateCreationDashboardProjectionCannotOverwriteNewerBindingAsync),
             (nameof(CancelledOrFaultedCreationDashboardProjectionIsObservedAsync), CancelledOrFaultedCreationDashboardProjectionIsObservedAsync),
             (nameof(AttributesPreviewAdoptionRequiresCanonicalSuccessAsync), AttributesPreviewAdoptionRequiresCanonicalSuccessAsync),
@@ -130,6 +131,36 @@ internal static class Program
         Require(queue.TryAccept(completed.Request), "The exact completed generation was not accepted.");
     }
 
+    private static async Task CompletedCreationProjectionSurvivesADeferredUiConsumerAsync()
+    {
+        using var queue = new LatestBackgroundProjectionQueue<string, string>();
+        var notification = new TaskCompletionSource<BackgroundProjectionCompletion<string, string>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        queue.Completed += value => notification.TrySetResult(value);
+        queue.TryRequest(
+            "workspace-1/revision-1/source-a",
+            (_, _) => "authoritative",
+            out BackgroundProjectionRequest<string> request);
+
+        BackgroundProjectionCompletion<string, string> published = await notification.Task
+            .WaitAsync(TimeSpan.FromSeconds(5));
+        Require(
+            published.Request == request,
+            "The deferred UI notification lost its bound generation.");
+
+        // Model a page dispatcher that was not yet attached when the best-effort
+        // notification fired.  The terminal outcome must remain in the queue
+        // until a later UI refresh atomically consumes it.
+        Require(
+            queue.TryTake(request, out string recovered, out Exception? error),
+            "A completed projection was lost before the UI consumer became ready.");
+        Require(error is null, "A successful deferred projection recovered as a failure.");
+        Require(recovered == "authoritative", "The deferred projection result changed.");
+        Require(
+            !queue.TryTake(request, out _, out _),
+            "A terminal projection was admitted more than once.");
+    }
+
     private static async Task LateCreationDashboardProjectionCannotOverwriteNewerBindingAsync()
     {
         using var queue = new LatestBackgroundProjectionQueue<string, string>();
@@ -197,7 +228,12 @@ internal static class Program
         Require(
             observed.Error is InvalidOperationException,
             "The background failure was not observed at the fail-closed boundary.");
-        Require(queue.TryAccept(failedRequest), "An observed failure could not enter retryable failed state.");
+        Require(
+            queue.TryTake(failedRequest, out _, out Exception? observedError),
+            "An observed failure could not enter retryable failed state.");
+        Require(
+            observedError is InvalidOperationException,
+            "The stored failure outcome was not recoverable by a deferred UI consumer.");
 
         var retry = new TaskCompletionSource<BackgroundProjectionCompletion<string, string>>(
             TaskCreationOptions.RunContinuationsAsynchronously);

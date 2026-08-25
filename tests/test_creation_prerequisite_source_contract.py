@@ -1312,6 +1312,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             source,
         )
 
+    def test_dashboard_recovers_terminal_projection_after_deferred_page_dispatch(self) -> None:
+        page_source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        queue_source = (NATIVE / "LatestBackgroundProjectionQueue.cs").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("_creationProjectionQueue.TryTake(", page_source)
+        self.assertIn("MainThread.BeginInvokeOnMainThread", page_source)
+        self.assertIn("current.TryReadOutcome(out result, out error)", queue_source)
+        self.assertIn("public bool TryTake(", queue_source)
+        self.assertIn("work.MarkResultReady(result);", queue_source)
+        self.assertIn("work.MarkFailureReady(exception);", queue_source)
+
     def test_async_authority_wait_fails_closed_for_explicit_failure_and_timeout(self) -> None:
         class ProjectionDevice:
             def __init__(self, *, failed: bool) -> None:

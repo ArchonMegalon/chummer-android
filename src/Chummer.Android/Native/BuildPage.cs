@@ -308,7 +308,17 @@ public sealed class BuildPage : NativePageBase
         _creationProjectionQueue.TryRequest(
             binding,
             (request, cancellationToken) => LoadCreationProjection(request, cancellationToken),
-            out _);
+            out BackgroundProjectionRequest<CreationDashboardProjectionBinding> request);
+        if (_creationProjectionQueue.TryTake(
+                request,
+                out CreationDashboardAuthorityProjection completed,
+                out Exception? error))
+        {
+            _creationProjection = error is null
+                ? completed
+                : FailedCreationProjection(request);
+            return _creationProjection;
+        }
         return null;
     }
 
@@ -355,45 +365,50 @@ public sealed class BuildPage : NativePageBase
         BackgroundProjectionCompletion<
             CreationDashboardProjectionBinding,
             CreationDashboardAuthorityProjection> completion)
-    {
-        Dispatcher.Dispatch(() =>
-        {
-            CharacterCreationWizardSnapshot? snapshot = Coordinator.State.CreationWizard;
-            if (snapshot is null
-                || completion.Result.Request != completion.Request
-                || !completion.Request.Key.Matches(Coordinator.State, snapshot)
-                || !_creationProjectionQueue.TryAccept(completion.Request))
-            {
-                return;
-            }
-
-            _creationProjection = completion.Result;
-            Refresh();
-        });
-    }
+        => ScheduleCreationProjectionAcceptance(completion.Request);
 
     private void OnCreationProjectionFailed(
         BackgroundProjectionFailure<CreationDashboardProjectionBinding> failure)
+        => ScheduleCreationProjectionAcceptance(failure.Request);
+
+    private void ScheduleCreationProjectionAcceptance(
+        BackgroundProjectionRequest<CreationDashboardProjectionBinding> request)
     {
-        Dispatcher.Dispatch(() =>
+        MainThread.BeginInvokeOnMainThread(() =>
         {
             CharacterCreationWizardSnapshot? snapshot = Coordinator.State.CreationWizard;
             if (snapshot is null
-                || !failure.Request.Key.Matches(Coordinator.State, snapshot)
-                || !_creationProjectionQueue.TryAccept(failure.Request))
+                || !request.Key.Matches(Coordinator.State, snapshot)
+                || !_creationProjectionQueue.TryTake(
+                    request,
+                    out CreationDashboardAuthorityProjection completed,
+                    out Exception? error))
             {
                 return;
             }
 
-            _creationProjection = new CreationDashboardAuthorityProjection(
-                failure.Request,
-                Prerequisite: null,
-                Attributes: null,
-                Skills: null,
-                FailureReason: "creation-dashboard-authority-load-failed");
+            if (error is null && completed.Request != request)
+            {
+                _creationProjection = FailedCreationProjection(request);
+                Refresh();
+                return;
+            }
+
+            _creationProjection = error is null
+                ? completed
+                : FailedCreationProjection(request);
             Refresh();
         });
     }
+
+    private static CreationDashboardAuthorityProjection FailedCreationProjection(
+        BackgroundProjectionRequest<CreationDashboardProjectionBinding> request)
+        => new(
+            request,
+            Prerequisite: null,
+            Attributes: null,
+            Skills: null,
+            FailureReason: "creation-dashboard-authority-load-failed");
 
     private void RetryCreationProjection()
     {

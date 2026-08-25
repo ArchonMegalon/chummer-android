@@ -32,7 +32,9 @@ public sealed class LatestBackgroundProjectionQueue<TKey, TResult> : IDisposable
     {
         private int _executionCompleted;
         private int _disposalRequested;
-        private int _resultReady;
+        private int _outcomeKind;
+        private TResult? _result;
+        private Exception? _error;
 
         public Work(
             BackgroundProjectionRequest<TKey> request,
@@ -46,9 +48,41 @@ public sealed class LatestBackgroundProjectionQueue<TKey, TResult> : IDisposable
 
         public CancellationTokenSource Cancellation { get; }
 
-        public bool IsResultReady => Volatile.Read(ref _resultReady) != 0;
+        public bool IsResultReady => Volatile.Read(ref _outcomeKind) != 0;
 
-        public void MarkResultReady() => Interlocked.Exchange(ref _resultReady, 1);
+        public void MarkResultReady(TResult result)
+        {
+            _result = result;
+            Volatile.Write(ref _outcomeKind, 1);
+        }
+
+        public void MarkFailureReady(Exception error)
+        {
+            _error = error;
+            Volatile.Write(ref _outcomeKind, 2);
+        }
+
+        public bool TryReadOutcome(out TResult result, out Exception? error)
+        {
+            int outcomeKind = Volatile.Read(ref _outcomeKind);
+            if (outcomeKind == 1)
+            {
+                result = _result!;
+                error = null;
+                return true;
+            }
+            if (outcomeKind == 2)
+            {
+                result = default!;
+                error = _error
+                    ?? new InvalidOperationException("The background projection failed without an error.");
+                return true;
+            }
+
+            result = default!;
+            error = null;
+            return false;
+        }
 
         public void CancelAndDisposeWhenSafe()
         {
@@ -126,7 +160,20 @@ public sealed class LatestBackgroundProjectionQueue<TKey, TResult> : IDisposable
     /// is rejected here.
     /// </summary>
     public bool TryAccept(BackgroundProjectionRequest<TKey> request)
+        => TryTake(request, out _, out _);
+
+    /// <summary>
+    /// Atomically consumes the stored terminal outcome for the exact current
+    /// generation.  The outcome remains recoverable even when a best-effort UI
+    /// notification was posted before a page dispatcher became available.
+    /// </summary>
+    public bool TryTake(
+        BackgroundProjectionRequest<TKey> request,
+        out TResult result,
+        out Exception? error)
     {
+        result = default!;
+        error = null;
         lock (_sync)
         {
             if (_disposed
@@ -134,7 +181,8 @@ public sealed class LatestBackgroundProjectionQueue<TKey, TResult> : IDisposable
                 || current.Cancellation.IsCancellationRequested
                 || !current.IsResultReady
                 || current.Request.Generation != request.Generation
-                || !EqualityComparer<TKey>.Default.Equals(current.Request.Key, request.Key))
+                || !EqualityComparer<TKey>.Default.Equals(current.Request.Key, request.Key)
+                || !current.TryReadOutcome(out result, out error))
             {
                 return false;
             }
@@ -176,7 +224,7 @@ public sealed class LatestBackgroundProjectionQueue<TKey, TResult> : IDisposable
                     cancellationToken)
                 .ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
-            work.MarkResultReady();
+            work.MarkResultReady(result);
 
             Action<BackgroundProjectionCompletion<TKey, TResult>>? completed;
             lock (_sync)
@@ -217,7 +265,7 @@ public sealed class LatestBackgroundProjectionQueue<TKey, TResult> : IDisposable
                 {
                     return;
                 }
-                work.MarkResultReady();
+                work.MarkFailureReady(exception);
                 failed = Failed;
             }
 
