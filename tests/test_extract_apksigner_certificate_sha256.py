@@ -20,6 +20,19 @@ class ExtractApksignerCertificateSha256Tests(unittest.TestCase):
         self.assertEqual(LOWER_DIGEST, digest)
         self.assertEqual(32, len(bytes.fromhex(digest)))
 
+    def test_rejects_malformed_observed_v37_v30_digest(self) -> None:
+        with self.assertRaises(CertificateDigestError):
+            extract_certificate_sha256(
+                f"V3.0 Signer: certificate SHA-256 digest: {LOWER_DIGEST[:-2]}\n"
+            )
+
+    def test_rejects_observed_v37_v30_plus_source_stamp_digest(self) -> None:
+        with self.assertRaises(CertificateDigestError):
+            extract_certificate_sha256(
+                f"V3.0 Signer: certificate SHA-256 digest: {LOWER_DIGEST}\n"
+                f"Source Stamp Signer certificate SHA-256 digest: {LOWER_DIGEST}\n"
+            )
+
     def test_accepts_numbered_signer_label_and_normalizes_case(self) -> None:
         label, digest = extract_certificate_sha256(
             f"Signer #1 certificate SHA-256 digest: {UPPER_DIGEST}\n"
