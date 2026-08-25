@@ -173,17 +173,17 @@ class Api36CareerWeaponFireDriverTests(unittest.TestCase):
         self.assertEqual(
             [
                 ("route", "build-section-tab-gear"),
-                ("transition", f"collection-editor-gear-{driver.AMMO_GEAR_ID}"),
+                ("transition", f"collection-item-gear-{driver.AMMO_GEAR_ID}"),
                 ("route", "build-action-tab-gear-weapons"),
                 ("route", f"collection-item-weapon-{driver.WEAPON_ID}"),
             ],
             events,
         )
         device.wait_for_single_exact_resource_id.assert_called_once_with(
-            f"collection-editor-gear-{driver.AMMO_GEAR_ID}",
+            f"collection-item-gear-{driver.AMMO_GEAR_ID}",
             timeout=120,
             evidence_prefix="career-weapon-fire-gear-section-entered",
-            surface_name="Exact fixture-linked Gear editor transition surface",
+            surface_name="Exact fixture-linked Gear collection transition surface",
         )
 
     def test_fixture_binds_exact_root_weapon_active_clip_linked_ammo_and_burst(self) -> None:
