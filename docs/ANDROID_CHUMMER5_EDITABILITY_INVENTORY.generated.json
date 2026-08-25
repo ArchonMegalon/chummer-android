@@ -14,8 +14,9 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 478,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 562,
-      "missing": 911,
+      "implemented_pending_emulator": 560,
+      "implemented_verified_api36": 3,
+      "missing": 910,
       "not_applicable_non_mutating": 478,
       "partial_create_only": 106,
       "partial_exact_saved_data": 172
@@ -90,6 +91,11 @@
         "path": "src/Chummer.Android/Native/CareerReputationPage.cs",
         "exists": true,
         "sha256": "c23d43d47d800ecdcc829013de0f4ea0f5d8ce62d2c5cb0eaded2e3247094334"
+      },
+      {
+        "path": "src/Chummer.Android/Native/CareerActiveSkillAdvancePage.cs",
+        "exists": true,
+        "sha256": "396e3f31151ca2b784e962e30d227cfab3ec6082957a4efb144cbac0573ff522"
       },
       {
         "path": "src/Chummer.Android/Native/SituationalModifiersPage.cs",
@@ -585,6 +591,36 @@
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
         "sha256": "464545c29c43faea7f833c59360ba61df1267b09b5ed2712a7546c05f2dd5d49"
+      },
+      {
+        "path": "tests/run_api36_career_active_skill_advance_e2e.py",
+        "exists": true,
+        "sha256": "9d60386cbe52ec3ff6dbfac5cca0dc0820c1966b1f4d82e1b1e7bd5d4afc9a2c"
+      },
+      {
+        "path": "tests/fixtures/career-active-skill-advance-e2e.chum5",
+        "exists": true,
+        "sha256": "3506939b6b5c5cc2f1adb6d083d59ae0d4a548c51d366d0d0759719e92ffbf51"
+      },
+      {
+        "path": "tests/run_api36_career_weapon_fire_e2e.py",
+        "exists": true,
+        "sha256": "df7c049b88c3c26aa0d4ca8c3c554b3ac97884ad7dea8fe037e927c6b39b614c"
+      },
+      {
+        "path": "tests/fixtures/career-weapon-fire-e2e.chum5",
+        "exists": true,
+        "sha256": "eb1dee9e9c69c9303b0d772f8696e4531c12cfe360c761af85c6f0c79a6da7df"
+      },
+      {
+        "path": "tests/run_api36_career_notoriety_e2e.py",
+        "exists": true,
+        "sha256": "65448925b615924a044e804655ffd78424ff7a5793ebe493561f3cc8a0acd997"
+      },
+      {
+        "path": "tests/fixtures/career-notoriety-e2e.chum5",
+        "exists": true,
+        "sha256": "089d134993f967dfb7a107d8a04a365bad4af189a884916102d7de392005f5cc"
       },
       {
         "path": "tests/run_api36_gear_attack_swap_e2e.py",
@@ -1637,6 +1673,51 @@
         "sha256": null
       },
       {
+        "path": "docs/editability-evidence/api36-phone-career-notoriety/receipt.json",
+        "exists": true,
+        "sha256": "0738849b99b2c28c195100390c14d96fc6819ac2ef19a45e38b2ea6daefb66c8"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-notoriety/receipt.json.sha256",
+        "exists": true,
+        "sha256": "d5b6c9998644fbbb8521b582acedaf626c00b4fa794157605a365e0ac8c6e42a"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-notoriety/artifact.json",
+        "exists": true,
+        "sha256": "a86e428f418d3e80763cd2d54f11cc83e17ec8addd233efe98f5f1838933f5c0"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-active-skill-advance/receipt.json",
+        "exists": true,
+        "sha256": "8b8e5b368bd0c3826a1dc351639dfe02149cd8bc3246aab3260e5499b04778cb"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-active-skill-advance/receipt.json.sha256",
+        "exists": true,
+        "sha256": "8b4d8da54492356352e19406d46f879ecb8403534c83cd0f2a4ba6f10c8857b0"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-active-skill-advance/artifact.json",
+        "exists": true,
+        "sha256": "3a9696ac3e6d1dc3ed9d97d6a89c73705ca89e0aee8e5a1fcb2e1eace2ecfab9"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-weapon-fire/receipt.json",
+        "exists": true,
+        "sha256": "f9f295083fd0f76920cbff6717b62b3a9b3c3e8f2931eae02dc204576839a3e8"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-weapon-fire/receipt.json.sha256",
+        "exists": true,
+        "sha256": "1e8c5f31f68e54c0bce915046d3a7ac3c42736a8536654625b009bec713c77c0"
+      },
+      {
+        "path": "docs/editability-evidence/api36-phone-career-weapon-fire/artifact.json",
+        "exists": true,
+        "sha256": "9bce1801dc1d1566381c54dbe656b1a656c5b82ee7c9bf8643850d1c2181e91e"
+      },
+      {
         "path": "docs/editability-evidence/api36-phone-situational-modifiers/receipt.json",
         "exists": false,
         "sha256": null
@@ -1907,6 +1988,11 @@
         "sha256": "1ed73fdb863ef3b7ac047079c3f1692e6357b836c1b721d0c08de590a11d0301"
       },
       {
+        "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerActiveSkillAdvanceRules.cs",
+        "exists": true,
+        "sha256": "a7fe09fd82c0b44e703f9a416e8b28f4c753665649831e5436b00cbaae3ddb27"
+      },
+      {
         "path": "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerManualKarmaRules.cs",
         "exists": true,
         "sha256": "9bce1e3aab47a6fdd08499376f9ee8e95f2bc32ea21ffcac6860d76d35a5002b"
@@ -2025,6 +2111,16 @@
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerWeaponFireRequest.cs",
         "exists": true,
         "sha256": "387f65d88f099bb83cf74b7faac0cd13630f999b9a22abf9257fd902283bc874"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/CareerActiveSkillAdvanceEditRequest.cs",
+        "exists": true,
+        "sha256": "e96eea861758bec3462d0068a983c634ddeda2e033e8c61b3db07cb955d590af"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/CareerActiveSkillAdvanceMutation.cs",
+        "exists": true,
+        "sha256": "bc081d4ad6684292b4514e1051f60a921ae94a0f6e774d5b14d70a84e4f8c03d"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerManualKarmaEditRequest.cs",
@@ -2259,7 +2355,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "63416dfdaae82c850d3d0632f6cf08ecc534f19a8b4a61660b2465247a38e18d"
+      "sha256": "cf82a0e4fa919f4dea44efe05565ed838073f4d559ab5e2a73b334df1a572594"
     }
   },
   "coverageByFamily": {
@@ -2574,7 +2670,7 @@
     "skills": {
       "rowCount": 36,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 23,
+      "phoneMissingCount": 22,
       "tabletMissingCount": 24,
       "completionProvenCount": 12
     },
@@ -10824,11 +10920,24 @@
       "mutationFamily": "skills",
       "operation": "adjust",
       "phone": {
-        "status": "missing",
-        "route": null,
-        "surface": null,
-        "automationId": null,
-        "sourceRefs": []
+        "status": "implemented_verified_api36",
+        "route": "Build > Active Skills > Advance active skill",
+        "surface": "CareerActiveSkillAdvancePage",
+        "automationId": "career-active-skill-advance",
+        "sourceRefs": [
+          "src/Chummer.Android/Native/CareerActiveSkillAdvancePage.cs",
+          "src/Chummer.Android/Native/BuildPage.cs",
+          "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerActiveSkillAdvanceEditRequest.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CareerActiveSkillAdvanceMutation.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
+          "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
+          "chummer-core-engine/Chummer.Contracts/Characters/CharacterCareerActiveSkillAdvanceRules.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
+          "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
+        ],
+        "coverageLimit": "Only SkillControl.btnCareerIncrease for source-resolved active Skills is covered. KnowledgeSkillControl and SkillGroupControl advancement remain separate unproven rows; hidden ambiguous source, Improvement, or group-compensation authority fails closed. Hosted execution is x86_64 and is not physical ARM64 proof."
       },
       "tablet": {
         "status": "missing",
@@ -10836,12 +10945,25 @@
         "automationId": null,
         "sourceRefs": []
       },
-      "presenterMutation": null,
-      "persistenceAssertion": null,
+      "presenterMutation": "ICharacterOverviewPresenter.ApplyCareerActiveSkillAdvanceAsync binds the stable saved Skill/source GUID pair, exact rule digest, confirmation, Karma delta, and undo expense identity",
+      "persistenceAssertion": "the selected active Skill rating increases exactly once, Karma and its undo expense change atomically at expected revision +1, unrelated XML survives, and exact saved payload/document authority survives same-session reopen and two disjoint process restarts",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-career-active-skill-advance/receipt.json",
+          "receiptSha256": "8b8e5b368bd0c3826a1dc351639dfe02149cd8bc3246aab3260e5499b04778cb",
+          "apkSha256": "6834aa9437626dd9ef21833aee62d5f21d56b7f766454ed220a8081f99d1070c",
+          "abi": "x86_64",
+          "package": "com.myexternalbrain.chummer",
+          "deviceScope": "hosted_api36_x86_64_phone_profile_not_arm64_hardware",
+          "hostedArtifact": {
+            "repository": "ArchonMegalon/chummer-android",
+            "runId": 32809839213,
+            "headSha": "1c8d91d9ca0c55b5e8bdae0b4e3c37cfd90af226",
+            "artifactId": 9549892574,
+            "artifactName": "chummer-android-api36-phone-career-active-skill-advance-evidence-32809839213",
+            "artifactDigest": "sha256:161ba85950217246518494bef0617d3c10c9d80174d53d0db957b33c44fc9357"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -26229,7 +26351,7 @@
       "mutationFamily": "karma_nuyen_and_reputation",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Reputation",
         "surface": "CareerReputationPage",
         "automationId": "career-reputation-notoriety",
@@ -26244,7 +26366,8 @@
           "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
           "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
           "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs"
-        ]
+        ],
+        "coverageLimit": "The bound hosted proof covers only Notoriety 7 to 8 on the API 36 x86_64 phone profile and is not physical ARM64 proof. Other Reputation fields and Burn Street Cred remain separate rows."
       },
       "tablet": {
         "status": "missing",
@@ -26256,8 +26379,21 @@
       "persistenceAssertion": "career character/notoriety equals the submitted 0..100 value after save, reopen, and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_career_reputation_e2e.py"
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-career-notoriety/receipt.json",
+          "receiptSha256": "0738849b99b2c28c195100390c14d96fc6819ac2ef19a45e38b2ea6daefb66c8",
+          "apkSha256": "6834aa9437626dd9ef21833aee62d5f21d56b7f766454ed220a8081f99d1070c",
+          "abi": "x86_64",
+          "package": "com.myexternalbrain.chummer",
+          "deviceScope": "hosted_api36_x86_64_phone_profile_not_arm64_hardware",
+          "hostedArtifact": {
+            "repository": "ArchonMegalon/chummer-android",
+            "runId": 32809839213,
+            "headSha": "1c8d91d9ca0c55b5e8bdae0b4e3c37cfd90af226",
+            "artifactId": 9549763958,
+            "artifactName": "chummer-android-api36-phone-career-notoriety-evidence-32809839213",
+            "artifactDigest": "sha256:efba9d9d4edf285d3d7c267265d934544d18d37d8ed92dfdc33dbf5baf52ecf2"
+          }
         },
         "tablet": {
           "status": "missing",
@@ -47434,7 +47570,7 @@
       "mutationFamily": "weapons",
       "operation": "mutating_action",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "implemented_verified_api36",
         "route": "Build > Gear > Weapons > selected stable Weapon > Fire weapon",
         "surface": "CareerWeaponFirePage",
         "automationId": "career-weapon-fire-short-burst-{stable-weapon-guid}",
@@ -47450,7 +47586,7 @@
           "chummer-core-engine/Chummer.Contracts/Characters/CharacterWeaponFireRules.cs",
           "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs"
         ],
-        "coverageLimit": "Career direct root Weapons only. Mirrors Chummer5 default Single/Short/Long selection, effective direct-accessory round counts, confirmed partial Short/Long bursts, and non-partial Full/Suppressive fire. Accessory-provided active clips, mode-affecting wireless/ammo bonuses, and ammo Gear deletion side effects outside the bounded leaf stack fail closed. API 36 execution remains outstanding."
+        "coverageLimit": "Career direct root Weapons only. Mirrors Chummer5 default Single/Short/Long selection, effective direct-accessory round counts, confirmed partial Short/Long bursts, and non-partial Full/Suppressive fire. Accessory-provided active clips, mode-affecting wireless/ammo bonuses, and ammo Gear deletion side effects outside the bounded leaf stack fail closed. Short Burst has hosted API 36 x86_64 phone-profile proof; it is not physical ARM64 proof."
       },
       "tablet": {
         "status": "missing",
@@ -47462,8 +47598,21 @@
       "persistenceAssertion": "the selected direct Career Weapon's stable active clip count and linked ammo Gear quantity change together in one expected-revision atomic save; exhausted linked Gear and its now-unsaved empty clip are removed, and unrelated runner XML survives recovery/reopen",
       "e2e": {
         "phone": {
-          "status": "missing",
-          "ref": null
+          "status": "executed_api36",
+          "ref": "docs/editability-evidence/api36-phone-career-weapon-fire/receipt.json",
+          "receiptSha256": "f9f295083fd0f76920cbff6717b62b3a9b3c3e8f2931eae02dc204576839a3e8",
+          "apkSha256": "0dd3a2ba951987898792354ee1d530a0fe8a16da9fc8bae27059aa5dc28e7ff7",
+          "abi": "x86_64",
+          "package": "com.myexternalbrain.chummer",
+          "deviceScope": "hosted_api36_x86_64_phone_profile_not_arm64_hardware",
+          "hostedArtifact": {
+            "repository": "ArchonMegalon/chummer-android",
+            "runId": 32803905793,
+            "headSha": "9296bd2c8e61f8dc8f224c4fce577a8c9643eb3c",
+            "artifactId": 9547946638,
+            "artifactName": "chummer-android-api36-phone-career-weapon-fire-evidence-32803905793",
+            "artifactDigest": "sha256:1f7c3b726ccfccb071a1aca0d3413b765bf97f0be58c1e6d56d719d3d20df0f7"
+          }
         },
         "tablet": {
           "status": "missing",
