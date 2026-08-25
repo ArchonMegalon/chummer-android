@@ -53,6 +53,12 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
             "BindingEquals(",
             "CanAdoptPreview(",
             "CanConfirmPreview(",
+            "CharacterCreationFoundationOutcomes.Success",
+            "preview.RequiresExplicitConfirmation",
+            "preview.CanConfirm",
+            "IsCanonicalDigest(preview.PreviewDigest)",
+            "CanonicallyEquals(",
+            "ReceiptMatchesBeforeActivation(",
             "ReceiptMatches(",
             "AllocationIdentitiesMatch(",
             "ProjectionIdentitiesMatch(",
@@ -67,7 +73,7 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
             "PreviewCreationAttributes(",
             "ConfirmCreationAttributesAsync(",
             "new CharacterCreationAttributesConfirmRequest(",
-            "preview.PreviewDigest",
+            "canonicalPreview.PreviewDigest",
             "ExplicitlyConfirmed: true",
             "_presenter.LoadAsync(receipt.WorkspaceId",
             "CreationAttributesPhoneAuthority.ReceiptMatches(",
@@ -111,6 +117,36 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, dashboard)
         self.assertIn("The post-create AttributeEditRequest path must never serve", dashboard)
+
+    def test_confirmation_reprojects_and_validates_committed_state_before_activation(self) -> None:
+        coordinator = (NATIVE / "RunnerSessionCoordinator.cs").read_text(
+            encoding="utf-8"
+        )
+        confirmation = coordinator[
+            coordinator.index("ConfirmCreationAttributesCoreAsync(") :
+        ]
+        confirmation = confirmation[: confirmation.index("LoadCreationFoundation()")]
+
+        preview_index = confirmation.index("_creationAttributesService.Preview(")
+        equality_index = confirmation.index(
+            "CreationAttributesPhoneAuthority.CanonicallyEquals("
+        )
+        confirm_index = confirmation.index("_creationAttributesService.Confirm(")
+        direct_load_index = confirmation.index("_creationAttributesService.Load(")
+        receipt_index = confirmation.index(
+            "CreationAttributesPhoneAuthority.ReceiptMatchesBeforeActivation("
+        )
+        presenter_load_index = confirmation.index(
+            "_presenter.LoadAsync(receipt.WorkspaceId"
+        )
+        shell_index = confirmation.index("SyncShellAsync(cancellationToken)")
+
+        self.assertLess(preview_index, equality_index)
+        self.assertLess(equality_index, confirm_index)
+        self.assertLess(confirm_index, direct_load_index)
+        self.assertLess(direct_load_index, receipt_index)
+        self.assertLess(receipt_index, presenter_load_index)
+        self.assertLess(presenter_load_index, shell_index)
 
 
 if __name__ == "__main__":
