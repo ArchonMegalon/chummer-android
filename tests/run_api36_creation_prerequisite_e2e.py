@@ -14,6 +14,7 @@ import re
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -304,32 +305,74 @@ def tap_enabled_authority_option(
     *,
     max_scrolls: int = 40,
 ) -> str:
-    required = required_label.casefold()
+    candidate_ids: set[str] = set()
+    duplicate_resource_id = False
+    shared.reset_scroll_to_top(device, swipes=max_scrolls)
     for scroll_index in range(max_scrolls + 1):
-        for node in device.hierarchy():
-            searchable = " ".join(
-                (
-                    node.attributes.get("text", ""),
-                    node.attributes.get("content-desc", ""),
-                )
-            ).casefold()
-            if (
-                shared.Device._matches(node, prefix)
-                and required in searchable
-                and node.attributes.get("enabled") == "true"
-                and node.attributes.get("clickable") == "true"
-                and device.node_has_tappable_bounds(node)
-            ):
-                resource_id = node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
-                x, y = node.center
-                device.shell("input", "tap", str(x), str(y))
-                return resource_id or prefix
+        screen_ids = exact_enabled_authority_option_ids(
+            device.hierarchy(),
+            prefix,
+            required_label,
+            device.node_has_tappable_bounds,
+        )
+        if len(screen_ids) != len(set(screen_ids)):
+            duplicate_resource_id = True
+        candidate_ids.update(screen_ids)
         if scroll_index < max_scrolls:
             device.swipe_up(distance_ratio=0.22)
-    device.capture(f"missing-enabled-{prefix.rstrip('-')}-{required_label.casefold()}")
-    raise RuntimeError(
-        f"No enabled authoritative option matched {prefix!r} and label {required_label!r}"
+    if duplicate_resource_id or len(candidate_ids) != 1:
+        device.capture(
+            "invalid-authority-option-cardinality-"
+            + re.sub(r"[^a-z0-9]+", "-", required_label.casefold()).strip("-")
+        )
+        raise RuntimeError(
+            "Expected exactly one enabled authoritative option for "
+            f"prefix={prefix!r}, label={required_label!r}; "
+            f"found {len(candidate_ids)} unique candidates"
+        )
+    resource_id = next(iter(candidate_ids))
+    shared.reset_scroll_to_top(device, swipes=max_scrolls)
+    device.tap(
+        resource_id,
+        scroll=True,
+        max_scrolls=max_scrolls,
+        scroll_distance_ratio=0.22,
+        exact_resource_id=True,
     )
+    return resource_id
+
+
+def exact_enabled_authority_option_ids(
+    nodes: list[shared.UiNode],
+    prefix: str,
+    required_label: str,
+    is_tappable: Callable[[shared.UiNode], bool],
+) -> list[str]:
+    if not prefix or not required_label.strip():
+        return []
+    expected = required_label.strip().casefold()
+    candidates: list[str] = []
+    for node in nodes:
+        resource_id = node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+        accessible_values = (
+            node.attributes.get("text", "").strip().casefold(),
+            node.attributes.get("content-desc", "").strip().casefold(),
+        )
+        exact_label = any(
+            value == expected
+            or value.startswith(expected + ". ")
+            or value.startswith(expected + " · ")
+            for value in accessible_values
+        )
+        if (
+            resource_id.startswith(prefix)
+            and exact_label
+            and node.attributes.get("enabled") == "true"
+            and node.attributes.get("clickable") == "true"
+            and is_tappable(node)
+        ):
+            candidates.append(resource_id)
+    return candidates
 
 
 def main() -> int:

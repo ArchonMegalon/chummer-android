@@ -98,9 +98,9 @@ internal sealed class CreationPrerequisitePhoneDraft
     public IReadOnlyList<CharacterCreationPriorityHeritageOptionProjection> HeritageOptions(
         CharacterCreationPrerequisiteState state,
         CharacterOverviewState overview)
-        => SelectedOption(state, overview, CharacterCreationPriorityCategoryIds.Heritage) is { } rank
+        => CreationPrerequisitePhoneAuthority.IsReady(state, overview)
+           && SelectedOption(state, overview, CharacterCreationPriorityCategoryIds.Heritage) is { } rank
             ? rank.HeritageOptions
-                .Where(CreationPrerequisitePhoneAuthority.IsExactHeritageOption)
                 .OrderBy(option => option.MetatypeName, StringComparer.Ordinal)
                 .ThenBy(option => option.MetavariantName, StringComparer.Ordinal)
                 .ThenBy(option => option.SelectionId, StringComparer.Ordinal)
@@ -110,9 +110,9 @@ internal sealed class CreationPrerequisitePhoneDraft
     public IReadOnlyList<CharacterCreationPriorityTalentOptionProjection> TalentOptions(
         CharacterCreationPrerequisiteState state,
         CharacterOverviewState overview)
-        => SelectedOption(state, overview, CharacterCreationPriorityCategoryIds.Talent) is { } rank
+        => CreationPrerequisitePhoneAuthority.IsReady(state, overview)
+           && SelectedOption(state, overview, CharacterCreationPriorityCategoryIds.Talent) is { } rank
             ? rank.TalentOptions
-                .Where(CreationPrerequisitePhoneAuthority.IsExactTalentOption)
                 .OrderBy(option => option.Name, StringComparer.Ordinal)
                 .ThenBy(option => option.Value, StringComparer.Ordinal)
                 .ThenBy(option => option.SelectionId, StringComparer.Ordinal)
@@ -592,6 +592,7 @@ internal static class CreationPrerequisitePhoneAuthority
                    rank,
                    StringComparison.Ordinal)) == 1)
            && state.Authority.Options.All(IsExactProjectedOption)
+           && HasExactNestedAuthority(state.Authority.Options)
            && state.Authority.Options.All(option =>
                state.Authority.RankWeights.Count(weight =>
                    string.Equals(weight.Rank, option.Rank, StringComparison.Ordinal)
@@ -880,6 +881,17 @@ internal static class CreationPrerequisitePhoneAuthority
            && Guid.TryParseExact(option.MetatypeSourceId, "D", out Guid metatypeSourceId)
            && metatypeSourceId != Guid.Empty
            && !string.IsNullOrWhiteSpace(option.MetatypeName)
+           && (string.Equals(
+                   option.Kind,
+                   CharacterCreationPriorityChildKinds.Metatype,
+                   StringComparison.Ordinal)
+                   ? option.MetavariantSourceId is null && option.MetavariantName is null
+                   : Guid.TryParseExact(
+                         option.MetavariantSourceId,
+                         "D",
+                         out Guid metavariantSourceId)
+                     && metavariantSourceId != Guid.Empty
+                     && !string.IsNullOrWhiteSpace(option.MetavariantName))
            && option.SpecialAttributePoints >= 0
            && option.KarmaCost >= 0
            && option.Attributes.Count > 0
@@ -890,6 +902,28 @@ internal static class CreationPrerequisitePhoneAuthority
            && option.IsEnabled == (option.Blockers.Count == 0)
            && option.SourceAnchorIds.Count > 0
            && option.SourceAnchorIds.All(anchor => !string.IsNullOrWhiteSpace(anchor));
+
+    public static bool HasExactNestedAuthority(
+        IReadOnlyList<CharacterCreationPriorityOptionProjection> options)
+        => options.All(option => option.CategoryId switch
+        {
+            CharacterCreationPriorityCategoryIds.Heritage =>
+                option.HeritageOptions is { Count: > 0 }
+                && option.TalentOptions is { Count: 0 }
+                && option.HeritageOptions.All(IsExactHeritageOption)
+                && option.HeritageOptions.Select(item => item.SelectionId)
+                    .Distinct(StringComparer.Ordinal)
+                    .Count() == option.HeritageOptions.Count,
+            CharacterCreationPriorityCategoryIds.Talent =>
+                option.TalentOptions is { Count: > 0 }
+                && option.HeritageOptions is { Count: 0 }
+                && option.TalentOptions.All(IsExactTalentOption)
+                && option.TalentOptions.Select(item => item.SelectionId)
+                    .Distinct(StringComparer.Ordinal)
+                    .Count() == option.TalentOptions.Count,
+            _ => option.HeritageOptions is { Count: 0 }
+                 && option.TalentOptions is { Count: 0 }
+        });
 
     public static bool IsExactTalentOption(
         CharacterCreationPriorityTalentOptionProjection option)

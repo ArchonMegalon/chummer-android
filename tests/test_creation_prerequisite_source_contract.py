@@ -18,6 +18,71 @@ SPEC.loader.exec_module(driver)
 
 
 class CreationPrerequisiteSourceContractTests(unittest.TestCase):
+    @staticmethod
+    def authority_option_node(resource_id: str, label: str) -> driver.shared.UiNode:
+        return driver.shared.UiNode(
+            {
+                "resource-id": f"com.myexternalbrain.chummer:id/{resource_id}",
+                "text": "",
+                "content-desc": f"{label}. Core-projected option",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[0,0][100,100]",
+            }
+        )
+
+    def test_authority_option_collector_rejects_zero_candidates(self) -> None:
+        device = mock.Mock()
+        device.hierarchy.return_value = []
+        with self.assertRaisesRegex(RuntimeError, "exactly one enabled authoritative option"):
+            driver.tap_enabled_authority_option(
+                device,
+                "creation-prerequisite-heritage-option-",
+                "Human",
+                max_scrolls=0,
+            )
+        device.capture.assert_called_once()
+
+    def test_authority_option_collector_exposes_duplicate_exact_labels(self) -> None:
+        device = mock.Mock()
+        device.hierarchy.return_value = [
+                self.authority_option_node(
+                    "creation-prerequisite-heritage-option-one",
+                    "Human",
+                ),
+                self.authority_option_node(
+                    "creation-prerequisite-heritage-option-two",
+                    "Human",
+                ),
+            ]
+        device.node_has_tappable_bounds.return_value = True
+        with self.assertRaisesRegex(RuntimeError, "found 2 unique candidates"):
+            driver.tap_enabled_authority_option(
+                device,
+                "creation-prerequisite-heritage-option-",
+                "Human",
+                max_scrolls=0,
+            )
+        device.capture.assert_called_once()
+
+    def test_authority_option_collector_rejects_substring_label(self) -> None:
+        device = mock.Mock()
+        device.hierarchy.return_value = [
+                self.authority_option_node(
+                    "creation-prerequisite-heritage-option-metahuman",
+                    "Metahuman",
+                )
+            ]
+        device.node_has_tappable_bounds.return_value = True
+        with self.assertRaisesRegex(RuntimeError, "found 0 unique candidates"):
+            driver.tap_enabled_authority_option(
+                device,
+                "creation-prerequisite-heritage-option-",
+                "Human",
+                max_scrolls=0,
+            )
+        device.capture.assert_called_once()
+
     def test_priority_provisioning_declares_every_explicit_production_selection(self) -> None:
         self.assertEqual(
             ("dialog-field-newcharacterbuildmethod", "Priority"),
@@ -597,6 +662,40 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "HttpClient",
         ):
             self.assertNotIn(forbidden, source)
+
+    def test_nested_authority_rejects_malformed_and_duplicate_projections(self) -> None:
+        source = (NATIVE / "CreationPrerequisitePhoneDraft.cs").read_text(encoding="utf-8")
+        for marker in (
+            "HasExactNestedAuthority(state.Authority.Options)",
+            "option.HeritageOptions is { Count: > 0 }",
+            "option.TalentOptions is { Count: > 0 }",
+            "option.HeritageOptions.All(IsExactHeritageOption)",
+            "option.TalentOptions.All(IsExactTalentOption)",
+            ".Distinct(StringComparer.Ordinal)",
+            "Count() == option.HeritageOptions.Count",
+            "Count() == option.TalentOptions.Count",
+            "_ => option.HeritageOptions is { Count: 0 }",
+            "&& option.TalentOptions is { Count: 0 }",
+        ):
+            self.assertIn(marker, source)
+        self.assertNotIn(".Where(CreationPrerequisitePhoneAuthority.IsExactHeritageOption)", source)
+        self.assertNotIn(".Where(CreationPrerequisitePhoneAuthority.IsExactTalentOption)", source)
+
+    def test_heritage_identity_rejects_kind_specific_forgery(self) -> None:
+        source = (NATIVE / "CreationPrerequisitePhoneDraft.cs").read_text(encoding="utf-8")
+        heritage = source[
+            source.index("public static bool IsExactHeritageOption(") :
+            source.index("public static bool HasExactNestedAuthority(")
+        ]
+        for marker in (
+            "CharacterCreationPriorityChildKinds.Metatype",
+            "option.MetavariantSourceId is null && option.MetavariantName is null",
+            "Guid.TryParseExact(",
+            "option.MetavariantSourceId",
+            "metavariantSourceId != Guid.Empty",
+            "!string.IsNullOrWhiteSpace(option.MetavariantName)",
+        ):
+            self.assertIn(marker, heritage)
 
     def test_phone_pages_show_projected_typed_choices_and_core_attribute_gate(self) -> None:
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
