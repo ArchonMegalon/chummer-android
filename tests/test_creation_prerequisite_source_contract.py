@@ -1,7 +1,10 @@
 import ast
 import importlib.util
+import json
 import os
+import subprocess
 import sys
+import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 from unittest import mock
@@ -1402,10 +1405,162 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         pending = ProjectionDevice(failed=False)
         with mock.patch.object(driver.time, "monotonic", side_effect=[10.0, 40.1]), \
-             mock.patch.object(driver.time, "sleep"):
+             mock.patch.object(driver.time, "sleep"), \
+             mock.patch.object(
+                 driver,
+                 "capture_creation_authority_pending_timeout_diagnostics",
+             ) as capture_timeout:
             with self.assertRaisesRegex(RuntimeError, "remained pending"):
                 driver.wait_creation_dashboard_authority(pending, timeout=30.0)
-        self.assertEqual(["creation-dashboard-authority-loading-timeout"], pending.captures)
+        capture_timeout.assert_called_once_with(pending, timeout=30.0)
+        self.assertEqual([], pending.captures)
+
+    def test_async_authority_wait_preserves_timeout_when_diagnostics_fail(self) -> None:
+        device = mock.Mock()
+        device.find.side_effect = (
+            None,
+            driver.shared.UiNode({}),
+        )
+        with mock.patch.object(driver.time, "monotonic", side_effect=[10.0, 40.1]), \
+             mock.patch.object(
+                 driver,
+                 "capture_creation_authority_pending_timeout_diagnostics",
+                 side_effect=RuntimeError("diagnostic transport failed"),
+             ) as capture_timeout, \
+             mock.patch.object(driver, "_write_pending_timeout_artifact") as write_error:
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "Creation dashboard authority projection remained pending past the bounded wait",
+            ):
+                driver.wait_creation_dashboard_authority(device, timeout=30.0)
+
+        capture_timeout.assert_called_once_with(device, timeout=30.0)
+        write_error.assert_called_once()
+        self.assertTrue(
+            write_error.call_args.args[1].endswith("-collection-error.txt")
+        )
+
+    def test_pending_authority_timeout_bundle_is_pid_bound_and_never_anr_named(self) -> None:
+        class DiagnosticDevice:
+            def __init__(self, evidence: Path) -> None:
+                self.evidence = evidence
+                self.shell_calls: list[tuple[tuple[str, ...], int]] = []
+                self.run_calls: list[tuple[tuple[str, ...], int, bool]] = []
+
+            def shell(self, *arguments: str, timeout: int = 120) -> str:
+                self.shell_calls.append((arguments, timeout))
+                if arguments == ("pidof", driver.shared.PACKAGE):
+                    return "42 invalid 7 42"
+                if arguments[:2] == ("kill", "-3"):
+                    return ""
+                if arguments[:2] == ("debuggerd", "-b"):
+                    return f"native backtrace for {arguments[2]}"
+                if arguments[:2] == ("uiautomator", "dump"):
+                    return "UI hierarchy dumped"
+                return "diagnostic output"
+
+            def run(
+                self,
+                *arguments: str,
+                timeout: int = 120,
+                text: bool = True,
+            ) -> subprocess.CompletedProcess:
+                self.run_calls.append((arguments, timeout, text))
+                if arguments[:2] == ("exec-out", "cat"):
+                    return subprocess.CompletedProcess(
+                        arguments,
+                        0,
+                        stdout='<hierarchy rotation="0"><node /></hierarchy>',
+                        stderr="",
+                    )
+                if arguments == ("exec-out", "screencap", "-p"):
+                    return subprocess.CompletedProcess(
+                        arguments,
+                        0,
+                        stdout=b"\x89PNG\r\n\x1a\nproof",
+                        stderr=b"",
+                    )
+                raise AssertionError(f"Unexpected diagnostic run: {arguments!r}")
+
+        with tempfile.TemporaryDirectory() as directory:
+            device = DiagnosticDevice(Path(directory))
+            with mock.patch.object(driver.time, "sleep") as sleep:
+                manifest = driver.capture_creation_authority_pending_timeout_diagnostics(
+                    device,
+                    timeout=30.0,
+                )
+
+            prefix = driver.CREATION_AUTHORITY_PENDING_TIMEOUT_PREFIX
+            expected_artifacts = {
+                f"{prefix}-process-ids.txt",
+                f"{prefix}-managed-thread-signal.txt",
+                f"{prefix}-native-backtrace.txt",
+                f"{prefix}-activity-activities.txt",
+                f"{prefix}-activity-processes.txt",
+                f"{prefix}-window-windows.txt",
+                f"{prefix}-hierarchy.xml",
+                f"{prefix}-screenshot.png",
+                f"{prefix}-logcat.txt",
+            }
+            artifact_names = {
+                artifact["name"]
+                for artifact in manifest["artifacts"]
+            }
+            self.assertEqual(expected_artifacts, artifact_names)
+            self.assertEqual(["7", "42"], manifest["processIds"])
+            self.assertEqual(
+                "creation-dashboard-authority-pending-timeout",
+                manifest["diagnosticKind"],
+            )
+            self.assertEqual(
+                driver.CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY,
+                manifest["hierarchySource"],
+            )
+            self.assertNotIn("anr", json.dumps(manifest).casefold())
+            self.assertNotIn("anr", prefix.casefold())
+            self.assertEqual(
+                expected_artifacts
+                | {driver.CREATION_AUTHORITY_PENDING_TIMEOUT_MANIFEST},
+                {path.name for path in Path(directory).iterdir()},
+            )
+            stored_manifest = json.loads(
+                (Path(directory) / driver.CREATION_AUTHORITY_PENDING_TIMEOUT_MANIFEST)
+                .read_text(encoding="utf-8")
+            )
+            self.assertEqual(manifest, stored_manifest)
+            self.assertTrue(
+                all(
+                    len(artifact["sha256"]) == 64
+                    and artifact["sizeBytes"] > 0
+                    for artifact in manifest["artifacts"]
+                )
+            )
+            self.assertEqual([mock.call(0.75)], sleep.call_args_list)
+
+        shell_commands = [call[0] for call in device.shell_calls]
+        for process_id in ("7", "42"):
+            self.assertIn(("kill", "-3", process_id), shell_commands)
+            self.assertIn(("debuggerd", "-b", process_id), shell_commands)
+        for command in (
+            ("dumpsys", "activity", "activities"),
+            ("dumpsys", "activity", "processes"),
+            ("dumpsys", "window", "windows"),
+            ("logcat", "-d", "-b", "all", "-v", "threadtime", "-t", "4000"),
+        ):
+            self.assertIn(command, shell_commands)
+        self.assertIn(
+            (
+                "uiautomator",
+                "dump",
+                "--compressed",
+                driver.CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY,
+            ),
+            shell_commands,
+        )
+        self.assertIn(
+            (("exec-out", "screencap", "-p"), 15, False),
+            device.run_calls,
+        )
 
     def test_priority_created_authority_is_distinct_saved_and_digest_bound(self) -> None:
         fresh = driver.shared.WorkspaceAuthority("fresh", 2, 2, "a" * 64, "b" * 64)
