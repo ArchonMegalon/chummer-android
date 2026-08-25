@@ -847,6 +847,21 @@ public sealed class BuildPage : NativePageBase
                 },
                 automationId: "build-career-active-skill"));
             _body.Add(NativeTheme.NavigationRow(
+                "Advance attribute",
+                "Choose an exact SR5 attribute quote, review Karma and legality, then apply through a restart-safe receipt checkpoint",
+                async () =>
+                {
+                    Sr5CareerAttributeCoordinator authority = new(
+                        new RunnerSessionSr5CareerAttributePresenter(Coordinator),
+                        new PreferencesSr5CareerCheckpointOwnerAuthority());
+                    CareerAttributeAdvanceEditorState? editor = await authority.PrepareAsync();
+                    if (editor is not null)
+                    {
+                        await Navigation.PushAsync(new Sr5CareerAttributeWizardPage(Coordinator, editor));
+                    }
+                },
+                automationId: "build-career-attribute"));
+            _body.Add(NativeTheme.NavigationRow(
                 "Calendar",
                 "Add the next ISO week, edit its notes and color, or delete it by stable identity",
                 async () =>
