@@ -1715,7 +1715,7 @@
       {
         "path": "docs/editability-evidence/api36-phone-career-weapon-fire/artifact.json",
         "exists": true,
-        "sha256": "9bce1801dc1d1566381c54dbe656b1a656c5b82ee7c9bf8643850d1c2181e91e"
+        "sha256": "04378debfec18d412d196bcfcca5332b01c46c0c8476e89e2e1e2840b213868e"
       },
       {
         "path": "docs/editability-evidence/api36-phone-situational-modifiers/receipt.json",
@@ -2355,7 +2355,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "cf82a0e4fa919f4dea44efe05565ed838073f4d559ab5e2a73b334df1a572594"
+      "sha256": "d12cd1e7d519dced10ea66b60d31224d3ace1dffdf6faebd0d2d86ee7e19b58f"
     }
   },
   "coverageByFamily": {
