@@ -110,7 +110,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-design
-          ref: a833259208c92e75620850f104bff8718077e0d3
+          ref: 06603a9db904cf1d63aab323b1e501ccb4ed0422
           path: chummer-design
           persist-credentials: false
           fetch-depth: 1
@@ -132,6 +132,9 @@ jobs:
         run: |
           python3 scripts/materialize_chummer5_editability_inventory.py --check
           python3 scripts/materialize_chummer5_character_settings_contract.py --check
+
+      - name: Verify the pinned phone-beta contract
+        run: python3 chummer-design/scripts/ai/validate_android_phone_beta_contract.py
 
       - name: Verify the pinned canonical Android content manifest
         run: >-

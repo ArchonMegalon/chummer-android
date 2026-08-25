@@ -21,7 +21,7 @@ COMPATIBILITY_GRAPH = {
 }
 INVENTORY_AUTHORITIES = {
     "ArchonMegalon/chummer6-design":
-        "a833259208c92e75620850f104bff8718077e0d3",
+        "06603a9db904cf1d63aab323b1e501ccb4ed0422",
     "ArchonMegalon/chummer5a":
         "fe4355d06c98cd9b7feade89f5fc1a0e438f7ce3",
 }
@@ -120,6 +120,12 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertLess(self.text.index(check), self.text.index(settings_check))
         self.assertLess(self.text.index(check), self.text.index("run: scripts/build-debug.sh"))
         self.assertIn("needs: build", self.text)
+
+    def test_phone_path_validates_the_pinned_phone_beta_contract(self) -> None:
+        check = "python3 chummer-design/scripts/ai/validate_android_phone_beta_contract.py"
+        self.assertEqual(1, self.text.count(check))
+        self.assertLess(self.text.index(check), self.text.index("actions/setup-dotnet@"))
+        self.assertLess(self.text.index(check), self.text.index("run: scripts/build-debug.sh"))
 
     def test_inventory_inputs_trigger_the_phone_gate(self) -> None:
         self.assertEqual(
