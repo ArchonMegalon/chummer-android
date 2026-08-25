@@ -429,13 +429,15 @@ def read_source_authority_digests(device: shared.Device) -> list[str]:
 
 
 def open_prerequisite(device: shared.Device) -> None:
-    shared.reset_scroll_to_top(device, swipes=22)
-    device.tap_until_visible(
+    device.tap_bidirectional(
         "creation-stage-method",
-        "creation-prerequisite-page",
-        scroll=True,
-        max_scrolls=22,
+        timeout=180,
+        backward_scrolls=22,
+        forward_scrolls=22,
+        scroll_distance_ratio=0.22,
+        exact_resource_id=True,
     )
+    device.wait("creation-prerequisite-page", timeout=60)
     device.wait("creation-prerequisite-karma-budget", timeout=60, scroll=True, max_scrolls=22)
     device.wait("creation-prerequisite-method", timeout=45, scroll=True, max_scrolls=22)
 

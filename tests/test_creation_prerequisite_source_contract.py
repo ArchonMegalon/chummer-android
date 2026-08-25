@@ -189,6 +189,45 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             dict(driver.PRIORITY_CREATION_SELECTIONS),
         )
 
+    def test_prerequisite_navigation_uses_exact_bounded_bidirectional_search(self) -> None:
+        device = mock.Mock()
+
+        driver.open_prerequisite(device)
+
+        device.tap_bidirectional.assert_called_once_with(
+            "creation-stage-method",
+            timeout=180,
+            backward_scrolls=22,
+            forward_scrolls=22,
+            scroll_distance_ratio=0.22,
+            exact_resource_id=True,
+        )
+        device.tap_until_visible.assert_not_called()
+
+    def test_prerequisite_navigation_proves_route_before_reading_content(self) -> None:
+        device = mock.Mock()
+
+        driver.open_prerequisite(device)
+
+        self.assertEqual(
+            [
+                mock.call("creation-prerequisite-page", timeout=60),
+                mock.call(
+                    "creation-prerequisite-karma-budget",
+                    timeout=60,
+                    scroll=True,
+                    max_scrolls=22,
+                ),
+                mock.call(
+                    "creation-prerequisite-method",
+                    timeout=45,
+                    scroll=True,
+                    max_scrolls=22,
+                ),
+            ],
+            device.wait.call_args_list,
+        )
+
     def test_priority_provisioning_follows_build_route_and_public_save_before_home(self) -> None:
         calls: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
 
