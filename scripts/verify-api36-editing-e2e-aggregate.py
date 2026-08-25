@@ -22,6 +22,7 @@ JOURNEYS = {
     "creation-prerequisite": "creation-prerequisite",
     "career-active-skill-advance": "career-active-skill-advance",
     "career-weapon-fire": "career-weapon-fire",
+    "career-notoriety": "career-notoriety",
 }
 STARTED_FIELDS = {
     "profile",

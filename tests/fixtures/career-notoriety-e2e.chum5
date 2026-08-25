@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <created>True</created>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <name>CareerNotorietyE2E</name>
+  <alias>CareerNotorietyE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <gameedition>SR5</gameedition>
+  <karma>19</karma>
+  <nuyen>8765</nuyen>
+  <streetcred>4</streetcred>
+  <notoriety>7</notoriety>
+  <publicawareness>2</publicawareness>
+  <baseastralreputation>3</baseastralreputation>
+  <basewildreputation>5</basewildreputation>
+  <burntstreetcred>1</burntstreetcred>
+  <gears>
+    <gear>
+      <guid>e1111111-1111-4111-8111-111111111111</guid>
+      <name>Unrelated Gear</name>
+      <category>Electronics</category>
+      <qty>2</qty>
+      <notes>career-notoriety-unrelated-gear-exact-sentinel</notes>
+    </gear>
+  </gears>
+  <improvements />
+  <customstate proof="career-notoriety">unrelated-root-xml-must-survive</customstate>
+</character>

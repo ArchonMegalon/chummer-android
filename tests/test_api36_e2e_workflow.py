@@ -176,6 +176,10 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
                 "career-weapon-fire",
                 "tests/run_api36_career_weapon_fire_e2e.py",
             ),
+            (
+                "career-notoriety",
+                "tests/run_api36_career_notoriety_e2e.py",
+            ),
         )
         self.assertIn(
             'journey="${CHUMMER_E2E_JOURNEY:?CHUMMER_E2E_JOURNEY is required}"',
@@ -219,7 +223,8 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             2,
             self.text.count(
                 "if: ${{ matrix.journey == 'career-active-skill-advance' || "
-                "matrix.journey == 'career-weapon-fire' }}"
+                "matrix.journey == 'career-weapon-fire' || "
+                "matrix.journey == 'career-notoriety' }}"
             ),
         )
         self.assertIn("path: chummer-presentation", self.text)
@@ -277,7 +282,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             verify_block,
         )
 
-    def test_aggregate_requires_four_stable_authority_bound_receipts(self) -> None:
+    def test_aggregate_requires_five_stable_authority_bound_receipts(self) -> None:
         aggregate = self.text[self.text.index("  phone-evidence-aggregate:"):]
         self.assertIn("needs:\n      - build\n      - phone-editing-e2e", aggregate)
         self.assertIn("if: ${{ always() }}", aggregate)

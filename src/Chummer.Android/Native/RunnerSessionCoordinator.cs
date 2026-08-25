@@ -1202,13 +1202,36 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 "This runner changed while reputation was open. Reopen Reputation before saving.");
         }
 
-        await _presenter.ApplyCareerReputationEditAsync(request, cancellationToken);
-        if (State.Error is null)
+        await _presenter.ApplyCareerReputationEditAsync(request, cancellationToken)
+            .ConfigureAwait(false);
+        bool exactMutationApplied = State.Error is null
+            && State.WorkspaceId == request.WorkspaceId
+            && request.ExpectedContentRevision < long.MaxValue
+            && State.ContentRevision == request.ExpectedContentRevision + 1
+            && State.IsDirty;
+        long appliedContentRevision = exactMutationApplied ? State.ContentRevision : 0;
+        if (exactMutationApplied)
         {
-            await _presenter.SaveAsync(cancellationToken);
+            await _presenter.SaveAsync(cancellationToken).ConfigureAwait(false);
         }
-        _notice = State.Error is null ? "Reputation saved." : null;
-        await SyncShellAsync(cancellationToken);
+
+        bool durableState = exactMutationApplied
+            && State.Error is null
+            && State.WorkspaceId == request.WorkspaceId
+            && State.ContentRevision == appliedContentRevision
+            && State.SavedRevision == appliedContentRevision
+            && !State.IsDirty;
+        NativeWorkspaceAuthoritySnapshot? authority = durableState
+            ? await TryRefreshWorkspaceAuthorityAsync(
+                expectedWorkspaceId: request.WorkspaceId,
+                expectedPayloadSha256: null,
+                cancellationToken).ConfigureAwait(false)
+            : null;
+        bool persisted = durableState
+            && (!AndroidE2EAuthority.Enabled
+                || authority is not null && authority.Matches(State));
+        _notice = persisted ? "Reputation saved." : null;
+        await SyncShellAsync(cancellationToken).ConfigureAwait(false);
         NotifyChanged();
     }
 

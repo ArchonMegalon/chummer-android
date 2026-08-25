@@ -29,6 +29,10 @@ JOURNEYS = {
         "career-weapon-fire",
         "chummer.android.editing-e2e/v1",
     ),
+    "career-notoriety": (
+        "career-notoriety",
+        "chummer.android.editing-e2e/v1",
+    ),
 }
 
 

@@ -37,6 +37,7 @@ JOURNEYS = {
     "creation-prerequisite": "creation-prerequisite",
     "career-active-skill-advance": "career-active-skill-advance",
     "career-weapon-fire": "career-weapon-fire",
+    "career-notoriety": "career-notoriety",
 }
 
 
@@ -182,7 +183,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             # the original build authority used by the successful prerequisite jobs.
             self.materialize_journey(root, "full-editing", attempt="1")
             aggregate = self.validate(root, attempt="1")
-            self.assertEqual(4, aggregate["journeyCount"])
+            self.assertEqual(5, aggregate["journeyCount"])
             self.assertEqual(ARTIFACT_ID, aggregate["artifactAuthority"]["artifactId"])
 
     def test_rerun_all_replaces_all_stable_evidence_with_new_build_authority(self) -> None:
@@ -246,7 +247,7 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
             nested = full / "duplicate"
             nested.mkdir()
             shutil.copy2(full / "receipt.json", nested / "receipt.json")
-            with self.assertRaisesRegex(ValueError, "exactly 4"):
+            with self.assertRaisesRegex(ValueError, "exactly 5"):
                 self.validate(root)
 
             shutil.rmtree(nested)
