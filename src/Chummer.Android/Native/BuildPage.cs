@@ -74,6 +74,12 @@ public sealed class BuildPage : NativePageBase
 
         Title = "Sheet";
         AddWorkspacePicker();
+        if (Sr5CareerWizardCatalog.IsSr5CareerRunner(
+                Coordinator.State.Profile.Created,
+                Coordinator.State.Rules?.GameEdition))
+        {
+            AddSr5CareerWizardRoute();
+        }
         AddSummary();
         AddDossier();
         AddBuildAreas();
@@ -86,6 +92,24 @@ public sealed class BuildPage : NativePageBase
         Label marker = NativeTheme.Eyebrow(label);
         marker.AutomationId = automationId;
         _body.Add(marker);
+    }
+
+    private void AddSr5CareerWizardRoute()
+    {
+        VerticalStackLayout card = new() { Spacing = 8 };
+        card.Add(NativeTheme.Eyebrow("Shadowrun Fifth Edition"));
+        card.Add(NativeTheme.Title("Career", 23));
+        card.Add(NativeTheme.Body(
+            "Use player-intent journeys and exact review/apply receipts for this created SR5 runner.",
+            NativeTheme.Muted));
+        card.Add(NativeTheme.NavigationRow(
+            "Open Career wizard",
+            "Advance · Before Run · Live · After Run · Downtime · Corrections",
+            () => Navigation.PushAsync(new Sr5CareerWizardPage(Coordinator)),
+            automationId: "build-sr5-career-wizard"));
+        Border route = NativeTheme.Card(card);
+        route.AutomationId = Sr5CareerWizardRoutes.Hub;
+        _body.Add(route);
     }
 
     private void AddFeedback()

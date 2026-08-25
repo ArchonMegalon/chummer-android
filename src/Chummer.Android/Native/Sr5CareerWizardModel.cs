@@ -53,6 +53,7 @@ public sealed record Sr5CareerCostQuote(
     string Blocker);
 
 public sealed record Sr5CareerActionPlan(
+    Guid OwnerId,
     Guid ActionId,
     string IdempotencyKey,
     string RouteId,
@@ -60,10 +61,10 @@ public sealed record Sr5CareerActionPlan(
     CharacterWorkspaceId WorkspaceId,
     long ExpectedContentRevision,
     string DomainIdentity,
-    Sr5CareerCostQuote CostQuote,
-    bool AtomicSingleAction)
+    Sr5CareerCostQuote CostQuote)
 {
     public static Sr5CareerActionPlan FromActiveSkill(
+        Guid ownerId,
         CharacterWorkspaceId workspaceId,
         long expectedContentRevision,
         CharacterCareerActiveSkillAdvanceQuote quote,
@@ -72,6 +73,7 @@ public sealed record Sr5CareerActionPlan(
         string identity = $"{quote.Identity.SkillId:D}:{quote.Identity.SourceSkillId:D}";
         string idempotencyKey = ComputeIdempotencyKey(
             Sr5CareerWizardRoutes.ActiveSkillReview,
+            ownerId,
             workspaceId.Value,
             expectedContentRevision,
             plan.ExpenseId,
@@ -79,6 +81,7 @@ public sealed record Sr5CareerActionPlan(
             quote.LogicalRevision,
             quote.RuleDigest);
         return new Sr5CareerActionPlan(
+            ownerId,
             plan.ExpenseId,
             idempotencyKey,
             Sr5CareerWizardRoutes.ActiveSkillReview,
@@ -95,8 +98,7 @@ public sealed record Sr5CareerActionPlan(
                 quote.RuleDigest,
                 quote.LogicalRevision,
                 IsExact: CharacterCareerActiveSkillAdvanceRules.IsCoherent(quote),
-                Blocker: quote.CanAdvance ? string.Empty : quote.Blocker.ToString()),
-            AtomicSingleAction: true);
+                Blocker: quote.CanAdvance ? string.Empty : quote.Blocker.ToString()));
     }
 
     private static string ComputeIdempotencyKey(params object[] values)
@@ -117,94 +119,102 @@ public sealed record Sr5CareerApplyResult(
     Sr5CareerApplyStatus Status,
     Sr5CareerActionPlan ActionPlan,
     long? SavedContentRevision,
-    bool Atomic,
     Sr5CareerActiveSkillReceipt? Receipt,
-    string Message)
-{
-    public static bool TryCreateApplied(
-        Sr5CareerActiveSkillDraft? draft,
-        CharacterWorkspaceId? workspaceId,
-        long contentRevision,
-        long savedRevision,
-        bool isDirty,
-        decimal? actualKarma,
-        string? error,
-        out Sr5CareerApplyResult result,
-        out string blocker)
-    {
-        result = null!;
-        if (!Sr5CareerActiveSkillReceipt.TryCreate(
-                draft,
-                workspaceId,
-                contentRevision,
-                savedRevision,
-                isDirty,
-                actualKarma,
-                error,
-                out Sr5CareerActiveSkillReceipt receipt,
-                out blocker))
-        {
-            return false;
-        }
-
-        result = new Sr5CareerApplyResult(
-            Sr5CareerApplyStatus.Applied,
-            draft!.ActionPlan,
-            receipt.SavedContentRevision,
-            Atomic: draft.ActionPlan.AtomicSingleAction,
-            receipt,
-            "The exact Core mutation and expense entry reached one clean saved successor revision.");
-        return true;
-    }
-
-    public static Sr5CareerApplyResult OutcomeUnknown(Sr5CareerActiveSkillDraft draft)
-        => new(
-            Sr5CareerApplyStatus.OutcomeUnknown,
-            draft.ActionPlan,
-            SavedContentRevision: null,
-            Atomic: false,
-            Receipt: null,
-            "Persistence was not proven. Do not retry this idempotency key until the runner is reloaded and inspected.");
-}
+    Sr5CareerRecoveryResolution Resolution,
+    string Message);
 
 public enum Sr5CareerCheckpointPhase
 {
     Reviewed,
-    Applying
+    Applying,
+    Applied
 }
 
 public sealed record Sr5CareerDraftCheckpoint(
     int SchemaVersion,
+    long Version,
     string RouteId,
     Sr5CareerActionKind Kind,
     string WorkspaceId,
+    Guid OwnerId,
     long ExpectedContentRevision,
     Guid SkillId,
     Guid SourceSkillId,
     string LogicalRevision,
+    string SourceRevision,
     string RuleDigest,
     Guid ActionId,
     DateTime ExpenseDateLocal,
+    decimal ExpenseAmount,
+    string ExpenseReason,
+    string KarmaUndoType,
+    int PreviousRating,
+    int TargetRating,
+    int SavedKarma,
     string IdempotencyKey,
     Sr5CareerCheckpointPhase Phase)
 {
     public const int CurrentSchemaVersion = 1;
+
+    public bool IsStructurallyValid()
+    {
+        DateTime normalizedExpenseDate = DateTime.SpecifyKind(
+            ExpenseDateLocal,
+            DateTimeKind.Unspecified);
+        return SchemaVersion == CurrentSchemaVersion
+            && Version > 0
+            && string.Equals(RouteId, Sr5CareerWizardRoutes.ActiveSkillReview, StringComparison.Ordinal)
+            && Kind == Sr5CareerActionKind.ActiveSkillAdvance
+            && !string.IsNullOrWhiteSpace(WorkspaceId)
+            && OwnerId != Guid.Empty
+            && ExpectedContentRevision > 0
+            && SkillId != Guid.Empty
+            && SourceSkillId != Guid.Empty
+            && !string.IsNullOrWhiteSpace(LogicalRevision)
+            && !string.IsNullOrWhiteSpace(SourceRevision)
+            && !string.IsNullOrWhiteSpace(RuleDigest)
+            && ActionId != Guid.Empty
+            && normalizedExpenseDate == ExpenseDateLocal
+            && normalizedExpenseDate.Ticks % TimeSpan.TicksPerSecond == 0
+            && normalizedExpenseDate >= CharacterCareerActiveSkillAdvanceRules.MinimumExpenseDate
+            && normalizedExpenseDate <= CharacterCareerActiveSkillAdvanceRules.MaximumExpenseDate
+            && ExpenseAmount < 0m
+            && decimal.Truncate(ExpenseAmount) == ExpenseAmount
+            && !string.IsNullOrWhiteSpace(ExpenseReason)
+            && !string.IsNullOrWhiteSpace(KarmaUndoType)
+            && PreviousRating >= 0
+            && TargetRating == PreviousRating + 1
+            && SavedKarma >= 0
+            && IdempotencyKey.Length == 64
+            && IdempotencyKey.All(static character =>
+                character is >= '0' and <= '9' or >= 'a' and <= 'f')
+            && Enum.IsDefined(Phase);
+    }
 
     public static Sr5CareerDraftCheckpoint FromDraft(
         Sr5CareerActiveSkillDraft draft,
         Sr5CareerCheckpointPhase phase = Sr5CareerCheckpointPhase.Reviewed)
         => new(
             CurrentSchemaVersion,
+            Version: 1,
             Sr5CareerWizardRoutes.ActiveSkillReview,
             Sr5CareerActionKind.ActiveSkillAdvance,
             draft.WorkspaceId.Value,
+            draft.OwnerId,
             draft.ExpectedContentRevision,
             draft.Quote.Identity.SkillId,
             draft.Quote.Identity.SourceSkillId,
             draft.Quote.LogicalRevision,
+            draft.Quote.SourceRevision,
             draft.Quote.RuleDigest,
             draft.Plan.ExpenseId,
             draft.Plan.ExpenseDateLocal,
+            draft.Plan.ExpenseAmount,
+            draft.Plan.ExpenseReason,
+            draft.Plan.KarmaUndoType,
+            draft.Quote.TotalBaseRating,
+            draft.Quote.TotalBaseRating + 1,
+            draft.Plan.SavedCharacterKarma,
             draft.ActionPlan.IdempotencyKey,
             phase);
 
@@ -238,10 +248,12 @@ public sealed record Sr5CareerDraftCheckpoint(
             candidate.Identity.SkillId == SkillId
             && candidate.Identity.SourceSkillId == SourceSkillId
             && string.Equals(candidate.LogicalRevision, LogicalRevision, StringComparison.Ordinal)
+            && string.Equals(candidate.SourceRevision, SourceRevision, StringComparison.Ordinal)
             && string.Equals(candidate.RuleDigest, RuleDigest, StringComparison.Ordinal));
         if (!Sr5CareerActiveSkillDraft.TryCreate(
                 editor,
                 selected,
+                OwnerId,
                 ActionId,
                 ExpenseDateLocal,
                 out draft,
@@ -316,13 +328,14 @@ public static class Sr5CareerWizardCatalog
 }
 
 public sealed record Sr5CareerActiveSkillDraft(
+    Guid OwnerId,
     CharacterWorkspaceId WorkspaceId,
     long ExpectedContentRevision,
     CharacterCareerActiveSkillAdvanceQuote Quote,
     CharacterCareerActiveSkillAdvancePlan Plan)
 {
     public Sr5CareerActionPlan ActionPlan
-        => Sr5CareerActionPlan.FromActiveSkill(WorkspaceId, ExpectedContentRevision, Quote, Plan);
+        => Sr5CareerActionPlan.FromActiveSkill(OwnerId, WorkspaceId, ExpectedContentRevision, Quote, Plan);
 
     public CareerActiveSkillAdvanceRequest ToRequest()
         => new(
@@ -340,6 +353,7 @@ public sealed record Sr5CareerActiveSkillDraft(
     public static bool TryCreate(
         CareerActiveSkillAdvanceEditorState? editor,
         CharacterCareerActiveSkillAdvanceQuote? selected,
+        Guid ownerId,
         Guid expenseId,
         DateTime expenseDateLocal,
         out Sr5CareerActiveSkillDraft draft,
@@ -352,6 +366,11 @@ public sealed record Sr5CareerActiveSkillDraft(
             || editor.ContentRevision <= 0)
         {
             blocker = "The runner identity or revision is unavailable. Reopen the wizard.";
+            return false;
+        }
+        if (ownerId == Guid.Empty)
+        {
+            blocker = "The wizard owner identity is unavailable. Reopen the wizard.";
             return false;
         }
         if (selected is null)
@@ -382,12 +401,22 @@ public sealed record Sr5CareerActiveSkillDraft(
             };
             return false;
         }
+
+        DateTime serializedExpenseDate = DateTime.SpecifyKind(
+            new DateTime(
+                expenseDateLocal.Year,
+                expenseDateLocal.Month,
+                expenseDateLocal.Day,
+                expenseDateLocal.Hour,
+                expenseDateLocal.Minute,
+                expenseDateLocal.Second),
+            DateTimeKind.Unspecified);
         if (!CharacterCareerActiveSkillAdvanceRules.TryPlanAdvance(
                 authoritative,
                 authoritative.RuleDigest,
                 confirmed: true,
                 expenseId,
-                expenseDateLocal,
+                serializedExpenseDate,
                 out CharacterCareerActiveSkillAdvancePlan plan))
         {
             blocker = "Core rejected the confirmed expense identity, date or rule digest.";
@@ -395,6 +424,7 @@ public sealed record Sr5CareerActiveSkillDraft(
         }
 
         draft = new Sr5CareerActiveSkillDraft(
+            ownerId,
             editor.WorkspaceId,
             editor.ContentRevision,
             authoritative,
@@ -404,6 +434,7 @@ public sealed record Sr5CareerActiveSkillDraft(
 }
 
 public sealed record Sr5CareerActiveSkillReceipt(
+    Guid OwnerId,
     Guid ActionId,
     string IdempotencyKey,
     string RouteId,
@@ -421,62 +452,21 @@ public sealed record Sr5CareerActiveSkillReceipt(
     DateTime ExpenseDateLocal,
     string ExpenseReason,
     string KarmaUndoType,
-    string RuleDigest)
+    string RuleDigest,
+    string SourceRevision);
+
+public enum Sr5CareerRecoveryStatus
 {
-    public static bool TryCreate(
-        Sr5CareerActiveSkillDraft? draft,
-        CharacterWorkspaceId? workspaceId,
-        long contentRevision,
-        long savedRevision,
-        bool isDirty,
-        decimal? actualKarma,
-        string? error,
-        out Sr5CareerActiveSkillReceipt receipt,
-        out string blocker)
-    {
-        receipt = null!;
-        blocker = string.Empty;
-        if (draft is null || draft.ExpectedContentRevision == long.MaxValue)
-        {
-            blocker = "The reviewed transaction binding is unavailable.";
-            return false;
-        }
-
-        long expectedSavedRevision = draft.ExpectedContentRevision + 1;
-        if (workspaceId != draft.WorkspaceId
-            || contentRevision != expectedSavedRevision
-            || savedRevision != expectedSavedRevision
-            || isDirty
-            || !string.IsNullOrWhiteSpace(error))
-        {
-            blocker = "The mutation did not reach one clean, saved successor revision.";
-            return false;
-        }
-        if (actualKarma is null || actualKarma.Value != draft.Plan.SavedCharacterKarma)
-        {
-            blocker = "The saved Karma balance does not match the reviewed Core plan.";
-            return false;
-        }
-
-        receipt = new Sr5CareerActiveSkillReceipt(
-            draft.ActionPlan.ActionId,
-            draft.ActionPlan.IdempotencyKey,
-            Sr5CareerWizardRoutes.ActiveSkillReceipt,
-            draft.WorkspaceId,
-            draft.ExpectedContentRevision,
-            expectedSavedRevision,
-            draft.Quote.Identity.SkillId,
-            draft.Quote.Identity.SourceSkillId,
-            draft.Quote.Name,
-            draft.Quote.TotalBaseRating,
-            draft.Quote.TotalBaseRating + 1,
-            draft.Quote.KarmaCost,
-            draft.Plan.SavedCharacterKarma,
-            draft.Plan.ExpenseId,
-            draft.Plan.ExpenseDateLocal,
-            draft.Plan.ExpenseReason,
-            draft.Plan.KarmaUndoType,
-            draft.Quote.RuleDigest);
-        return true;
-    }
+    AppliedVerified,
+    NotAppliedVerified,
+    OutcomeUnknown
 }
+
+public sealed record Sr5CareerRecoveryResolution(
+    Sr5CareerRecoveryStatus Status,
+    string WorkspaceId,
+    Guid OwnerId,
+    Guid ActionId,
+    long CheckpointVersion,
+    Sr5CareerActiveSkillReceipt? Receipt,
+    string Message);
