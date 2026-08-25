@@ -194,26 +194,32 @@ public sealed class BuildPage : NativePageBase
         _creationPrerequisiteQueue.Completed += completion => ScheduleCreationPhaseAcceptance(
             _creationPrerequisiteQueue,
             completion.Request,
+            CreationDashboardAuthorityPhase.Prerequisite,
             AcceptCreationPrerequisite);
         _creationPrerequisiteQueue.Failed += failure => ScheduleCreationPhaseAcceptance(
             _creationPrerequisiteQueue,
             failure.Request,
+            CreationDashboardAuthorityPhase.Prerequisite,
             AcceptCreationPrerequisite);
         _creationAttributesQueue.Completed += completion => ScheduleCreationPhaseAcceptance(
             _creationAttributesQueue,
             completion.Request,
+            CreationDashboardAuthorityPhase.Attributes,
             AcceptCreationAttributes);
         _creationAttributesQueue.Failed += failure => ScheduleCreationPhaseAcceptance(
             _creationAttributesQueue,
             failure.Request,
+            CreationDashboardAuthorityPhase.Attributes,
             AcceptCreationAttributes);
         _creationSkillsQueue.Completed += completion => ScheduleCreationPhaseAcceptance(
             _creationSkillsQueue,
             completion.Request,
+            CreationDashboardAuthorityPhase.Skills,
             AcceptCreationSkills);
         _creationSkillsQueue.Failed += failure => ScheduleCreationPhaseAcceptance(
             _creationSkillsQueue,
             failure.Request,
+            CreationDashboardAuthorityPhase.Skills,
             AcceptCreationSkills);
         Content = new ScrollView { Content = _body };
     }
@@ -426,6 +432,7 @@ public sealed class BuildPage : NativePageBase
         ResolveCreationPhase(
             binding,
             _creationProjection?.Progress.Prerequisite,
+            CreationDashboardAuthorityPhase.Prerequisite,
             _creationPrerequisiteQueue,
             Coordinator.LoadCreationPrerequisite,
             AcceptCreationPrerequisite);
@@ -434,12 +441,14 @@ public sealed class BuildPage : NativePageBase
             ResolveCreationPhase(
                 binding,
                 _creationProjection.Progress.Attributes,
+                CreationDashboardAuthorityPhase.Attributes,
                 _creationAttributesQueue,
                 Coordinator.LoadCreationAttributes,
                 AcceptCreationAttributes);
             ResolveCreationPhase(
                 binding,
                 _creationProjection.Progress.Skills,
+                CreationDashboardAuthorityPhase.Skills,
                 _creationSkillsQueue,
                 Coordinator.LoadCreationSkills,
                 AcceptCreationSkills);
@@ -450,6 +459,7 @@ public sealed class BuildPage : NativePageBase
     private static void ResolveCreationPhase<TResult>(
         CreationDashboardProjectionBinding binding,
         CreationDashboardAuthorityPhaseState? state,
+        CreationDashboardAuthorityPhase phase,
         LatestBackgroundProjectionQueue<CreationDashboardProjectionBinding, TResult> queue,
         Func<TResult> loader,
         Action<CreationDashboardProjectionBinding, TResult, Exception?> accept)
@@ -457,43 +467,66 @@ public sealed class BuildPage : NativePageBase
         if (state != CreationDashboardAuthorityPhaseState.Loading)
             return;
 
-        queue.TryRequest(
+        bool requested = queue.TryRequest(
             binding,
-            (_, cancellationToken) =>
+            (request, cancellationToken) =>
             {
+                TraceCreationPhase(phase, "loader-enter", request);
                 cancellationToken.ThrowIfCancellationRequested();
                 TResult result = loader();
                 cancellationToken.ThrowIfCancellationRequested();
+                TraceCreationPhase(phase, "loader-terminal", request);
                 return result;
             },
             out BackgroundProjectionRequest<CreationDashboardProjectionBinding> request);
+        TraceCreationPhase(phase, requested ? "request-new" : "request-shared", request);
         if (queue.TryTake(request, out TResult completed, out Exception? error))
+        {
+            TraceCreationPhase(phase, "take-synchronous", request);
             accept(binding, completed, error);
+        }
     }
 
     private void ScheduleCreationPhaseAcceptance<TResult>(
         LatestBackgroundProjectionQueue<CreationDashboardProjectionBinding, TResult> queue,
         BackgroundProjectionRequest<CreationDashboardProjectionBinding> request,
+        CreationDashboardAuthorityPhase phase,
         Action<CreationDashboardProjectionBinding, TResult, Exception?> accept)
     {
+        TraceCreationPhase(phase, "dispatch-post", request);
         MainThread.BeginInvokeOnMainThread(() =>
         {
+            TraceCreationPhase(phase, "dispatch-enter", request);
             if (!CanAcceptCreationPhase(request))
             {
                 if (BuildPageUiProjection.ConsumeRejectedCreationPhaseForRefresh(queue, request))
+                {
+                    TraceCreationPhase(phase, "take-rejected-refresh", request);
                     Refresh();
+                }
                 return;
             }
 
             if (!queue.TryTake(request, out TResult completed, out Exception? error))
             {
+                TraceCreationPhase(phase, "take-missed", request);
                 return;
             }
 
+            TraceCreationPhase(phase, "take-accepted", request);
             accept(request.Key, completed, error);
             Refresh();
         });
     }
+
+    private static void TraceCreationPhase(
+        CreationDashboardAuthorityPhase phase,
+        string activity,
+        BackgroundProjectionRequest<CreationDashboardProjectionBinding> request)
+        => Console.WriteLine(
+            $"CHUMMER_CREATION_AUTHORITY phase={phase} activity={activity} "
+            + $"generation={request.Generation.ToString(CultureInfo.InvariantCulture)} "
+            + $"revision={request.Key.ContentRevision.ToString(CultureInfo.InvariantCulture)}");
 
     private bool CanAcceptCreationPhase(
         BackgroundProjectionRequest<CreationDashboardProjectionBinding> request)
