@@ -50,9 +50,9 @@ def extract_certificate_sha256(output: str) -> tuple[str, str]:
                 matches.append((label, match.group("digest").lower()))
                 break
 
-    if len(matches) != 1:
+    if certificate_digest_line_count != 1 or len(matches) != 1:
         raise CertificateDigestError(
-            "expected one accepted signer certificate SHA-256 line; "
+            "expected exactly one certificate SHA-256 line and one accepted signer line; "
             f"accepted={len(matches)}, certificate_digest_lines="
             f"{certificate_digest_line_count}"
         )

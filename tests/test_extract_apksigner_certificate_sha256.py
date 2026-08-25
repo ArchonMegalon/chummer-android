@@ -60,6 +60,20 @@ class ExtractApksignerCertificateSha256Tests(unittest.TestCase):
                 f"Signer #2 certificate SHA-256 digest: {LOWER_DIGEST}\n"
             )
 
+    def test_rejects_accepted_plus_source_stamp_digest(self) -> None:
+        with self.assertRaises(CertificateDigestError):
+            extract_certificate_sha256(
+                f"Signer #1 certificate SHA-256 digest: {LOWER_DIGEST}\n"
+                f"Source Stamp Signer certificate SHA-256 digest: {LOWER_DIGEST}\n"
+            )
+
+    def test_rejects_accepted_plus_unrecognized_certificate_digest(self) -> None:
+        with self.assertRaises(CertificateDigestError):
+            extract_certificate_sha256(
+                f"Signer #1 certificate SHA-256 digest: {LOWER_DIGEST}\n"
+                f"Future Signer certificate SHA-256 digest: {LOWER_DIGEST}\n"
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
