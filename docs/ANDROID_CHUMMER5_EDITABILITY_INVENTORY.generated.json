@@ -219,7 +219,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Files/FileCharacterRosterFavoriteStore.cs",
         "exists": true,
-        "sha256": "b981fbd72d9829d33488fefbee9dcc30288eafbaf9aa9a368b2c38be06117286"
+        "sha256": "6e29765b430bbb40cf04a56d2f2cb201e6cb21a61e864d87459a08384f1be17c"
       },
       {
         "path": "src/Chummer.Android/Native/GroupNamePage.cs",
@@ -614,12 +614,12 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "de5c5051f7c9700c684b89833412901020eb85b4c696fbc07cbb4f74ce13eee8"
+        "sha256": "dab87dbadd0461fbfbbe252b1ccff6e083438d2cbc98dbf75239285f3979e6ab"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
         "exists": true,
-        "sha256": "b1575170e40323f8f309a9e7fdb169e5ce1c8e0efcae1cfcd2c75f49d0832be9"
+        "sha256": "31bbeb0e2d72fd1e6bd43ad10f4ffab8a739704b86be743266fcef2541f139e4"
       },
       {
         "path": "tests/fixtures/career-active-skill-advance-e2e.chum5",
@@ -2059,7 +2059,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "4e8cc5add8d59af24783ab9c7d170a3111356592d4dfe2c8a2b465956211aeaf"
+        "sha256": "538300dad3365ab7848e356905afdeec6127953441f1a0600970613d5c05b087"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
