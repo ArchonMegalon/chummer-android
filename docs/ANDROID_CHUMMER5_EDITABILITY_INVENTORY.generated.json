@@ -79,12 +79,12 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "53ac6805ec65d9cffe10eeb261310fb0f84f3db3d98646cbc25aa3c56fc972df"
+        "sha256": "ff3876fb9695ba7d750b9d5145100f2fbf282577208d9532c9506fece7e5813d"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
         "exists": true,
-        "sha256": "87496273e99a3f9fc4599f54f3d9453c918d7280a9f857526fd3bf5c1b988b58"
+        "sha256": "6d5a62af0de005975e79e74695e110f5bd6377fab4d437c4477f7c95883fa256"
       },
       {
         "path": "src/Chummer.Android/Native/CareerReputationPage.cs",
@@ -119,17 +119,17 @@
       {
         "path": "src/Chummer.Android/Native/HomePage.cs",
         "exists": true,
-        "sha256": "ce1cbd8256a87d8151163371a567c5eb1a9d31337de954db98ef30c7c5444a17"
+        "sha256": "a5e53365808ad44b26104fee4f513a3a22cbcb6a7a7ab8d9ceb5fbf2044018f1"
       },
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "d3877000e0d1d05bbbd2f82418bd8eb7d776ae9a20d84eee6259a73efaff34ff"
+        "sha256": "3bcc79f855e18adc07a4dbdca7cfb6d2fcccf8e6a641a0aba48cc3e554b715c1"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
         "exists": true,
-        "sha256": "80d1780bcd602d7a53cbff965803b604727238e1ba051eecce7d74d5ca0e3c5e"
+        "sha256": "caf1d1b28c143aeb11196dc425e368ffecfbeb667ec30b37c84e667b6e4effde"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ApplicationDeleteConfirmationPresenter.cs",
@@ -599,7 +599,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "cd0ca4aef9e86157a7e782708090775ba41588ff7b7aaaf541771b79bc8409a7"
+        "sha256": "ee759e63ed7bc2935bbe6a9246a50824bcb2a40b950c7104fcfa9efa25242dc4"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1034,7 +1034,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "5670c3d2a121a5bc0c2eb993c70312eb764465b3e582948226c2a33c5b449935"
+        "sha256": "c4cdc89350d1435932b5d6f0b10900036bc62f36d56d40278b0177fc3b50d0da"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",

@@ -637,7 +637,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             def node_has_tappable_bounds(node) -> bool:
                 return bool(node.attributes.get("bounds"))
 
-            def wait_for_single_exact_resource_id(self, selector: str, **_options: object):
+            def wait_exact_resource_id_bidirectional(
+                self,
+                selector: str,
+                **_options: object,
+            ):
                 self.assert_exact(selector)
                 return enabled
 
@@ -662,6 +666,94 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(22, device.up)
         self.assertEqual([("input", "tap", "500", "500")], device.taps)
 
+    def test_exact_rank_reacquisition_advances_past_clipped_same_id(self) -> None:
+        def rank_node(rank: str, *, enabled: bool, bounds: str):
+            return driver.shared.UiNode(
+                {
+                    "resource-id": (
+                        "com.myexternalbrain.chummer:id/"
+                        f"creation-prerequisite-rank-resources-{rank}"
+                    ),
+                    "enabled": str(enabled).lower(),
+                    "clickable": "true",
+                    "bounds": bounds,
+                }
+            )
+
+        visible = rank_node("e", enabled=True, bounds="[100,1800][900,2000]")
+        clipped = rank_node("e", enabled=True, bounds="[105,2138][977,2140]")
+        projected = [
+            rank_node(rank, enabled=False, bounds="[100,400][900,600]")
+            for rank in "abcd"
+        ] + [visible]
+
+        class RankDevice:
+            reacquiring = False
+            reacquisition_reads = 0
+            up = 0
+            taps: list[tuple[str, ...]] = []
+
+            def hierarchy(self):
+                if not self.reacquiring:
+                    return projected
+                self.reacquisition_reads += 1
+                return [clipped] if self.reacquisition_reads == 1 else [visible]
+
+            @staticmethod
+            def display_size():
+                return 1080, 2400
+
+            @staticmethod
+            def _scroll_x_ratio(_selector: str) -> float:
+                return 0.5
+
+            def swipe_up(self, **_options: object) -> None:
+                self.up += 1
+
+            @staticmethod
+            def swipe_down(**_options: object) -> None:
+                return None
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes=None) -> bool:
+                return False
+
+            def node_has_tappable_bounds(self, node) -> bool:
+                return driver.shared.Device.node_has_tappable_bounds(self, node)
+
+            def wait_exact_resource_id_bidirectional(
+                self,
+                selector: str,
+                **options: object,
+            ):
+                self.reacquiring = True
+                return driver.shared.Device.wait_exact_resource_id_bidirectional(
+                    self,
+                    selector,
+                    **options,
+                )
+
+            def shell(self, *arguments: str) -> str:
+                self.taps.append(arguments)
+                return ""
+
+            def capture(self, name: str) -> None:
+                raise AssertionError(f"unexpected capture: {name}")
+
+        device = RankDevice()
+        with mock.patch.object(driver.shared, "reset_scroll_to_top") as reset, \
+             mock.patch.object(driver.time, "sleep"):
+            selected = driver.tap_first_exact_enabled_priority_rank(
+                device,
+                "resources",
+            )
+
+        self.assertEqual("creation-prerequisite-rank-resources-e", selected)
+        self.assertEqual(2, device.reacquisition_reads)
+        self.assertEqual(23, device.up)
+        self.assertEqual([("input", "tap", "500", "1900")], device.taps)
+        self.assertEqual([mock.call(device, swipes=22)] * 2, reset.call_args_list)
+
     def test_exact_rank_scan_rejects_duplicate_or_malformed_resource_ids_before_tap(self) -> None:
         duplicate = self.authority_option_node(
             "creation-prerequisite-rank-heritage-a",
@@ -684,7 +776,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                      mock.patch.object(driver.time, "sleep"), \
                      self.assertRaisesRegex(RuntimeError, expected):
                     driver.tap_first_exact_enabled_priority_rank(device, "heritage")
-                device.wait_for_single_exact_resource_id.assert_not_called()
+                device.wait_exact_resource_id_bidirectional.assert_not_called()
                 device.shell.assert_not_called()
 
     def test_exact_rank_scan_requires_the_complete_a_to_e_projection(self) -> None:
@@ -704,7 +796,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
              self.assertRaisesRegex(RuntimeError, "expectedIds"):
             driver.tap_first_exact_enabled_priority_rank(device, "heritage")
 
-        device.wait_for_single_exact_resource_id.assert_not_called()
+        device.wait_exact_resource_id_bidirectional.assert_not_called()
         device.shell.assert_not_called()
 
     def test_rank_selection_fails_closed_on_unbound_or_unrefreshed_rank(self) -> None:

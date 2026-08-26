@@ -916,11 +916,11 @@ def tap_first_exact_enabled_priority_rank(device: shared.Device, category: str) 
         key=lambda resource_id: resource_id[len(prefix) :],
     )
     shared.reset_scroll_to_top(device, swipes=22)
-    node = device.wait_for_single_exact_resource_id(
+    node = device.wait_exact_resource_id_bidirectional(
         selected_resource_id,
         timeout=45,
-        scroll=True,
-        max_scrolls=22,
+        backward_scrolls=0,
+        forward_scrolls=22,
         scroll_distance_ratio=0.22,
         evidence_prefix=f"creation-prerequisite-{category}-rank-option",
         surface_name=f"Enabled {category} rank option",
