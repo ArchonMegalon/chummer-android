@@ -23,6 +23,13 @@ import run_api36_editing_e2e as shared
 
 
 CATEGORIES = ("heritage", "talent", "attributes", "skills", "resources")
+PRIORITY_PROOF_RANKS = {
+    "heritage": "a",
+    "talent": "e",
+    "attributes": "b",
+    "skills": "c",
+    "resources": "d",
+}
 CREATION_KARMA_AUTHORITY_BLOCKER = "creation-karma-authority-required"
 STANDARD_PRIORITY_SETTINGS_ID = "223a11ff-80e0-428b-89a9-6ef1c243b8b6"
 SHORT_AUTHORITY_BINDING = re.compile(
@@ -41,6 +48,262 @@ CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY = (
     "/sdcard/chummer-creation-authority-pending-timeout.xml"
 )
 CREATION_AUTHORITY_PENDING_TIMEOUT_TEXT_LIMIT = 1_000_000
+PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v1"
+PROGRESS_FILE_NAME = "creation-prerequisite-progress.json"
+TOTAL_PERFORMANCE_TARGET_MS = 15 * 60 * 1000
+PHASE_BUDGET_MS = {
+    "device-preflight-install": 180_000,
+    "initial-authority": 90_000,
+    "priority-ranks": 150_000,
+    "typed-authority-options": 150_000,
+    "preview-confirm": 150_000,
+    "same-process-reopen": 90_000,
+    "process-restart-reopen": 90_000,
+}
+PHASE_ORDER = tuple(PHASE_BUDGET_MS)
+
+
+def accessibility_signature(
+    nodes: list[shared.UiNode],
+) -> tuple[tuple[str, ...], ...]:
+    """Return one order-independent, duplicate-preserving viewport signature."""
+    keys = (
+        "resource-id",
+        "class",
+        "text",
+        "content-desc",
+        "enabled",
+        "clickable",
+        "checked",
+        "bounds",
+    )
+    return tuple(sorted(tuple(node.attributes.get(key, "") for key in keys) for node in nodes))
+
+
+def scan_forward_until_stable(
+    device: shared.Device,
+    *,
+    scan_id: str,
+    max_scrolls: int,
+    distance_ratio: float,
+    stable_repeats: int = 2,
+    max_consecutive_empty_reads: int = 3,
+    delay_seconds: float = 0.2,
+    observer: Callable[[dict[str, object]], None] | None = None,
+) -> list[list[shared.UiNode]]:
+    """Scan through the exact stable page end instead of spending the full bound.
+
+    Two unchanged, full accessibility signatures after forward swipes prove that
+    the native viewport stopped moving. Exhausting the configured bound without
+    that proof fails closed, so early termination cannot hide a later duplicate.
+    """
+    if (
+        not scan_id
+        or max_scrolls < stable_repeats
+        or stable_repeats < 1
+        or max_consecutive_empty_reads < 0
+    ):
+        raise ValueError("A named scan with enough scroll budget for stable-end proof is required")
+    started = time.monotonic()
+    screens: list[list[shared.UiNode]] = []
+    previous: tuple[tuple[str, ...], ...] | None = None
+    unchanged = 0
+    swipes = 0
+    consecutive_empty_reads = 0
+    total_empty_reads = 0
+    while swipes <= max_scrolls:
+        nodes = device.hierarchy()
+        if not nodes:
+            consecutive_empty_reads += 1
+            total_empty_reads += 1
+            if consecutive_empty_reads > max_consecutive_empty_reads:
+                result = {
+                    "scanId": scan_id,
+                    "status": "empty-hierarchy-exhausted",
+                    "screens": len(screens),
+                    "swipes": swipes,
+                    "configuredMaxScrolls": max_scrolls,
+                    "stableRepeats": stable_repeats,
+                    "emptyHierarchyReads": total_empty_reads,
+                    "maximumConsecutiveEmptyReads": max_consecutive_empty_reads,
+                    "elapsedMs": round((time.monotonic() - started) * 1000),
+                }
+                if observer is not None:
+                    observer(result)
+                device.capture(f"{scan_id}-empty-hierarchy-exhausted")
+                raise RuntimeError(
+                    f"Accessibility scan {scan_id!r} exhausted transient empty hierarchy reads"
+                )
+            time.sleep(0.75)
+            continue
+        consecutive_empty_reads = 0
+        screens.append(nodes)
+        signature = accessibility_signature(nodes)
+        unchanged = unchanged + 1 if previous is not None and signature == previous else 0
+        previous = signature
+        if unchanged >= stable_repeats:
+            result = {
+                "scanId": scan_id,
+                "status": "stable-end",
+                "screens": len(screens),
+                "swipes": swipes,
+                "configuredMaxScrolls": max_scrolls,
+                "stableRepeats": stable_repeats,
+                "emptyHierarchyReads": total_empty_reads,
+                "maximumConsecutiveEmptyReads": max_consecutive_empty_reads,
+                "elapsedMs": round((time.monotonic() - started) * 1000),
+            }
+            if observer is not None:
+                observer(result)
+            return screens
+        if swipes >= max_scrolls:
+            break
+        device.swipe_up(distance_ratio=distance_ratio)
+        swipes += 1
+        if delay_seconds > 0:
+            time.sleep(delay_seconds)
+    result = {
+        "scanId": scan_id,
+        "status": "bound-exhausted",
+        "screens": len(screens),
+        "swipes": swipes,
+        "configuredMaxScrolls": max_scrolls,
+        "stableRepeats": stable_repeats,
+        "emptyHierarchyReads": total_empty_reads,
+        "maximumConsecutiveEmptyReads": max_consecutive_empty_reads,
+        "elapsedMs": round((time.monotonic() - started) * 1000),
+    }
+    if observer is not None:
+        observer(result)
+    device.capture(f"{scan_id}-stable-end-unproven")
+    raise RuntimeError(
+        f"Accessibility scan {scan_id!r} did not prove a stable page end within "
+        f"{max_scrolls} forward swipes"
+    )
+
+
+class ProgressRecorder:
+    """Deterministic phase events plus atomic timing evidence for a physical run."""
+
+    def __init__(self, evidence_root: Path) -> None:
+        self.evidence_path = evidence_root.resolve() / PROGRESS_FILE_NAME
+        self.started = time.monotonic()
+        self.phases: list[dict[str, object]] = []
+        self.scans: list[dict[str, object]] = []
+        self._active_id: str | None = None
+        self._active_started = 0.0
+        self._finished = False
+
+    def advance(self, phase_id: str) -> None:
+        if phase_id not in PHASE_BUDGET_MS:
+            raise RuntimeError(f"Unknown prerequisite progress phase {phase_id!r}")
+        expected_index = len(self.phases) + (1 if self._active_id is not None else 0)
+        expected = PHASE_ORDER[expected_index] if expected_index < len(PHASE_ORDER) else None
+        if self._finished or phase_id != expected:
+            raise RuntimeError(
+                f"Expected prerequisite progress phase {expected!r}, got {phase_id!r}"
+            )
+        self._close_active("pass")
+        self._active_id = phase_id
+        self._active_started = time.monotonic()
+        self._emit({
+            "schema": PROGRESS_SCHEMA,
+            "event": "phase-start",
+            "ordinal": len(self.phases) + 1,
+            "phaseId": phase_id,
+        })
+        self._write("running")
+
+    def record_scan(self, scan: dict[str, object]) -> None:
+        if self._active_id is None or self._finished:
+            raise RuntimeError("Scan timing was recorded outside an active progress phase")
+        self.scans.append({**scan, "phaseId": self._active_id})
+        self._write("running")
+
+    def finish(self) -> dict[str, object]:
+        if self._finished:
+            raise RuntimeError("Prerequisite progress was already finalized")
+        self._close_active("pass")
+        completed = tuple(phase["phaseId"] for phase in self.phases)
+        if completed != PHASE_ORDER:
+            raise RuntimeError(
+                f"Prerequisite progress is incomplete: expected={PHASE_ORDER!r}, "
+                f"actual={completed!r}"
+            )
+        self._finished = True
+        snapshot = self.snapshot("timing-complete")
+        self._atomic_write(snapshot)
+        self._emit({
+            "schema": PROGRESS_SCHEMA,
+            "event": "timing-complete",
+            "phaseCount": len(self.phases),
+            "scanCount": len(self.scans),
+            "totalElapsedMs": snapshot["totalElapsedMs"],
+        })
+        return snapshot
+
+    def fail(self, error: BaseException) -> None:
+        if self._finished:
+            return
+        self._close_active("fail")
+        self._finished = True
+        snapshot = self.snapshot("fail")
+        snapshot["failureType"] = type(error).__name__
+        self._atomic_write(snapshot)
+        self._emit({
+            "schema": PROGRESS_SCHEMA,
+            "event": "timing-failed",
+            "failureType": type(error).__name__,
+            "totalElapsedMs": snapshot["totalElapsedMs"],
+        })
+
+    def snapshot(self, status: str) -> dict[str, object]:
+        total_elapsed = round((time.monotonic() - self.started) * 1000)
+        return {
+            "schema": PROGRESS_SCHEMA,
+            "status": status,
+            "clock": "time.monotonic",
+            "configuredTotalTargetMs": TOTAL_PERFORMANCE_TARGET_MS,
+            "totalElapsedMs": total_elapsed,
+            "withinConfiguredTotalTarget": total_elapsed <= TOTAL_PERFORMANCE_TARGET_MS,
+            "phaseBudgetsMs": dict(PHASE_BUDGET_MS),
+            "phases": list(self.phases),
+            "scans": list(self.scans),
+        }
+
+    def _close_active(self, status: str) -> None:
+        if self._active_id is None:
+            return
+        elapsed = round((time.monotonic() - self._active_started) * 1000)
+        budget = PHASE_BUDGET_MS[self._active_id]
+        phase = {
+            "ordinal": len(self.phases) + 1,
+            "phaseId": self._active_id,
+            "status": status,
+            "elapsedMs": elapsed,
+            "budgetMs": budget,
+            "withinBudget": elapsed <= budget,
+        }
+        self.phases.append(phase)
+        self._emit({"schema": PROGRESS_SCHEMA, "event": "phase-complete", **phase})
+        self._active_id = None
+        self._active_started = 0.0
+
+    def _write(self, status: str) -> None:
+        self._atomic_write(self.snapshot(status))
+
+    def _atomic_write(self, payload: dict[str, object]) -> None:
+        self.evidence_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.evidence_path.with_name(f".{self.evidence_path.name}.tmp")
+        temporary.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        temporary.replace(self.evidence_path)
+
+    @staticmethod
+    def _emit(payload: dict[str, object]) -> None:
+        print(json.dumps(payload, sort_keys=True), flush=True)
 
 
 def sha256(path: Path) -> str:
@@ -52,7 +315,12 @@ def node_text(device: shared.Device, selector: str, *, scroll: bool = False) -> 
     return node.attributes.get("text") or node.attributes.get("content-desc") or ""
 
 
-def assert_uncreated_advanced_editor_gated(device: shared.Device) -> None:
+def assert_uncreated_advanced_editor_gated(
+    device: shared.Device,
+    *,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+    scan_id: str = "advanced-editor-gate",
+) -> None:
     """Scan the whole creation dashboard for Career/editor escape hatches."""
     forbidden = (
         "Actions",
@@ -63,8 +331,14 @@ def assert_uncreated_advanced_editor_gated(device: shared.Device) -> None:
         "attribute-save-",
     )
     shared.reset_scroll_to_top(device, swipes=18)
-    for scroll_index in range(19):
-        nodes = device.hierarchy()
+    screens = scan_forward_until_stable(
+        device,
+        scan_id=scan_id,
+        max_scrolls=18,
+        distance_ratio=0.22,
+        observer=scan_observer,
+    )
+    for nodes in screens:
         for selector in forbidden:
             if any(shared.Device._matches(node, selector) for node in nodes):
                 device.capture(f"wizard-forbidden-{selector}")
@@ -72,8 +346,6 @@ def assert_uncreated_advanced_editor_gated(device: shared.Device) -> None:
                     "Creation dashboard exposed a Career/advanced-editor control while "
                     f"the authoritative runner is still uncreated: {selector!r}"
                 )
-        if scroll_index < 18:
-            device.swipe_up()
     shared.reset_scroll_to_top(device, swipes=18)
 
 
@@ -782,18 +1054,38 @@ def read_source_authority_digests(device: shared.Device) -> list[str]:
     )
 
 
-def tap_first_exact_enabled_priority_rank(device: shared.Device, category: str) -> str:
-    """Tap the first exact, enabled A-E rank after a cardinality scan."""
+def tap_prescribed_exact_enabled_priority_rank(
+    device: shared.Device,
+    category: str,
+    *,
+    expected_rank: str | None = None,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+) -> str:
+    """Tap one prescribed exact, enabled A-E rank after a cardinality scan."""
+    prescribed_rank = expected_rank or PRIORITY_PROOF_RANKS.get(category, "")
+    if re.fullmatch(r"[a-e]", prescribed_rank) is None:
+        raise RuntimeError(
+            f"No exact legal Priority proof rank was prescribed for {category!r}: "
+            f"{prescribed_rank!r}"
+        )
     prefix = f"creation-prerequisite-rank-{category}-"
     expected_ids = {f"{prefix}{rank}" for rank in "abcde"}
+    selected_resource_id = f"{prefix}{prescribed_rank}"
     observed_ids: set[str] = set()
     candidates: set[str] = set()
     invalid_ids: set[str] = set()
     duplicate_ids: set[str] = set()
     shared.reset_scroll_to_top(device, swipes=22)
-    for scroll_index in range(23):
+    screens = scan_forward_until_stable(
+        device,
+        scan_id=f"rank-cardinality-{category}",
+        max_scrolls=22,
+        distance_ratio=0.22,
+        observer=scan_observer,
+    )
+    for nodes in screens:
         screen_ids: list[str] = []
-        for node in device.hierarchy():
+        for node in nodes:
             resource_id = node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
             if not resource_id.startswith(prefix):
                 continue
@@ -814,15 +1106,11 @@ def tap_first_exact_enabled_priority_rank(device: shared.Device, category: str) 
             for resource_id in set(screen_ids)
             if screen_ids.count(resource_id) > 1
         )
-        if scroll_index < 22:
-            device.swipe_up(distance_ratio=0.22)
-            time.sleep(0.2)
-
     if (
         invalid_ids
         or duplicate_ids
         or observed_ids != expected_ids
-        or not candidates
+        or selected_resource_id not in candidates
     ):
         device.capture(f"creation-prerequisite-{category}-rank-cardinality-invalid")
         raise RuntimeError(
@@ -831,10 +1119,6 @@ def tap_first_exact_enabled_priority_rank(device: shared.Device, category: str) 
             f"invalidIds={sorted(invalid_ids)!r}, duplicateIds={sorted(duplicate_ids)!r}"
         )
 
-    selected_resource_id = min(
-        candidates,
-        key=lambda resource_id: resource_id[len(prefix) :],
-    )
     shared.reset_scroll_to_top(device, swipes=22)
     node = device.wait_exact_resource_id_bidirectional(
         selected_resource_id,
@@ -858,7 +1142,13 @@ def tap_first_exact_enabled_priority_rank(device: shared.Device, category: str) 
     return selected_resource_id
 
 
-def select_priority_rank(device: shared.Device, category: str) -> str:
+def select_priority_rank(
+    device: shared.Device,
+    category: str,
+    *,
+    expected_rank: str | None = None,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+) -> str:
     """Select one exact projected rank and prove that the parent draft refreshed.
 
     Source-authority collection intentionally finishes at the bottom of the long
@@ -887,7 +1177,12 @@ def select_priority_rank(device: shared.Device, category: str) -> str:
         evidence_prefix=f"creation-prerequisite-{category}-category-route",
         surface_name=f"{category} priority category route",
     )
-    selected_resource_id = tap_first_exact_enabled_priority_rank(device, category)
+    selected_resource_id = tap_prescribed_exact_enabled_priority_rank(
+        device,
+        category,
+        expected_rank=expected_rank,
+        scan_observer=scan_observer,
+    )
 
     expected_prefix = f"creation-prerequisite-rank-{category}-"
     if not selected_resource_id.startswith(expected_prefix):
@@ -989,13 +1284,24 @@ def tap_enabled_authority_option(
     required_label: str,
     *,
     max_scrolls: int = 40,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
 ) -> str:
     candidate_ids: set[str] = set()
     duplicate_resource_id = False
     shared.reset_scroll_to_top(device, swipes=max_scrolls)
-    for scroll_index in range(max_scrolls + 1):
+    screens = scan_forward_until_stable(
+        device,
+        scan_id=(
+            "authority-option-cardinality-"
+            + re.sub(r"[^a-z0-9]+", "-", required_label.casefold()).strip("-")
+        ),
+        max_scrolls=max_scrolls,
+        distance_ratio=0.22,
+        observer=scan_observer,
+    )
+    for nodes in screens:
         screen_ids = exact_enabled_authority_option_ids(
-            device.hierarchy(),
+            nodes,
             prefix,
             required_label,
             device.node_has_tappable_bounds,
@@ -1003,8 +1309,6 @@ def tap_enabled_authority_option(
         if len(screen_ids) != len(set(screen_ids)):
             duplicate_resource_id = True
         candidate_ids.update(screen_ids)
-        if scroll_index < max_scrolls:
-            device.swipe_up(distance_ratio=0.22)
     if duplicate_resource_id or len(candidate_ids) != 1:
         device.capture(
             "invalid-authority-option-cardinality-"
@@ -1107,6 +1411,8 @@ def require_exact_restored_authority_option(
     expected_selection_id: str,
     *,
     max_scrolls: int = 40,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+    scan_id: str | None = None,
 ) -> None:
     # Persisted-draft authority is read from the bottom of the page immediately
     # before this check. Re-establish the page origin before resolving the
@@ -1140,17 +1446,22 @@ def require_exact_restored_authority_option(
     candidate_ids: set[str] = set()
     duplicate_resource_id = False
     shared.reset_scroll_to_top(device, swipes=max_scrolls)
-    for scroll_index in range(max_scrolls + 1):
+    screens = scan_forward_until_stable(
+        device,
+        scan_id=scan_id or f"restored-authority-option-{category}",
+        max_scrolls=max_scrolls,
+        distance_ratio=0.22,
+        observer=scan_observer,
+    )
+    for nodes in screens:
         screen_ids = exact_current_authority_option_ids(
-            device.hierarchy(),
+            nodes,
             prefix,
             device.node_has_tappable_bounds,
         )
         if len(screen_ids) != len(set(screen_ids)):
             duplicate_resource_id = True
         candidate_ids.update(screen_ids)
-        if scroll_index < max_scrolls:
-            device.swipe_up(distance_ratio=0.22)
     try:
         assert_exact_restored_authority_option_ids(
             candidate_ids,
@@ -1164,15 +1475,8 @@ def require_exact_restored_authority_option(
     device.wait("creation-prerequisite-page", timeout=45)
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--adb", type=Path, required=True)
-    parser.add_argument("--apk", type=Path, required=True)
-    parser.add_argument("--serial", required=True)
-    parser.add_argument("--evidence", type=Path, required=True)
-    parser.add_argument("--receipt", type=Path, required=True)
-    args = parser.parse_args(argv)
-
+def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
+    progress.advance("device-preflight-install")
     driver_path = Path(__file__).resolve()
     shared_path = Path(shared.__file__).resolve()
     priority_compatibility_path = driver_path.with_name(
@@ -1197,6 +1501,7 @@ def main(argv: list[str] | None = None) -> int:
         timeout=300,
     )
     device.shell("pm", "clear", shared.PACKAGE)
+    progress.advance("initial-authority")
     initial_launch = shared.launch_app(device)
     shared.wait_for_phone_runners(device)
     device.tap_until_visible("home-new-runner", "Select Build Method")
@@ -1210,7 +1515,11 @@ def main(argv: list[str] | None = None) -> int:
         dashboard_timeout=30,
         reset_swipes=48,
     )
-    assert_uncreated_advanced_editor_gated(device)
+    assert_uncreated_advanced_editor_gated(
+        device,
+        scan_observer=progress.record_scan,
+        scan_id="advanced-editor-gate-initial",
+    )
 
     dashboard_binding = node_text(device, "creation-wizard-binding", scroll=True)
     ready_navigation = wait_creation_method_navigation(device, ready=True)
@@ -1252,10 +1561,19 @@ def main(argv: list[str] | None = None) -> int:
             raise RuntimeError(f"Global Creation Karma omitted {label!r}: {karma!r}")
     source_authority_digests = read_source_authority_digests(device)
 
+    progress.advance("priority-ranks")
     selected: dict[str, str] = {}
-    for category in CATEGORIES:
-        selected[category] = select_priority_rank(device, category)
+    if tuple(PRIORITY_PROOF_RANKS) != CATEGORIES:
+        raise RuntimeError("Priority proof rank allocation does not cover the ordered categories")
+    for category, expected_rank in PRIORITY_PROOF_RANKS.items():
+        selected[category] = select_priority_rank(
+            device,
+            category,
+            expected_rank=expected_rank,
+            scan_observer=progress.record_scan,
+        )
 
+    progress.advance("typed-authority-options")
     typed_selections: dict[str, str] = {}
     typed_selection_ids: dict[str, str] = {}
     shared.reset_scroll_to_top(device, swipes=22)
@@ -1271,6 +1589,7 @@ def main(argv: list[str] | None = None) -> int:
             f"creation-prerequisite-{category}-option-",
             label,
             max_scrolls=40,
+            scan_observer=progress.record_scan,
         )
         device.wait("creation-prerequisite-page", timeout=45)
         selection_row = node_text(
@@ -1316,6 +1635,7 @@ def main(argv: list[str] | None = None) -> int:
     if "raw" not in attributes_gate.lower() or "metatype" not in attributes_gate.lower():
         raise RuntimeError(f"Attribute prerequisite reason is not explicit: {attributes_gate!r}")
 
+    progress.advance("preview-confirm")
     device.tap("creation-prerequisite-prepare-preview", scroll=True, max_scrolls=22)
     device.wait("creation-prerequisite-preview-page", timeout=60)
     # The pushed preview route can inherit the prerequisite page's bottom offset.
@@ -1435,11 +1755,16 @@ def main(argv: list[str] | None = None) -> int:
         dashboard_timeout=60,
         reset_swipes=22,
     )
-    assert_uncreated_advanced_editor_gated(device)
+    assert_uncreated_advanced_editor_gated(
+        device,
+        scan_observer=progress.record_scan,
+        scan_id="advanced-editor-gate-post-confirm",
+    )
     if node_text(device, "creation-wizard-binding", scroll=True) == dashboard_binding:
         raise RuntimeError("Atomic prerequisite confirmation did not refresh the wizard revision")
 
     # Same-process reload and a real process restart must both restore Core's persisted draft.
+    progress.advance("same-process-reopen")
     open_prerequisite(device)
     resumed_authority = read_persisted_prerequisite_authority(device)
     assert_persisted_prerequisite_authority(
@@ -1455,6 +1780,8 @@ def main(argv: list[str] | None = None) -> int:
             category,
             typed_selections[category],
             typed_selection_ids[category],
+            scan_observer=progress.record_scan,
+            scan_id=f"same-process-restored-authority-option-{category}",
         )
     resumed_attributes = node_text(
         device,
@@ -1464,6 +1791,7 @@ def main(argv: list[str] | None = None) -> int:
     if "rank" not in resumed_attributes.lower():
         raise RuntimeError("Confirmed prerequisite draft did not resume its Attribute rank")
 
+    progress.advance("process-restart-reopen")
     restart = shared.force_stop_and_launch_new_process(device, initial_launch)
     shared.wait_for_phone_runner_route(device, created=False)
     shared.open_creation_dashboard(
@@ -1471,7 +1799,11 @@ def main(argv: list[str] | None = None) -> int:
         open_build_route=False,
         reset_swipes=22,
     )
-    assert_uncreated_advanced_editor_gated(device)
+    assert_uncreated_advanced_editor_gated(
+        device,
+        scan_observer=progress.record_scan,
+        scan_id="advanced-editor-gate-process-restart",
+    )
     open_prerequisite(device)
     restarted_authority = read_persisted_prerequisite_authority(device)
     assert_persisted_prerequisite_authority(
@@ -1487,10 +1819,13 @@ def main(argv: list[str] | None = None) -> int:
             category,
             typed_selections[category],
             typed_selection_ids[category],
+            scan_observer=progress.record_scan,
+            scan_id=f"process-restart-restored-authority-option-{category}",
         )
     device.wait("creation-prerequisite-attributes-ready", scroll=True, max_scrolls=22)
     device.capture("creation-prerequisite-process-restart")
 
+    timing = progress.finish()
     receipt = {
         "schema": "chummer.android.creation-prerequisite-e2e/v1",
         "status": "pass",
@@ -1504,6 +1839,11 @@ def main(argv: list[str] | None = None) -> int:
         "driverSha256": sha256(driver_path),
         "sharedDriverSha256": sha256(shared_path),
         "priorityCompatibilityDriverSha256": sha256(priority_compatibility_path),
+        "timing": timing,
+        "progressEvidence": {
+            "path": str(progress.evidence_path),
+            "sha256": sha256(progress.evidence_path),
+        },
         "journeys": {
             "publicPriorityRunnerBootstrappedByCore": "pass",
             "legacyPriorityContinuationSkipped": "pass",
@@ -1558,6 +1898,22 @@ def main(argv: list[str] | None = None) -> int:
     args.receipt.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(receipt, indent=2))
     return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--adb", type=Path, required=True)
+    parser.add_argument("--apk", type=Path, required=True)
+    parser.add_argument("--serial", required=True)
+    parser.add_argument("--evidence", type=Path, required=True)
+    parser.add_argument("--receipt", type=Path, required=True)
+    args = parser.parse_args(argv)
+    progress = ProgressRecorder(args.evidence)
+    try:
+        return execute(args, progress)
+    except Exception as error:
+        progress.fail(error)
+        raise
 
 
 if __name__ == "__main__":
