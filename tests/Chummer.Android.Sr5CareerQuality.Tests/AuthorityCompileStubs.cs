@@ -124,18 +124,4 @@ namespace Chummer.Android.Native
             => throw new InvalidOperationException();
     }
 
-    public static class Sr5CareerActiveSkillCoordinator
-    {
-        public static void RequireCreatedSr5(Sr5CareerRunnerBinding binding)
-        {
-            ArgumentNullException.ThrowIfNull(binding);
-            if (!Sr5CareerWizardCatalog.IsSr5CareerRunner(binding.Created, binding.GameEdition)
-                || binding.WorkspaceId is not { } workspaceId
-                || string.IsNullOrWhiteSpace(workspaceId.Value)
-                || binding.ContentRevision <= 0)
-            {
-                throw new InvalidOperationException("A created exact SR5 runner is required.");
-            }
-        }
-    }
 }

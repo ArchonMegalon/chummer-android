@@ -82,7 +82,7 @@ public sealed class Sr5CareerSkillGroupWizardPage : NativePageBase
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _checkpointAuthority = checkpointAuthority
             ?? throw new ArgumentNullException(nameof(checkpointAuthority));
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(
+        Sr5CareerRunnerGuard.RequireCreated(
             new RunnerSessionSr5CareerSkillGroupPresenter(coordinator).Binding);
         if (coordinator.State.WorkspaceId != editor.WorkspaceId
             || coordinator.State.ContentRevision != editor.ContentRevision)
@@ -248,7 +248,7 @@ public sealed class Sr5CareerSkillGroupWizardPage : NativePageBase
 
     private async Task OpenReviewAsync()
     {
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(
+        Sr5CareerRunnerGuard.RequireCreated(
             new RunnerSessionSr5CareerSkillGroupPresenter(Coordinator).Binding);
         if (!Sr5CareerSkillGroupDraft.TryCreate(
                 _editor,

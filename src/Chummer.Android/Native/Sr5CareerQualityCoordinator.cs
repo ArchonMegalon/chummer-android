@@ -403,7 +403,7 @@ public sealed class Sr5CareerQualityCoordinator(
 
     private static void RequireCleanSr5(Sr5CareerRunnerBinding binding)
     {
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(binding);
+        Sr5CareerRunnerGuard.RequireCreated(binding);
         if (binding.WorkspaceId is null
             || binding.ContentRevision <= 0
             || binding.SavedRevision != binding.ContentRevision

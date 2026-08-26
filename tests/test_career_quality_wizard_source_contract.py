@@ -8,6 +8,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 MODEL = (NATIVE / "Sr5CareerQualityWizardModel.cs").read_text(encoding="utf-8")
+SHARED_MODEL = (NATIVE / "Sr5CareerWizardModel.cs").read_text(encoding="utf-8")
 COORDINATOR = (NATIVE / "Sr5CareerQualityCoordinator.cs").read_text(encoding="utf-8")
 STORE = (NATIVE / "Sr5CareerQualityCheckpointStore.cs").read_text(encoding="utf-8")
 PAGE = (NATIVE / "Sr5CareerQualityWizardPage.cs").read_text(encoding="utf-8")
@@ -39,6 +40,9 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
         quality_sources = MODEL + COORDINATOR + STORE + ATOMIC_WORKSPACE
         self.assertNotIn("class Sr5CareerRunnerGuard", quality_sources)
         self.assertNotIn("class Sr5CareerMutationGate", quality_sources)
+        self.assertIn("public static class Sr5CareerRunnerGuard", SHARED_MODEL)
+        self.assertIn("Sr5CareerRunnerGuard.RequireCreated(binding)", COORDINATOR)
+        self.assertNotIn("Sr5CareerActiveSkillCoordinator.RequireCreatedSr5", quality_sources)
 
     def test_exact_core_presentation_content_and_runtime_generation_is_bound(self) -> None:
         core = re.search(r'CurrentCoreRevision\s*=\s*\n?\s*"([0-9a-f]{40})"', MODEL)

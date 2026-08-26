@@ -15,6 +15,8 @@
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerAttributeAdvanceRules.cs" Link="Core/CharacterCareerAttributeAdvanceRules.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerKnowledgeSkillAdvanceRules.cs" Link="Core/CharacterCareerKnowledgeSkillAdvanceRules.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerQualityRules.cs" Link="Core/CharacterCareerQualityRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerSkillGroupAdvanceRules.cs" Link="Core/CharacterCareerSkillGroupAdvanceRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerSkillGroupAdvanceServiceContracts.cs" Link="Core/CharacterCareerSkillGroupAdvanceServiceContracts.cs" />
     <Compile Include="$(ChummerPresentationRoot)/Chummer.Presentation/Overview/CareerQualityWorkflow.cs" Link="Presentation/CareerQualityWorkflow.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerWizardModel.cs" Link="Native/Sr5CareerWizardModel.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerKnowledgeSkillWizardModel.cs" Link="Native/Sr5CareerKnowledgeSkillWizardModel.cs" />

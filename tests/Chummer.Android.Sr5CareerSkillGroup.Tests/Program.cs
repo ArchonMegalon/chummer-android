@@ -19,16 +19,18 @@ internal static class Program
         ExactDraftBindsTypedIdentityQuotePlanAndDigests();
         Console.WriteLine("2 blockers");
         BlockedQuotesNeverBecomeDrafts();
-        Console.WriteLine("3 checkpoint tampering");
+        Console.WriteLine("3 shared runner guard");
+        SharedRunnerGuardIsDomainNeutral();
+        Console.WriteLine("4 checkpoint tampering");
         CheckpointRejectsTamperingAndPriorSchemaLocks();
-        Console.WriteLine("4 atomic apply verification");
+        Console.WriteLine("5 atomic apply verification");
         await CoordinatorVerifiesOnlyAtomicCoreResultAsync();
-        Console.WriteLine("5 idempotent restart recovery");
+        Console.WriteLine("6 idempotent restart recovery");
         await ApplyingCrashResolvesByExactCommandReplayAsync();
-        Console.WriteLine("6 CAS and shared mutation owner");
+        Console.WriteLine("7 CAS and shared mutation owner");
         CheckpointCasRejectsForgedResolutionAndWrongOwner();
         SharedMutationOwnerBlocksCrossLaneApply();
-        Console.WriteLine("SR5 Career SkillGroup authority tests passed: 7");
+        Console.WriteLine("SR5 Career SkillGroup authority tests passed: 8");
     }
 
     private static void ExactDraftBindsTypedIdentityQuotePlanAndDigests()
@@ -126,6 +128,31 @@ internal static class Program
             ExpenseDate,
             out _,
             out _), "A non-SR5 editor must never become an SR5 skill-group draft.");
+    }
+
+    private static void SharedRunnerGuardIsDomainNeutral()
+    {
+        Sr5CareerRunnerBinding exact = new(
+            Created: true,
+            GameEdition: "SR5",
+            WorkspaceId,
+            ContentRevision: 41,
+            SavedRevision: 41,
+            IsDirty: false,
+            Error: null);
+        Sr5CareerRunnerGuard.RequireCreated(exact);
+        foreach (Sr5CareerRunnerBinding invalid in new[]
+        {
+            exact with { Created = false },
+            exact with { GameEdition = "SR6" },
+            exact with { WorkspaceId = null },
+            exact with { ContentRevision = 0 }
+        })
+        {
+            RequireThrows<InvalidOperationException>(
+                () => Sr5CareerRunnerGuard.RequireCreated(invalid),
+                "The shared runner guard accepted a foreign creation/ruleset/identity/revision context.");
+        }
     }
 
     private static void CheckpointRejectsTamperingAndPriorSchemaLocks()
@@ -590,6 +617,21 @@ internal static class Program
         try
         {
             await action();
+        }
+        catch (TException)
+        {
+            return;
+        }
+        throw new InvalidOperationException(message);
+    }
+
+    private static void RequireThrows<TException>(
+        Action action,
+        string message) where TException : Exception
+    {
+        try
+        {
+            action();
         }
         catch (TException)
         {

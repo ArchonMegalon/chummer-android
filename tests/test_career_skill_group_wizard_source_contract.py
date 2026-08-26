@@ -106,6 +106,8 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
     def test_atomic_save_and_fresh_receipt_recovery_are_required(self) -> None:
         runner = self.read("RunnerSessionCoordinator.cs")
         coordinator = self.read("Sr5CareerSkillGroupCoordinator.cs")
+        page = self.read("Sr5CareerSkillGroupWizardPage.cs")
+        shared = self.read("Sr5CareerWizardModel.cs")
         for marker in (
             "PrepareCareerSkillGroupAdvanceAsync",
             "AdvanceCareerSkillGroupAsync",
@@ -122,6 +124,12 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
         self.assertIn("ReceiptMatchesDraft", coordinator)
         self.assertNotIn("ApplyAndSaveAsync", coordinator)
         self.assertNotIn("CareerSkillGroupCorrectionRequest", coordinator)
+        self.assertIn("public static class Sr5CareerRunnerGuard", shared)
+        self.assertIn("Sr5CareerRunnerGuard.RequireCreated", coordinator + page)
+        self.assertNotIn(
+            "Sr5CareerActiveSkillCoordinator.RequireCreatedSr5",
+            coordinator + page,
+        )
 
     def test_restart_checkpoint_is_cas_bound_and_malformed_data_remains_a_lock(self) -> None:
         store = self.read("Sr5CareerSkillGroupCheckpointStore.cs")
@@ -174,6 +182,19 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
         self.assertGreaterEqual(career.count('"skill-group");'), 2)
         self.assertIn('automationId: "build-career-skill-group"', build)
 
+    def test_all_career_domains_use_the_shared_created_sr5_guard(self) -> None:
+        affected = "\n".join(
+            self.read(name)
+            for name in (
+                "Sr5CareerSkillGroupCoordinator.cs",
+                "Sr5CareerSkillGroupWizardPage.cs",
+                "Sr5CareerKnowledgeSkillWizardPage.cs",
+                "Sr5CareerQualityCoordinator.cs",
+            )
+        )
+        self.assertGreaterEqual(affected.count("Sr5CareerRunnerGuard.RequireCreated"), 10)
+        self.assertNotIn("Sr5CareerActiveSkillCoordinator.RequireCreatedSr5", affected)
+
     def test_behavioral_authority_harness_covers_restart_tampering_and_blockers(self) -> None:
         harness = (
             REPO
@@ -184,6 +205,7 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
         for marker in (
             "ExactDraftBindsTypedIdentityQuotePlanAndDigests",
             "BlockedQuotesNeverBecomeDrafts",
+            "SharedRunnerGuardIsDomainNeutral",
             "CheckpointRejectsTamperingAndPriorSchemaLocks",
             "CoordinatorVerifiesOnlyAtomicCoreResultAsync",
             "ApplyingCrashResolvesByExactCommandReplayAsync",
