@@ -22,6 +22,7 @@ internal static class Program
             (nameof(FailureRerendersBeforeQueueAdvancesAsync), FailureRerendersBeforeQueueAdvancesAsync),
             (nameof(CanonicalDigestPrefixIsTwelveLowerHexAsync), CanonicalDigestPrefixIsTwelveLowerHexAsync),
             (nameof(CanonicalPriorityAuthorityIsPhoneReadyAsync), CanonicalPriorityAuthorityIsPhoneReadyAsync),
+            (nameof(TalentGrantSelectionsRemainExactAndExoticChoicesFailClosedAsync), TalentGrantSelectionsRemainExactAndExoticChoicesFailClosedAsync),
             (nameof(PreAuthorityCreationSnapshotCanScheduleBootstrapAsync), PreAuthorityCreationSnapshotCanScheduleBootstrapAsync),
             (nameof(BuildPageProjectsExactlyOneLifecycleRouteAsync), BuildPageProjectsExactlyOneLifecycleRouteAsync),
             (nameof(DurableSaveNoticeFailsClosedAcrossStateChangesAsync), DurableSaveNoticeFailsClosedAcrossStateChangesAsync),
@@ -935,6 +936,141 @@ internal static class Program
         {
             Directory.Delete(workspaceRoot, recursive: true);
         }
+    }
+
+    private static Task TalentGrantSelectionsRemainExactAndExoticChoicesFailClosedAsync()
+    {
+        const string arcanaId = "74a68a9e-8c5b-4998-8dbb-08c1e768afc3";
+        const string exoticId = "a1366ec2-772d-4f08-8c65-5f79464d975b";
+        string skillsDigest = CanonicalDigest('6');
+        CharacterCreationTalentActiveSkillChoiceProjection arcana = new(
+            arcanaId,
+            arcanaId,
+            "Arcana",
+            "Pseudo-Magical Active",
+            null,
+            CanonicalDigest('7'),
+            skillsDigest,
+            [$"skills.xml#skill:{arcanaId}"]);
+        CharacterCreationTalentActiveSkillChoiceProjection exotic = new(
+            exoticId,
+            exoticId,
+            "Exotic Melee Weapon",
+            "Combat Active",
+            null,
+            CanonicalDigest('8'),
+            skillsDigest,
+            [$"skills.xml#skill:{exoticId}"])
+        {
+            IsExotic = true,
+            IsEnabled = false,
+            Blockers =
+            [
+                CharacterCreationPrerequisiteBlockers
+                    .TalentExoticSkillSpecializationRequired
+            ]
+        };
+        CharacterCreationTalentActiveSkillChoiceProjection[] options = [arcana, exotic];
+        CharacterCreationTalentActiveSkillGrantProjection grant = new(
+            Quantity: 1,
+            BaseRating: 4,
+            SkillType: CharacterCreationTalentSkillGrantTypes.Active,
+            Options: options,
+            GrantDigest: CharacterCreationTalentGrantAuthorityDigest.ComputeActiveGrant(
+                1,
+                4,
+                CharacterCreationTalentSkillGrantTypes.Active,
+                CharacterCreationTalentGrantImprovementKinds.SkillBase,
+                CharacterCreationTalentSkillGrantTypes.Active,
+                CharacterCreationTalentGrantSelectorTypeSources.SkillType,
+                string.Empty,
+                skillsDigest,
+                options.Select(option => option.SelectionId)),
+            IsSupported: true,
+            Blockers: [],
+            SourceAnchorIds: ["priorities.xml#talent:adept", "skills.xml"])
+        {
+            ImprovementKind = CharacterCreationTalentGrantImprovementKinds.SkillBase,
+            RawSelectorType = CharacterCreationTalentSkillGrantTypes.Active,
+            SelectorTypeSource = CharacterCreationTalentGrantSelectorTypeSources.SkillType
+        };
+        CharacterCreationPriorityTalentOptionProjection talent = new(
+            "adept",
+            "Adept",
+            "Adept",
+            0,
+            6,
+            null,
+            null,
+            [],
+            CanonicalDigest('9'),
+            IsEnabled: true,
+            Blockers: [],
+            SourceAnchorIds: ["priorities.xml#talent:adept"])
+        {
+            ActiveSkillGrant = grant
+        };
+
+        Require(
+            CreationPrerequisitePhoneAuthority.IsTalentGrantAuthoritySupported(talent),
+            "A digest-bound supported active-skill prompt must be accepted.");
+        Require(
+            !CreationPrerequisitePhoneAuthority.TalentGrantSelectionsComplete(talent, [], []),
+            "A required grant cannot complete without its exact quantity.");
+        Require(
+            !CreationPrerequisitePhoneAuthority.TalentGrantSelectionsComplete(
+                talent,
+                [exoticId],
+                []),
+            "An exotic skill must remain blocked until Core publishes typed specialization authority.");
+        Require(
+            CreationPrerequisitePhoneAuthority.TalentGrantSelectionsComplete(
+                talent,
+                [arcanaId],
+                []),
+            "The exact enabled Core option must complete its one-slot prompt.");
+
+        var entry = new CharacterCreationTalentActiveSkillGrantPlanEntry(
+            arcana.SelectionId,
+            "active-skill",
+            arcana.SourceId,
+            arcana.CanonicalName,
+            arcana.Category,
+            arcana.SkillGroup,
+            grant.BaseRating,
+            grant.ImprovementKind,
+            arcana.SourceNodeDigest,
+            arcana.SkillsSourceDigest,
+            arcana.SourceAnchorIds);
+        string[] anchors = entry.SourceAnchorIds.Concat(grant.SourceAnchorIds)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(anchor => anchor, StringComparer.Ordinal)
+            .ToArray();
+        var plan = new CharacterCreationTalentGrantPlanContribution(
+            CharacterCreationPrerequisiteSchemas.TalentGrantPlanV1,
+            [entry],
+            [],
+            anchors,
+            CanonicalDigest('a'));
+        Require(
+            CreationPrerequisitePhoneAuthority.TalentGrantPlanMatchesSelections(
+                plan,
+                talent,
+                [arcanaId],
+                []),
+            "Preview verification must match the exact ordered Core plan.");
+        Require(
+            !CreationPrerequisitePhoneAuthority.TalentGrantPlanMatchesSelections(
+                plan with { ActiveSkills = [entry with { BaseRating = 5 }] },
+                talent,
+                [arcanaId],
+                []),
+            "A preview with a forged grant rating must fail closed.");
+        Require(
+            !CreationPrerequisitePhoneAuthority.IsTalentGrantAuthoritySupported(
+                talent with { ActiveSkillGrant = grant with { BaseRating = 0 } }),
+            "A zero-rating prompt must not unlock a Talent choice.");
+        return Task.CompletedTask;
     }
 
     private static string ResolveCoreRoot()

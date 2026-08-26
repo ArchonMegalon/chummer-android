@@ -147,8 +147,15 @@ public sealed class CreationPriorityDetailPage : NativePageBase
                                   selected.SelectionId,
                                   option.SelectionId,
                                   StringComparison.Ordinal);
-            bool promptGrantUnsupported = option.ActiveSkillGrant is not null
-                                          || option.SkillGroupGrant is not null;
+            IReadOnlyList<string> grantBlockers =
+                CreationPrerequisitePhoneAuthority.TalentGrantAuthorityBlockers(option);
+            int selectedGrantCount = isSelected
+                ? option.ActiveSkillGrant is not null
+                    ? _draft.TalentActiveSkillSelectionIds(state, Coordinator.State).Count
+                    : _draft.TalentSkillGroupSelectionIds(state, Coordinator.State).Count
+                : 0;
+            int? requiredGrantCount = option.ActiveSkillGrant?.Quantity
+                                      ?? option.SkillGroupGrant?.Quantity;
             string detail = JoinDetails(
                 isSelected ? "Current typed draft selection" : null,
                 option.Value,
@@ -156,9 +163,15 @@ public sealed class CreationPriorityDetailPage : NativePageBase
                 option.GrantedQualities.Count > 0
                     ? $"Granted qualities {string.Join(" · ", option.GrantedQualities)}"
                     : null,
-                promptGrantUnsupported
-                    ? "Skill-grant prompts are not yet available on phone"
+                option.ActiveSkillGrant is { } activeGrant
+                    ? $"Choose {activeGrant.Quantity.ToString(CultureInfo.InvariantCulture)} active skills at rating {activeGrant.BaseRating.ToString(CultureInfo.InvariantCulture)}"
+                    : option.SkillGroupGrant is { } groupGrant
+                        ? $"Choose {groupGrant.Quantity.ToString(CultureInfo.InvariantCulture)} skill groups at rating {groupGrant.BaseRating.ToString(CultureInfo.InvariantCulture)}"
+                        : null,
+                requiredGrantCount is int required
+                    ? $"Grant progress {selectedGrantCount.ToString(CultureInfo.InvariantCulture)} / {required.ToString(CultureInfo.InvariantCulture)}"
                     : null,
+                grantBlockers.Count > 0 ? string.Join(" · ", grantBlockers) : null,
                 option.Blockers.Count > 0 ? string.Join(" · ", option.Blockers) : null,
                 option.SourceAnchorIds.Count > 0
                     ? $"Anchors {string.Join(" · ", option.SourceAnchorIds)}"
@@ -167,7 +180,7 @@ public sealed class CreationPriorityDetailPage : NativePageBase
                 option.Name,
                 detail,
                 () => SelectTalentAsync(state, option.SelectionId),
-                option.IsEnabled && option.Blockers.Count == 0 && !promptGrantUnsupported,
+                option.IsEnabled && option.Blockers.Count == 0 && grantBlockers.Count == 0,
                 $"creation-prerequisite-talent-option-{Token(option.SelectionId)}"));
         }
     }
@@ -191,6 +204,16 @@ public sealed class CreationPriorityDetailPage : NativePageBase
         if (!_draft.TrySelectTalent(state, Coordinator.State, selectionId))
         {
             Refresh();
+            return;
+        }
+        CharacterCreationPriorityTalentOptionProjection? selected =
+            _draft.SelectedTalent(state, Coordinator.State);
+        if (selected?.ActiveSkillGrant is not null || selected?.SkillGroupGrant is not null)
+        {
+            await Navigation.PushAsync(new CreationTalentSkillGrantPage(
+                Coordinator,
+                _draft,
+                selectionId));
             return;
         }
         await Navigation.PopAsync(animated: false);

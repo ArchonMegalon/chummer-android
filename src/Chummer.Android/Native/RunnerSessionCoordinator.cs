@@ -1821,10 +1821,6 @@ public sealed class RunnerSessionCoordinator : IDisposable
                && attributeRank is not null
                && heritageOption is not null
                && talentOption is not null
-               && selections.TalentActiveSkillSelectionIds.Count == 0
-               && selections.TalentSkillGroupSelectionIds.Count == 0
-               && talentOption.ActiveSkillGrant is null
-               && talentOption.SkillGroupGrant is null
                && preview.HeritageSelection is { } heritageSelection
                && preview.TalentSelection is { } talentSelection
                && CreationPrerequisitePhoneAuthority.HeritageSelectionMatchesOption(
@@ -1835,6 +1831,11 @@ public sealed class RunnerSessionCoordinator : IDisposable
                    talentSelection,
                    talentOption,
                    talentRank.SourceId)
+               && CreationPrerequisitePhoneAuthority.TalentGrantPlanMatchesSelections(
+                   talentSelection.GrantPlan,
+                   talentOption,
+                   selections.TalentActiveSkillSelectionIds,
+                   selections.TalentSkillGroupSelectionIds)
                && preview.CreationKarmaBudget.IsExact
                && string.Equals(
                    preview.CreationKarmaBudget.BudgetId,

@@ -2169,6 +2169,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
         options = (NATIVE / "CreationPriorityCategoryPage.cs").read_text(encoding="utf-8")
         details = (NATIVE / "CreationPriorityDetailPage.cs").read_text(encoding="utf-8")
+        grants = (NATIVE / "CreationTalentSkillGrantPage.cs").read_text(encoding="utf-8")
         preview = (NATIVE / "CreationPrerequisitePreviewPage.cs").read_text(encoding="utf-8")
         dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
 
@@ -2226,11 +2227,31 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "option.SourceAnchorIds",
             "option.Blockers",
             "option.ActiveSkillGrant is not null",
-            "option.SkillGroupGrant is not null",
+            "option.SkillGroupGrant is { } groupGrant",
+            "CreationPrerequisitePhoneAuthority.TalentGrantAuthorityBlockers(option)",
+            "new CreationTalentSkillGrantPage(",
             "_draft.TrySelectHeritage(state, Coordinator.State, selectionId)",
             "_draft.TrySelectTalent(state, Coordinator.State, selectionId)",
         ):
             self.assertIn(marker, details)
+
+        for marker in (
+            'AutomationId = "creation-prerequisite-talent-grant-page"',
+            "grant.Quantity",
+            "grant.BaseRating",
+            "grant.GrantDigest",
+            "grant.SourceAnchorIds",
+            "choice.IsExotic",
+            "TalentExoticSkillSpecializationRequired",
+            "_draft.TryToggleTalentActiveSkill(",
+            "_draft.TryToggleTalentSkillGroup(",
+            "TalentGrantSelectionsComplete(",
+            '"creation-prerequisite-talent-grant-complete"',
+            '"creation-prerequisite-talent-grant-recover"',
+            '"creation-prerequisite-talent-active-skill-option-{Token(choice.SelectionId)}"',
+            '"creation-prerequisite-talent-skill-group-option-{Token(choice.SelectionId)}"',
+        ):
+            self.assertIn(marker, grants)
 
         for marker in (
             'AutomationId = "creation-prerequisite-preview-page"',
@@ -2249,6 +2270,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "_preview.TotalSpecialAttributePoints",
             "_preview.HeritageSelection",
             "_preview.TalentSelection",
+            "talent.GrantPlan",
+            '"creation-prerequisite-preview-talent-grant-plan-digest"',
             "_preview.RequiresMetatypeAttributeAdjustment",
             "Coordinator.ConfirmCreationPrerequisiteAsync(",
             'AutomationId = "creation-prerequisite-confirm"',
@@ -2276,7 +2299,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, dashboard)
 
-        combined = page + options + details + preview
+        combined = page + options + details + grants + preview
         for forbidden in (
             "AttributeEditRequest",
             "ApplyAttributeEditAsync",
@@ -2286,6 +2309,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "Picker",
             "SelectedIndex = 0",
             "SaveAsync(",
+            "Skill-grant prompts are not yet available on phone",
         ):
             self.assertNotIn(forbidden, combined)
 

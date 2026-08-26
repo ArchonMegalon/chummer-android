@@ -263,11 +263,12 @@ public sealed class CreationPrerequisitePage : NativePageBase
                 _body.Add(NativeTheme.NavigationRow(
                     "Talent choice",
                     selectedTalent is null
-                        ? "Select an exact Core-projected Talent without an unsupported phone prompt"
+                        ? "Select an exact Core-projected Talent and complete any required grants"
                         : JoinDetails(
                             selectedTalent.Name,
                             selectedTalent.Value,
-                            $"selection {selectedTalent.SelectionId}"),
+                            $"selection {selectedTalent.SelectionId}",
+                            TalentGrantProgress(selectedTalent, state)),
                     () => Navigation.PushAsync(new CreationPriorityDetailPage(
                         Coordinator,
                         _draft,
@@ -452,6 +453,21 @@ public sealed class CreationPrerequisitePage : NativePageBase
 
     private static string FormatBudget(decimal value, string unit)
         => $"{value.ToString("0.##", CultureInfo.InvariantCulture)} {unit}".TrimEnd();
+
+    private string? TalentGrantProgress(
+        CharacterCreationPriorityTalentOptionProjection talent,
+        CharacterCreationPrerequisiteState state)
+    {
+        if (talent.ActiveSkillGrant is { } active)
+        {
+            return $"Active-skill grant {_draft.TalentActiveSkillSelectionIds(state, Coordinator.State).Count.ToString(CultureInfo.InvariantCulture)} / {active.Quantity.ToString(CultureInfo.InvariantCulture)}";
+        }
+        if (talent.SkillGroupGrant is { } group)
+        {
+            return $"Skill-group grant {_draft.TalentSkillGroupSelectionIds(state, Coordinator.State).Count.ToString(CultureInfo.InvariantCulture)} / {group.Quantity.ToString(CultureInfo.InvariantCulture)}";
+        }
+        return null;
+    }
 
     private static string ShortDigest(string digest)
         => CreationPrerequisiteDigestText.CanonicalPrefix(digest);

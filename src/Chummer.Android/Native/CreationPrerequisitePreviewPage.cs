@@ -126,6 +126,39 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
                 talent.SpecialAttributePoints.ToString(CultureInfo.InvariantCulture)));
             foreach (string quality in talent.GrantedQualities)
                 card.Add(NativeTheme.Body($"Granted quality · {quality}", NativeTheme.Muted));
+            if (talent.GrantPlan is { } grantPlan)
+            {
+                card.Add(NativeTheme.Metric(
+                    "Grant plan",
+                    $"{grantPlan.ActiveSkills.Count.ToString(CultureInfo.InvariantCulture)} active skills · {grantPlan.SkillGroups.Count.ToString(CultureInfo.InvariantCulture)} skill groups"));
+                Label planDigest = NativeTheme.Body(grantPlan.PlanDigest, NativeTheme.Muted);
+                planDigest.AutomationId = "creation-prerequisite-preview-talent-grant-plan-digest";
+                card.Add(planDigest);
+                for (int index = 0; index < grantPlan.ActiveSkills.Count; index++)
+                {
+                    CharacterCreationTalentActiveSkillGrantPlanEntry entry =
+                        grantPlan.ActiveSkills[index];
+                    Label grant = NativeTheme.Body(
+                        $"Slot {index + 1} · {entry.CanonicalName} · rating {entry.BaseRating.ToString(CultureInfo.InvariantCulture)} · {entry.ImprovementKind}",
+                        NativeTheme.Muted);
+                    grant.AutomationId =
+                        $"creation-prerequisite-preview-talent-active-skill-{Token(entry.SelectionId)}";
+                    card.Add(grant);
+                }
+                for (int index = 0; index < grantPlan.SkillGroups.Count; index++)
+                {
+                    CharacterCreationTalentSkillGroupGrantPlanEntry entry =
+                        grantPlan.SkillGroups[index];
+                    Label grant = NativeTheme.Body(
+                        $"Slot {index + 1} · {entry.CanonicalName} · rating {entry.BaseRating.ToString(CultureInfo.InvariantCulture)} · {entry.ImprovementKind}",
+                        NativeTheme.Muted);
+                    grant.AutomationId =
+                        $"creation-prerequisite-preview-talent-skill-group-{Token(entry.SelectionId)}";
+                    card.Add(grant);
+                }
+                foreach (string anchor in grantPlan.SourceAnchorIds)
+                    card.Add(NativeTheme.Body($"Grant source anchor · {anchor}", NativeTheme.Muted));
+            }
             foreach (string anchor in talent.SourceAnchorIds)
                 card.Add(NativeTheme.Body($"Source anchor · {anchor}", NativeTheme.Muted));
             Border border = NativeTheme.Card(card);
