@@ -2,6 +2,7 @@ using Chummer.Android.Platform;
 using Chummer.Android.Native;
 using Chummer.Application.Characters;
 using Chummer.Application.Tools;
+using Chummer.Application.Workspaces;
 using Chummer.Desktop.Runtime;
 using Chummer.Infrastructure.Files;
 using Chummer.Presentation.Overview;
@@ -48,6 +49,22 @@ public static class MauiProgram
                 statePath,
                 typeof(MauiProgram).Assembly.GetName().Version ?? new Version(0, 0)));
         builder.Services.AddSingleton<ApplicationDeleteConfirmationPresenter>();
+        builder.Services.AddSingleton<ISr5AfterRunManualProposalBackend>(
+            new FileSr5AfterRunManualProposalBackend(statePath));
+        builder.Services.AddSingleton<IAndroidAfterRunWorkspaceSnapshotSource>(provider =>
+            new AndroidAfterRunWorkspaceSnapshotSource(
+                provider.GetRequiredService<IWorkspaceStore>()));
+        builder.Services.AddSingleton<Sr5AfterRunManualProposalSource>(provider =>
+            new Sr5AfterRunManualProposalSource(
+                provider.GetRequiredService<IAndroidAfterRunWorkspaceSnapshotSource>(),
+                provider.GetRequiredService<ISr5AfterRunManualProposalBackend>()));
+        builder.Services.AddSingleton<
+            ICharacterAfterRunSettlementProposalProjectionSource>(provider =>
+                provider.GetRequiredService<Sr5AfterRunManualProposalSource>());
+        builder.Services.AddSingleton<IAndroidAfterRunProposalCatalog>(provider =>
+            provider.GetRequiredService<Sr5AfterRunManualProposalSource>());
+        builder.Services.AddSingleton<ISr5AfterRunManualProposalAuthority>(provider =>
+            provider.GetRequiredService<Sr5AfterRunManualProposalSource>());
         builder.Services.AddSingleton<IAndroidCareerSkillGroupSettingsCatalog,
             PreferencesAndroidCareerSkillGroupSettingsCatalog>();
         builder.Services.AddSingleton<ICharacterCareerSkillGroupAdvanceWorkspace,

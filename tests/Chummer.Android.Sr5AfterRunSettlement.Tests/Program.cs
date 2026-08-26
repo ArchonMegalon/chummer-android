@@ -1,4 +1,5 @@
 using Chummer.Android.Native;
+using Chummer.Application.Characters;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
 
@@ -32,6 +33,10 @@ internal static class AfterRunAuthorityHarness
                 ExactAtomicResultPersistsCoreReceiptAsync),
             (nameof(RestartReplaysOnlyExactCommandAndRecoversReceiptAsync),
                 RestartReplaysOnlyExactCommandAndRecoversReceiptAsync),
+            (nameof(ManualProposalPublishesToBothSeamsAndSurvivesRestart),
+                () => Sync(ManualProposalPublishesToBothSeamsAndSurvivesRestart)),
+            (nameof(IncompleteStaleAndTamperedManualProposalsFailClosed),
+                () => Sync(IncompleteStaleAndTamperedManualProposalsFailClosed)),
         };
 
         int failed = 0;
@@ -305,6 +310,169 @@ internal static class AfterRunAuthorityHarness
             "Restart recovery stored a different receipt.");
     }
 
+    private static void ManualProposalPublishesToBothSeamsAndSurvivesRestart()
+    {
+        var snapshots = new ManualSnapshotSource(ManualSnapshot(41, 'f'));
+        var backend = new ManualProposalBackend();
+        var source = new Sr5AfterRunManualProposalSource(snapshots, backend);
+        Sr5AfterRunManualProposalSubmission submission = ManualSubmission();
+
+        Sr5AfterRunManualProposalPublishResult published = source.Publish(submission);
+        Require(published.Published && !published.Replayed, published.Blocker);
+        Require(published.Proposal?.IsExact() == true,
+            "Published manual proposal is not canonical and digest-bound.");
+        Require(!string.IsNullOrWhiteSpace(backend.Payload),
+            "Published manual proposal was not durable.");
+
+        Sr5AfterRunProposalCatalogResult catalog = source.Load(WorkspaceId);
+        Require(catalog.Status == Sr5AfterRunCatalogStatus.Available
+            && catalog.Entries.Count == 1,
+            "Published proposal did not enter the Android catalog exactly once.");
+        CharacterAfterRunSettlementProposalProjectionResult projection = source.Read(
+            new CharacterAfterRunSettlementProposalProjectionRequest(
+                WorkspaceId,
+                41,
+                Identity,
+                snapshots.Snapshot.CharacterProjectionDigest));
+        Require(
+            projection.Outcome
+                == CharacterAfterRunSettlementProposalProjectionOutcome.Available
+            && projection.Projection is not null,
+            projection.Error ?? "Core projection seam remained unavailable.");
+        CharacterAfterRunSettlementProposalProjection exactProjection =
+            projection.Projection
+            ?? throw new InvalidOperationException(
+                "Available Core projection response omitted the projection.");
+        Require(CombinedInputCreatesSettleableQuote(
+                snapshots.Snapshot,
+                exactProjection),
+            "Published projection did not survive the same Core quote preflight.");
+
+        var restarted = new Sr5AfterRunManualProposalSource(snapshots, backend);
+        Require(restarted.Load(WorkspaceId).Status == Sr5AfterRunCatalogStatus.Available,
+            "Process restart did not reopen the durable manual proposal.");
+        Sr5AfterRunManualProposalPublishResult replay = restarted.Publish(submission);
+        Require(replay.Published && replay.Replayed
+            && replay.Proposal?.ProposalDigest == published.Proposal!.ProposalDigest,
+            "Exact repeat publication was not a deterministic replay.");
+    }
+
+    private static void IncompleteStaleAndTamperedManualProposalsFailClosed()
+    {
+        var snapshots = new ManualSnapshotSource(ManualSnapshot(41, 'f'));
+        var backend = new ManualProposalBackend();
+        var source = new Sr5AfterRunManualProposalSource(snapshots, backend);
+        Sr5AfterRunManualProposalPublishResult pending = source.Publish(
+            ManualSubmission() with { GmApproved = false });
+        Require(!pending.Published && string.IsNullOrWhiteSpace(backend.Payload),
+            "Missing explicit GM approval registered a proposal.");
+
+        Sr5AfterRunManualProposalPublishResult exact = source.Publish(ManualSubmission());
+        Require(exact.Published, exact.Blocker);
+        string durable = backend.Payload;
+        backend.Payload = durable.Replace(
+            "\"KarmaAward\":8",
+            "\"KarmaAward\":9",
+            StringComparison.Ordinal);
+        Require(source.Load(WorkspaceId).Status == Sr5AfterRunCatalogStatus.Corrupt,
+            "Tampered durable proposal remained available.");
+
+        backend.Payload = durable;
+        snapshots.Snapshot = ManualSnapshot(42, 'e');
+        Require(source.Load(WorkspaceId).Status == Sr5AfterRunCatalogStatus.Missing,
+            "Proposal from an old saved revision remained discoverable.");
+        CharacterAfterRunSettlementProposalProjectionResult stale = source.Read(
+            new CharacterAfterRunSettlementProposalProjectionRequest(
+                WorkspaceId,
+                42,
+                Identity,
+                snapshots.Snapshot.CharacterProjectionDigest));
+        Require(
+            stale.Outcome
+                == CharacterAfterRunSettlementProposalProjectionOutcome.Conflict,
+            "Core projection accepted a stale workspace/revision binding.");
+    }
+
+    private static Sr5AfterRunManualProposalSubmission ManualSubmission()
+        => new(
+            WorkspaceId,
+            ExpectedWorkspaceRevision: 41,
+            Identity,
+            RunTitle: "Operation Glass Harbor",
+            CompletedAt: new DateTimeOffset(2026, 8, 26, 20, 0, 0, TimeSpan.Zero),
+            KarmaAward: 8,
+            NuyenAward: 12_500m,
+            RewardReceiptDigest: new string('a', 64),
+            TargetOwnedByCharacter: true,
+            RunCompleted: true,
+            CurrentHeat: 1,
+            HeatDelta: 2,
+            StreetCredDelta: 2,
+            NotorietyDelta: 1,
+            PublicAwarenessDelta: 1,
+            Settings: Input().Settings,
+            ContactProposals: Input().ContactProposals,
+            ExpectedGmActorId: "gm-17",
+            GmReviewId: Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+            GmReviewReason: "Run settlement approved",
+            GmApproved: true,
+            ExpectedOwnerActorId: "owner-23",
+            OwnerReviewId: Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+            OwnerReviewReason: "Complete proposal accepted",
+            OwnerApproved: true);
+
+    private static Sr5AfterRunWorkspaceSnapshot ManualSnapshot(
+        long revision,
+        char digestCharacter)
+        => new(
+            WorkspaceId,
+            revision,
+            revision,
+            CharacterAfterRunSettlementRules.RulesetId,
+            Created: true,
+            CurrentStreetCred: 10,
+            CurrentNotoriety: 4,
+            CurrentPublicAwareness: 6,
+            CurrentKarma: 30,
+            new string(digestCharacter, 64));
+
+    private static bool CombinedInputCreatesSettleableQuote(
+        Sr5AfterRunWorkspaceSnapshot snapshot,
+        CharacterAfterRunSettlementProposalProjection projection)
+    {
+        var input = new CharacterAfterRunSettlementInput(
+            projection.Identity,
+            snapshot.Created,
+            snapshot.RulesetId,
+            projection.TargetOwnedByCharacter,
+            projection.ProjectionIsExact,
+            projection.RunCompleted,
+            ProposalAlreadySettled: false,
+            projection.ExpectedGmActorId,
+            projection.ExpectedOwnerActorId,
+            projection.CurrentHeat,
+            snapshot.CurrentStreetCred,
+            snapshot.CurrentNotoriety,
+            snapshot.CurrentPublicAwareness,
+            snapshot.CurrentKarma,
+            projection.HeatDelta,
+            projection.StreetCredDelta,
+            projection.NotorietyDelta,
+            projection.PublicAwarenessDelta,
+            projection.Settings,
+            projection.ContactProposals,
+            projection.GmReview,
+            projection.OwnerReview,
+            projection.RawSourceState,
+            projection.RawCustomDataState,
+            projection.RawGmPolicyState,
+            projection.RawRuntimeState);
+        return CharacterAfterRunSettlementRules.TryCreateQuote(
+                input,
+                out CharacterAfterRunSettlementQuote quote)
+            && quote.CanSettle;
+    }
+
     private static Sr5AfterRunSettlementEditorState Editor(
         CharacterAfterRunSettlementInput input)
     {
@@ -517,6 +685,29 @@ internal static class AfterRunAuthorityHarness
         public string Read() => Payload;
         public void Write(string payload) => Payload = payload;
         public void Remove() => Payload = string.Empty;
+    }
+
+    private sealed class ManualProposalBackend : ISr5AfterRunManualProposalBackend
+    {
+        public string Payload { get; set; } = string.Empty;
+        public string Read() => Payload;
+        public void Write(string payload) => Payload = payload;
+    }
+
+    private sealed class ManualSnapshotSource(Sr5AfterRunWorkspaceSnapshot snapshot) :
+        IAndroidAfterRunWorkspaceSnapshotSource
+    {
+        public Sr5AfterRunWorkspaceSnapshot Snapshot { get; set; } = snapshot;
+
+        public bool TryRead(
+            CharacterWorkspaceId workspaceId,
+            out Sr5AfterRunWorkspaceSnapshot snapshotValue,
+            out string blocker)
+        {
+            snapshotValue = Snapshot;
+            blocker = string.Empty;
+            return workspaceId == Snapshot.WorkspaceId;
+        }
     }
 
     private sealed class FakePresenter(Sr5CareerRunnerBinding binding) :

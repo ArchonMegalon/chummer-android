@@ -48,6 +48,7 @@ namespace Chummer.Android.Native
 
     public static class Sr5CareerWizardRoutes
     {
+        public const string AfterRunEnter = "sr5-career/after-run/settlement/enter";
         public const string AfterRunChoose = "sr5-career/after-run/settlement/choose";
         public const string AfterRunRewards = "sr5-career/after-run/settlement/rewards";
         public const string AfterRunConsequences = "sr5-career/after-run/settlement/consequences";

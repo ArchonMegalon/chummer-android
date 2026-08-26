@@ -3593,6 +3593,49 @@ public sealed class RunnerSessionCoordinator : IDisposable
         return editor;
     }
 
+    public bool SupportsManualAfterRunProposalEntry
+        => _afterRunProposalCatalog is ISr5AfterRunManualProposalAuthority;
+
+    /// <summary>
+    /// Publishes one fully typed manual run result through the Android host
+    /// authority. The authority independently re-reads and digest-binds the
+    /// exact clean workspace before Core can see the proposal.
+    /// </summary>
+    public async Task<Sr5AfterRunManualProposalPublishResult>
+        PublishManualAfterRunProposalAsync(
+            Sr5AfterRunManualProposalSubmission submission,
+            CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(submission);
+        if (_afterRunProposalCatalog is not ISr5AfterRunManualProposalAuthority authority
+            || State.WorkspaceId is not { } workspaceId
+            || submission.WorkspaceId != workspaceId
+            || submission.ExpectedWorkspaceRevision != State.ContentRevision
+            || State.SavedRevision != State.ContentRevision
+            || State.IsDirty
+            || !string.IsNullOrWhiteSpace(State.Error))
+        {
+            return new(
+                Published: false,
+                Replayed: false,
+                Proposal: null,
+                "Manual After Run entry does not own the exact current clean saved runner revision.");
+        }
+        Sr5AfterRunManualProposalPublishResult result = await Task.Run(
+            () => authority.Publish(submission),
+            cancellationToken).ConfigureAwait(false);
+        if (State.WorkspaceId != workspaceId
+            || State.ContentRevision != submission.ExpectedWorkspaceRevision
+            || State.SavedRevision != submission.ExpectedWorkspaceRevision
+            || State.IsDirty
+            || !string.IsNullOrWhiteSpace(State.Error))
+        {
+            throw new InvalidOperationException(
+                "The saved runner changed while the manual After Run proposal was being registered.");
+        }
+        return result;
+    }
+
     public Task<CharacterCareerSkillSpecializationQuote?> PrepareCareerSkillSpecializationQuoteAsync(
         CareerSkillSpecializationQuoteRequest request,
         CancellationToken cancellationToken = default)

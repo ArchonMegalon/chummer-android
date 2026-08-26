@@ -404,9 +404,14 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
             new RunnerSessionSr5AfterRunSettlementPresenter(Coordinator),
             new PreferencesSr5CareerCheckpointOwnerAuthority());
         Sr5AfterRunSettlementEditorState editor = await authority.PrepareAsync();
-        await Navigation.PushAsync(new Sr5AfterRunSettlementWizardPage(
-            Coordinator,
-            editor));
+        Page destination = editor.Status == Sr5AfterRunCatalogStatus.Missing
+            && Coordinator.SupportsManualAfterRunProposalEntry
+                ? new Sr5AfterRunManualProposalPage(
+                    Coordinator,
+                    editor.WorkspaceId,
+                    editor.WorkspaceRevision)
+                : new Sr5AfterRunSettlementWizardPage(Coordinator, editor);
+        await Navigation.PushAsync(destination);
     }
 
     private async Task OpenEdgeAsync()

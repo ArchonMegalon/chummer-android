@@ -88,6 +88,71 @@ def test_both_external_reviews_must_exist_and_be_explicitly_seen() -> None:
     assert "ExplicitlyConfirmed: true" in model
 
 
+def test_manual_phone_intake_covers_typed_result_policy_contacts_and_approvals() -> None:
+    page = read("Sr5AfterRunManualProposalPage.cs")
+    model = read("Sr5CareerWizardModel.cs")
+    source = read("Sr5AfterRunManualProposalSource.cs")
+    for marker in (
+        "AfterRunEnter",
+        "Proposal UUID",
+        "Run UUID",
+        "Character UUID",
+        "Karma awarded",
+        "Nuyen awarded",
+        "Current Heat",
+        "Street Cred delta",
+        "Notoriety delta",
+        "Public Awareness delta",
+        "Contact proposals",
+        "GM actor ID",
+        "Owner actor ID",
+        "GmApproved",
+        "OwnerApproved",
+        "PublishManualAfterRunProposalAsync",
+    ):
+        assert marker in page + model + source
+    assert "Guid.NewGuid()" not in page
+    assert "GenericQuickEdit" not in page
+
+
+def test_android_host_source_is_workspace_bound_durable_and_fail_closed() -> None:
+    source = read("Sr5AfterRunManualProposalSource.cs")
+    snapshot = read("AndroidAfterRunWorkspaceSnapshotSource.cs")
+    runner = read("RunnerSessionCoordinator.cs")
+    for marker in (
+        "ICharacterAfterRunSettlementProposalProjectionSource",
+        "IAndroidAfterRunProposalCatalog",
+        "ISr5AfterRunManualProposalAuthority",
+        "CharacterProjectionDigest",
+        "ComputeProposalDigest",
+        "ComputeLedgerDigest",
+        "FileOptions.WriteThrough",
+        "write/read-back verification",
+        "CharacterAfterRunSettlementRules.TryCreateQuote",
+        "quote.CanSettle",
+        "CharacterAfterRunSettlementProposalProjectionOutcome.Conflict",
+        "Sr5AfterRunCatalogStatus.Corrupt",
+    ):
+        assert marker in source + runner
+    assert "IWorkspaceStore" in snapshot
+    assert "SavedRevision != saved.ContentRevision" in snapshot
+    assert "SHA256.HashData" in snapshot
+    assert "ReplaceWorkspaceDocument" not in snapshot
+
+
+def test_runtime_composes_one_shared_host_instance_before_core_runtime() -> None:
+    composition = (ROOT / "src" / "Chummer.Android" / "MauiProgram.cs").read_text(
+        encoding="utf-8"
+    )
+    source_registration = composition.index(
+        "ICharacterAfterRunSettlementProposalProjectionSource"
+    )
+    runtime_registration = composition.index("AddChummerLocalRuntimeClient(")
+    assert source_registration < runtime_registration
+    assert composition.count("GetRequiredService<Sr5AfterRunManualProposalSource>()") == 3
+    assert "FileSr5AfterRunManualProposalBackend(statePath)" in composition
+
+
 def test_shared_owner_cas_receipt_and_unknown_recovery_fail_closed() -> None:
     store = read("Sr5AfterRunSettlementCheckpointStore.cs")
     coordinator = read("Sr5AfterRunSettlementCoordinator.cs")
