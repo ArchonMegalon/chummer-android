@@ -199,6 +199,9 @@ public sealed record Sr5CareerQualityCheckpointCas(
 public sealed class Sr5CareerQualityCheckpointStore
 {
     private static readonly object Gate = new();
+    // Integration seam: this pinned base predates the shared cross-lane Career
+    // mutation gate. Keep this lease private; replace it with that shared gate
+    // on integration without weakening the Quality-specific CAS/receipt checks.
     private static readonly SemaphoreSlim ApplyingMutationGate = new(1, 1);
     private readonly ISr5CareerCheckpointBackend _backend;
     private readonly ISr5CareerQualityCheckpointAuthority? _authority;

@@ -31,35 +31,6 @@ namespace Chummer.Presentation.Overview
         Guid ExpenseId,
         DateTime ExpenseDateLocal);
 
-    public sealed record CareerSkillGroupAdvanceEditorState(
-        CharacterWorkspaceId WorkspaceId,
-        long ContentRevision,
-        IReadOnlyList<CharacterCareerSkillGroupAdvanceQuote> SkillGroups,
-        int OmittedSkillGroupCount,
-        IReadOnlyList<CharacterCareerSkillGroupAdvanceReceipt> RecoverableReceipts,
-        int OmittedReceiptCount);
-
-    public sealed record CareerSkillGroupAdvanceRequest(
-        CharacterWorkspaceId WorkspaceId,
-        long ExpectedContentRevision,
-        string ExpectedRulesetId,
-        CharacterCareerSkillGroupAdvanceQuote ExpectedSkillGroup,
-        string ExpectedLogicalRevision,
-        string ExpectedSourceRevision,
-        string ExpectedRuleDigest,
-        bool Confirmed,
-        Guid ExpenseId,
-        DateTime ExpenseDateLocal);
-
-    public sealed record CareerSkillGroupCorrectionRequest(
-        CharacterWorkspaceId WorkspaceId,
-        long ExpectedContentRevision,
-        string ExpectedRulesetId,
-        CharacterCareerSkillGroupAdvanceReceipt OriginalReceipt,
-        string ExpectedReceiptDigest,
-        bool Confirmed,
-        Guid CorrectionId,
-        string Reason);
 }
 
 namespace Microsoft.Maui.Storage
@@ -136,20 +107,6 @@ namespace Chummer.Android.Native
     public sealed class RunnerSessionCoordinator
     {
         public RunnerSessionStateStub State { get; } = new();
-
-        public Task<Chummer.Presentation.Overview.CareerSkillGroupAdvanceEditorState?>
-            PrepareCareerSkillGroupAdvanceAsync(CancellationToken cancellationToken)
-            => Task.FromResult<Chummer.Presentation.Overview.CareerSkillGroupAdvanceEditorState?>(null);
-
-        public Task<bool> ApplyCareerSkillGroupAdvanceAsync(
-            Chummer.Presentation.Overview.CareerSkillGroupAdvanceRequest request,
-            CancellationToken cancellationToken)
-            => Task.FromResult(false);
-
-        public Task<CharacterCareerSkillGroupCorrectionPlan?> CorrectCareerSkillGroupAdvanceAsync(
-            Chummer.Presentation.Overview.CareerSkillGroupCorrectionRequest request,
-            CancellationToken cancellationToken)
-            => Task.FromResult<CharacterCareerSkillGroupCorrectionPlan?>(null);
 
         public Task<Chummer.Presentation.Overview.CareerQualityEditorState?>
             PrepareCareerQualityAsync(CancellationToken cancellationToken)

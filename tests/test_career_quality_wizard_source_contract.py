@@ -20,9 +20,26 @@ ATOMIC_WORKSPACE = (NATIVE / "AndroidCareerQualityAtomicWorkspace.cs").read_text
 MAUI_PROGRAM = (REPO / "src" / "Chummer.Android" / "MauiProgram.cs").read_text(
     encoding="utf-8"
 )
+POLISH_AUDIT = (REPO / "docs" / "SR5_CAREER_QUALITY_POLISH_AUDIT.md").read_text(
+    encoding="utf-8"
+)
 
 
 class CareerQualityWizardSourceContractTests(unittest.TestCase):
+    def test_polish_keeps_shared_shells_reusable_and_sr5_quality_truth_typed(self) -> None:
+        for token in (
+            "Sr5CareerActionPlan",
+            "InternalId + SourceId",
+            "positive/negative type",
+            "enabled-source and GM gates",
+            "Mentor Spirit Way free-cost eligibility is a typed definition projection",
+            "intentionally does not define duplicate guard or gate",
+        ):
+            self.assertIn(token, POLISH_AUDIT)
+        quality_sources = MODEL + COORDINATOR + STORE + ATOMIC_WORKSPACE
+        self.assertNotIn("class Sr5CareerRunnerGuard", quality_sources)
+        self.assertNotIn("class Sr5CareerMutationGate", quality_sources)
+
     def test_exact_core_presentation_content_and_runtime_generation_is_bound(self) -> None:
         core = re.search(r'CurrentCoreRevision\s*=\s*\n?\s*"([0-9a-f]{40})"', MODEL)
         presentation = re.search(
@@ -36,8 +53,8 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
         self.assertIsNotNone(content)
         self.assertIsNotNone(runtime)
         self.assertIsNotNone(contract)
-        self.assertEqual(core.group(1), "3a0ac44854004dff0c08807d839cd1fdae1c9a65")
-        self.assertEqual(presentation.group(1), "ac4ebc482c632efa2e6ecadf1df884963fc56d28")
+        self.assertEqual(core.group(1), "2fb2ae9bb48e5a1a6b25a174ba88008ce995fcd5")
+        self.assertEqual(presentation.group(1), "fad57e99c772450c5aea3c4dc6315d18dca65637")
         expected = hashlib.sha256(
             f"{contract.group(1)}\n{core.group(1)}\n{presentation.group(1)}\n{content.group(1)}\n".encode()
         ).hexdigest()
@@ -198,9 +215,9 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
             .read_text(encoding="utf-8")
         )
         self.assertEqual(
-            manifest["coreRevision"], "3a0ac44854004dff0c08807d839cd1fdae1c9a65"
+            manifest["coreRevision"], "2fb2ae9bb48e5a1a6b25a174ba88008ce995fcd5"
         )
-        self.assertEqual(manifest["bundleDigest"], "61dddaad0bcbd80f3e8a17bfc7b875787dffb6a854fb1672b847b766dd05c0ff")
+        self.assertEqual(manifest["bundleDigest"], "7a108fe4e18340166c1ae206191e7b132e5d04656e24bc2dcd71da263892ebff")
         self.assertEqual(len(manifest["files"]), 110)
 
     def test_focused_compile_harness_uses_exact_authority_sources(self) -> None:
