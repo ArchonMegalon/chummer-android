@@ -101,12 +101,17 @@ class AndroidContractTests(unittest.TestCase):
         system_service = (PROJECT / "Platforms" / "Android" / "AndroidSystemService.cs").read_text(encoding="utf-8")
         activity = (PROJECT / "Platforms" / "Android" / "MainActivity.cs").read_text(encoding="utf-8")
         policy = (PROJECT / "Platforms" / "Android" / "AndroidInAppUpdatePolicy.cs").read_text(encoding="utf-8")
+        review_policy = (PROJECT / "Native" / "PlayReviewPolicy.cs").read_text(encoding="utf-8")
         more = (PROJECT / "Native" / "MorePage.cs").read_text(encoding="utf-8")
         privacy = (PROJECT / "Native" / "AccountPrivacyPage.cs").read_text(encoding="utf-8")
         self.assertIn('Xamarin.Google.Android.Play.App.Update" Version="2.1.0.19"', project)
         self.assertIn("AppUpdateManagerFactory.Create(this)", activity)
-        self.assertIn("IsInstalledByGooglePlay", activity)
-        self.assertIn('"com.android.vending"', activity)
+        self.assertIn("ResolveInstallerPackageName", activity)
+        self.assertIn("PlayReviewPolicy.GooglePlayInstallerPackage", activity)
+        self.assertIn(
+            'public const string GooglePlayInstallerPackage = "com.android.vending"',
+            review_policy,
+        )
         self.assertIn("StartUpdateFlowForResult", activity)
         self.assertIn("AppUpdateType.Flexible", activity)
         self.assertIn("RegisterListener", activity)
