@@ -252,11 +252,13 @@ def prove_advancement(
     device.wait("career-active-skill-page", timeout=30)
     device.tap("career-active-skill-advance", timeout=60)
     device.tap("Advance", timeout=60)
-    device.wait(
+    device.wait_for_single_exact_text(
         ADVANCE_SUCCESS_NOTICE,
         timeout=180,
         scroll=True,
         max_scrolls=40,
+        evidence_prefix="career-active-skill-advance-success",
+        surface_name="Active-skill advancement success notice",
     )
     saved = read_saved_authority(device)
     if saved.workspace_id != imported.workspace_id:

@@ -406,6 +406,51 @@ class Device:
             f"Timed out waiting for exactly one {surface_name.lower()} {selector!r}"
         )
 
+    def wait_for_single_exact_text(
+        self,
+        selector: str,
+        *,
+        timeout: int = 45,
+        scroll: bool = False,
+        max_scrolls: int = 6,
+        scroll_distance_ratio: float = 0.52,
+        evidence_prefix: str = "exact-text",
+        surface_name: str = "UI text node",
+    ) -> UiNode:
+        """Bind exactly one text node without prefix or alternate-attribute fallback."""
+        deadline = time.monotonic() + timeout
+        scrolls = 0
+        while time.monotonic() < deadline:
+            nodes = self.hierarchy()
+            if not nodes:
+                time.sleep(0.75)
+                continue
+            self.dismiss_system_ui_anr(nodes)
+            matches = [
+                node
+                for node in nodes
+                if node.attributes.get("text", "") == selector
+            ]
+            if len(matches) == 1:
+                return matches[0]
+            if len(matches) > 1:
+                self.capture(f"{evidence_prefix}-cardinality-invalid")
+                raise RuntimeError(
+                    f"{surface_name} {selector!r} has cardinality {len(matches)}; "
+                    "expected exactly one"
+                )
+            if scroll and scrolls < max_scrolls:
+                self.swipe_up(
+                    x_ratio=self._scroll_x_ratio(selector),
+                    distance_ratio=scroll_distance_ratio,
+                )
+                scrolls += 1
+            time.sleep(0.75)
+        self.capture(f"{evidence_prefix}-unavailable")
+        raise RuntimeError(
+            f"Timed out waiting for exactly one {surface_name.lower()} {selector!r}"
+        )
+
     def wait(
         self,
         selector: str,

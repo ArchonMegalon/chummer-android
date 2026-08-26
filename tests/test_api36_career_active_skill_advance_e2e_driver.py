@@ -49,23 +49,101 @@ class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
     def test_confirm_waits_for_success_notice_before_reading_saved_authority(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         confirm = source.index('device.tap("Advance"')
-        success = source.index("ADVANCE_SUCCESS_NOTICE", confirm)
+        success = source.index("device.wait_for_single_exact_text(", confirm)
         saved_authority = source.index("saved = read_saved_authority(device)", success)
+        revision = source.index("saved.content_revision", saved_authority)
+        digest = source.index("saved.payload_sha256", revision)
+        expense = source.index("expense_id = assert_after", digest)
+        readback = source.index("assert_ui_readback(device)", expense)
+        first_restart = source.index("first_restart =", readback)
+        first_restored = source.index("shared.require_restored_authority", first_restart)
+        second_restart = source.index("second_restart =", first_restored)
+        second_restored = source.index("shared.require_restored_authority", second_restart)
 
         self.assertEqual(
             "Active skill advanced and Karma expense saved.",
             driver.ADVANCE_SUCCESS_NOTICE,
         )
         self.assertIn(
-            "ADVANCE_SUCCESS_NOTICE,\n        timeout=180,\n        scroll=True,",
+            "device.wait_for_single_exact_text(\n"
+            "        ADVANCE_SUCCESS_NOTICE,\n"
+            "        timeout=180,\n"
+            "        scroll=True,",
             source,
         )
-        self.assertLess(confirm, success)
-        self.assertLess(success, saved_authority)
+        self.assertEqual(
+            sorted(
+                (
+                    confirm,
+                    success,
+                    saved_authority,
+                    revision,
+                    digest,
+                    expense,
+                    readback,
+                    first_restart,
+                    first_restored,
+                    second_restart,
+                    second_restored,
+                )
+            ),
+            [
+                confirm,
+                success,
+                saved_authority,
+                revision,
+                digest,
+                expense,
+                readback,
+                first_restart,
+                first_restored,
+                second_restart,
+                second_restored,
+            ],
+        )
         self.assertNotIn(
             'device.wait("build-career-active-skill", timeout=180',
             source,
         )
+
+    def test_success_notice_wait_is_exact_cardinality_bound_and_fail_closed(self) -> None:
+        exact = driver.shared.UiNode({"text": driver.ADVANCE_SUCCESS_NOTICE})
+        prefix = driver.shared.UiNode(
+            {"text": f"{driver.ADVANCE_SUCCESS_NOTICE} stale suffix"}
+        )
+        captures: list[str] = []
+        device = object.__new__(driver.shared.Device)
+        device.hierarchy = lambda: [prefix, exact]
+        device.dismiss_system_ui_anr = lambda nodes=None: False
+        device.capture = captures.append
+        device.swipe_up = lambda **kwargs: None
+
+        self.assertIs(
+            exact,
+            device.wait_for_single_exact_text(driver.ADVANCE_SUCCESS_NOTICE),
+        )
+        self.assertEqual([], captures)
+
+        device.hierarchy = lambda: [exact, exact]
+        with self.assertRaisesRegex(RuntimeError, "cardinality 2"):
+            device.wait_for_single_exact_text(driver.ADVANCE_SUCCESS_NOTICE)
+        self.assertEqual(["exact-text-cardinality-invalid"], captures)
+
+        captures.clear()
+        device.hierarchy = lambda: []
+        with self.assertRaisesRegex(RuntimeError, "Timed out waiting for exactly one"):
+            device.wait_for_single_exact_text(
+                driver.ADVANCE_SUCCESS_NOTICE,
+                timeout=0,
+            )
+        self.assertEqual(["exact-text-unavailable"], captures)
+
+        device.hierarchy = lambda: [exact]
+        device.dismiss_system_ui_anr = lambda nodes=None: (_ for _ in ()).throw(
+            driver.shared.ProductAnrDetected("product ANR")
+        )
+        with self.assertRaisesRegex(driver.shared.ProductAnrDetected, "product ANR"):
+            device.wait_for_single_exact_text(driver.ADVANCE_SUCCESS_NOTICE)
 
     def test_fixture_has_exact_guid_source_balance_expense_and_nested_authority(self) -> None:
         root = ET.parse(FIXTURE).getroot()
