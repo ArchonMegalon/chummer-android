@@ -165,7 +165,7 @@ public sealed class CreationLifestylesPage : NativePageBase
     }
 
     private static string Token(string value)
-        => new(value.Select(character => char.IsLetterOrDigit(character)
+        => new string(value.Select(character => char.IsLetterOrDigit(character)
             ? char.ToLowerInvariant(character)
             : '-').ToArray()).Trim('-');
 

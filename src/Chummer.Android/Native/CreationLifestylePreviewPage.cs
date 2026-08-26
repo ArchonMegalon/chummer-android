@@ -96,16 +96,16 @@ public sealed class CreationLifestylePreviewPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow("Ordered atomic write plan"));
         foreach (CharacterCreationLifestyleWriteOperation operation in _prepared.WritePlan.Operations)
         {
-            VerticalStackLayout card = new() { Spacing = 6 };
-            card.Add(NativeTheme.Title(
+            VerticalStackLayout operationCard = new() { Spacing = 6 };
+            operationCard.Add(NativeTheme.Title(
                 $"{operation.Order}. {RunnerSessionCoordinator.HumanizeId(operation.MutationKind)}",
                 18));
-            card.Add(NativeTheme.Metric("Before digest", operation.BeforeDigest));
-            card.Add(NativeTheme.Metric("After digest", operation.AfterDigest));
-            card.Add(NativeTheme.Body(
+            operationCard.Add(NativeTheme.Metric("Before digest", operation.BeforeDigest));
+            operationCard.Add(NativeTheme.Metric("After digest", operation.AfterDigest));
+            operationCard.Add(NativeTheme.Body(
                 $"Source · {string.Join(" · ", operation.SourceAnchorIds)}",
                 NativeTheme.Muted));
-            Border border = NativeTheme.Card(card, new Thickness(14));
+            Border border = NativeTheme.Card(operationCard, new Thickness(14));
             border.AutomationId = $"creation-lifestyle-write-{operation.Order}-{operation.MutationKind}";
             _body.Add(border);
         }
