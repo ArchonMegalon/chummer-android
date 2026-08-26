@@ -168,6 +168,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly ICharacterCreationSkillsService? _creationSkillsService;
     private readonly ICharacterCreationQualitiesService? _creationQualitiesService;
     private readonly ICharacterCareerSkillGroupAdvanceService? _careerSkillGroupService;
+    private readonly ICharacterAfterRunSettlementService? _afterRunSettlementService;
+    private readonly IAndroidAfterRunProposalCatalog? _afterRunProposalCatalog;
     private readonly CareerQualityInteractionPresenter? _careerQualityPresenter;
     private readonly IShellPresenter _shellPresenter;
     private readonly IShellSurfaceResolver _surfaceResolver;
@@ -228,7 +230,9 @@ public sealed class RunnerSessionCoordinator : IDisposable
         ICharacterCreationSkillsService? creationSkillsService = null,
         ICharacterCreationQualitiesService? creationQualitiesService = null,
         ICareerQualityAtomicWorkspace? careerQualityWorkspace = null,
-        ICharacterCareerSkillGroupAdvanceService? careerSkillGroupService = null)
+        ICharacterCareerSkillGroupAdvanceService? careerSkillGroupService = null,
+        ICharacterAfterRunSettlementService? afterRunSettlementService = null,
+        IAndroidAfterRunProposalCatalog? afterRunProposalCatalog = null)
     {
         _presenter = presenter;
         _client = client;
@@ -239,6 +243,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _creationSkillsService = creationSkillsService;
         _creationQualitiesService = creationQualitiesService;
         _careerSkillGroupService = careerSkillGroupService;
+        _afterRunSettlementService = afterRunSettlementService;
+        _afterRunProposalCatalog = afterRunProposalCatalog;
         _careerQualityPresenter = careerQualityWorkspace is null
             ? null
             : new CareerQualityInteractionPresenter(careerQualityWorkspace);
@@ -3213,6 +3219,169 @@ public sealed class RunnerSessionCoordinator : IDisposable
         CancellationToken cancellationToken = default)
         => _presenter.PrepareCareerSkillSpecializationAsync(cancellationToken);
 
+    /// <summary>
+    /// Loads only governed run identities and Core quote bindings. Until both
+    /// the Run Services catalog and the concrete Core workspace adapter are
+    /// composed, the route remains visible but explicitly unavailable.
+    /// </summary>
+    public async Task<Sr5AfterRunSettlementEditorState> PrepareAfterRunSettlementAsync(
+        CancellationToken cancellationToken = default)
+    {
+        Sr5CareerRunnerBinding before = new(
+            State.Profile?.Created == true,
+            State.Rules?.GameEdition,
+            State.WorkspaceId,
+            State.ContentRevision,
+            State.SavedRevision,
+            State.IsDirty,
+            State.Error);
+        Sr5CareerRunnerGuard.RequireCreated(before);
+        if (before.WorkspaceId is not { } workspaceId
+            || before.SavedRevision != before.ContentRevision
+            || before.IsDirty
+            || !string.IsNullOrWhiteSpace(before.Error))
+        {
+            throw new InvalidOperationException(
+                "After Run settlement requires an exact clean saved SR5 runner revision.");
+        }
+
+        ICharacterAfterRunSettlementService? service = _afterRunSettlementService;
+        IAndroidAfterRunProposalCatalog? catalog = _afterRunProposalCatalog;
+        if (service is null || catalog is null)
+        {
+            return Sr5AfterRunSettlementEditorState.Unavailable(
+                workspaceId,
+                before.ContentRevision,
+                "The governed After Run proposal catalog and atomic workspace adapter are not composed in this build. No fallback mutation is available.");
+        }
+
+        Sr5AfterRunProposalCatalogResult projected = await Task.Run(
+            () => catalog.Load(workspaceId),
+            cancellationToken).ConfigureAwait(false);
+        if (projected is null
+            || !Enum.IsDefined(projected.Status)
+            || projected.Entries is null
+            || projected.Blockers is null
+            || projected.OmittedProposalCount < 0
+            || projected.OmittedProposalCount
+                > Sr5AfterRunProposalCatalogContract.MaximumProposalCount
+            || projected.Entries.Count
+                > Sr5AfterRunProposalCatalogContract.MaximumProposalCount
+            || projected.Blockers.Any(blocker =>
+                string.IsNullOrWhiteSpace(blocker)
+                || blocker.Length
+                    > CharacterAfterRunSettlementRules.MaximumTextLength)
+            || projected.Status == Sr5AfterRunCatalogStatus.Available
+                && projected.Blockers.Count > 0)
+        {
+            return new Sr5AfterRunSettlementEditorState(
+                workspaceId,
+                before.ContentRevision,
+                Sr5AfterRunCatalogStatus.Corrupt,
+                [],
+                0,
+                ["The governed After Run proposal catalog returned an invalid projection."]);
+        }
+        if (projected.Status != Sr5AfterRunCatalogStatus.Available)
+        {
+            string blocker = projected.Blockers.FirstOrDefault()
+                ?? "The governed After Run proposal catalog is unavailable.";
+            return new Sr5AfterRunSettlementEditorState(
+                workspaceId,
+                before.ContentRevision,
+                projected.Status,
+                [],
+                projected.OmittedProposalCount,
+                [blocker]);
+        }
+        if (projected.Entries.Count == 0
+            || projected.Entries.Any(entry =>
+                entry is null
+                || entry.Identity.ProposalId == Guid.Empty
+                || entry.Identity.RunId == Guid.Empty
+                || entry.Identity.CharacterId == Guid.Empty
+                || entry.RewardContext is null
+                || !entry.RewardContext.IsExact())
+            || projected.Entries.Select(entry => entry.Identity).Distinct().Count()
+                != projected.Entries.Count)
+        {
+            return new Sr5AfterRunSettlementEditorState(
+                workspaceId,
+                before.ContentRevision,
+                Sr5AfterRunCatalogStatus.Corrupt,
+                [],
+                projected.OmittedProposalCount,
+                ["The governed After Run catalog contains an invalid or duplicate typed proposal identity."]);
+        }
+
+        var candidates = new List<Sr5AfterRunSettlementCandidate>();
+        int omitted = projected.OmittedProposalCount;
+        foreach (Sr5AfterRunProposalCatalogEntry entry in projected.Entries)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            CharacterAfterRunSettlementQuoteResult quoted = await Task.Run(
+                () => service.Quote(new CharacterAfterRunSettlementQuoteRequest(
+                    workspaceId,
+                    entry.Identity)),
+                cancellationToken).ConfigureAwait(false);
+            if (quoted.Outcome != CharacterAfterRunSettlementServiceOutcome.Available
+                || quoted.Binding is not { } binding
+                || binding.WorkspaceId != workspaceId
+                || binding.WorkspaceRevision != before.ContentRevision
+                || binding.Identity != entry.Identity)
+            {
+                omitted = checked(omitted + 1);
+                continue;
+            }
+            var candidate = new Sr5AfterRunSettlementCandidate(
+                entry.RewardContext,
+                binding);
+            if (!candidate.IsExact(workspaceId, before.ContentRevision))
+            {
+                omitted = checked(omitted + 1);
+                continue;
+            }
+            candidates.Add(candidate);
+        }
+
+        Sr5CareerRunnerBinding after = new(
+            State.Profile?.Created == true,
+            State.Rules?.GameEdition,
+            State.WorkspaceId,
+            State.ContentRevision,
+            State.SavedRevision,
+            State.IsDirty,
+            State.Error);
+        if (after != before)
+        {
+            throw new InvalidOperationException(
+                "The saved runner changed while After Run proposals were being quoted.");
+        }
+        if (candidates.Count == 0)
+        {
+            return Sr5AfterRunSettlementEditorState.Unavailable(
+                workspaceId,
+                before.ContentRevision,
+                "No exact unsettled completed-run proposal is available for this runner revision.") with
+            {
+                OmittedProposalCount = omitted
+            };
+        }
+        var editor = new Sr5AfterRunSettlementEditorState(
+            workspaceId,
+            before.ContentRevision,
+            Sr5AfterRunCatalogStatus.Available,
+            candidates,
+            omitted,
+            []);
+        if (!editor.IsExact())
+        {
+            throw new InvalidOperationException(
+                "The After Run editor projection failed exact identity and digest validation.");
+        }
+        return editor;
+    }
+
     public Task<CharacterCareerSkillSpecializationQuote?> PrepareCareerSkillSpecializationQuoteAsync(
         CareerSkillSpecializationQuoteRequest request,
         CancellationToken cancellationToken = default)
@@ -3382,6 +3551,78 @@ public sealed class RunnerSessionCoordinator : IDisposable
                     "The atomic skill-group receipt was returned without the exact clean saved runner revision.");
             }
             _notice = "Skill group advanced and exact Core receipt saved.";
+        }
+
+        await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+        NotifyChanged();
+        return result;
+    }
+
+    /// <summary>
+    /// Executes only the atomic Core settlement service. Missing composition
+    /// returns null; Android never substitutes manual Karma/Nuyen/reputation or
+    /// generic XML writes for the combined governed transaction.
+    /// </summary>
+    public async Task<CharacterAfterRunSettlementResult?> SettleAfterRunAsync(
+        CharacterAfterRunSettlementCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        if (!CharacterAfterRunSettlementServiceIntegrity.TryComputeCommandDigest(
+                command,
+                out string commandDigest)
+            || State.WorkspaceId != command.WorkspaceId
+            || State.IsDirty
+            || State.SavedRevision != State.ContentRevision
+            || State.ContentRevision < command.ExpectedWorkspaceRevision
+            || State.ContentRevision > command.ExpectedWorkspaceRevision + 1)
+        {
+            throw new InvalidOperationException(
+                "The atomic After Run command does not own this exact clean saved runner revision.");
+        }
+
+        ICharacterAfterRunSettlementService? service = _afterRunSettlementService;
+        if (service is null)
+        {
+            return null;
+        }
+
+        CharacterAfterRunSettlementResult result = await Task.Run(
+            () => service.Settle(command),
+            cancellationToken).ConfigureAwait(false);
+        if (!string.Equals(
+                result.ContractName,
+                CharacterAfterRunSettlementServiceSchemas.ResultV1,
+                StringComparison.Ordinal)
+            || result.WorkspaceId != command.WorkspaceId
+            || result.ExpectedWorkspaceRevision != command.ExpectedWorkspaceRevision
+            || result.Identity != command.Identity
+            || result.TransactionId != command.TransactionId
+            || !string.Equals(result.CommandDigest, commandDigest, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Core returned an After Run result for another command or runner.");
+        }
+
+        if (result.CurrentWorkspaceRevision > 0
+            && result.CurrentWorkspaceRevision != State.ContentRevision)
+        {
+            await _presenter.LoadAsync(command.WorkspaceId, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        if (result.Outcome is CharacterAfterRunSettlementServiceOutcome.Applied
+                or CharacterAfterRunSettlementServiceOutcome.Replayed)
+        {
+            if (State.WorkspaceId != command.WorkspaceId
+                || State.ContentRevision != result.CurrentWorkspaceRevision
+                || State.SavedRevision != result.CurrentWorkspaceRevision
+                || State.IsDirty
+                || !string.IsNullOrWhiteSpace(State.Error))
+            {
+                throw new InvalidOperationException(
+                    "The atomic After Run receipt was returned without the exact clean saved runner revision.");
+            }
+            _notice = "After Run Heat, reputation and contacts settled; exact Core receipt saved.";
         }
 
         await SyncShellAsync(cancellationToken).ConfigureAwait(false);

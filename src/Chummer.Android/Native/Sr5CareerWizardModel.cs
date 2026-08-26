@@ -47,6 +47,14 @@ public static class Sr5CareerWizardRoutes
     public const string QualityChoose = "sr5-career/advancement/quality/choose";
     public const string QualityReview = "sr5-career/advancement/quality/review";
     public const string QualityReceipt = "sr5-career/advancement/quality/receipt";
+    public const string AfterRunChoose = "sr5-career/after-run/settlement/choose";
+    public const string AfterRunRewards = "sr5-career/after-run/settlement/rewards";
+    public const string AfterRunConsequences = "sr5-career/after-run/settlement/consequences";
+    public const string AfterRunContacts = "sr5-career/after-run/settlement/contacts";
+    public const string AfterRunGmReview = "sr5-career/after-run/settlement/gm-review";
+    public const string AfterRunOwnerReview = "sr5-career/after-run/settlement/owner-review";
+    public const string AfterRunReview = "sr5-career/after-run/settlement/review";
+    public const string AfterRunReceipt = "sr5-career/after-run/settlement/receipt";
 
     public static string Lane(Sr5CareerWizardLane lane)
         => $"sr5-career/{Sr5CareerWizardPage.LaneToken(lane)}";
@@ -92,7 +100,8 @@ public enum Sr5CareerActionKind
     SkillGroupAdvance = 2,
     QualityTransaction = 3,
     KnowledgeSkillAdvance = 4,
-    SkillSpecializationAdd = 5
+    SkillSpecializationAdd = 5,
+    AfterRunSettlement = 6
 }
 
 public sealed record Sr5CareerCostQuote(
@@ -442,6 +451,71 @@ public sealed record Sr5CareerActionPlan(
                 quote.LogicalRevision,
                 IsExact: CharacterCareerSkillSpecializationRules.IsCoherent(quote),
                 Blocker: quote.CanAdd ? string.Empty : quote.Blocker.ToString()));
+    }
+
+    public static Sr5CareerActionPlan FromAfterRunSettlement(
+        Guid ownerId,
+        CharacterAfterRunSettlementQuoteBinding binding,
+        CharacterAfterRunSettlementPlan plan,
+        string rewardContextDigest)
+    {
+        ArgumentNullException.ThrowIfNull(binding);
+        ArgumentNullException.ThrowIfNull(plan);
+        CharacterAfterRunSettlementQuote quote = binding.Quote;
+        string identity = string.Join(
+            ":",
+            quote.Identity.ProposalId.ToString("D"),
+            quote.Identity.RunId.ToString("D"),
+            quote.Identity.CharacterId.ToString("D"));
+        string idempotencyKey = Sha256Canonical(
+            "chummer.android.sr5-after-run-settlement-action/v1",
+            ownerId.ToString("D"),
+            binding.WorkspaceId.Value,
+            binding.WorkspaceRevision.ToString(CultureInfo.InvariantCulture),
+            plan.TransactionId.ToString("D"),
+            identity,
+            binding.ContractName,
+            binding.BindingDigest,
+            quote.SourceDigest,
+            quote.CustomDataDigest,
+            quote.GmPolicyDigest,
+            quote.RuntimeDigest,
+            quote.LogicalDigest,
+            quote.GmReviewDigest,
+            quote.OwnerReviewDigest,
+            rewardContextDigest,
+            plan.PlanDigest);
+        return new Sr5CareerActionPlan(
+            ownerId,
+            plan.TransactionId,
+            idempotencyKey,
+            Sr5CareerWizardRoutes.AfterRunReview,
+            Sr5CareerActionKind.AfterRunSettlement,
+            binding.WorkspaceId,
+            binding.WorkspaceRevision,
+            identity,
+            new Sr5CareerCostQuote(
+                quote.ContactKarmaCost,
+                NuyenCost: 0m,
+                EssenceCost: 0m,
+                Availability: null,
+                ElapsedTime: null,
+                RuleDigest: quote.GmPolicyDigest,
+                LogicalRevision: quote.LogicalDigest,
+                IsExact: CharacterAfterRunSettlementRules.IsCoherent(quote)
+                    && CharacterAfterRunSettlementRules.IsCoherent(plan),
+                Blocker: quote.CanSettle ? string.Empty : quote.Blocker.ToString()));
+    }
+
+    private static string Sha256Canonical(params string[] values)
+    {
+        string payload = string.Join('\0', values.Select(value =>
+            string.Concat(
+                value.Length.ToString(CultureInfo.InvariantCulture),
+                ":",
+                value)));
+        return Convert.ToHexStringLower(
+            SHA256.HashData(Encoding.UTF8.GetBytes(payload)));
     }
 
     private static string ComputeSpecializationIdempotencyKey(
@@ -1145,9 +1219,9 @@ public static class Sr5CareerWizardCatalog
         new(
             Sr5CareerWizardLane.AfterRun,
             "After the run",
-            "Record rewards and reputation through exact SR5 mutation families.",
+            "Review one governed run proposal and settle its character-local consequences atomically.",
             Sr5CareerWizardAvailability.Partial,
-            "Karma, Nuyen and reputation are independent typed saves. Contacts and a combined atomic run closeout are blocked."),
+            "The native settlement wizard binds run/reward context, Heat, reputation, contacts, GM review, owner review, Core quote, CAS and receipt. It remains explicitly unavailable until a governed proposal catalog and concrete atomic workspace adapter are composed."),
         new(
             Sr5CareerWizardLane.Downtime,
             "Downtime",

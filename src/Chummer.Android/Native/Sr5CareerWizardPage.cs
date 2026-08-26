@@ -215,13 +215,18 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
     private void AddAfterRun()
     {
         AddAction(
+            "Settle a completed run",
+            "Choose exact proposal → rewards → Heat/reputation → contacts → GM review → owner review → atomic receipt",
+            OpenAfterRunSettlementAsync,
+            "settlement");
+        AddAction(
             "Record Karma",
-            "One dated typed Karma gain or spend; saved independently",
+            "Independent manual correction only; it is not a substitute for governed run settlement",
             OpenManualKarmaAsync,
             "karma");
         AddAction(
             "Record Nuyen",
-            "One dated typed Nuyen gain or spend; saved independently",
+            "Independent manual correction only; it is not a substitute for governed run settlement",
             OpenManualNuyenAsync,
             "nuyen");
         AddAction(
@@ -230,11 +235,8 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
             OpenReputationAsync,
             "reputation");
         AddBlocked(
-            "There is no Heat field in the current typed SR5 authority and no typed After Run contact transaction.",
-            "heat-contacts");
-        AddBlocked(
-            "Karma, Nuyen and reputation cannot be reviewed or committed as one atomic run-closeout bundle yet.",
-            "atomic-closeout");
+            "Reward-ledger application remains owned by Run Services. The character settlement intentionally does not replay reward Karma or Nuyen.",
+            "reward-ledger");
     }
 
     private void AddDowntime()
@@ -394,6 +396,17 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
         {
             await Navigation.PushAsync(new Sr5CareerSpecializationWizardPage(Coordinator, editor));
         }
+    }
+
+    private async Task OpenAfterRunSettlementAsync()
+    {
+        Sr5AfterRunSettlementCoordinator authority = new(
+            new RunnerSessionSr5AfterRunSettlementPresenter(Coordinator),
+            new PreferencesSr5CareerCheckpointOwnerAuthority());
+        Sr5AfterRunSettlementEditorState editor = await authority.PrepareAsync();
+        await Navigation.PushAsync(new Sr5AfterRunSettlementWizardPage(
+            Coordinator,
+            editor));
     }
 
     private async Task OpenEdgeAsync()

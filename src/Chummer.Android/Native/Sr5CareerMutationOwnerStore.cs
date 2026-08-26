@@ -11,6 +11,7 @@ internal static class Sr5CareerMutationDomains
     public const string KnowledgeSkillAdvance = "knowledge-skill-advance";
     public const string QualityChange = "quality-change";
     public const string SkillSpecializationAdd = "skill-specialization-add";
+    public const string AfterRunSettlement = "after-run-settlement";
 }
 
 /// <summary>

@@ -1479,6 +1479,20 @@ public sealed class BuildPage : NativePageBase
                 },
                 automationId: "build-career-specialization-editor"));
             _body.Add(NativeTheme.NavigationRow(
+                "Settle completed run",
+                "Review governed rewards, Heat/reputation, contacts and both approvals before one atomic Core receipt",
+                async () =>
+                {
+                    Sr5AfterRunSettlementCoordinator authority = new(
+                        new RunnerSessionSr5AfterRunSettlementPresenter(Coordinator),
+                        new PreferencesSr5CareerCheckpointOwnerAuthority());
+                    Sr5AfterRunSettlementEditorState editor = await authority.PrepareAsync();
+                    await Navigation.PushAsync(new Sr5AfterRunSettlementWizardPage(
+                        Coordinator,
+                        editor));
+                },
+                automationId: "build-career-after-run-settlement"));
+            _body.Add(NativeTheme.NavigationRow(
                 "Calendar",
                 "Add the next ISO week, edit its notes and color, or delete it by stable identity",
                 async () =>

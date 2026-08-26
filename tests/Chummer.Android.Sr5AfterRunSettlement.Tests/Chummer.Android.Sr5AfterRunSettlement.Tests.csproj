@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ChummerCoreRoot Condition="'$(ChummerCoreRoot)' == ''">../../../chummer-core-engine</ChummerCoreRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="AuthorityCompileStubs.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterAfterRunSettlementRules.cs" Link="Core/CharacterAfterRunSettlementRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterAfterRunSettlementServiceContracts.cs" Link="Core/CharacterAfterRunSettlementServiceContracts.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5AfterRunWizardModel.cs" Link="Native/Sr5AfterRunWizardModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5AfterRunSettlementCoordinator.cs" Link="Native/Sr5AfterRunSettlementCoordinator.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5AfterRunSettlementCheckpointStore.cs" Link="Native/Sr5AfterRunSettlementCheckpointStore.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerMutationOwnerStore.cs" Link="Native/Sr5CareerMutationOwnerStore.cs" />
+  </ItemGroup>
+</Project>
