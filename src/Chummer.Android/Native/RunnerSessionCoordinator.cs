@@ -120,6 +120,14 @@ public sealed record CreationContactPhoneConfirmResult(
     bool RecoveredByReceiptLookup,
     IReadOnlyList<string> Blockers);
 
+public sealed record CreationLifestylePhoneConfirmResult(
+    string Outcome,
+    CharacterCreationLifestylePreparedPreview PreparedPreview,
+    CharacterCreationLifestyleReceipt? Receipt,
+    CharacterCreationLifestylesInteractionState? RefreshedState,
+    bool RecoveredByReceiptLookup,
+    IReadOnlyList<string> Blockers);
+
 public sealed record CreationAttributesPhoneConfirmResult(
     string Outcome,
     CharacterCreationAttributesReceipt? Receipt,
@@ -193,6 +201,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly IWorkspaceOperationCoordinator _workspaceOperationCoordinator;
     private readonly ICharacterCreationFoundationInteractionPresenter _foundationInteractionPresenter;
     private readonly ICharacterCreationContactsInteractionPresenter _creationContactsPresenter;
+    private readonly ICharacterCreationLifestylesInteractionPresenter _creationLifestylesPresenter;
     private readonly ICharacterCreationPrerequisiteService _creationPrerequisiteService;
     private readonly ICharacterCreationAttributesService? _creationAttributesService;
     private readonly ICharacterCreationSkillsService? _creationSkillsService;
@@ -248,6 +257,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         IWorkspaceOperationCoordinator workspaceOperationCoordinator,
         ICharacterCreationFoundationInteractionPresenter foundationInteractionPresenter,
         ICharacterCreationContactsInteractionPresenter creationContactsPresenter,
+        ICharacterCreationLifestylesInteractionPresenter creationLifestylesPresenter,
         ICharacterCreationPrerequisiteService creationPrerequisiteService,
         IShellPresenter shellPresenter,
         IShellSurfaceResolver surfaceResolver,
@@ -272,6 +282,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _workspaceOperationCoordinator = workspaceOperationCoordinator;
         _foundationInteractionPresenter = foundationInteractionPresenter;
         _creationContactsPresenter = creationContactsPresenter;
+        _creationLifestylesPresenter = creationLifestylesPresenter;
         _creationPrerequisiteService = creationPrerequisiteService;
         _creationAttributesService = creationAttributesService;
         _creationSkillsService = creationSkillsService;
@@ -596,6 +607,209 @@ public sealed class RunnerSessionCoordinator : IDisposable
         return new CreationContactPhoneConfirmResult(
             recoveredByReceiptLookup
                 ? CharacterCreationContactOutcomes.Replayed
+                : result!.Outcome,
+            prepared,
+            receipt,
+            refreshedState,
+            recoveredByReceiptLookup,
+            []);
+    }
+
+    public CharacterCreationLifestylesInteractionLoadResult LoadCreationLifestyles()
+    {
+        if (State.Profile?.Created != false || State.WorkspaceId is null)
+        {
+            return new CharacterCreationLifestylesInteractionLoadResult(
+                CharacterCreationLifestyleOutcomes.Blocked,
+                null,
+                [CharacterCreationLifestylesBlockers.WorkspaceUnavailable]);
+        }
+
+        CharacterCreationLifestylesInteractionLoadResult result =
+            _creationLifestylesPresenter.Load(State);
+        if (string.Equals(
+                result.Outcome,
+                CharacterCreationLifestyleOutcomes.Available,
+                StringComparison.Ordinal)
+            && (result.State is null
+                || !CreationLifestylesPhoneAuthority.IsBound(result.State, State)))
+        {
+            return new CharacterCreationLifestylesInteractionLoadResult(
+                CharacterCreationLifestyleOutcomes.Conflict,
+                null,
+                [CharacterCreationLifestylesBlockers.StaleWorkspaceRevision]);
+        }
+        return result;
+    }
+
+    public CharacterCreationLifestylesInteractionPrepareResult PrepareCreationLifestyle(
+        CharacterCreationLifestyleMutationInput input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        CharacterCreationLifestylesInteractionLoadResult load = LoadCreationLifestyles();
+        if (load.State is not { } state
+            || !CreationLifestylesPhoneAuthority.IsReady(state, State))
+        {
+            return new CharacterCreationLifestylesInteractionPrepareResult(
+                CharacterCreationLifestyleOutcomes.Conflict,
+                load.State,
+                null,
+                load.Blockers.Count > 0
+                    ? load.Blockers
+                    : [CharacterCreationLifestylesBlockers.StaleWorkspaceRevision]);
+        }
+
+        CharacterCreationLifestylesInteractionPrepareResult result =
+            _creationLifestylesPresenter.Prepare(State, input);
+        if (string.Equals(
+                result.Outcome,
+                CharacterCreationLifestyleOutcomes.Available,
+                StringComparison.Ordinal)
+            && (result.State is null
+                || result.PreparedPreview is null
+                || !CreationLifestylesPhoneAuthority.PreparedMatches(
+                    result.PreparedPreview,
+                    result.State,
+                    State)))
+        {
+            return new CharacterCreationLifestylesInteractionPrepareResult(
+                CharacterCreationLifestyleOutcomes.Conflict,
+                result.State,
+                null,
+                result.Blockers
+                    .Append(CharacterCreationLifestylesBlockers.PreviewDigestMismatch)
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(static blocker => blocker, StringComparer.Ordinal)
+                    .ToArray());
+        }
+        return result;
+    }
+
+    public async Task<CreationLifestylePhoneConfirmResult> ConfirmCreationLifestyleAsync(
+        CharacterCreationLifestylePreparedPreview prepared,
+        CancellationToken cancellationToken = default)
+        => await WithWorkspaceActivationGateAsync(
+            () => ConfirmCreationLifestyleCoreAsync(prepared, cancellationToken),
+            cancellationToken);
+
+    private async Task<CreationLifestylePhoneConfirmResult> ConfirmCreationLifestyleCoreAsync(
+        CharacterCreationLifestylePreparedPreview prepared,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(prepared);
+        CharacterCreationLifestylesInteractionLoadResult before = LoadCreationLifestyles();
+        if (before.State is not { } state
+            || !CreationLifestylesPhoneAuthority.PreparedMatches(prepared, state, State))
+        {
+            return new CreationLifestylePhoneConfirmResult(
+                CharacterCreationLifestyleOutcomes.Conflict,
+                prepared,
+                null,
+                null,
+                false,
+                before.Blockers.Count > 0
+                    ? before.Blockers
+                    : [CharacterCreationLifestylesBlockers.StaleWorkspaceRevision]);
+        }
+
+        var confirmation = new CharacterCreationLifestyleConfirmation(
+            prepared,
+            prepared.PreviewDigest,
+            prepared.IdempotencyKey,
+            ExplicitlyConfirmed: true);
+        CharacterCreationLifestylesInteractionConfirmResult? result = null;
+        Exception? ambiguousFailure = null;
+        try
+        {
+            result = _creationLifestylesPresenter.Confirm(State, confirmation);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // The atomic Core commit may have completed before the caller observed a transport
+            // failure. Retain the same key and recover only the matching durable receipt.
+            ambiguousFailure = exception;
+        }
+
+        CharacterCreationLifestyleReceipt? receipt = result?.Receipt;
+        bool recoveredByReceiptLookup = false;
+        bool directlyValid = result is
+        {
+            Outcome: CharacterCreationLifestyleOutcomes.Applied
+                or CharacterCreationLifestyleOutcomes.Replayed,
+            Receipt: not null
+        } && CreationLifestylesPhoneAuthority.ReceiptMatches(prepared, receipt!);
+        if (!directlyValid)
+        {
+            await _presenter.LoadAsync(prepared.Binding.WorkspaceId, cancellationToken);
+            await SyncShellAsync(cancellationToken);
+            CharacterCreationLifestylesInteractionReceiptLookupResult lookup =
+                _creationLifestylesPresenter.LookupReceipt(State, prepared.IdempotencyKey);
+            if (string.Equals(
+                    lookup.Outcome,
+                    CharacterCreationLifestyleOutcomes.Available,
+                    StringComparison.Ordinal)
+                && lookup.Receipt is { } recovered
+                && CreationLifestylesPhoneAuthority.ReceiptMatches(prepared, recovered))
+            {
+                receipt = recovered;
+                recoveredByReceiptLookup = true;
+            }
+            else
+            {
+                return new CreationLifestylePhoneConfirmResult(
+                    result?.Outcome ?? CharacterCreationLifestyleOutcomes.Unavailable,
+                    prepared,
+                    result?.Receipt,
+                    null,
+                    false,
+                    (result?.Blockers ?? [])
+                        .Concat(lookup.Blockers)
+                        .Append(ambiguousFailure is null
+                            ? CharacterCreationLifestylesBlockers.PersistenceAuthorityRequired
+                            : CharacterCreationLifestylesBlockers.AuthorityUnavailable)
+                        .Distinct(StringComparer.Ordinal)
+                        .OrderBy(static blocker => blocker, StringComparer.Ordinal)
+                        .ToArray());
+            }
+        }
+
+        await _presenter.LoadAsync(receipt!.WorkspaceId, cancellationToken);
+        await SyncShellAsync(cancellationToken);
+        CharacterCreationLifestylesInteractionLoadResult refreshed = LoadCreationLifestyles();
+        if (refreshed.State is not { } refreshedState
+            || !CreationLifestylesPhoneAuthority.ReceiptMatches(prepared, receipt)
+            || !CreationLifestylesPhoneAuthority.RefreshedStateMatches(
+                prepared,
+                receipt,
+                refreshedState,
+                State))
+        {
+            _notice = null;
+            NotifyChanged();
+            return new CreationLifestylePhoneConfirmResult(
+                CharacterCreationLifestyleOutcomes.Conflict,
+                prepared,
+                receipt,
+                null,
+                recoveredByReceiptLookup,
+                refreshed.Blockers
+                    .Append(CharacterCreationLifestylesBlockers.StaleWorkspaceRevision)
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(static blocker => blocker, StringComparer.Ordinal)
+                    .ToArray());
+        }
+
+        _ = await TryRefreshWorkspaceAuthorityAsync(
+            expectedWorkspaceId: receipt.WorkspaceId,
+            expectedPayloadSha256: receipt.ContentDigestAfter["sha256:".Length..],
+            cancellationToken);
+        _notice = recoveredByReceiptLookup
+            ? "Creation Lifestyle saved; the exact receipt recovered an ambiguous confirmation."
+            : "Creation Lifestyle saved and atomically checkpointed.";
+        NotifyChanged();
+        return new CreationLifestylePhoneConfirmResult(
+            recoveredByReceiptLookup
+                ? CharacterCreationLifestyleOutcomes.Replayed
                 : result!.Outcome,
             prepared,
             receipt,

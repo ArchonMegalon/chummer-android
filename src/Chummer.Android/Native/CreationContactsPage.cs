@@ -27,8 +27,13 @@ public sealed class CreationContactsPage : NativePageBase
         _body.Add(NativeTheme.Title("Contacts"));
         _body.Add(NativeTheme.Body(
             "Choose an existing Contact and preview one rules-authoritative change. "
-            + "Pets, Enemies, add/delete, and Lifestyles remain outside this surface.",
+            + "Pets, Enemies, and Contact add/delete remain outside this surface.",
             NativeTheme.Muted));
+        _body.Add(NativeTheme.NavigationRow(
+            "Lifestyles",
+            "Open the Core catalog, configure a typed Lifestyle, and review exact nuyen/LP economics.",
+            () => Navigation.PushAsync(new CreationLifestylesPage(Coordinator)),
+            automationId: "creation-contacts-open-lifestyles"));
         var load = Coordinator.LoadCreationContacts();
         if (!string.Equals(load.Outcome, CharacterCreationContactOutcomes.Available, StringComparison.Ordinal)
             || load.State is not { } state)
