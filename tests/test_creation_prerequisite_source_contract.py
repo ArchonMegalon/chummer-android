@@ -259,34 +259,41 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             scroll_distance_ratio=0.22,
             exact_resource_id=True,
         )
-        reset.assert_called_once_with(device, swipes=22)
+        self.assertEqual([mock.call(device, swipes=22)] * 2, reset.call_args_list)
         device.tap_until_visible.assert_not_called()
 
     def test_prerequisite_navigation_proves_route_before_reading_content(self) -> None:
         device = mock.Mock()
+        events: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
+        device.wait.side_effect = lambda *args, **kwargs: events.append(
+            ("wait", args, kwargs)
+        )
 
         with mock.patch.object(driver.shared, "reset_scroll_to_top") as reset:
+            reset.side_effect = lambda *args, **kwargs: events.append(
+                ("reset", args, kwargs)
+            )
             driver.open_prerequisite(device)
 
         self.assertEqual(
             [
-                mock.call("creation-prerequisite-page", timeout=60),
-                mock.call(
-                    "creation-prerequisite-karma-budget",
-                    timeout=60,
-                    scroll=True,
-                    max_scrolls=22,
+                ("wait", ("creation-prerequisite-page",), {"timeout": 60}),
+                ("reset", (device,), {"swipes": 22}),
+                (
+                    "wait",
+                    ("creation-prerequisite-karma-budget",),
+                    {"timeout": 60, "scroll": True, "max_scrolls": 22},
                 ),
-                mock.call(
-                    "creation-prerequisite-method",
-                    timeout=45,
-                    scroll=True,
-                    max_scrolls=22,
+                (
+                    "wait",
+                    ("creation-prerequisite-method",),
+                    {"timeout": 45, "scroll": True, "max_scrolls": 22},
                 ),
+                ("reset", (device,), {"swipes": 22}),
             ],
-            device.wait.call_args_list,
+            events,
         )
-        reset.assert_called_once_with(device, swipes=22)
+        self.assertEqual([mock.call(device, swipes=22)] * 2, reset.call_args_list)
 
     def test_rank_selection_resets_bottom_viewport_and_proves_refreshed_draft_row(self) -> None:
         calls: list[tuple[str, object]] = []

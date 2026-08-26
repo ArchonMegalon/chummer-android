@@ -1040,6 +1040,9 @@ def open_prerequisite(device: shared.Device) -> None:
         exact_resource_id=True,
     )
     device.wait("creation-prerequisite-page", timeout=60)
+    # Android can carry the deeply scrolled Build viewport into this newly pushed page.
+    # Bind the route first, then establish the native page origin before reading top cards.
+    shared.reset_scroll_to_top(device, swipes=22)
     device.wait("creation-prerequisite-karma-budget", timeout=60, scroll=True, max_scrolls=22)
     device.wait("creation-prerequisite-method", timeout=45, scroll=True, max_scrolls=22)
     # Both authority cards can push the binding above UIAutomator's visible hierarchy.
