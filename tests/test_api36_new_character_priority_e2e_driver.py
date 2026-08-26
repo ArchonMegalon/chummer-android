@@ -73,6 +73,21 @@ class Api36NewCharacterPriorityE2EDriverTests(unittest.TestCase):
         ):
             self.assertIn(marker, source)
 
+    def test_priority_fields_use_cardinality_checked_bidirectional_lookup(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        field_tap = source[source.index("def tap_exact_field(") :]
+        field_tap = field_tap[: field_tap.index("def tap_exact_option(")]
+
+        for marker in (
+            "device.wait_exact_resource_id_bidirectional(",
+            "backward_scrolls=18",
+            "forward_scrolls=18",
+            'evidence_prefix=f"priority-field-{selector}"',
+            'surface_name="Priority dialog field"',
+        ):
+            self.assertIn(marker, field_tap)
+        self.assertNotIn("device.swipe_up", field_tap)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1029,12 +1029,12 @@
       {
         "path": "tests/run_api36_new_character_priority_e2e.py",
         "exists": true,
-        "sha256": "2ebc6617aa5e32eb4aaeca1ea9b8d1023f786c28c46d603ab167eedc15c7344e"
+        "sha256": "dc67dd3f2cb4f34bf744869575c6b51d9800ab338fffae33e6d8e23423488e5f"
       },
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "11a1aa3bcf2a99129c8be2752e2b5d6abd40171518a627eb9fbd60d9d7821aba"
+        "sha256": "03503a225e09e7fe9e40428e57aa80851c2ca0f2a1809ba61c9e000cf79ca748"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",

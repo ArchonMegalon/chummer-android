@@ -66,8 +66,21 @@ def tap_exact_field(
     *,
     scroll: bool,
 ) -> None:
+    if scroll:
+        node = device.wait_exact_resource_id_bidirectional(
+            selector,
+            timeout=90,
+            backward_scrolls=18,
+            forward_scrolls=18,
+            scroll_distance_ratio=0.22,
+            evidence_prefix=f"priority-field-{selector}",
+            surface_name="Priority dialog field",
+        )
+        x, y = node.center
+        device.shell("input", "tap", str(x), str(y))
+        return
+
     deadline = time.monotonic() + 90
-    scrolls = 0
     while time.monotonic() < deadline:
         node = find_exact(device, selector)
         if node is not None and device.node_has_tappable_bounds(node):
@@ -77,9 +90,6 @@ def tap_exact_field(
         if device.dismiss_system_ui_anr():
             time.sleep(5)
             continue
-        if scroll and scrolls < 18:
-            device.swipe_up(distance_ratio=0.22)
-            scrolls += 1
         time.sleep(0.75)
     device.capture(f"missing-exact-{selector}")
     raise RuntimeError(f"Timed out waiting for exact UI field {selector!r}")
