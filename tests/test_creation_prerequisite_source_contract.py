@@ -2066,6 +2066,73 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('"advancedEditorNeverExposedWhileCreatedFalse": "pass"', source)
         self.assertIn("require_binding_matches_canonical_digests(", source)
 
+    def test_api36_driver_reads_scroll_surfaces_in_native_page_order(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+
+        typed = source[source.index("selected: dict[str, str] = {}") :]
+        typed = typed[: typed.index("# A plain Back from a category route")]
+        self.assertLess(
+            typed.index("shared.reset_scroll_to_top(device, swipes=22)"),
+            typed.index('for category, label in (("heritage", "Human"), ("talent", "Mundane"))'),
+        )
+
+        preview = source[source.index('device.wait("creation-prerequisite-preview-page"') :]
+        preview = preview[: preview.index('device.tap("creation-prerequisite-confirm"')]
+        self.assertLess(
+            preview.index('f"creation-prerequisite-preview-assignment-{category}"'),
+            preview.index('"creation-prerequisite-preview-heritage"'),
+        )
+        self.assertLess(
+            preview.index('"creation-prerequisite-preview-heritage"'),
+            preview.index('"creation-prerequisite-preview-talent"'),
+        )
+        self.assertLess(
+            preview.index('"creation-prerequisite-preview-talent"'),
+            preview.index('"creation-prerequisite-preview-karma-budget"'),
+        )
+        self.assertLess(
+            preview.index('"creation-prerequisite-preview-karma-budget"'),
+            preview.index('"creation-prerequisite-preview-attributes-ready"'),
+        )
+
+        receipt = source[source.index("confirmed_revisions = {") :]
+        receipt = receipt[: receipt.index('device.capture("creation-prerequisite-confirmed")')]
+        self.assertLess(
+            receipt.index('"creation-prerequisite-receipt-draft-revision"'),
+            receipt.index('"creation-prerequisite-receipt-draft-digest"'),
+        )
+        self.assertLess(
+            receipt.index('"creation-prerequisite-receipt-draft-digest"'),
+            receipt.index('"creation-prerequisite-receipt-raw-character-xml-digest"'),
+        )
+
+        persisted = source[source.index("def read_persisted_prerequisite_authority(") :]
+        persisted = persisted[: persisted.index("def assert_persisted_prerequisite_authority(")]
+        self.assertLess(
+            persisted.index("shared.reset_scroll_to_top(device, swipes=22)"),
+            persisted.index('"creation-prerequisite-binding"'),
+        )
+        self.assertLess(
+            persisted.index('"creation-prerequisite-authority-digest"'),
+            persisted.index('"creation-prerequisite-pending-draft"'),
+        )
+        self.assertLess(
+            persisted.index('"creation-prerequisite-pending-draft"'),
+            persisted.index('"creation-prerequisite-pending-draft-digest"'),
+        )
+
+        resumed = source[source.index("resumed_authority =") :]
+        resumed = resumed[: resumed.index("restart =")]
+        self.assertLess(
+            resumed.index("require_exact_restored_authority_option("),
+            resumed.index('"creation-prerequisite-category-attributes"'),
+        )
+
+        restored = source[source.index("def require_exact_restored_authority_option(") :]
+        restored = restored[: restored.index("def main()")]
+        self.assertIn("device.wait_exact_resource_id_bidirectional(", restored)
+        self.assertNotIn("device.tap(", restored)
+
     def test_api36_phone_only_ci_selects_the_isolated_prerequisite_journey(self) -> None:
         runner = (
             REPO / "scripts" / "run-api36-editing-e2e-ci.sh"

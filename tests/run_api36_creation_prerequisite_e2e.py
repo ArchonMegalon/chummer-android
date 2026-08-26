@@ -760,6 +760,7 @@ def require_binding_matches_canonical_digests(
 
 
 def read_persisted_prerequisite_authority(device: shared.Device) -> dict[str, object]:
+    shared.reset_scroll_to_top(device, swipes=22)
     binding = require_prerequisite_binding(
         node_text(device, "creation-prerequisite-binding", scroll=True)
     )
@@ -789,6 +790,12 @@ def read_persisted_prerequisite_authority(device: shared.Device) -> dict[str, ob
         binding,
         snapshot_digest,
         binding_digests["authority"],
+    )
+    device.wait(
+        "creation-prerequisite-pending-draft",
+        timeout=60,
+        scroll=True,
+        max_scrolls=22,
     )
     return {
         "binding": binding,
@@ -1175,11 +1182,17 @@ def require_exact_restored_authority_option(
             f"expected={expected_selection_id!r}, actual={restored_selection_id!r}"
         )
 
-    device.tap(
+    selection_row = device.wait_exact_resource_id_bidirectional(
         f"creation-prerequisite-{category}-selection",
-        scroll=True,
-        max_scrolls=22,
+        timeout=90,
+        backward_scrolls=22,
+        forward_scrolls=22,
+        scroll_distance_ratio=0.22,
+        evidence_prefix=f"restored-{category}-selection",
+        surface_name=f"Restored {category} selection",
     )
+    x, y = selection_row.center
+    device.shell("input", "tap", str(x), str(y))
     device.wait(f"creation-prerequisite-{category}-page", timeout=45)
     prefix = f"creation-prerequisite-{category}-option-"
     candidate_ids: set[str] = set()
@@ -1321,6 +1334,7 @@ def main() -> int:
 
     typed_selections: dict[str, str] = {}
     typed_selection_ids: dict[str, str] = {}
+    shared.reset_scroll_to_top(device, swipes=22)
     for category, label in (("heritage", "Human"), ("talent", "Mundane")):
         device.tap(
             f"creation-prerequisite-{category}-selection",
@@ -1407,7 +1421,6 @@ def main() -> int:
             "Core preview binding changed from the selected prerequisite snapshot: "
             f"before={prerequisite_digests!r}, preview={preview_binding_digests!r}"
         )
-    device.wait("creation-prerequisite-preview-karma-budget", timeout=45, scroll=True, max_scrolls=22)
     for category in CATEGORIES:
         device.wait(
             f"creation-prerequisite-preview-assignment-{category}",
@@ -1417,6 +1430,7 @@ def main() -> int:
         )
     device.wait("creation-prerequisite-preview-heritage", scroll=True, max_scrolls=22)
     device.wait("creation-prerequisite-preview-talent", scroll=True, max_scrolls=22)
+    device.wait("creation-prerequisite-preview-karma-budget", timeout=45, scroll=True, max_scrolls=22)
     preview_attributes = node_text(
         device,
         "creation-prerequisite-preview-attributes-ready",
@@ -1437,6 +1451,23 @@ def main() -> int:
             "Prerequisite receipt did not prove the post-confirm Attributes gate: "
             f"{receipt_text!r}"
         )
+    confirmed_revisions = {
+        "contentRevision": nonnegative_integer(
+            device,
+            "creation-prerequisite-receipt-content-revision",
+            scroll=True,
+        ),
+        "savedRevision": nonnegative_integer(
+            device,
+            "creation-prerequisite-receipt-saved-revision",
+            scroll=True,
+        ),
+        "draftRevision": nonnegative_integer(
+            device,
+            "creation-prerequisite-receipt-draft-revision",
+            scroll=True,
+        ),
+    }
     confirmed_draft_digest = canonical_digest(
         device,
         "creation-prerequisite-receipt-draft-digest",
@@ -1456,23 +1487,6 @@ def main() -> int:
         "authority": canonical_digest(
             device,
             "creation-prerequisite-receipt-authority-digest",
-            scroll=True,
-        ),
-    }
-    confirmed_revisions = {
-        "contentRevision": nonnegative_integer(
-            device,
-            "creation-prerequisite-receipt-content-revision",
-            scroll=True,
-        ),
-        "savedRevision": nonnegative_integer(
-            device,
-            "creation-prerequisite-receipt-saved-revision",
-            scroll=True,
-        ),
-        "draftRevision": nonnegative_integer(
-            device,
-            "creation-prerequisite-receipt-draft-revision",
             scroll=True,
         ),
     }
@@ -1498,7 +1512,6 @@ def main() -> int:
 
     # Same-process reload and a real process restart must both restore Core's persisted draft.
     open_prerequisite(device)
-    device.wait("creation-prerequisite-pending-draft", timeout=60, scroll=True, max_scrolls=22)
     resumed_authority = read_persisted_prerequisite_authority(device)
     assert_persisted_prerequisite_authority(
         resumed_authority,
@@ -1507,13 +1520,6 @@ def main() -> int:
         confirmed_revisions["contentRevision"],
         confirmed_revisions["savedRevision"],
     )
-    resumed_attributes = node_text(
-        device,
-        "creation-prerequisite-category-attributes",
-        scroll=True,
-    )
-    if "rank" not in resumed_attributes.lower():
-        raise RuntimeError("Confirmed prerequisite draft did not resume its Attribute rank")
     for category in ("heritage", "talent"):
         require_exact_restored_authority_option(
             device,
@@ -1521,6 +1527,13 @@ def main() -> int:
             typed_selections[category],
             typed_selection_ids[category],
         )
+    resumed_attributes = node_text(
+        device,
+        "creation-prerequisite-category-attributes",
+        scroll=True,
+    )
+    if "rank" not in resumed_attributes.lower():
+        raise RuntimeError("Confirmed prerequisite draft did not resume its Attribute rank")
 
     restart = shared.force_stop_and_launch_new_process(device, initial_launch)
     shared.wait_for_phone_runner_route(device, created=False)
@@ -1531,7 +1544,6 @@ def main() -> int:
     )
     foundation.assert_creation_editor_gated(device)
     open_prerequisite(device)
-    device.wait("creation-prerequisite-pending-draft", timeout=60, scroll=True, max_scrolls=22)
     restarted_authority = read_persisted_prerequisite_authority(device)
     assert_persisted_prerequisite_authority(
         restarted_authority,
