@@ -76,13 +76,15 @@ public enum CreationDashboardAuthorityPhase
 {
     Prerequisite,
     Attributes,
-    Skills
+    Skills,
+    Contacts
 }
 
 public sealed record CreationDashboardAuthorityPhaseProgress(
     CreationDashboardAuthorityPhaseState Prerequisite,
     CreationDashboardAuthorityPhaseState Attributes,
-    CreationDashboardAuthorityPhaseState Skills)
+    CreationDashboardAuthorityPhaseState Skills,
+    CreationDashboardAuthorityPhaseState Contacts)
 {
     public static CreationDashboardAuthorityPhaseProgress ForBuildMethod(string buildMethod)
     {
@@ -97,7 +99,8 @@ public sealed record CreationDashboardAuthorityPhaseProgress(
                 : CreationDashboardAuthorityPhaseState.NotApplicable,
             string.Equals(buildMethod, CharacterCreationBuildMethods.Priority, StringComparison.Ordinal)
                 ? CreationDashboardAuthorityPhaseState.Loading
-                : CreationDashboardAuthorityPhaseState.NotApplicable);
+                : CreationDashboardAuthorityPhaseState.NotApplicable,
+            CreationDashboardAuthorityPhaseState.Loading);
     }
 
     public CreationDashboardAuthorityPhaseProgress WithTerminal(
@@ -112,6 +115,7 @@ public sealed record CreationDashboardAuthorityPhaseProgress(
             CreationDashboardAuthorityPhase.Prerequisite => this with { Prerequisite = terminal },
             CreationDashboardAuthorityPhase.Attributes => this with { Attributes = terminal },
             CreationDashboardAuthorityPhase.Skills => this with { Skills = terminal },
+            CreationDashboardAuthorityPhase.Contacts => this with { Contacts = terminal },
             _ => throw new ArgumentOutOfRangeException(nameof(phase), phase, null)
         };
     }
@@ -123,9 +127,11 @@ public sealed record CreationDashboardAuthorityProjection(
     CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? Prerequisite,
     CharacterCreationFoundationResult<CharacterCreationAttributesState>? Attributes,
     CharacterCreationFoundationResult<CharacterCreationSkillsState>? Skills,
+    CharacterCreationContactsInteractionLoadResult? Contacts,
     string? PrerequisiteFailureReason = null,
     string? AttributesFailureReason = null,
-    string? SkillsFailureReason = null)
+    string? SkillsFailureReason = null,
+    string? ContactsFailureReason = null)
 {
     public static CreationDashboardAuthorityProjection Loading(
         CreationDashboardProjectionBinding binding)
@@ -134,12 +140,14 @@ public sealed record CreationDashboardAuthorityProjection(
             CreationDashboardAuthorityPhaseProgress.ForBuildMethod(binding.BuildMethod),
             Prerequisite: null,
             Attributes: null,
-            Skills: null);
+            Skills: null,
+            Contacts: null);
 
     public bool HasFailure
         => Progress.Prerequisite == CreationDashboardAuthorityPhaseState.Failed
            || Progress.Attributes == CreationDashboardAuthorityPhaseState.Failed
-           || Progress.Skills == CreationDashboardAuthorityPhaseState.Failed;
+           || Progress.Skills == CreationDashboardAuthorityPhaseState.Failed
+           || Progress.Contacts == CreationDashboardAuthorityPhaseState.Failed;
 }
 
 public static class BuildPageUiProjection
@@ -185,6 +193,9 @@ public sealed class BuildPage : NativePageBase
     private readonly LatestBackgroundProjectionQueue<
         CreationDashboardProjectionBinding,
         CharacterCreationFoundationResult<CharacterCreationSkillsState>> _creationSkillsQueue = new();
+    private readonly LatestBackgroundProjectionQueue<
+        CreationDashboardProjectionBinding,
+        CharacterCreationContactsInteractionLoadResult> _creationContactsQueue = new();
     private CreationDashboardAuthorityProjection? _creationProjection;
 
     public BuildPage(RunnerSessionCoordinator coordinator) : base(coordinator)
@@ -228,6 +239,16 @@ public sealed class BuildPage : NativePageBase
             failure.Request,
             CreationDashboardAuthorityPhase.Skills,
             AcceptCreationSkills);
+        _creationContactsQueue.Completed += completion => ScheduleCreationPhaseAcceptance(
+            _creationContactsQueue,
+            completion.Request,
+            CreationDashboardAuthorityPhase.Contacts,
+            AcceptCreationContacts);
+        _creationContactsQueue.Failed += failure => ScheduleCreationPhaseAcceptance(
+            _creationContactsQueue,
+            failure.Request,
+            CreationDashboardAuthorityPhase.Contacts,
+            AcceptCreationContacts);
         Content = new ScrollView { Content = _body };
     }
 
@@ -441,6 +462,8 @@ public sealed class BuildPage : NativePageBase
             projection?.Attributes;
         CharacterCreationFoundationResult<CharacterCreationSkillsState>? skills =
             projection?.Skills;
+        CharacterCreationContactsInteractionLoadResult? creationContacts =
+            projection?.Contacts;
         if (projection is null
             || projection.Progress.Prerequisite == CreationDashboardAuthorityPhaseState.Loading)
         {
@@ -469,9 +492,21 @@ public sealed class BuildPage : NativePageBase
             _body.Add(NativeTheme.Card(failure));
         }
         AddBudgetRibbon(snapshot, attributes, skills);
-        AddWizardStages(snapshot, projection, prerequisite, attributes, skills);
+        AddWizardStages(
+            snapshot,
+            projection,
+            prerequisite,
+            attributes,
+            skills,
+            creationContacts);
         AddCompletionBlockers(snapshot);
-        AddLegalNextSteps(snapshot, projection, prerequisite, attributes, skills);
+        AddLegalNextSteps(
+            snapshot,
+            projection,
+            prerequisite,
+            attributes,
+            skills,
+            creationContacts);
     }
 
     private CreationDashboardAuthorityProjection? ResolveCreationProjection(
@@ -501,6 +536,13 @@ public sealed class BuildPage : NativePageBase
             _creationPrerequisiteQueue,
             Coordinator.LoadCreationPrerequisite,
             AcceptCreationPrerequisite);
+        ResolveCreationPhase(
+            binding,
+            _creationProjection?.Progress.Contacts,
+            CreationDashboardAuthorityPhase.Contacts,
+            _creationContactsQueue,
+            Coordinator.LoadCreationContacts,
+            AcceptCreationContacts);
         if (_creationProjection is { Progress.Prerequisite: CreationDashboardAuthorityPhaseState.Ready })
         {
             ResolveCreationPhase(
@@ -661,11 +703,31 @@ public sealed class BuildPage : NativePageBase
         };
     }
 
+    private void AcceptCreationContacts(
+        CreationDashboardProjectionBinding binding,
+        CharacterCreationContactsInteractionLoadResult result,
+        Exception? error)
+    {
+        if (_creationProjection is not { } projection || !projection.Binding.Equals(binding))
+            return;
+        _creationProjection = projection with
+        {
+            Progress = projection.Progress.WithTerminal(
+                CreationDashboardAuthorityPhase.Contacts,
+                failed: error is not null),
+            Contacts = error is null ? result : null,
+            ContactsFailureReason = error is null
+                ? null
+                : "creation-contacts-authority-load-failed"
+        };
+    }
+
     private void CancelCreationProjectionQueues()
     {
         _creationPrerequisiteQueue.Cancel();
         _creationAttributesQueue.Cancel();
         _creationSkillsQueue.Cancel();
+        _creationContactsQueue.Cancel();
     }
 
     private void RetryCreationProjection()
@@ -747,7 +809,8 @@ public sealed class BuildPage : NativePageBase
         CreationDashboardAuthorityProjection? projection,
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite,
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributes,
-        CharacterCreationFoundationResult<CharacterCreationSkillsState>? skills)
+        CharacterCreationFoundationResult<CharacterCreationSkillsState>? skills,
+        CharacterCreationContactsInteractionLoadResult? creationContacts)
     {
         _body.Add(NativeTheme.Eyebrow("Generation steps"));
         foreach (CharacterCreationWizardStageState stage in snapshot.Steps)
@@ -782,14 +845,21 @@ public sealed class BuildPage : NativePageBase
             bool canOpenMagicResonance = magicResonanceStage
                                          && stage.IsAvailable
                                          && HasAuthoritativeMagicResonance();
+            bool contactsStage = IsContactsStage(stage.StepId);
+            bool canOpenContacts = contactsStage
+                                   && stage.IsAvailable
+                                   && HasAuthoritativeCreationContacts(creationContacts);
             bool canOpen = canOpenFoundation || canOpenPrerequisite || canOpenAttributes
-                           || canOpenSkills || canOpenQualities || canOpenMagicResonance;
-            bool projectionBoundStage = priorityPrerequisite || attributeStage || skillStage;
+                           || canOpenSkills || canOpenQualities || canOpenMagicResonance
+                           || canOpenContacts;
+            bool projectionBoundStage =
+                priorityPrerequisite || attributeStage || skillStage || contactsStage;
             string? projectionBlocker = ProjectionStageBlocker(
                 projection,
                 priorityPrerequisite,
                 attributeStage,
-                skillStage);
+                skillStage,
+                contactsStage);
             Func<Task> selected = canOpenPrerequisite
                 ? OpenCreationPrerequisiteAsync
                 : canOpenAttributes
@@ -800,6 +870,8 @@ public sealed class BuildPage : NativePageBase
                     ? OpenCreationQualitiesAsync
                 : canOpenMagicResonance
                     ? OpenCreationMagicResonanceAsync
+                : canOpenContacts
+                    ? OpenCreationContactsAsync
                 : canOpenFoundation
                     ? OpenCreationFoundationAsync
                     : () => Task.CompletedTask;
@@ -814,6 +886,8 @@ public sealed class BuildPage : NativePageBase
                 : canOpenMagicResonance
                     ? MagicResonanceStageDetail(
                         Coordinator.State.CreationMagicResonanceEditor!)
+                : canOpenContacts
+                    ? CreationContactsStageDetail(creationContacts!.State!)
                 : canOpenFoundation
                     ? "Choose an exact metatype and Nationality Life Module"
                     : projectionBoundStage && !string.IsNullOrWhiteSpace(projectionBlocker)
@@ -827,7 +901,8 @@ public sealed class BuildPage : NativePageBase
                 && !canOpenAttributes
                 && !canOpenSkills
                 && !canOpenQualities
-                && !canOpenMagicResonance)
+                && !canOpenMagicResonance
+                && !canOpenContacts)
             {
                 detail += $" · {stage.Blockers[0]}";
             }
@@ -864,7 +939,8 @@ public sealed class BuildPage : NativePageBase
         CreationDashboardAuthorityProjection? projection,
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite,
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributeResult,
-        CharacterCreationFoundationResult<CharacterCreationSkillsState>? skillsResult)
+        CharacterCreationFoundationResult<CharacterCreationSkillsState>? skillsResult,
+        CharacterCreationContactsInteractionLoadResult? creationContacts)
     {
         CharacterCreationWizardStageState? active = snapshot.Steps.FirstOrDefault(stage =>
             string.Equals(stage.StepId, snapshot.ActiveStepId, StringComparison.Ordinal));
@@ -881,6 +957,9 @@ public sealed class BuildPage : NativePageBase
                 : [])
             .Concat(HasAuthoritativeMagicResonance()
                 ? [CharacterCreationWizardStepIds.MagicResonance]
+                : [])
+            .Concat(HasAuthoritativeCreationContacts(creationContacts)
+                ? [CharacterCreationWizardStepIds.ContactsLifestyles]
                 : [])
             .Where(static id => !string.IsNullOrWhiteSpace(id))
             .Distinct(StringComparer.Ordinal)
@@ -923,10 +1002,14 @@ public sealed class BuildPage : NativePageBase
             bool canOpenMagicResonance = magicResonanceStep
                                          && stage.IsAvailable
                                          && HasAuthoritativeMagicResonance();
+            bool contactsStep = IsContactsStage(stepId);
+            bool canOpenContacts = contactsStep
+                                   && stage.IsAvailable
+                                   && HasAuthoritativeCreationContacts(creationContacts);
             // The post-create AttributeEditRequest path must never serve as a wizard fallback.
             // Core's dedicated creation authority is the only Attributes route here.
             bool canOpen = canOpenFoundation || canOpenAttributes || canOpenSkills
-                           || canOpenQualities || canOpenMagicResonance;
+                           || canOpenQualities || canOpenMagicResonance || canOpenContacts;
             Func<Task> selected = canOpenFoundation
                 ? OpenCreationFoundationAsync
                 : canOpenAttributes
@@ -937,6 +1020,8 @@ public sealed class BuildPage : NativePageBase
                     ? OpenCreationQualitiesAsync
                 : canOpenMagicResonance
                     ? OpenCreationMagicResonanceAsync
+                : canOpenContacts
+                    ? OpenCreationContactsAsync
                 : () => Task.CompletedTask;
             string detail = canOpenFoundation
                 ? "Choose an exact metatype and Nationality Life Module"
@@ -949,6 +1034,8 @@ public sealed class BuildPage : NativePageBase
                 : canOpenMagicResonance
                     ? MagicResonanceStageDetail(
                         Coordinator.State.CreationMagicResonanceEditor!)
+                : canOpenContacts
+                    ? CreationContactsStageDetail(creationContacts!.State!)
                 : attributeStep
                   && projection?.Progress.Attributes == CreationDashboardAuthorityPhaseState.Loading
                     ? "creation-authority-loading"
@@ -961,6 +1048,16 @@ public sealed class BuildPage : NativePageBase
                 : skillStep
                   && projection?.Progress.Skills == CreationDashboardAuthorityPhaseState.Failed
                     ? projection.SkillsFailureReason ?? "creation-skills-authority-load-failed"
+                : contactsStep
+                  && projection?.Progress.Contacts == CreationDashboardAuthorityPhaseState.Loading
+                    ? "creation-authority-loading"
+                : contactsStep
+                  && projection?.Progress.Contacts == CreationDashboardAuthorityPhaseState.Failed
+                    ? projection.ContactsFailureReason ?? "creation-contacts-authority-load-failed"
+                : contactsStep && creationContacts is not null
+                    ? creationContacts.Blockers.FirstOrDefault()
+                      ?? creationContacts.State?.Blockers.FirstOrDefault()
+                      ?? "creation-contacts-authority-unavailable"
                 : attributeStep && prerequisite?.Value is { } prerequisiteState
                     ? AttributeGateDetail(prerequisiteState)
                 : attributeStep && stage.IsAvailable
@@ -981,7 +1078,8 @@ public sealed class BuildPage : NativePageBase
         CreationDashboardAuthorityProjection? projection,
         bool prerequisiteStage,
         bool attributeStage,
-        bool skillStage)
+        bool skillStage,
+        bool contactsStage)
     {
         if (projection is null)
             return "creation-authority-loading";
@@ -1012,6 +1110,16 @@ public sealed class BuildPage : NativePageBase
                 CreationDashboardAuthorityPhaseState.Loading => "creation-authority-loading",
                 CreationDashboardAuthorityPhaseState.Failed => projection.SkillsFailureReason
                     ?? "creation-skills-authority-load-failed",
+                _ => null
+            };
+        }
+        if (contactsStage)
+        {
+            return projection.Progress.Contacts switch
+            {
+                CreationDashboardAuthorityPhaseState.Loading => "creation-authority-loading",
+                CreationDashboardAuthorityPhaseState.Failed => projection.ContactsFailureReason
+                    ?? "creation-contacts-authority-load-failed",
                 _ => null
             };
         }
@@ -1064,6 +1172,15 @@ public sealed class BuildPage : NativePageBase
                editor,
                Coordinator.State);
 
+    private bool HasAuthoritativeCreationContacts(
+        CharacterCreationContactsInteractionLoadResult? result)
+        => result is
+           {
+               Outcome: CharacterCreationContactOutcomes.Available,
+               State: { } state
+           }
+           && CreationContactsPhoneAuthority.IsReady(state, Coordinator.State);
+
     private static bool IsPrerequisiteStage(string stepId, string buildMethod)
         => string.Equals(stepId, CharacterCreationWizardStepIds.Method, StringComparison.Ordinal)
            && buildMethod is (CharacterCreationBuildMethods.Priority
@@ -1072,6 +1189,12 @@ public sealed class BuildPage : NativePageBase
     private static bool IsFoundationStage(string stepId)
         => string.Equals(stepId, CharacterCreationWizardStepIds.Foundation, StringComparison.Ordinal)
            || string.Equals(stepId, CharacterCreationWizardStepIds.LifeModules, StringComparison.Ordinal);
+
+    private static bool IsContactsStage(string stepId)
+        => string.Equals(
+            stepId,
+            CharacterCreationWizardStepIds.ContactsLifestyles,
+            StringComparison.Ordinal);
 
     private Task OpenCreationFoundationAsync()
         => Navigation.PushAsync(new CreationFoundationPage(Coordinator));
@@ -1090,6 +1213,14 @@ public sealed class BuildPage : NativePageBase
 
     private Task OpenCreationMagicResonanceAsync()
         => Navigation.PushAsync(new CreationMagicResonancePage(Coordinator));
+
+    private Task OpenCreationContactsAsync()
+        => Navigation.PushAsync(new CreationContactsPage(Coordinator));
+
+    private static string CreationContactsStageDetail(
+        CharacterCreationContactsInteractionState state)
+        => $"Edit {state.Contacts.Count.ToString(CultureInfo.InvariantCulture)} existing Contacts · "
+           + $"{state.ContactBudget.Remaining.ToString(CultureInfo.InvariantCulture)} exact points remain";
 
     private static string PrerequisiteStageDetail(CharacterCreationPrerequisiteState state)
     {

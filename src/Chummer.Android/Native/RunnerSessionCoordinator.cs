@@ -112,6 +112,14 @@ public sealed record CreationPrerequisitePhoneConfirmResult(
     CharacterCreationPrerequisiteState? RefreshedState,
     IReadOnlyList<string> Blockers);
 
+public sealed record CreationContactPhoneConfirmResult(
+    string Outcome,
+    CharacterCreationContactPreparedPreview PreparedPreview,
+    CharacterCreationContactReceipt? Receipt,
+    CharacterCreationContactsInteractionState? RefreshedState,
+    bool RecoveredByReceiptLookup,
+    IReadOnlyList<string> Blockers);
+
 public sealed record CreationAttributesPhoneConfirmResult(
     string Outcome,
     CharacterCreationAttributesReceipt? Receipt,
@@ -184,6 +192,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly IChummerClient _client;
     private readonly IWorkspaceOperationCoordinator _workspaceOperationCoordinator;
     private readonly ICharacterCreationFoundationInteractionPresenter _foundationInteractionPresenter;
+    private readonly ICharacterCreationContactsInteractionPresenter _creationContactsPresenter;
     private readonly ICharacterCreationPrerequisiteService _creationPrerequisiteService;
     private readonly ICharacterCreationAttributesService? _creationAttributesService;
     private readonly ICharacterCreationSkillsService? _creationSkillsService;
@@ -238,6 +247,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         IChummerClient client,
         IWorkspaceOperationCoordinator workspaceOperationCoordinator,
         ICharacterCreationFoundationInteractionPresenter foundationInteractionPresenter,
+        ICharacterCreationContactsInteractionPresenter creationContactsPresenter,
         ICharacterCreationPrerequisiteService creationPrerequisiteService,
         IShellPresenter shellPresenter,
         IShellSurfaceResolver surfaceResolver,
@@ -261,6 +271,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _client = client;
         _workspaceOperationCoordinator = workspaceOperationCoordinator;
         _foundationInteractionPresenter = foundationInteractionPresenter;
+        _creationContactsPresenter = creationContactsPresenter;
         _creationPrerequisiteService = creationPrerequisiteService;
         _creationAttributesService = creationAttributesService;
         _creationSkillsService = creationSkillsService;
@@ -368,6 +379,230 @@ public sealed class RunnerSessionCoordinator : IDisposable
            && _durableSaveNotice?.Matches(State) == true;
 
     public bool IsBusy => State.IsBusy || Surface.IsBusy;
+
+    public CharacterCreationContactsInteractionLoadResult LoadCreationContacts()
+    {
+        if (State.Profile?.Created != false || State.WorkspaceId is null)
+        {
+            return new CharacterCreationContactsInteractionLoadResult(
+                CharacterCreationContactOutcomes.Blocked,
+                null,
+                [CharacterCreationContactsBlockers.WorkspaceUnavailable]);
+        }
+
+        CharacterCreationContactsInteractionLoadResult result =
+            _creationContactsPresenter.Load(State);
+        if (string.Equals(
+                result.Outcome,
+                CharacterCreationContactOutcomes.Available,
+                StringComparison.Ordinal)
+            && (result.State is null
+                || !CreationContactsPhoneAuthority.IsBound(result.State, State)))
+        {
+            return new CharacterCreationContactsInteractionLoadResult(
+                CharacterCreationContactOutcomes.Conflict,
+                null,
+                [CharacterCreationContactsBlockers.StaleWorkspaceRevision]);
+        }
+        return result;
+    }
+
+    public CharacterCreationContactsInteractionPrepareResult PrepareCreationContact(
+        CharacterCreationContactEditInput input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        CharacterCreationContactsInteractionLoadResult load = LoadCreationContacts();
+        if (load.State is not { } state
+            || !CreationContactsPhoneAuthority.IsBound(state, State))
+        {
+            return new CharacterCreationContactsInteractionPrepareResult(
+                CharacterCreationContactOutcomes.Conflict,
+                load.State,
+                null,
+                load.Blockers.Count > 0
+                    ? load.Blockers
+                    : [CharacterCreationContactsBlockers.StaleWorkspaceRevision]);
+        }
+        if (!CreationContactsPhoneAuthority.IsReady(state, State))
+        {
+            return new CharacterCreationContactsInteractionPrepareResult(
+                CharacterCreationContactOutcomes.Blocked,
+                state,
+                null,
+                load.Blockers
+                    .Concat(state.Blockers)
+                    .DefaultIfEmpty(CharacterCreationContactsBlockers.AuthorityUnavailable)
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(static blocker => blocker, StringComparer.Ordinal)
+                    .ToArray());
+        }
+        if (CreationContactsPhoneAuthority.ResolveUniqueContact(state, input.ContactId) is null)
+        {
+            return new CharacterCreationContactsInteractionPrepareResult(
+                CharacterCreationContactOutcomes.Invalid,
+                state,
+                null,
+                [CharacterCreationContactsBlockers.ContactNotFound]);
+        }
+
+        CharacterCreationContactsInteractionPrepareResult result =
+            _creationContactsPresenter.Prepare(State, input);
+        if (string.Equals(
+                result.Outcome,
+                CharacterCreationContactOutcomes.Available,
+                StringComparison.Ordinal)
+            && (result.State is null
+                || result.PreparedPreview is null
+                || !CreationContactsPhoneAuthority.PreparedMatches(
+                    result.PreparedPreview,
+                    result.State,
+                    State)))
+        {
+            return new CharacterCreationContactsInteractionPrepareResult(
+                CharacterCreationContactOutcomes.Conflict,
+                result.State,
+                null,
+                result.Blockers
+                    .Append(CharacterCreationContactsBlockers.PreviewDigestMismatch)
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(static blocker => blocker, StringComparer.Ordinal)
+                    .ToArray());
+        }
+        return result;
+    }
+
+    public async Task<CreationContactPhoneConfirmResult> ConfirmCreationContactAsync(
+        CharacterCreationContactPreparedPreview prepared,
+        CancellationToken cancellationToken = default)
+        => await WithWorkspaceActivationGateAsync(
+            () => ConfirmCreationContactCoreAsync(prepared, cancellationToken),
+            cancellationToken);
+
+    private async Task<CreationContactPhoneConfirmResult> ConfirmCreationContactCoreAsync(
+        CharacterCreationContactPreparedPreview prepared,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(prepared);
+        CharacterCreationContactsInteractionLoadResult before = LoadCreationContacts();
+        if (before.State is not { } state
+            || !CreationContactsPhoneAuthority.PreparedMatches(prepared, state, State))
+        {
+            return new CreationContactPhoneConfirmResult(
+                CharacterCreationContactOutcomes.Conflict,
+                prepared,
+                null,
+                null,
+                false,
+                before.Blockers.Count > 0
+                    ? before.Blockers
+                    : [CharacterCreationContactsBlockers.StaleWorkspaceRevision]);
+        }
+
+        var confirmation = new CharacterCreationContactConfirmation(
+            prepared,
+            prepared.PreviewDigest,
+            prepared.IdempotencyKey,
+            ExplicitlyConfirmed: true);
+        CharacterCreationContactsInteractionConfirmResult? result = null;
+        Exception? ambiguousFailure = null;
+        try
+        {
+            result = _creationContactsPresenter.Confirm(State, confirmation);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // Core may have durably checkpointed before a transport/presentation failure became
+            // observable. Never issue a fresh key: reload and recover the exact retained key.
+            ambiguousFailure = exception;
+        }
+
+        CharacterCreationContactReceipt? receipt = result?.Receipt;
+        bool recoveredByReceiptLookup = false;
+        bool directlyValid = result is
+        {
+            Outcome: CharacterCreationContactOutcomes.Applied
+                or CharacterCreationContactOutcomes.Replayed,
+            Receipt: not null
+        } && CreationContactsPhoneAuthority.ReceiptMatches(prepared, receipt!);
+        if (!directlyValid)
+        {
+            await _presenter.LoadAsync(prepared.Binding.WorkspaceId, cancellationToken);
+            await SyncShellAsync(cancellationToken);
+            CharacterCreationContactsInteractionReceiptLookupResult lookup =
+                _creationContactsPresenter.LookupReceipt(State, prepared.IdempotencyKey);
+            if (string.Equals(
+                    lookup.Outcome,
+                    CharacterCreationContactOutcomes.Available,
+                    StringComparison.Ordinal)
+                && lookup.Receipt is { } recovered
+                && CreationContactsPhoneAuthority.ReceiptMatches(prepared, recovered))
+            {
+                receipt = recovered;
+                recoveredByReceiptLookup = true;
+            }
+            else
+            {
+                return new CreationContactPhoneConfirmResult(
+                    result?.Outcome ?? CharacterCreationContactOutcomes.Unavailable,
+                    prepared,
+                    result?.Receipt,
+                    null,
+                    false,
+                    (result?.Blockers ?? [])
+                        .Concat(lookup.Blockers)
+                        .Append(ambiguousFailure is null
+                            ? CharacterCreationContactsBlockers.PersistenceAuthorityRequired
+                            : CharacterCreationContactsBlockers.AuthorityUnavailable)
+                        .Distinct(StringComparer.Ordinal)
+                        .OrderBy(static blocker => blocker, StringComparer.Ordinal)
+                        .ToArray());
+            }
+        }
+
+        await _presenter.LoadAsync(receipt!.WorkspaceId, cancellationToken);
+        await SyncShellAsync(cancellationToken);
+        CharacterCreationContactsInteractionLoadResult refreshed = LoadCreationContacts();
+        if (refreshed.State is not { } refreshedState
+            || !CreationContactsPhoneAuthority.ReceiptMatches(prepared, receipt)
+            || !CreationContactsPhoneAuthority.RefreshedStateMatches(
+                prepared,
+                receipt,
+                refreshedState,
+                State))
+        {
+            _notice = null;
+            NotifyChanged();
+            return new CreationContactPhoneConfirmResult(
+                CharacterCreationContactOutcomes.Conflict,
+                prepared,
+                receipt,
+                null,
+                recoveredByReceiptLookup,
+                refreshed.Blockers
+                    .Append(CharacterCreationContactsBlockers.StaleWorkspaceRevision)
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(static blocker => blocker, StringComparer.Ordinal)
+                    .ToArray());
+        }
+
+        _ = await TryRefreshWorkspaceAuthorityAsync(
+            expectedWorkspaceId: receipt.WorkspaceId,
+            expectedPayloadSha256: receipt.ContentDigestAfter["sha256:".Length..],
+            cancellationToken);
+        _notice = recoveredByReceiptLookup
+            ? "Creation Contact saved; the exact receipt recovered an ambiguous confirmation."
+            : "Creation Contact saved and atomically checkpointed.";
+        NotifyChanged();
+        return new CreationContactPhoneConfirmResult(
+            recoveredByReceiptLookup
+                ? CharacterCreationContactOutcomes.Replayed
+                : result!.Outcome,
+            prepared,
+            receipt,
+            refreshedState,
+            recoveredByReceiptLookup,
+            []);
+    }
 
     public CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>
         LoadCreationPrerequisite()

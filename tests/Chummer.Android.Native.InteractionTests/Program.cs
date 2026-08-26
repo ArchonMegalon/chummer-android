@@ -562,8 +562,9 @@ internal static class Program
         Require(
             initial.Prerequisite == CreationDashboardAuthorityPhaseState.Loading
             && initial.Attributes == CreationDashboardAuthorityPhaseState.Loading
-            && initial.Skills == CreationDashboardAuthorityPhaseState.Loading,
-            "Priority must begin with all three authority phases explicitly fail-closed and loading.");
+            && initial.Skills == CreationDashboardAuthorityPhaseState.Loading
+            && initial.Contacts == CreationDashboardAuthorityPhaseState.Loading,
+            "Priority must begin with every authority phase explicitly fail-closed and loading.");
 
         CreationDashboardAuthorityPhaseProgress prerequisiteAccepted = initial.WithTerminal(
             CreationDashboardAuthorityPhase.Prerequisite,
@@ -571,18 +572,21 @@ internal static class Program
         Require(
             prerequisiteAccepted.Prerequisite == CreationDashboardAuthorityPhaseState.Ready
             && prerequisiteAccepted.Attributes == CreationDashboardAuthorityPhaseState.Loading
-            && prerequisiteAccepted.Skills == CreationDashboardAuthorityPhaseState.Loading,
+            && prerequisiteAccepted.Skills == CreationDashboardAuthorityPhaseState.Loading
+            && prerequisiteAccepted.Contacts == CreationDashboardAuthorityPhaseState.Loading,
             "Accepting prerequisite authority must not wait for or invent later phase outcomes.");
 
         CreationDashboardAuthorityPhaseProgress laterFailure = prerequisiteAccepted
             .WithTerminal(CreationDashboardAuthorityPhase.Skills, failed: false)
-            .WithTerminal(CreationDashboardAuthorityPhase.Attributes, failed: true);
+            .WithTerminal(CreationDashboardAuthorityPhase.Attributes, failed: true)
+            .WithTerminal(CreationDashboardAuthorityPhase.Contacts, failed: false);
         Require(
             laterFailure.Prerequisite == CreationDashboardAuthorityPhaseState.Ready,
             "A failed later phase erased already accepted prerequisite authority.");
         Require(
             laterFailure.Attributes == CreationDashboardAuthorityPhaseState.Failed
-            && laterFailure.Skills == CreationDashboardAuthorityPhaseState.Ready,
+            && laterFailure.Skills == CreationDashboardAuthorityPhaseState.Ready
+            && laterFailure.Contacts == CreationDashboardAuthorityPhaseState.Ready,
             "Out-of-order later phase merges were not deterministic and isolated.");
 
         CreationDashboardAuthorityPhaseProgress sumToTen =
@@ -590,8 +594,9 @@ internal static class Program
         Require(
             sumToTen.Prerequisite == CreationDashboardAuthorityPhaseState.Loading
             && sumToTen.Attributes == CreationDashboardAuthorityPhaseState.Loading
-            && sumToTen.Skills == CreationDashboardAuthorityPhaseState.NotApplicable,
-            "Sum-to-Ten must not schedule a Priority-only Skills authority phase.");
+            && sumToTen.Skills == CreationDashboardAuthorityPhaseState.NotApplicable
+            && sumToTen.Contacts == CreationDashboardAuthorityPhaseState.Loading,
+            "Contacts must remain an independent Core phase even when Priority-only Skills do not apply.");
         return Task.CompletedTask;
     }
 
