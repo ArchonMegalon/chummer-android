@@ -31,12 +31,14 @@ WORKSPACE_AUTHORITY_RESOURCE_IDS = (
 PHONE_SHELL_DESTINATION_IDS = (
     "phone-destination-runners",
     "phone-destination-runner",
+    "phone-destination-archive",
     "phone-destination-more",
 )
-PHONE_SHELL_DESTINATION_LABELS = ("Runners", "Runner", "More")
+PHONE_SHELL_DESTINATION_LABELS = ("Runners", "Runner", "Archive", "More")
 PHONE_SHELL_DESTINATION_MAPPING = {
     "phone-destination-runners": "Runners",
     "phone-destination-runner": "Runner",
+    "phone-destination-archive": "Archive",
     "phone-destination-more": "More",
 }
 PHONE_SHELL_DESTINATION_IDS_BY_LABEL = {
@@ -2138,7 +2140,8 @@ def bind_phone_shell_destinations(
     if len(candidates) != len(PHONE_SHELL_DESTINATION_LABELS):
         raise RuntimeError(
             "Native phone bottom bar has "
-            f"{len(candidates)} recognized destinations; expected exactly three"
+            f"{len(candidates)} recognized destinations; expected exactly "
+            f"{len(PHONE_SHELL_DESTINATION_LABELS)}"
         )
 
     ordered = sorted(candidates, key=lambda node: node.bounds[0])
@@ -2162,7 +2165,8 @@ def bind_phone_shell_destinations(
     ]
     if bounds != expected_bounds:
         raise RuntimeError(
-            "Native phone bottom bar geometry is not three exact contiguous thirds: "
+            "Native phone bottom bar geometry is not "
+            f"{len(ordered)} exact contiguous segments: "
             f"observed {bounds!r}, expected {expected_bounds!r}"
         )
 

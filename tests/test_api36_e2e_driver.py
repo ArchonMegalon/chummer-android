@@ -136,9 +136,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         selected_label: str = "Runner",
         labels: tuple[str, ...] = DRIVER.PHONE_SHELL_DESTINATION_LABELS,
         widths: tuple[tuple[int, int], ...] = (
-            (0, 360),
-            (360, 720),
-            (720, 1080),
+            (0, 270),
+            (270, 540),
+            (540, 810),
+            (810, 1080),
         ),
     ) -> list[DRIVER.UiNode]:
         return [
@@ -617,7 +618,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ],
             wait_destinations.call_args_list,
         )
-        device.shell.assert_called_once_with("input", "tap", "540", "2263")
+        device.shell.assert_called_once_with("input", "tap", "405", "2263")
         device.tap.assert_not_called()
         return_to_root.assert_called_once_with(device)
         device.open_navigation_drawer.assert_not_called()
@@ -655,7 +656,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 "phone-destination-runner",
             )
 
-            self.assertIn(("input", "tap", "540", "2263"), device.commands)
+            self.assertIn(("input", "tap", "405", "2263"), device.commands)
             self.assertNotIn(("input", "tap", "440", "460"), device.commands)
             with self.assertRaisesRegex(ValueError, "Unknown phone shell destination"):
                 DRIVER.tap_phone_destination(device, "phone-destination-play")
@@ -678,13 +679,13 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             }
         )
         adversarial = {
-            "missing": self.native_phone_tabs()[:2],
+            "missing": self.native_phone_tabs()[:3],
             "wrong-class": altered(0, **{"class": "android.widget.Button"}),
             "wrong-order": self.native_phone_tabs(
-                labels=("Runner", "Runners", "More")
+                labels=("Runner", "Runners", "Archive", "More")
             ),
-            "wrong-geometry": altered(2, bounds="[700,2190][1080,2337]"),
-            "one-pixel-gap": altered(1, bounds="[361,2190][720,2337]"),
+            "wrong-geometry": altered(3, bounds="[800,2190][1080,2337]"),
+            "one-pixel-gap": altered(1, bounds="[271,2190][540,2337]"),
             "disabled": altered(0, enabled="false"),
             "not-focusable": altered(0, focusable="false"),
             "bad-clickability": altered(1, clickable="true"),
@@ -697,22 +698,22 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 0,
                 **{"resource-id": "phone-destination-runners"},
             ),
-            "fourth-recognized": [
+            "fifth-recognized": [
                 *self.native_phone_tabs(),
                 DRIVER.UiNode(
                     {
                         **self.native_phone_tabs()[0].attributes,
-                        "bounds": "[0,2190][360,2337]",
+                        "bounds": "[0,2190][270,2337]",
                     }
                 ),
             ],
-            "fourth-unknown": [
+            "fifth-unknown": [
                 *self.native_phone_tabs(),
                 DRIVER.UiNode(
                     {
                         **self.native_phone_tabs()[0].attributes,
                         "content-desc": "Settings",
-                        "bounds": "[0,2190][360,2337]",
+                        "bounds": "[0,2190][270,2337]",
                     }
                 ),
             ],
