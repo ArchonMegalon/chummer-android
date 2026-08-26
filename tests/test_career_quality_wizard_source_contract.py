@@ -106,7 +106,11 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
             "TryRequireCasLocked",
             "AcquireDurableApplyingLeaseAsync",
             "replay-blocking lock",
-            "ApplyingMutationGate",
+            "Sr5CareerMutationDomains.QualityChange",
+            "_mutationOwners.TryBegin",
+            "AcquireExecutionLeaseAsync",
+            "_mutationOwners.TryComplete",
+            "TryReconcileResolved",
             "TryRecordAuthoritativeResolution",
             "Sr5CareerQualityRecoveryProof.Verifies",
         ):
@@ -231,6 +235,7 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
         self.assertIn("CareerQualityWorkflow.cs", project)
         self.assertIn("Sr5CareerQualityCoordinator.cs", project)
         self.assertIn("Sr5CareerQualityCheckpointStore.cs", project)
+        self.assertIn("Sr5CareerMutationOwnerStore.cs", project)
         self.assertIn("AndroidCareerQualityAtomicWorkspace.cs", project)
 
 

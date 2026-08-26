@@ -21,8 +21,9 @@ internal static class Program
         await UnsupportedAmbiguousAndDriftedAuthorityFailsClosedAsync();
         await CompensatingCorrectionRestoresAndRetiresAsync();
         await RegisteredTypedPersistenceSeamFailsClosedOnAuthorityDriftAsync();
+        await DurableQualityOwnerSurvivesRestartAndReconcilesResolvedJournalAsync();
         MalformedSchemaAndCasConflictsRemainReplayLocks();
-        Console.WriteLine("PASS: 7 SR5 Career quality phone authority behavior groups");
+        Console.WriteLine("PASS: 8 SR5 Career quality phone authority behavior groups");
     }
 
     private static async Task ExactReviewBindsAllAuthorityAsync()
@@ -317,6 +318,82 @@ internal static class Program
             "exact correction returned through registration seam");
     }
 
+    private static async Task DurableQualityOwnerSurvivesRestartAndReconcilesResolvedJournalAsync()
+    {
+        Fixture fixture = await Fixture.CreateAsync("80000000-0000-4000-8000-000000000008");
+        Require(fixture.Store.TryBeginApply(
+            Sr5CareerQualityCheckpointCas.From(fixture.Checkpoint),
+            out Sr5CareerQualityCheckpoint applying,
+            out string blocker), blocker);
+        Require(!string.IsNullOrWhiteSpace(fixture.OwnerBackend.Payload),
+            "Quality must reserve the durable shared owner before Applying is observable.");
+
+        Sr5CareerMutationOwnerStore restartedOwners = new(fixture.OwnerBackend);
+        Sr5CareerQualityLiveCheckpointAuthority restartedAuthority = new(
+            fixture.Owner,
+            fixture.Editor,
+            () => fixture.Presenter.Binding);
+        Sr5CareerQualityCheckpointStore restartedStore = new(
+            fixture.Backend,
+            restartedAuthority,
+            restartedOwners);
+        Sr5CareerMutationOwner otherLane = new(
+            Sr5CareerMutationOwner.CurrentSchemaVersion,
+            Sr5CareerMutationDomains.AttributeAdvance,
+            WorkspaceId.Value,
+            OwnerId,
+            Guid.Parse("88888888-8888-4888-8888-888888888888"),
+            ApplyingCheckpointVersion: 2,
+            ExpectedContentRevision: 41,
+            new string('8', 64));
+        Require(!restartedOwners.TryBegin(
+                otherLane,
+                () => new Sr5CareerMutationBeginResult(true, false, string.Empty),
+                out string otherLaneBlocker)
+            && otherLaneBlocker.Contains("quality", StringComparison.Ordinal),
+            "A restarted process must keep every other Career lane blocked by Quality.");
+
+        using (await restartedStore.AcquireDurableApplyingLeaseAsync(
+            applying,
+            CancellationToken.None))
+        {
+            Require(true, "The restarted store must acquire only the exact Quality execution lease.");
+        }
+        Sr5CareerQualityRecoveryResolution resolution =
+            await fixture.Coordinator.ResolveAsync(applying);
+        Require(resolution.Status == Sr5CareerQualityRecoveryStatus.NotAppliedVerified,
+            "A crash before mutation must resolve from fresh authority without replay.");
+
+        fixture.OwnerBackend.FailNextRemove = true;
+        Require(!restartedStore.TryRecordAuthoritativeResolution(
+                Sr5CareerQualityCheckpointCas.From(applying),
+                resolution,
+                out _,
+                out string releaseBlocker)
+            && releaseBlocker.Contains("domain outcome is durable", StringComparison.OrdinalIgnoreCase),
+            "An interrupted owner release must report the already-durable domain outcome.");
+        Require(!string.IsNullOrWhiteSpace(fixture.OwnerBackend.Payload),
+            "The unresolved shared owner must remain durable after interrupted release.");
+
+        Sr5CareerMutationOwnerStore reconciledOwners = new(fixture.OwnerBackend);
+        Sr5CareerQualityCheckpointStore reconciledStore = new(
+            fixture.Backend,
+            restartedAuthority,
+            reconciledOwners);
+        Require(reconciledStore.TryRead(out Sr5CareerQualityCheckpoint resolved, out blocker), blocker);
+        Require(resolved.Phase == Sr5CareerCheckpointPhase.Reviewed && resolved.Version == 3,
+            "The authoritative NotApplied journal must survive the interrupted owner release.");
+        Require(string.IsNullOrWhiteSpace(fixture.OwnerBackend.Payload),
+            "Restart reconciliation must retire the exact leftover resolved Quality owner.");
+        Require(reconciledOwners.TryBegin(
+            otherLane,
+            () => new Sr5CareerMutationBeginResult(true, false, string.Empty),
+            out blocker), blocker);
+        Require(reconciledOwners.TryComplete(otherLane, () => (true, string.Empty), out blocker), blocker);
+        Require(fixture.Workspace.CommitCount == 0,
+            "Crash recovery and owner reconciliation must never replay the Quality mutation.");
+    }
+
     private static void MalformedSchemaAndCasConflictsRemainReplayLocks()
     {
         MemoryBackend malformedBackend = new() { Payload = "{not-json" };
@@ -401,9 +478,18 @@ internal static class Program
     private sealed class MemoryBackend : ISr5CareerCheckpointBackend
     {
         public string Payload { get; set; } = string.Empty;
+        public bool FailNextRemove { get; set; }
         public string Read() => Payload;
         public void Write(string payload) => Payload = payload;
-        public void Remove() => Payload = string.Empty;
+        public void Remove()
+        {
+            if (FailNextRemove)
+            {
+                FailNextRemove = false;
+                throw new IOException("simulated interrupted durable owner release");
+            }
+            Payload = string.Empty;
+        }
     }
 
     private sealed record Fixture(
@@ -414,6 +500,7 @@ internal static class Program
         CareerQualityEditorState Editor,
         Sr5CareerQualityDraft Draft,
         MemoryBackend Backend,
+        MemoryBackend OwnerBackend,
         Sr5CareerQualityCheckpointStore Store,
         Sr5CareerQualityCheckpoint Checkpoint)
     {
@@ -435,10 +522,24 @@ internal static class Program
                 owner,
                 editor,
                 () => presenter.Binding);
-            Sr5CareerQualityCheckpointStore store = new(backend, authority);
+            MemoryBackend ownerBackend = new();
+            Sr5CareerQualityCheckpointStore store = new(
+                backend,
+                authority,
+                new Sr5CareerMutationOwnerStore(ownerBackend));
             Sr5CareerQualityCheckpoint checkpoint = Sr5CareerQualityCheckpoint.FromDraft(draft);
             Require(store.TryCreate(checkpoint, out checkpoint, out string blocker), blocker);
-            return new(workspace, presenter, owner, coordinator, editor, draft, backend, store, checkpoint);
+            return new(
+                workspace,
+                presenter,
+                owner,
+                coordinator,
+                editor,
+                draft,
+                backend,
+                ownerBackend,
+                store,
+                checkpoint);
         }
     }
 
