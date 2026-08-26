@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <name>Creation Lifestyles E2E</name>
+  <alias>CreationLifestylesE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <settings>default.xml</settings>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <created>False</created>
+  <gameedition>SR5</gameedition>
+  <karma>35</karma>
+  <nuyen>10000</nuyen>
+  <startingnuyen>10000</startingnuyen>
+  <nuyenbp>0</nuyenbp>
+  <improvements />
+  <contacts>
+    <contact>
+      <guid>50d92979-524d-4cb5-898e-196771e3c786</guid>
+      <name>LifestyleSiblingContactE2E</name>
+      <role>UnrelatedStateSentinel</role>
+      <location>Seattle</location>
+      <connection>2</connection>
+      <loyalty>2</loyalty>
+      <type>Contact</type>
+    </contact>
+  </contacts>
+  <lifestyles />
+  <customstate>Creation Lifestyles unrelated state</customstate>
+</character>

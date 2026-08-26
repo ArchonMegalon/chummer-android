@@ -4,6 +4,7 @@ import unittest
 
 REPO = Path(__file__).resolve().parents[1]
 NATIVE = REPO / "src/Chummer.Android/Native"
+PHYSICAL_DRIVER = REPO / "tests/run_api36_sr5_creation_lifestyles_e2e.py"
 
 
 class CreationLifestylesSourceContractTests(unittest.TestCase):
@@ -138,6 +139,29 @@ class CreationLifestylesSourceContractTests(unittest.TestCase):
             "provider.GetRequiredService<ICharacterCreationLifestylesService>()",
         ):
             self.assertIn(marker, source)
+
+    def test_physical_driver_covers_catalog_create_confirm_and_restart_authority(self) -> None:
+        source = PHYSICAL_DRIVER.read_text(encoding="utf-8")
+        for marker in (
+            'STAGE_ID = "creation-stage-contacts-lifestyles"',
+            'CATALOG_PREFIX = "creation-lifestyle-catalog-"',
+            '"creation-lifestyles-binding"',
+            '"creation-lifestyle-edit-binding"',
+            '"creation-lifestyle-preview-digest"',
+            '"creation-lifestyle-plan-digest"',
+            '"creation-lifestyle-write-1-create"',
+            '"creation-lifestyle-explicit-confirm"',
+            '"creation-lifestyle-confirm"',
+            '"creation-lifestyle-confirm-receipt"',
+            "validate_receipt_projection(receipt, imported=imported, saved=saved)",
+            "shared.require_restored_authority(saved, restored)",
+            "after_restart = assert_reopened_lifestyle(",
+            '"sourceGraphRecheckedAfterRun": True',
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, source)
+        self.assertNotIn("creation-stage-foundation", source)
+        self.assertNotIn("creation-foundation-page", source)
 
 
 if __name__ == "__main__":
