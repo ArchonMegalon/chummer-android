@@ -972,6 +972,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             block.index("coordinator.State.WorkspaceId is not null"),
             block.index("GoToAsync(PhoneShellRoutes.RunnerAbsolute)"),
         )
+        self.assertIn("else\n            {\n                await GoToAsync(PhoneShellRoutes.RunnersAbsolute);", block)
         self.assertNotIn(
             "if (coordinator.State.Profile is not null)\n"
             "            {\n"

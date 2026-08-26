@@ -37,9 +37,9 @@ public sealed class MainShell : Shell
     {
         FlyoutBehavior = FlyoutBehavior.Disabled;
         TabBar tabs = new();
-        tabs.Items.Add(CreatePhoneTab<ShadowArchivePage>(services, "Archive", PhoneShellRoutes.Archive, "▤"));
         tabs.Items.Add(CreatePhoneTab<RunnersPage>(services, "Runners", PhoneShellRoutes.Runners, "⌂"));
         tabs.Items.Add(CreatePhoneTab<BuildPage>(services, "Runner", PhoneShellRoutes.Runner, "✎"));
+        tabs.Items.Add(CreatePhoneTab<ShadowArchivePage>(services, "Archive", PhoneShellRoutes.Archive, "▤"));
         tabs.Items.Add(CreatePhoneTab<PhoneMorePage>(services, "More", PhoneShellRoutes.More, "•••"));
         Items.Add(tabs);
 
@@ -62,10 +62,14 @@ public sealed class MainShell : Shell
             {
                 await GoToAsync(PhoneShellRoutes.RunnerAbsolute);
             }
+            else
+            {
+                await GoToAsync(PhoneShellRoutes.RunnersAbsolute);
+            }
         }
         catch
         {
-            // The public Archive remains the fail-closed default and reports composition errors.
+            // Runners remains the app-owned default; its coordinator projection reports load failures.
             Interlocked.Exchange(ref _initialPhoneRouteResolved, 0);
         }
     }

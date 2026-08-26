@@ -7,14 +7,15 @@ PROJECT = REPO / "src" / "Chummer.Android"
 
 
 class ShadowArchiveSourceContractTests(unittest.TestCase):
-    def test_archive_is_the_first_visible_phone_destination(self) -> None:
+    def test_archive_is_first_level_but_runners_remains_the_default_destination(self) -> None:
         shell = (PROJECT / "MainShell.cs").read_text(encoding="utf-8")
         routes = (PROJECT / "PhoneShellRoutes.cs").read_text(encoding="utf-8")
         phone = shell[shell.index("private void BuildPhoneShell"):shell.index("private async Task ResolveInitialPhoneRouteAsync")]
         archive = 'CreatePhoneTab<ShadowArchivePage>(services, "Archive", PhoneShellRoutes.Archive'
         runners = 'CreatePhoneTab<RunnersPage>(services, "Runners", PhoneShellRoutes.Runners'
         self.assertIn(archive, phone)
-        self.assertLess(phone.index(archive), phone.index(runners))
+        self.assertLess(phone.index(runners), phone.index(archive))
+        self.assertIn("GoToAsync(PhoneShellRoutes.RunnersAbsolute)", shell)
         self.assertIn('public const string Archive = "archive";', routes)
         self.assertIn('AutomationId = $"phone-destination-{route}"', shell)
 
