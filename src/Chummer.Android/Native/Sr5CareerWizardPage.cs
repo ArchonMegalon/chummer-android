@@ -172,8 +172,13 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
             "Choose exact InternalId → Core-bound quote and command → durable apply lock → atomic receipt",
             OpenSkillGroupWizardAsync,
             "skill-group");
+        AddAction(
+            "Add a specialization",
+            "Choose typed skill identity → configure governed/custom option → four-revision quote → durable apply",
+            OpenSpecializationWizardAsync,
+            "specialization");
         AddBlocked(
-            "Specialization and initiation/submersion advancement remain incomplete.",
+            "Initiation and submersion advancement remain incomplete.",
             "other-advancement");
         AddBlocked(
             "Gear, weapon, armor, bioware, vehicle and general ware acquisition need exact availability, cost, Essence, prerequisite and expense quotes.",
@@ -259,6 +264,11 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
             "Execute one exact Core-bound group command; unavailable receipt persistence fails closed without a compatibility mutation",
             OpenSkillGroupWizardAsync,
             "skill-group");
+        AddAction(
+            "Add a specialization",
+            "Configure one exact source or custom selection; interrupted outcomes stay locked when persisted receipt authority is unavailable",
+            OpenSpecializationWizardAsync,
+            "specialization");
         AddBlocked(
             "Training duration, healing, crafting, acquisition delivery and other scheduled work lack a shared typed execution contract.",
             "execution");
@@ -371,6 +381,18 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
         if (editor is not null)
         {
             await Navigation.PushAsync(new Sr5CareerSkillGroupWizardPage(Coordinator, editor));
+        }
+    }
+
+    private async Task OpenSpecializationWizardAsync()
+    {
+        Sr5CareerSpecializationCoordinator authority = new(
+            new RunnerSessionSr5CareerSpecializationPresenter(Coordinator),
+            new PreferencesSr5CareerCheckpointOwnerAuthority());
+        CareerSkillSpecializationEditorState? editor = await authority.PrepareAsync();
+        if (editor is not null)
+        {
+            await Navigation.PushAsync(new Sr5CareerSpecializationWizardPage(Coordinator, editor));
         }
     }
 

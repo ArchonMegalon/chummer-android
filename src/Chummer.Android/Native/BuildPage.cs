@@ -309,6 +309,11 @@ public sealed class BuildPage : NativePageBase
             "Direct deep link · exact InternalId → Core-bound review → atomic receipt/recovery",
             OpenSr5CareerSkillGroupWizardAsync,
             automationId: "build-career-skill-group"));
+        card.Add(NativeTheme.NavigationRow(
+            "Add a specialization",
+            "Direct deep link · typed skill identity → governed/custom choice → four-revision review",
+            OpenSr5CareerSpecializationWizardAsync,
+            automationId: "build-career-specialization"));
         Border route = NativeTheme.Card(card);
         route.AutomationId = Sr5CareerWizardRoutes.Hub;
         _body.Add(route);
@@ -342,6 +347,18 @@ public sealed class BuildPage : NativePageBase
         if (editor is not null)
         {
             await Navigation.PushAsync(new Sr5CareerSkillGroupWizardPage(Coordinator, editor));
+        }
+    }
+
+    private async Task OpenSr5CareerSpecializationWizardAsync()
+    {
+        Sr5CareerSpecializationCoordinator authority = new(
+            new RunnerSessionSr5CareerSpecializationPresenter(Coordinator),
+            new PreferencesSr5CareerCheckpointOwnerAuthority());
+        CareerSkillSpecializationEditorState? editor = await authority.PrepareAsync();
+        if (editor is not null)
+        {
+            await Navigation.PushAsync(new Sr5CareerSpecializationWizardPage(Coordinator, editor));
         }
     }
 
@@ -1408,6 +1425,21 @@ public sealed class BuildPage : NativePageBase
                     }
                 },
                 automationId: "build-career-skill-group-editor"));
+            _body.Add(NativeTheme.NavigationRow(
+                "Add specialization",
+                "Choose an exact active or knowledge skill identity, configure a governed or custom option, then review the four-revision quote",
+                async () =>
+                {
+                    Sr5CareerSpecializationCoordinator authority = new(
+                        new RunnerSessionSr5CareerSpecializationPresenter(Coordinator),
+                        new PreferencesSr5CareerCheckpointOwnerAuthority());
+                    CareerSkillSpecializationEditorState? editor = await authority.PrepareAsync();
+                    if (editor is not null)
+                    {
+                        await Navigation.PushAsync(new Sr5CareerSpecializationWizardPage(Coordinator, editor));
+                    }
+                },
+                automationId: "build-career-specialization-editor"));
             _body.Add(NativeTheme.NavigationRow(
                 "Calendar",
                 "Add the next ISO week, edit its notes and color, or delete it by stable identity",

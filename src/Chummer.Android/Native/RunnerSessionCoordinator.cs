@@ -2986,6 +2986,114 @@ public sealed class RunnerSessionCoordinator : IDisposable
         CancellationToken cancellationToken = default)
         => _presenter.PrepareCareerSkillGroupAdvanceAsync(cancellationToken);
 
+    public Task<CareerSkillSpecializationEditorState?> PrepareCareerSkillSpecializationAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCareerSkillSpecializationAsync(cancellationToken);
+
+    public Task<CharacterCareerSkillSpecializationQuote?> PrepareCareerSkillSpecializationQuoteAsync(
+        CareerSkillSpecializationQuoteRequest request,
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCareerSkillSpecializationQuoteAsync(request, cancellationToken);
+
+    public async Task<Sr5CareerSpecializationApplyObservation?> ApplyCareerSkillSpecializationAsync(
+        CareerSkillSpecializationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision
+            || State.SavedRevision != request.ExpectedContentRevision
+            || State.IsDirty
+            || !string.IsNullOrWhiteSpace(State.Error)
+            || !CharacterCareerSkillSpecializationRules.IsCoherent(request.ExpectedQuote)
+            || !request.ExpectedQuote.CanAdd
+            || !string.Equals(request.ExpectedQuote.CharacterRevision, request.ExpectedCharacterRevision, StringComparison.Ordinal)
+            || !string.Equals(request.ExpectedQuote.SourceRevision, request.ExpectedSourceRevision, StringComparison.Ordinal)
+            || !string.Equals(request.ExpectedQuote.RuleDigest, request.ExpectedRuleDigest, StringComparison.Ordinal)
+            || !string.Equals(request.ExpectedQuote.LogicalRevision, request.ExpectedLogicalRevision, StringComparison.Ordinal)
+            || !CharacterCareerSkillSpecializationRules.TryPlanAdd(
+                request.ExpectedQuote,
+                request.ExpectedCharacterRevision,
+                request.ExpectedSourceRevision,
+                request.ExpectedRuleDigest,
+                request.ExpectedLogicalRevision,
+                request.Confirmed,
+                request.SpecializationId,
+                request.ExpenseId,
+                request.ExpenseDateLocal,
+                out CharacterCareerSkillSpecializationPlan plan))
+        {
+            throw new InvalidOperationException(
+                "Core rejected the specialization identity, selection, confirmation, IDs, date, Karma, or four-revision CAS before mutation.");
+        }
+
+        await _presenter.ApplyCareerSkillSpecializationAsync(request, cancellationToken)
+            .ConfigureAwait(false);
+        bool exactMutationApplied = State.Error is null
+            && State.WorkspaceId == request.WorkspaceId
+            && request.ExpectedContentRevision < long.MaxValue
+            && State.ContentRevision == request.ExpectedContentRevision + 1
+            && State.IsDirty;
+        long appliedRevision = exactMutationApplied ? State.ContentRevision : 0;
+        if (exactMutationApplied)
+        {
+            await _presenter.SaveAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        bool durable = exactMutationApplied
+            && State.Error is null
+            && State.WorkspaceId == request.WorkspaceId
+            && State.ContentRevision == appliedRevision
+            && State.SavedRevision == appliedRevision
+            && !State.IsDirty;
+        NativeWorkspaceAuthoritySnapshot? authority = durable
+            ? await TryRefreshWorkspaceAuthorityAsync(
+                expectedWorkspaceId: request.WorkspaceId,
+                expectedPayloadSha256: null,
+                cancellationToken).ConfigureAwait(false)
+            : null;
+        if (!durable
+            || AndroidE2EAuthority.Enabled && (authority is null || !authority.Matches(State)))
+        {
+            await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+            NotifyChanged();
+            return null;
+        }
+
+        CareerSkillSpecializationEditorState? editor =
+            await _presenter.PrepareCareerSkillSpecializationAsync(cancellationToken)
+                .ConfigureAwait(false);
+        CharacterCareerSkillSpecializationQuote? freshQuote = editor is null
+            ? null
+            : await _presenter.PrepareCareerSkillSpecializationQuoteAsync(
+                new CareerSkillSpecializationQuoteRequest(
+                    request.WorkspaceId,
+                    appliedRevision,
+                    request.ExpectedQuote.Identity,
+                    request.ExpectedQuote.Selection),
+                cancellationToken).ConfigureAwait(false);
+        bool exactProjection = editor is not null
+            && freshQuote is not null
+            && editor.WorkspaceId == request.WorkspaceId
+            && editor.ContentRevision == appliedRevision
+            && freshQuote.Identity == request.ExpectedQuote.Identity
+            && freshQuote.Selection == request.ExpectedQuote.Selection
+            && freshQuote.ExistingSpecializationCount
+                == request.ExpectedQuote.ExistingSpecializationCount + 1
+            && freshQuote.AvailableKarma == plan.SavedCharacterKarma
+            && freshQuote.TotalBaseRating == request.ExpectedQuote.TotalBaseRating
+            && string.Equals(freshQuote.SourceRevision, request.ExpectedSourceRevision, StringComparison.Ordinal)
+            && string.Equals(freshQuote.RuleDigest, request.ExpectedRuleDigest, StringComparison.Ordinal);
+        _notice = exactProjection
+            ? "Specialization and Karma expense saved; current-process typed projection verified."
+            : null;
+        await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+        NotifyChanged();
+        return exactProjection
+            ? new Sr5CareerSpecializationApplyObservation(editor!, freshQuote!, appliedRevision)
+            : null;
+    }
+
     /// <summary>
     /// Executes only the atomic Core service command. The Presentation
     /// skill-group request is deliberately not used as mutation authority

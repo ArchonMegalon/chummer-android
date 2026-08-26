@@ -1,0 +1,154 @@
+using Chummer.Contracts.Characters;
+
+namespace Chummer.Contracts.Workspaces
+{
+    public readonly record struct CharacterWorkspaceId(string Value);
+}
+
+namespace Chummer.Presentation.Overview
+{
+    using Chummer.Contracts.Workspaces;
+
+    public sealed record CareerActiveSkillAdvanceEditorState(
+        CharacterWorkspaceId WorkspaceId,
+        long ContentRevision,
+        IReadOnlyList<CharacterCareerActiveSkillAdvanceQuote> Skills,
+        int OmittedSkillCount);
+
+    public sealed record CareerActiveSkillAdvanceRequest(
+        CharacterWorkspaceId WorkspaceId,
+        long ExpectedContentRevision,
+        CharacterCareerActiveSkillAdvanceQuote ExpectedSkill,
+        string ExpectedRuleDigest,
+        bool Confirmed,
+        Guid ExpenseId,
+        DateTime ExpenseDateLocal);
+
+    public sealed record CareerKnowledgeSkillAdvanceEditorState(
+        CharacterWorkspaceId WorkspaceId,
+        long ContentRevision,
+        IReadOnlyList<CharacterCareerKnowledgeSkillAdvanceQuote> Skills,
+        int OmittedSkillCount,
+        IReadOnlyList<CharacterCareerKnowledgeSkillAdvanceReceipt> RecoverableReceipts,
+        int OmittedReceiptCount);
+
+    public sealed record CareerKnowledgeSkillAdvanceRequest(
+        CharacterWorkspaceId WorkspaceId,
+        long ExpectedContentRevision,
+        CharacterCareerKnowledgeSkillAdvanceQuote ExpectedSkill,
+        string ExpectedCharacterRevision,
+        string ExpectedLogicalRevision,
+        string ExpectedSourceRevision,
+        string ExpectedRuleDigest,
+        bool Confirmed,
+        Guid ExpenseId,
+        DateTime ExpenseDateLocal);
+
+    public sealed record CareerSkillSpecializationCandidate(
+        CharacterCareerSkillIdentity Identity,
+        string SkillName,
+        string SkillCategory,
+        string SkillGroup,
+        int TotalBaseRating,
+        int ExistingSpecializationCount,
+        IReadOnlyList<CharacterCareerSkillSpecializationOption> AvailableOptions);
+
+    public sealed record CareerSkillSpecializationEditorState(
+        CharacterWorkspaceId WorkspaceId,
+        long ContentRevision,
+        IReadOnlyList<CareerSkillSpecializationCandidate> Skills,
+        int OmittedSkillCount);
+
+    public sealed record CareerSkillSpecializationQuoteRequest(
+        CharacterWorkspaceId WorkspaceId,
+        long ExpectedContentRevision,
+        CharacterCareerSkillIdentity SkillIdentity,
+        CharacterCareerSkillSpecializationSelection Selection);
+
+    public sealed record CareerSkillSpecializationRequest(
+        CharacterWorkspaceId WorkspaceId,
+        long ExpectedContentRevision,
+        CharacterCareerSkillSpecializationQuote ExpectedQuote,
+        string ExpectedCharacterRevision,
+        string ExpectedSourceRevision,
+        string ExpectedRuleDigest,
+        string ExpectedLogicalRevision,
+        bool Confirmed,
+        Guid SpecializationId,
+        Guid ExpenseId,
+        DateTime ExpenseDateLocal);
+}
+
+namespace Microsoft.Maui.Storage
+{
+    public interface IPreferences
+    {
+        string Get(string key, string fallback);
+        void Set(string key, string value);
+        void Remove(string key);
+    }
+
+    internal sealed class MemoryPreferences : IPreferences
+    {
+        private readonly Dictionary<string, string> _values = new(StringComparer.Ordinal);
+        public string Get(string key, string fallback)
+            => _values.TryGetValue(key, out string? value) ? value : fallback;
+        public void Set(string key, string value) => _values[key] = value;
+        public void Remove(string key) => _values.Remove(key);
+    }
+
+    public static class Preferences
+    {
+        public static IPreferences Default { get; } = new MemoryPreferences();
+    }
+}
+
+namespace Chummer.Android.Native
+{
+    using Chummer.Contracts.Workspaces;
+    using Chummer.Presentation.Overview;
+
+    public static class Sr5CareerWizardPage
+    {
+        public static string LaneToken(Sr5CareerWizardLane lane)
+            => lane.ToString().ToLowerInvariant();
+    }
+
+    public interface ISr5CareerCheckpointBackend
+    {
+        string Read();
+        void Write(string payload);
+        void Remove();
+    }
+
+    public interface ISr5CareerCheckpointOwnerAuthority
+    {
+        Guid CurrentOwnerId { get; }
+    }
+
+    public sealed record RunnerSessionProfileStub(bool Created);
+    public sealed record RunnerSessionRulesStub(string? GameEdition);
+    public sealed class RunnerSessionStateStub
+    {
+        public RunnerSessionProfileStub? Profile { get; init; }
+        public RunnerSessionRulesStub? Rules { get; init; }
+        public CharacterWorkspaceId? WorkspaceId { get; init; }
+        public long ContentRevision { get; init; }
+        public long SavedRevision { get; init; }
+        public bool IsDirty { get; init; }
+        public string? Error { get; init; }
+    }
+
+    public sealed class RunnerSessionCoordinator
+    {
+        public RunnerSessionStateStub State { get; } = new();
+        public Task<CareerSkillSpecializationEditorState?> PrepareCareerSkillSpecializationAsync(
+            CancellationToken cancellationToken) => Task.FromResult<CareerSkillSpecializationEditorState?>(null);
+        public Task<CharacterCareerSkillSpecializationQuote?> PrepareCareerSkillSpecializationQuoteAsync(
+            CareerSkillSpecializationQuoteRequest request,
+            CancellationToken cancellationToken) => Task.FromResult<CharacterCareerSkillSpecializationQuote?>(null);
+        public Task<Sr5CareerSpecializationApplyObservation?> ApplyCareerSkillSpecializationAsync(
+            CareerSkillSpecializationRequest request,
+            CancellationToken cancellationToken) => Task.FromResult<Sr5CareerSpecializationApplyObservation?>(null);
+    }
+}

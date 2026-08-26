@@ -34,6 +34,10 @@ public static class Sr5CareerWizardRoutes
     public const string SkillGroupChoose = "sr5-career/advancement/skill-group/choose";
     public const string SkillGroupReview = "sr5-career/advancement/skill-group/review";
     public const string SkillGroupReceipt = "sr5-career/advancement/skill-group/receipt";
+    public const string SpecializationChoose = "sr5-career/advancement/specialization/choose";
+    public const string SpecializationConfigure = "sr5-career/advancement/specialization/configure";
+    public const string SpecializationReview = "sr5-career/advancement/specialization/review";
+    public const string SpecializationReceipt = "sr5-career/advancement/specialization/receipt";
     public const string KnowledgeSkillChoose = "sr5-career/advancement/knowledge-language/choose";
     public const string KnowledgeSkillReview = "sr5-career/advancement/knowledge-language/review";
     public const string KnowledgeSkillReceipt = "sr5-career/advancement/knowledge-language/receipt";
@@ -87,7 +91,8 @@ public enum Sr5CareerActionKind
     AttributeAdvance = 1,
     SkillGroupAdvance = 2,
     QualityTransaction = 3,
-    KnowledgeSkillAdvance = 4
+    KnowledgeSkillAdvance = 4,
+    SkillSpecializationAdd = 5
 }
 
 public sealed record Sr5CareerCostQuote(
@@ -399,6 +404,80 @@ public sealed record Sr5CareerActionPlan(
                 IsExact: CharacterCareerKnowledgeSkillAdvanceRules.IsCoherent(quote)
                     && CharacterCareerKnowledgeSkillAdvanceRules.IsCoherent(plan),
                 Blocker: quote.CanAdvance ? string.Empty : quote.Blocker.ToString()));
+    }
+
+    public static Sr5CareerActionPlan FromSpecialization(
+        Guid ownerId,
+        CharacterWorkspaceId workspaceId,
+        long expectedContentRevision,
+        CharacterCareerSkillSpecializationQuote quote,
+        CharacterCareerSkillSpecializationPlan plan)
+    {
+        ArgumentNullException.ThrowIfNull(quote);
+        ArgumentNullException.ThrowIfNull(plan);
+        string sourceIdentity = quote.Identity.SourceSkillId?.ToString("D") ?? "custom";
+        string domainIdentity = $"{quote.Identity.Kind}:{quote.Identity.SkillId:D}:{sourceIdentity}";
+        string idempotencyKey = ComputeSpecializationIdempotencyKey(
+            ownerId,
+            workspaceId,
+            expectedContentRevision,
+            quote,
+            plan);
+        return new Sr5CareerActionPlan(
+            ownerId,
+            plan.ExpenseId,
+            idempotencyKey,
+            Sr5CareerWizardRoutes.SpecializationReview,
+            Sr5CareerActionKind.SkillSpecializationAdd,
+            workspaceId,
+            expectedContentRevision,
+            domainIdentity,
+            new Sr5CareerCostQuote(
+                quote.KarmaCost,
+                NuyenCost: 0m,
+                EssenceCost: 0m,
+                Availability: null,
+                ElapsedTime: null,
+                quote.RuleDigest,
+                quote.LogicalRevision,
+                IsExact: CharacterCareerSkillSpecializationRules.IsCoherent(quote),
+                Blocker: quote.CanAdd ? string.Empty : quote.Blocker.ToString()));
+    }
+
+    private static string ComputeSpecializationIdempotencyKey(
+        Guid ownerId,
+        CharacterWorkspaceId workspaceId,
+        long expectedContentRevision,
+        CharacterCareerSkillSpecializationQuote quote,
+        CharacterCareerSkillSpecializationPlan plan)
+    {
+        string payload = string.Join(
+            "\n",
+            "chummer.android.sr5-career-specialization-action/v1",
+            ownerId.ToString("D"),
+            workspaceId.Value,
+            expectedContentRevision.ToString(CultureInfo.InvariantCulture),
+            quote.Identity.Kind.ToString(),
+            quote.Identity.SkillId.ToString("D"),
+            quote.Identity.SourceSkillId?.ToString("D") ?? "custom",
+            quote.Selection.Kind.ToString(),
+            quote.Selection.OptionIdentity ?? "custom",
+            quote.Selection.Name,
+            quote.CharacterRevision,
+            quote.SourceRevision,
+            quote.RuleDigest,
+            quote.LogicalRevision,
+            quote.KarmaCost.ToString(CultureInfo.InvariantCulture),
+            quote.ExistingSpecializationCount.ToString(CultureInfo.InvariantCulture),
+            quote.AvailableKarma.ToString(CultureInfo.InvariantCulture),
+            plan.SpecializationId.ToString("D"),
+            plan.ExpenseId.ToString("D"),
+            plan.ExpenseDateLocal.ToString("O", CultureInfo.InvariantCulture),
+            plan.ExpenseAmount.ToString(CultureInfo.InvariantCulture),
+            plan.SavedCharacterKarma.ToString(CultureInfo.InvariantCulture),
+            string.Empty);
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)))
+            .ToLowerInvariant();
     }
 
     public static string ComputeActiveSkillIdempotencyKey(
