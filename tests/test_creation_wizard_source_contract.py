@@ -414,6 +414,7 @@ class CreationWizardSourceContractTests(unittest.TestCase):
     def test_completed_setup_routes_only_authoritative_uncreated_workspace(self) -> None:
         source = (NATIVE / "NativeDialogPage.cs").read_text(encoding="utf-8")
         route = source[source.index("bool routeToCreationWizard"):source.index("else", source.index("bool routeToCreationWizard"))]
+        self.assertIn("CreateCharacterActionId", route)
         self.assertIn("CompleteNewCharacterWorkflowActionId", route)
         self.assertIn("_coordinator.State.WorkspaceId is not null", route)
         self.assertIn("_coordinator.State.Profile?.Created == false", route)

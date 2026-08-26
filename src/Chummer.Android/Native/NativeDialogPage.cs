@@ -7,6 +7,7 @@ namespace Chummer.Android.Native;
 
 public sealed class NativeDialogPage : ContentPage
 {
+    private const string CreateCharacterActionId = "create_character";
     private const string CompleteNewCharacterWorkflowActionId = "complete_new_character_workflow";
     private readonly RunnerSessionCoordinator _coordinator;
     private readonly NativeDialogInteractionGate _interactionGate = new();
@@ -462,10 +463,14 @@ public sealed class NativeDialogPage : ContentPage
                 DesktopDialogState? next = _coordinator.State.ActiveDialog;
                 if (next is null)
                 {
-                    bool routeToCreationWizard = string.Equals(
-                            action.Id,
-                            CompleteNewCharacterWorkflowActionId,
-                            StringComparison.Ordinal)
+                    bool routeToCreationWizard = (string.Equals(
+                                                       action.Id,
+                                                       CreateCharacterActionId,
+                                                       StringComparison.Ordinal)
+                                                   || string.Equals(
+                                                       action.Id,
+                                                       CompleteNewCharacterWorkflowActionId,
+                                                       StringComparison.Ordinal))
                         && _coordinator.State.WorkspaceId is not null
                         && _coordinator.State.Profile?.Created == false;
                     await CloseCoreAsync(updatePresenter: false);
