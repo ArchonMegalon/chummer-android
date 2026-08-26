@@ -2,4 +2,6 @@
   <Project Path="src/Chummer.Android/Chummer.Android.csproj" />
   <Project Path="tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj" />
   <Project Path="tests/Chummer.Android.Native.InteractionTests/Chummer.Android.Native.InteractionTests.csproj" />
+  <Project Path="tests/Chummer.Android.PlayReview.BindingCompileCheck/Chummer.Android.PlayReview.BindingCompileCheck.csproj" />
+  <Project Path="tests/Chummer.Android.PlayReview.Tests/Chummer.Android.PlayReview.Tests.csproj" />
 </Solution>

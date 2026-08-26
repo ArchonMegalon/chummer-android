@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <RootNamespace>Chummer.Android</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/PlayReviewPolicy.cs"
+             Link="PlayReviewPolicy.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/PlayReviewStrings.cs"
+             Link="PlayReviewStrings.cs" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/ReviewStrings.resx"
+                      Link="Resources/Localization/ReviewStrings.resx" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/ReviewStrings.de.resx"
+                      Link="Resources/Localization/ReviewStrings.de.resx" />
+  </ItemGroup>
+</Project>

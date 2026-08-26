@@ -3,7 +3,7 @@ using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
 
-public class HomePage : NativePageBase
+public class HomePage : NativePageBase, IPlayReviewSafeSurface
 {
     private readonly string _runnerRoute;
     private readonly VerticalStackLayout _body = new()

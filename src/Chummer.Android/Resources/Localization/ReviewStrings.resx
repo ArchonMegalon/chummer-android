@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="SettingsSection" xml:space="preserve">
+    <value>Google Play</value>
+  </data>
+  <data name="RateOnGooglePlay" xml:space="preserve">
+    <value>Rate Chummer on Google Play</value>
+  </data>
+  <data name="RateOnGooglePlayDescription" xml:space="preserve">
+    <value>Open Chummer's Google Play listing to write or update a review.</value>
+  </data>
+</root>

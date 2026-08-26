@@ -29,6 +29,17 @@ public static class MauiProgram
         builder.Services.AddSingleton<IAndroidLinkedCharacterFileService, AndroidLinkedCharacterFileService>();
         builder.Services.AddSingleton<IAndroidSystemService, AndroidSystemService>();
         builder.Services.AddSingleton<IAndroidAccountLinkService, AndroidAccountLinkService>();
+        builder.Services.AddSingleton<IPlayReviewClock, SystemPlayReviewClock>();
+        builder.Services.AddSingleton<IPlayReviewStateStore>(
+            new FilePlayReviewStateStore(statePath));
+        builder.Services.AddSingleton<IPlayReviewLauncher, AndroidPlayReviewLauncher>();
+        builder.Services.AddSingleton<IPlayReviewService>(provider =>
+            new PlayReviewService(
+                provider.GetRequiredService<IPlayReviewStateStore>(),
+                provider.GetRequiredService<IPlayReviewClock>(),
+                provider.GetRequiredService<IPlayReviewLauncher>(),
+                $"{AppInfo.Current.VersionString}+{AppInfo.Current.BuildString}",
+                AutomaticPlayReviewEnabled()));
         builder.Services.AddSingleton<ICharacterRosterFavoriteStore>(
             new FileCharacterRosterFavoriteStore(statePath));
         builder.Services.AddSingleton<CharacterRosterFavoritePresenter>();
@@ -76,5 +87,19 @@ public static class MauiProgram
 #endif
 
         return builder.Build();
+    }
+
+    private static bool AutomaticPlayReviewEnabled()
+    {
+#if CHUMMER_PLAY_REVIEW_ENABLED
+        const bool buildEnabled = true;
+#else
+        const bool buildEnabled = false;
+#endif
+        return buildEnabled
+               && !string.Equals(
+                   Environment.GetEnvironmentVariable("CHUMMER_DISABLE_PLAY_REVIEW"),
+                   "1",
+                   StringComparison.Ordinal);
     }
 }

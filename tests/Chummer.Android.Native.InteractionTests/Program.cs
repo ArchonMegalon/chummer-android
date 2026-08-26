@@ -25,6 +25,12 @@ internal static class Program
             (nameof(PreAuthorityCreationSnapshotCanScheduleBootstrapAsync), PreAuthorityCreationSnapshotCanScheduleBootstrapAsync),
             (nameof(BuildPageProjectsExactlyOneLifecycleRouteAsync), BuildPageProjectsExactlyOneLifecycleRouteAsync),
             (nameof(DurableSaveNoticeFailsClosedAcrossStateChangesAsync), DurableSaveNoticeFailsClosedAcrossStateChangesAsync),
+            (nameof(PlayReviewPolicyEnforcesUsageVersionAndCooldownAsync), PlayReviewPolicyEnforcesUsageVersionAndCooldownAsync),
+            (nameof(PlayReviewSafetyRejectsEveryMutationBoundaryAsync), PlayReviewSafetyRejectsEveryMutationBoundaryAsync),
+            (nameof(PlayReviewInstallGateAndBackupBindingFailClosedAsync), PlayReviewInstallGateAndBackupBindingFailClosedAsync),
+            (nameof(PlayReviewForegroundAccountingIsMonotonicAndSessionSafeAsync), PlayReviewForegroundAccountingIsMonotonicAndSessionSafeAsync),
+            (nameof(PlayReviewFakeLauncherAndSilentFailureAreInjectableAsync), PlayReviewFakeLauncherAndSilentFailureAreInjectableAsync),
+            (nameof(PlayReviewFileStateRoundTripsOnlyLocalPolicyDataAsync), PlayReviewFileStateRoundTripsOnlyLocalPolicyDataAsync),
             (nameof(SlowCreationDashboardProjectionDoesNotBlockCallerAsync), SlowCreationDashboardProjectionDoesNotBlockCallerAsync),
             (nameof(PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync), PrerequisiteAuthorityPublishesBeforeSlowLaterPhasesAsync),
             (nameof(CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync), CreationAuthorityPhaseMergesAreIndependentAndDeterministicAsync),
@@ -170,6 +176,291 @@ internal static class Program
             "The toolbar must expose Saved. only for an exact durable notice match.");
         return Task.CompletedTask;
     }
+
+    private static Task PlayReviewPolicyEnforcesUsageVersionAndCooldownAsync()
+    {
+        DateTimeOffset now = new(2026, 8, 26, 12, 0, 0, TimeSpan.Zero);
+        long threshold = PlayReviewPolicyOptions.Production.MinimumForegroundMilliseconds;
+        Require(
+            !PlayReviewPolicy.ShouldAttempt(
+                new PlayReviewState(threshold - 1, null, null),
+                "0.1.0-preview.10+10",
+                now,
+                PlayReviewPolicyOptions.Production),
+            "The automatic review must not become eligible before one foreground hour.");
+        Require(
+            PlayReviewPolicy.ShouldAttempt(
+                new PlayReviewState(threshold, null, null),
+                "0.1.0-preview.10+10",
+                now,
+                PlayReviewPolicyOptions.Production),
+            "The foreground threshold must admit the next safe moment.");
+
+        PlayReviewState prior = new(
+            threshold,
+            now - TimeSpan.FromDays(31),
+            "0.1.0-preview.10+10");
+        Require(
+            !PlayReviewPolicy.ShouldAttempt(
+                prior,
+                "0.1.0-preview.10+10",
+                now,
+                PlayReviewPolicyOptions.Production),
+            "One app version must never receive a second production attempt.");
+        Require(
+            !PlayReviewPolicy.ShouldAttempt(
+                prior with { LastAttemptUtc = now - TimeSpan.FromDays(29) },
+                "0.1.0-preview.11+11",
+                now,
+                PlayReviewPolicyOptions.Production),
+            "A new version must still observe the thirty-day cross-version cooldown.");
+        Require(
+            PlayReviewPolicy.ShouldAttempt(
+                prior with { LastAttemptUtc = now - TimeSpan.FromDays(30) },
+                "0.1.0-preview.11+11",
+                now,
+                PlayReviewPolicyOptions.Production),
+            "The next version may request only after the full cooldown.");
+        Require(
+            !PlayReviewPolicy.ShouldAttempt(
+                prior with { LastAttemptUtc = now + TimeSpan.FromDays(1) },
+                "0.1.0-preview.11+11",
+                now,
+                PlayReviewPolicyOptions.Production),
+            "A wall-clock rollback must fail closed.");
+        Require(
+            !PlayReviewPolicy.ShouldAttempt(
+                prior with { LastAttemptUtc = null },
+                "0.1.0-preview.11+11",
+                now,
+                PlayReviewPolicyOptions.Production),
+            "Partial durable attempt history must fail closed.");
+        return Task.CompletedTask;
+    }
+
+    private static Task PlayReviewSafetyRejectsEveryMutationBoundaryAsync()
+    {
+        PlayReviewSafetyContext safe = new(
+            IsExplicitSafeSurface: true,
+            IsRootNavigation: true,
+            HasModal: false,
+            HasActiveDialog: false,
+            HasUnsavedMutation: false,
+            HasActionInFlight: false);
+        Require(safe.IsSafe, "The explicit clean root idle state must be eligible.");
+        Require(!(safe with { IsExplicitSafeSurface = false }).IsSafe, "A wizard/editor surface must block review.");
+        Require(!(safe with { IsRootNavigation = false }).IsSafe, "A nested draft/review page must block review.");
+        Require(!(safe with { HasModal = true }).IsSafe, "A modal must block review.");
+        Require(!(safe with { HasActiveDialog = true }).IsSafe, "A shared dialog must block review.");
+        Require(!(safe with { HasUnsavedMutation = true }).IsSafe, "An unsaved mutation must block review.");
+        Require(!(safe with { HasActionInFlight = true }).IsSafe, "Apply/conflict work must block review.");
+        Require(!(safe with { HasBusyWork = true }).IsSafe, "Coordinator background work must block review.");
+        return Task.CompletedTask;
+    }
+
+    private static async Task PlayReviewForegroundAccountingIsMonotonicAndSessionSafeAsync()
+    {
+        long minute = (long)TimeSpan.FromMinutes(1).TotalMilliseconds;
+        var clock = new FakePlayReviewClock
+        {
+            UtcNow = new DateTimeOffset(2026, 8, 26, 12, 0, 0, TimeSpan.Zero),
+            MonotonicMilliseconds = 10_000
+        };
+        var store = new FakePlayReviewStateStore(
+            new PlayReviewState(59 * minute, null, null, "test-install"));
+        var launcher = new FakePlayReviewLauncher { IsRuntimeAvailable = true };
+        using var service = new PlayReviewService(
+            store,
+            clock,
+            launcher,
+            "0.1.0-preview.10+10");
+
+        service.OnForegrounded();
+        service.OnForegrounded();
+        clock.MonotonicMilliseconds += 30_000;
+        service.CheckpointForegroundUse();
+        clock.MonotonicMilliseconds += 30_000;
+        service.OnBackgrounded();
+        service.OnBackgrounded();
+        clock.MonotonicMilliseconds += 90_000;
+        service.CheckpointForegroundUse();
+        Require(
+            service.State.ForegroundMilliseconds == 60 * minute,
+            "Duplicate lifecycle callbacks must neither reset nor double-count monotonic foreground time.");
+        Require(
+            store.State.ForegroundMilliseconds == 60 * minute,
+            "Each foreground checkpoint must durably preserve cumulative use.");
+
+        Require(
+            !await service.TryRequestAtSafeMomentAsync(SafeReviewContext()),
+            "Eligibility alone must not launch without a meaningful safe success/library-idle signal.");
+        service.SignalMeaningfulSuccess();
+        clock.MonotonicMilliseconds +=
+            (long)PlayReviewPolicy.MeaningfulSuccessWindow.TotalMilliseconds + 1;
+        Require(
+            !await service.TryRequestAtSafeMomentAsync(SafeReviewContext())
+            && launcher.RequestCount == 0,
+            "An old success signal must not let a later unrelated heartbeat launch review.");
+        service.SignalMeaningfulSuccess();
+        bool attempted = await service.TryRequestAtSafeMomentAsync(SafeReviewContext());
+        Require(attempted && launcher.RequestCount == 1, "The injected launcher must receive one eligible attempt.");
+        Require(
+            store.State.LastAttemptVersion == "0.1.0-preview.10+10"
+            && store.State.LastAttemptUtc == clock.UtcNow,
+            "Attempt version and timestamp must be durable before invoking Play.");
+        Require(
+            !await service.TryRequestAtSafeMomentAsync(SafeReviewContext())
+            && launcher.RequestCount == 1,
+            "The same version must not issue a second request.");
+    }
+
+    private static async Task PlayReviewFakeLauncherAndSilentFailureAreInjectableAsync()
+    {
+        var clock = new FakePlayReviewClock
+        {
+            UtcNow = new DateTimeOffset(2026, 8, 26, 12, 0, 0, TimeSpan.Zero),
+            MonotonicMilliseconds = 1
+        };
+        var throwingLauncher = new FakePlayReviewLauncher
+        {
+            IsRuntimeAvailable = true,
+            ThrowOnRequest = true
+        };
+        var store = new FakePlayReviewStateStore(PlayReviewState.Empty);
+        using var service = new PlayReviewService(store, clock, throwingLauncher, "debug+1");
+        service.ConfigureDebugOverride(enabled: true);
+        service.SignalMeaningfulSuccess();
+        Require(
+            await service.TryRequestAtSafeMomentAsync(SafeReviewContext()),
+            "The debug override must exercise the injected launcher without an hour wait.");
+        Require(
+            throwingLauncher.RequestCount == 1 && store.State.LastAttemptVersion == "debug+1",
+            "A Play error must be silent while retaining its durable attempt boundary.");
+
+        var unavailableLauncher = new FakePlayReviewLauncher { IsRuntimeAvailable = false };
+        var unavailableStore = new FakePlayReviewStateStore(PlayReviewState.Empty);
+        using var unavailable = new PlayReviewService(
+            unavailableStore,
+            clock,
+            unavailableLauncher,
+            "debug+2");
+        unavailable.ConfigureDebugOverride(enabled: true);
+        unavailable.SignalMeaningfulSuccess();
+        Require(
+            !await unavailable.TryRequestAtSafeMomentAsync(SafeReviewContext())
+            && unavailableStore.State.LastAttemptUtc is null,
+            "A non-Play install must fail harmlessly without consuming an attempt.");
+    }
+
+    private static async Task PlayReviewInstallGateAndBackupBindingFailClosedAsync()
+    {
+        PlayReviewInstallContext canonical = new(
+            PlayReviewPolicy.CanonicalApplicationId,
+            PlayReviewPolicy.GooglePlayInstallerPackage,
+            "install-current",
+            IsReleaseBuild: true);
+        Require(
+            PlayReviewPolicy.IsEligibleInstallation(canonical, explicitTestOverride: false),
+            "Only the canonical release package installed by Google Play may auto-request.");
+        foreach (PlayReviewInstallContext ineligible in new[]
+                 {
+                     canonical with { ApplicationId = "com.myexternalbrain.chummer.sidecar" },
+                     canonical with { InstallerPackageName = "com.android.shell" },
+                     canonical with { InstallerPackageName = "org.fdroid.fdroid" },
+                     canonical with { IsReleaseBuild = false },
+                     canonical with { InstallIdentity = string.Empty }
+                 })
+        {
+            Require(
+                !PlayReviewPolicy.IsEligibleInstallation(ineligible, explicitTestOverride: false),
+                $"A sidecar/debug/ADB/alternate-store install escaped the production gate: {ineligible}");
+            Require(
+                PlayReviewPolicy.IsEligibleInstallation(ineligible, explicitTestOverride: true),
+                "The explicit test override must remain injectable without weakening production.");
+        }
+
+        var launcher = new FakePlayReviewLauncher
+        {
+            IsRuntimeAvailable = true,
+            InstallContext = canonical
+        };
+        var restoredBackup = new FakePlayReviewStateStore(new PlayReviewState(
+            PlayReviewPolicyOptions.Production.MinimumForegroundMilliseconds,
+            null,
+            null,
+            "install-from-another-device"));
+        var clock = new FakePlayReviewClock
+        {
+            UtcNow = new DateTimeOffset(2026, 8, 26, 12, 0, 0, TimeSpan.Zero),
+            MonotonicMilliseconds = 100
+        };
+        using var service = new PlayReviewService(restoredBackup, clock, launcher, "release+10");
+        Require(
+            service.State.ForegroundMilliseconds == 0
+            && service.State.InstallIdentity == "install-current",
+            "Restored policy state must reset when the no-backup install identity changes.");
+
+        using var killed = new PlayReviewService(
+            new FakePlayReviewStateStore(PlayReviewState.Empty with { InstallIdentity = "install-current" }),
+            clock,
+            launcher,
+            "release+10",
+            automaticFlowEnabled: false);
+        killed.ConfigureDebugOverride(enabled: true);
+        killed.SignalMeaningfulSuccess();
+        Require(
+            !await killed.TryRequestAtSafeMomentAsync(SafeReviewContext()),
+            "The build/local kill switch must dominate the debug override.");
+    }
+
+    private static Task PlayReviewFileStateRoundTripsOnlyLocalPolicyDataAsync()
+    {
+        string directory = Path.Combine(
+            Path.GetTempPath(),
+            $"chummer-play-review-{Guid.NewGuid():N}");
+        try
+        {
+            var store = new FilePlayReviewStateStore(directory);
+            var expected = new PlayReviewState(
+                ForegroundMilliseconds: 3_600_000,
+                LastAttemptUtc: new DateTimeOffset(2026, 8, 26, 12, 0, 0, TimeSpan.Zero),
+                LastAttemptVersion: "0.1.0-preview.10+10",
+                InstallIdentity: "local-install-identity");
+            store.Save(expected);
+            Require(store.Load() == expected, "The local policy store must round-trip exactly its policy fields.");
+            string json = File.ReadAllText(Path.Combine(directory, "play-review-policy.json"));
+            Require(
+                json.Contains("foregroundMilliseconds", StringComparison.Ordinal)
+                && json.Contains("lastAttemptUtc", StringComparison.Ordinal)
+                && json.Contains("lastAttemptVersion", StringComparison.Ordinal)
+                && json.Contains("installIdentity", StringComparison.Ordinal),
+                "The policy store lost a required local field.");
+            foreach (string forbidden in new[] { "rating", "stars", "displayed", "submitted", "analytics", "telemetry" })
+            {
+                Require(
+                    !json.Contains(forbidden, StringComparison.OrdinalIgnoreCase),
+                    $"The policy store must not persist review telemetry: {forbidden}");
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private static PlayReviewSafetyContext SafeReviewContext()
+        => new(
+            IsExplicitSafeSurface: true,
+            IsRootNavigation: true,
+            HasModal: false,
+            HasActiveDialog: false,
+            HasUnsavedMutation: false,
+            HasActionInFlight: false);
 
     private static async Task SlowCreationDashboardProjectionDoesNotBlockCallerAsync()
     {
@@ -1675,6 +1966,53 @@ internal static class Program
 
     private static TaskCompletionSource NewSignal()
         => new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    private sealed class FakePlayReviewClock : IPlayReviewClock
+    {
+        public DateTimeOffset UtcNow { get; set; }
+
+        public long MonotonicMilliseconds { get; set; }
+    }
+
+    private sealed class FakePlayReviewStateStore : IPlayReviewStateStore
+    {
+        public FakePlayReviewStateStore(PlayReviewState state)
+        {
+            State = state;
+        }
+
+        public PlayReviewState State { get; private set; }
+
+        public PlayReviewState Load() => State;
+
+        public void Save(PlayReviewState state) => State = state;
+    }
+
+    private sealed class FakePlayReviewLauncher : IPlayReviewLauncher
+    {
+        public PlayReviewInstallContext InstallContext { get; init; } = new(
+            PlayReviewPolicy.CanonicalApplicationId,
+            PlayReviewPolicy.GooglePlayInstallerPackage,
+            "test-install",
+            IsReleaseBuild: true);
+
+        public bool IsRuntimeAvailable { get; init; }
+
+        public bool ThrowOnRequest { get; init; }
+
+        public int RequestCount { get; private set; }
+
+        public Task RequestReviewAsync(CancellationToken cancellationToken = default)
+        {
+            RequestCount++;
+            return ThrowOnRequest
+                ? Task.FromException(new InvalidOperationException("simulated Play failure"))
+                : Task.CompletedTask;
+        }
+
+        public Task OpenStoreListingAsync(CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+    }
 
     private static void Require(bool condition, string message)
     {

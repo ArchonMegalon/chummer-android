@@ -1,6 +1,7 @@
 using System.Globalization;
 using Chummer.Application.Tools;
 using Chummer.Contracts.Api;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Chummer.Android.Native;
 
@@ -12,6 +13,7 @@ namespace Chummer.Android.Native;
 public sealed class ApplicationSettingsPage : NativePageBase
 {
     private readonly ApplicationDeleteConfirmationState _baseline;
+    private readonly IPlayReviewService? _playReview;
     private readonly Switch _confirmDelete;
     private readonly Switch _confirmKarmaExpense;
     private readonly Switch _hideMasterIndex;
@@ -29,11 +31,21 @@ public sealed class ApplicationSettingsPage : NativePageBase
     private readonly CultureInfo _culture;
     private readonly Label _revision;
 
-    public ApplicationSettingsPage(RunnerSessionCoordinator coordinator) : base(coordinator)
+    public ApplicationSettingsPage(RunnerSessionCoordinator coordinator)
+        : this(
+            coordinator,
+            IPlatformApplication.Current?.Services.GetService<IPlayReviewService>())
+    {
+    }
+
+    public ApplicationSettingsPage(
+        RunnerSessionCoordinator coordinator,
+        IPlayReviewService? playReview) : base(coordinator)
     {
         Title = "Application settings";
         AutomationId = "application-settings-page";
         _baseline = coordinator.ApplicationSettings;
+        _playReview = playReview;
         _culture = CultureInfo.CurrentCulture;
 
         VerticalStackLayout body = new()
@@ -174,6 +186,13 @@ public sealed class ApplicationSettingsPage : NativePageBase
             "Reload unchanged open character files",
             "Automatically load external save-file changes only when the open character has no pending edits.",
             _liveUpdateCleanCharacterFiles));
+
+        body.Add(NativeTheme.Title(PlayReviewStrings.SettingsSection()));
+        body.Add(NativeTheme.NavigationRow(
+            PlayReviewStrings.RateOnGooglePlay(),
+            PlayReviewStrings.RateOnGooglePlayDescription(),
+            OpenStoreListingAsync,
+            automationId: "settings-rate-on-google-play"));
 
         body.Add(NativeTheme.Title("Date and time"));
         body.Add(NativeTheme.Body(
@@ -327,5 +346,13 @@ public sealed class ApplicationSettingsPage : NativePageBase
         row.Add(labels);
         row.Add(value, 1);
         return NativeTheme.Card(row);
+    }
+
+    private async Task OpenStoreListingAsync()
+    {
+        if (_playReview is not null)
+        {
+            await _playReview.OpenStoreListingAsync();
+        }
     }
 }

@@ -1,4 +1,5 @@
 using Chummer.Presentation.Overview;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Chummer.Android.Native;
 
@@ -7,6 +8,7 @@ public abstract class NativePageBase : ContentPage
     private bool _subscribed;
     private bool _dialogVisible;
     private int _runningActionDepth;
+    private CancellationTokenSource? _appearanceLifetime;
 
     protected NativePageBase(RunnerSessionCoordinator coordinator)
     {
@@ -19,6 +21,10 @@ public abstract class NativePageBase : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        _appearanceLifetime?.Cancel();
+        _appearanceLifetime?.Dispose();
+        _appearanceLifetime = new CancellationTokenSource();
+        CancellationToken appearanceToken = _appearanceLifetime.Token;
         if (!_subscribed)
         {
             Coordinator.Changed += OnCoordinatorChanged;
@@ -30,6 +36,14 @@ public abstract class NativePageBase : ContentPage
             await Coordinator.InitializeAsync();
             Refresh();
             await ShowActiveDialogAsync();
+            await Task.Delay(TimeSpan.FromMilliseconds(750), appearanceToken);
+            await NotifyPlayReviewSafeMomentAsync(
+                signalMeaningfulSuccess: false,
+                cancellationToken: appearanceToken);
+        }
+        catch (OperationCanceledException) when (appearanceToken.IsCancellationRequested)
+        {
+            // The page left before the deliberately deferred idle checkpoint.
         }
         catch (Exception ex)
         {
@@ -40,6 +54,9 @@ public abstract class NativePageBase : ContentPage
 
     protected override void OnDisappearing()
     {
+        _appearanceLifetime?.Cancel();
+        _appearanceLifetime?.Dispose();
+        _appearanceLifetime = null;
         if (_subscribed)
         {
             Coordinator.Changed -= OnCoordinatorChanged;
@@ -53,12 +70,16 @@ public abstract class NativePageBase : ContentPage
 
     protected async Task RunAsync(Func<Task> action)
     {
+        PlayReviewMeaningfulState before = CapturePlayReviewMeaningfulState();
         Interlocked.Increment(ref _runningActionDepth);
+        PlayReviewInteractionGuard.EnterAction();
+        bool succeeded = false;
         try
         {
             await action();
             Refresh();
             await ShowActiveDialogAsync();
+            succeeded = true;
         }
         catch (OperationCanceledException)
         {
@@ -71,12 +92,22 @@ public abstract class NativePageBase : ContentPage
         finally
         {
             Interlocked.Decrement(ref _runningActionDepth);
+            PlayReviewInteractionGuard.ExitAction();
+        }
+
+        if (succeeded)
+        {
+            await NotifyPlayReviewSafeMomentAsync(
+                signalMeaningfulSuccess: before != CapturePlayReviewMeaningfulState());
         }
     }
 
     protected async Task RunWithConditionalRefreshAsync(Func<Task<bool>> action)
     {
+        PlayReviewMeaningfulState before = CapturePlayReviewMeaningfulState();
         Interlocked.Increment(ref _runningActionDepth);
+        PlayReviewInteractionGuard.EnterAction();
+        bool succeeded = false;
         try
         {
             if (await action())
@@ -84,6 +115,7 @@ public abstract class NativePageBase : ContentPage
                 Refresh();
             }
             await ShowActiveDialogAsync();
+            succeeded = true;
         }
         catch (OperationCanceledException)
         {
@@ -96,6 +128,13 @@ public abstract class NativePageBase : ContentPage
         finally
         {
             Interlocked.Decrement(ref _runningActionDepth);
+            PlayReviewInteractionGuard.ExitAction();
+        }
+
+        if (succeeded)
+        {
+            await NotifyPlayReviewSafeMomentAsync(
+                signalMeaningfulSuccess: before != CapturePlayReviewMeaningfulState());
         }
     }
 
@@ -126,4 +165,42 @@ public abstract class NativePageBase : ContentPage
             await ShowActiveDialogAsync();
         });
     }
+
+    private async Task NotifyPlayReviewSafeMomentAsync(
+        bool signalMeaningfulSuccess,
+        CancellationToken cancellationToken = default)
+    {
+        IPlayReviewService? review = IPlatformApplication.Current?.Services
+            .GetService<IPlayReviewService>();
+        if (review is null)
+        {
+            return;
+        }
+
+        if (signalMeaningfulSuccess)
+        {
+            // Evidence comes from an actual workspace/revision transition, never from
+            // page appearance or a merely non-throwing picker/navigation callback.
+            review.SignalMeaningfulSuccess();
+        }
+
+        PlayReviewSafetyContext safety = PlayReviewSafety.Capture(Coordinator);
+        if (!safety.IsSafe)
+        {
+            return;
+        }
+
+        await review.TryRequestAtSafeMomentAsync(safety, cancellationToken);
+    }
+
+    private PlayReviewMeaningfulState CapturePlayReviewMeaningfulState()
+        => new(
+            Coordinator.State.WorkspaceId?.Value,
+            Coordinator.State.ContentRevision,
+            Coordinator.State.SavedRevision);
+
+    private readonly record struct PlayReviewMeaningfulState(
+        string? WorkspaceId,
+        long ContentRevision,
+        long SavedRevision);
 }

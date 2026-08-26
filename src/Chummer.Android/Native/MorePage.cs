@@ -2,7 +2,7 @@ using Chummer.Android.Platform;
 
 namespace Chummer.Android.Native;
 
-public class MorePage : NativePageBase
+public class MorePage : NativePageBase, IPlayReviewSafeSurface
 {
     private readonly bool _showUnrestrictedActions;
     private readonly string? _runnerRouteAfterOpen;

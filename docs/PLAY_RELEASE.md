@@ -118,6 +118,61 @@ web resource when an app enables account creation. The final Data safety form
 must point to `https://chummer.run/account/delete`; see
 https://support.google.com/googleplay/android-developer/answer/13327111.
 
+## In-app review contract and testing
+
+The automatic rating flow uses the official Google Play In-App Review library
+(`com.google.android.play:review:2.0.2`, through Microsoft's matching .NET
+binding). It becomes eligible after 60 cumulative minutes while Chummer is the
+resumed foreground activity. Monotonic current-session deltas are checkpointed
+locally; background, lock-screen, and process-dead time is not counted. The app
+stores only cumulative use, the last attempt time and app version, and a random
+no-backup install identity. An upgrade keeps that identity, while restored
+backup state from another installation is reset.
+
+Production requests require the release build of the canonical
+`com.myexternalbrain.chummer` package installed by `com.android.vending`. They
+run at most once per app version and no sooner than 30 days after an attempt by
+another version. Eligibility alone never interrupts work: the request still
+needs a successful runner/workspace activation, mutation, or durable save followed
+by an idle Runners/Home or More root within a short two-minute in-memory window, no
+modal/shared dialog, no nested editor, no action in flight, and a clean runner
+revision. Creation and Career drafts, review/apply/conflict pages, and every
+unsaved mutation remain ineligible. Merely opening or revisiting a root page is
+not a success signal, and an old success cannot arm an unrelated later heartbeat.
+Google Play quota and API failures are
+silent, and completion is not evidence that the card appeared or that a review
+was submitted. Support and product-feedback channels are separate and do not
+influence eligibility.
+
+The localized **Application settings → Google Play → Rate Chummer on Google
+Play** action always remains manual. It opens
+`market://details?id=com.myexternalbrain.chummer` with the HTTPS listing as a
+fallback; using it neither reads nor changes automatic eligibility.
+
+Real UI proof is internal-track-only. Upload an exact approved AAB to the
+internal testing track, add the tester account, select it as the primary Play
+Store account, and install Chummer from that track before testing. A sideload,
+emulator, fake launcher, or successful API task is not proof that Play displayed
+the review UI. In Debug only, launch with the typed Boolean extra below to bypass
+the hour/version/install gates for an explicit test; normal safety gates still
+apply and a non-Play environment may still return no UI:
+
+```sh
+adb shell am start -a android.intent.action.MAIN \
+  -c android.intent.category.LAUNCHER -p com.myexternalbrain.chummer \
+  --ez com.myexternalbrain.chummer.extra.DEBUG_PLAY_REVIEW true
+```
+
+Pure policy tests use an injected fake launcher. Android integration tests may
+use the official `FakeReviewManager` (pinned by the binding compile check); it
+simulates API completion only and never displays or submits review UI. Neither
+path is real UI evidence.
+
+Automatic review can be disabled at build time with
+`-p:ChummerPlayReviewEnabled=false` or locally for a process with
+`CHUMMER_DISABLE_PLAY_REVIEW=1`. The manual store-listing action remains
+available under either kill switch.
+
 ## Publication boundary
 
 A locally signed AAB is not publication. Publication requires a Chummer-scoped

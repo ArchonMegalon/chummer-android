@@ -39,14 +39,24 @@ namespace Chummer.Android;
 public sealed class MainActivity : MauiAppCompatActivity
 {
     private const int InAppUpdateRequestCode = 9201;
+    private const long ReviewHeartbeatMilliseconds = 30_000;
     private const string E2EAuthorityIntentExtra =
         "com.myexternalbrain.chummer.extra.E2E_AUTHORITY";
+#if DEBUG
+    private const string DebugPlayReviewIntentExtra =
+        "com.myexternalbrain.chummer.extra.DEBUG_PLAY_REVIEW";
+#endif
 
     private IOnBackInvokedCallback? _backInvokedCallback;
     private IAppUpdateManager? _appUpdateManager;
     private InstallStateListener? _installStateListener;
+    private Handler? _reviewHandler;
+    private ReviewHeartbeatRunnable? _reviewHeartbeat;
     private bool _destroyed;
+    private bool _resumed;
+    private bool _reviewDebugOverride;
     private bool _googlePlayManaged;
+    private string? _installerPackageName;
     private bool _updateCheckRunning;
     private bool _updateFlowRequested;
     private bool _updateFlowDeferred;
@@ -55,6 +65,10 @@ public sealed class MainActivity : MauiAppCompatActivity
 
     public bool IsGooglePlayManaged => _googlePlayManaged;
 
+    internal string? InstallerPackageName => _installerPackageName;
+
+    internal bool IsPlayReviewDebugOverride => _reviewDebugOverride;
+
     protected override void OnCreate(Bundle? savedInstanceState)
     {
 #if DEBUG
@@ -62,8 +76,15 @@ public sealed class MainActivity : MauiAppCompatActivity
             ReadE2EAuthorityOptIn(Intent));
 #endif
         base.OnCreate(savedInstanceState);
+#if DEBUG
+        ConfigurePlayReviewDebugOverride(Intent, resetWhenMissing: true);
+#endif
         HandleAccountLinkIntent(Intent);
-        _googlePlayManaged = IsInstalledByGooglePlay();
+        _installerPackageName = ResolveInstallerPackageName();
+        _googlePlayManaged = string.Equals(
+            _installerPackageName,
+            PlayReviewPolicy.GooglePlayInstallerPackage,
+            StringComparison.Ordinal);
         if (_googlePlayManaged)
         {
             InitializeInAppUpdates();
@@ -85,6 +106,7 @@ public sealed class MainActivity : MauiAppCompatActivity
 #if DEBUG
             AndroidE2EAuthority.ConfigureForCurrentProcess(
                 ReadE2EAuthorityOptIn(intent));
+            ConfigurePlayReviewDebugOverride(intent, resetWhenMissing: false);
 #endif
             HandleAccountLinkIntent(intent);
         }
@@ -93,6 +115,9 @@ public sealed class MainActivity : MauiAppCompatActivity
     protected override void OnResume()
     {
         base.OnResume();
+        _resumed = true;
+        GetPlayReviewService()?.OnForegrounded();
+        ScheduleReviewHeartbeat(_reviewDebugOverride ? 1_000 : ReviewHeartbeatMilliseconds);
         if (_googlePlayManaged)
         {
             _ = CheckForPlayUpdateAsync(userInitiated: false);
@@ -105,9 +130,24 @@ public sealed class MainActivity : MauiAppCompatActivity
         }
     }
 
+    protected override void OnPause()
+    {
+        _resumed = false;
+        CancelReviewHeartbeat();
+        GetPlayReviewService()?.OnBackgrounded();
+        base.OnPause();
+    }
+
     protected override void OnDestroy()
     {
         _destroyed = true;
+        _resumed = false;
+        CancelReviewHeartbeat();
+        GetPlayReviewService()?.OnBackgrounded();
+        _reviewHeartbeat?.Dispose();
+        _reviewHeartbeat = null;
+        _reviewHandler?.Dispose();
+        _reviewHandler = null;
         if (_appUpdateManager is not null && _installStateListener is not null)
         {
             try
@@ -154,7 +194,86 @@ public sealed class MainActivity : MauiAppCompatActivity
         // enabling an instrumentation-only surface from untyped input.
         return intent?.GetBooleanExtra(E2EAuthorityIntentExtra, false) == true;
     }
+
+    private void ConfigurePlayReviewDebugOverride(Intent? intent, bool resetWhenMissing)
+    {
+        if (!resetWhenMissing && intent?.HasExtra(DebugPlayReviewIntentExtra) != true)
+        {
+            return;
+        }
+
+        _reviewDebugOverride = intent?.GetBooleanExtra(DebugPlayReviewIntentExtra, false) == true;
+        GetPlayReviewService()?.ConfigureDebugOverride(_reviewDebugOverride);
+        if (_resumed)
+        {
+            ScheduleReviewHeartbeat(_reviewDebugOverride ? 1_000 : ReviewHeartbeatMilliseconds);
+        }
+    }
 #endif
+
+    internal bool CanLaunchPlayReviewNow(bool allowExplicitTestOverride = false)
+        => (_googlePlayManaged || (allowExplicitTestOverride && _reviewDebugOverride))
+           && _resumed
+           && !_destroyed
+           && !IsFinishing
+           && !IsDestroyed
+           && HasWindowFocus
+           && !_updateCheckRunning
+           && !_updateFlowRequested
+           && !_updateCompletionPromptVisible;
+
+    private IPlayReviewService? GetPlayReviewService()
+        => IPlatformApplication.Current?.Services.GetService<IPlayReviewService>();
+
+    private void ScheduleReviewHeartbeat(long delayMilliseconds)
+    {
+        if (!_resumed || _destroyed)
+        {
+            return;
+        }
+
+        _reviewHandler ??= new Handler(Looper.MainLooper!);
+        _reviewHeartbeat ??= new ReviewHeartbeatRunnable(this);
+        _reviewHandler.RemoveCallbacks(_reviewHeartbeat);
+        _reviewHandler.PostDelayed(_reviewHeartbeat, delayMilliseconds);
+    }
+
+    private void CancelReviewHeartbeat()
+    {
+        if (_reviewHandler is not null && _reviewHeartbeat is not null)
+        {
+            _reviewHandler.RemoveCallbacks(_reviewHeartbeat);
+        }
+    }
+
+    private async Task CheckpointAndMaybeRequestReviewAsync()
+    {
+        try
+        {
+            IPlayReviewService? review = GetPlayReviewService();
+            if (review is null || !_resumed || _destroyed)
+            {
+                return;
+            }
+
+            review.CheckpointForegroundUse();
+            RunnerSessionCoordinator? coordinator = IPlatformApplication.Current?.Services
+                .GetService<RunnerSessionCoordinator>();
+            if (coordinator is not null && CanLaunchPlayReviewNow(_reviewDebugOverride))
+            {
+                await review.TryRequestAtSafeMomentAsync(
+                    PlayReviewSafety.Capture(coordinator));
+            }
+        }
+        catch (Exception)
+        {
+            // Review policy and Play failures never interrupt Chummer.
+        }
+        finally
+        {
+            ScheduleReviewHeartbeat(ReviewHeartbeatMilliseconds);
+        }
+    }
 
     private bool HandleBackNavigation()
     {
@@ -342,7 +461,7 @@ public sealed class MainActivity : MauiAppCompatActivity
         dialog.Show();
     }
 
-    private bool IsInstalledByGooglePlay()
+    private string? ResolveInstallerPackageName()
     {
         try
         {
@@ -358,11 +477,11 @@ public sealed class MainActivity : MauiAppCompatActivity
 #pragma warning restore CS0618
             }
 
-            return string.Equals(installer, "com.android.vending", StringComparison.Ordinal);
+            return installer;
         }
         catch (Exception)
         {
-            return false;
+            return null;
         }
     }
 
@@ -388,5 +507,17 @@ public sealed class MainActivity : MauiAppCompatActivity
         }
 
         public void OnStateUpdate(InstallState? state) => _callback(state);
+    }
+
+    private sealed class ReviewHeartbeatRunnable : Java.Lang.Object, Java.Lang.IRunnable
+    {
+        private readonly MainActivity _activity;
+
+        public ReviewHeartbeatRunnable(MainActivity activity)
+        {
+            _activity = activity;
+        }
+
+        public void Run() => _ = _activity.CheckpointAndMaybeRequestReviewAsync();
     }
 }

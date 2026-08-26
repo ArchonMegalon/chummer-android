@@ -1,4 +1,5 @@
 using Chummer.Android.Platform;
+using Chummer.Android.Native;
 
 namespace Chummer.Android;
 
@@ -48,4 +49,21 @@ public sealed class AndroidSystemService : IAndroidSystemService
         string title,
         CancellationToken cancellationToken)
         => Task.FromResult(false);
+}
+
+public sealed class AndroidPlayReviewLauncher : IPlayReviewLauncher
+{
+    public PlayReviewInstallContext InstallContext { get; } = new(
+        PlayReviewPolicy.CanonicalApplicationId,
+        null,
+        "compile-gate",
+        IsReleaseBuild: false);
+
+    public bool IsRuntimeAvailable => false;
+
+    public Task RequestReviewAsync(CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    public Task OpenStoreListingAsync(CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
 }

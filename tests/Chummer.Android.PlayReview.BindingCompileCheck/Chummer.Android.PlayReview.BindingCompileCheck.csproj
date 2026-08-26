@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-android36.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <SupportedOSPlatformVersion>24.0</SupportedOSPlatformVersion>
+    <UseMaui>true</UseMaui>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
+    <PackageReference Include="Xamarin.Google.Android.Play.Review" Version="2.0.2.9" />
+    <PackageReference Include="Xamarin.AndroidX.Activity.Ktx" Version="1.13.0.1" />
+    <PackageReference Include="Xamarin.AndroidX.Collection.Ktx" Version="1.6.0.1" />
+    <PackageReference Include="Xamarin.AndroidX.Fragment.Ktx" Version="1.8.9.4" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData" Version="2.11.0.1" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core.Ktx" Version="2.11.0.1" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.Process" Version="2.11.0.1" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.Runtime.Ktx" Version="2.11.0.1" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.Runtime.Ktx.Android" Version="2.11.0.1" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.ViewModel.Ktx" Version="2.11.0.1" />
+    <PackageReference Include="Xamarin.AndroidX.SavedState.SavedState.Ktx" Version="1.5.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../../src/Chummer.Android/Native/PlayReviewPolicy.cs"
+             Link="Native/PlayReviewPolicy.cs" />
+    <Compile Include="../../src/Chummer.Android/Platforms/Android/AndroidPlayReviewLauncher.cs"
+             Link="Platforms/Android/AndroidPlayReviewLauncher.cs" />
+    <Compile Include="CompileStubs.cs" />
+  </ItemGroup>
+</Project>
