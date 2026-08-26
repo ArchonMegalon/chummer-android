@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ChummerCoreRoot Condition="'$(ChummerCoreRoot)' == ''">../../../chummer-core-engine</ChummerCoreRoot>
+    <ChummerPresentationRoot Condition="'$(ChummerPresentationRoot)' == ''">../../../chummer-presentation</ChummerPresentationRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(ChummerCoreRoot)/Chummer.Contracts/Chummer.Contracts.csproj"
+                      AdditionalProperties="RuntimeIdentifier=;RuntimeIdentifiers=;SelfContained=false"
+                      GlobalPropertiesToRemove="RuntimeIdentifier;RuntimeIdentifiers;SelfContained" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="PreferencesCompileStubs.cs" />
+    <Compile Include="OverviewCompileStubs.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Application/Characters/ICharacterCreationMagicResonanceService.cs"
+             Link="Core/ICharacterCreationMagicResonanceService.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Application/Characters/CharacterCreationMagicResonanceDraftIntegrity.cs"
+             Link="Core/CharacterCreationMagicResonanceDraftIntegrity.cs" />
+    <Compile Include="$(ChummerPresentationRoot)/Chummer.Presentation/Overview/CharacterCreationMagicResonanceWorkflow.cs"
+             Link="Presentation/CharacterCreationMagicResonanceWorkflow.cs" />
+    <Compile Include="$(ChummerPresentationRoot)/Chummer.CreationWizard.Presentation.Tests/CharacterCreationMagicResonanceTestFixture.cs"
+             Link="Fixture/CharacterCreationMagicResonanceTestFixture.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/CreationMagicResonancePhoneAuthority.cs"
+             Link="Native/CreationMagicResonancePhoneAuthority.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/CreationMagicResonancePhoneDraft.cs"
+             Link="Native/CreationMagicResonancePhoneDraft.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/CreationMagicResonanceCheckpointStore.cs"
+             Link="Native/CreationMagicResonanceCheckpointStore.cs" />
+  </ItemGroup>
+</Project>

@@ -775,8 +775,15 @@ public sealed class BuildPage : NativePageBase
             bool canOpenQualities = qualitiesStage
                                     && stage.IsAvailable
                                     && HasAuthoritativeQualities();
+            bool magicResonanceStage = string.Equals(
+                stage.StepId,
+                CharacterCreationWizardStepIds.MagicResonance,
+                StringComparison.Ordinal);
+            bool canOpenMagicResonance = magicResonanceStage
+                                         && stage.IsAvailable
+                                         && HasAuthoritativeMagicResonance();
             bool canOpen = canOpenFoundation || canOpenPrerequisite || canOpenAttributes
-                           || canOpenSkills || canOpenQualities;
+                           || canOpenSkills || canOpenQualities || canOpenMagicResonance;
             bool projectionBoundStage = priorityPrerequisite || attributeStage || skillStage;
             string? projectionBlocker = ProjectionStageBlocker(
                 projection,
@@ -791,6 +798,8 @@ public sealed class BuildPage : NativePageBase
                     ? OpenCreationSkillsAsync
                 : canOpenQualities
                     ? OpenCreationQualitiesAsync
+                : canOpenMagicResonance
+                    ? OpenCreationMagicResonanceAsync
                 : canOpenFoundation
                     ? OpenCreationFoundationAsync
                     : () => Task.CompletedTask;
@@ -802,6 +811,9 @@ public sealed class BuildPage : NativePageBase
                     ? SkillsStageDetail(skills!.Value!)
                 : canOpenQualities
                     ? QualitiesStageDetail(Coordinator.State.CreationQualities!)
+                : canOpenMagicResonance
+                    ? MagicResonanceStageDetail(
+                        Coordinator.State.CreationMagicResonanceEditor!)
                 : canOpenFoundation
                     ? "Choose an exact metatype and Nationality Life Module"
                     : projectionBoundStage && !string.IsNullOrWhiteSpace(projectionBlocker)
@@ -814,7 +826,8 @@ public sealed class BuildPage : NativePageBase
             if (stage.Blockers.Count > 0
                 && !canOpenAttributes
                 && !canOpenSkills
-                && !canOpenQualities)
+                && !canOpenQualities
+                && !canOpenMagicResonance)
             {
                 detail += $" · {stage.Blockers[0]}";
             }
@@ -866,6 +879,9 @@ public sealed class BuildPage : NativePageBase
             .Concat(HasAuthoritativeQualities()
                 ? [CharacterCreationWizardStepIds.Qualities]
                 : [])
+            .Concat(HasAuthoritativeMagicResonance()
+                ? [CharacterCreationWizardStepIds.MagicResonance]
+                : [])
             .Where(static id => !string.IsNullOrWhiteSpace(id))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
@@ -900,9 +916,17 @@ public sealed class BuildPage : NativePageBase
             bool canOpenQualities = qualitiesStep
                                     && stage.IsAvailable
                                     && HasAuthoritativeQualities();
+            bool magicResonanceStep = string.Equals(
+                stepId,
+                CharacterCreationWizardStepIds.MagicResonance,
+                StringComparison.Ordinal);
+            bool canOpenMagicResonance = magicResonanceStep
+                                         && stage.IsAvailable
+                                         && HasAuthoritativeMagicResonance();
             // The post-create AttributeEditRequest path must never serve as a wizard fallback.
             // Core's dedicated creation authority is the only Attributes route here.
-            bool canOpen = canOpenFoundation || canOpenAttributes || canOpenSkills || canOpenQualities;
+            bool canOpen = canOpenFoundation || canOpenAttributes || canOpenSkills
+                           || canOpenQualities || canOpenMagicResonance;
             Func<Task> selected = canOpenFoundation
                 ? OpenCreationFoundationAsync
                 : canOpenAttributes
@@ -911,6 +935,8 @@ public sealed class BuildPage : NativePageBase
                     ? OpenCreationSkillsAsync
                 : canOpenQualities
                     ? OpenCreationQualitiesAsync
+                : canOpenMagicResonance
+                    ? OpenCreationMagicResonanceAsync
                 : () => Task.CompletedTask;
             string detail = canOpenFoundation
                 ? "Choose an exact metatype and Nationality Life Module"
@@ -920,6 +946,9 @@ public sealed class BuildPage : NativePageBase
                     ? SkillsStageDetail(skillsResult!.Value!)
                 : canOpenQualities
                     ? QualitiesStageDetail(Coordinator.State.CreationQualities!)
+                : canOpenMagicResonance
+                    ? MagicResonanceStageDetail(
+                        Coordinator.State.CreationMagicResonanceEditor!)
                 : attributeStep
                   && projection?.Progress.Attributes == CreationDashboardAuthorityPhaseState.Loading
                     ? "creation-authority-loading"
@@ -1027,6 +1056,14 @@ public sealed class BuildPage : NativePageBase
         => Coordinator.State.CreationQualities is { } state
            && CreationQualitiesPhoneAuthority.IsReady(state, Coordinator.State);
 
+    private bool HasAuthoritativeMagicResonance()
+        => Coordinator.State.CreationMagicResonance is { } core
+           && Coordinator.State.CreationMagicResonanceEditor is { } editor
+           && CreationMagicResonancePhoneAuthority.IsReady(
+               core,
+               editor,
+               Coordinator.State);
+
     private static bool IsPrerequisiteStage(string stepId, string buildMethod)
         => string.Equals(stepId, CharacterCreationWizardStepIds.Method, StringComparison.Ordinal)
            && buildMethod is (CharacterCreationBuildMethods.Priority
@@ -1050,6 +1087,9 @@ public sealed class BuildPage : NativePageBase
 
     private Task OpenCreationQualitiesAsync()
         => Navigation.PushAsync(new CreationQualitiesPage(Coordinator));
+
+    private Task OpenCreationMagicResonanceAsync()
+        => Navigation.PushAsync(new CreationMagicResonancePage(Coordinator));
 
     private static string PrerequisiteStageDetail(CharacterCreationPrerequisiteState state)
     {
@@ -1092,6 +1132,15 @@ public sealed class BuildPage : NativePageBase
         => state.PendingDraft is null
             ? $"Choose exact Core options · +{state.Preview.PositiveQualityBudget.Remaining.ToString(CultureInfo.InvariantCulture)} positive / -{state.Preview.NegativeQualityBudget.Remaining.ToString(CultureInfo.InvariantCulture)} negative Karma available"
             : $"Resume saved Qualities draft {state.PendingDraft.DraftRevision.ToString(CultureInfo.InvariantCulture)} · {state.Preview.KarmaRemaining.ToString(CultureInfo.InvariantCulture)} Creation Karma left";
+
+    private static string MagicResonanceStageDetail(
+        CharacterCreationMagicResonanceEditorState state)
+    {
+        decimal remaining = state.Budgets.Sum(static budget => budget.Remaining);
+        return state.HasPendingDraft
+            ? $"Resume saved {CreationMagicResonancePage.KindLabel(state.Talent.Kind)} draft · {remaining.ToString("0.##", CultureInfo.InvariantCulture)} exact budget remaining"
+            : $"Choose typed {CreationMagicResonancePage.KindLabel(state.Talent.Kind)} follow-ups · {remaining.ToString("0.##", CultureInfo.InvariantCulture)} exact budget remaining";
+    }
 
     private static string StageLabel(CharacterCreationWizardSnapshot snapshot, string stepId)
         => snapshot.Steps.FirstOrDefault(stage => string.Equals(stage.StepId, stepId, StringComparison.Ordinal))?.Label

@@ -68,7 +68,8 @@ public static class MauiProgram
             new WorkspaceOverviewStateFactory(
                 provider.GetRequiredService<ICharacterCreationFoundationService>(),
                 provider.GetService<ICharacterCreationContactsService>(),
-                provider.GetService<ICharacterCreationQualitiesService>()));
+                provider.GetService<ICharacterCreationQualitiesService>(),
+                provider.GetService<ICharacterCreationMagicResonanceService>()));
         builder.Services.AddSingleton<ICharacterCreationFoundationInteractionPresenter>(provider =>
             new CharacterCreationFoundationInteractionPresenter(
                 provider.GetRequiredService<ICharacterCreationFoundationService>()));

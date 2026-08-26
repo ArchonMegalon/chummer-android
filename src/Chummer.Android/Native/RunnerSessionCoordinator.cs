@@ -146,6 +146,27 @@ public static class CreationQualitiesPhoneBlockers
         "creation-qualities-commit-outcome-unknown";
 }
 
+public sealed record CreationMagicResonancePhoneConfirmResult(
+    string Outcome,
+    CharacterCreationMagicResonanceConfirmation? Confirmation,
+    IReadOnlyList<string> Blockers,
+    bool MutationOutcomeKnown);
+
+public static class CreationMagicResonancePhoneOutcomes
+{
+    public const string Applied = "applied";
+    public const string RejectedBeforeMutation = "rejected-before-mutation";
+    public const string OutcomeUnknown = "outcome-unknown";
+}
+
+public static class CreationMagicResonancePhoneBlockers
+{
+    public const string PostCommitRefreshRequired =
+        "creation-magic-resonance-post-commit-refresh-required";
+    public const string OutcomeUnknown =
+        "creation-magic-resonance-commit-outcome-unknown";
+}
+
 public sealed class RunnerSessionCoordinator : IDisposable
 {
     private const string WorkspaceAuthorityDigestSchema =
@@ -167,6 +188,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly ICharacterCreationAttributesService? _creationAttributesService;
     private readonly ICharacterCreationSkillsService? _creationSkillsService;
     private readonly ICharacterCreationQualitiesService? _creationQualitiesService;
+    private readonly ICharacterCreationMagicResonanceService? _creationMagicResonanceService;
     private readonly ICharacterCareerSkillGroupAdvanceService? _careerSkillGroupService;
     private readonly ICharacterAfterRunSettlementService? _afterRunSettlementService;
     private readonly IAndroidAfterRunProposalCatalog? _afterRunProposalCatalog;
@@ -232,7 +254,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         ICareerQualityAtomicWorkspace? careerQualityWorkspace = null,
         ICharacterCareerSkillGroupAdvanceService? careerSkillGroupService = null,
         ICharacterAfterRunSettlementService? afterRunSettlementService = null,
-        IAndroidAfterRunProposalCatalog? afterRunProposalCatalog = null)
+        IAndroidAfterRunProposalCatalog? afterRunProposalCatalog = null,
+        ICharacterCreationMagicResonanceService? creationMagicResonanceService = null)
     {
         _presenter = presenter;
         _client = client;
@@ -242,6 +265,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _creationAttributesService = creationAttributesService;
         _creationSkillsService = creationSkillsService;
         _creationQualitiesService = creationQualitiesService;
+        _creationMagicResonanceService = creationMagicResonanceService;
         _careerSkillGroupService = careerSkillGroupService;
         _afterRunSettlementService = afterRunSettlementService;
         _afterRunProposalCatalog = afterRunProposalCatalog;
@@ -1021,6 +1045,193 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 .Append(CreationQualitiesPhoneBlockers.OutcomeUnknown)
                 .Distinct(StringComparer.Ordinal)
                 .OrderBy(static item => item, StringComparer.Ordinal)
+                .ToArray(),
+            MutationOutcomeKnown: false);
+
+    public CharacterCreationFoundationResult<CharacterCreationMagicResonanceState>
+        LoadCreationMagicResonance()
+    {
+        if (State.Profile?.Created != false || State.WorkspaceId is not { } workspaceId)
+        {
+            return new(
+                CharacterCreationFoundationOutcomes.Blocked,
+                null,
+                [CharacterCreationMagicResonanceBlockers.WorkspaceUnavailable]);
+        }
+        if (_creationMagicResonanceService is null)
+        {
+            return new(
+                CharacterCreationFoundationOutcomes.Blocked,
+                null,
+                [CharacterCreationMagicResonanceBlockers.AuthorityUnavailable]);
+        }
+        CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> result =
+            _creationMagicResonanceService.Load(new(workspaceId));
+        return result.Value is { } state
+               && !CreationMagicResonancePhoneAuthority.MatchesOverview(state, State)
+            ? new(
+                CharacterCreationFoundationOutcomes.Conflict,
+                null,
+                [CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision])
+            : result;
+    }
+
+    internal CharacterCreationMagicResonanceReview ReviewCreationMagicResonance(
+        CharacterCreationMagicResonanceEditorState expectedEditor,
+        CharacterCreationMagicResonanceDesktopDraft draft)
+    {
+        ArgumentNullException.ThrowIfNull(expectedEditor);
+        ArgumentNullException.ThrowIfNull(draft);
+        CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> live =
+            LoadCreationMagicResonance();
+        if (_creationMagicResonanceService is null
+            || live.Value is not { } state
+            || !CharacterCreationMagicResonanceWorkflow.TryProject(
+                state,
+                out CharacterCreationMagicResonanceEditorState? editor)
+            || editor is null
+            || !CreationMagicResonancePhoneAuthority.IsReady(state, editor, State)
+            || !CreationMagicResonancePhoneAuthority.EditorEquals(
+                expectedEditor,
+                editor))
+        {
+            throw new InvalidOperationException(
+                CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision);
+        }
+        return CharacterCreationMagicResonanceWorkflow.Review(
+            _creationMagicResonanceService,
+            editor,
+            draft);
+    }
+
+    internal async Task<CreationMagicResonancePhoneConfirmResult>
+        ConfirmCreationMagicResonanceAsync(
+            CharacterCreationMagicResonanceCheckpoint checkpoint,
+            CancellationToken cancellationToken = default)
+        => await WithWorkspaceActivationGateAsync(
+            () => ConfirmCreationMagicResonanceCoreAsync(
+                checkpoint,
+                cancellationToken),
+            cancellationToken);
+
+    private async Task<CreationMagicResonancePhoneConfirmResult>
+        ConfirmCreationMagicResonanceCoreAsync(
+            CharacterCreationMagicResonanceCheckpoint checkpoint,
+            CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        CharacterOverviewState beforeActivation = State;
+        if (_creationMagicResonanceService is null
+            || checkpoint.Phase !=
+            CharacterCreationMagicResonanceCheckpointPhase.Confirming
+            || !checkpoint.IsStructurallyValid()
+            || !checkpoint.OwnsRecoveryRevision(beforeActivation))
+        {
+            return new(
+                CreationMagicResonancePhoneOutcomes.RejectedBeforeMutation,
+                null,
+                [CharacterCreationMagicResonanceBlockers.StaleWorkspaceRevision],
+                MutationOutcomeKnown: true);
+        }
+
+        CharacterCreationMagicResonanceConfirmation confirmation;
+        try
+        {
+            confirmation = CharacterCreationMagicResonanceWorkflow.Confirm(
+                _creationMagicResonanceService,
+                checkpoint.Review,
+                checkpoint.IdempotencyKey,
+                explicitlyConfirmed: true);
+        }
+        catch (Exception exception)
+        {
+            try
+            {
+                CharacterCreationFoundationResult<CharacterCreationMagicResonanceState>
+                    observed = _creationMagicResonanceService.Load(new(
+                        checkpoint.Review.Draft.ExpectedBinding.WorkspaceId));
+                if (observed.Value is { } unchanged
+                    && CreationMagicResonancePhoneAuthority.BindingEquals(
+                        unchanged.Binding,
+                        checkpoint.Review.Draft.ExpectedBinding)
+                    && beforeActivation.ContentRevision ==
+                    checkpoint.Review.Draft.ExpectedBinding.ContentRevision
+                    && beforeActivation.SavedRevision ==
+                    checkpoint.Review.Draft.ExpectedBinding.SavedRevision)
+                {
+                    return new(
+                        CreationMagicResonancePhoneOutcomes.RejectedBeforeMutation,
+                        null,
+                        [exception.Message],
+                        MutationOutcomeKnown: true);
+                }
+            }
+            catch
+            {
+                // The exact mutation outcome cannot be proven; retain Confirming for replay.
+            }
+            return UnknownMagicResonanceOutcome([exception.Message]);
+        }
+
+        if (!CreationMagicResonancePhoneAuthority.ConfirmationMatches(
+                checkpoint.Review,
+                checkpoint.IdempotencyKey,
+                confirmation))
+        {
+            return UnknownMagicResonanceOutcome(
+                [CharacterCreationMagicResonanceBlockers.DraftInvalid]);
+        }
+
+        try
+        {
+            await _presenter.LoadAsync(
+                confirmation.Receipt.WorkspaceId,
+                cancellationToken);
+            await SyncShellAsync(cancellationToken);
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            _notice = "Magic/Resonance draft saved. Reopen the character to refresh the phone view.";
+            NotifyChanged();
+            return new(
+                CreationMagicResonancePhoneOutcomes.Applied,
+                confirmation,
+                [CreationMagicResonancePhoneBlockers.PostCommitRefreshRequired],
+                MutationOutcomeKnown: true);
+        }
+
+        if (!CreationMagicResonancePhoneAuthority.OverviewMatchesReceipt(
+                State,
+                confirmation.Receipt))
+        {
+            _notice = "Magic/Resonance draft saved. Reopen the character to refresh the phone view.";
+            NotifyChanged();
+            return new(
+                CreationMagicResonancePhoneOutcomes.Applied,
+                confirmation,
+                [CreationMagicResonancePhoneBlockers.PostCommitRefreshRequired],
+                MutationOutcomeKnown: true);
+        }
+
+        _notice = "Magic/Resonance draft saved. Character effects remain pending finalization.";
+        NotifyChanged();
+        return new(
+            CreationMagicResonancePhoneOutcomes.Applied,
+            confirmation,
+            [],
+            MutationOutcomeKnown: true);
+    }
+
+    private static CreationMagicResonancePhoneConfirmResult
+        UnknownMagicResonanceOutcome(IEnumerable<string>? blockers = null)
+        => new(
+            CreationMagicResonancePhoneOutcomes.OutcomeUnknown,
+            null,
+            (blockers ?? [])
+                .Where(static blocker => !string.IsNullOrWhiteSpace(blocker))
+                .Append(CreationMagicResonancePhoneBlockers.OutcomeUnknown)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(static blocker => blocker, StringComparer.Ordinal)
                 .ToArray(),
             MutationOutcomeKnown: false);
 
