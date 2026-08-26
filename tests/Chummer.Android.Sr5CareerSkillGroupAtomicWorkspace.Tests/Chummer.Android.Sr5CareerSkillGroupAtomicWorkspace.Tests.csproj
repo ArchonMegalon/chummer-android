@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ChummerCoreRoot Condition="'$(ChummerCoreRoot)' == ''">../../../chummer-core-engine</ChummerCoreRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="AtomicWorkspaceCompileStubs.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/AndroidCharacterCareerSkillGroupAdvanceWorkspace.cs"
+             Link="Native/AndroidCharacterCareerSkillGroupAdvanceWorkspace.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerSkillGroupAdvanceRules.cs"
+             Link="Core/CharacterCareerSkillGroupAdvanceRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerSkillGroupAdvanceServiceContracts.cs"
+             Link="Core/CharacterCareerSkillGroupAdvanceServiceContracts.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Application/Characters/ICharacterCareerSkillGroupAdvanceWorkspace.cs"
+             Link="Core/ICharacterCareerSkillGroupAdvanceWorkspace.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Application/Characters/ICharacterCareerSkillGroupAdvanceService.cs"
+             Link="Core/ICharacterCareerSkillGroupAdvanceService.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Application/Characters/CharacterCareerSkillGroupAdvanceService.cs"
+             Link="Core/CharacterCareerSkillGroupAdvanceService.cs" />
+  </ItemGroup>
+</Project>

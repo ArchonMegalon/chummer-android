@@ -48,6 +48,10 @@ public static class MauiProgram
                 statePath,
                 typeof(MauiProgram).Assembly.GetName().Version ?? new Version(0, 0)));
         builder.Services.AddSingleton<ApplicationDeleteConfirmationPresenter>();
+        builder.Services.AddSingleton<IAndroidCareerSkillGroupSettingsCatalog,
+            PreferencesAndroidCareerSkillGroupSettingsCatalog>();
+        builder.Services.AddSingleton<ICharacterCareerSkillGroupAdvanceWorkspace,
+            AndroidCharacterCareerSkillGroupAdvanceWorkspace>();
         builder.Services.AddChummerLocalRuntimeClient(
             contentPath,
             contentPath,
