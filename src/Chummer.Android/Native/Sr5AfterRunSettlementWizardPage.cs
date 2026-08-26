@@ -272,17 +272,19 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
         }
         Sr5AfterRunSettlementRecoveryResolution resolution = await _authority
             .ResolveAsync(_checkpoint, _store);
-        if (resolution.Status == Sr5AfterRunSettlementRecoveryStatus.OutcomeUnknown
-            || !_store.TryRecordAuthoritativeResolution(
+        if (resolution.Status == Sr5AfterRunSettlementRecoveryStatus.OutcomeUnknown)
+        {
+            _recovery.Text = resolution.Message;
+            _recovery.TextColor = NativeTheme.Danger;
+            return;
+        }
+        if (!_store.TryRecordAuthoritativeResolution(
                 Sr5AfterRunSettlementCheckpointCas.From(_checkpoint),
                 resolution,
                 out Sr5AfterRunSettlementCheckpoint stored,
                 out string blocker))
         {
-            _recovery.Text = resolution.Status
-                == Sr5AfterRunSettlementRecoveryStatus.OutcomeUnknown
-                    ? resolution.Message
-                    : blocker;
+            _recovery.Text = blocker;
             _recovery.TextColor = NativeTheme.Danger;
             return;
         }
@@ -313,15 +315,20 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
             "This removes only the durable review. It does not change the runner or approve the proposal.",
             "Abandon",
             "Keep");
-        if (confirmed && _store.TryDeleteReviewed(
-            Sr5AfterRunSettlementCheckpointCas.From(_checkpoint),
-            out string blocker))
+        if (!confirmed)
+        {
+            RefreshEnabledState();
+            return;
+        }
+        if (_store.TryDeleteReviewed(
+                Sr5AfterRunSettlementCheckpointCas.From(_checkpoint),
+                out string blocker))
         {
             _checkpoint = null;
             _recovery.Text = "Reviewed settlement abandoned; no runner mutation occurred.";
             _recovery.TextColor = NativeTheme.Muted;
         }
-        else if (confirmed)
+        else
         {
             _recovery.Text = blocker;
             _recovery.TextColor = NativeTheme.Danger;
