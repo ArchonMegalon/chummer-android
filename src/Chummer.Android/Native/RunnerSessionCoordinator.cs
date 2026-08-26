@@ -2966,6 +2966,102 @@ public sealed class RunnerSessionCoordinator : IDisposable
         return persisted;
     }
 
+    public Task<CareerAttributeAdvanceEditorState?> PrepareCareerAttributeAdvanceAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCareerAttributeAdvanceAsync(cancellationToken);
+
+    public async Task<bool> ApplyCareerAttributeAdvanceAsync(
+        CareerAttributeAdvanceRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while attribute advancement was open. Reopen it before saving.");
+        }
+        if (!CharacterCareerAttributeAdvanceRules.IsCoherent(request.ExpectedAttribute)
+            || !request.ExpectedAttribute.CanAdvance
+            || !string.Equals(
+                request.ExpectedAttribute.LogicalRevision,
+                request.ExpectedLogicalRevision,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                request.ExpectedAttribute.SourceRevision,
+                request.ExpectedSourceRevision,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                request.ExpectedAttribute.RuleDigest,
+                request.ExpectedRuleDigest,
+                StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Core rejected the attribute identity, legality, Karma budget, confirmation, expense, or reviewed revisions before mutation.");
+        }
+        if (!CharacterCareerAttributeAdvanceRules.TryPlanAdvance(
+                request.ExpectedAttribute,
+                request.ExpectedLogicalRevision,
+                request.ExpectedSourceRevision,
+                request.ExpectedRuleDigest,
+                request.Confirmed,
+                request.ExpenseId,
+                request.ExpenseDateLocal,
+                out CharacterCareerAttributeAdvancePlan expectedPlan))
+        {
+            throw new InvalidOperationException(
+                "Core rejected the attribute identity, legality, Karma budget, confirmation, expense, or reviewed revisions before mutation.");
+        }
+
+        CharacterCareerAttributeAdvanceReceipt? preparedReceipt =
+            await _presenter.ApplyCareerAttributeAdvanceAsync(request, cancellationToken)
+                .ConfigureAwait(false);
+        bool exactReceipt = preparedReceipt is not null
+            && CharacterCareerAttributeAdvanceRules.TryCreateReceipt(
+                request.ExpenseId,
+                request.ExpectedAttribute,
+                expectedPlan,
+                preparedReceipt.AttributeKarmaAfter,
+                preparedReceipt.CharacterKarmaAfter,
+                preparedReceipt.BurnedEdgePointsAfter,
+                expenseExistsExactlyOnce: true,
+                out CharacterCareerAttributeAdvanceReceipt expectedReceipt)
+            && preparedReceipt == expectedReceipt;
+        bool exactMutationApplied = exactReceipt
+            && State.Error is null
+            && State.WorkspaceId == request.WorkspaceId
+            && request.ExpectedContentRevision < long.MaxValue
+            && State.ContentRevision == request.ExpectedContentRevision + 1
+            && State.IsDirty;
+        long appliedContentRevision = exactMutationApplied ? State.ContentRevision : 0;
+        if (exactMutationApplied)
+        {
+            await _presenter.SaveAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        bool durableState = exactMutationApplied
+            && State.Error is null
+            && State.WorkspaceId == request.WorkspaceId
+            && State.ContentRevision == appliedContentRevision
+            && State.SavedRevision == appliedContentRevision
+            && !State.IsDirty;
+        NativeWorkspaceAuthoritySnapshot? authority = durableState
+            ? await TryRefreshWorkspaceAuthorityAsync(
+                expectedWorkspaceId: request.WorkspaceId,
+                expectedPayloadSha256: null,
+                cancellationToken).ConfigureAwait(false)
+            : null;
+        bool persisted = durableState
+            && (!AndroidE2EAuthority.Enabled
+                || authority is not null && authority.Matches(State));
+        _notice = persisted
+            ? "Attribute advanced and exact Karma expense receipt saved."
+            : null;
+        await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+        NotifyChanged();
+        return persisted;
+    }
+
     public Task<SustainedObjectsEditorState?> PrepareSustainedObjectsEditAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareSustainedObjectsEditAsync(cancellationToken);
