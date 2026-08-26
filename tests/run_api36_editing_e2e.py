@@ -960,6 +960,7 @@ class Device:
             str(x),
             str(end_y),
             "300",
+            timeout=15,
         )
 
     def swipe_down(
@@ -980,6 +981,7 @@ class Device:
             str(x),
             str(end_y),
             "300",
+            timeout=15,
         )
 
     def open_navigation_drawer(self) -> None:

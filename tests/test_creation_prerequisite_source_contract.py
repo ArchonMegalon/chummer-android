@@ -342,6 +342,44 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIs(authority, result)
         device.capture.assert_not_called()
 
+    def test_wireless_swipe_gestures_fail_fast_instead_of_inheriting_shell_timeout(self) -> None:
+        device = driver.shared.Device(
+            Path("/tmp/adb"),
+            "wireless-device:5555",
+            Path("/tmp/evidence"),
+        )
+        device._display_size = (1080, 2400)
+        device.shell = mock.Mock(return_value="")
+
+        device.swipe_up(x_ratio=0.4, distance_ratio=0.22)
+        device.swipe_down(x_ratio=0.6, distance_ratio=0.18)
+
+        self.assertEqual(
+            [
+                mock.call(
+                    "input",
+                    "swipe",
+                    "432",
+                    "1968",
+                    "432",
+                    "1440",
+                    "300",
+                    timeout=15,
+                ),
+                mock.call(
+                    "input",
+                    "swipe",
+                    "648",
+                    "720",
+                    "648",
+                    "1152",
+                    "300",
+                    timeout=15,
+                ),
+            ],
+            device.shell.call_args_list,
+        )
+
     def test_route_and_persisted_authority_reads_reset_inherited_viewports(self) -> None:
         main_source = inspect.getsource(driver.main)
         persisted_source = inspect.getsource(driver.require_exact_restored_authority_option)
