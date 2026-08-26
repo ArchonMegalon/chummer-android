@@ -175,5 +175,26 @@ class CreationContactsSourceContractTests(unittest.TestCase):
         ):
             self.assertIn(marker, source)
 
+    def test_physical_driver_is_bound_only_to_the_dedicated_contacts_route(self) -> None:
+        driver = (REPO / "tests/run_api36_sr5_creation_contacts_e2e.py").read_text(
+            encoding="utf-8"
+        )
+        for marker in (
+            'STAGE_ID = "creation-stage-contacts-lifestyles"',
+            'CONTACT_ID = "50d92979-524d-4cb5-898e-196771e3c786"',
+            '"creation-contact-field-name"',
+            '"creation-contact-field-role"',
+            '"creation-contact-preview"',
+            '"creation-contact-explicit-confirm"',
+            '"creation-contact-confirm"',
+            '"creation-contact-confirm-receipt"',
+            "validate_receipt_projection(",
+            "shared.force_stop_and_launch_new_process(",
+            "shared.require_restored_authority(saved, restored)",
+        ):
+            self.assertIn(marker, driver)
+        self.assertNotIn("creation-stage-foundation", driver)
+        self.assertNotIn("creation-foundation-page", driver)
+
 if __name__ == "__main__":
     unittest.main()
