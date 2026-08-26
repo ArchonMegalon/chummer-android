@@ -4,6 +4,7 @@ using Chummer.Android.Native;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Extensions.DependencyInjection;
 using Google.Android.Play.Core.Review;
+using MauiApplicationPlatform = Microsoft.Maui.ApplicationModel.Platform;
 
 namespace Chummer.Android;
 
@@ -15,7 +16,7 @@ public sealed class AndroidPlayReviewLauncher : IPlayReviewLauncher
     {
         get
         {
-            MainActivity? activity = Platform.CurrentActivity as MainActivity;
+            MainActivity? activity = MauiApplicationPlatform.CurrentActivity as MainActivity;
 #if DEBUG
             const bool isReleaseBuild = false;
 #else
@@ -30,7 +31,7 @@ public sealed class AndroidPlayReviewLauncher : IPlayReviewLauncher
     }
 
     public bool IsRuntimeAvailable
-        => Platform.CurrentActivity is MainActivity activity
+        => MauiApplicationPlatform.CurrentActivity is MainActivity activity
            && activity.CanLaunchPlayReviewNow(activity.IsPlayReviewDebugOverride);
 
     public async Task RequestReviewAsync(CancellationToken cancellationToken = default)
@@ -38,7 +39,7 @@ public sealed class AndroidPlayReviewLauncher : IPlayReviewLauncher
         await MainThread.InvokeOnMainThreadAsync(async () =>
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (Platform.CurrentActivity is not MainActivity activity
+            if (MauiApplicationPlatform.CurrentActivity is not MainActivity activity
                 || !activity.CanLaunchPlayReviewNow(activity.IsPlayReviewDebugOverride))
             {
                 return;
@@ -67,7 +68,7 @@ public sealed class AndroidPlayReviewLauncher : IPlayReviewLauncher
         await MainThread.InvokeOnMainThreadAsync(() =>
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (Platform.CurrentActivity is not MainActivity activity)
+            if (MauiApplicationPlatform.CurrentActivity is not MainActivity activity)
             {
                 return;
             }

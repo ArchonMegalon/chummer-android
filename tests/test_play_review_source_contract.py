@@ -23,6 +23,18 @@ class PlayReviewSourceContractTests(unittest.TestCase):
         self.assertNotIn("stars", launcher.lower())
         self.assertNotIn("opinion", launcher.lower())
 
+    def test_current_activity_is_bound_to_maui_not_the_local_platform_namespace(self) -> None:
+        launcher = (
+            PROJECT / "Platforms" / "Android" / "AndroidPlayReviewLauncher.cs"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            "using MauiApplicationPlatform = Microsoft.Maui.ApplicationModel.Platform;",
+            launcher,
+        )
+        self.assertEqual(4, launcher.count("MauiApplicationPlatform.CurrentActivity"))
+        self.assertNotIn(" Platform.CurrentActivity", launcher)
+
     def test_policy_is_local_durable_versioned_and_install_bound(self) -> None:
         policy = (PROJECT / "Native" / "PlayReviewPolicy.cs").read_text(encoding="utf-8")
         launcher = (
