@@ -31,6 +31,9 @@ public static class Sr5CareerWizardRoutes
     public const string ActiveSkillChoose = "sr5-career/advancement/active-skill/choose";
     public const string ActiveSkillReview = "sr5-career/advancement/active-skill/review";
     public const string ActiveSkillReceipt = "sr5-career/advancement/active-skill/receipt";
+    public const string KnowledgeSkillChoose = "sr5-career/advancement/knowledge-language/choose";
+    public const string KnowledgeSkillReview = "sr5-career/advancement/knowledge-language/review";
+    public const string KnowledgeSkillReceipt = "sr5-career/advancement/knowledge-language/receipt";
     public const string AttributeChoose = "sr5-career/advancement/attribute/choose";
     public const string AttributeReview = "sr5-career/advancement/attribute/review";
     public const string AttributeReceipt = "sr5-career/advancement/attribute/receipt";
@@ -77,10 +80,11 @@ public static class Sr5CareerRunnerGuard
 
 public enum Sr5CareerActionKind
 {
-    ActiveSkillAdvance,
-    AttributeAdvance,
-    SkillGroupAdvance,
-    QualityTransaction
+    ActiveSkillAdvance = 0,
+    AttributeAdvance = 1,
+    SkillGroupAdvance = 2,
+    QualityTransaction = 3,
+    KnowledgeSkillAdvance = 4
 }
 
 public sealed record Sr5CareerCostQuote(
@@ -263,6 +267,67 @@ public sealed record Sr5CareerActionPlan(
                 Blocker: quote.CanApply ? string.Empty : quote.Blocker.ToString()));
     }
 
+    public static Sr5CareerActionPlan FromKnowledgeSkill(
+        Guid ownerId,
+        CharacterWorkspaceId workspaceId,
+        long expectedContentRevision,
+        CharacterCareerKnowledgeSkillAdvanceQuote quote,
+        CharacterCareerKnowledgeSkillAdvancePlan plan)
+    {
+        string sourceIdentity = quote.Identity.SourceSkillId?.ToString("D") ?? "custom";
+        string identity = $"{quote.Identity.SkillId:D}:{sourceIdentity}";
+        string idempotencyKey = ComputeKnowledgeSkillIdempotencyKey(
+            ownerId,
+            workspaceId.Value,
+            expectedContentRevision,
+            plan.ExpenseId,
+            quote.Identity.SkillId,
+            quote.Identity.SourceSkillId,
+            quote.CharacterRevision,
+            quote.LogicalRevision,
+            quote.SourceRevision,
+            quote.RuleDigest,
+            quote.Name,
+            quote.SkillType,
+            quote.SkillCategory,
+            quote.BasePoints,
+            quote.KarmaPoints,
+            quote.TotalBaseRating,
+            quote.RatingMaximum,
+            quote.AvailableKarma,
+            quote.KarmaCost,
+            plan.SavedSkillKarmaPoints,
+            plan.SavedCharacterKarma,
+            plan.ExpenseDateLocal,
+            plan.ExpenseAmount,
+            plan.ExpenseReason,
+            plan.KarmaUndoType,
+            plan.NuyenUndoType,
+            plan.UndoObjectId,
+            plan.UndoQuantity,
+            plan.UndoExtra);
+        return new Sr5CareerActionPlan(
+            ownerId,
+            plan.ExpenseId,
+            idempotencyKey,
+            Sr5CareerWizardRoutes.KnowledgeSkillReview,
+            Sr5CareerActionKind.KnowledgeSkillAdvance,
+            workspaceId,
+            expectedContentRevision,
+            identity,
+            new Sr5CareerCostQuote(
+                quote.KarmaCost,
+                NuyenCost: 0m,
+                EssenceCost: 0m,
+                Availability: null,
+                ElapsedTime: quote.ApplicationDuration,
+                quote.RuleDigest,
+                quote.LogicalRevision,
+                IsExact: CharacterCareerKnowledgeSkillAdvanceRules.IsCoherent(quote)
+                    && CharacterCareerKnowledgeSkillAdvanceRules.IsCoherent(plan),
+                Blocker: quote.CanAdvance ? string.Empty : quote.Blocker.ToString()));
+    }
+
     public static string ComputeActiveSkillIdempotencyKey(
         Guid ownerId,
         string workspaceId,
@@ -412,6 +477,74 @@ public sealed record Sr5CareerActionPlan(
             contentDigest,
             runtimeDigest,
             JsonSerializer.Serialize(review));
+
+    public static string ComputeKnowledgeSkillIdempotencyKey(
+        Guid ownerId,
+        string workspaceId,
+        long expectedContentRevision,
+        Guid actionId,
+        Guid skillId,
+        Guid? sourceSkillId,
+        string characterRevision,
+        string logicalRevision,
+        string sourceRevision,
+        string ruleDigest,
+        string skillName,
+        string skillType,
+        string skillCategory,
+        int basePoints,
+        int previousKarmaPoints,
+        int previousRating,
+        int ratingMaximum,
+        int availableKarma,
+        int karmaCost,
+        int savedSkillKarmaPoints,
+        int savedCharacterKarma,
+        DateTime expenseDateLocal,
+        int expenseAmount,
+        string expenseReason,
+        string karmaUndoType,
+        string nuyenUndoType,
+        string undoObjectId,
+        decimal undoQuantity,
+        string undoExtra)
+    {
+        string sourceIdentity = sourceSkillId?.ToString("D") ?? "custom";
+        return ComputeIdempotencyKey(
+            Sr5CareerWizardRoutes.KnowledgeSkillReview,
+            ownerId.ToString("D"),
+            workspaceId,
+            expectedContentRevision.ToString(CultureInfo.InvariantCulture),
+            actionId.ToString("D"),
+            $"{skillId:D}:{sourceIdentity}",
+            characterRevision,
+            logicalRevision,
+            sourceRevision,
+            ruleDigest,
+            skillName,
+            skillType,
+            skillCategory,
+            basePoints.ToString(CultureInfo.InvariantCulture),
+            previousKarmaPoints.ToString(CultureInfo.InvariantCulture),
+            previousRating.ToString(CultureInfo.InvariantCulture),
+            ratingMaximum.ToString(CultureInfo.InvariantCulture),
+            availableKarma.ToString(CultureInfo.InvariantCulture),
+            karmaCost.ToString(CultureInfo.InvariantCulture),
+            savedSkillKarmaPoints.ToString(CultureInfo.InvariantCulture),
+            savedCharacterKarma.ToString(CultureInfo.InvariantCulture),
+            DateTime.SpecifyKind(expenseDateLocal, DateTimeKind.Unspecified)
+                .ToString("O", CultureInfo.InvariantCulture),
+            expenseAmount.ToString(CultureInfo.InvariantCulture),
+            expenseReason,
+            "Karma",
+            false.ToString(CultureInfo.InvariantCulture),
+            false.ToString(CultureInfo.InvariantCulture),
+            karmaUndoType,
+            nuyenUndoType,
+            undoObjectId,
+            undoQuantity.ToString(CultureInfo.InvariantCulture),
+            undoExtra);
+    }
 
     private static string ComputeIdempotencyKey(params object[] values)
     {
@@ -764,7 +897,7 @@ public static class Sr5CareerWizardCatalog
             "Advance",
             "Improve the runner with exact, separately quoted SR5 actions.",
             Sr5CareerWizardAvailability.Partial,
-            "Active-skill and attribute advancement have separate complete typed review/apply boundaries. Other advancement families remain separate or blocked."),
+            "Active-skill, Knowledge/Language, and attribute advancement have separate complete typed review/apply boundaries. Other advancement families remain separate or blocked."),
         new(
             Sr5CareerWizardLane.BeforeRun,
             "Before the run",
@@ -788,13 +921,13 @@ public static class Sr5CareerWizardCatalog
             "Downtime",
             "Plan calendar weeks and execute only actions with exact rule authority.",
             Sr5CareerWizardAvailability.Partial,
-            "Calendar CRUD plus active-skill and attribute advancement are typed. Training time, healing, crafting and acquisitions are not composed yet."),
+            "Calendar CRUD plus active-skill, Knowledge/Language, and attribute advancement are typed. Training time, healing, crafting and acquisitions are not composed yet."),
         new(
             Sr5CareerWizardLane.Corrections,
             "Corrections and receipts",
             "Inspect editable expense records and recover safely from stale revisions.",
             Sr5CareerWizardAvailability.Partial,
-            "Active-skill and attribute reviews have local crash checkpoints and one-shot outcome guards. Attribute correction exists upstream but is not exposed by this advancement slice; shared recovery orchestration remains unavailable.")
+            "Active-skill, Knowledge/Language, and attribute reviews have local crash checkpoints and one-shot outcome guards. Attribute correction exists upstream but is not exposed by this advancement slice; shared recovery orchestration remains unavailable.")
     ];
 
     public static bool IsSr5CareerRunner(bool characterCreated, string? gameEdition)

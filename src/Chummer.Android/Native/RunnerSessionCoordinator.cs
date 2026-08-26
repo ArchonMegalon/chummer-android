@@ -2975,6 +2975,90 @@ public sealed class RunnerSessionCoordinator : IDisposable
         CancellationToken cancellationToken = default)
         => _presenter.PrepareCareerAttributeAdvanceAsync(cancellationToken);
 
+    public Task<CareerKnowledgeSkillAdvanceEditorState?> PrepareCareerKnowledgeSkillAdvanceAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCareerKnowledgeSkillAdvanceAsync(cancellationToken);
+
+    public async Task<bool> ApplyCareerKnowledgeSkillAdvanceAsync(
+        CareerKnowledgeSkillAdvanceRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (State.WorkspaceId != request.WorkspaceId
+            || State.ContentRevision != request.ExpectedContentRevision)
+        {
+            throw new InvalidOperationException(
+                "This runner changed while Knowledge/Language advancement was open. Reopen it before saving.");
+        }
+        if (!CharacterCareerKnowledgeSkillAdvanceRules.IsCoherent(request.ExpectedSkill)
+            || !request.ExpectedSkill.CanAdvance
+            || !string.Equals(request.ExpectedSkill.CharacterRevision, request.ExpectedCharacterRevision, StringComparison.Ordinal)
+            || !string.Equals(request.ExpectedSkill.LogicalRevision, request.ExpectedLogicalRevision, StringComparison.Ordinal)
+            || !string.Equals(request.ExpectedSkill.SourceRevision, request.ExpectedSourceRevision, StringComparison.Ordinal)
+            || !string.Equals(request.ExpectedSkill.RuleDigest, request.ExpectedRuleDigest, StringComparison.Ordinal)
+            || !CharacterCareerKnowledgeSkillAdvanceRules.TryPlanAdvance(
+                request.ExpectedSkill,
+                request.ExpectedCharacterRevision,
+                request.ExpectedLogicalRevision,
+                request.ExpectedSourceRevision,
+                request.ExpectedRuleDigest,
+                request.Confirmed,
+                request.ExpenseId,
+                request.ExpenseDateLocal,
+                out CharacterCareerKnowledgeSkillAdvancePlan expectedPlan))
+        {
+            throw new InvalidOperationException(
+                "Core rejected the Knowledge/Language identity, native-language gate, Karma budget, confirmation, expense, or reviewed CAS revisions before mutation.");
+        }
+
+        CharacterCareerKnowledgeSkillAdvanceReceipt? preparedReceipt =
+            await _presenter.ApplyCareerKnowledgeSkillAdvanceAsync(request, cancellationToken)
+                .ConfigureAwait(false);
+        bool exactReceipt = preparedReceipt is not null
+            && CharacterCareerKnowledgeSkillAdvanceRules.TryCreateReceipt(
+                request.ExpenseId,
+                request.ExpectedSkill,
+                expectedPlan,
+                preparedReceipt.SkillKarmaAfter,
+                preparedReceipt.CharacterKarmaAfter,
+                expenseExistsExactlyOnce: true,
+                out CharacterCareerKnowledgeSkillAdvanceReceipt expectedReceipt)
+            && preparedReceipt == expectedReceipt;
+        bool exactMutationApplied = exactReceipt
+            && State.Error is null
+            && State.WorkspaceId == request.WorkspaceId
+            && request.ExpectedContentRevision < long.MaxValue
+            && State.ContentRevision == request.ExpectedContentRevision + 1
+            && State.IsDirty;
+        long appliedContentRevision = exactMutationApplied ? State.ContentRevision : 0;
+        if (exactMutationApplied)
+        {
+            await _presenter.SaveAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        bool durableState = exactMutationApplied
+            && State.Error is null
+            && State.WorkspaceId == request.WorkspaceId
+            && State.ContentRevision == appliedContentRevision
+            && State.SavedRevision == appliedContentRevision
+            && !State.IsDirty;
+        NativeWorkspaceAuthoritySnapshot? authority = durableState
+            ? await TryRefreshWorkspaceAuthorityAsync(
+                expectedWorkspaceId: request.WorkspaceId,
+                expectedPayloadSha256: null,
+                cancellationToken).ConfigureAwait(false)
+            : null;
+        bool persisted = durableState
+            && (!AndroidE2EAuthority.Enabled
+                || authority is not null && authority.Matches(State));
+        _notice = persisted
+            ? "Knowledge/Language skill advanced and exact Karma expense receipt saved."
+            : null;
+        await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+        NotifyChanged();
+        return persisted;
+    }
+
     public async Task<bool> ApplyCareerAttributeAdvanceAsync(
         CareerAttributeAdvanceRequest request,
         CancellationToken cancellationToken = default)

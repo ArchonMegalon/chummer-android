@@ -1362,6 +1362,21 @@ public sealed class BuildPage : NativePageBase
                 },
                 automationId: "build-career-attribute"));
             _body.Add(NativeTheme.NavigationRow(
+                "Advance Knowledge / Language",
+                "Choose an exact saved Knowledge or Language identity, review native-language and Karma authority, then apply through a restart-safe receipt checkpoint",
+                async () =>
+                {
+                    Sr5CareerKnowledgeSkillCoordinator authority = new(
+                        new RunnerSessionSr5CareerKnowledgeSkillPresenter(Coordinator),
+                        new PreferencesSr5CareerCheckpointOwnerAuthority());
+                    CareerKnowledgeSkillAdvanceEditorState? editor = await authority.PrepareAsync();
+                    if (editor is not null)
+                    {
+                        await Navigation.PushAsync(new Sr5CareerKnowledgeSkillWizardPage(Coordinator, editor));
+                    }
+                },
+                automationId: "build-career-knowledge-language"));
+            _body.Add(NativeTheme.NavigationRow(
                 "Calendar",
                 "Add the next ISO week, edit its notes and color, or delete it by stable identity",
                 async () =>

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ChummerCoreRoot Condition="'$(ChummerCoreRoot)' == ''">../../../chummer-core-engine</ChummerCoreRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="AuthorityCompileStubs.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerActiveSkillAdvanceRules.cs" Link="Core/CharacterCareerActiveSkillAdvanceRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerAttributeAdvanceRules.cs" Link="Core/CharacterCareerAttributeAdvanceRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerKnowledgeSkillAdvanceRules.cs" Link="Core/CharacterCareerKnowledgeSkillAdvanceRules.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerWizardModel.cs" Link="Native/Sr5CareerWizardModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerKnowledgeSkillWizardModel.cs" Link="Native/Sr5CareerKnowledgeSkillWizardModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerKnowledgeSkillCoordinator.cs" Link="Native/Sr5CareerKnowledgeSkillCoordinator.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerKnowledgeSkillCheckpointStore.cs" Link="Native/Sr5CareerKnowledgeSkillCheckpointStore.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerMutationOwnerStore.cs" Link="Native/Sr5CareerMutationOwnerStore.cs" />
+  </ItemGroup>
+</Project>

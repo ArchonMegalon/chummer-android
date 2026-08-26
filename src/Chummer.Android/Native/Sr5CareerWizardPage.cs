@@ -162,8 +162,13 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
             "Choose an exact source/identity operation, review all GM/effect prerequisites, and commit the full delta plus receipt atomically",
             OpenQualityWizardAsync,
             "quality");
+        AddAction(
+            "Advance Knowledge / Language",
+            "Choose exact nullable-source identity → review native-language and Karma authority → durable apply → receipt",
+            OpenKnowledgeSkillWizardAsync,
+            "knowledge-language");
         AddBlocked(
-            "Skill-group and specialization authorities exist upstream, but Android needs shared Coordinator routing and an atomic ApplyResult. Knowledge skills and initiation/submersion remain incomplete.",
+            "Skill-group and specialization authorities exist upstream, but Android needs shared Coordinator routing and an atomic ApplyResult. Initiation/submersion remains incomplete.",
             "other-advancement");
         AddBlocked(
             "Gear, weapon, armor, bioware, vehicle and general ware acquisition need exact availability, cost, Essence, prerequisite and expense quotes.",
@@ -239,6 +244,11 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
             "Preview and save one exact SR5 attribute advancement; elapsed time remains Chummer5's immediate persistence authority",
             OpenAttributeWizardAsync,
             "attribute");
+        AddAction(
+            "Advance Knowledge / Language",
+            "Execute one exact Knowledge or Language advancement with native-language and receipt recovery authority",
+            OpenKnowledgeSkillWizardAsync,
+            "knowledge-language");
         AddBlocked(
             "Training duration, healing, crafting, acquisition delivery and other scheduled work lack a shared typed execution contract.",
             "execution");
@@ -327,6 +337,18 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
                 "Quality authority unavailable",
                 "Exact atomic SR5 quality authority is not connected. The wizard stays fail-closed.",
                 "OK");
+        }
+    }
+
+    private async Task OpenKnowledgeSkillWizardAsync()
+    {
+        Sr5CareerKnowledgeSkillCoordinator authority = new(
+            new RunnerSessionSr5CareerKnowledgeSkillPresenter(Coordinator),
+            new PreferencesSr5CareerCheckpointOwnerAuthority());
+        CareerKnowledgeSkillAdvanceEditorState? editor = await authority.PrepareAsync();
+        if (editor is not null)
+        {
+            await Navigation.PushAsync(new Sr5CareerKnowledgeSkillWizardPage(Coordinator, editor));
         }
     }
 

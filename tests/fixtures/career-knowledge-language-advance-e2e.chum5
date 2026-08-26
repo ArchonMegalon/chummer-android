@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character>
+  <created>True</created>
+  <settings>223a11ff-80e0-428b-89a9-6ef1c243b8b6</settings>
+  <customdatadirectorynames />
+  <name>CareerKnowledgeLanguageAdvanceE2E</name>
+  <alias>CareerKnowledgeLanguageAdvanceE2E</alias>
+  <playername>Local API 36 E2E</playername>
+  <metatype>Human</metatype>
+  <buildmethod>Priority</buildmethod>
+  <createdversion>5.225.0</createdversion>
+  <appversion>5.225.0</appversion>
+  <gameedition>SR5</gameedition>
+  <karma>50</karma>
+  <nuyen>1000</nuyen>
+  <newskills>
+    <skillptsmax>0</skillptsmax>
+    <skillgrpsmax>0</skillgrpsmax>
+    <skills />
+    <knoskills>
+      <skill>
+        <guid>22222222-2222-2222-2222-222222222222</guid>
+        <suid>00000000-0000-0000-0000-000000000000</suid>
+        <isknowledge>True</isknowledge>
+        <name>Matrix Security</name>
+        <type>Academic</type>
+        <skillcategory>Academic</skillcategory>
+        <isnativelanguage>False</isnativelanguage>
+        <disableupgrades>False</disableupgrades>
+        <karma>2</karma>
+        <base>1</base>
+        <notes>custom-knowledge-target-must-survive</notes>
+      </skill>
+    </knoskills>
+    <skilljackknowledgeskills />
+    <groups />
+  </newskills>
+  <improvements />
+  <expenses>
+    <expense>
+      <guid>55555555-5555-5555-5555-555555555555</guid>
+      <date>2081-05-01T08:00:00</date>
+      <amount>-1</amount>
+      <reason>Older expense</reason>
+      <type>Karma</type>
+      <refund>False</refund>
+      <forcecareervisible>False</forcecareervisible>
+    </expense>
+  </expenses>
+  <customstate>
+    <sentinel guid="nested-sentinel">keep-nested-structure</sentinel>
+  </customstate>
+</character>
