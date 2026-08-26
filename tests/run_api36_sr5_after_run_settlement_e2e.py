@@ -59,6 +59,23 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
         "fixtureExists": fixture.is_file(),
         "requiredProof": {
             "apiLevel": 36,
+            "transportPreflightRequiredBeforeMutation": True,
+            "transportPreflightConsecutiveObservations": (
+                physical.shared.ADB_PREFLIGHT_REQUIRED_CONSECUTIVE
+            ),
+            "transportPreflightMaximumObservations": (
+                physical.shared.ADB_PREFLIGHT_MAX_OBSERVATIONS
+            ),
+            "transportPreflightObservationDelaySeconds": (
+                physical.shared.ADB_PREFLIGHT_OBSERVATION_DELAY_SECONDS
+            ),
+            "readOnlyTransportRetryBounded": True,
+            "readOnlyTransportMaximumAttempts": (
+                physical.shared.ADB_READ_ONLY_MAX_ATTEMPTS
+            ),
+            "explicitAdbReconnectCommandAllowed": False,
+            "mutatingOrAmbiguousCommandReplayAllowed": False,
+            "mutatingOrAmbiguousCommandMaximumAttempts": 1,
             "exactFixture": True,
             "exactProposalRunCharacterIds": True,
             "bothReviewDigests": True,

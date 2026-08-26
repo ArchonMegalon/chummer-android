@@ -14,13 +14,13 @@ import hashlib
 import json
 from pathlib import Path
 import re
-import subprocess
 import sys
 import tempfile
 import time
 import xml.etree.ElementTree as ET
 
 import run_api36_editing_e2e as shared
+import run_api36_sr5_career_active_skill_wizard_e2e as physical
 from api36_physical_build_provenance import load_and_verify_manifest
 
 
@@ -376,15 +376,21 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
     fixture_sha256 = shared.sha256(fixture)
     args.evidence.mkdir(parents=True, exist_ok=True)
     device = shared.Device(args.adb.resolve(), args.serial, args.evidence.resolve())
+    device.require_transport_stability(expected_api_level="36")
     observation = physical_device_observation(device)
-    subprocess.run(
-        [str(args.adb.resolve()), "-s", args.serial, "install", "--no-streaming", "-r", str(apk)],
-        check=True,
-        timeout=300,
-    )
-    remote_fixture = f"/sdcard/Download/{fixture.name}"
-    device.push_verified(fixture, remote_fixture, fixture_sha256)
-    journey = prove(device, fixture, fixture_sha256)
+    remote_fixture = f"/sdcard/Download/{physical.safe_fixture_basename(fixture)}"
+    physical.remove_remote_temporary_file(device, remote_fixture)
+    try:
+        device.install_verified(
+            apk,
+            expected_apk_sha256,
+            "--no-streaming",
+            "-r",
+        )
+        device.push_verified(fixture, remote_fixture, fixture_sha256)
+        journey = prove(device, fixture, fixture_sha256)
+    finally:
+        physical.remove_remote_temporary_file(device, remote_fixture)
     post_run_provenance = load_and_verify_manifest(
         args.build_provenance_manifest,
         android_root=android_root,
@@ -408,6 +414,7 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
         "sourceGraphRecheckedAfterRun": True,
         "fixtureSha256": fixture_sha256,
         "deviceObservation": observation,
+        "adbTransport": device.transport_summary(),
         "authorityProofStages": journey,
     }
 
@@ -426,6 +433,7 @@ def main(argv: list[str] | None = None) -> int:
             "hostedX86Claim": False,
             "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
             "failure": {"type": type(error).__name__, "message": str(error)[:4000]},
+            "adbTransportFailure": getattr(error, "receipt", None),
         }
         atomic_json(args.receipt.resolve(), receipt)
         print(f"Physical Knowledge/Language proof failed: {error}", file=sys.stderr)

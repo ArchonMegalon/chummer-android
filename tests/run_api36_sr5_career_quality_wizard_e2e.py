@@ -9,7 +9,6 @@ import hashlib
 import json
 from pathlib import Path
 import re
-import subprocess
 import sys
 import time
 import xml.etree.ElementTree as ET
@@ -340,11 +339,17 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
     fixture_sha256 = shared.sha256(fixture)
     args.evidence.mkdir(parents=True, exist_ok=True)
     device = shared.Device(args.adb.resolve(), args.serial, args.evidence.resolve())
+    device.require_transport_stability(expected_api_level="36")
     observation = physical.android_device_observation(device)
-    subprocess.run(
-        [str(args.adb.resolve()), "-s", args.serial, "install", "--no-streaming", "-r", str(apk)],
-        check=True,
-        timeout=300,
+    artifact = provenance.get("artifact")
+    if not isinstance(artifact, dict):
+        raise RuntimeError("Verified build-provenance artifact is malformed")
+    expected_apk_sha256 = str(artifact.get("sha256", ""))
+    device.install_verified(
+        apk,
+        expected_apk_sha256,
+        "--no-streaming",
+        "-r",
     )
     remote_fixture = f"/sdcard/Download/{physical.safe_fixture_basename(fixture)}"
     physical.remove_remote_temporary_file(device, remote_fixture)
@@ -371,6 +376,7 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
         "apkSha256": provenance["artifact"]["sha256"],
         "buildProvenance": provenance,
         "deviceObservation": observation,
+        "adbTransport": device.transport_summary(),
         "authorityProofStages": journey,
     }
 
@@ -397,6 +403,7 @@ def main(argv: list[str] | None = None) -> int:
             "releaseEvidenceStatus": "manifest-not-verified-or-journey-failed",
             "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
             "failure": {"type": type(error).__name__, "message": str(error)[:4000]},
+            "adbTransportFailure": getattr(error, "receipt", None),
         }
         try:
             if receipt_path is None:

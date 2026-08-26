@@ -1761,36 +1761,45 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.shell.assert_not_called()
 
     def test_fixture_transport_verifies_the_exact_remote_bytes(self) -> None:
-        expected = "a" * 64
-        device = Mock(spec=DRIVER.Device)
-        device.shell.return_value = f"{expected}  /sdcard/Download/runner.chum5"
-        local = Path("runner.chum5")
+        with tempfile.TemporaryDirectory() as temporary:
+            local = Path(temporary) / "runner.chum5"
+            local.write_bytes(b"exact fixture")
+            expected = DRIVER.sha256(local)
+            device = Mock(spec=DRIVER.Device)
+            device.shell.return_value = f"{expected}  /sdcard/Download/runner.chum5"
 
-        actual = DRIVER.Device.push_verified(
-            device,
-            local,
-            "/sdcard/Download/runner.chum5",
-            expected,
-        )
+            actual = DRIVER.Device.push_verified(
+                device,
+                local,
+                "/sdcard/Download/runner.chum5",
+                expected,
+            )
 
-        self.assertEqual(expected, actual)
-        device.push.assert_called_once_with(local, "/sdcard/Download/runner.chum5")
-        device.shell.assert_called_once_with(
-            "sha256sum",
-            "/sdcard/Download/runner.chum5",
-        )
+            self.assertEqual(expected, actual)
+            device.push.assert_called_once_with(
+                local.resolve(),
+                "/sdcard/Download/runner.chum5",
+            )
+            device.shell.assert_called_once_with(
+                "sha256sum",
+                "/sdcard/Download/runner.chum5",
+            )
 
     def test_fixture_transport_rejects_changed_remote_bytes(self) -> None:
-        device = Mock(spec=DRIVER.Device)
-        device.shell.return_value = f"{'b' * 64}  /sdcard/Download/runner.chum5"
+        with tempfile.TemporaryDirectory() as temporary:
+            local = Path(temporary) / "runner.chum5"
+            local.write_bytes(b"exact fixture")
+            expected = DRIVER.sha256(local)
+            device = Mock(spec=DRIVER.Device)
+            device.shell.return_value = f"{'b' * 64}  /sdcard/Download/runner.chum5"
 
-        with self.assertRaisesRegex(RuntimeError, "transport digest mismatch"):
-            DRIVER.Device.push_verified(
-                device,
-                Path("runner.chum5"),
-                "/sdcard/Download/runner.chum5",
-                "a" * 64,
-            )
+            with self.assertRaisesRegex(RuntimeError, "transport digest mismatch"):
+                DRIVER.Device.push_verified(
+                    device,
+                    local,
+                    "/sdcard/Download/runner.chum5",
+                    expected,
+                )
 
     def test_collection_tap_uses_card_gutter_and_overlapping_scrolls(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -2057,9 +2066,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             "validate_full_editing_fixture(args.full_editing_runner.resolve())"
         )
         fixture_transport = source.index("    fixture_inputs = (")
-        app_install = source.index('        [str(args.adb), "-s", args.serial, "install"')
+        transport_preflight = source.index("device.require_transport_stability(")
+        app_install = source.index("device.install_verified(")
         self.assertLess(validation, fixture_transport)
+        self.assertLess(fixture_transport, transport_preflight)
         self.assertLess(fixture_transport, app_install)
+        self.assertLess(transport_preflight, app_install)
 
         generator = (
             REPO_ROOT / "scripts" / "materialize_chummer5_editability_inventory.py"

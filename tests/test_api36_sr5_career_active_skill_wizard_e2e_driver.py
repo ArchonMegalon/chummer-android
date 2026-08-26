@@ -720,7 +720,7 @@ class Api36Sr5CareerActiveSkillWizardDriverTests(unittest.TestCase):
         )
         self.assertLess(
             source.index("source_before = source_graph_snapshot("),
-            source.index('"install",'),
+            source.index("device.install_verified("),
         )
         self.assertIn('parser.add_argument(DISPOSABLE_DEVICE_FLAG, action="store_true")', source)
         self.assertIn('parser.add_argument("--build-provenance-manifest", type=Path, required=True)', source)
@@ -729,9 +729,16 @@ class Api36Sr5CareerActiveSkillWizardDriverTests(unittest.TestCase):
         self.assertIn('"/sdcard/chummer-editing-window.xml"', source)
         self.assertIn('"remoteTemporaryFiles": remote_temporary_files', source)
         self.assertIn('"deletedAndVerified": False', source)
+        self.assertIn("device.require_transport_stability(expected_api_level=\"36\")", source)
+        self.assertIn("authorize_remote_cleanup_once", source)
+        self.assertIn('context["adbTransport"] = device.transport_summary()', source)
         self.assertNotIn("visible_texts_across_page", source)
         self.assertIn("label_bound_value(device, label", source)
         self.assertEqual(3, source.count("source_graph_snapshot("))
+        self.assertLess(
+            execute_source.index("device.require_transport_stability("),
+            execute_source.index("device_observation = android_device_observation(device)"),
+        )
         self.assertLess(
             execute_source.index("device_observation = android_device_observation(device)"),
             execute_source.index("remove_remote_temporary_file(device, str(remote"),

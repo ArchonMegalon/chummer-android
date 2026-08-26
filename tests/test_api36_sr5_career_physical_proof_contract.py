@@ -23,6 +23,12 @@ class Api36Sr5CareerPhysicalProofContractTests(unittest.TestCase):
                 source = self.read(name)
                 self.assertIn("--build-provenance-manifest", source)
                 self.assertIn("load_and_verify_manifest", source)
+                self.assertIn("require_transport_stability", source)
+                self.assertIn("install_verified", source)
+                self.assertLess(
+                    source.index("require_transport_stability"),
+                    source.index("install_verified"),
+                )
                 self.assertNotIn("CORE_REVISION =", source)
                 self.assertNotIn("PRESENTATION_REVISION =", source)
                 self.assertNotIn("--acknowledge-unverified-build-provenance", source)
@@ -38,10 +44,16 @@ class Api36Sr5CareerPhysicalProofContractTests(unittest.TestCase):
             "force_stop_and_launch_new_process",
             "require_saved_authority",
             "load_and_verify_manifest",
+            "require_transport_stability",
+            "install_verified",
             'action.get("Kind") != 3',
         ):
             self.assertIn(token, source)
         self.assertIn('"status": "device-pass-source-bound"', source)
+        self.assertLess(
+            source.index("require_transport_stability"),
+            source.index("install_verified"),
+        )
         self.assertNotIn('"releaseAttested": True', source)
 
     def test_skill_group_is_explicitly_unavailable_without_a_fixture(self) -> None:

@@ -15,6 +15,11 @@ def test_after_run_driver_is_syntactically_valid_and_release_honest() -> None:
     assert '"executionStatus": "not-run"' in source
     assert '"physicalDeviceProof": False' in source
     assert '"releaseEvidenceEligible": False' in source
+    assert '"transportPreflightRequiredBeforeMutation": True' in source
+    assert '"readOnlyTransportRetryBounded": True' in source
+    assert '"readOnlyTransportMaximumAttempts"' in source
+    assert '"mutatingOrAmbiguousCommandReplayAllowed": False' in source
+    assert '"mutatingOrAmbiguousCommandMaximumAttempts": 1' in source
     assert "return 3" in source
     assert '"releaseAttested": True' not in source
     assert "device-pass" not in source

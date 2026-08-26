@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -83,6 +84,244 @@ BODY_TOTAL_DESCRIPTION = re.compile(
     r"^Body\.\s+(?:Selected\s+·\s+)?(?P<total>[0-9]+)(?:\s+·|$)"
 )
 MAX_LAUNCH_EVIDENCE_CHARACTERS = 1_000_000
+ADB_TRANSPORT_EVENT_SCHEMA = "chummer.android.adb-transport-event/v1"
+ADB_TRANSPORT_PREFLIGHT_SCHEMA = "chummer.android.adb-transport-preflight/v1"
+ADB_TRANSPORT_SUMMARY_SCHEMA = "chummer.android.adb-transport-summary/v1"
+ADB_READ_ONLY_MAX_ATTEMPTS = 3
+ADB_READ_ONLY_RETRY_DELAY_SECONDS = 1.0
+ADB_PREFLIGHT_REQUIRED_CONSECUTIVE = 3
+ADB_PREFLIGHT_MAX_OBSERVATIONS = 7
+ADB_PREFLIGHT_OBSERVATION_DELAY_SECONDS = 1.0
+MAX_ADB_TRANSPORT_EVENTS = 64
+MAX_ADB_FAILURE_DETAIL_CHARACTERS = 4000
+SAFE_READ_ONLY_REMOTE_PATH = re.compile(r"^/[A-Za-z0-9._/:-]{1,511}$")
+SAFE_ANDROID_PROPERTY = re.compile(r"^[A-Za-z0-9._-]{1,255}$")
+
+
+def _bounded_adb_detail(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        rendered = value.decode("utf-8", errors="replace")
+    else:
+        rendered = str(value)
+    return rendered[:MAX_ADB_FAILURE_DETAIL_CHARACTERS]
+
+
+def _write_new_json_receipt(path: Path, receipt: dict[str, object]) -> None:
+    """Create one fresh receipt durably; stale/racing paths fail closed."""
+    encoded = json.dumps(receipt, indent=2) + "\n"
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+        stream.write(encoded)
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
+def _adb_arguments_sha256(arguments: tuple[str, ...]) -> str:
+    return hashlib.sha256("\0".join(arguments).encode("utf-8")).hexdigest()
+
+
+def _adb_arguments_evidence(
+    arguments: tuple[str, ...],
+    command_policy: str,
+) -> list[str]:
+    if command_policy == "read-only-retryable":
+        return list(arguments)
+    visible = 2 if arguments[:1] == ("shell",) else 1
+    prefix = list(arguments[:visible])
+    hidden = len(arguments) - len(prefix)
+    if hidden > 0:
+        prefix.append(f"<{hidden} redacted argument(s)>")
+    return prefix
+
+
+def _adb_failure_detail(error: BaseException) -> str:
+    return "\n".join(
+        part
+        for part in (
+            _bounded_adb_detail(getattr(error, "stdout", "")),
+            _bounded_adb_detail(getattr(error, "stderr", "")),
+            _bounded_adb_detail(error),
+        )
+        if part
+    )
+
+
+def classify_adb_failure(error: BaseException) -> tuple[str, bool]:
+    """Classify only transport failures that are safe to recognize mechanically.
+
+    The boolean says whether a fresh *read-only* observation may be attempted.
+    It never authorizes replay of the command that failed.
+    """
+    if isinstance(error, subprocess.TimeoutExpired):
+        return ("timeout-unknown-outcome", True)
+    detail = _adb_failure_detail(error).casefold()
+    if re.search(r"device\s+['\"][^'\"]+['\"]\s+not found", detail):
+        return ("device-missing", True)
+    classifications = (
+        ("device-offline", True, ("device offline", "device is offline")),
+        (
+            "device-missing",
+            True,
+            (
+                "device not found",
+                "no devices/emulators found",
+                "no device found",
+                "device disconnected",
+            ),
+        ),
+        (
+            "transport-closed",
+            True,
+            (
+                "transport is closed",
+                "transport closed",
+                "error: closed",
+                "connection reset by peer",
+                "connection aborted",
+                "broken pipe",
+                "failed to read response from server",
+                "failed to read command",
+                "protocol fault",
+                "connection refused",
+                "failed to connect to",
+            ),
+        ),
+        (
+            "daemon-unavailable",
+            True,
+            (
+                "cannot connect to daemon",
+                "failed to start daemon",
+                "server is out of date",
+            ),
+        ),
+        (
+            "device-unauthorized",
+            False,
+            ("device unauthorized", "device is unauthorized"),
+        ),
+    )
+    for classification, retryable_read_only, markers in classifications:
+        if any(marker in detail for marker in markers):
+            return (classification, retryable_read_only)
+    return ("unclassified-adb-failure", False)
+
+
+def adb_classification_authority(classification: str) -> str:
+    if classification in {
+        "device-offline",
+        "device-missing",
+        "transport-closed",
+        "daemon-unavailable",
+    }:
+        return "recognized-transient-transport-marker"
+    if classification == "device-unauthorized":
+        return "recognized-nonretryable-transport-marker"
+    if classification == "timeout-unknown-outcome":
+        return "timeout-with-unknown-command-outcome"
+    return "unclassified-fail-closed"
+
+
+def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
+    """Return a fail-closed replay policy for one exact ADB argument vector."""
+    if arguments == ("get-state",):
+        return ("read-only-retryable", "exact adb transport-state observation")
+    if arguments == ("exec-out", "screencap", "-p"):
+        return ("read-only-retryable", "exact framebuffer observation")
+    if (
+        len(arguments) == 3
+        and arguments[:2] == ("exec-out", "cat")
+        and SAFE_READ_ONLY_REMOTE_PATH.fullmatch(arguments[2]) is not None
+    ):
+        return ("read-only-retryable", "exact remote-file byte observation")
+    if arguments == ("logcat", "-d", "-t", "500"):
+        return ("read-only-retryable", "bounded logcat dump observation")
+    if arguments[:1] != ("shell",):
+        return (
+            "non-replayable",
+            "install/push/pull/unknown adb operations are never replayed",
+        )
+
+    shell_arguments = arguments[1:]
+    if (
+        len(shell_arguments) == 2
+        and shell_arguments[0] == "getprop"
+        and SAFE_ANDROID_PROPERTY.fullmatch(shell_arguments[1]) is not None
+    ):
+        return ("read-only-retryable", "exact Android property observation")
+    if shell_arguments == ("wm", "size"):
+        return ("read-only-retryable", "exact display-size observation")
+    if shell_arguments == ("pidof", PACKAGE):
+        return ("read-only-retryable", "exact package process-id observation")
+    if (
+        len(shell_arguments) == 2
+        and shell_arguments[0] in {"cat", "sha256sum"}
+        and SAFE_READ_ONLY_REMOTE_PATH.fullmatch(shell_arguments[1]) is not None
+    ):
+        return ("read-only-retryable", "exact remote-file observation")
+    if (
+        len(shell_arguments) == 4
+        and shell_arguments[:3] == ("test", "!", "-e")
+        and SAFE_READ_ONLY_REMOTE_PATH.fullmatch(shell_arguments[3]) is not None
+    ):
+        return ("read-only-retryable", "exact remote-path absence observation")
+    read_only_dumpsys = (
+        ("dumpsys", "input_method"),
+        ("dumpsys", "activity", "activities"),
+        ("dumpsys", "activity", "lastanr"),
+        ("dumpsys", "activity", "processes"),
+        ("dumpsys", "activity", "exit-info", PACKAGE),
+        ("dumpsys", "window", "windows"),
+    )
+    if shell_arguments in read_only_dumpsys:
+        return ("read-only-retryable", "exact dumpsys observation")
+    if shell_arguments == ("ls", "-la", "/data/anr"):
+        return ("read-only-retryable", "exact ANR-directory observation")
+    if shell_arguments == (
+        "logcat",
+        "-d",
+        "-b",
+        "all",
+        "-v",
+        "threadtime",
+        "-t",
+        "4000",
+    ):
+        return ("read-only-retryable", "bounded logcat dump observation")
+    return (
+        "non-replayable",
+        "shell mutation or ambiguous shell command is never replayed",
+    )
+
+
+class AdbTransportError(RuntimeError):
+    """Fail-closed ADB command-outcome error with its exact evidence receipt."""
+
+    def __init__(self, receipt: dict[str, object], evidence_path: Path) -> None:
+        self.receipt = receipt
+        self.evidence_path = evidence_path
+        classification = receipt["classification"]
+        policy = receipt["commandPolicy"]
+        replay = receipt["replay"]
+        super().__init__(
+            f"ADB command outcome classified as {classification!r} under {policy!r}; "
+            f"automaticReplayPerformed={replay['performed']!r}, "
+            f"replaySuppressed={replay['suppressed']!r}; evidence={evidence_path}"
+        )
+
+
+class AdbTransportPreflightError(RuntimeError):
+    """Raised before any mutation when the transport cannot remain stable."""
+
+    def __init__(self, receipt: dict[str, object], evidence_path: Path) -> None:
+        self.receipt = receipt
+        self.evidence_path = evidence_path
+        super().__init__(
+            "ADB transport preflight did not reach the required consecutive "
+            f"API-36 observations; evidence={evidence_path}"
+        )
 
 
 @dataclass(frozen=True)
@@ -145,14 +384,35 @@ class Device:
         self.serial = serial
         self.evidence = evidence
         self._display_size: tuple[int, int] | None = None
+        self._transport_event_index = 0
+        self._transport_events: list[dict[str, object]] = []
+        self._transport_preflight: dict[str, object] | None = None
+        self._mutation_blocker: dict[str, object] | None = None
         self.evidence.mkdir(parents=True, exist_ok=True)
+        stale_transport_evidence = [
+            path
+            for path in (
+                self.evidence / "adb-transport-preflight.json",
+                *(
+                    self.evidence / f"adb-transport-event-{index:04d}.json"
+                    for index in range(1, MAX_ADB_TRANSPORT_EVENTS + 1)
+                ),
+            )
+            if path.exists() or path.is_symlink()
+        ]
+        if stale_transport_evidence:
+            raise RuntimeError(
+                "ADB transport evidence target contains stale receipts; use a fresh "
+                f"evidence directory: {[str(path) for path in stale_transport_evidence]!r}"
+            )
 
-    def run(
+    def _invoke_once(
         self,
-        *arguments: str,
-        timeout: int = 120,
-        text: bool = True,
-        check: bool = True,
+        arguments: tuple[str, ...],
+        *,
+        timeout: int,
+        text: bool,
+        check: bool,
     ) -> subprocess.CompletedProcess:
         command = [str(self.adb), "-s", self.serial, *arguments]
         return subprocess.run(
@@ -162,6 +422,414 @@ class Device:
             text=text,
             timeout=timeout,
         )
+
+    def _write_transport_event(
+        self,
+        *,
+        arguments: tuple[str, ...],
+        command_policy: str,
+        policy_reason: str,
+        classification: str,
+        retryable_classification: bool,
+        attempt: int,
+        maximum_attempts: int,
+        status: str,
+        error: BaseException,
+        replay_performed: bool,
+        replay_suppressed: bool,
+        command_invocation_performed: bool = True,
+        blocked_by: dict[str, object] | None = None,
+    ) -> tuple[dict[str, object], Path]:
+        if self._transport_event_index >= MAX_ADB_TRANSPORT_EVENTS:
+            raise RuntimeError(
+                "ADB transport event bound exhausted; refusing further device commands"
+            ) from error
+        self._transport_event_index += 1
+        filename = f"adb-transport-event-{self._transport_event_index:04d}.json"
+        receipt: dict[str, object] = {
+            "schema": ADB_TRANSPORT_EVENT_SCHEMA,
+            "status": status,
+            "serial": self.serial,
+            "classification": classification,
+            "classificationAuthority": adb_classification_authority(classification),
+            "retryableTransportClassification": retryable_classification,
+            "commandPolicy": command_policy,
+            "policyReason": policy_reason,
+            "adbArguments": _adb_arguments_evidence(arguments, command_policy),
+            "adbArgumentsSha256": _adb_arguments_sha256(arguments),
+            "attempt": attempt,
+            "maximumAttempts": maximum_attempts,
+            "commandInvocationPerformed": command_invocation_performed,
+            "outcomeMutationAuthority": (
+                "none-read-only-command"
+                if command_policy == "read-only-retryable"
+                else "unknown-fail-closed"
+            ),
+            "replay": {
+                "eligible": (
+                    command_policy == "read-only-retryable"
+                    and retryable_classification
+                ),
+                "performed": replay_performed,
+                "scheduled": status == "retrying-read-only",
+                "suppressed": replay_suppressed,
+            },
+            "failure": {
+                "type": type(error).__name__,
+                "returnCode": getattr(error, "returncode", None),
+                "stdout": _bounded_adb_detail(getattr(error, "stdout", "")),
+                "stderr": _bounded_adb_detail(getattr(error, "stderr", "")),
+            },
+            "evidenceFile": filename,
+        }
+        if blocked_by is not None:
+            receipt["blockedBy"] = blocked_by
+        path = self.evidence / filename
+        _write_new_json_receipt(path, receipt)
+        self._transport_events.append(receipt)
+        return receipt, path
+
+    def _write_recovered_transport_event(
+        self,
+        *,
+        arguments: tuple[str, ...],
+        attempts: int,
+    ) -> None:
+        if self._transport_event_index >= MAX_ADB_TRANSPORT_EVENTS:
+            raise RuntimeError(
+                "ADB transport event bound exhausted; refusing further device commands"
+            )
+        self._transport_event_index += 1
+        filename = f"adb-transport-event-{self._transport_event_index:04d}.json"
+        receipt: dict[str, object] = {
+            "schema": ADB_TRANSPORT_EVENT_SCHEMA,
+            "status": "recovered-read-only",
+            "serial": self.serial,
+            "classification": "transport-recovered",
+            "classificationAuthority": "fresh-read-only-command-succeeded",
+            "retryableTransportClassification": True,
+            "commandPolicy": "read-only-retryable",
+            "policyReason": adb_command_retry_policy(arguments)[1],
+            "adbArguments": list(arguments),
+            "adbArgumentsSha256": _adb_arguments_sha256(arguments),
+            "attempt": attempts,
+            "maximumAttempts": ADB_READ_ONLY_MAX_ATTEMPTS,
+            "commandInvocationPerformed": True,
+            "outcomeMutationAuthority": "none-read-only-command",
+            "replay": {
+                "eligible": True,
+                "performed": True,
+                "scheduled": False,
+                "suppressed": False,
+            },
+            "failure": None,
+            "evidenceFile": filename,
+        }
+        _write_new_json_receipt(self.evidence / filename, receipt)
+        self._transport_events.append(receipt)
+
+    def run(
+        self,
+        *arguments: str,
+        timeout: int = 120,
+        text: bool = True,
+        check: bool = True,
+    ) -> subprocess.CompletedProcess:
+        adb_arguments = tuple(arguments)
+        command_policy, policy_reason = adb_command_retry_policy(adb_arguments)
+        if command_policy != "read-only-retryable" and self._mutation_blocker is not None:
+            blocker = dict(self._mutation_blocker)
+            suppression = RuntimeError(
+                "A prior mutating or ambiguous command has an unknown outcome; "
+                "further mutations are prohibited"
+            )
+            receipt, path = self._write_transport_event(
+                arguments=adb_arguments,
+                command_policy=command_policy,
+                policy_reason=policy_reason,
+                classification="prior-mutation-outcome-unknown",
+                retryable_classification=False,
+                attempt=0,
+                maximum_attempts=1,
+                status="fail",
+                error=suppression,
+                replay_performed=False,
+                replay_suppressed=True,
+                command_invocation_performed=False,
+                blocked_by=blocker,
+            )
+            raise AdbTransportError(receipt, path) from suppression
+        maximum_attempts = (
+            ADB_READ_ONLY_MAX_ATTEMPTS
+            if command_policy == "read-only-retryable"
+            else 1
+        )
+        for attempt in range(1, maximum_attempts + 1):
+            try:
+                result = self._invoke_once(
+                    adb_arguments,
+                    timeout=timeout,
+                    text=text,
+                    check=check,
+                )
+                if adb_arguments == ("get-state",):
+                    observed_state = _bounded_adb_detail(result.stdout).strip()
+                    if observed_state != "device":
+                        raise subprocess.CalledProcessError(
+                            result.returncode or 1,
+                            result.args,
+                            output=result.stdout,
+                            stderr=f"device {observed_state or 'missing'}",
+                        )
+                if not check and result.returncode != 0:
+                    synthetic_error = subprocess.CalledProcessError(
+                        result.returncode,
+                        result.args,
+                        output=result.stdout,
+                        stderr=result.stderr,
+                    )
+                    classification, _retryable = classify_adb_failure(synthetic_error)
+                    if (
+                        command_policy != "read-only-retryable"
+                        or classification != "unclassified-adb-failure"
+                    ):
+                        raise synthetic_error
+                if attempt > 1:
+                    self._write_recovered_transport_event(
+                        arguments=adb_arguments,
+                        attempts=attempt,
+                    )
+                return result
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+                classification, retryable = classify_adb_failure(error)
+                may_retry = (
+                    command_policy == "read-only-retryable"
+                    and retryable
+                    and attempt < maximum_attempts
+                )
+                receipt, path = self._write_transport_event(
+                    arguments=adb_arguments,
+                    command_policy=command_policy,
+                    policy_reason=policy_reason,
+                    classification=classification,
+                    retryable_classification=retryable,
+                    attempt=attempt,
+                    maximum_attempts=maximum_attempts,
+                    status="retrying-read-only" if may_retry else "fail",
+                    error=error,
+                    replay_performed=attempt > 1,
+                    replay_suppressed=not may_retry,
+                )
+                if command_policy != "read-only-retryable":
+                    self._mutation_blocker = {
+                        "classification": classification,
+                        "adbArgumentsSha256": receipt["adbArgumentsSha256"],
+                        "evidenceFile": receipt["evidenceFile"],
+                    }
+                if not may_retry:
+                    raise AdbTransportError(receipt, path) from error
+                time.sleep(ADB_READ_ONLY_RETRY_DELAY_SECONDS)
+        raise AssertionError("bounded ADB retry loop exhausted without a terminal result")
+
+    def require_transport_stability(
+        self,
+        *,
+        expected_api_level: str = "36",
+        required_consecutive: int = ADB_PREFLIGHT_REQUIRED_CONSECUTIVE,
+        max_observations: int = ADB_PREFLIGHT_MAX_OBSERVATIONS,
+        delay_seconds: float = ADB_PREFLIGHT_OBSERVATION_DELAY_SECONDS,
+    ) -> dict[str, object]:
+        """Require consecutive fresh ADB+shell observations before any mutation."""
+        if required_consecutive < 2:
+            raise ValueError("ADB preflight requires at least two consecutive observations")
+        if max_observations < required_consecutive:
+            raise ValueError("ADB preflight observation bound is too small")
+        observations: list[dict[str, object]] = []
+        consecutive = 0
+        terminal_error: BaseException | None = None
+        for index in range(1, max_observations + 1):
+            observation: dict[str, object] = {"index": index}
+            try:
+                state = self._invoke_once(
+                    ("get-state",),
+                    timeout=15,
+                    text=True,
+                    check=True,
+                ).stdout.strip()
+                api_level = self._invoke_once(
+                    ("shell", "getprop", "ro.build.version.sdk"),
+                    timeout=15,
+                    text=True,
+                    check=True,
+                ).stdout.strip()
+                observation.update(
+                    {
+                        "status": "stable",
+                        "getState": state,
+                        "apiLevel": api_level,
+                    }
+                )
+                if state != "device":
+                    raise RuntimeError(f"unexpected adb get-state value {state!r}")
+                if api_level != expected_api_level:
+                    raise RuntimeError(
+                        f"unexpected Android API level {api_level!r}; "
+                        f"expected {expected_api_level!r}"
+                    )
+                consecutive += 1
+                observations.append(observation)
+                if consecutive >= required_consecutive:
+                    receipt: dict[str, object] = {
+                        "schema": ADB_TRANSPORT_PREFLIGHT_SCHEMA,
+                        "status": "pass",
+                        "serial": self.serial,
+                        "expectedApiLevel": expected_api_level,
+                        "requiredConsecutiveObservations": required_consecutive,
+                        "maximumObservations": max_observations,
+                        "observationDelaySeconds": delay_seconds,
+                        "observationsPerformed": index,
+                        "consecutiveStableObservations": consecutive,
+                        "mutationCommandsIssued": 0,
+                        "recoveryPolicy": "bounded-read-only-observation-retry",
+                        "recoveryMechanism": (
+                            "fresh-adb-invocation-no-reconnect-command"
+                        ),
+                        "observations": observations,
+                    }
+                    path = self.evidence / "adb-transport-preflight.json"
+                    _write_new_json_receipt(path, receipt)
+                    self._transport_preflight = receipt
+                    return receipt
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+                terminal_error = error
+                classification, retryable = classify_adb_failure(error)
+                observation.update(
+                    {
+                        "status": "transport-failure",
+                        "classification": classification,
+                        "classificationAuthority": adb_classification_authority(
+                            classification
+                        ),
+                        "retryableReadOnlyObservation": retryable,
+                        "failure": {
+                            "type": type(error).__name__,
+                            "returnCode": getattr(error, "returncode", None),
+                            "stdout": _bounded_adb_detail(getattr(error, "stdout", "")),
+                            "stderr": _bounded_adb_detail(getattr(error, "stderr", "")),
+                        },
+                    }
+                )
+                observations.append(observation)
+                consecutive = 0
+                if not retryable:
+                    break
+            except RuntimeError as error:
+                terminal_error = error
+                observation.update(
+                    {
+                        "status": "invalid-observation",
+                        "classification": "preflight-authority-mismatch",
+                        "retryableReadOnlyObservation": False,
+                        "failure": {
+                            "type": type(error).__name__,
+                            "message": str(error),
+                        },
+                    }
+                )
+                observations.append(observation)
+                consecutive = 0
+                break
+            if index < max_observations:
+                time.sleep(delay_seconds)
+
+        receipt = {
+            "schema": ADB_TRANSPORT_PREFLIGHT_SCHEMA,
+            "status": "fail",
+            "serial": self.serial,
+            "expectedApiLevel": expected_api_level,
+            "requiredConsecutiveObservations": required_consecutive,
+            "maximumObservations": max_observations,
+            "observationDelaySeconds": delay_seconds,
+            "observationsPerformed": len(observations),
+            "consecutiveStableObservations": consecutive,
+            "mutationCommandsIssued": 0,
+            "recoveryPolicy": "bounded-read-only-observation-retry",
+            "recoveryMechanism": "fresh-adb-invocation-no-reconnect-command",
+            "observations": observations,
+        }
+        path = self.evidence / "adb-transport-preflight.json"
+        _write_new_json_receipt(path, receipt)
+        self._transport_preflight = receipt
+        failure = AdbTransportPreflightError(receipt, path)
+        if terminal_error is None:
+            raise failure
+        raise failure from terminal_error
+
+    def transport_summary(self) -> dict[str, object]:
+        terminal_failures = [
+            event for event in self._transport_events if event["status"] == "fail"
+        ]
+        if terminal_failures or (
+            self._transport_preflight is not None
+            and self._transport_preflight["status"] == "fail"
+        ):
+            status = "fail"
+        elif (
+            self._transport_preflight is not None
+            and self._transport_preflight["status"] == "pass"
+        ):
+            status = "pass"
+        else:
+            status = "not-started"
+        return {
+            "schema": ADB_TRANSPORT_SUMMARY_SCHEMA,
+            "status": status,
+            "preflight": self._transport_preflight,
+            "eventCount": len(self._transport_events),
+            "terminalFailureCount": len(terminal_failures),
+            "events": list(self._transport_events),
+            "readOnlyMaximumAttempts": ADB_READ_ONLY_MAX_ATTEMPTS,
+            "readOnlyRetryDelaySeconds": ADB_READ_ONLY_RETRY_DELAY_SECONDS,
+            "preflightObservationDelaySeconds": (
+                ADB_PREFLIGHT_OBSERVATION_DELAY_SECONDS
+            ),
+            "explicitAdbReconnectCommandAllowed": False,
+            "nonReplayableCommandMaximumAttempts": 1,
+        }
+
+    def install_verified(
+        self,
+        apk: Path,
+        expected_sha256: str,
+        *install_arguments: str,
+    ) -> None:
+        if SHA256_TEXT.fullmatch(expected_sha256) is None:
+            raise RuntimeError(f"Invalid expected APK SHA-256: {expected_sha256!r}")
+        resolved = apk.resolve()
+        before = sha256(resolved)
+        if before != expected_sha256:
+            raise RuntimeError(
+                "APK digest changed before the one-shot install: "
+                f"expected {expected_sha256}, got {before}"
+            )
+        command_error: BaseException | None = None
+        try:
+            self.run(
+                "install",
+                *install_arguments,
+                str(resolved),
+                timeout=300,
+            )
+        except BaseException as error:
+            command_error = error
+        after = sha256(resolved)
+        if after != expected_sha256:
+            raise RuntimeError(
+                "APK digest changed across the one-shot install; install outcome is "
+                f"not reusable: expected {expected_sha256}, got {after}"
+            ) from command_error
+        if command_error is not None:
+            raise command_error
 
     def shell(self, *arguments: str, timeout: int = 120) -> str:
         return self.run("shell", *arguments, timeout=timeout).stdout.strip()
@@ -177,7 +845,26 @@ class Device:
     ) -> str:
         if SHA256_TEXT.fullmatch(expected_sha256) is None:
             raise RuntimeError(f"Invalid expected fixture SHA-256: {expected_sha256!r}")
-        self.push(local_path, remote_path)
+        resolved = local_path.resolve()
+        before = sha256(resolved)
+        if before != expected_sha256:
+            raise RuntimeError(
+                "Fixture digest changed before the one-shot push: "
+                f"expected {expected_sha256}, got {before}"
+            )
+        command_error: BaseException | None = None
+        try:
+            self.push(resolved, remote_path)
+        except BaseException as error:
+            command_error = error
+        after = sha256(resolved)
+        if after != expected_sha256:
+            raise RuntimeError(
+                "Fixture digest changed across the one-shot push; push outcome is "
+                f"not reusable: expected {expected_sha256}, got {after}"
+            ) from command_error
+        if command_error is not None:
+            raise command_error
         output = self.shell("sha256sum", remote_path)
         fields = output.split()
         actual = fields[0].lower() if fields else ""
@@ -1070,6 +1757,35 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def require_unchanged_local_inputs(
+    captured_sha256: dict[Path, str],
+    *,
+    label: str,
+) -> None:
+    changed: dict[str, dict[str, str]] = {}
+    for path, expected in captured_sha256.items():
+        actual = sha256(path)
+        if actual != expected:
+            changed[str(path)] = {"expected": expected, "actual": actual}
+    if changed:
+        raise RuntimeError(f"{label} changed during physical proof execution: {changed!r}")
+
+
+def authorize_remote_cleanup_once(remote: dict[str, object]) -> bool:
+    """Authorize one cleanup mutation, never a replay after an unknown outcome."""
+    if remote.get("cleanupAttempted") is True:
+        remote["cleanupReplaySuppressed"] = True
+        return False
+    if (
+        remote.get("precleanAttempted") is True
+        and remote.get("precleaned") is not True
+    ):
+        remote["cleanupReplaySuppressed"] = True
+        return False
+    remote["cleanupAttempted"] = True
+    return True
 
 
 def validate_full_editing_fixture(path: Path) -> FullEditingFixtureContract:
@@ -3651,19 +4367,25 @@ def main() -> int:
         ),
     )
     fixture_sha256 = {local_path: sha256(local_path) for local_path, _ in fixture_inputs}
+    apk_path = args.apk.resolve()
+    apk_sha256 = sha256(apk_path)
+    local_input_sha256 = {apk_path: apk_sha256}
+    local_input_sha256.update(fixture_sha256)
     full_editing_runner_sha256 = fixture_sha256[args.full_editing_runner.resolve()]
     condition_runner_sha256 = fixture_sha256[args.condition_runner.resolve()]
     contact_pet_runner_sha256 = fixture_sha256[args.contact_pet_runner.resolve()]
 
     device = Device(args.adb.resolve(), args.serial, args.evidence.resolve())
+    device.require_transport_stability(expected_api_level="36")
     api = device.shell("getprop", "ro.build.version.sdk")
     if api != "36":
         raise RuntimeError(f"Editing E2E requires API 36, got {api!r}")
 
-    subprocess.run(
-        [str(args.adb), "-s", args.serial, "install", "--no-incremental", "-r", str(args.apk.resolve())],
-        check=True,
-        timeout=300,
+    device.install_verified(
+        apk_path,
+        apk_sha256,
+        "--no-incremental",
+        "-r",
     )
     device.shell("pm", "clear", PACKAGE)
     transport_receipt: list[dict[str, str]] = []
@@ -3778,6 +4500,10 @@ def main() -> int:
         assert_pet_persisted(device, args.profile)
         device.capture("contact-pet-after-restart")
 
+        require_unchanged_local_inputs(
+            local_input_sha256,
+            label="APK or fixture authority",
+        )
         receipt = {
             "schema": "chummer.android.editing-e2e/v1",
             "status": "pass",
@@ -3786,8 +4512,9 @@ def main() -> int:
             "profile": args.profile,
             "journey": args.journey,
             "apiLevel": int(api),
-            "apk": str(args.apk.resolve()),
-            "apkSha256": sha256(args.apk.resolve()),
+            "apk": str(apk_path),
+            "apkSha256": apk_sha256,
+            "adbTransport": device.transport_summary(),
             "driverSha256": sha256(Path(__file__).resolve()),
             "inputFixture": str(args.contact_pet_runner.resolve()),
             "inputFixtureSha256": contact_pet_runner_sha256,
@@ -3868,6 +4595,10 @@ def main() -> int:
         assert_condition_damage(device, args.profile, "stun", 1)
         device.capture("condition-monitor-after-restart")
 
+        require_unchanged_local_inputs(
+            local_input_sha256,
+            label="APK or fixture authority",
+        )
         receipt = {
             "schema": "chummer.android.editing-e2e/v1",
             "status": "pass",
@@ -3876,8 +4607,9 @@ def main() -> int:
             "profile": args.profile,
             "journey": args.journey,
             "apiLevel": int(api),
-            "apk": str(args.apk.resolve()),
-            "apkSha256": sha256(args.apk.resolve()),
+            "apk": str(apk_path),
+            "apkSha256": apk_sha256,
+            "adbTransport": device.transport_summary(),
             "driverSha256": sha256(Path(__file__).resolve()),
             "inputFixture": str(args.condition_runner.resolve()),
             "inputFixtureSha256": condition_runner_sha256,
@@ -4043,6 +4775,10 @@ def main() -> int:
     assert_pet_persisted(device, args.profile)
     device.capture("editing-after-restart")
 
+    require_unchanged_local_inputs(
+        local_input_sha256,
+        label="APK or fixture authority",
+    )
     receipt = {
         "schema": "chummer.android.editing-e2e/v1",
         "status": "pass",
@@ -4051,8 +4787,9 @@ def main() -> int:
         "profile": args.profile,
         "journey": args.journey,
         "apiLevel": int(api),
-        "apk": str(args.apk.resolve()),
-        "apkSha256": sha256(args.apk.resolve()),
+        "apk": str(apk_path),
+        "apkSha256": apk_sha256,
+        "adbTransport": device.transport_summary(),
         "driverSha256": sha256(Path(__file__).resolve()),
         "inputFixture": str(args.full_editing_runner.resolve()),
         "inputFixtureSha256": full_editing_runner_sha256,

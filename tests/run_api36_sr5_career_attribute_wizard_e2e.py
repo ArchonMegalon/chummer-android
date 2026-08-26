@@ -1724,13 +1724,19 @@ def execute(
         {
             "path": remote_fixture,
             "purpose": "temporary canonical Career runner import",
+            "precleanAttempted": False,
             "precleaned": False,
+            "cleanupAttempted": False,
+            "cleanupReplaySuppressed": False,
             "deletedAndVerified": False,
         },
         {
             "path": "/sdcard/chummer-editing-window.xml",
             "purpose": "temporary UIAutomator hierarchy dump",
+            "precleanAttempted": False,
             "precleaned": False,
+            "cleanupAttempted": False,
+            "cleanupReplaySuppressed": False,
             "deletedAndVerified": False,
         },
     ]
@@ -1741,24 +1747,19 @@ def execute(
     device_validated = False
     verified_remote_fixture_sha256 = ""
     try:
+        device.require_transport_stability(expected_api_level="36")
         device_observation = android_device_observation(device)
         context["deviceObservation"] = device_observation
         device_validated = True
         for remote in remote_temporary_files:
+            remote["precleanAttempted"] = True
             remove_remote_temporary_file(device, str(remote["path"]))
             remote["precleaned"] = True
-        subprocess.run(
-            [
-                str(args.adb.resolve()),
-                "-s",
-                args.serial,
-                "install",
-                "--no-streaming",
-                "-r",
-                str(apk),
-            ],
-            check=True,
-            timeout=300,
+        device.install_verified(
+            apk,
+            expected_apk_sha256,
+            "--no-streaming",
+            "-r",
         )
         verified_remote_fixture_sha256 = device.push_verified(
             fixture,
@@ -1771,6 +1772,12 @@ def execute(
     finally:
         if device_validated:
             for remote in remote_temporary_files:
+                if not shared.authorize_remote_cleanup_once(remote):
+                    errors.append(
+                        "remote temporary-file cleanup replay suppressed after "
+                        f"an earlier/unknown mutation outcome for {remote['path']}"
+                    )
+                    continue
                 try:
                     remove_remote_temporary_file(device, str(remote["path"]))
                     remote["deletedAndVerified"] = True
@@ -1779,6 +1786,7 @@ def execute(
                         "remote temporary-file cleanup failed for "
                         f"{remote['path']}: {type(error).__name__}: {error}"
                     )
+        context["adbTransport"] = device.transport_summary()
         try:
             source_after = source_graph_snapshot(
                 android_root=android_root,
@@ -1816,6 +1824,7 @@ def execute(
         "executionStatus": "pass",
         "releaseEvidenceStatus": "source-and-apk-bound-local-build-not-release-attested",
         "buildProvenance": context["buildProvenance"],
+        "adbTransport": context["adbTransport"],
         "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
         "serial": args.serial,
         "profile": "phone",
