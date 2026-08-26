@@ -50,13 +50,11 @@ public sealed class Sr5CareerKnowledgeSkillCoordinator(
     public async Task<CareerKnowledgeSkillAdvanceEditorState?> PrepareAsync(
         CancellationToken cancellationToken = default)
     {
-        // Integration adapter for Android base 1d2bd7c. Replace these calls
-        // with the integration branch's shared Sr5CareerRunnerGuard.
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(presenter.Binding);
+        Sr5CareerRunnerGuard.RequireCreated(presenter.Binding);
         CareerKnowledgeSkillAdvanceEditorState? editor =
             await presenter.LoadKnowledgeSkillsAsync(cancellationToken).ConfigureAwait(false);
         Sr5CareerRunnerBinding after = presenter.Binding;
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(after);
+        Sr5CareerRunnerGuard.RequireCreated(after);
         if (editor is not null
             && (after.WorkspaceId != editor.WorkspaceId
                 || after.ContentRevision != editor.ContentRevision))
@@ -81,7 +79,7 @@ public sealed class Sr5CareerKnowledgeSkillCoordinator(
                 applyingCheckpoint,
                 cancellationToken).ConfigureAwait(false);
         Sr5CareerRunnerBinding before = presenter.Binding;
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(before);
+        Sr5CareerRunnerGuard.RequireCreated(before);
         if (ownerAuthority.CurrentOwnerId != draft.OwnerId
             || before.WorkspaceId != draft.WorkspaceId
             || before.ContentRevision != draft.ExpectedContentRevision
@@ -138,7 +136,7 @@ public sealed class Sr5CareerKnowledgeSkillCoordinator(
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         Sr5CareerRunnerBinding before = presenter.Binding;
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(before);
+        Sr5CareerRunnerGuard.RequireCreated(before);
         if (!checkpoint.IsStructurallyValid()
             || ownerAuthority.CurrentOwnerId == Guid.Empty
             || ownerAuthority.CurrentOwnerId != checkpoint.Draft.OwnerId
@@ -151,7 +149,7 @@ public sealed class Sr5CareerKnowledgeSkillCoordinator(
         CareerKnowledgeSkillAdvanceEditorState? editor =
             await presenter.LoadKnowledgeSkillsAsync(cancellationToken).ConfigureAwait(false);
         Sr5CareerRunnerBinding after = presenter.Binding;
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(after);
+        Sr5CareerRunnerGuard.RequireCreated(after);
         if (before.WorkspaceId != after.WorkspaceId
             || before.ContentRevision != after.ContentRevision
             || before.SavedRevision != after.SavedRevision)

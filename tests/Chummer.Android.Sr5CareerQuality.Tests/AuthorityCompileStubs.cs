@@ -81,15 +81,6 @@ namespace Chummer.Android.Native
         Guid CurrentOwnerId { get; }
     }
 
-    public sealed record Sr5CareerRunnerBinding(
-        bool Created,
-        string? GameEdition,
-        CharacterWorkspaceId? WorkspaceId,
-        long ContentRevision,
-        long SavedRevision,
-        bool IsDirty,
-        string? Error);
-
     public sealed record RunnerSessionProfileStub(bool Created);
     public sealed record RunnerSessionRulesStub(string? GameEdition);
 

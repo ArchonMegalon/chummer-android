@@ -94,8 +94,10 @@ class CareerKnowledgeLanguageWizardSourceContractTests(unittest.TestCase):
             "QuotesMatchExactly",
             "Do not replay or clear it",
             "CryptographicOperations.FixedTimeEquals",
+            "Sr5CareerRunnerGuard.RequireCreated",
         ):
             self.assertIn(marker, coordinator)
+        self.assertNotIn("Sr5CareerActiveSkillCoordinator.RequireCreatedSr5", coordinator)
         for marker in (
             "Sr5CareerCheckpointPhase.Reviewed",
             "Sr5CareerCheckpointPhase.Applying",

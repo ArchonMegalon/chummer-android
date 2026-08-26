@@ -6,12 +6,16 @@
     <Nullable>enable</Nullable>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <ChummerCoreRoot Condition="'$(ChummerCoreRoot)' == ''">../../../chummer-core-engine</ChummerCoreRoot>
+    <ChummerPresentationRoot Condition="'$(ChummerPresentationRoot)' == ''">../../../chummer-presentation</ChummerPresentationRoot>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="AuthorityCompileStubs.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerActiveSkillAdvanceRules.cs" Link="Core/CharacterCareerActiveSkillAdvanceRules.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerAttributeAdvanceRules.cs" Link="Core/CharacterCareerAttributeAdvanceRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerKnowledgeSkillAdvanceRules.cs" Link="Core/CharacterCareerKnowledgeSkillAdvanceRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerQualityRules.cs" Link="Core/CharacterCareerQualityRules.cs" />
+    <Compile Include="$(ChummerPresentationRoot)/Chummer.Presentation/Overview/CareerQualityWorkflow.cs" Link="Presentation/CareerQualityWorkflow.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerWizardModel.cs" Link="Native/Sr5CareerWizardModel.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerAttributeWizardModel.cs" Link="Native/Sr5CareerAttributeWizardModel.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerAttributeCoordinator.cs" Link="Native/Sr5CareerAttributeCoordinator.cs" />
