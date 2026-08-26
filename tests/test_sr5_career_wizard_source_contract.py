@@ -148,6 +148,40 @@ def test_globally_loaded_reviewed_checkpoint_is_authenticated_before_ui_or_delet
     assert 'StorageKey = "sr5.career.active-skill.draft.v1"' in store
 
 
+def test_active_skill_deep_return_reloads_durable_recovery_before_routing() -> None:
+    page = ACTIVE_SKILL.read_text(encoding="utf-8")
+    appearing = page.split("protected override async void OnAppearing()", maxsplit=1)[1]
+    appearing = appearing.split("protected override void Refresh()", maxsplit=1)[0]
+
+    assert "await Coordinator.InitializeAsync();" in appearing
+    assert "LoadRecoveryCheckpoint();" in appearing
+    assert "RefreshEnabledState();" in appearing
+    assert appearing.index("LoadRecoveryCheckpoint();") < appearing.index(
+        "RefreshEnabledState();"
+    )
+    assert appearing.index("RefreshEnabledState();") < appearing.index(
+        "_checkpoint?.Phase"
+    )
+
+    refresh = page.split("private void RefreshEnabledState()", maxsplit=1)[1]
+    refresh = refresh.split("private async Task OpenReviewAsync()", maxsplit=1)[0]
+    assert "_resolve.IsEnabled = _resolve.IsVisible" in refresh
+    assert "_checkpoint is not null" in refresh
+    assert "_reviewedAuthority.OwnsCurrentRunner(_checkpoint)" in refresh
+
+
+def test_creation_budget_ribbon_uses_typed_skill_budget_ids() -> None:
+    build = BUILD.read_text(encoding="utf-8")
+    for budget_id in (
+        "CharacterCreationBudgetIds.ActiveSkills",
+        "CharacterCreationBudgetIds.SkillGroups",
+        "CharacterCreationBudgetIds.KnowledgeSkills",
+    ):
+        assert budget_id in build
+    for literal in ('"active-skills" =>', '"skill-groups" =>', '"knowledge-skills" =>'):
+        assert literal not in build
+
+
 def test_authority_harness_explicitly_compiles_real_sources_and_projection_tests() -> None:
     harness = (
         ROOT / "tests/Chummer.Android.Sr5CareerAuthority.Tests/Chummer.Android.Sr5CareerAuthority.Tests.csproj"

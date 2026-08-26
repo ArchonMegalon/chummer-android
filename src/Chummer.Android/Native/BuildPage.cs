@@ -644,9 +644,9 @@ public sealed class BuildPage : NativePageBase
                                                      && skills!.Value is { } skillState
                 ? projectedBudget.BudgetId switch
                 {
-                    "active-skills" => skillState.ActiveSkillPointBudget,
-                    "skill-groups" => skillState.SkillGroupPointBudget,
-                    "knowledge-skills" => skillState.KnowledgeSkillPointBudget,
+                    CharacterCreationBudgetIds.ActiveSkills => skillState.ActiveSkillPointBudget,
+                    CharacterCreationBudgetIds.SkillGroups => skillState.SkillGroupPointBudget,
+                    CharacterCreationBudgetIds.KnowledgeSkills => skillState.KnowledgeSkillPointBudget,
                     _ => projectedBudget
                 }
                 : HasAuthoritativeAttributes(attributes) && attributes!.Value is { } attributeState

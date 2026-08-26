@@ -248,6 +248,11 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
         try
         {
             await Coordinator.InitializeAsync();
+            // A child review page may have durably moved Applying back to
+            // Reviewed, or forward to Applied, while this chooser was hidden.
+            // Re-read the journal before deciding whether recovery may run.
+            LoadRecoveryCheckpoint();
+            RefreshEnabledState();
             if (_checkpoint?.Phase is (Sr5CareerCheckpointPhase.Applying
                 or Sr5CareerCheckpointPhase.Applied)
                 && _reviewedAuthority.OwnsCurrentRunner(_checkpoint)
@@ -319,7 +324,9 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
         _resume.IsEnabled = revisionMatches && reviewedOwned;
         _resolve.IsVisible = _checkpoint?.Phase is (Sr5CareerCheckpointPhase.Applying
             or Sr5CareerCheckpointPhase.Applied);
-        _resolve.IsEnabled = _resolve.IsVisible;
+        _resolve.IsEnabled = _resolve.IsVisible
+            && _checkpoint is not null
+            && _reviewedAuthority.OwnsCurrentRunner(_checkpoint);
         _abandon.IsVisible = reviewedOwned;
         _abandon.IsEnabled = revisionMatches && reviewedOwned;
     }
