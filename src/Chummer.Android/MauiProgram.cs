@@ -66,7 +66,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<IShellBootstrapDataProvider, ShellBootstrapDataProvider>();
         builder.Services.AddSingleton<IWorkspaceOverviewStateFactory>(provider =>
             new WorkspaceOverviewStateFactory(
-                provider.GetRequiredService<ICharacterCreationFoundationService>()));
+                provider.GetRequiredService<ICharacterCreationFoundationService>(),
+                provider.GetService<ICharacterCreationContactsService>(),
+                provider.GetService<ICharacterCreationQualitiesService>()));
         builder.Services.AddSingleton<ICharacterCreationFoundationInteractionPresenter>(provider =>
             new CharacterCreationFoundationInteractionPresenter(
                 provider.GetRequiredService<ICharacterCreationFoundationService>()));

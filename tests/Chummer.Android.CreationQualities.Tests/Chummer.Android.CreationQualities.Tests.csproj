@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ChummerCoreRoot Condition="'$(ChummerCoreRoot)' == ''">../../../chummer-core-engine</ChummerCoreRoot>
+    <ChummerPresentationRoot Condition="'$(ChummerPresentationRoot)' == ''">../../../chummer-presentation</ChummerPresentationRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="AuthorityCompileStubs.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCreationQualitiesRules.cs" Link="Core/CharacterCreationQualitiesRules.cs" />
+    <Compile Include="$(ChummerPresentationRoot)/Chummer.Presentation/Overview/CharacterCreationQualitiesWorkflow.cs" Link="Presentation/CharacterCreationQualitiesWorkflow.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/CreationQualitiesPhoneAuthority.cs" Link="Native/CreationQualitiesPhoneAuthority.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/CreationQualitiesPhoneDraft.cs" Link="Native/CreationQualitiesPhoneDraft.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/CreationQualitiesCheckpointStore.cs" Link="Native/CreationQualitiesCheckpointStore.cs" />
+  </ItemGroup>
+</Project>

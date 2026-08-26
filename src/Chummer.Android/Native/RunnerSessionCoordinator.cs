@@ -124,6 +124,28 @@ public sealed record CreationSkillsPhoneConfirmResult(
     CharacterCreationSkillsState? RefreshedState,
     IReadOnlyList<string> Blockers);
 
+public sealed record CreationQualitiesPhoneConfirmResult(
+    string Outcome,
+    CharacterCreationQualitiesDraftReceipt? Receipt,
+    CharacterCreationQualitiesState? RefreshedState,
+    IReadOnlyList<string> Blockers,
+    bool MutationOutcomeKnown);
+
+public static class CreationQualitiesPhoneOutcomes
+{
+    public const string Applied = "applied";
+    public const string RejectedBeforeMutation = "rejected-before-mutation";
+    public const string OutcomeUnknown = "outcome-unknown";
+}
+
+public static class CreationQualitiesPhoneBlockers
+{
+    public const string PostCommitRefreshRequired =
+        "creation-qualities-post-commit-refresh-required";
+    public const string OutcomeUnknown =
+        "creation-qualities-commit-outcome-unknown";
+}
+
 public sealed class RunnerSessionCoordinator : IDisposable
 {
     private const string WorkspaceAuthorityDigestSchema =
@@ -144,6 +166,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly ICharacterCreationPrerequisiteService _creationPrerequisiteService;
     private readonly ICharacterCreationAttributesService? _creationAttributesService;
     private readonly ICharacterCreationSkillsService? _creationSkillsService;
+    private readonly ICharacterCreationQualitiesService? _creationQualitiesService;
     private readonly ICharacterCareerSkillGroupAdvanceService? _careerSkillGroupService;
     private readonly CareerQualityInteractionPresenter? _careerQualityPresenter;
     private readonly IShellPresenter _shellPresenter;
@@ -203,6 +226,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         ApplicationDeleteConfirmationPresenter applicationSettingsPresenter,
         ICharacterCreationAttributesService? creationAttributesService = null,
         ICharacterCreationSkillsService? creationSkillsService = null,
+        ICharacterCreationQualitiesService? creationQualitiesService = null,
         ICareerQualityAtomicWorkspace? careerQualityWorkspace = null,
         ICharacterCareerSkillGroupAdvanceService? careerSkillGroupService = null)
     {
@@ -213,6 +237,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _creationPrerequisiteService = creationPrerequisiteService;
         _creationAttributesService = creationAttributesService;
         _creationSkillsService = creationSkillsService;
+        _creationQualitiesService = creationQualitiesService;
         _careerSkillGroupService = careerSkillGroupService;
         _careerQualityPresenter = careerQualityWorkspace is null
             ? null
@@ -794,6 +819,203 @@ public sealed class RunnerSessionCoordinator : IDisposable
             committedState,
             blockers);
     }
+
+    public CharacterCreationFoundationResult<CharacterCreationQualitiesState>
+        LoadCreationQualities()
+    {
+        if (State.Profile?.Created != false || State.WorkspaceId is not { } workspaceId)
+        {
+            return new(
+                CharacterCreationFoundationOutcomes.Blocked,
+                null,
+                [CharacterCreationQualitiesBlockers.RevisionConflict]);
+        }
+        if (_creationQualitiesService is null)
+        {
+            return new(
+                CharacterCreationFoundationOutcomes.Blocked,
+                null,
+                [CharacterCreationQualitiesBlockers.AuthorityUnavailable]);
+        }
+        CharacterCreationFoundationResult<CharacterCreationQualitiesState> result =
+            _creationQualitiesService.Load(new(workspaceId));
+        return result.Value is { } state
+               && !CreationQualitiesPhoneAuthority.MatchesOverview(state, State)
+            ? new(
+                CharacterCreationFoundationOutcomes.Conflict,
+                null,
+                [CharacterCreationQualitiesBlockers.RevisionConflict])
+            : result;
+    }
+
+    internal CharacterCreationFoundationResult<CharacterCreationQualitiesPreview>
+        PreviewCreationQualities(
+            CharacterCreationQualitiesBinding binding,
+            IReadOnlyList<string> selectedOptionIds)
+    {
+        CharacterCreationFoundationResult<CharacterCreationQualitiesState> live =
+            LoadCreationQualities();
+        if (_creationQualitiesService is null
+            || live.Value is not { } state
+            || !CreationQualitiesPhoneAuthority.IsReady(state, State)
+            || !CreationQualitiesPhoneAuthority.BindingEquals(binding, state.Binding))
+        {
+            return new(
+                CharacterCreationFoundationOutcomes.Conflict,
+                null,
+                [CharacterCreationQualitiesBlockers.RevisionConflict]);
+        }
+        return _creationQualitiesService.Preview(new(
+            binding,
+            selectedOptionIds.OrderBy(static item => item, StringComparer.Ordinal).ToArray()));
+    }
+
+    internal async Task<CreationQualitiesPhoneConfirmResult>
+        ConfirmCreationQualitiesAsync(
+            CharacterCreationQualitiesCheckpoint checkpoint,
+            CancellationToken cancellationToken = default)
+        => await WithWorkspaceActivationGateAsync(
+            () => ConfirmCreationQualitiesCoreAsync(checkpoint, cancellationToken),
+            cancellationToken);
+
+    private async Task<CreationQualitiesPhoneConfirmResult>
+        ConfirmCreationQualitiesCoreAsync(
+            CharacterCreationQualitiesCheckpoint checkpoint,
+            CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        CharacterOverviewState beforeActivation = State;
+        if (_creationQualitiesService is null
+            || checkpoint.Phase != CharacterCreationQualitiesCheckpointPhase.Applying
+            || !checkpoint.IsStructurallyValid()
+            || !checkpoint.OwnsRecoveryRevision(beforeActivation))
+        {
+            return new(
+                CreationQualitiesPhoneOutcomes.RejectedBeforeMutation,
+                null,
+                null,
+                [CharacterCreationQualitiesBlockers.RevisionConflict],
+                MutationOutcomeKnown: true);
+        }
+
+        CharacterCreationFoundationResult<CharacterCreationQualitiesDraftReceipt> confirmed;
+        try
+        {
+            confirmed = _creationQualitiesService.Confirm(new(
+                checkpoint.Preview.Binding,
+                checkpoint.SelectedOptionIds,
+                checkpoint.Preview.PreviewDigest,
+                checkpoint.IdempotencyKey,
+                checkpoint.TransactionId,
+                ExplicitlyConfirmed: true));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return UnknownQualitiesOutcome();
+        }
+
+        if (!string.Equals(
+                confirmed.Outcome,
+                CharacterCreationFoundationOutcomes.Success,
+                StringComparison.Ordinal)
+            || confirmed.Value is not { } receipt)
+        {
+            CharacterCreationFoundationResult<CharacterCreationQualitiesState> observed =
+                _creationQualitiesService.Load(new(checkpoint.Preview.Binding.WorkspaceId));
+            bool definitelyNotApplied = observed.Value is { } unchanged
+                && CreationQualitiesPhoneAuthority.BindingEquals(
+                    unchanged.Binding,
+                    checkpoint.Preview.Binding)
+                && beforeActivation.ContentRevision == checkpoint.Preview.Binding.ContentRevision
+                && beforeActivation.SavedRevision == checkpoint.Preview.Binding.SavedRevision;
+            return definitelyNotApplied
+                ? new(
+                    CreationQualitiesPhoneOutcomes.RejectedBeforeMutation,
+                    null,
+                    unchanged,
+                    confirmed.Blockers,
+                    MutationOutcomeKnown: true)
+                : UnknownQualitiesOutcome(confirmed.Blockers);
+        }
+
+        CharacterCreationFoundationResult<CharacterCreationQualitiesState> committed =
+            _creationQualitiesService.Load(new(receipt.WorkspaceId));
+        if (committed.Value is not { } committedState
+            || !CreationQualitiesPhoneAuthority.ReceiptMatchesPersistedState(
+                checkpoint,
+                receipt,
+                committedState))
+        {
+            return UnknownQualitiesOutcome(
+                committed.Blockers.Append(CharacterCreationQualitiesBlockers.DraftInvalid));
+        }
+
+        try
+        {
+            await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken);
+            await SyncShellAsync(cancellationToken);
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            _notice = "Qualities draft saved. Reopen the character to refresh the phone view.";
+            NotifyChanged();
+            return new(
+                CreationQualitiesPhoneOutcomes.Applied,
+                receipt,
+                committedState,
+                [CreationQualitiesPhoneBlockers.PostCommitRefreshRequired],
+                MutationOutcomeKnown: true);
+        }
+
+        CharacterCreationFoundationResult<CharacterCreationQualitiesState> refreshed =
+            LoadCreationQualities();
+        if (refreshed.Value is not { } refreshedState
+            || !CreationQualitiesPhoneAuthority.ReceiptMatches(
+                checkpoint,
+                receipt,
+                refreshedState,
+                State))
+        {
+            _notice = "Qualities draft saved. Reopen the character to refresh the phone view.";
+            NotifyChanged();
+            return new(
+                CreationQualitiesPhoneOutcomes.Applied,
+                receipt,
+                committedState,
+                refreshed.Blockers
+                    .Append(CreationQualitiesPhoneBlockers.PostCommitRefreshRequired)
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(static item => item, StringComparer.Ordinal)
+                    .ToArray(),
+                MutationOutcomeKnown: true);
+        }
+
+        _notice = "Qualities draft saved. Character effects remain pending finalization.";
+        NotifyChanged();
+        return new(
+            CreationQualitiesPhoneOutcomes.Applied,
+            receipt,
+            refreshedState,
+            [],
+            MutationOutcomeKnown: true);
+    }
+
+    private static CreationQualitiesPhoneConfirmResult UnknownQualitiesOutcome(
+        IEnumerable<string>? blockers = null)
+        => new(
+            CreationQualitiesPhoneOutcomes.OutcomeUnknown,
+            null,
+            null,
+            (blockers ?? [])
+                .Append(CreationQualitiesPhoneBlockers.OutcomeUnknown)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(static item => item, StringComparer.Ordinal)
+                .ToArray(),
+            MutationOutcomeKnown: false);
 
     public CharacterCreationFoundationInteractionLoadResult LoadCreationFoundation()
         => _foundationInteractionPresenter.Load(State);
