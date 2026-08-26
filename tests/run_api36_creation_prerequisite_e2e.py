@@ -19,7 +19,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import run_api36_creation_wizard_foundation_e2e as foundation
 import run_api36_editing_e2e as shared
 
 
@@ -51,6 +50,31 @@ def sha256(path: Path) -> str:
 def node_text(device: shared.Device, selector: str, *, scroll: bool = False) -> str:
     node = device.wait(selector, timeout=60, scroll=scroll, max_scrolls=22)
     return node.attributes.get("text") or node.attributes.get("content-desc") or ""
+
+
+def assert_uncreated_advanced_editor_gated(device: shared.Device) -> None:
+    """Scan the whole creation dashboard for Career/editor escape hatches."""
+    forbidden = (
+        "Actions",
+        "build-origin-dossier",
+        "build-free-sprite-conversion",
+        "build-career-create-expense",
+        "creation-wizard-attributes",
+        "attribute-save-",
+    )
+    shared.reset_scroll_to_top(device, swipes=18)
+    for scroll_index in range(19):
+        nodes = device.hierarchy()
+        for selector in forbidden:
+            if any(shared.Device._matches(node, selector) for node in nodes):
+                device.capture(f"wizard-forbidden-{selector}")
+                raise RuntimeError(
+                    "Creation dashboard exposed a Career/advanced-editor control while "
+                    f"the authoritative runner is still uncreated: {selector!r}"
+                )
+        if scroll_index < 18:
+            device.swipe_up()
+    shared.reset_scroll_to_top(device, swipes=18)
 
 
 def canonical_digest(device: shared.Device, selector: str, *, scroll: bool = False) -> str:
@@ -1140,17 +1164,20 @@ def require_exact_restored_authority_option(
     device.wait("creation-prerequisite-page", timeout=45)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--adb", type=Path, required=True)
     parser.add_argument("--apk", type=Path, required=True)
     parser.add_argument("--serial", required=True)
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     driver_path = Path(__file__).resolve()
     shared_path = Path(shared.__file__).resolve()
+    priority_compatibility_path = driver_path.with_name(
+        "run_api36_new_character_priority_e2e.py"
+    )
     device = shared.Device(args.adb.resolve(), args.serial, args.evidence.resolve())
     api = device.shell("getprop", "ro.build.version.sdk")
     if api != "36":
@@ -1183,7 +1210,7 @@ def main() -> int:
         dashboard_timeout=30,
         reset_swipes=48,
     )
-    foundation.assert_creation_editor_gated(device)
+    assert_uncreated_advanced_editor_gated(device)
 
     dashboard_binding = node_text(device, "creation-wizard-binding", scroll=True)
     ready_navigation = wait_creation_method_navigation(device, ready=True)
@@ -1408,7 +1435,7 @@ def main() -> int:
         dashboard_timeout=60,
         reset_swipes=22,
     )
-    foundation.assert_creation_editor_gated(device)
+    assert_uncreated_advanced_editor_gated(device)
     if node_text(device, "creation-wizard-binding", scroll=True) == dashboard_binding:
         raise RuntimeError("Atomic prerequisite confirmation did not refresh the wizard revision")
 
@@ -1444,7 +1471,7 @@ def main() -> int:
         open_build_route=False,
         reset_swipes=22,
     )
-    foundation.assert_creation_editor_gated(device)
+    assert_uncreated_advanced_editor_gated(device)
     open_prerequisite(device)
     restarted_authority = read_persisted_prerequisite_authority(device)
     assert_persisted_prerequisite_authority(
@@ -1476,6 +1503,7 @@ def main() -> int:
         "apkSha256": sha256(args.apk.resolve()),
         "driverSha256": sha256(driver_path),
         "sharedDriverSha256": sha256(shared_path),
+        "priorityCompatibilityDriverSha256": sha256(priority_compatibility_path),
         "journeys": {
             "publicPriorityRunnerBootstrappedByCore": "pass",
             "legacyPriorityContinuationSkipped": "pass",

@@ -907,274 +907,25 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn("provision_creation_karma_through_priority_creation", source)
         self.assertNotIn('device.wait("dialog-action-complete-new-character-workflow"', source)
         self.assertNotIn('device.wait("Select Metatype Priority"', source)
-        return
 
-        calls: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
-        structural_snapshots: list[list[driver.shared.UiNode]] = []
-
-        class FakeDevice:
-            viewport_reset = False
-            selected_phone_destination = "Runner"
-
-            @staticmethod
-            def _phone_destination_node(
-                label: str,
-                bounds: str,
-                *,
-                selected: bool,
-            ):
-                return driver.shared.UiNode(
-                    {
-                        "resource-id": "",
-                        "class": "android.widget.FrameLayout",
-                        "package": driver.shared.PACKAGE,
-                        "content-desc": label,
-                        "enabled": "true",
-                        "focusable": "true",
-                        "selected": str(selected).lower(),
-                        "clickable": str(not selected).lower(),
-                        "bounds": bounds,
-                    }
-                )
-
-            def hierarchy(self):
-                calls.append(("hierarchy", (), {}))
-                nodes = [
-                    self._phone_destination_node(
-                        "Runners",
-                        "[0,2190][360,2337]",
-                        selected=self.selected_phone_destination == "Runners",
-                    ),
-                    self._phone_destination_node(
-                        "Runner",
-                        "[360,2190][720,2337]",
-                        selected=self.selected_phone_destination == "Runner",
-                    ),
-                    self._phone_destination_node(
-                        "More",
-                        "[720,2190][1080,2337]",
-                        selected=self.selected_phone_destination == "More",
-                    ),
-                ]
-                structural_snapshots.append(nodes)
-                return nodes
-
-            def display_size(self):
-                calls.append(("display_size", (), {}))
-                return 1080, 2400
-
-            def dismiss_system_ui_anr(self) -> bool:
-                calls.append(("dismiss_system_ui_anr", (), {}))
-                return False
-
-            def shell(self, *args) -> None:
-                calls.append(("shell", args, {}))
-                if args == ("input", "tap", "180", "2263"):
-                    self.selected_phone_destination = "Runners"
-
-            def tap_until_visible(self, *args, **kwargs) -> None:
-                calls.append(("tap_until_visible", args, kwargs))
-
-            def tap(self, *args, **kwargs) -> None:
-                calls.append(("tap", args, kwargs))
-
-            def tap_single_exact_resource_id(self, *args, **kwargs) -> None:
-                calls.append(("tap_single_exact_resource_id", args, kwargs))
-
-            def set_text(self, *args, **kwargs) -> None:
-                calls.append(("set_text", args, kwargs))
-
-            def wait(self, *args, **kwargs):
-                if args == ("creation-wizard-dashboard",) and not self.viewport_reset:
-                    raise AssertionError("Scrolled dashboard marker was checked before reset")
-                calls.append(("wait", args, kwargs))
-                return driver.shared.UiNode({})
-
-            def capture(self, *args, **kwargs) -> None:
-                calls.append(("capture", args, kwargs))
-
-        selected_options: list[tuple[str, str]] = []
-
-        def select_option(_device, selector: str, value: str) -> None:
-            self.assertIs(device, _device)
-            selected_options.append((selector, value))
-
-        def open_dashboard(_device, **kwargs):
-            self.assertIs(device, _device)
-            device.viewport_reset = True
-            calls.append(("open_creation_dashboard", (_device,), kwargs))
-            return driver.shared.UiNode({})
-
-        def require_dialog_transition(_device, **kwargs) -> None:
-            self.assertIs(device, _device)
-            calls.append(("require_new_character_dialog_transition", (_device,), kwargs))
-
-        device = FakeDevice()
-        with mock.patch.object(driver.priority, "select_option", side_effect=select_option), \
-             mock.patch.object(
-                 driver.shared,
-                 "open_creation_dashboard",
-                 side_effect=open_dashboard,
-             ), \
-             mock.patch.object(
-                 driver,
-                 "require_new_character_dialog_transition",
-                 side_effect=require_dialog_transition,
-             ):
-            selected = driver.provision_creation_karma_through_priority_creation(device)
-
-        self.assertEqual(
-            [driver.PRIORITY_BUILD_METHOD_SELECTION, *driver.PRIORITY_CREATION_SELECTIONS],
-            selected_options,
-        )
-        expected_selected = dict(selected_options)
-        expected_selected[driver.PRIORITY_SETTINGS_SELECTION[0]] = (
-            driver.PRIORITY_SETTINGS_SELECTION[2]
-        )
-        self.assertEqual(expected_selected, selected)
-        self.assertIn(
+    def test_direct_priority_driver_owns_gating_and_accepts_compatibility_argv(
+        self,
+    ) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        for marker in (
+            "def assert_uncreated_advanced_editor_gated(",
+            "assert_uncreated_advanced_editor_gated(device)",
+            "def main(argv: list[str] | None = None) -> int:",
+            "args = parser.parse_args(argv)",
             (
-                "set_text",
-                driver.PRIORITY_SETTINGS_SELECTION,
-                {
-                    "scroll": True,
-                    "max_scrolls": 16,
-                    "scroll_distance_ratio": 0.22,
-                },
+                '"priorityCompatibilityDriverSha256": '
+                "sha256(priority_compatibility_path)"
             ),
-            calls,
-        )
-        setting_index = calls.index(
-            (
-                "set_text",
-                driver.PRIORITY_SETTINGS_SELECTION,
-                {
-                    "scroll": True,
-                    "max_scrolls": 16,
-                    "scroll_distance_ratio": 0.22,
-                },
-            )
-        )
-        self.assertEqual(
-            (
-                "tap",
-                ("dialog-action-create-character",),
-                {"scroll": True, "max_scrolls": 16},
-            ),
-            calls[setting_index + 1],
-            "The phone proof must exercise the action boundary without an artificial blur.",
-        )
-        route_index = calls.index(
-            (
-                "open_creation_dashboard",
-                (device,),
-                {
-                    "open_build_route": False,
-                    "toolbar_timeout": 120,
-                    "dashboard_timeout": 30,
-                    "reset_swipes": 48,
-                },
-            )
-        )
-        transition_index = calls.index(
-            ("require_new_character_dialog_transition", (device,), {})
-        )
-        capture_index = calls.index(("capture", ("creation-karma-priority-runner-created",), {}))
-        save_index = calls.index(
-            (
-                "tap",
-                ("build-save-runner",),
-                {
-                    "scroll": True,
-                    "max_scrolls": 48,
-                    "scroll_distance_ratio": 0.22,
-                },
-            )
-        )
-        saved_index = calls.index(
-            (
-                "wait",
-                ("Saved.",),
-                {
-                    "timeout": 90,
-                    "scroll": True,
-                    "max_scrolls": 48,
-                    "scroll_distance_ratio": 0.22,
-                },
-            )
-        )
-        runners_index = calls.index(("shell", ("input", "tap", "180", "2263"), {}))
-        hierarchy_indexes = [
-            index for index, observed in enumerate(calls) if observed == ("hierarchy", (), {})
-        ]
-        display_indexes = [
-            index for index, observed in enumerate(calls) if observed == ("display_size", (), {})
-        ]
-        authority_surface_index = calls.index(
-            (
-                "wait",
-                ("home-open-file",),
-                {"timeout": 90, "scroll": True, "max_scrolls": 16},
-            )
-        )
-        self.assertIn(
-            (
-                "tap_until_visible",
-                ("home-new-runner", "Select Build Method"),
-                {"scroll": True, "max_scrolls": 16},
-            ),
-            calls,
-        )
-        self.assertLess(transition_index, route_index)
-        self.assertLess(route_index, capture_index)
-        self.assertLess(capture_index, save_index)
-        self.assertLess(save_index, saved_index)
-        self.assertGreaterEqual(len(hierarchy_indexes), 4)
-        self.assertGreaterEqual(len(display_indexes), 4)
-        self.assertTrue(all(index < runners_index for index in hierarchy_indexes[:3]))
-        self.assertTrue(all(index < runners_index for index in display_indexes[:3]))
-        self.assertLess(saved_index, runners_index)
-        self.assertLess(runners_index, authority_surface_index)
-        self.assertNotIn(("wait", ("Continue building",), {"timeout": 120}), calls)
-        self.assertGreaterEqual(len(structural_snapshots), 5)
-        bound_snapshots = [
-            driver.shared.bind_phone_shell_destinations(device, snapshot)
-            for snapshot in structural_snapshots
-        ]
-        for bound in bound_snapshots:
-            self.assertEqual(
-                driver.shared.PHONE_SHELL_DESTINATION_IDS,
-                tuple(resource_id for resource_id, _ in bound),
-            )
-            self.assertEqual(
-                driver.shared.PHONE_SHELL_DESTINATION_LABELS,
-                tuple(node.attributes["content-desc"] for _, node in bound),
-            )
-            self.assertTrue(
-                all(node.attributes["resource-id"] == "" for _, node in bound),
-                "The pinned API-36 MAUI tabs use structural identities, not synthetic Android IDs.",
-            )
-        self.assertEqual(
-            driver.shared._phone_shell_destination_signature(bound_snapshots[0]),
-            driver.shared._phone_shell_destination_signature(bound_snapshots[1]),
-            "The pre-tap structural binding must be stable across consecutive dumps.",
-        )
-        self.assertEqual(
-            ["Runner"],
-            [
-                node.attributes["content-desc"]
-                for _, node in bound_snapshots[2]
-                if node.attributes["selected"] == "true"
-            ],
-        )
-        self.assertEqual(
-            ["Runners"],
-            [
-                node.attributes["content-desc"]
-                for _, node in bound_snapshots[-1]
-                if node.attributes["selected"] == "true"
-            ],
-        )
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, source)
+        self.assertNotIn("run_api36_creation_wizard_foundation_e2e", source)
+        self.assertNotIn("foundation.", source)
 
     def test_build_toolbar_exposes_the_exact_durable_save_notice_in_view(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
@@ -1888,33 +1639,6 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn("freshRunnerWorkspaceAuthority", source)
         self.assertNotIn("preparedWorkspaceAuthority", source)
         self.assertIn('"dashboardBinding": dashboard_binding', source)
-        return
-
-        fresh = driver.shared.WorkspaceAuthority("fresh", 2, 2, "a" * 64, "b" * 64)
-        prepared = driver.shared.WorkspaceAuthority("prepared", 1, 1, "c" * 64, "d" * 64)
-        driver.require_priority_created_workspace_authority(fresh, prepared)
-
-        invalid = (
-            (
-                driver.shared.WorkspaceAuthority("fresh", 1, 1, "c" * 64, "d" * 64),
-                "distinct runner workspace identity",
-            ),
-            (
-                driver.shared.WorkspaceAuthority("prepared", 2, 1, "c" * 64, "d" * 64),
-                "not durably checkpointed",
-            ),
-            (
-                driver.shared.WorkspaceAuthority("prepared", 1, 1, "a" * 64, "d" * 64),
-                "distinct character payload digest",
-            ),
-            (
-                driver.shared.WorkspaceAuthority("prepared", 1, 1, "c" * 64, "b" * 64),
-                "distinct document authority digest",
-            ),
-        )
-        for authority, message in invalid:
-            with self.subTest(message=message), self.assertRaisesRegex(RuntimeError, message):
-                driver.require_priority_created_workspace_authority(fresh, authority)
 
     def test_coordinator_uses_only_the_core_prerequisite_boundary_and_refreshes_receipt(self) -> None:
         source = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
@@ -2409,7 +2133,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
 
         restored = source[source.index("def require_exact_restored_authority_option(") :]
-        restored = restored[: restored.index("def main()")]
+        restored = restored[: restored.index("def main(")]
         self.assertIn("device.wait_exact_resource_id_bidirectional(", restored)
         self.assertNotIn("device.tap(", restored)
 
