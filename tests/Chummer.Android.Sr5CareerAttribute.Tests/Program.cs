@@ -19,13 +19,19 @@ internal static class Program
         Run(nameof(BlockedQuotesNeverBecomeDrafts), BlockedQuotesNeverBecomeDrafts);
         Run(nameof(CheckpointRejectsTamperingAndPriorSchemaLocks),
             CheckpointRejectsTamperingAndPriorSchemaLocks);
+        Run(nameof(SerializedCheckpointRetainsNestedTypedAuthority),
+            SerializedCheckpointRetainsNestedTypedAuthority);
+        Run(nameof(PhysicalDriverGoldenIdempotencyMatchesManagedAuthority),
+            PhysicalDriverGoldenIdempotencyMatchesManagedAuthority);
+        Run(nameof(PhysicalDriverGoldenReceiptDigestMatchesCoreAuthority),
+            PhysicalDriverGoldenReceiptDigestMatchesCoreAuthority);
         await RunAsync(nameof(CoordinatorVerifiesOnlyFreshExactReceiptAsync),
             CoordinatorVerifiesOnlyFreshExactReceiptAsync);
         await RunAsync(nameof(ApplyingCrashResolvesWithoutReplayAsync),
             ApplyingCrashResolvesWithoutReplayAsync);
         Run(nameof(CheckpointCasRejectsForgedResolutionAndWrongOwner),
             CheckpointCasRejectsForgedResolutionAndWrongOwner);
-        Console.WriteLine("SR5 Career Attribute authority tests passed: 6");
+        Console.WriteLine("SR5 Career Attribute authority tests passed: 9");
     }
 
     private static void Run(string name, Action test)
@@ -136,6 +142,123 @@ internal static class Program
             "Prior schema must remain an explicit replay-blocking lock.");
         Require(!store.TryCreate(checkpoint, out _, out _), "Unreadable lock must prevent overwrite/replay.");
         Require(!string.IsNullOrWhiteSpace(backend.Read()), "Unreadable lock must remain durable.");
+    }
+
+    private static void SerializedCheckpointRetainsNestedTypedAuthority()
+    {
+        Sr5CareerAttributeCheckpoint checkpoint =
+            Sr5CareerAttributeCheckpoint.FromDraft(Draft());
+        using JsonDocument document = JsonDocument.Parse(
+            JsonSerializer.Serialize(checkpoint));
+        JsonElement root = document.RootElement;
+        Require(PropertyNames(root).SetEquals([
+            "SchemaVersion", "Version", "RouteId", "Phase", "Draft", "IdempotencyKey"
+        ]), "The serialized checkpoint must keep one exact nested top-level schema.");
+        Require(root.GetProperty("SchemaVersion").GetInt32() == 1
+            && root.GetProperty("Version").GetInt64() == 1
+            && root.GetProperty("Phase").GetInt32() == 0,
+            "Serialized schema/version/phase must remain numeric CAS authority.");
+
+        JsonElement draft = root.GetProperty("Draft");
+        Require(PropertyNames(draft).SetEquals([
+            "OwnerId", "WorkspaceId", "ExpectedContentRevision", "Quote", "Plan", "ActionPlan"
+        ]), "The serialized draft fields must remain exact.");
+        Require(PropertyNames(draft.GetProperty("WorkspaceId")).SetEquals(["Value"]),
+            "Workspace identity must remain a nested typed record.");
+        JsonElement quote = draft.GetProperty("Quote");
+        JsonElement plan = draft.GetProperty("Plan");
+        JsonElement actionPlan = draft.GetProperty("ActionPlan");
+        Require(quote.GetProperty("Identity").GetProperty("Abbreviation").GetString() == "BOD"
+            && quote.GetProperty("Identity").GetProperty("Kind").GetInt32() == 0
+            && plan.GetProperty("Identity").GetProperty("Abbreviation").GetString() == "BOD"
+            && plan.GetProperty("Identity").GetProperty("Kind").GetInt32() == 0,
+            "Quote and plan must serialize the same typed Attribute identity.");
+        Require(actionPlan.GetProperty("Kind").GetInt32()
+                == (int)Sr5CareerActionKind.AttributeAdvance
+            && actionPlan.GetProperty("ActionId").GetGuid()
+                == plan.GetProperty("ExpenseId").GetGuid()
+            && actionPlan.GetProperty("IdempotencyKey").GetString()
+                == root.GetProperty("IdempotencyKey").GetString()
+            && actionPlan.GetProperty("CostQuote").GetProperty("RuleDigest").GetString()
+                == quote.GetProperty("RuleDigest").GetString(),
+            "Serialized action plan must retain kind, action, idempotency and digest authority.");
+        Require(quote.GetProperty("ApplicationDuration").GetString() == "00:00:00",
+            "Immediate persistence duration must remain exact JSON authority.");
+        Require(plan.GetProperty("ExpectedLogicalRevision").GetString()
+                == quote.GetProperty("LogicalRevision").GetString()
+            && plan.GetProperty("ExpectedSourceRevision").GetString()
+                == quote.GetProperty("SourceRevision").GetString()
+            && plan.GetProperty("ExpectedRuleDigest").GetString()
+                == quote.GetProperty("RuleDigest").GetString(),
+            "Serialized plan must bind all three reviewed revisions.");
+    }
+
+    private static HashSet<string> PropertyNames(JsonElement element)
+        => element.EnumerateObject()
+            .Select(static property => property.Name)
+            .ToHashSet(StringComparer.Ordinal);
+
+    private static void PhysicalDriverGoldenIdempotencyMatchesManagedAuthority()
+    {
+        string actual = Sr5CareerActionPlan.ComputeAttributeIdempotencyKey(
+            Guid.Parse("33333333-3333-3333-3333-333333333333"),
+            "workspace-e2e",
+            7,
+            Guid.Parse("44444444-4444-4444-4444-444444444444"),
+            "BOD",
+            CharacterCareerAttributeKind.Normal,
+            new string('1', 64),
+            new string('2', 64),
+            new string('3', 64),
+            "BOD",
+            0,
+            1,
+            2,
+            3,
+            6,
+            1,
+            35,
+            15,
+            false,
+            0,
+            2,
+            20,
+            0,
+            new DateTime(2081, 5, 2, 9, 30, 0, DateTimeKind.Unspecified),
+            -15,
+            "Attribute BOD 2 -> 3",
+            "ImproveAttribute",
+            "AddCyberware",
+            "BOD",
+            0m,
+            string.Empty);
+        Require(actual == "c4e9021ef2f9b419a6c47d314c91c8c893c225a2fe5c71c04def1951c7073b9a",
+            "The physical driver golden idempotency must match managed authority byte-for-byte.");
+    }
+
+    private static void PhysicalDriverGoldenReceiptDigestMatchesCoreAuthority()
+    {
+        Guid actionId = Guid.Parse("44444444-4444-4444-4444-444444444444");
+        CharacterCareerAttributeAdvanceReceipt receipt = new(
+            actionId,
+            new CharacterCareerAttributeIdentity(
+                "BOD",
+                CharacterCareerAttributeKind.Normal),
+            RepairsBurnedEdge: false,
+            AttributeKarmaBefore: 1,
+            AttributeKarmaAfter: 2,
+            CharacterKarmaBefore: 35,
+            CharacterKarmaAfter: 20,
+            BurnedEdgePointsBefore: 0,
+            BurnedEdgePointsAfter: 0,
+            actionId,
+            ExpenseAmount: -15,
+            new string('1', 64),
+            new string('2', 64),
+            new string('3', 64),
+            "d9d2ab3db56d20039ad24adbb63f1812f5ccf9648037fb891341718905b83b66");
+        Require(CharacterCareerAttributeAdvanceRules.IsCoherent(receipt),
+            "The physical driver golden receipt digest must match Core authority byte-for-byte.");
     }
 
     private static async Task CoordinatorVerifiesOnlyFreshExactReceiptAsync()

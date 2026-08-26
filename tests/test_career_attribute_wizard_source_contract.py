@@ -1,9 +1,12 @@
 import pathlib
 import unittest
+import xml.etree.ElementTree as ET
 
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
 NATIVE = REPO / "src" / "Chummer.Android" / "Native"
+PHYSICAL_DRIVER = REPO / "tests" / "run_api36_sr5_career_attribute_wizard_e2e.py"
+PHYSICAL_FIXTURE = REPO / "tests" / "fixtures" / "career-attribute-advance-e2e.chum5"
 
 
 class CareerAttributeWizardSourceContractTests(unittest.TestCase):
@@ -145,11 +148,61 @@ class CareerAttributeWizardSourceContractTests(unittest.TestCase):
             "ExactDraftBindsTypedIdentityQuotePlanAndDigests",
             "BlockedQuotesNeverBecomeDrafts",
             "CheckpointRejectsTamperingAndPriorSchemaLocks",
+            "SerializedCheckpointRetainsNestedTypedAuthority",
+            "PhysicalDriverGoldenIdempotencyMatchesManagedAuthority",
+            "PhysicalDriverGoldenReceiptDigestMatchesCoreAuthority",
             "CoordinatorVerifiesOnlyFreshExactReceiptAsync",
             "ApplyingCrashResolvesWithoutReplayAsync",
             "CheckpointCasRejectsForgedResolutionAndWrongOwner",
         ):
             self.assertIn(marker, harness)
+
+    def test_physical_driver_binds_attribute_routes_nested_journal_and_three_restarts(self) -> None:
+        driver = PHYSICAL_DRIVER.read_text(encoding="utf-8")
+        for marker in (
+            'CHECKPOINT_KEY = "sr5.career.attribute.draft.v1"',
+            'CHOOSE_ROUTE = "sr5-career/advancement/attribute/choose"',
+            'REVIEW_ROUTE = "sr5-career/advancement/attribute/review"',
+            'RECEIPT_ROUTE = "sr5-career/advancement/attribute/receipt"',
+            '"sr5-career-action-attribute"',
+            '"sr5-career-attribute-review"',
+            '"sr5-career-attribute-resume"',
+            '"sr5-career-attribute-apply"',
+            '"sr5-career-attribute-receipt-acknowledge"',
+            'require_object_fields(checkpoint["Draft"], DRAFT_FIELDS',
+            "expected_idempotency_key(checkpoint)",
+            "expected_receipt_digest(checkpoint)",
+            "require_same_action(reviewed.payload, applied.payload)",
+            '"status": "device-pass-non-release"',
+            '"releaseEvidenceStatus": "ineligible-unverified-build-provenance"',
+        ):
+            self.assertIn(marker, driver)
+        self.assertEqual(3, driver.count("shared.force_stop_and_launch_new_process"))
+
+    def test_physical_fixture_is_one_exact_bod_successor_case(self) -> None:
+        root = ET.parse(PHYSICAL_FIXTURE).getroot()
+        self.assertEqual("CareerAttributeAdvanceE2E", root.findtext("alias"))
+        self.assertEqual("35", root.findtext("karma"))
+        attributes = root.findall("./attributes/attribute")
+        self.assertEqual(
+            [
+                "BOD", "AGI", "REA", "STR", "CHA", "INT",
+                "LOG", "WIL", "EDG", "MAG", "MAGAdept", "RES",
+            ],
+            [attribute.findtext("name") for attribute in attributes],
+        )
+        target = attributes[0]
+        expected = {
+            "name": "BOD",
+            "base": "0",
+            "karma": "1",
+            "metatypemin": "1",
+            "metatypemax": "6",
+            "metatypeaugmax": "9",
+            "totalvalue": "2",
+            "notes": "target-attribute-must-survive",
+        }
+        self.assertEqual(expected, {name: target.findtext(name) for name in expected})
 
 
 if __name__ == "__main__":
