@@ -1,5 +1,6 @@
 import ast
 import importlib.util
+import inspect
 import json
 import os
 import subprocess
@@ -294,6 +295,46 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             events,
         )
         self.assertEqual([mock.call(device, swipes=22)] * 2, reset.call_args_list)
+
+    def test_route_and_persisted_authority_reads_reset_inherited_viewports(self) -> None:
+        main_source = inspect.getsource(driver.main)
+        persisted_source = inspect.getsource(driver.require_exact_restored_authority_option)
+
+        preview_route = main_source.index(
+            'device.wait("creation-prerequisite-preview-page", timeout=60)'
+        )
+        preview_reset = main_source.index(
+            "shared.reset_scroll_to_top(device, swipes=22)",
+            preview_route,
+        )
+        preview_digest = main_source.index(
+            '"creation-prerequisite-preview-digest"',
+            preview_reset,
+        )
+        self.assertLess(preview_route, preview_reset)
+        self.assertLess(preview_reset, preview_digest)
+
+        receipt_route = main_source.index(
+            'device.wait("creation-prerequisite-confirm-receipt"'
+        )
+        receipt_reset = main_source.index(
+            "shared.reset_scroll_to_top(device, swipes=22)",
+            receipt_route,
+        )
+        receipt_read = main_source.index(
+            'node_text(device, "creation-prerequisite-confirm-receipt"',
+            receipt_reset,
+        )
+        self.assertLess(receipt_route, receipt_reset)
+        self.assertLess(receipt_reset, receipt_read)
+
+        persisted_reset = persisted_source.index(
+            "shared.reset_scroll_to_top(device, swipes=max_scrolls)"
+        )
+        persisted_selection = persisted_source.index(
+            'f"creation-prerequisite-{category}-selection-id"'
+        )
+        self.assertLess(persisted_reset, persisted_selection)
 
     def test_rank_selection_resets_bottom_viewport_and_proves_refreshed_draft_row(self) -> None:
         calls: list[tuple[str, object]] = []

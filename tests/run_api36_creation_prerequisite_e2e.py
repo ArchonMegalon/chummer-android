@@ -1173,6 +1173,10 @@ def require_exact_restored_authority_option(
     *,
     max_scrolls: int = 40,
 ) -> None:
+    # Persisted-draft authority is read from the bottom of the page immediately
+    # before this check. Re-establish the page origin before resolving the
+    # selection id, which is intentionally a forward-only exact lookup.
+    shared.reset_scroll_to_top(device, swipes=max_scrolls)
     restored_selection_id = node_text(
         device,
         f"creation-prerequisite-{category}-selection-id",
@@ -1397,6 +1401,8 @@ def main() -> int:
 
     device.tap("creation-prerequisite-prepare-preview", scroll=True, max_scrolls=22)
     device.wait("creation-prerequisite-preview-page", timeout=60)
+    # The pushed preview route can inherit the prerequisite page's bottom offset.
+    shared.reset_scroll_to_top(device, swipes=22)
     preview_digest = canonical_digest(
         device,
         "creation-prerequisite-preview-digest",
@@ -1446,6 +1452,9 @@ def main() -> int:
         )
     device.tap("creation-prerequisite-confirm", scroll=True, max_scrolls=22)
     device.wait("creation-prerequisite-confirm-receipt", timeout=90, scroll=True, max_scrolls=22)
+    # Confirmation replaces the deeply scrolled preview content in place. Read the
+    # receipt and its ordered authority fields from a deterministic page origin.
+    shared.reset_scroll_to_top(device, swipes=22)
     receipt_text = node_text(device, "creation-prerequisite-confirm-receipt", scroll=True)
     if "false" not in receipt_text.lower():
         raise RuntimeError("Prerequisite receipt did not prove CharacterDocumentChanged=false")
