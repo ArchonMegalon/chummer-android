@@ -176,8 +176,10 @@ class CareerAttributeWizardSourceContractTests(unittest.TestCase):
             "expected_idempotency_key(checkpoint)",
             "expected_receipt_digest(checkpoint)",
             "require_same_action(reviewed.payload, applied.payload)",
-            '"status": "device-pass-non-release"',
-            '"releaseEvidenceStatus": "ineligible-unverified-build-provenance"',
+            '"status": "device-pass-source-bound"',
+            '"releaseEvidenceStatus": "source-and-apk-bound-local-build-not-release-attested"',
+            '"--build-provenance-manifest"',
+            "load_and_verify_manifest",
         ):
             self.assertIn(marker, driver)
         self.assertEqual(3, driver.count("shared.force_stop_and_launch_new_process"))

@@ -21,14 +21,13 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 import run_api36_editing_e2e as shared
+from api36_physical_build_provenance import load_and_verify_manifest
 
 
 CHECKPOINT_KEY = "sr5.career.attribute.draft.v1"
 CHOOSE_ROUTE = "sr5-career/advancement/attribute/choose"
 REVIEW_ROUTE = "sr5-career/advancement/attribute/review"
 RECEIPT_ROUTE = "sr5-career/advancement/attribute/receipt"
-CORE_REVISION = "8e2c53bf9c5ac85f675e738bf6e8ecd2ade4bb2a"
-PRESENTATION_REVISION = "37b4f048fa50911db7cd493217e1b64005c37770"
 LOWER_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 LOWER_GIT_REVISION = re.compile(r"^[0-9a-f]{40}$")
 DOTNET_UNSPECIFIED_DATE = re.compile(
@@ -43,7 +42,6 @@ RECEIPT_BINDING = re.compile(
 )
 RECEIPT_SCHEMA = "chummer.android.sr5-career-attribute-physical-e2e/v1"
 DISPOSABLE_DEVICE_FLAG = "--allow-destructive-disposable-device"
-UNVERIFIED_BUILD_FLAG = "--acknowledge-unverified-build-provenance"
 SAFE_FIXTURE_BASENAME = re.compile(
     r"^[A-Za-z0-9][A-Za-z0-9._-]{0,126}\.chum5$"
 )
@@ -391,27 +389,6 @@ def source_repository_roots(
         git_toplevel(workspace_root / "chummer-core-engine"),
         git_toplevel(workspace_root / "chummer-presentation"),
     )
-
-
-def unverified_build_provenance(
-    *,
-    expected_android_head: str | None,
-    expected_apk_sha256: str | None,
-    source_graph_authority_sha256: str | None = None,
-) -> dict[str, object]:
-    """Describe caller-bound bytes without claiming an authenticated build."""
-    return {
-        "status": "unverified",
-        "releaseEvidenceEligible": False,
-        "externalBuildAuthorityManifest": None,
-        "reason": (
-            "No external build-authority manifest authenticates the exact Android "
-            "HEAD to APK SHA-256 binding"
-        ),
-        "callerExpectedAndroidHead": expected_android_head,
-        "callerExpectedApkSha256": expected_apk_sha256,
-        "sourceGraphAuthoritySha256": source_graph_authority_sha256,
-    }
 
 
 def canonical_guid(value: object, label: str) -> str:
@@ -1299,6 +1276,8 @@ def source_graph_snapshot(
     apk: Path,
     expected_apk_sha256: str,
     expected_android_revision: str,
+    expected_core_revision: str,
+    expected_presentation_revision: str,
     source_paths: dict[str, Path],
 ) -> dict[str, object]:
     if LOWER_SHA256.fullmatch(expected_apk_sha256) is None:
@@ -1317,13 +1296,13 @@ def source_graph_snapshot(
             android_root,
             expected=expected_android_revision,
         ),
-        "expectedPresentationSourceRevision": PRESENTATION_REVISION,
+        "expectedPresentationSourceRevision": expected_presentation_revision,
         "presentationSourceRevision": git_revision(
             presentation_root,
-            expected=PRESENTATION_REVISION,
+            expected=expected_presentation_revision,
         ),
-        "expectedCoreSourceRevision": CORE_REVISION,
-        "coreSourceRevision": git_revision(core_root, expected=CORE_REVISION),
+        "expectedCoreSourceRevision": expected_core_revision,
+        "coreSourceRevision": git_revision(core_root, expected=expected_core_revision),
         "expectedApkSha256": expected_apk_sha256,
         "apkSha256": actual_apk_sha256,
         "apkAbis": apk_abis(apk),
@@ -1612,14 +1591,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--adb", type=Path, required=True)
     parser.add_argument("--apk", type=Path, required=True)
-    parser.add_argument("--expected-apk-sha256", required=True)
-    parser.add_argument("--expected-android-head", required=True)
+    parser.add_argument("--build-provenance-manifest", type=Path, required=True)
     parser.add_argument("--serial", required=True)
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
     parser.add_argument("--workspace-root", type=Path, required=True)
     parser.add_argument(DISPOSABLE_DEVICE_FLAG, action="store_true")
-    parser.add_argument(UNVERIFIED_BUILD_FLAG, action="store_true")
     parser.add_argument(
         "--career-runner",
         type=Path,
@@ -1638,11 +1615,6 @@ def execute(
             f"{DISPOSABLE_DEVICE_FLAG} is required because this journey installs the APK, "
             "clears Chummer app data, imports a runner, and mutates that disposable runner"
         )
-    if not args.acknowledge_unverified_build_provenance:
-        raise RuntimeError(
-            f"{UNVERIFIED_BUILD_FLAG} is required because no external build-authority "
-            "manifest authenticates the Android HEAD to APK SHA-256 binding"
-        )
     if SAFE_ADB_SERIAL.fullmatch(args.serial) is None:
         raise RuntimeError("ADB serial does not match the explicit safe ASCII grammar")
 
@@ -1651,6 +1623,22 @@ def execute(
     workspace_root = args.workspace_root.resolve()
     core_root = workspace_root / "chummer-core-engine"
     presentation_root = workspace_root / "chummer-presentation"
+    apk = args.apk.resolve()
+    build_provenance = load_and_verify_manifest(
+        args.build_provenance_manifest,
+        android_root=android_root,
+        core_root=core_root,
+        presentation_root=presentation_root,
+        apk=apk,
+    )
+    repositories = build_provenance["repositories"]
+    artifact = build_provenance["artifact"]
+    if not isinstance(repositories, dict) or not isinstance(artifact, dict):
+        raise RuntimeError("Verified build-provenance manifest is malformed")
+    expected_android_head = str(repositories["android"]["commit"])
+    expected_core_head = str(repositories["core"]["commit"])
+    expected_presentation_head = str(repositories["presentation"]["commit"])
+    expected_apk_sha256 = str(artifact["sha256"])
     repository_roots = source_repository_roots(
         android_root=android_root,
         workspace_root=workspace_root,
@@ -1668,11 +1656,8 @@ def execute(
         expect_directory=True,
     )
     validate_output_layout(receipt=args.receipt, evidence=args.evidence)
-    context["releaseEvidenceStatus"] = "ineligible-unverified-build-provenance"
-    context["buildProvenance"] = unverified_build_provenance(
-        expected_android_head=args.expected_android_head,
-        expected_apk_sha256=args.expected_apk_sha256,
-    )
+    context["releaseEvidenceStatus"] = "source-and-apk-bound-local-build-not-release-attested"
+    context["buildProvenance"] = build_provenance
 
     fixture = args.career_runner.resolve()
     fixture_basename = safe_fixture_basename(fixture)
@@ -1716,22 +1701,18 @@ def execute(
     if missing:
         raise RuntimeError(f"Staged SR5 Career source graph is incomplete: {missing!r}")
 
-    apk = args.apk.resolve()
     source_before = source_graph_snapshot(
         android_root=android_root,
         core_root=core_root,
         presentation_root=presentation_root,
         apk=apk,
-        expected_apk_sha256=args.expected_apk_sha256,
-        expected_android_revision=args.expected_android_head,
+        expected_apk_sha256=expected_apk_sha256,
+        expected_android_revision=expected_android_head,
+        expected_core_revision=expected_core_head,
+        expected_presentation_revision=expected_presentation_head,
         source_paths=source_paths,
     )
     context["sourceGraphAuthority"] = source_before
-    context["buildProvenance"] = unverified_build_provenance(
-        expected_android_head=args.expected_android_head,
-        expected_apk_sha256=args.expected_apk_sha256,
-        source_graph_authority_sha256=str(source_before["authoritySha256"]),
-    )
     require_canonical_import_fixture(ET.parse(fixture).getroot())
     source_file_sha256 = source_before["sourceFileSha256"]
     if not isinstance(source_file_sha256, dict):
@@ -1804,8 +1785,10 @@ def execute(
                 core_root=core_root,
                 presentation_root=presentation_root,
                 apk=apk,
-                expected_apk_sha256=args.expected_apk_sha256,
-                expected_android_revision=args.expected_android_head,
+                expected_apk_sha256=expected_apk_sha256,
+                expected_android_revision=expected_android_head,
+                expected_core_revision=expected_core_head,
+                expected_presentation_revision=expected_presentation_head,
                 source_paths=source_paths,
             )
             context["postRunSourceGraphAuthority"] = source_after
@@ -1829,9 +1812,9 @@ def execute(
 
     return {
         "schema": RECEIPT_SCHEMA,
-        "status": "device-pass-non-release",
+        "status": "device-pass-source-bound",
         "executionStatus": "pass",
-        "releaseEvidenceStatus": "ineligible-unverified-build-provenance",
+        "releaseEvidenceStatus": "source-and-apk-bound-local-build-not-release-attested",
         "buildProvenance": context["buildProvenance"],
         "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
         "serial": args.serial,
@@ -1883,17 +1866,15 @@ def failure_receipt(
         "schema": RECEIPT_SCHEMA,
         "status": "fail",
         "executionStatus": "fail",
-        "releaseEvidenceStatus": "ineligible-unverified-build-provenance",
-        "buildProvenance": unverified_build_provenance(
-            expected_android_head=args.expected_android_head,
-            expected_apk_sha256=args.expected_apk_sha256,
+        "releaseEvidenceStatus": context.get(
+            "releaseEvidenceStatus", "manifest-not-verified"
         ),
+        "buildProvenance": context.get("buildProvenance"),
         "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
         "profile": "phone",
         "journey": "sr5-career-attribute-wizard-physical",
         "serial": args.serial,
-        "expectedAndroidSourceRevision": args.expected_android_head,
-        "expectedApkSha256": args.expected_apk_sha256,
+        "buildProvenanceManifest": str(args.build_provenance_manifest),
         "failure": {
             "type": type(error).__name__,
             "message": str(error)[:4000],
@@ -1907,11 +1888,8 @@ def argument_failure_receipt(exit_code: int) -> dict[str, object]:
         "schema": RECEIPT_SCHEMA,
         "status": "fail",
         "executionStatus": "fail",
-        "releaseEvidenceStatus": "ineligible-unverified-build-provenance",
-        "buildProvenance": unverified_build_provenance(
-            expected_android_head=None,
-            expected_apk_sha256=None,
-        ),
+        "releaseEvidenceStatus": "manifest-not-verified",
+        "buildProvenance": None,
         "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
         "profile": "phone",
         "journey": "sr5-career-attribute-wizard-physical",

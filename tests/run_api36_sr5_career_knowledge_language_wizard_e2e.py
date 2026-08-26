@@ -21,6 +21,7 @@ import time
 import xml.etree.ElementTree as ET
 
 import run_api36_editing_e2e as shared
+from api36_physical_build_provenance import load_and_verify_manifest
 
 
 CHECKPOINT_KEY = "sr5.career.knowledge-language.draft.v1"
@@ -37,7 +38,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--adb", type=Path, required=True)
     parser.add_argument("--apk", type=Path, required=True)
-    parser.add_argument("--expected-apk-sha256", required=True)
+    parser.add_argument("--build-provenance-manifest", type=Path, required=True)
+    parser.add_argument("--workspace-root", type=Path, required=True)
     parser.add_argument("--serial", required=True)
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
@@ -354,12 +356,23 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
         )
     if SAFE_SERIAL.fullmatch(args.serial) is None:
         raise RuntimeError("ADB serial does not match the safe grammar")
-    if LOWER_SHA256.fullmatch(args.expected_apk_sha256) is None:
-        raise RuntimeError("Expected APK SHA-256 is not canonical")
     apk = args.apk.resolve()
     fixture = args.career_runner.resolve()
-    if shared.sha256(apk) != args.expected_apk_sha256:
-        raise RuntimeError("APK digest differs from the caller-bound digest")
+    android_root = Path(__file__).resolve().parents[1]
+    workspace_root = args.workspace_root.resolve()
+    core_root = workspace_root / "chummer-core-engine"
+    presentation_root = workspace_root / "chummer-presentation"
+    build_provenance = load_and_verify_manifest(
+        args.build_provenance_manifest,
+        android_root=android_root,
+        core_root=core_root,
+        presentation_root=presentation_root,
+        apk=apk,
+    )
+    artifact = build_provenance["artifact"]
+    if not isinstance(artifact, dict):
+        raise RuntimeError("Verified build-provenance artifact is malformed")
+    expected_apk_sha256 = str(artifact["sha256"])
     fixture_sha256 = shared.sha256(fixture)
     args.evidence.mkdir(parents=True, exist_ok=True)
     device = shared.Device(args.adb.resolve(), args.serial, args.evidence.resolve())
@@ -372,16 +385,27 @@ def execute(args: argparse.Namespace) -> dict[str, object]:
     remote_fixture = f"/sdcard/Download/{fixture.name}"
     device.push_verified(fixture, remote_fixture, fixture_sha256)
     journey = prove(device, fixture, fixture_sha256)
+    post_run_provenance = load_and_verify_manifest(
+        args.build_provenance_manifest,
+        android_root=android_root,
+        core_root=core_root,
+        presentation_root=presentation_root,
+        apk=apk,
+    )
+    if post_run_provenance != build_provenance:
+        raise RuntimeError("Source/APK provenance changed during physical execution")
     return {
         "schema": "chummer.android.sr5-career-knowledge-language-physical-e2e/v1",
-        "status": "device-pass-non-release",
+        "status": "device-pass-source-bound",
         "executionStatus": "pass",
-        "releaseEvidenceStatus": "ineligible-unverified-build-provenance",
+        "releaseEvidenceStatus": "source-and-apk-bound-local-build-not-release-attested",
         "hostedX86Claim": False,
         "proofClass": "observed-physical-arm64-api36",
         "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
         "package": shared.PACKAGE,
-        "apkSha256": args.expected_apk_sha256,
+        "apkSha256": expected_apk_sha256,
+        "buildProvenance": build_provenance,
+        "sourceGraphRecheckedAfterRun": True,
         "fixtureSha256": fixture_sha256,
         "deviceObservation": observation,
         "authorityProofStages": journey,
@@ -397,7 +421,8 @@ def main(argv: list[str] | None = None) -> int:
             "schema": "chummer.android.sr5-career-knowledge-language-physical-e2e/v1",
             "status": "fail",
             "executionStatus": "fail",
-            "releaseEvidenceStatus": "ineligible-unverified-build-provenance",
+            "releaseEvidenceStatus": "manifest-not-verified-or-journey-failed",
+            "buildProvenanceManifest": str(args.build_provenance_manifest),
             "hostedX86Claim": False,
             "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
             "failure": {"type": type(error).__name__, "message": str(error)[:4000]},

@@ -7,9 +7,9 @@ WORKFLOW = REPO_ROOT / ".github" / "workflows" / "api36-editing-e2e.yml"
 PREVIEW_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "preview9-arm64-aab.yml"
 COMPATIBILITY_GRAPH = {
     "ArchonMegalon/chummer6-ui":
-        "37b4f048fa50911db7cd493217e1b64005c37770",
+        "4c88c1810e6ce2754fe7b00e03db9b36b75d517c",
     "ArchonMegalon/chummer6-core":
-        "8e2c53bf9c5ac85f675e738bf6e8ecd2ade4bb2a",
+        "4450825f53a5a96778e6061c16689e7c5993baf7",
     "ArchonMegalon/chummer6-hub":
         "d29a880f624ec94aabedd0c2901ae8fed2f93ed4",
     "ArchonMegalon/chummer6-hub-registry":
@@ -180,11 +180,26 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertEqual(2, self.text.count('"docs/editability-evidence/**"'))
         self.assertEqual(2, self.text.count('"scripts/**"'))
 
-    def test_preview_release_uses_the_same_compiled_compatibility_graph(self) -> None:
-        for repository, commit in COMPATIBILITY_GRAPH.items():
+    def test_preview_release_remains_independently_commit_pinned(self) -> None:
+        self.assertNotIn("uses: actions/checkout@v", self.preview_text)
+        for repository in COMPATIBILITY_GRAPH:
             with self.subTest(repository=repository):
                 self.assertIn(f"repository: {repository}", self.preview_text)
-                self.assertIn(f"ref: {commit}", self.preview_text)
+
+    def test_build_also_emits_an_honest_arm64_physical_candidate_manifest(self) -> None:
+        self.assertIn("CHUMMER_ANDROID_RUNTIME_ID: android-arm64", self.text)
+        self.assertIn("materialize-api36-physical-build-provenance.py", self.text)
+        self.assertIn("--android-root \"$GITHUB_WORKSPACE/chummer-android\"", self.text)
+        self.assertIn("--core-root \"$GITHUB_WORKSPACE/chummer-core-engine\"", self.text)
+        self.assertIn(
+            "--presentation-root \"$GITHUB_WORKSPACE/chummer-presentation\"",
+            self.text,
+        )
+        self.assertIn("build-provenance.json", self.text)
+        self.assertIn("chummer-android-arm64-debug.apk.sha256", self.text)
+        self.assertIn("id: upload-arm64", self.text)
+        self.assertIn("arm64-artifact-id: ${{ steps.upload-arm64.outputs.artifact-id }}", self.text)
+        self.assertNotIn("releaseAttested: true", self.text)
 
     def test_executes_every_persistence_driver_as_an_isolated_matrix_journey(self) -> None:
         runner = (

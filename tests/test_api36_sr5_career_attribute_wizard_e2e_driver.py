@@ -229,14 +229,12 @@ def complete_driver_arguments(root: Path, receipt: Path) -> list[str]:
     return [
         "--adb", str(root / "adb"),
         "--apk", str(root / "app.apk"),
-        "--expected-apk-sha256", "a" * 64,
-        "--expected-android-head", "b" * 40,
+        "--build-provenance-manifest", str(root / "build-provenance.json"),
         "--serial", "R5CT30PHYSICAL",
         "--evidence", str(root / "evidence"),
         "--receipt", str(receipt),
         "--workspace-root", str(root),
         driver.DISPOSABLE_DEVICE_FLAG,
-        driver.UNVERIFIED_BUILD_FLAG,
     ]
 
 
@@ -637,31 +635,24 @@ class Api36Sr5CareerAttributeWizardDriverTests(unittest.TestCase):
         remote_device.shell.assert_not_called()
         remote_device.run.assert_not_called()
 
-    def test_unverified_build_provenance_is_never_release_evidence(self) -> None:
-        provenance = driver.unverified_build_provenance(
-            expected_android_head="b" * 40,
-            expected_apk_sha256="a" * 64,
-            source_graph_authority_sha256="c" * 64,
-        )
-        self.assertEqual("unverified", provenance["status"])
-        self.assertIs(False, provenance["releaseEvidenceEligible"])
-        self.assertIsNone(provenance["externalBuildAuthorityManifest"])
+    def test_local_build_manifest_is_honest_about_release_attestation(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
-        self.assertIn('"status": "device-pass-non-release"', source)
+        self.assertIn('"status": "device-pass-source-bound"', source)
         self.assertIn(
-            '"releaseEvidenceStatus": "ineligible-unverified-build-provenance"',
+            '"releaseEvidenceStatus": "source-and-apk-bound-local-build-not-release-attested"',
             source,
         )
         parsed = driver.parse_args(
             complete_driver_arguments(Path("/tmp"), Path("/tmp/r.json"))
         )
-        self.assertTrue(parsed.acknowledge_unverified_build_provenance)
+        self.assertEqual(Path("/tmp/build-provenance.json"), parsed.build_provenance_manifest)
 
     def test_driver_seals_integrated_sources_commits_fixture_and_saved_payload(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         for marker in (
-            'CORE_REVISION = "8e2c53bf9c5ac85f675e738bf6e8ecd2ade4bb2a"',
-            'PRESENTATION_REVISION = "37b4f048fa50911db7cd493217e1b64005c37770"',
+            'load_and_verify_manifest(',
+            'expected_core_revision=expected_core_head',
+            'expected_presentation_revision=expected_presentation_head',
             '"careerWizardModelSha256"',
             '"careerWizardPageSha256"',
             '"attributeWizardPageSha256"',
@@ -674,8 +665,8 @@ class Api36Sr5CareerAttributeWizardDriverTests(unittest.TestCase):
             '"sourceGraphAuthority": source_before',
             '"postRunSourceGraphAuthoritySha256": source_before["authoritySha256"]',
             'if source_after != source_before',
-            'expected_android_revision=args.expected_android_head',
-            'expected_apk_sha256=args.expected_apk_sha256',
+            'expected_android_revision=expected_android_head',
+            'expected_apk_sha256=expected_apk_sha256',
             'restored_after_apply.content_revision != imported.content_revision + 1',
             'restored_after_apply.payload_sha256 == imported.payload_sha256',
             'if expense_id != applied_plan["ExpenseId"]',
@@ -716,14 +707,7 @@ class Api36Sr5CareerAttributeWizardDriverTests(unittest.TestCase):
             with zipfile.ZipFile(apk, "w") as archive:
                 archive.writestr("lib/arm64-v8a/libmonodroid.so", b"arm64")
             expected_apk = driver.shared.sha256(apk)
-            with (
-                mock.patch.object(driver, "CORE_REVISION", core_revision),
-                mock.patch.object(
-                    driver,
-                    "PRESENTATION_REVISION",
-                    presentation_revision,
-                ),
-            ):
+            if True:
                 snapshot = driver.source_graph_snapshot(
                     android_root=android,
                     core_root=core,
@@ -731,6 +715,8 @@ class Api36Sr5CareerAttributeWizardDriverTests(unittest.TestCase):
                     apk=apk,
                     expected_apk_sha256=expected_apk,
                     expected_android_revision=android_revision,
+                    expected_core_revision=core_revision,
+                    expected_presentation_revision=presentation_revision,
                     source_paths={"androidAuthoritySha256": android / "authority.txt"},
                 )
                 self.assertEqual(expected_apk, snapshot["apkSha256"])
@@ -753,6 +739,8 @@ class Api36Sr5CareerAttributeWizardDriverTests(unittest.TestCase):
                         apk=apk,
                         expected_apk_sha256="0" * 64,
                         expected_android_revision=android_revision,
+                        expected_core_revision=core_revision,
+                        expected_presentation_revision=presentation_revision,
                         source_paths={
                             "androidAuthoritySha256": android / "authority.txt"
                         },
@@ -766,6 +754,8 @@ class Api36Sr5CareerAttributeWizardDriverTests(unittest.TestCase):
                         apk=apk,
                         expected_apk_sha256=expected_apk,
                         expected_android_revision=android_revision,
+                        expected_core_revision=core_revision,
+                        expected_presentation_revision=presentation_revision,
                         source_paths={
                             "androidAuthoritySha256": android / "authority.txt"
                         },
@@ -785,8 +775,7 @@ class Api36Sr5CareerAttributeWizardDriverTests(unittest.TestCase):
                     [
                         "--adb", "/missing/adb",
                         "--apk", "/missing/app.apk",
-                        "--expected-apk-sha256", "a" * 64,
-                        "--expected-android-head", "b" * 40,
+                        "--build-provenance-manifest", str(root / "build-provenance.json"),
                         "--serial", "DISPOSABLE",
                         "--evidence", str(root / "evidence"),
                         "--receipt", str(receipt),
@@ -809,8 +798,7 @@ class Api36Sr5CareerAttributeWizardDriverTests(unittest.TestCase):
                     for pair in (
                         ("--adb", str(root / "adb")),
                         ("--apk", str(root / "app.apk")),
-                        ("--expected-apk-sha256", "a" * 64),
-                        ("--expected-android-head", "b" * 40),
+                        ("--build-provenance-manifest", str(root / "build-provenance.json")),
                         ("--evidence", str(root / "evidence")),
                         ("--receipt", str(root / "missing.json")),
                         ("--workspace-root", str(root)),
@@ -837,32 +825,20 @@ class Api36Sr5CareerAttributeWizardDriverTests(unittest.TestCase):
                     self.assertEqual("ArgumentParseError", failed["failure"]["type"])
                     self.assertNotIn("stale", failed)
 
-    def test_missing_unverified_build_acknowledgement_is_an_explicit_failure(self) -> None:
+    def test_missing_build_provenance_manifest_is_an_explicit_argument_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             receipt = root / "receipt.json"
             arguments = complete_driver_arguments(root, receipt)
-            arguments.remove(driver.UNVERIFIED_BUILD_FLAG)
-            with (
-                mock.patch.object(
-                    driver,
-                    "source_repository_roots",
-                    return_value=(REPO,),
-                ),
-                mock.patch.object(driver.sys, "stderr"),
-            ):
+            index = arguments.index("--build-provenance-manifest")
+            del arguments[index:index + 2]
+            with mock.patch.object(driver.sys, "stderr"):
                 result = driver.main(arguments)
-            self.assertEqual(1, result)
+            self.assertEqual(2, result)
             failed = driver.json.loads(receipt.read_text(encoding="utf-8"))
             self.assertEqual("fail", failed["status"])
-            self.assertIn(
-                driver.UNVERIFIED_BUILD_FLAG,
-                failed["failure"]["message"],
-            )
-            self.assertIs(
-                False,
-                failed["buildProvenance"]["releaseEvidenceEligible"],
-            )
+            self.assertEqual("ArgumentParseError", failed["failure"]["type"])
+            self.assertIsNone(failed["buildProvenance"])
 
     def test_missing_explicit_receipt_does_not_unlink_an_unidentified_stale_file(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -938,7 +914,7 @@ class Api36Sr5CareerAttributeWizardDriverTests(unittest.TestCase):
             source.index('"install",'),
         )
         self.assertIn('parser.add_argument(DISPOSABLE_DEVICE_FLAG, action="store_true")', source)
-        self.assertIn('parser.add_argument(UNVERIFIED_BUILD_FLAG, action="store_true")', source)
+        self.assertIn('parser.add_argument("--build-provenance-manifest", type=Path, required=True)', source)
         self.assertIn("validate_output_layout(receipt=receipt_path", source)
         self.assertIn("remove_remote_temporary_file(device, str(remote", source)
         self.assertIn('"/sdcard/chummer-editing-window.xml"', source)
