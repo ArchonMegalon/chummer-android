@@ -1044,7 +1044,19 @@ def open_prerequisite(device: shared.Device) -> None:
     # Bind the route first, then establish the native page origin before reading top cards.
     shared.reset_scroll_to_top(device, swipes=22)
     device.wait("creation-prerequisite-karma-budget", timeout=60, scroll=True, max_scrolls=22)
-    device.wait("creation-prerequisite-method", timeout=45, scroll=True, max_scrolls=22)
+    # A full-height Android swipe can jump from the tall Karma card directly to
+    # the category list and never expose the shorter method card to UIAutomator.
+    # Use bounded, small bidirectional steps for this exact authority surface.
+    device.wait_exact_resource_id_bidirectional(
+        "creation-prerequisite-method",
+        timeout=90,
+        backward_scrolls=6,
+        forward_scrolls=16,
+        scroll_distance_ratio=0.18,
+        evidence_prefix="creation-prerequisite-method",
+        surface_name="Creation prerequisite build-method authority",
+        require_tappable=False,
+    )
     # Both authority cards can push the binding above UIAutomator's visible hierarchy.
     # Leave this route at a deterministic origin so every caller can read the binding
     # without depending on the height of the cards it just verified.

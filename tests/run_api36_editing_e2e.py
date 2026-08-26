@@ -595,13 +595,16 @@ class Device:
         scroll_distance_ratio: float = 0.22,
         evidence_prefix: str = "exact-resource-bidirectional",
         surface_name: str = "Exact resource-id control",
+        require_tappable: bool = True,
     ) -> UiNode:
-        """Reset to the top, then scan one exact, tappable ID without blind swipes.
+        """Reset to the top, then scan one exact ID without blind swipes.
 
         Empty hierarchy reads are transient acquisition failures, not proof that the
         row is elsewhere.  They never advance the viewport.  Small forward gestures
         keep overlap between observations; if a rendered exact node is clipped above
-        the viewport, one bounded reverse gesture recovers it.
+        the viewport, one bounded reverse gesture recovers it. Interactive callers
+        retain the default tappability gate; read-only authority cards can explicitly
+        request cardinality-checked visible-node acquisition instead.
         """
         x_ratio = self._scroll_x_ratio(selector)
         for _ in range(backward_scrolls):
@@ -636,10 +639,13 @@ class Device:
                 )
             if len(matches) == 1:
                 node = matches[0]
+                visible_bounds = self.node_has_tappable_bounds(node)
+                if not require_tappable and visible_bounds:
+                    return node
                 if (
                     node.attributes.get("enabled") == "true"
                     and node.attributes.get("clickable") == "true"
-                    and self.node_has_tappable_bounds(node)
+                    and visible_bounds
                 ):
                     return node
 
@@ -677,9 +683,14 @@ class Device:
                     time.sleep(0.75)
                     continue
 
-                self.capture(f"{evidence_prefix}-not-tappable")
+                if require_tappable:
+                    self.capture(f"{evidence_prefix}-not-tappable")
+                    raise RuntimeError(
+                        f"{surface_name} {selector!r} was not enabled, clickable, and tappable"
+                    )
+                self.capture(f"{evidence_prefix}-not-readable")
                 raise RuntimeError(
-                    f"{surface_name} {selector!r} was not enabled, clickable, and tappable"
+                    f"{surface_name} {selector!r} was not fully visible for read-only acquisition"
                 )
 
             if self.dismiss_system_ui_anr(nodes):
@@ -694,8 +705,9 @@ class Device:
             forward += 1
             time.sleep(0.75)
         self.capture(f"{evidence_prefix}-unavailable")
+        qualifier = "tappable " if require_tappable else "visible "
         raise RuntimeError(
-            f"Timed out waiting for exactly one tappable {surface_name.lower()} {selector!r} "
+            f"Timed out waiting for exactly one {qualifier}{surface_name.lower()} {selector!r} "
             "after a bounded bidirectional search"
         )
 

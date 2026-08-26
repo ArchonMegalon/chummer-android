@@ -10,7 +10,7 @@ an end-to-end Career wizard exists.
 | --- | --- | --- | --- |
 | Karma / Nuyen adjustments | Manual Career Karma and Nuyen plus four typed expense-create operations | **Partial:** exact leaves are linked from After Run | No shared quote/review/atomic closeout result |
 | Attribute advancement | Career Attribute `improve` leaf with projected cost and balance | **Partial:** visible blocker, deliberately not presented as a completed wizard | No stable rule digest, expense identity or typed durable ApplyResult |
-| Active Skill advancement | Exact identity/source/rule/logical revisions, Core quote and plan, revision-bound request, expense undo metadata and durable Coordinator save | **Implemented source vertical slice:** created-SR5-only Build route and `Choose -> Quote -> Review diff -> Apply once -> fresh typed skill + expense reload -> receipt` | API-36 save/reopen/process-restart proof remains unavailable in this environment |
+| Active Skill advancement | Exact identity/source/rule/logical revisions, Core quote and plan, revision-bound request, expense undo metadata and durable Coordinator save | **Implemented source vertical slice plus physical-device-targeted driver:** created-SR5-only Build route and `Choose -> Quote -> Review diff -> Apply once -> fresh typed skill + expense reload -> receipt`; the driver requires ARM64/API-36/non-emulator observations, proves reviewed-checkpoint resume, applied-receipt recovery and durable acknowledged-checkpoint deletion across three process restarts | No passing device result or external build-authority manifest is checked in. Any current result is explicitly release-ineligible; the observations are not cryptographic physical attestation, and the hosted x86_64 leaf journey remains a separate unchanged gate |
 | Skill Group / Specialization | The coherent compatibility graph contains exact Core and Presentation quote/plan authorities | **Missing Android route:** called out as the intended second path | Shared Android Coordinator has no prepare/apply/durable-result methods on this base |
 | Knowledge Skill | No complete Android Career acquisition/advance route found | **Missing** | Exact source/rule quote, expense plan, mutation and receipt |
 | Qualities | Generic collection editing exists | **Missing; generic edit is false proof** | Career add/remove/refund prerequisites, cost and expense/undo authority |
@@ -41,17 +41,47 @@ an end-to-end Career wizard exists.
   outcome lookup may transition it to `Applied` or back to `Reviewed`; its
   process-bound proof and live owner/workspace/revision binding are checked
   again at the store CAS, and a partial/mismatched outcome remains locked.
-- This source slice has no digest-bound API-36 edit/save/reopen/process-restart
-  receipt. Release parity remains unproven until that separate device journey
-  is captured against integrated bytes.
+- The dedicated physical driver binds integrated source commits and file
+  digests before the run and rechecks them afterward, plus the exact
+  reviewed/applied checkpoint bytes, workspace revisions, payload digests,
+  skill/source/action identities and label-bound expense/undo fields. Its
+  ARM64/API-36/non-emulator classification comes from `adb` serial and Android
+  `getprop` observations; it is not cryptographic physical-device attestation.
+  The driver has no external build-authority manifest binding Android HEAD to
+  APK SHA-256, so it labels build provenance `unverified` and every successful
+  device result `device-pass-non-release`. It cannot be release evidence. No
+  device receipt is checked in here, so release parity remains unproven.
+- The driver restarts at the durable `Reviewed` and `Applied` boundaries and
+  once more after receipt acknowledgement. It does not claim an
+  `Applying`-window crash proof because the runtime has no deterministic
+  fault-injection hook for that window.
 
 ## Integration boundary
 
 `BuildPage` now owns a user-visible created-SR5-only navigation row that pushes
 `Sr5CareerWizardPage`; the public Active Skill coordinator rechecks created +
-SR5 on prepare, apply and restart resolution. The shared API-36 driver is still
-untouched and must capture a dedicated digest-bound device journey without
-weakening existing gates.
+SR5 on prepare, apply and restart resolution. The existing hosted x86_64
+Active-Skill leaf driver and workflow matrix entry remain untouched. The
+separate physical driver fails closed unless the attached device is API 36,
+reports `arm64-v8a`, and has no observed emulator markers. It also requires a
+clean caller-pinned Android HEAD, caller-pinned APK SHA-256, unchanged
+Core/Presentation pins, an explicit disposable-device acknowledgement, and an
+explicit acknowledgement that build provenance is unverified;
+the disclosed remote fixture and UI hierarchy dump are deleted and verified
+absent. Receipt and evidence outputs must be separate, non-overlapping paths
+(a sibling receipt file and evidence directory are allowed), preventing
+evidence capture from colliding with the receipt. It is
+intentionally not added to the GitHub-hosted x86_64 emulator matrix. Its
+operator entry point is `tests/run_api36_sr5_career_active_skill_wizard_e2e.py`.
+
+The intended run is post-commit only: first commit the complete Android driver
+and source graph, then rebuild the ARM64 APK from that exact clean Android HEAD,
+and finally supply that HEAD and the rebuilt APK SHA-256 to the driver. The
+clean-tree check deliberately rejects current uncommitted working-tree bytes;
+the driver does not claim that an APK represents those bytes. Until an external
+build authority authenticates the exact HEAD-to-APK binding, even that
+post-commit device result remains useful diagnostic evidence rather than
+release proof.
 
 The isolated authority graph used for this slice is pinned exactly to integrated
 Core `8e2c53bf9c5ac85f675e738bf6e8ecd2ade4bb2a` (Career commits

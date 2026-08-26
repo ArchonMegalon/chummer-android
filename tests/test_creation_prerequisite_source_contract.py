@@ -260,6 +260,16 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             scroll_distance_ratio=0.22,
             exact_resource_id=True,
         )
+        device.wait_exact_resource_id_bidirectional.assert_called_once_with(
+            "creation-prerequisite-method",
+            timeout=90,
+            backward_scrolls=6,
+            forward_scrolls=16,
+            scroll_distance_ratio=0.18,
+            evidence_prefix="creation-prerequisite-method",
+            surface_name="Creation prerequisite build-method authority",
+            require_tappable=False,
+        )
         self.assertEqual([mock.call(device, swipes=22)] * 2, reset.call_args_list)
         device.tap_until_visible.assert_not_called()
 
@@ -268,6 +278,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         events: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
         device.wait.side_effect = lambda *args, **kwargs: events.append(
             ("wait", args, kwargs)
+        )
+        device.wait_exact_resource_id_bidirectional.side_effect = (
+            lambda *args, **kwargs: events.append(("wait_bidirectional", args, kwargs))
         )
 
         with mock.patch.object(driver.shared, "reset_scroll_to_top") as reset:
@@ -286,15 +299,48 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     {"timeout": 60, "scroll": True, "max_scrolls": 22},
                 ),
                 (
-                    "wait",
+                    "wait_bidirectional",
                     ("creation-prerequisite-method",),
-                    {"timeout": 45, "scroll": True, "max_scrolls": 22},
+                    {
+                        "timeout": 90,
+                        "backward_scrolls": 6,
+                        "forward_scrolls": 16,
+                        "scroll_distance_ratio": 0.18,
+                        "evidence_prefix": "creation-prerequisite-method",
+                        "surface_name": "Creation prerequisite build-method authority",
+                        "require_tappable": False,
+                    },
                 ),
                 ("reset", (device,), {"swipes": 22}),
             ],
             events,
         )
         self.assertEqual([mock.call(device, swipes=22)] * 2, reset.call_args_list)
+
+    def test_bidirectional_exact_read_can_bind_a_noninteractive_authority_card(self) -> None:
+        authority = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-method",
+                "enabled": "true",
+                "clickable": "false",
+                "bounds": "[100,400][900,700]",
+            }
+        )
+        device = mock.Mock()
+        device._scroll_x_ratio.return_value = 0.5
+        device.hierarchy.return_value = [authority]
+        device.node_has_tappable_bounds.return_value = True
+
+        result = driver.shared.Device.wait_exact_resource_id_bidirectional(
+            device,
+            "creation-prerequisite-method",
+            backward_scrolls=0,
+            forward_scrolls=0,
+            require_tappable=False,
+        )
+
+        self.assertIs(authority, result)
+        device.capture.assert_not_called()
 
     def test_route_and_persisted_authority_reads_reset_inherited_viewports(self) -> None:
         main_source = inspect.getsource(driver.main)

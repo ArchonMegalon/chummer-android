@@ -8,6 +8,9 @@ ACTIVE_SKILL = ROOT / "src/Chummer.Android/Native/Sr5CareerActiveSkillWizardPage
 ACTIVE_SKILL_COORDINATOR = ROOT / "src/Chummer.Android/Native/Sr5CareerActiveSkillCoordinator.cs"
 CHECKPOINT_STORE = ROOT / "src/Chummer.Android/Native/Sr5CareerDraftCheckpointStore.cs"
 BUILD = ROOT / "src/Chummer.Android/Native/BuildPage.cs"
+PHYSICAL_ACTIVE_SKILL_DRIVER = (
+    ROOT / "tests/run_api36_sr5_career_active_skill_wizard_e2e.py"
+)
 
 
 def test_sr5_career_hub_is_edition_gated_and_never_falls_through_to_generic_all_actions() -> None:
@@ -168,3 +171,41 @@ def test_created_sr5_build_route_is_user_visible_and_action_boundary_is_rechecke
     assert "Sr5CareerWizardCatalog.IsSr5CareerRunner" in build
     assert "RequireCreatedSr5" in coordinator
     assert "RequireCreatedSr5" in page
+
+
+def test_staged_active_skill_has_a_dedicated_physical_arm64_api36_proof_boundary() -> None:
+    driver = PHYSICAL_ACTIVE_SKILL_DRIVER.read_text(encoding="utf-8")
+
+    assert 'abi != "arm64-v8a"' in driver
+    assert 'api != "36"' in driver
+    assert 'device.serial.startswith("emulator-")' in driver
+    assert '"classification": "non-emulator-arm64-api36"' in driver
+    assert "non-cryptographic getprop and adb serial observations" in driver
+    for route in (
+        "build-sr5-career-wizard",
+        "sr5-career/advancement",
+        "sr5-career/advancement/active-skill/choose",
+        "sr5-career/advancement/active-skill/review",
+        "sr5-career/advancement/active-skill/receipt",
+    ):
+        assert route in driver
+    assert "reviewedCheckpointSha256" in driver
+    assert "appliedCheckpointSha256" in driver
+    assert "expected_idempotency_key" in driver
+    assert "require_same_action(reviewed.payload, applied.payload)" in driver
+    assert "expected-android-head" in driver
+    assert "expected-apk-sha256" in driver
+    assert "allow-destructive-disposable-device" in driver
+    assert "acknowledge-unverified-build-provenance" in driver
+    assert '"status": "device-pass-non-release"' in driver
+    assert '"releaseEvidenceEligible": False' in driver
+    assert '"externalBuildAuthorityManifest": None' in driver
+    assert "locate_explicit_receipt" in driver
+    assert "reject_symlink_components" in driver
+    assert "safe_fixture_basename" in driver
+    assert "outside every source worktree" in driver
+    assert "validate_output_layout" in driver
+    assert "separate non-overlapping" in driver
+    assert "label_bound_value" in driver
+    assert "write_receipt_atomically" in driver
+    assert driver.count("shared.force_stop_and_launch_new_process") == 3
