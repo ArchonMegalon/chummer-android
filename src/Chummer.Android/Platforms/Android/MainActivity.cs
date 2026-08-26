@@ -54,7 +54,7 @@ public sealed class MainActivity : MauiAppCompatActivity
     private ReviewHeartbeatRunnable? _reviewHeartbeat;
     private bool _destroyed;
     private bool _resumed;
-    private bool _reviewDebugOverride;
+    private bool _reviewDebugOverride = false;
     private bool _googlePlayManaged;
     private string? _installerPackageName;
     private bool _updateCheckRunning;
