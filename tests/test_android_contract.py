@@ -247,8 +247,9 @@ class AndroidContractTests(unittest.TestCase):
         page = (PROJECT / "Native" / "NativePageBase.cs").read_text(encoding="utf-8")
         phone_shell = shell[shell.index("private void BuildPhoneShell"):shell.index("private void BuildTabletShell")]
         tablet_shell = shell[shell.index("private void BuildTabletShell"):]
-        self.assertEqual(3, phone_shell.count("tabs.Items.Add(CreatePhoneTab<"))
+        self.assertEqual(4, phone_shell.count("tabs.Items.Add(CreatePhoneTab<"))
         for page_type, label, route in (
+            ("ShadowArchivePage", "Archive", "Archive"),
             ("RunnersPage", "Runners", "Runners"),
             ("BuildPage", "Runner", "Runner"),
             ("PhoneMorePage", "More", "More"),
@@ -257,7 +258,7 @@ class AndroidContractTests(unittest.TestCase):
                 f'CreatePhoneTab<{page_type}>(services, "{label}", PhoneShellRoutes.{route}',
                 phone_shell,
             )
-        for route in ("runners", "runner", "play", "table", "more"):
+        for route in ("archive", "runners", "runner", "play", "table", "more"):
             self.assertIn(f'"{route}"', routes)
             self.assertIn('$"phone-destination-{route}"', shell)
         self.assertIn('AutomationId = "phone-runner-page"', build)

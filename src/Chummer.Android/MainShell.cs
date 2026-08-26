@@ -37,6 +37,7 @@ public sealed class MainShell : Shell
     {
         FlyoutBehavior = FlyoutBehavior.Disabled;
         TabBar tabs = new();
+        tabs.Items.Add(CreatePhoneTab<ShadowArchivePage>(services, "Archive", PhoneShellRoutes.Archive, "▤"));
         tabs.Items.Add(CreatePhoneTab<RunnersPage>(services, "Runners", PhoneShellRoutes.Runners, "⌂"));
         tabs.Items.Add(CreatePhoneTab<BuildPage>(services, "Runner", PhoneShellRoutes.Runner, "✎"));
         tabs.Items.Add(CreatePhoneTab<PhoneMorePage>(services, "More", PhoneShellRoutes.More, "•••"));
@@ -64,7 +65,7 @@ public sealed class MainShell : Shell
         }
         catch
         {
-            // The Runners page remains the fail-closed default and reports initialization errors.
+            // The public Archive remains the fail-closed default and reports composition errors.
             Interlocked.Exchange(ref _initialPhoneRouteResolved, 0);
         }
     }

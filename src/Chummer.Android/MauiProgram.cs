@@ -6,6 +6,7 @@ using Chummer.Application.Workspaces;
 using Chummer.Desktop.Runtime;
 using Chummer.Infrastructure.Files;
 using Chummer.Presentation.Overview;
+using Chummer.Presentation.OriginBooks;
 using Chummer.Presentation.Shell;
 using Microsoft.Extensions.Logging;
 
@@ -30,6 +31,13 @@ public static class MauiProgram
         builder.Services.AddSingleton<IAndroidLinkedCharacterFileService, AndroidLinkedCharacterFileService>();
         builder.Services.AddSingleton<IAndroidSystemService, AndroidSystemService>();
         builder.Services.AddSingleton<IAndroidAccountLinkService, AndroidAccountLinkService>();
+        // Hub transport and public-catalog composition are not present in this graph. Bind the
+        // exact Presentation contract and keep the missing list capability separately fail-closed.
+        builder.Services.AddSingleton<IShadowArchivePresentationClient,
+            UnavailableShadowArchivePresentationClient>();
+        builder.Services.AddSingleton<ShadowArchivePresenter>();
+        builder.Services.AddSingleton<IShadowArchivePublicCatalogPort,
+            UnavailableShadowArchivePublicCatalogPort>();
         builder.Services.AddSingleton<IPlayReviewClock, SystemPlayReviewClock>();
         builder.Services.AddSingleton<IPlayReviewStateStore>(
             new FilePlayReviewStateStore(statePath));
@@ -97,6 +105,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IShellSurfaceResolver, ShellSurfaceResolver>();
         builder.Services.AddSingleton<RunnerSessionCoordinator>();
         builder.Services.AddTransient<HomePage>();
+        builder.Services.AddTransient<ShadowArchivePage>();
         builder.Services.AddTransient<RunnersPage>();
         builder.Services.AddTransient<RosterFavoritesPage>();
         builder.Services.AddTransient<ApplicationSettingsPage>();

@@ -6,12 +6,14 @@ namespace Chummer.Android;
 /// </summary>
 public static class PhoneShellRoutes
 {
+    public const string Archive = "archive";
     public const string Runners = "runners";
     public const string Runner = "runner";
     public const string Play = "play";
     public const string Table = "table";
     public const string More = "more";
 
+    public const string ArchiveAbsolute = "//archive";
     public const string RunnersAbsolute = "//runners";
     public const string RunnerAbsolute = "//runner";
 }

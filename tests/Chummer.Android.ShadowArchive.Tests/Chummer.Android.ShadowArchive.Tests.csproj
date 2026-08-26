@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ChummerPresentationRoot Condition="'$(ChummerPresentationRoot)' == ''">../../../chummer-presentation</ChummerPresentationRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/ShadowArchivePublicCatalogPort.cs"
+             Link="ShadowArchivePublicCatalogPort.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/ShadowArchivePhonePolicy.cs"
+             Link="ShadowArchivePhonePolicy.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(ChummerPresentationRoot)/Chummer.Presentation/Chummer.Presentation.csproj" />
+  </ItemGroup>
+</Project>
