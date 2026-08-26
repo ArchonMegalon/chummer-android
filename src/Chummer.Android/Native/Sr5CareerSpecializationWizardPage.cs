@@ -255,18 +255,20 @@ public sealed class Sr5CareerSpecializationWizardPage : NativePageBase
             "This removes only the durable review and does not change the runner.",
             "Abandon",
             "Keep");
-        if (confirmed && _store.TryDeleteReviewed(
+        if (!confirmed)
+        {
+            return;
+        }
+        if (_store.TryDeleteReviewed(
                 Sr5CareerSpecializationCheckpointCas.From(_checkpoint),
                 out string blocker))
         {
             _checkpoint = null;
             _recovery.Text = string.Empty;
             RefreshEnabledState();
+            return;
         }
-        else if (confirmed)
-        {
-            await DisplayAlertAsync("Review not abandoned", blocker, "OK");
-        }
+        await DisplayAlertAsync("Review not abandoned", blocker, "OK");
     }
 
     private void LoadCheckpoint()

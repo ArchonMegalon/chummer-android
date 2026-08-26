@@ -926,20 +926,21 @@ public sealed class RunnerSessionCoordinator : IDisposable
         {
             CharacterCreationFoundationResult<CharacterCreationQualitiesState> observed =
                 _creationQualitiesService.Load(new(checkpoint.Preview.Binding.WorkspaceId));
-            bool definitelyNotApplied = observed.Value is { } unchanged
+            if (observed.Value is { } unchanged
                 && CreationQualitiesPhoneAuthority.BindingEquals(
                     unchanged.Binding,
                     checkpoint.Preview.Binding)
                 && beforeActivation.ContentRevision == checkpoint.Preview.Binding.ContentRevision
-                && beforeActivation.SavedRevision == checkpoint.Preview.Binding.SavedRevision;
-            return definitelyNotApplied
-                ? new(
+                && beforeActivation.SavedRevision == checkpoint.Preview.Binding.SavedRevision)
+            {
+                return new(
                     CreationQualitiesPhoneOutcomes.RejectedBeforeMutation,
                     null,
                     unchanged,
                     confirmed.Blockers,
-                    MutationOutcomeKnown: true)
-                : UnknownQualitiesOutcome(confirmed.Blockers);
+                    MutationOutcomeKnown: true);
+            }
+            return UnknownQualitiesOutcome(confirmed.Blockers);
         }
 
         CharacterCreationFoundationResult<CharacterCreationQualitiesState> committed =
