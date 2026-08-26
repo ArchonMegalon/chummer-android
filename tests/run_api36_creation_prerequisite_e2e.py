@@ -21,35 +21,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_api36_creation_wizard_foundation_e2e as foundation
 import run_api36_editing_e2e as shared
-import run_api36_new_character_priority_e2e as priority
 
 
 CATEGORIES = ("heritage", "talent", "attributes", "skills", "resources")
 CREATION_KARMA_AUTHORITY_BLOCKER = "creation-karma-authority-required"
 STANDARD_PRIORITY_SETTINGS_ID = "223a11ff-80e0-428b-89a9-6ef1c243b8b6"
-PRIORITY_BUILD_METHOD_SELECTION = (
-    "dialog-field-newcharacterbuildmethod",
-    "Priority",
-)
-PRIORITY_SETTINGS_SELECTION = (
-    "dialog-field-newcharactersetting",
-    "Character Setting",
-    STANDARD_PRIORITY_SETTINGS_ID,
-)
-PRIORITY_CREATION_SELECTIONS = (
-    ("dialog-field-newcharactermetatypecategory", "Non-human choices"),
-    ("dialog-field-newcharactermetatype", "Elf"),
-    ("dialog-field-newcharacterpriorityheritage", "A"),
-    ("dialog-field-newcharactermetavariant", "Dryad"),
-    ("dialog-field-newcharacterpriorityattributes", "C"),
-    ("dialog-field-newcharacterprioritytalent", "B"),
-    ("dialog-field-newcharacterpriorityskills", "D"),
-    ("dialog-field-newcharacterpriorityresources", "E"),
-    ("dialog-field-newcharacterprioritytalentchoice", "Mystic Adept"),
-    ("dialog-field-newcharacterpriorityskillchoice1", "Summoning"),
-    ("dialog-field-newcharacterpriorityskillchoice2", "Binding"),
-    ("dialog-field-newcharacterpriorityskillchoice3", "Gymnastics"),
-)
 SHORT_AUTHORITY_BINDING = re.compile(
     r"^Revision (?P<revision>[1-9][0-9]*) · saved (?P<saved>[0-9]+) · "
     r"snapshot (?P<snapshot>[0-9a-f]{12}) · authority (?P<authority>[0-9a-f]{12})$"
@@ -103,19 +79,6 @@ def nonnegative_integer(device: shared.Device, selector: str, *, scroll: bool = 
     if re.fullmatch(r"[0-9]+", value) is None:
         raise RuntimeError(f"{selector} did not expose one nonnegative integer: {value!r}")
     return int(value)
-
-
-def require_priority_created_workspace_authority(
-    fresh: shared.WorkspaceAuthority,
-    prepared: shared.WorkspaceAuthority,
-) -> None:
-    shared.require_saved_authority(prepared)
-    if prepared.workspace_id == fresh.workspace_id:
-        raise RuntimeError("Priority creation did not publish a distinct runner workspace identity")
-    if prepared.payload_sha256 == fresh.payload_sha256:
-        raise RuntimeError("Priority creation did not publish a distinct character payload digest")
-    if prepared.document_sha256 == fresh.document_sha256:
-        raise RuntimeError("Priority creation did not publish a distinct document authority digest")
 
 
 def require_new_character_dialog_transition(
@@ -177,73 +140,6 @@ def require_new_character_dialog_transition(
     raise RuntimeError(
         "New-character production modal published neither one exact error nor the Build route"
     )
-
-
-def provision_creation_karma_through_priority_creation(
-    device: shared.Device,
-) -> dict[str, str]:
-    """Create a rules-valid Priority runner exclusively through the production phone dialog."""
-    device.tap_until_visible(
-        "home-new-runner",
-        "Select Build Method",
-        scroll=True,
-        max_scrolls=16,
-    )
-    build_method_selector, build_method = PRIORITY_BUILD_METHOD_SELECTION
-    priority.select_option(device, build_method_selector, build_method)
-    settings_selector, settings_label, settings_id = PRIORITY_SETTINGS_SELECTION
-    device.set_text(
-        settings_selector,
-        settings_label,
-        settings_id,
-        scroll=True,
-        max_scrolls=16,
-        scroll_distance_ratio=0.22,
-    )
-    device.tap("dialog-action-create-character", scroll=True, max_scrolls=16)
-    device.wait("Select Metatype Priority", timeout=60)
-    selected: dict[str, str] = {
-        build_method_selector: build_method,
-        settings_selector: settings_id,
-    }
-    for selector, option in PRIORITY_CREATION_SELECTIONS:
-        priority.select_option(device, selector, option)
-        selected[selector] = option
-    device.tap(
-        "dialog-action-complete-new-character-workflow",
-        scroll=True,
-        max_scrolls=24,
-        scroll_distance_ratio=0.22,
-    )
-    require_new_character_dialog_transition(device)
-    # Completing a created=false runner deliberately routes the phone shell straight to Build.
-    # The closing dialog can leave Build's ScrollView at the dialog's deep scroll offset, which
-    # prunes the page-level AutomationId from UIAutomator. Bind the route to the fixed toolbar,
-    # reset the viewport, and only then require the dashboard marker.
-    shared.open_creation_dashboard(
-        device,
-        open_build_route=False,
-        toolbar_timeout=120,
-        dashboard_timeout=30,
-        reset_swipes=48,
-    )
-    device.capture("creation-karma-priority-runner-created")
-    device.tap(
-        "build-save-runner",
-        scroll=True,
-        max_scrolls=48,
-        scroll_distance_ratio=0.22,
-    )
-    device.wait(
-        "Saved.",
-        timeout=90,
-        scroll=True,
-        max_scrolls=48,
-        scroll_distance_ratio=0.22,
-    )
-    shared.tap_phone_destination(device, "phone-destination-runners")
-    device.wait("home-open-file", timeout=90, scroll=True, max_scrolls=16)
-    return selected
 
 
 def require_creation_method_navigation(
@@ -1255,7 +1151,6 @@ def main() -> int:
 
     driver_path = Path(__file__).resolve()
     shared_path = Path(shared.__file__).resolve()
-    priority_driver_path = Path(priority.__file__).resolve()
     device = shared.Device(args.adb.resolve(), args.serial, args.evidence.resolve())
     api = device.shell("getprop", "ro.build.version.sdk")
     if api != "36":
@@ -1279,40 +1174,20 @@ def main() -> int:
     shared.wait_for_phone_runners(device)
     device.tap_until_visible("home-new-runner", "Select Build Method")
     device.tap("dialog-action-create-character", scroll=True)
-    device.wait("dialog-action-complete-new-character-workflow", timeout=45, scroll=True)
-    device.tap("dialog-action-complete-new-character-workflow", scroll=True)
+    require_new_character_dialog_transition(device)
     shared.wait_for_phone_runner_route(device, created=False)
     shared.open_creation_dashboard(
         device,
         open_build_route=False,
-        reset_swipes=22,
+        toolbar_timeout=120,
+        dashboard_timeout=30,
+        reset_swipes=48,
     )
     foundation.assert_creation_editor_gated(device)
 
-    fresh_dashboard_binding = node_text(device, "creation-wizard-binding", scroll=True)
-    fresh_navigation = wait_creation_method_navigation(device, ready=False)
-    device.capture("fresh-runner-creation-karma-authority-blocked")
-    shared.reset_scroll_to_top(device, swipes=22)
-
-    # Bind the blocked runner to its durable authority before creating a separate, exact Priority
-    # runner exclusively through the same public production dialog available to phone users.
-    device.tap("build-save-runner", scroll=True, max_scrolls=48, scroll_distance_ratio=0.22)
-    device.wait("Saved.", timeout=90, scroll=True, max_scrolls=48, scroll_distance_ratio=0.22)
-    shared.tap_phone_destination(device, "phone-destination-runners")
-    shared.wait_for_phone_runners(device)
-    device.wait("home-open-file", timeout=90, scroll=True, max_scrolls=16)
-    fresh_authority = shared.read_phone_workspace_authority(device)
-    shared.require_saved_authority(fresh_authority)
-    priority_creation_selections = provision_creation_karma_through_priority_creation(device)
-    prepared_authority = shared.read_phone_workspace_authority(device)
-    require_priority_created_workspace_authority(fresh_authority, prepared_authority)
-
-    shared.open_creation_dashboard(device, reset_swipes=48)
-    foundation.assert_creation_editor_gated(device)
     dashboard_binding = node_text(device, "creation-wizard-binding", scroll=True)
-    if dashboard_binding == fresh_dashboard_binding:
-        raise RuntimeError("Priority creation did not refresh the creation wizard binding")
     ready_navigation = wait_creation_method_navigation(device, ready=True)
+    device.capture("creation-priority-core-bootstrap-ready")
 
     open_prerequisite(device)
     prerequisite_binding = node_text(device, "creation-prerequisite-binding", scroll=True)
@@ -1601,13 +1476,11 @@ def main() -> int:
         "apkSha256": sha256(args.apk.resolve()),
         "driverSha256": sha256(driver_path),
         "sharedDriverSha256": sha256(shared_path),
-        "priorityCreationDriverSha256": sha256(priority_driver_path),
         "journeys": {
-            "freshRunnerCreationKarmaAuthorityBlocked": "pass",
-            "publicRulesValidPriorityRunnerCreated": "pass",
-            "priorityCreationUsedExplicitProductionSelections": "pass",
-            "distinctSavedWorkspacePayloadAndDocumentAuthority": "pass",
-            "creationMethodNavigationEnabledAfterAuthority": "pass",
+            "publicPriorityRunnerBootstrappedByCore": "pass",
+            "legacyPriorityContinuationSkipped": "pass",
+            "canonicalPrioritySettingsProfileBound": "pass",
+            "creationMethodNavigationEnabledByBootstrapAuthority": "pass",
             "canonicalSourceAuthorityDigestsVisible": "pass",
             "priorityOrSumToTenAuthorityLoaded": "pass",
             "globalCreationKarmaExactTotalUsedRemaining": "pass",
@@ -1644,11 +1517,10 @@ def main() -> int:
             "restarted": list(restart.restarted.process_ids),
         },
         "creationKarmaProvisioning": {
-            "method": "production-priority-creation-dialog",
-            "explicitSelections": priority_creation_selections,
-            "freshRunnerWorkspaceAuthority": shared.workspace_authority_json(fresh_authority),
-            "preparedWorkspaceAuthority": shared.workspace_authority_json(prepared_authority),
-            "freshNavigation": fresh_navigation,
+            "method": "typed-core-bootstrap-from-production-dialog",
+            "buildMethod": "Priority",
+            "settingsProfileId": STANDARD_PRIORITY_SETTINGS_ID,
+            "dashboardBinding": dashboard_binding,
             "readyNavigation": ready_navigation,
             "prerequisiteBinding": prerequisite_binding_authority,
             "sourceAuthorityDigests": source_authority_digests,

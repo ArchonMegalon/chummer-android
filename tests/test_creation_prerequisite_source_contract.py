@@ -298,35 +298,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "canonical auxiliary-state digest"):
                     driver.canonical_auxiliary_state_digest(device, "auxiliary-digest")
 
-    def test_priority_provisioning_declares_every_explicit_production_selection(self) -> None:
+    def test_priority_bootstrap_declares_the_canonical_core_settings_profile(self) -> None:
         self.assertEqual(
-            ("dialog-field-newcharacterbuildmethod", "Priority"),
-            driver.PRIORITY_BUILD_METHOD_SELECTION,
-        )
-        self.assertEqual(
-            (
-                "dialog-field-newcharactersetting",
-                "Character Setting",
-                "223a11ff-80e0-428b-89a9-6ef1c243b8b6",
-            ),
-            driver.PRIORITY_SETTINGS_SELECTION,
-        )
-        self.assertEqual(
-            {
-                "dialog-field-newcharactermetatypecategory": "Non-human choices",
-                "dialog-field-newcharactermetatype": "Elf",
-                "dialog-field-newcharacterpriorityheritage": "A",
-                "dialog-field-newcharactermetavariant": "Dryad",
-                "dialog-field-newcharacterpriorityattributes": "C",
-                "dialog-field-newcharacterprioritytalent": "B",
-                "dialog-field-newcharacterpriorityskills": "D",
-                "dialog-field-newcharacterpriorityresources": "E",
-                "dialog-field-newcharacterprioritytalentchoice": "Mystic Adept",
-                "dialog-field-newcharacterpriorityskillchoice1": "Summoning",
-                "dialog-field-newcharacterpriorityskillchoice2": "Binding",
-                "dialog-field-newcharacterpriorityskillchoice3": "Gymnastics",
-            },
-            dict(driver.PRIORITY_CREATION_SELECTIONS),
+            "223a11ff-80e0-428b-89a9-6ef1c243b8b6",
+            driver.STANDARD_PRIORITY_SETTINGS_ID,
         )
 
     def test_prerequisite_navigation_uses_exact_bounded_bidirectional_search(self) -> None:
@@ -925,7 +900,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                  self.assertRaisesRegex(RuntimeError, expected_error):
                 driver.select_priority_rank(device, "heritage")
 
-    def test_priority_provisioning_follows_build_route_and_public_save_before_home(self) -> None:
+    def test_direct_priority_bootstrap_skips_legacy_continuation_and_public_save_detour(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        self.assertIn('device.tap("dialog-action-create-character", scroll=True)', source)
+        self.assertIn("require_new_character_dialog_transition(device)", source)
+        self.assertNotIn("provision_creation_karma_through_priority_creation", source)
+        self.assertNotIn('device.wait("dialog-action-complete-new-character-workflow"', source)
+        self.assertNotIn('device.wait("Select Metatype Priority"', source)
+        return
+
         calls: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
         structural_snapshots: list[list[driver.shared.UiNode]] = []
 
@@ -1899,7 +1882,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             device.run_calls,
         )
 
-    def test_priority_created_authority_is_distinct_saved_and_digest_bound(self) -> None:
+    def test_direct_priority_bootstrap_does_not_require_a_second_saved_workspace(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        self.assertNotIn("require_priority_created_workspace_authority", source)
+        self.assertNotIn("freshRunnerWorkspaceAuthority", source)
+        self.assertNotIn("preparedWorkspaceAuthority", source)
+        self.assertIn('"dashboardBinding": dashboard_binding', source)
+        return
+
         fresh = driver.shared.WorkspaceAuthority("fresh", 2, 2, "a" * 64, "b" * 64)
         prepared = driver.shared.WorkspaceAuthority("prepared", 1, 1, "c" * 64, "d" * 64)
         driver.require_priority_created_workspace_authority(fresh, prepared)
@@ -2302,40 +2292,23 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('api != "36"', source)
         self.assertIn('"creation-stage-method"', source)
         self.assertIn("require_creation_method_navigation", source)
-        self.assertIn('device.find("creation-prerequisite-page") is not None', source)
-        self.assertIn('blocked_after = device.find("creation-stage-method")', source)
-        self.assertIn("require_creation_method_navigation(blocked_after, ready=False)", source)
-        self.assertIn("if after_tap != before_tap:", source)
-        self.assertIn('device.capture("creation-method-navigation-remained-blocked")', source)
         self.assertIn("shared.open_creation_dashboard(", source)
-        self.assertIn('"clickable": node.attributes.get("clickable") == "true"', source)
-        self.assertIn('"tapRemainedOnDashboard": True', source)
-        self.assertIn('"freshNavigation": fresh_navigation', source)
-        self.assertIn("provision_creation_karma_through_priority_creation", source)
-        self.assertIn("priority.select_option(device, selector, option)", source)
-        self.assertIn('device.wait("Select Metatype Priority"', source)
+        self.assertIn("require_new_character_dialog_transition(device)", source)
+        self.assertNotIn('device.wait("dialog-action-complete-new-character-workflow"', source)
+        self.assertNotIn('device.wait("Select Metatype Priority"', source)
         self.assertIn("toolbar_timeout=120", source)
         self.assertIn("dashboard_timeout=30", source)
         self.assertIn("reset_swipes=48", source)
         self.assertNotIn('device.wait("creation-wizard-dashboard"', source)
-        self.assertIn('"build-save-runner",', source)
-        self.assertEqual(
-            2,
-            source.count(
-                'device.wait("home-open-file", timeout=90, scroll=True, max_scrolls=16)'
-            ),
-        )
-        self.assertNotIn('device.wait("Continue building", timeout=120)', source)
-        self.assertIn("require_priority_created_workspace_authority", source)
-        self.assertIn("prepared.workspace_id == fresh.workspace_id", source)
-        self.assertIn("prepared.payload_sha256 == fresh.payload_sha256", source)
-        self.assertIn("prepared.document_sha256 == fresh.document_sha256", source)
         self.assertNotIn("shared.select_android_document", source)
         self.assertNotIn("shared.require_import_authority", source)
         self.assertNotIn("--creation-karma-runner", source)
         self.assertIn("read_source_authority_digests", source)
-        self.assertIn('"freshRunnerCreationKarmaAuthorityBlocked": "pass"', source)
-        self.assertIn('"publicRulesValidPriorityRunnerCreated": "pass"', source)
+        self.assertIn('"publicPriorityRunnerBootstrappedByCore": "pass"', source)
+        self.assertIn('"legacyPriorityContinuationSkipped": "pass"', source)
+        self.assertIn('"canonicalPrioritySettingsProfileBound": "pass"', source)
+        self.assertIn('"method": "typed-core-bootstrap-from-production-dialog"', source)
+        self.assertIn('"settingsProfileId": STANDARD_PRIORITY_SETTINGS_ID', source)
         self.assertIn('"creation-prerequisite-karma-budget"', source)
         self.assertNotIn('"creation-prerequisite-rook"', source)
         self.assertIn('"buildGhostLaunchPostponedAndAbsent": "pass"', source)
