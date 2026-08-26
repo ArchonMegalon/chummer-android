@@ -142,6 +142,89 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
         device.capture.assert_called_once()
 
+    def test_authority_option_reacquisition_backtracks_from_clipped_exact_id(self) -> None:
+        resource_id = "creation-prerequisite-heritage-option-exact"
+        visible = self.authority_option_node(resource_id, "Human")
+        visible.attributes["bounds"] = "[100,500][900,700]"
+        clipped_above = self.authority_option_node(resource_id, "Human")
+        clipped_above.attributes["bounds"] = "[100,230][900,232]"
+
+        class AuthorityDevice:
+            reacquiring = False
+            reacquisition_reads = 0
+            up = 0
+            down = 0
+            taps: list[tuple[str, ...]] = []
+
+            def hierarchy(self):
+                if not self.reacquiring:
+                    return [visible]
+                self.reacquisition_reads += 1
+                if self.reacquisition_reads == 1:
+                    return [driver.shared.UiNode({"resource-id": "unrelated-visible-row"})]
+                if self.reacquisition_reads == 2:
+                    return [clipped_above]
+                return [visible]
+
+            @staticmethod
+            def display_size():
+                return 1080, 2400
+
+            @staticmethod
+            def _scroll_x_ratio(_selector: str) -> float:
+                return 0.5
+
+            def swipe_up(self, **_options: object) -> None:
+                self.up += 1
+
+            def swipe_down(self, **_options: object) -> None:
+                self.down += 1
+
+            @staticmethod
+            def dismiss_system_ui_anr(_nodes=None) -> bool:
+                return False
+
+            def node_has_tappable_bounds(self, node) -> bool:
+                return driver.shared.Device.node_has_tappable_bounds(self, node)
+
+            def wait_exact_resource_id_bidirectional(
+                self,
+                selector: str,
+                **options: object,
+            ):
+                if selector != resource_id:
+                    raise AssertionError(selector)
+                self.reacquiring = True
+                return driver.shared.Device.wait_exact_resource_id_bidirectional(
+                    self,
+                    selector,
+                    **options,
+                )
+
+            def shell(self, *arguments: str) -> str:
+                self.taps.append(arguments)
+                return ""
+
+            def capture(self, name: str) -> None:
+                raise AssertionError(f"unexpected capture: {name}")
+
+        device = AuthorityDevice()
+        with mock.patch.object(driver.shared, "reset_scroll_to_top") as reset, \
+             mock.patch.object(driver.time, "sleep"):
+            selected = driver.tap_enabled_authority_option(
+                device,
+                "creation-prerequisite-heritage-option-",
+                "Human",
+                max_scrolls=2,
+            )
+
+        self.assertEqual(resource_id, selected)
+        self.assertEqual(3, device.reacquisition_reads)
+        self.assertEqual(3, device.up)
+        self.assertEqual(1, device.down)
+        self.assertEqual([("input", "tap", "500", "600")], device.taps)
+        self.assertEqual([mock.call(device, swipes=2)] * 2, reset.call_args_list)
+
     def test_restored_authority_option_rejects_mismatch_and_duplicate(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "did not mark exactly"):
             driver.assert_exact_restored_authority_option_ids(

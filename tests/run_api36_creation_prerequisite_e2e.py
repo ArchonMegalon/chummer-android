@@ -1097,13 +1097,16 @@ def tap_enabled_authority_option(
         )
     resource_id = next(iter(candidate_ids))
     shared.reset_scroll_to_top(device, swipes=max_scrolls)
-    device.tap(
+    node = device.wait_exact_resource_id_bidirectional(
         resource_id,
-        scroll=True,
-        max_scrolls=max_scrolls,
+        timeout=90,
+        backward_scrolls=0,
+        forward_scrolls=max_scrolls,
         scroll_distance_ratio=0.22,
-        exact_resource_id=True,
+        evidence_prefix="creation-prerequisite-authority-option",
+        surface_name=f"Enabled authority option {required_label}",
     )
+    device.shell("input", "tap", *(str(value) for value in node.center))
     return resource_id
 
 
