@@ -89,6 +89,9 @@ def test_shared_action_boundary_has_route_idempotency_and_fail_closed_crash_reco
     assert "Sr5CareerRecoveryProof.Verifies" in store
     assert "ReceiptMatchesCheckpoint" in store
     assert "TryWriteAndReadBackLocked" in store
+    assert "AcquireDurableApplyingLeaseAsync" in store
+    assert "_mutationOwners.AcquireExecutionLeaseAsync" in store
+    assert "Sr5CareerMutationGate.TryAcquire" in store
     assert "OwnerId" in store
     assert "ExpenseMatches" in coordinator
     assert "loadedSkill.Identity.SourceSkillId" in coordinator
@@ -169,8 +172,10 @@ def test_created_sr5_build_route_is_user_visible_and_action_boundary_is_rechecke
     assert "AddSr5CareerWizardRoute" in build
     assert '"build-sr5-career-wizard"' in build
     assert "Sr5CareerWizardCatalog.IsSr5CareerRunner" in build
-    assert "RequireCreatedSr5" in coordinator
-    assert "RequireCreatedSr5" in page
+    assert "Sr5CareerRunnerGuard.RequireCreated" in coordinator
+    assert "Sr5CareerRunnerGuard.RequireCreated" in page
+    assert "RequireCreatedSr5" not in coordinator
+    assert "RequireCreatedSr5" not in page
 
 
 def test_staged_active_skill_has_a_dedicated_physical_arm64_api36_proof_boundary() -> None:

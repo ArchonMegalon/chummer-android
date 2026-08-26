@@ -50,11 +50,11 @@ public sealed class Sr5CareerAttributeCoordinator(
     public async Task<CareerAttributeAdvanceEditorState?> PrepareAsync(
         CancellationToken cancellationToken = default)
     {
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(presenter.Binding);
+        Sr5CareerRunnerGuard.RequireCreated(presenter.Binding);
         CareerAttributeAdvanceEditorState? editor =
             await presenter.LoadAttributesAsync(cancellationToken).ConfigureAwait(false);
         Sr5CareerRunnerBinding after = presenter.Binding;
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(after);
+        Sr5CareerRunnerGuard.RequireCreated(after);
         if (editor is not null
             && (after.WorkspaceId != editor.WorkspaceId
                 || after.ContentRevision != editor.ContentRevision))
@@ -79,7 +79,7 @@ public sealed class Sr5CareerAttributeCoordinator(
                 applyingCheckpoint,
                 cancellationToken).ConfigureAwait(false);
         Sr5CareerRunnerBinding before = presenter.Binding;
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(before);
+        Sr5CareerRunnerGuard.RequireCreated(before);
         if (ownerAuthority.CurrentOwnerId != draft.OwnerId
             || before.WorkspaceId != draft.WorkspaceId
             || before.ContentRevision != draft.ExpectedContentRevision
@@ -136,7 +136,7 @@ public sealed class Sr5CareerAttributeCoordinator(
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         Sr5CareerRunnerBinding before = presenter.Binding;
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(before);
+        Sr5CareerRunnerGuard.RequireCreated(before);
         if (!checkpoint.IsStructurallyValid()
             || ownerAuthority.CurrentOwnerId == Guid.Empty
             || ownerAuthority.CurrentOwnerId != checkpoint.Draft.OwnerId
@@ -149,7 +149,7 @@ public sealed class Sr5CareerAttributeCoordinator(
         CareerAttributeAdvanceEditorState? editor =
             await presenter.LoadAttributesAsync(cancellationToken).ConfigureAwait(false);
         Sr5CareerRunnerBinding after = presenter.Binding;
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(after);
+        Sr5CareerRunnerGuard.RequireCreated(after);
         if (before.WorkspaceId != after.WorkspaceId
             || before.ContentRevision != after.ContentRevision
             || before.SavedRevision != after.SavedRevision)

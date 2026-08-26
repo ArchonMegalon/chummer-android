@@ -29,9 +29,11 @@ internal static class Program
             CoordinatorVerifiesOnlyFreshExactReceiptAsync);
         await RunAsync(nameof(ApplyingCrashResolvesWithoutReplayAsync),
             ApplyingCrashResolvesWithoutReplayAsync);
+        Run(nameof(DurableSharedCareerMutationOwnerSurvivesStoreRestart),
+            DurableSharedCareerMutationOwnerSurvivesStoreRestart);
         Run(nameof(CheckpointCasRejectsForgedResolutionAndWrongOwner),
             CheckpointCasRejectsForgedResolutionAndWrongOwner);
-        Console.WriteLine("SR5 Career Attribute authority tests passed: 9");
+        Console.WriteLine("SR5 Career Attribute authority tests passed: 10");
     }
 
     private static void Run(string name, Action test)
@@ -46,6 +48,60 @@ internal static class Program
         Console.Error.WriteLine($"START {name}");
         await test().WaitAsync(TimeSpan.FromSeconds(10));
         Console.Error.WriteLine($"PASS  {name}");
+    }
+
+    private static void DurableSharedCareerMutationOwnerSurvivesStoreRestart()
+    {
+        MemoryBackend backend = new();
+        Sr5CareerMutationOwnerStore firstProcess = new(backend);
+        Sr5CareerMutationOwner attribute = new(
+            Sr5CareerMutationOwner.CurrentSchemaVersion,
+            Sr5CareerMutationDomains.AttributeAdvance,
+            WorkspaceId.Value,
+            OwnerId,
+            ActionId,
+            ApplyingCheckpointVersion: 2,
+            ExpectedContentRevision: 41,
+            new string('a', 64));
+        Sr5CareerMutationOwner quality = attribute with
+        {
+            Domain = Sr5CareerMutationDomains.QualityChange,
+            ActionId = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+            IdempotencyKey = new string('b', 64)
+        };
+        Require(
+            firstProcess.TryBegin(
+                attribute,
+                () => new Sr5CareerMutationBeginResult(true, false, string.Empty),
+                out string beginBlocker),
+            beginBlocker);
+
+        Sr5CareerMutationOwnerStore restartedProcess = new(backend);
+        Require(
+            !restartedProcess.TryBegin(
+                quality,
+                () => new Sr5CareerMutationBeginResult(true, false, string.Empty),
+                out string blocked)
+            && blocked.Contains("attribute", StringComparison.Ordinal),
+            "A different Career lane must remain blocked by the durable owner after store restart.");
+        Require(
+            restartedProcess.TryComplete(
+                attribute,
+                () => (true, string.Empty),
+                out string completeBlocker),
+            completeBlocker);
+        Require(
+            restartedProcess.TryBegin(
+                quality,
+                () => new Sr5CareerMutationBeginResult(true, false, string.Empty),
+                out string qualityBlocker),
+            qualityBlocker);
+        Require(
+            restartedProcess.TryComplete(
+                quality,
+                () => (true, string.Empty),
+                out string qualityCompleteBlocker),
+            qualityCompleteBlocker);
     }
 
     private static void ExactDraftBindsTypedIdentityQuotePlanAndDigests()

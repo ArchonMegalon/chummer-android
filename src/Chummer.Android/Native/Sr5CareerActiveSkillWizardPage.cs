@@ -157,7 +157,7 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
         _authority = authority ?? throw new ArgumentNullException(nameof(authority));
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _reviewedAuthority = reviewedAuthority ?? throw new ArgumentNullException(nameof(reviewedAuthority));
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(
+        Sr5CareerRunnerGuard.RequireCreated(
             new RunnerSessionSr5CareerActiveSkillPresenter(coordinator).Binding);
         if (coordinator.State.WorkspaceId != editor.WorkspaceId
             || coordinator.State.ContentRevision != editor.ContentRevision)
@@ -326,7 +326,7 @@ public sealed class Sr5CareerActiveSkillWizardPage : NativePageBase
 
     private async Task OpenReviewAsync()
     {
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(
+        Sr5CareerRunnerGuard.RequireCreated(
             new RunnerSessionSr5CareerActiveSkillPresenter(Coordinator).Binding);
         if (!Sr5CareerActiveSkillDraft.TryCreate(
                 _editor,
@@ -574,7 +574,7 @@ public sealed class Sr5CareerActiveSkillReviewPage : NativePageBase
         _authority = authority ?? throw new ArgumentNullException(nameof(authority));
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _reviewedAuthority = reviewedAuthority ?? throw new ArgumentNullException(nameof(reviewedAuthority));
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(
+        Sr5CareerRunnerGuard.RequireCreated(
             new RunnerSessionSr5CareerActiveSkillPresenter(coordinator).Binding);
         if (!OwnsCurrentReviewedCheckpoint())
         {
@@ -646,7 +646,7 @@ public sealed class Sr5CareerActiveSkillReviewPage : NativePageBase
 
     private async Task ApplyAsync()
     {
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(
+        Sr5CareerRunnerGuard.RequireCreated(
             new RunnerSessionSr5CareerActiveSkillPresenter(Coordinator).Binding);
         if (!OwnsCurrentReviewedCheckpoint())
         {
@@ -666,7 +666,7 @@ public sealed class Sr5CareerActiveSkillReviewPage : NativePageBase
         }
         _checkpoint = applying;
 
-        Sr5CareerApplyResult result = await _authority.ApplyAsync(_draft, applying);
+        Sr5CareerApplyResult result = await _authority.ApplyAsync(_draft, applying, _store);
         if (result.Status == Sr5CareerApplyStatus.OutcomeUnknown)
         {
             await DisplayAlertAsync(

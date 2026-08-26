@@ -46,8 +46,9 @@ internal static class Program
         Sr5CareerDraftCheckpoint applying = Sr5CareerDraftCheckpoint.FromDraft(
             draft,
             Sr5CareerCheckpointPhase.Applying) with { Version = 2 };
+        Sr5CareerDraftCheckpointStore unopenedStore = new(new MemoryBackend());
         await RequireThrowsAsync<InvalidOperationException>(
-            () => authority.ApplyAsync(draft, applying),
+            () => authority.ApplyAsync(draft, applying, unopenedStore),
             "A non-SR5 runner must be rejected at the public apply boundary.");
 
         FakePresenter creation = FakePresenter.BeforeApply();
@@ -58,7 +59,7 @@ internal static class Program
             "An uncreated runner must be rejected at the public prepare boundary.");
 
         await RequireThrowsAsync<InvalidOperationException>(
-            () => authority.ApplyAsync(draft, applying),
+            () => authority.ApplyAsync(draft, applying, unopenedStore),
             "An uncreated runner must be rejected again at apply time.");
 
         FakePresenter valid = FakePresenter.BeforeApply();
@@ -98,7 +99,7 @@ internal static class Program
             return Task.FromResult(true);
         };
         Sr5CareerActiveSkillCoordinator authority = new(presenter, new FixedOwnerAuthority(OwnerId));
-        Sr5CareerApplyResult result = await authority.ApplyAsync(draft, applying);
+        Sr5CareerApplyResult result = await authority.ApplyAsync(draft, applying, store);
 
         Require(result.Status == Sr5CareerApplyStatus.Applied, result.Message);
         Sr5CareerActiveSkillReceipt receipt = result.Receipt!;
@@ -184,7 +185,10 @@ internal static class Program
             new FixedOwnerAuthority(OwnerId));
 
         await RequireThrowsAsync<InvalidOperationException>(
-            () => coordinator.ApplyAsync(draft, tampered),
+            () => coordinator.ApplyAsync(
+                draft,
+                tampered,
+                new Sr5CareerDraftCheckpointStore(new MemoryBackend())),
             "Apply must reject an Applying checkpoint whose non-identity plan fields differ from the reviewed draft.");
         Require(
             presenter.ApplyCalls == 0,
@@ -431,9 +435,19 @@ internal static class Program
 
     private static void CheckpointStoreEnforcesOwnerActionCasAndReadBack()
     {
-        Sr5CareerDraftCheckpoint reviewed = Sr5CareerDraftCheckpoint.FromDraft(Draft());
+        Sr5CareerActiveSkillDraft draft = Draft();
+        Sr5CareerDraftCheckpoint reviewed = Sr5CareerDraftCheckpoint.FromDraft(draft);
+        FakePresenter presenter = FakePresenter.BeforeApply();
+        Sr5CareerLiveReviewedCheckpointAuthority authority = new(
+            new FixedOwnerAuthority(OwnerId),
+            new CareerActiveSkillAdvanceEditorState(
+                draft.WorkspaceId,
+                draft.ExpectedContentRevision,
+                [draft.Quote],
+                OmittedSkillCount: 0),
+            () => presenter.Binding);
         MemoryBackend backend = new();
-        Sr5CareerDraftCheckpointStore store = new(backend);
+        Sr5CareerDraftCheckpointStore store = new(backend, authority);
         Require(store.TryCreate(reviewed, out Sr5CareerDraftCheckpoint stored, out string blocker), blocker);
 
         Sr5CareerDraftCheckpoint foreign = reviewed with
@@ -470,7 +484,9 @@ internal static class Program
             "Applying cannot be blindly cleared.");
 
         MemoryBackend nondurableBackend = new() { DropWrites = true };
-        Sr5CareerDraftCheckpointStore nondurable = new(nondurableBackend);
+        Sr5CareerDraftCheckpointStore nondurable = new(
+            nondurableBackend,
+            authority);
         Require(
             !nondurable.TryCreate(reviewed, out _, out string durabilityBlocker)
             && durabilityBlocker.Contains("read-back", StringComparison.OrdinalIgnoreCase),
@@ -736,7 +752,20 @@ internal static class Program
     {
         Sr5CareerActiveSkillDraft draft = Draft();
         MemoryBackend backend = new();
-        Sr5CareerDraftCheckpointStore firstProcessStore = new(backend);
+        MemoryBackend mutationOwnerBackend = new();
+        FakePresenter presenter = FakePresenter.BeforeApply();
+        Sr5CareerLiveReviewedCheckpointAuthority firstProcessAuthority = new(
+            new FixedOwnerAuthority(OwnerId),
+            new CareerActiveSkillAdvanceEditorState(
+                draft.WorkspaceId,
+                draft.ExpectedContentRevision,
+                [draft.Quote],
+                OmittedSkillCount: 0),
+            () => presenter.Binding);
+        Sr5CareerDraftCheckpointStore firstProcessStore = new(
+            backend,
+            firstProcessAuthority,
+            new Sr5CareerMutationOwnerStore(mutationOwnerBackend));
         Require(
             firstProcessStore.TryCreate(
                 Sr5CareerDraftCheckpoint.FromDraft(draft),
@@ -750,7 +779,6 @@ internal static class Program
                 out blocker),
             blocker);
 
-        FakePresenter presenter = FakePresenter.BeforeApply();
         presenter.ApplyHandler = _ =>
         {
             presenter.PublishApplied(draft, includeExpense: true);
@@ -760,7 +788,7 @@ internal static class Program
             presenter,
             new FixedOwnerAuthority(OwnerId));
         await RequireThrowsAsync<InvalidOperationException>(
-            () => firstProcess.ApplyAsync(draft, applying),
+            () => firstProcess.ApplyAsync(draft, applying, firstProcessStore),
             "The simulated crash must escape while the checkpoint remains Applying.");
         Require(presenter.ApplyCalls == 1, "The first process must attempt apply exactly once.");
 
@@ -774,7 +802,8 @@ internal static class Program
             () => presenter.Binding);
         Sr5CareerDraftCheckpointStore restartedStore = new(
             backend,
-            restartedAuthority);
+            restartedAuthority,
+            new Sr5CareerMutationOwnerStore(mutationOwnerBackend));
         Require(restartedStore.TryRead(out Sr5CareerDraftCheckpoint recovered, out blocker), blocker);
         Require(recovered.Phase == Sr5CareerCheckpointPhase.Applying, "Restart must observe the durable Applying phase.");
         Sr5CareerRecoveryResolution resolution =

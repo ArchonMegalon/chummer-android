@@ -111,7 +111,9 @@ class CareerAttributeWizardSourceContractTests(unittest.TestCase):
             self.assertIn(marker, store)
         self.assertIn("Sr5CareerAttributeRecoveryProof.Verifies", store)
         self.assertIn("AcquireDurableApplyingLeaseAsync", store)
-        self.assertIn("ApplyingMutationGate", store)
+        self.assertIn("_mutationOwners.AcquireExecutionLeaseAsync", store)
+        self.assertIn("_mutationOwners.TryComplete", store)
+        self.assertNotIn("ApplyingMutationGate", store)
         self.assertIn("DurablyEquivalent(current, checkpoint)", store)
         self.assertNotIn("current != checkpoint", store)
         self.assertIn("JsonSerializer.Serialize(left)", store)
@@ -153,6 +155,7 @@ class CareerAttributeWizardSourceContractTests(unittest.TestCase):
             "PhysicalDriverGoldenReceiptDigestMatchesCoreAuthority",
             "CoordinatorVerifiesOnlyFreshExactReceiptAsync",
             "ApplyingCrashResolvesWithoutReplayAsync",
+            "DurableSharedCareerMutationOwnerSurvivesStoreRestart",
             "CheckpointCasRejectsForgedResolutionAndWrongOwner",
         ):
             self.assertIn(marker, harness)

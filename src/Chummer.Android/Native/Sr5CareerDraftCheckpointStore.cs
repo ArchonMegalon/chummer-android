@@ -165,31 +165,87 @@ public sealed class Sr5CareerDraftCheckpointStore
     private static readonly object Gate = new();
     private readonly ISr5CareerCheckpointBackend _backend;
     private readonly ISr5CareerReviewedCheckpointAuthority? _reviewedAuthority;
+    private readonly Sr5CareerMutationOwnerStore _mutationOwners;
 
     public Sr5CareerDraftCheckpointStore(ISr5CareerCheckpointBackend backend)
-        : this(backend, reviewedAuthority: null)
+        : this(
+            backend,
+            reviewedAuthority: null,
+            Sr5CareerMutationOwnerStore.CreateIsolated())
     {
     }
 
     internal Sr5CareerDraftCheckpointStore(
         ISr5CareerCheckpointBackend backend,
         ISr5CareerReviewedCheckpointAuthority? reviewedAuthority)
+        : this(
+            backend,
+            reviewedAuthority,
+            Sr5CareerMutationOwnerStore.CreateIsolated())
+    {
+    }
+
+    internal Sr5CareerDraftCheckpointStore(
+        ISr5CareerCheckpointBackend backend,
+        ISr5CareerReviewedCheckpointAuthority? reviewedAuthority,
+        Sr5CareerMutationOwnerStore mutationOwners)
     {
         _backend = backend ?? throw new ArgumentNullException(nameof(backend));
         _reviewedAuthority = reviewedAuthority;
+        _mutationOwners = mutationOwners ?? throw new ArgumentNullException(nameof(mutationOwners));
     }
 
     internal static Sr5CareerDraftCheckpointStore CreateDefault(
         ISr5CareerReviewedCheckpointAuthority reviewedAuthority)
         => new(
             new PreferencesSr5CareerCheckpointBackend(),
-            reviewedAuthority ?? throw new ArgumentNullException(nameof(reviewedAuthority)));
+            reviewedAuthority ?? throw new ArgumentNullException(nameof(reviewedAuthority)),
+            Sr5CareerMutationOwnerStore.CreateDefault());
 
     public bool TryRead(out Sr5CareerDraftCheckpoint checkpoint, out string blocker)
     {
+        bool found;
         lock (Gate)
         {
-            return TryReadLocked(out checkpoint, out blocker);
+            found = TryReadLocked(out checkpoint, out blocker);
+        }
+        if (found)
+        {
+            TryReconcileResolvedOwner(checkpoint);
+        }
+        return found;
+    }
+
+    internal async Task<IDisposable> AcquireDurableApplyingLeaseAsync(
+        Sr5CareerDraftCheckpoint checkpoint,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        Sr5CareerMutationOwner owner = MutationOwnerFromApplying(checkpoint);
+        IDisposable mutationLease =
+            await _mutationOwners.AcquireExecutionLeaseAsync(owner, cancellationToken)
+                .ConfigureAwait(false);
+        try
+        {
+            lock (Gate)
+            {
+                if (checkpoint.Phase != Sr5CareerCheckpointPhase.Applying
+                    || !checkpoint.IsStructurallyValid()
+                    || !TryReadLocked(out Sr5CareerDraftCheckpoint current, out _)
+                    || current != checkpoint
+                    || _reviewedAuthority is null
+                    || !_reviewedAuthority.OwnsCurrentRunner(current))
+                {
+                    throw new InvalidOperationException(
+                        "The exact durable Applying checkpoint no longer owns this runner.");
+                }
+            }
+            return mutationLease;
+        }
+        catch
+        {
+            mutationLease.Dispose();
+            throw;
         }
     }
 
@@ -202,8 +258,11 @@ public sealed class Sr5CareerDraftCheckpointStore
         stored = null!;
         lock (Gate)
         {
-            if (checkpoint.Version != 1
-                || checkpoint.Phase != Sr5CareerCheckpointPhase.Reviewed)
+            if (!checkpoint.IsStructurallyValid()
+                || checkpoint.Version != 1
+                || checkpoint.Phase != Sr5CareerCheckpointPhase.Reviewed
+                || _reviewedAuthority is null
+                || !_reviewedAuthority.Owns(checkpoint))
             {
                 blocker = "A new Career checkpoint must start as Reviewed at version 1.";
                 return false;
@@ -236,6 +295,7 @@ public sealed class Sr5CareerDraftCheckpointStore
         ArgumentNullException.ThrowIfNull(expected);
         stored = null!;
         blocker = string.Empty;
+        Sr5CareerMutationOwner owner;
         lock (Gate)
         {
             if (expected.Phase != Sr5CareerCheckpointPhase.Reviewed
@@ -246,13 +306,65 @@ public sealed class Sr5CareerDraftCheckpointStore
                     : blocker;
                 return false;
             }
-            Sr5CareerDraftCheckpoint next = current with
-            {
-                Version = checked(current.Version + 1),
-                Phase = Sr5CareerCheckpointPhase.Applying
-            };
-            return TryWriteAndReadBackLocked(next, current, out stored, out blocker);
+            owner = new Sr5CareerMutationOwner(
+                Sr5CareerMutationOwner.CurrentSchemaVersion,
+                Sr5CareerMutationDomains.ActiveSkillAdvance,
+                current.WorkspaceId,
+                current.OwnerId,
+                current.ActionId,
+                checked(current.Version + 1),
+                current.ExpectedContentRevision,
+                current.IdempotencyKey);
         }
+
+        Sr5CareerDraftCheckpoint? durable = null;
+        bool began = _mutationOwners.TryBegin(
+            owner,
+            () =>
+            {
+                lock (Gate)
+                {
+                    if (!TryRequireCasLocked(
+                            expected,
+                            out Sr5CareerDraftCheckpoint current,
+                            out string casBlocker))
+                    {
+                        return new Sr5CareerMutationBeginResult(
+                            Success: false,
+                            ExactReviewedStateWasRestored: false,
+                            casBlocker);
+                    }
+                    Sr5CareerDraftCheckpoint next = current with
+                    {
+                        Version = checked(current.Version + 1),
+                        Phase = Sr5CareerCheckpointPhase.Applying
+                    };
+                    bool wrote = TryWriteAndReadBackLocked(
+                        next,
+                        current,
+                        out Sr5CareerDraftCheckpoint written,
+                        out string writeBlocker);
+                    if (wrote)
+                    {
+                        durable = written;
+                        return new Sr5CareerMutationBeginResult(true, false, string.Empty);
+                    }
+                    bool restored = TryReadLocked(out Sr5CareerDraftCheckpoint readBack, out _)
+                        && expected.Matches(readBack);
+                    return new Sr5CareerMutationBeginResult(false, restored, writeBlocker);
+                }
+            },
+            out blocker);
+        if (began && durable is not null)
+        {
+            stored = durable;
+            return true;
+        }
+        if (began)
+        {
+            blocker = "The shared owner was acquired without an exact durable Applying checkpoint.";
+        }
+        return false;
     }
 
     public bool TryRecordAuthoritativeResolution(
@@ -265,41 +377,79 @@ public sealed class Sr5CareerDraftCheckpointStore
         ArgumentNullException.ThrowIfNull(resolution);
         stored = null!;
         blocker = string.Empty;
+        Sr5CareerMutationOwner owner;
         lock (Gate)
         {
             if (expected.Phase != Sr5CareerCheckpointPhase.Applying
-                || !TryRequireCasLocked(expected, out Sr5CareerDraftCheckpoint current, out blocker)
-                || _reviewedAuthority is null
-                || !_reviewedAuthority.OwnsCurrentRunner(current))
+                || !TryRequireCasLocked(
+                    expected,
+                    out Sr5CareerDraftCheckpoint current,
+                    out blocker))
             {
                 blocker = string.IsNullOrWhiteSpace(blocker)
-                    ? "Only the live authenticated SR5 owner and runner may record this exact Applying outcome."
+                    ? "Only the exact Applying checkpoint may record an outcome."
                     : blocker;
                 return false;
             }
-            if (!ResolutionMatches(current, expected, resolution)
-                || resolution.Status == Sr5CareerRecoveryStatus.OutcomeUnknown)
-            {
-                blocker = "An unknown or foreign outcome cannot change the Applying checkpoint.";
-                return false;
-            }
-
-            Sr5CareerCheckpointPhase nextPhase = resolution.Status switch
-            {
-                Sr5CareerRecoveryStatus.AppliedVerified when resolution.Receipt is not null =>
-                    Sr5CareerCheckpointPhase.Applied,
-                Sr5CareerRecoveryStatus.NotAppliedVerified when resolution.Receipt is null =>
-                    Sr5CareerCheckpointPhase.Reviewed,
-                _ => throw new InvalidOperationException(
-                    "The authoritative resolution and receipt shape are inconsistent.")
-            };
-            Sr5CareerDraftCheckpoint next = current with
-            {
-                Version = checked(current.Version + 1),
-                Phase = nextPhase
-            };
-            return TryWriteAndReadBackLocked(next, current, out stored, out blocker);
+            owner = MutationOwnerFromApplying(current);
         }
+        Sr5CareerDraftCheckpoint? durable = null;
+        bool completed = _mutationOwners.TryComplete(
+            owner,
+            () =>
+            {
+                lock (Gate)
+                {
+                    string casBlocker = string.Empty;
+                    if (expected.Phase != Sr5CareerCheckpointPhase.Applying
+                        || !TryRequireCasLocked(expected, out Sr5CareerDraftCheckpoint current, out casBlocker)
+                        || _reviewedAuthority is null
+                        || !_reviewedAuthority.OwnsCurrentRunner(current))
+                    {
+                        string ownedBlocker = string.IsNullOrWhiteSpace(casBlocker)
+                            ? "Only the live authenticated SR5 owner and runner may record this exact Applying outcome."
+                            : casBlocker;
+                        return (false, ownedBlocker);
+                    }
+                    if (!ResolutionMatches(current, expected, resolution)
+                        || resolution.Status == Sr5CareerRecoveryStatus.OutcomeUnknown)
+                    {
+                        return (false, "An unknown or foreign outcome cannot change the Applying checkpoint.");
+                    }
+
+                    Sr5CareerCheckpointPhase nextPhase = resolution.Status switch
+                    {
+                        Sr5CareerRecoveryStatus.AppliedVerified when resolution.Receipt is not null =>
+                            Sr5CareerCheckpointPhase.Applied,
+                        Sr5CareerRecoveryStatus.NotAppliedVerified when resolution.Receipt is null =>
+                            Sr5CareerCheckpointPhase.Reviewed,
+                        _ => throw new InvalidOperationException(
+                            "The authoritative resolution and receipt shape are inconsistent.")
+                    };
+                    Sr5CareerDraftCheckpoint next = current with
+                    {
+                        Version = checked(current.Version + 1),
+                        Phase = nextPhase
+                    };
+                    bool wrote = TryWriteAndReadBackLocked(
+                        next,
+                        current,
+                        out Sr5CareerDraftCheckpoint written,
+                        out string writeBlocker);
+                    if (wrote)
+                    {
+                        durable = written;
+                    }
+                    return (wrote, writeBlocker);
+                }
+            },
+            out blocker);
+        if (completed && durable is not null)
+        {
+            stored = durable;
+            return true;
+        }
+        return false;
     }
 
     internal bool TryDeleteReviewed(
@@ -307,24 +457,29 @@ public sealed class Sr5CareerDraftCheckpointStore
         out string blocker)
     {
         ArgumentNullException.ThrowIfNull(expected);
-        blocker = string.Empty;
-        lock (Gate)
-        {
-            if (expected.Phase != Sr5CareerCheckpointPhase.Reviewed
-                || !TryRequireCasLocked(
-                    expected,
-                    out Sr5CareerDraftCheckpoint current,
-                    out blocker)
-                || _reviewedAuthority is null
-                || !_reviewedAuthority.Owns(current))
+        return _mutationOwners.TryRunWhenUnowned(
+            () =>
             {
-                blocker = string.IsNullOrWhiteSpace(blocker)
-                    ? "Only the current SR5 owner/workspace/revision/action may abandon this Reviewed checkpoint."
-                    : blocker;
-                return false;
-            }
-            return TryDeleteAndReadBackLocked(out blocker);
-        }
+                lock (Gate)
+                {
+                    string casBlocker = string.Empty;
+                    if (expected.Phase != Sr5CareerCheckpointPhase.Reviewed
+                        || !TryRequireCasLocked(
+                            expected,
+                            out Sr5CareerDraftCheckpoint current,
+                            out casBlocker)
+                        || _reviewedAuthority is null
+                        || !_reviewedAuthority.Owns(current))
+                    {
+                        return (false, string.IsNullOrWhiteSpace(casBlocker)
+                            ? "Only the current SR5 owner/workspace/revision/action may abandon this Reviewed checkpoint."
+                            : casBlocker);
+                    }
+                    bool deleted = TryDeleteAndReadBackLocked(out string deleteBlocker);
+                    return (deleted, deleteBlocker);
+                }
+            },
+            out blocker);
     }
 
     internal bool TryDeleteApplied(
@@ -334,25 +489,30 @@ public sealed class Sr5CareerDraftCheckpointStore
     {
         ArgumentNullException.ThrowIfNull(expected);
         ArgumentNullException.ThrowIfNull(receipt);
-        blocker = string.Empty;
-        lock (Gate)
-        {
-            if (expected.Phase != Sr5CareerCheckpointPhase.Applied
-                || !TryRequireCasLocked(
-                    expected,
-                    out Sr5CareerDraftCheckpoint current,
-                    out blocker)
-                || _reviewedAuthority is null
-                || !_reviewedAuthority.OwnsCurrentRunner(current)
-                || !ReceiptMatchesCheckpoint(current, receipt))
+        return _mutationOwners.TryRunWhenUnowned(
+            () =>
             {
-                blocker = string.IsNullOrWhiteSpace(blocker)
-                    ? "Only the current authenticated SR5 owner may acknowledge this exact Applied receipt checkpoint."
-                    : blocker;
-                return false;
-            }
-            return TryDeleteAndReadBackLocked(out blocker);
-        }
+                lock (Gate)
+                {
+                    string casBlocker = string.Empty;
+                    if (expected.Phase != Sr5CareerCheckpointPhase.Applied
+                        || !TryRequireCasLocked(
+                            expected,
+                            out Sr5CareerDraftCheckpoint current,
+                            out casBlocker)
+                        || _reviewedAuthority is null
+                        || !_reviewedAuthority.OwnsCurrentRunner(current)
+                        || !ReceiptMatchesCheckpoint(current, receipt))
+                    {
+                        return (false, string.IsNullOrWhiteSpace(casBlocker)
+                            ? "Only the current authenticated SR5 owner may acknowledge this exact Applied receipt checkpoint."
+                            : casBlocker);
+                    }
+                    bool deleted = TryDeleteAndReadBackLocked(out string deleteBlocker);
+                    return (deleted, deleteBlocker);
+                }
+            },
+            out blocker);
     }
 
     internal static bool ReceiptMatchesCheckpoint(
@@ -555,4 +715,54 @@ public sealed class Sr5CareerDraftCheckpointStore
                Sr5CareerRecoveryStatus.NotAppliedVerified => resolution.Receipt is null,
                _ => false
            });
+
+    private static Sr5CareerMutationOwner MutationOwnerFromApplying(
+        Sr5CareerDraftCheckpoint checkpoint)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        if (checkpoint.Phase != Sr5CareerCheckpointPhase.Applying)
+        {
+            throw new InvalidOperationException(
+                "Only an Applying active-skill checkpoint has a shared mutation owner.");
+        }
+        return new Sr5CareerMutationOwner(
+            Sr5CareerMutationOwner.CurrentSchemaVersion,
+            Sr5CareerMutationDomains.ActiveSkillAdvance,
+            checkpoint.WorkspaceId,
+            checkpoint.OwnerId,
+            checkpoint.ActionId,
+            checkpoint.Version,
+            checkpoint.ExpectedContentRevision,
+            checkpoint.IdempotencyKey);
+    }
+
+    private void TryReconcileResolvedOwner(Sr5CareerDraftCheckpoint checkpoint)
+    {
+        if (checkpoint.Version < 3
+            || checkpoint.Phase is not (Sr5CareerCheckpointPhase.Reviewed
+                or Sr5CareerCheckpointPhase.Applied))
+        {
+            return;
+        }
+        Sr5CareerMutationOwner owner = new(
+            Sr5CareerMutationOwner.CurrentSchemaVersion,
+            Sr5CareerMutationDomains.ActiveSkillAdvance,
+            checkpoint.WorkspaceId,
+            checkpoint.OwnerId,
+            checkpoint.ActionId,
+            checkpoint.Version - 1,
+            checkpoint.ExpectedContentRevision,
+            checkpoint.IdempotencyKey);
+        _ = _mutationOwners.TryReconcileResolved(
+            owner,
+            () =>
+            {
+                lock (Gate)
+                {
+                    return TryReadLocked(out Sr5CareerDraftCheckpoint current, out _)
+                        && current == checkpoint;
+                }
+            },
+            out _);
+    }
 }

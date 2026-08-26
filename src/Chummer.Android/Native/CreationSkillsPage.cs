@@ -95,8 +95,7 @@ public sealed class CreationSkillsPage : NativePageBase
             Button plus = NativeTheme.SecondaryButton("+");
             plus.Clicked += (_, _) => Preview(state, _draft.WithSkill(source, 1), _draft.Groups);
             controls.Add(minus); controls.Add(plus);
-            if (source.Kind == CharacterCreationSkillKinds.Knowledge
-                && string.Equals(source.Category, "Language", StringComparison.Ordinal))
+            if (source.CanBeNativeLanguage)
             {
                 Button native = NativeTheme.SecondaryButton(selected?.IsNativeLanguage == true ? "Remove native" : "Native");
                 native.Clicked += (_, _) => Preview(state,

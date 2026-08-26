@@ -38,6 +38,39 @@ public static class Sr5CareerWizardRoutes
         => $"sr5-career/{Sr5CareerWizardPage.LaneToken(lane)}";
 }
 
+/// <summary>
+/// Shared runner identity/revision boundary for every SR5 Career lane. Domain
+/// coordinators remain specialized; none may depend on another lane's guard.
+/// </summary>
+public sealed record Sr5CareerRunnerBinding(
+    bool Created,
+    string? GameEdition,
+    CharacterWorkspaceId? WorkspaceId,
+    long ContentRevision,
+    long SavedRevision,
+    bool IsDirty,
+    string? Error);
+
+public static class Sr5CareerRunnerGuard
+{
+    public static void RequireCreated(Sr5CareerRunnerBinding binding)
+    {
+        ArgumentNullException.ThrowIfNull(binding);
+        if (!Sr5CareerWizardCatalog.IsSr5CareerRunner(binding.Created, binding.GameEdition))
+        {
+            throw new InvalidOperationException(
+                "SR5 Career actions require a created Shadowrun Fifth Edition runner.");
+        }
+        if (binding.WorkspaceId is not { } workspaceId
+            || string.IsNullOrWhiteSpace(workspaceId.Value)
+            || binding.ContentRevision <= 0)
+        {
+            throw new InvalidOperationException(
+                "SR5 Career actions require an exact saved runner identity and revision.");
+        }
+    }
+}
+
 public enum Sr5CareerActionKind
 {
     ActiveSkillAdvance,

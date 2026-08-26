@@ -16,5 +16,6 @@
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerAttributeWizardModel.cs" Link="Native/Sr5CareerAttributeWizardModel.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerAttributeCoordinator.cs" Link="Native/Sr5CareerAttributeCoordinator.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerAttributeCheckpointStore.cs" Link="Native/Sr5CareerAttributeCheckpointStore.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerMutationOwnerStore.cs" Link="Native/Sr5CareerMutationOwnerStore.cs" />
   </ItemGroup>
 </Project>

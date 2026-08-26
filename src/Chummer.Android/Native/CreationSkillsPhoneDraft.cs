@@ -39,8 +39,7 @@ internal sealed class CreationSkillsPhoneDraft
         _skills.TryGetValue((source.Kind, source.SourceSkillId), out CharacterCreationSkillAllocation? current);
         if (native)
         {
-            if (!string.Equals(source.Kind, CharacterCreationSkillKinds.Knowledge, StringComparison.Ordinal)
-                || !string.Equals(source.Category, "Language", StringComparison.Ordinal))
+            if (!source.CanBeNativeLanguage)
                 return Skills;
             return Skills.Where(item => item.Kind != source.Kind || item.SourceSkillId != source.SourceSkillId)
                 .Append(new(source.SourceSkillId, source.Kind, null, null, true))

@@ -43,6 +43,7 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
             "state.PendingDraft?.GroupAllocations",
             "CharacterCreationSkillsDigest.EqualsFixedTime(_snapshotDigest, state.SnapshotDigest)",
             "current.SpecializationOptionId",
+            "source.CanBeNativeLanguage",
             "foreach (CharacterCreationSkillProjection item in preview.Skills)",
             "foreach (CharacterCreationSkillGroupProjection item in preview.SkillGroups)",
         ):
@@ -94,6 +95,7 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
             "AttributeEditRequest",
             "Guid.NewGuid",
             "({INTUnaug} + {LOGUnaug}) * 2",
+            'source.Category, "Language"',
         ):
             self.assertNotIn(forbidden, combined)
 

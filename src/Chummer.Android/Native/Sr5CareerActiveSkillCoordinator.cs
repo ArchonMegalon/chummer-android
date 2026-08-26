@@ -4,15 +4,6 @@ using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
 
-public sealed record Sr5CareerRunnerBinding(
-    bool Created,
-    string? GameEdition,
-    CharacterWorkspaceId? WorkspaceId,
-    long ContentRevision,
-    long SavedRevision,
-    bool IsDirty,
-    string? Error);
-
 public interface ISr5CareerActiveSkillPresenter
 {
     Sr5CareerRunnerBinding Binding { get; }
@@ -64,11 +55,11 @@ public sealed class Sr5CareerActiveSkillCoordinator(
     public async Task<CareerActiveSkillAdvanceEditorState?> PrepareAsync(
         CancellationToken cancellationToken = default)
     {
-        RequireCreatedSr5(presenter.Binding);
+        Sr5CareerRunnerGuard.RequireCreated(presenter.Binding);
         CareerActiveSkillAdvanceEditorState? editor =
             await presenter.LoadActiveSkillsAsync(cancellationToken).ConfigureAwait(false);
         Sr5CareerRunnerBinding after = presenter.Binding;
-        RequireCreatedSr5(after);
+        Sr5CareerRunnerGuard.RequireCreated(after);
         if (editor is not null
             && (after.WorkspaceId != editor.WorkspaceId
                 || after.ContentRevision != editor.ContentRevision))
@@ -82,12 +73,14 @@ public sealed class Sr5CareerActiveSkillCoordinator(
     public async Task<Sr5CareerApplyResult> ApplyAsync(
         Sr5CareerActiveSkillDraft draft,
         Sr5CareerDraftCheckpoint applyingCheckpoint,
+        Sr5CareerDraftCheckpointStore checkpointStore,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(draft);
         ArgumentNullException.ThrowIfNull(applyingCheckpoint);
+        ArgumentNullException.ThrowIfNull(checkpointStore);
         Sr5CareerRunnerBinding before = presenter.Binding;
-        RequireCreatedSr5(before);
+        Sr5CareerRunnerGuard.RequireCreated(before);
         if (ownerAuthority.CurrentOwnerId != draft.OwnerId
             || before.WorkspaceId != draft.WorkspaceId
             || before.ContentRevision != draft.ExpectedContentRevision)
@@ -105,6 +98,11 @@ public sealed class Sr5CareerActiveSkillCoordinator(
             throw new InvalidOperationException(
                 "The exact Applying checkpoint does not own this SR5 action.");
         }
+
+        using IDisposable applyingLease =
+            await checkpointStore.AcquireDurableApplyingLeaseAsync(
+                applyingCheckpoint,
+                cancellationToken).ConfigureAwait(false);
 
         _ = await presenter.ApplyAndSaveAsync(draft.ToRequest(), cancellationToken)
             .ConfigureAwait(false);
@@ -145,7 +143,7 @@ public sealed class Sr5CareerActiveSkillCoordinator(
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         Sr5CareerRunnerBinding before = presenter.Binding;
-        RequireCreatedSr5(before);
+        Sr5CareerRunnerGuard.RequireCreated(before);
         if (!checkpoint.IsStructurallyValid()
             || ownerAuthority.CurrentOwnerId == Guid.Empty
             || ownerAuthority.CurrentOwnerId != checkpoint.OwnerId
@@ -160,7 +158,7 @@ public sealed class Sr5CareerActiveSkillCoordinator(
         CareerKarmaExpenseEditorState? expenses =
             await presenter.LoadKarmaExpensesAsync(cancellationToken).ConfigureAwait(false);
         Sr5CareerRunnerBinding after = presenter.Binding;
-        RequireCreatedSr5(after);
+        Sr5CareerRunnerGuard.RequireCreated(after);
         if (before.WorkspaceId != after.WorkspaceId
             || before.ContentRevision != after.ContentRevision
             || before.SavedRevision != after.SavedRevision)
@@ -169,23 +167,6 @@ public sealed class Sr5CareerActiveSkillCoordinator(
         }
 
         return Resolve(checkpoint, after, skills, expenses);
-    }
-
-    public static void RequireCreatedSr5(Sr5CareerRunnerBinding binding)
-    {
-        ArgumentNullException.ThrowIfNull(binding);
-        if (!Sr5CareerWizardCatalog.IsSr5CareerRunner(binding.Created, binding.GameEdition))
-        {
-            throw new InvalidOperationException(
-                "SR5 Career actions require a created Shadowrun Fifth Edition runner.");
-        }
-        if (binding.WorkspaceId is not { } workspaceId
-            || string.IsNullOrWhiteSpace(workspaceId.Value)
-            || binding.ContentRevision <= 0)
-        {
-            throw new InvalidOperationException(
-                "SR5 Career actions require an exact saved runner identity and revision.");
-        }
     }
 
     internal static Sr5CareerRecoveryResolution Resolve(
