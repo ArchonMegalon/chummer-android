@@ -21,12 +21,13 @@ internal static class Program
         BlockedQuotesNeverBecomeDrafts();
         Console.WriteLine("3 checkpoint tampering");
         CheckpointRejectsTamperingAndPriorSchemaLocks();
-        Console.WriteLine("4 apply verification");
-        await CoordinatorVerifiesOnlyFreshExactReceiptAsync();
-        Console.WriteLine("5 restart recovery");
-        await ApplyingCrashResolvesWithoutReplayAsync();
-        Console.WriteLine("6 CAS");
+        Console.WriteLine("4 atomic apply verification");
+        await CoordinatorVerifiesOnlyAtomicCoreResultAsync();
+        Console.WriteLine("5 idempotent restart recovery");
+        await ApplyingCrashResolvesByExactCommandReplayAsync();
+        Console.WriteLine("6 CAS and shared mutation owner");
         CheckpointCasRejectsForgedResolutionAndWrongOwner();
+        SharedMutationOwnerBlocksCrossLaneApply();
         Console.WriteLine("SR5 Career SkillGroup authority tests passed: 7");
     }
 
@@ -54,11 +55,21 @@ internal static class Program
             "The verified bundled-content digest must remain bound.");
         Require(draft.RuntimeAuthority.RuntimeDigest == Sr5CareerSkillGroupRuntimeAuthority.CurrentRuntimeDigest,
             "The exact Core/Presentation/content runtime digest must remain bound.");
-        Require(draft.ToRequest().ExpectedRulesetId == CharacterCareerSkillGroupAdvanceRules.RulesetId,
-            "The exact SR5 ruleset must remain bound into the Presentation mutation request.");
-        Require(draft.ToRequest().ExpectedLogicalRevision == quote.LogicalRevision, "Logical revision must remain bound.");
-        Require(draft.ToRequest().ExpectedSourceRevision == quote.SourceRevision, "Source revision must remain bound.");
-        Require(draft.ToRequest().ExpectedRuleDigest == quote.RuleDigest, "Rule digest must remain bound.");
+        CareerSkillGroupAdvanceRequest compatibility = draft.ToRequest();
+        Require(compatibility.ExpectedSkillGroup == quote
+            && compatibility.ExpectedRuleDigest == quote.RuleDigest,
+            "The Presentation compatibility projection must retain its actual seven-field contract.");
+        CharacterCareerSkillGroupAdvanceCommand command = draft.ToCommand();
+        Require(command.ContractName == CharacterCareerSkillGroupAdvanceServiceSchemas.CommandV1,
+            "Mutation must use the atomic Core command contract.");
+        Require(command.Identity == quote.Identity
+            && command.ExpectedLogicalRevision == quote.LogicalRevision
+            && command.ExpectedSourceRevision == quote.SourceRevision
+            && command.ExpectedRuleDigest == quote.RuleDigest
+            && command.ExpectedBindingDigest == draft.Binding.BindingDigest,
+            "Identity and every quote/binding revision must remain bound into the Core command.");
+        Require(CharacterCareerSkillGroupAdvanceServiceIntegrity.TryComputeCommandDigest(command, out _),
+            "The exact Core command must have a canonical digest.");
 
         CharacterCareerSkillGroupAdvanceQuote forgedIdentity = quote with
         {
@@ -105,13 +116,11 @@ internal static class Program
                 out string blocker), $"{name} blocker must prevent a draft.");
             Require(!string.IsNullOrWhiteSpace(blocker), $"{name} blocker must be explainable.");
         }
-        CareerSkillGroupAdvanceEditorState wrongRuleset = Editor(41, Quote()) with
-        {
-            RulesetId = "sr6"
-        };
+        CharacterCareerSkillGroupAdvanceQuote wrongRulesetQuote = Quote(rulesetId: "sr6");
+        CareerSkillGroupAdvanceEditorState wrongRuleset = Editor(41, wrongRulesetQuote);
         Require(!Sr5CareerSkillGroupDraft.TryCreate(
             wrongRuleset,
-            wrongRuleset.SkillGroups.Single(),
+            wrongRulesetQuote,
             OwnerId,
             ActionId,
             ExpenseDate,
@@ -157,16 +166,17 @@ internal static class Program
         Require(!string.IsNullOrWhiteSpace(backend.Read()), "Unreadable lock must remain durable.");
     }
 
-    private static async Task CoordinatorVerifiesOnlyFreshExactReceiptAsync()
+    private static async Task CoordinatorVerifiesOnlyAtomicCoreResultAsync()
     {
         Sr5CareerSkillGroupDraft draft = Draft();
         FakePresenter presenter = FakePresenter.Before(draft);
         (Sr5CareerSkillGroupCheckpointStore store, Sr5CareerSkillGroupCheckpoint applying) =
             ApplyingStore(draft, presenter);
-        presenter.ApplyHandler = _ =>
+        presenter.AdvanceHandler = command =>
         {
             presenter.PublishApplied(draft);
-            return Task.FromResult(true);
+            return Task.FromResult<CharacterCareerSkillGroupAdvanceResult?>(
+                SuccessResult(draft, command, CharacterCareerSkillGroupAdvanceServiceOutcome.Applied));
         };
         Sr5CareerSkillGroupCoordinator coordinator = new(
             presenter,
@@ -179,7 +189,7 @@ internal static class Program
         Require(result.Receipt is not null
             && Sr5CareerSkillGroupCoordinator.ReceiptMatchesDraft(draft, result.Receipt),
             "Receipt must match every reviewed quote and plan value.");
-        Require(presenter.ApplyCalls == 1, "Apply must execute exactly once.");
+        Require(presenter.AdvanceCalls == 1, "The atomic Core command must execute exactly once.");
 
         CharacterCareerSkillGroupAdvanceReceipt exact = result.Receipt!;
         CharacterCareerSkillGroupAdvanceReceipt[] forgeries =
@@ -197,42 +207,61 @@ internal static class Program
                 "Every forged receipt identity or digest must fail closed.");
         }
 
-        FakePresenter partial = FakePresenter.Before(draft);
-        partial.BindingValue = partial.BindingValue with
+        Sr5CareerSkillGroupCheckpoint applyingForForgery = applying with
         {
-            ContentRevision = 42,
-            SavedRevision = 42
+            Version = applying.Version + 2
         };
-        partial.Editor = Editor(42, Successor(draft), recoverable: []);
-        Sr5CareerSkillGroupRecoveryResolution partialResolution =
-            await new Sr5CareerSkillGroupCoordinator(partial, new FixedOwner(OwnerId))
-                .ResolveAsync(applying);
-        Require(partialResolution.Status == Sr5CareerSkillGroupRecoveryStatus.OutcomeUnknown,
-            "A changed attribute without the exact recoverable receipt must be outcome-unknown.");
+        CharacterCareerSkillGroupAdvanceResult success = SuccessResult(
+            draft,
+            draft.ToCommand(),
+            CharacterCareerSkillGroupAdvanceServiceOutcome.Applied);
+        Require(Sr5CareerSkillGroupCoordinator.ResolveServiceResult(
+                applyingForForgery,
+                presenter.Binding,
+                success with { CommandDigest = new string('0', 64) }).Status
+            == Sr5CareerSkillGroupRecoveryStatus.OutcomeUnknown,
+            "A result for another command digest must fail closed.");
     }
 
-    private static async Task ApplyingCrashResolvesWithoutReplayAsync()
+    private static async Task ApplyingCrashResolvesByExactCommandReplayAsync()
     {
         Sr5CareerSkillGroupDraft draft = Draft();
         FakePresenter presenter = FakePresenter.Before(draft);
         (Sr5CareerSkillGroupCheckpointStore store, Sr5CareerSkillGroupCheckpoint applying) =
             ApplyingStore(draft, presenter);
-        presenter.ApplyHandler = _ =>
+        CharacterCareerSkillGroupAdvanceCommand? firstCommand = null;
+        presenter.AdvanceHandler = command =>
         {
-            presenter.PublishApplied(draft);
-            throw new InvalidOperationException("simulated process death after durable save");
+            if (presenter.AdvanceCalls == 1)
+            {
+                firstCommand = command;
+                presenter.PublishApplied(draft);
+                throw new InvalidOperationException("simulated transport loss after durable save");
+            }
+            Require(command == firstCommand,
+                "Restart recovery must submit the byte-equivalent typed command and transaction identity.");
+            return Task.FromResult<CharacterCareerSkillGroupAdvanceResult?>(
+                SuccessResult(draft, command, CharacterCareerSkillGroupAdvanceServiceOutcome.Replayed));
         };
         Sr5CareerSkillGroupCoordinator first = new(presenter, new FixedOwner(OwnerId));
-        await RequireThrowsAsync<InvalidOperationException>(
-            () => first.ApplyAsync(draft, applying, store),
-            "The simulated crash must escape with the Applying checkpoint intact.");
-        Require(presenter.ApplyCalls == 1, "First process must call apply exactly once.");
+        Sr5CareerSkillGroupApplyResult unresolved = await first.ApplyAsync(draft, applying, store);
+        Require(unresolved.Status == Sr5CareerSkillGroupApplyStatus.OutcomeUnknown,
+            "Transport loss after commit must retain an unresolved Applying checkpoint.");
+        Require(presenter.AdvanceCalls == 1, "First process must submit the command exactly once.");
 
         Sr5CareerSkillGroupCoordinator restarted = new(presenter, new FixedOwner(OwnerId));
-        Sr5CareerSkillGroupRecoveryResolution recovered = await restarted.ResolveAsync(applying);
+        Sr5CareerSkillGroupRecoveryResolution recovered = await restarted.ResolveAsync(applying, store);
         Require(recovered.Status == Sr5CareerSkillGroupRecoveryStatus.AppliedVerified,
             recovered.Message);
-        Require(presenter.ApplyCalls == 1, "Restart resolution must never replay the mutation.");
+        Require(presenter.AdvanceCalls == 2,
+            "Restart resolution must use the Core service's idempotent transaction lookup exactly once.");
+        Require(store.TryRecordAuthoritativeResolution(
+            Sr5CareerSkillGroupCheckpointCas.From(applying),
+            recovered,
+            out Sr5CareerSkillGroupCheckpoint applied,
+            out string blocker), blocker);
+        Require(applied.Receipt == recovered.Receipt,
+            "The validated Core receipt must survive in the durable Applied checkpoint.");
     }
 
     private static void CheckpointCasRejectsForgedResolutionAndWrongOwner()
@@ -331,6 +360,53 @@ internal static class Program
             out blocker), blocker);
     }
 
+    private static void SharedMutationOwnerBlocksCrossLaneApply()
+    {
+        Sr5CareerSkillGroupDraft draft = Draft();
+        Sr5CareerRunnerBinding binding = FakePresenter.Before(draft).Binding;
+        Sr5CareerSkillGroupLiveCheckpointAuthority authority = new(
+            new FixedOwner(OwnerId),
+            Editor(draft.ExpectedContentRevision, draft.Quote),
+            () => binding);
+        MemoryBackend mutationBackend = new();
+        Sr5CareerMutationOwnerStore owners = new(mutationBackend);
+        Sr5CareerSkillGroupCheckpointStore store = new(
+            new MemoryBackend(),
+            authority,
+            owners);
+        Require(store.TryCreate(
+            Sr5CareerSkillGroupCheckpoint.FromDraft(draft),
+            out Sr5CareerSkillGroupCheckpoint reviewed,
+            out string blocker), blocker);
+
+        Sr5CareerMutationOwner foreign = new(
+            Sr5CareerMutationOwner.CurrentSchemaVersion,
+            Sr5CareerMutationDomains.ActiveSkillAdvance,
+            draft.WorkspaceId.Value,
+            draft.OwnerId,
+            Guid.Parse("44444444-4444-4444-4444-444444444444"),
+            ApplyingCheckpointVersion: 2,
+            draft.ExpectedContentRevision,
+            new string('a', 64));
+        Require(owners.TryBegin(
+            foreign,
+            () => new Sr5CareerMutationBeginResult(true, false, string.Empty),
+            out blocker), blocker);
+        Require(!store.TryBeginApply(
+            Sr5CareerSkillGroupCheckpointCas.From(reviewed),
+            out _,
+            out blocker)
+            && blocker.Contains("already owns", StringComparison.Ordinal),
+            "A durable foreign lane owner must block skill-group apply.");
+        Require(owners.TryComplete(foreign, () => (true, string.Empty), out blocker), blocker);
+        Require(store.TryBeginApply(
+            Sr5CareerSkillGroupCheckpointCas.From(reviewed),
+            out Sr5CareerSkillGroupCheckpoint applying,
+            out blocker), blocker);
+        Require(applying.Phase == Sr5CareerCheckpointPhase.Applying,
+            "Skill-group apply may begin after the foreign owner is durably released.");
+    }
+
     private static Sr5CareerSkillGroupDraft Draft()
     {
         CharacterCareerSkillGroupAdvanceQuote quote = Quote();
@@ -372,12 +448,13 @@ internal static class Program
         int ratingMaximum = 6,
         bool memberProjectionIsExact = true,
         bool broken = false,
-        bool disabled = false)
+        bool disabled = false,
+        string? rulesetId = null)
     {
         CharacterCareerSkillGroupAdvanceInput input = new(
             new CharacterCareerSkillGroupIdentity(GroupId),
             Created: true,
-            RulesetId: CharacterCareerSkillGroupAdvanceRules.RulesetId,
+            RulesetId: rulesetId ?? CharacterCareerSkillGroupAdvanceRules.RulesetId,
             TargetOwnedByCharacter: true,
             MemberProjectionIsExact: memberProjectionIsExact,
             Name: "Stealth",
@@ -403,15 +480,11 @@ internal static class Program
 
     private static CareerSkillGroupAdvanceEditorState Editor(
         long revision,
-        CharacterCareerSkillGroupAdvanceQuote quote,
-        IReadOnlyList<CharacterCareerSkillGroupAdvanceReceipt>? recoverable = null)
+        CharacterCareerSkillGroupAdvanceQuote quote)
         => new(
             WorkspaceId,
             revision,
-            CharacterCareerSkillGroupAdvanceRules.RulesetId,
             [quote],
-            0,
-            recoverable ?? [],
             0);
 
     private static CharacterCareerSkillGroupAdvanceQuote Successor(Sr5CareerSkillGroupDraft draft)
@@ -456,6 +529,33 @@ internal static class Program
             out CharacterCareerSkillGroupAdvanceReceipt receipt),
             "Test receipt must be coherent.");
         return receipt;
+    }
+
+    private static CharacterCareerSkillGroupAdvanceResult SuccessResult(
+        Sr5CareerSkillGroupDraft draft,
+        CharacterCareerSkillGroupAdvanceCommand command,
+        CharacterCareerSkillGroupAdvanceServiceOutcome outcome)
+    {
+        Require(CharacterCareerSkillGroupAdvanceServiceIntegrity.TryComputeCommandDigest(
+            command,
+            out string commandDigest), "Test command must have a canonical digest.");
+        CharacterCareerSkillGroupAdvanceResult unsigned = new(
+            CharacterCareerSkillGroupAdvanceServiceSchemas.ResultV1,
+            outcome,
+            draft.WorkspaceId,
+            draft.ExpectedContentRevision,
+            checked(draft.ExpectedContentRevision + 1),
+            draft.Quote.Identity,
+            draft.Plan.TransactionId,
+            commandDigest,
+            draft.Quote,
+            Receipt(draft),
+            [],
+            string.Empty);
+        Require(CharacterCareerSkillGroupAdvanceServiceIntegrity.TryComputeResultDigest(
+            unsigned,
+            out string resultDigest), "Test Core result must have a canonical digest.");
+        return unsigned with { ResultDigest = resultDigest };
     }
 
     private static CharacterCareerSkillGroupExpenseObservation Expense(
@@ -550,8 +650,9 @@ internal static class Program
     {
         public required Sr5CareerRunnerBinding BindingValue { get; set; }
         public required CareerSkillGroupAdvanceEditorState Editor { get; set; }
-        public Func<CareerSkillGroupAdvanceRequest, Task<bool>>? ApplyHandler { get; set; }
-        public int ApplyCalls { get; private set; }
+        public Func<CharacterCareerSkillGroupAdvanceCommand,
+            Task<CharacterCareerSkillGroupAdvanceResult?>>? AdvanceHandler { get; set; }
+        public int AdvanceCalls { get; private set; }
         public Sr5CareerRunnerBinding Binding => BindingValue;
 
         public static FakePresenter Before(Sr5CareerSkillGroupDraft draft)
@@ -572,18 +673,14 @@ internal static class Program
             CancellationToken cancellationToken)
             => Task.FromResult<CareerSkillGroupAdvanceEditorState?>(Editor);
 
-        public Task<bool> ApplyAndSaveAsync(
-            CareerSkillGroupAdvanceRequest request,
+        public Task<CharacterCareerSkillGroupAdvanceResult?> AdvanceAsync(
+            CharacterCareerSkillGroupAdvanceCommand command,
             CancellationToken cancellationToken)
         {
-            ApplyCalls++;
-            return ApplyHandler?.Invoke(request) ?? Task.FromResult(false);
+            AdvanceCalls++;
+            return AdvanceHandler?.Invoke(command)
+                ?? Task.FromResult<CharacterCareerSkillGroupAdvanceResult?>(null);
         }
-
-        public Task<CharacterCareerSkillGroupCorrectionPlan?> CorrectAndSaveAsync(
-            CareerSkillGroupCorrectionRequest request,
-            CancellationToken cancellationToken)
-            => Task.FromResult<CharacterCareerSkillGroupCorrectionPlan?>(null);
 
         public void PublishApplied(Sr5CareerSkillGroupDraft draft)
         {
@@ -595,10 +692,7 @@ internal static class Program
                 IsDirty = false,
                 Error = null
             };
-            Editor = Program.Editor(
-                BindingValue.ContentRevision,
-                Program.Successor(draft),
-                [receipt]);
+            Editor = Program.Editor(BindingValue.ContentRevision, Program.Successor(draft));
         }
     }
 }

@@ -167,8 +167,13 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
             "Choose exact nullable-source identity → review native-language and Karma authority → durable apply → receipt",
             OpenKnowledgeSkillWizardAsync,
             "knowledge-language");
+        AddAction(
+            "Advance a skill group",
+            "Choose exact InternalId → Core-bound quote and command → durable apply lock → atomic receipt",
+            OpenSkillGroupWizardAsync,
+            "skill-group");
         AddBlocked(
-            "Skill-group and specialization authorities exist upstream, but Android needs shared Coordinator routing and an atomic ApplyResult. Initiation/submersion remains incomplete.",
+            "Specialization and initiation/submersion advancement remain incomplete.",
             "other-advancement");
         AddBlocked(
             "Gear, weapon, armor, bioware, vehicle and general ware acquisition need exact availability, cost, Essence, prerequisite and expense quotes.",
@@ -249,6 +254,11 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
             "Execute one exact Knowledge or Language advancement with native-language and receipt recovery authority",
             OpenKnowledgeSkillWizardAsync,
             "knowledge-language");
+        AddAction(
+            "Advance a skill group",
+            "Execute one exact Core-bound group command; unavailable receipt persistence fails closed without a compatibility mutation",
+            OpenSkillGroupWizardAsync,
+            "skill-group");
         AddBlocked(
             "Training duration, healing, crafting, acquisition delivery and other scheduled work lack a shared typed execution contract.",
             "execution");
@@ -270,7 +280,7 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
             "Undo Karma/Nuyen Expense and Correct this transaction are not typed on Android yet.",
             "undo");
         AddBlocked(
-            "Active-skill and attribute reviewed drafts survive restart, and applying drafts fail closed against replay. Shared rebase/discard and recovery for every other action are not implemented.",
+            "Active-skill, attribute, Knowledge/Language, quality, and skill-group reviews use durable ownership. Skill-group recovery retries only the exact idempotent Core command and never the Presentation compatibility mutation.",
             "recovery");
     }
 
@@ -349,6 +359,18 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
         if (editor is not null)
         {
             await Navigation.PushAsync(new Sr5CareerKnowledgeSkillWizardPage(Coordinator, editor));
+        }
+    }
+
+    private async Task OpenSkillGroupWizardAsync()
+    {
+        Sr5CareerSkillGroupCoordinator authority = new(
+            new RunnerSessionSr5CareerSkillGroupPresenter(Coordinator),
+            new PreferencesSr5CareerCheckpointOwnerAuthority());
+        CareerSkillGroupAdvanceEditorState? editor = await authority.PrepareAsync();
+        if (editor is not null)
+        {
+            await Navigation.PushAsync(new Sr5CareerSkillGroupWizardPage(Coordinator, editor));
         }
     }
 

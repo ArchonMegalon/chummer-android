@@ -132,11 +132,10 @@ public sealed class Sr5CareerSkillGroupWizardPage : NativePageBase
         _recovery.AutomationId = "sr5-career-skill-group-recovery";
         body.Add(_recovery);
 
-        if (editor.OmittedSkillGroupCount > 0 || editor.OmittedReceiptCount > 0)
+        if (editor.OmittedSkillGroupCount > 0)
         {
             Label omitted = NativeTheme.Body(
-                $"{editor.OmittedSkillGroupCount.ToString(CultureInfo.InvariantCulture)} skill-group quote(s) and "
-                + $"{editor.OmittedReceiptCount.ToString(CultureInfo.InvariantCulture)} receipt(s) were omitted because exact authority could not be reproduced.",
+                $"{editor.OmittedSkillGroupCount.ToString(CultureInfo.InvariantCulture)} skill-group quote(s) were omitted because exact authority could not be reproduced.",
                 NativeTheme.Danger);
             omitted.AutomationId = "sr5-career-skill-group-omitted";
             body.Add(NativeTheme.Card(omitted));
@@ -327,7 +326,7 @@ public sealed class Sr5CareerSkillGroupWizardPage : NativePageBase
         }
 
         Sr5CareerSkillGroupRecoveryResolution resolution =
-            await _authority.ResolveAsync(_checkpoint);
+            await _authority.ResolveAsync(_checkpoint, _store);
         if (resolution.Status == Sr5CareerSkillGroupRecoveryStatus.OutcomeUnknown)
         {
             _recovery.Text = resolution.Message;
@@ -443,7 +442,7 @@ public sealed class Sr5CareerSkillGroupWizardPage : NativePageBase
         }
         _checkpoint = checkpoint;
         _recovery.Text = checkpoint.Phase == Sr5CareerCheckpointPhase.Applying
-            ? "An interrupted apply is locked and will be resolved without replay."
+            ? "An interrupted apply is locked and will be resolved only by the exact idempotent Core command."
             : "A verified saved skill-group receipt is awaiting acknowledgement.";
         _recovery.TextColor = NativeTheme.Muted;
     }
@@ -541,7 +540,7 @@ public sealed class Sr5CareerSkillGroupReviewPage : NativePageBase
         };
         body.Add(_apply);
         body.Add(NativeTheme.Body(
-            "The exact checkpoint moves to Applying before mutation. Success is shown only after atomic save and a fresh recoverable receipt projection match the reviewed identity, costs and digests.",
+            "The exact checkpoint moves to Applying before mutation. Success is shown only after the atomic Core service returns a digest-verified persisted receipt for the reviewed identity, costs and revisions.",
             NativeTheme.Muted));
         Content = new ScrollView { Content = body };
         RefreshEnabledState();
@@ -597,7 +596,7 @@ public sealed class Sr5CareerSkillGroupReviewPage : NativePageBase
         {
             await DisplayAlertAsync(
                 "Outcome unresolved",
-                $"{result.Message} The Applying checkpoint cannot be cleared or replayed.",
+                $"{result.Message} The Applying checkpoint cannot be cleared or replaced by a compatibility mutation.",
                 "OK");
             return;
         }
@@ -615,7 +614,7 @@ public sealed class Sr5CareerSkillGroupReviewPage : NativePageBase
         {
             await DisplayAlertAsync(
                 "Not applied",
-                "Fresh typed projections prove no skill-group or receipt mutation was saved. Return and resume the review before retrying.",
+                "Core rejected the exact command and the runner stayed at the reviewed revision. Return and resume the review before retrying.",
                 "OK");
             return;
         }
@@ -704,11 +703,11 @@ public sealed class Sr5CareerSkillGroupReceiptPage : NativePageBase
         body.Add(acknowledge);
         Button correct = NativeTheme.SecondaryButton("Correct this advancement");
         correct.AutomationId = "sr5-career-skill-group-receipt-correct";
-        correct.Clicked += async (_, _) => await RunAsync(CorrectAsync);
+        correct.IsEnabled = false;
         body.Add(correct);
         body.Add(NativeTheme.Body(
-            "Correction is a separate typed compensating transaction. It restores the reviewed group and Karma values and removes the exact original expense; it never edits the receipt in place.",
-            NativeTheme.Muted));
+            "Correction stays unavailable until Core exposes an atomic compensating service with persisted receipt authority. The original receipt remains immutable.",
+            NativeTheme.Danger));
         Content = new ScrollView { Content = body };
         Refresh();
     }

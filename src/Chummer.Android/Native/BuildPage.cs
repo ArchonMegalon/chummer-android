@@ -304,6 +304,11 @@ public sealed class BuildPage : NativePageBase
             "Direct deep link · exact InternalId/SourceId → atomic review → receipt/correction",
             OpenSr5CareerQualityWizardAsync,
             automationId: "build-career-quality"));
+        card.Add(NativeTheme.NavigationRow(
+            "Advance a skill group",
+            "Direct deep link · exact InternalId → Core-bound review → atomic receipt/recovery",
+            OpenSr5CareerSkillGroupWizardAsync,
+            automationId: "build-career-skill-group"));
         Border route = NativeTheme.Card(card);
         route.AutomationId = Sr5CareerWizardRoutes.Hub;
         _body.Add(route);
@@ -325,6 +330,18 @@ public sealed class BuildPage : NativePageBase
                 "Quality authority unavailable",
                 "This build does not have a complete atomic SR5 quality workspace. No fallback mutation is available.",
                 "OK");
+        }
+    }
+
+    private async Task OpenSr5CareerSkillGroupWizardAsync()
+    {
+        Sr5CareerSkillGroupCoordinator authority = new(
+            new RunnerSessionSr5CareerSkillGroupPresenter(Coordinator),
+            new PreferencesSr5CareerCheckpointOwnerAuthority());
+        CareerSkillGroupAdvanceEditorState? editor = await authority.PrepareAsync();
+        if (editor is not null)
+        {
+            await Navigation.PushAsync(new Sr5CareerSkillGroupWizardPage(Coordinator, editor));
         }
     }
 
@@ -1376,6 +1393,21 @@ public sealed class BuildPage : NativePageBase
                     }
                 },
                 automationId: "build-career-knowledge-language"));
+            _body.Add(NativeTheme.NavigationRow(
+                "Advance skill group",
+                "Choose an exact saved group identity, review Core-owned membership, Karma and revisions, then enter the atomic receipt boundary",
+                async () =>
+                {
+                    Sr5CareerSkillGroupCoordinator authority = new(
+                        new RunnerSessionSr5CareerSkillGroupPresenter(Coordinator),
+                        new PreferencesSr5CareerCheckpointOwnerAuthority());
+                    CareerSkillGroupAdvanceEditorState? editor = await authority.PrepareAsync();
+                    if (editor is not null)
+                    {
+                        await Navigation.PushAsync(new Sr5CareerSkillGroupWizardPage(Coordinator, editor));
+                    }
+                },
+                automationId: "build-career-skill-group-editor"));
             _body.Add(NativeTheme.NavigationRow(
                 "Calendar",
                 "Add the next ISO week, edit its notes and color, or delete it by stable identity",

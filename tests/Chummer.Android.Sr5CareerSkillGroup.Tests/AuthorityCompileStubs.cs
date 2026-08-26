@@ -27,33 +27,17 @@ namespace Chummer.Presentation.Overview
     public sealed record CareerSkillGroupAdvanceEditorState(
         CharacterWorkspaceId WorkspaceId,
         long ContentRevision,
-        string RulesetId,
         IReadOnlyList<CharacterCareerSkillGroupAdvanceQuote> SkillGroups,
-        int OmittedSkillGroupCount,
-        IReadOnlyList<CharacterCareerSkillGroupAdvanceReceipt> RecoverableReceipts,
-        int OmittedReceiptCount);
+        int OmittedSkillGroupCount);
 
     public sealed record CareerSkillGroupAdvanceRequest(
         CharacterWorkspaceId WorkspaceId,
         long ExpectedContentRevision,
-        string ExpectedRulesetId,
         CharacterCareerSkillGroupAdvanceQuote ExpectedSkillGroup,
-        string ExpectedLogicalRevision,
-        string ExpectedSourceRevision,
         string ExpectedRuleDigest,
         bool Confirmed,
         Guid ExpenseId,
         DateTime ExpenseDateLocal);
-
-    public sealed record CareerSkillGroupCorrectionRequest(
-        CharacterWorkspaceId WorkspaceId,
-        long ExpectedContentRevision,
-        string ExpectedRulesetId,
-        CharacterCareerSkillGroupAdvanceReceipt OriginalReceipt,
-        string ExpectedReceiptDigest,
-        bool Confirmed,
-        Guid CorrectionId,
-        string Reason);
 }
 
 namespace Microsoft.Maui.Storage
@@ -104,14 +88,14 @@ namespace Chummer.Android.Native
         Guid CurrentOwnerId { get; }
     }
 
-    public sealed record Sr5CareerRunnerBinding(
-        bool Created,
-        string? GameEdition,
-        CharacterWorkspaceId? WorkspaceId,
-        long ContentRevision,
-        long SavedRevision,
-        bool IsDirty,
-        string? Error);
+    public sealed record CareerQualityDraftCompileStub(
+        CharacterWorkspaceId WorkspaceId,
+        long ExpectedWorkspaceRevision,
+        long ExpectedSavedRevision);
+
+    public sealed record CareerQualityReview(
+        CareerQualityDraftCompileStub Draft,
+        CharacterCareerQualityQuote Quote);
 
     public sealed record RunnerSessionProfileStub(bool Created);
     public sealed record RunnerSessionRulesStub(string? GameEdition);
@@ -135,15 +119,10 @@ namespace Chummer.Android.Native
             PrepareCareerSkillGroupAdvanceAsync(CancellationToken cancellationToken)
             => Task.FromResult<Chummer.Presentation.Overview.CareerSkillGroupAdvanceEditorState?>(null);
 
-        public Task<bool> ApplyCareerSkillGroupAdvanceAsync(
-            Chummer.Presentation.Overview.CareerSkillGroupAdvanceRequest request,
+        public Task<CharacterCareerSkillGroupAdvanceResult?> AdvanceCareerSkillGroupAsync(
+            CharacterCareerSkillGroupAdvanceCommand command,
             CancellationToken cancellationToken)
-            => Task.FromResult(false);
-
-        public Task<CharacterCareerSkillGroupCorrectionPlan?> CorrectCareerSkillGroupAdvanceAsync(
-            Chummer.Presentation.Overview.CareerSkillGroupCorrectionRequest request,
-            CancellationToken cancellationToken)
-            => Task.FromResult<CharacterCareerSkillGroupCorrectionPlan?>(null);
+            => Task.FromResult<CharacterCareerSkillGroupAdvanceResult?>(null);
     }
 
     public static class Sr5CareerActiveSkillCoordinator

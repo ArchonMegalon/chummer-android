@@ -12,10 +12,14 @@
     <Compile Include="AuthorityCompileStubs.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerActiveSkillAdvanceRules.cs" Link="Core/CharacterCareerActiveSkillAdvanceRules.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerAttributeAdvanceRules.cs" Link="Core/CharacterCareerAttributeAdvanceRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerKnowledgeSkillAdvanceRules.cs" Link="Core/CharacterCareerKnowledgeSkillAdvanceRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerQualityRules.cs" Link="Core/CharacterCareerQualityRules.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerSkillGroupAdvanceRules.cs" Link="Core/CharacterCareerSkillGroupAdvanceRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerSkillGroupAdvanceServiceContracts.cs" Link="Core/CharacterCareerSkillGroupAdvanceServiceContracts.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerWizardModel.cs" Link="Native/Sr5CareerWizardModel.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerSkillGroupWizardModel.cs" Link="Native/Sr5CareerSkillGroupWizardModel.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerSkillGroupCoordinator.cs" Link="Native/Sr5CareerSkillGroupCoordinator.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerSkillGroupCheckpointStore.cs" Link="Native/Sr5CareerSkillGroupCheckpointStore.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerMutationOwnerStore.cs" Link="Native/Sr5CareerMutationOwnerStore.cs" />
   </ItemGroup>
 </Project>

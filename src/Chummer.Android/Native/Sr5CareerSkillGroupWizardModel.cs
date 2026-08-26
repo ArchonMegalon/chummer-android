@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Serialization;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
 using Chummer.Presentation.Overview;
@@ -20,15 +21,15 @@ public sealed record Sr5CareerSkillGroupRuntimeAuthority(
     string RuntimeDigest)
 {
     public const string CurrentContractName =
-        "chummer.android.sr5-career-skill-group-runtime/v1";
+        "chummer.android.sr5-career-skill-group-runtime/v2";
     public const string CurrentCoreRevision =
-        "b1d6abd5ea0e00c5063bc6561a87c50ec1b7eb85";
+        "4450825f53a5a96778e6061c16689e7c5993baf7";
     public const string CurrentPresentationRevision =
-        "671289bb75994a686308cd3f3a1a52e5590f36a4";
+        "4c88c1810e6ce2754fe7b00e03db9b36b75d517c";
     public const string CurrentContentDigest =
-        "75f39aa795619d1d45341ebe12667fcc0b44bf77fbc7e6c534b0fe0cb86d917a";
+        "7a108fe4e18340166c1ae206191e7b132e5d04656e24bc2dcd71da263892ebff";
     public const string CurrentRuntimeDigest =
-        "24cdb751cd4e53afada3c9a70be5595e9231b149677d2f3002e8c7f9fe5e60df";
+        "33bae3a9a8c59711a5ab8624be9b1e1ae6db16516588cd0460fb20f0d7aa382f";
 
     public static Sr5CareerSkillGroupRuntimeAuthority Embedded { get; } = new(
         CurrentContractName,
@@ -75,31 +76,47 @@ public sealed record Sr5CareerSkillGroupDraft(
     CharacterWorkspaceId WorkspaceId,
     long ExpectedContentRevision,
     Sr5CareerSkillGroupRuntimeAuthority RuntimeAuthority,
-    CharacterCareerSkillGroupAdvanceQuote Quote,
+    CharacterCareerSkillGroupQuoteBinding Binding,
     CharacterCareerSkillGroupAdvancePlan Plan)
 {
+    [JsonIgnore]
+    public CharacterCareerSkillGroupAdvanceQuote Quote => Binding.Quote;
+
     public Sr5CareerActionPlan ActionPlan
         => Sr5CareerActionPlan.FromSkillGroup(
             OwnerId,
-            WorkspaceId,
-            ExpectedContentRevision,
-            Quote,
+            Binding,
             Plan,
             RuntimeAuthority.ContentDigest,
             RuntimeAuthority.RuntimeDigest);
 
+    /// <summary>
+    /// Compatibility projection only. Mutation must go through <see cref="ToCommand"/>
+    /// and the Core atomic service; this request cannot produce a durable receipt.
+    /// </summary>
     public CareerSkillGroupAdvanceRequest ToRequest()
         => new(
             WorkspaceId,
             ExpectedContentRevision,
-            CharacterCareerSkillGroupAdvanceRules.RulesetId,
             Quote,
-            Quote.LogicalRevision,
-            Quote.SourceRevision,
             Quote.RuleDigest,
             true,
             Plan.TransactionId,
             Plan.ExpenseDateLocal);
+
+    public CharacterCareerSkillGroupAdvanceCommand ToCommand()
+        => new(
+            CharacterCareerSkillGroupAdvanceServiceSchemas.CommandV1,
+            WorkspaceId,
+            ExpectedContentRevision,
+            Quote.Identity,
+            Quote.LogicalRevision,
+            Quote.SourceRevision,
+            Quote.RuleDigest,
+            Binding.BindingDigest,
+            Plan.TransactionId,
+            Plan.ExpenseDateLocal,
+            ExplicitlyConfirmed: true);
 
     public bool Matches(CharacterWorkspaceId? workspaceId, long contentRevision)
         => workspaceId == WorkspaceId && contentRevision == ExpectedContentRevision;
@@ -111,8 +128,22 @@ public sealed record Sr5CareerSkillGroupDraft(
             || ExpectedContentRevision <= 0
             || RuntimeAuthority is null
             || !RuntimeAuthority.IsCurrent()
+            || Binding is null
+            || !string.Equals(
+                Binding.ContractName,
+                CharacterCareerSkillGroupAdvanceServiceSchemas.QuoteV1,
+                StringComparison.Ordinal)
+            || Binding.WorkspaceId != WorkspaceId
+            || Binding.WorkspaceRevision != ExpectedContentRevision
+            || Binding.Identity != Quote.Identity
             || !CharacterCareerSkillGroupAdvanceRules.IsCoherent(Quote)
             || !Quote.CanAdvance
+            || !CharacterCareerSkillGroupAdvanceServiceIntegrity.TryComputeBindingDigest(
+                WorkspaceId,
+                ExpectedContentRevision,
+                Quote,
+                out string bindingDigest)
+            || !string.Equals(bindingDigest, Binding.BindingDigest, StringComparison.Ordinal)
             || !CharacterCareerSkillGroupAdvanceRules.IsCoherent(Plan)
             || Quote.Identity != Plan.Identity
             || !CharacterCareerSkillGroupAdvanceRules.TryPlanAdvance(
@@ -125,7 +156,10 @@ public sealed record Sr5CareerSkillGroupDraft(
                 Plan.TransactionId,
                 Plan.ExpenseDateLocal,
                 out CharacterCareerSkillGroupAdvancePlan expected)
-            || expected != Plan)
+            || expected != Plan
+            || !CharacterCareerSkillGroupAdvanceServiceIntegrity.TryComputeCommandDigest(
+                ToCommand(),
+                out _))
         {
             return false;
         }
@@ -168,11 +202,7 @@ public sealed record Sr5CareerSkillGroupDraft(
         blocker = string.Empty;
         if (editor is null
             || string.IsNullOrWhiteSpace(editor.WorkspaceId.Value)
-            || editor.ContentRevision <= 0
-            || !string.Equals(
-                editor.RulesetId,
-                CharacterCareerSkillGroupAdvanceRules.RulesetId,
-                StringComparison.Ordinal))
+            || editor.ContentRevision <= 0)
         {
             blocker = "The runner identity or revision is unavailable. Reopen skill-group advancement.";
             return false;
@@ -203,7 +233,12 @@ public sealed record Sr5CareerSkillGroupDraft(
         }
 
         CharacterCareerSkillGroupAdvanceQuote authoritative = matches[0];
-        if (!authoritative.CanAdvance)
+        bool exactSr5 = authoritative.Prerequisites
+            .Single(static prerequisite =>
+                prerequisite.Prerequisite
+                    == CharacterCareerSkillGroupPrerequisite.Sr5Ruleset)
+            .Satisfied;
+        if (!exactSr5 || !authoritative.CanAdvance)
         {
             blocker = BlockerText(authoritative.Blocker);
             return false;
@@ -233,12 +268,28 @@ public sealed record Sr5CareerSkillGroupDraft(
             return false;
         }
 
+        if (!CharacterCareerSkillGroupAdvanceServiceIntegrity.TryComputeBindingDigest(
+                editor.WorkspaceId,
+                editor.ContentRevision,
+                authoritative,
+                out string bindingDigest))
+        {
+            blocker = "Core could not bind the exact quote to this runner revision.";
+            return false;
+        }
+        CharacterCareerSkillGroupQuoteBinding binding = new(
+            CharacterCareerSkillGroupAdvanceServiceSchemas.QuoteV1,
+            editor.WorkspaceId,
+            editor.ContentRevision,
+            authoritative.Identity,
+            authoritative,
+            bindingDigest);
         Sr5CareerSkillGroupDraft candidate = new(
             ownerId,
             editor.WorkspaceId,
             editor.ContentRevision,
             Sr5CareerSkillGroupRuntimeAuthority.Embedded,
-            authoritative,
+            binding,
             plan);
         if (!candidate.IsExact())
         {
@@ -280,9 +331,10 @@ public sealed record Sr5CareerSkillGroupCheckpoint(
     string RouteId,
     Sr5CareerCheckpointPhase Phase,
     Sr5CareerSkillGroupDraft Draft,
+    CharacterCareerSkillGroupAdvanceReceipt? Receipt,
     string IdempotencyKey)
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
     public static Sr5CareerSkillGroupCheckpoint FromDraft(
         Sr5CareerSkillGroupDraft draft,
@@ -295,6 +347,7 @@ public sealed record Sr5CareerSkillGroupCheckpoint(
             Sr5CareerWizardRoutes.SkillGroupReview,
             phase,
             draft,
+            Receipt: null,
             draft.ActionPlan.IdempotencyKey);
     }
 
@@ -305,6 +358,10 @@ public sealed record Sr5CareerSkillGroupCheckpoint(
             && Enum.IsDefined(Phase)
             && Draft is not null
             && Draft.IsExact()
+            && (Phase == Sr5CareerCheckpointPhase.Applied
+                ? Receipt is not null
+                    && Sr5CareerSkillGroupCoordinator.ReceiptMatchesDraft(Draft, Receipt)
+                : Receipt is null)
             && IdempotencyKey is { Length: 64 }
             && IdempotencyKey.All(static character =>
                 character is >= '0' and <= '9' or >= 'a' and <= 'f')
@@ -361,6 +418,10 @@ public sealed record Sr5CareerSkillGroupCheckpoint(
             && Draft.WorkspaceId == draft.WorkspaceId
             && Draft.ExpectedContentRevision == draft.ExpectedContentRevision
             && Draft.RuntimeAuthority == draft.RuntimeAuthority
+            && string.Equals(
+                Draft.Binding.BindingDigest,
+                draft.Binding.BindingDigest,
+                StringComparison.Ordinal)
             && Draft.Quote.Identity == draft.Quote.Identity
             && string.Equals(Draft.Quote.LogicalRevision, draft.Quote.LogicalRevision, StringComparison.Ordinal)
             && string.Equals(Draft.Quote.SourceRevision, draft.Quote.SourceRevision, StringComparison.Ordinal)

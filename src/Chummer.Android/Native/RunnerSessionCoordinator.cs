@@ -144,6 +144,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly ICharacterCreationPrerequisiteService _creationPrerequisiteService;
     private readonly ICharacterCreationAttributesService? _creationAttributesService;
     private readonly ICharacterCreationSkillsService? _creationSkillsService;
+    private readonly ICharacterCareerSkillGroupAdvanceService? _careerSkillGroupService;
     private readonly CareerQualityInteractionPresenter? _careerQualityPresenter;
     private readonly IShellPresenter _shellPresenter;
     private readonly IShellSurfaceResolver _surfaceResolver;
@@ -202,7 +203,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         ApplicationDeleteConfirmationPresenter applicationSettingsPresenter,
         ICharacterCreationAttributesService? creationAttributesService = null,
         ICharacterCreationSkillsService? creationSkillsService = null,
-        ICareerQualityAtomicWorkspace? careerQualityWorkspace = null)
+        ICareerQualityAtomicWorkspace? careerQualityWorkspace = null,
+        ICharacterCareerSkillGroupAdvanceService? careerSkillGroupService = null)
     {
         _presenter = presenter;
         _client = client;
@@ -211,6 +213,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _creationPrerequisiteService = creationPrerequisiteService;
         _creationAttributesService = creationAttributesService;
         _creationSkillsService = creationSkillsService;
+        _careerSkillGroupService = careerSkillGroupService;
         _careerQualityPresenter = careerQualityWorkspace is null
             ? null
             : new CareerQualityInteractionPresenter(careerQualityWorkspace);
@@ -2978,6 +2981,82 @@ public sealed class RunnerSessionCoordinator : IDisposable
     public Task<CareerKnowledgeSkillAdvanceEditorState?> PrepareCareerKnowledgeSkillAdvanceAsync(
         CancellationToken cancellationToken = default)
         => _presenter.PrepareCareerKnowledgeSkillAdvanceAsync(cancellationToken);
+
+    public Task<CareerSkillGroupAdvanceEditorState?> PrepareCareerSkillGroupAdvanceAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCareerSkillGroupAdvanceAsync(cancellationToken);
+
+    /// <summary>
+    /// Executes only the atomic Core service command. The Presentation
+    /// skill-group request is deliberately not used as mutation authority
+    /// because that compatibility path cannot return a persisted receipt.
+    /// </summary>
+    public async Task<CharacterCareerSkillGroupAdvanceResult?> AdvanceCareerSkillGroupAsync(
+        CharacterCareerSkillGroupAdvanceCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        if (!CharacterCareerSkillGroupAdvanceServiceIntegrity.TryComputeCommandDigest(
+                command,
+                out string commandDigest)
+            || State.WorkspaceId != command.WorkspaceId
+            || State.IsDirty
+            || State.SavedRevision != State.ContentRevision
+            || State.ContentRevision < command.ExpectedWorkspaceRevision
+            || State.ContentRevision > command.ExpectedWorkspaceRevision + 1)
+        {
+            throw new InvalidOperationException(
+                "The atomic skill-group command does not own this exact clean runner revision.");
+        }
+
+        ICharacterCareerSkillGroupAdvanceService? service = _careerSkillGroupService;
+        if (service is null)
+        {
+            return null;
+        }
+
+        CharacterCareerSkillGroupAdvanceResult result = await Task.Run(
+            () => service.Advance(command),
+            cancellationToken).ConfigureAwait(false);
+        if (!string.Equals(result.ContractName,
+                CharacterCareerSkillGroupAdvanceServiceSchemas.ResultV1,
+                StringComparison.Ordinal)
+            || result.WorkspaceId != command.WorkspaceId
+            || result.ExpectedWorkspaceRevision != command.ExpectedWorkspaceRevision
+            || result.Identity != command.Identity
+            || result.TransactionId != command.TransactionId
+            || !string.Equals(result.CommandDigest, commandDigest, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Core returned a skill-group result for another command or runner.");
+        }
+
+        if (result.CurrentWorkspaceRevision > 0
+            && result.CurrentWorkspaceRevision != State.ContentRevision)
+        {
+            await _presenter.LoadAsync(command.WorkspaceId, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        if (result.Outcome is CharacterCareerSkillGroupAdvanceServiceOutcome.Applied
+                or CharacterCareerSkillGroupAdvanceServiceOutcome.Replayed)
+        {
+            if (State.WorkspaceId != command.WorkspaceId
+                || State.ContentRevision != result.CurrentWorkspaceRevision
+                || State.SavedRevision != result.CurrentWorkspaceRevision
+                || State.IsDirty
+                || !string.IsNullOrWhiteSpace(State.Error))
+            {
+                throw new InvalidOperationException(
+                    "The atomic skill-group receipt was returned without the exact clean saved runner revision.");
+            }
+            _notice = "Skill group advanced and exact Core receipt saved.";
+        }
+
+        await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+        NotifyChanged();
+        return result;
+    }
 
     public async Task<bool> ApplyCareerKnowledgeSkillAdvanceAsync(
         CareerKnowledgeSkillAdvanceRequest request,

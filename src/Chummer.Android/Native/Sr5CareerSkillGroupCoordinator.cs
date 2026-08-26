@@ -13,12 +13,8 @@ public interface ISr5CareerSkillGroupPresenter
     Task<CareerSkillGroupAdvanceEditorState?> LoadSkillGroupsAsync(
         CancellationToken cancellationToken);
 
-    Task<bool> ApplyAndSaveAsync(
-        CareerSkillGroupAdvanceRequest request,
-        CancellationToken cancellationToken);
-
-    Task<CharacterCareerSkillGroupCorrectionPlan?> CorrectAndSaveAsync(
-        CareerSkillGroupCorrectionRequest request,
+    Task<CharacterCareerSkillGroupAdvanceResult?> AdvanceAsync(
+        CharacterCareerSkillGroupAdvanceCommand command,
         CancellationToken cancellationToken);
 }
 internal sealed class RunnerSessionSr5CareerSkillGroupPresenter(
@@ -37,15 +33,10 @@ internal sealed class RunnerSessionSr5CareerSkillGroupPresenter(
         CancellationToken cancellationToken)
         => coordinator.PrepareCareerSkillGroupAdvanceAsync(cancellationToken);
 
-    public Task<bool> ApplyAndSaveAsync(
-        CareerSkillGroupAdvanceRequest request,
+    public Task<CharacterCareerSkillGroupAdvanceResult?> AdvanceAsync(
+        CharacterCareerSkillGroupAdvanceCommand command,
         CancellationToken cancellationToken)
-        => coordinator.ApplyCareerSkillGroupAdvanceAsync(request, cancellationToken);
-
-    public Task<CharacterCareerSkillGroupCorrectionPlan?> CorrectAndSaveAsync(
-        CareerSkillGroupCorrectionRequest request,
-        CancellationToken cancellationToken)
-        => coordinator.CorrectCareerSkillGroupAdvanceAsync(request, cancellationToken);
+        => coordinator.AdvanceCareerSkillGroupAsync(command, cancellationToken);
 }
 
 /// <summary>
@@ -106,11 +97,27 @@ public sealed class Sr5CareerSkillGroupCoordinator(
                 "The exact durable Applying checkpoint does not own this skill-group action.");
         }
 
-        _ = await presenter.ApplyAndSaveAsync(draft.ToRequest(), cancellationToken)
-            .ConfigureAwait(false);
-        Sr5CareerSkillGroupRecoveryResolution resolution = await ResolveAsync(
-            applyingCheckpoint,
-            cancellationToken).ConfigureAwait(false);
+        Sr5CareerSkillGroupRecoveryResolution resolution;
+        try
+        {
+            CharacterCareerSkillGroupAdvanceResult? result = await presenter
+                .AdvanceAsync(draft.ToCommand(), cancellationToken)
+                .ConfigureAwait(false);
+            resolution = ResolveServiceResult(
+                applyingCheckpoint,
+                presenter.Binding,
+                result);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            resolution = Unknown(
+                applyingCheckpoint,
+                "The atomic Core skill-group result was unavailable. Keep the Applying lock and resolve it from the same command.");
+        }
         return resolution.Status switch
         {
             Sr5CareerSkillGroupRecoveryStatus.AppliedVerified when resolution.Receipt is { } receipt =>
@@ -141,9 +148,11 @@ public sealed class Sr5CareerSkillGroupCoordinator(
 
     public async Task<Sr5CareerSkillGroupRecoveryResolution> ResolveAsync(
         Sr5CareerSkillGroupCheckpoint checkpoint,
+        Sr5CareerSkillGroupCheckpointStore checkpointStore,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(checkpointStore);
         Sr5CareerRunnerBinding before = presenter.Binding;
         Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(before);
         if (!checkpoint.IsStructurallyValid()
@@ -155,18 +164,48 @@ public sealed class Sr5CareerSkillGroupCoordinator(
                 "The skill-group recovery checkpoint does not belong to the authenticated local SR5 owner and runner.");
         }
 
-        CareerSkillGroupAdvanceEditorState? editor =
-            await presenter.LoadSkillGroupsAsync(cancellationToken).ConfigureAwait(false);
-        Sr5CareerRunnerBinding after = presenter.Binding;
-        Sr5CareerActiveSkillCoordinator.RequireCreatedSr5(after);
-        if (before.WorkspaceId != after.WorkspaceId
-            || before.ContentRevision != after.ContentRevision
-            || before.SavedRevision != after.SavedRevision)
+        if (checkpoint.Phase == Sr5CareerCheckpointPhase.Applied
+            && checkpoint.Receipt is { } persistedReceipt
+            && before.ContentRevision == checkpoint.Draft.ExpectedContentRevision + 1
+            && before.SavedRevision == before.ContentRevision
+            && !before.IsDirty
+            && string.IsNullOrWhiteSpace(before.Error)
+            && ReceiptMatchesDraft(checkpoint.Draft, persistedReceipt))
         {
-            return Unknown(checkpoint, "The runner changed during authoritative skill-group outcome lookup.");
+            return Sr5CareerSkillGroupRecoveryProof.Create(
+                checkpoint,
+                Sr5CareerSkillGroupRecoveryStatus.AppliedVerified,
+                persistedReceipt,
+                "The durable Applied checkpoint contains the exact validated Core receipt.");
         }
 
-        return Resolve(checkpoint, after, editor);
+        if (checkpoint.Phase != Sr5CareerCheckpointPhase.Applying)
+        {
+            throw new InvalidOperationException(
+                "Only an exact Applying skill-group checkpoint can retry its atomic Core command.");
+        }
+
+        using IDisposable applyingLease =
+            await checkpointStore.AcquireDurableApplyingLeaseAsync(
+                checkpoint,
+                cancellationToken).ConfigureAwait(false);
+        try
+        {
+            CharacterCareerSkillGroupAdvanceResult? result = await presenter
+                .AdvanceAsync(checkpoint.Draft.ToCommand(), cancellationToken)
+                .ConfigureAwait(false);
+            return ResolveServiceResult(checkpoint, presenter.Binding, result);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return Unknown(
+                checkpoint,
+                "The atomic Core command could not be resolved. Keep the Applying lock; no compatibility mutation was attempted.");
+        }
     }
 
     public async Task<CharacterCareerSkillGroupCorrectionPlan> CorrectAsync(
@@ -198,121 +237,108 @@ public sealed class Sr5CareerSkillGroupCoordinator(
                 "The compensating skill-group correction does not own the exact saved receipt revision.");
         }
 
-        CareerSkillGroupCorrectionRequest request = new(
-            checkpoint.Draft.WorkspaceId,
-            expectedRevision,
-            CharacterCareerSkillGroupAdvanceRules.RulesetId,
-            receipt,
-            receipt.ReceiptDigest,
-            Confirmed: true,
-            correctionId,
-            reason);
-        CharacterCareerSkillGroupCorrectionPlan? correction =
-            await presenter.CorrectAndSaveAsync(request, cancellationToken).ConfigureAwait(false);
-        Sr5CareerRunnerBinding after = presenter.Binding;
-        if (!CharacterCareerSkillGroupAdvanceRules.IsCoherent(correction)
-            || correction!.CorrectionId != correctionId
-            || correction.OriginalTransactionId != receipt.TransactionId
-            || correction.ExpenseIdToRemove != receipt.ExpenseId
-            || correction.Identity != receipt.Identity
-            || correction.SavedGroupKarmaPoints != receipt.GroupKarmaBefore
-            || correction.SavedCharacterKarma != receipt.CharacterKarmaBefore
-            || correction.RestoredGroupRating != receipt.GroupRatingBefore
-            || correction.RestoredCostRating != receipt.CostRatingBefore
-            || !string.Equals(
-                correction.ExpectedPostLogicalRevision,
-                receipt.LogicalRevisionAfter,
-                StringComparison.Ordinal)
-            || !string.Equals(
-                correction.ExpectedPostSourceRevision,
-                receipt.SourceRevisionAfter,
-                StringComparison.Ordinal)
-            || !string.Equals(
-                correction.ExpectedPostRuleDigest,
-                receipt.RuleDigestAfter,
-                StringComparison.Ordinal)
-            || !string.Equals(
-                correction.OriginalReceiptDigest,
-                receipt.ReceiptDigest,
-                StringComparison.Ordinal)
-            || after.WorkspaceId != checkpoint.Draft.WorkspaceId
-            || after.ContentRevision != expectedRevision + 1
-            || after.SavedRevision != after.ContentRevision
-            || after.IsDirty
-            || !string.IsNullOrWhiteSpace(after.Error))
-        {
-            throw new InvalidOperationException(
-                "The compensating skill-group correction was not verified from one exact clean saved revision.");
-        }
-
-        return correction;
+        await Task.Yield();
+        cancellationToken.ThrowIfCancellationRequested();
+        throw new InvalidOperationException(
+            "Atomic skill-group correction authority is not exposed by the current Core service. The saved receipt remains locked for a future authoritative correction flow.");
     }
 
-    internal static Sr5CareerSkillGroupRecoveryResolution Resolve(
+    internal static Sr5CareerSkillGroupRecoveryResolution ResolveServiceResult(
         Sr5CareerSkillGroupCheckpoint checkpoint,
         Sr5CareerRunnerBinding binding,
-        CareerSkillGroupAdvanceEditorState? editor)
+        CharacterCareerSkillGroupAdvanceResult? result)
     {
         if (!checkpoint.IsStructurallyValid()
             || binding.WorkspaceId != checkpoint.Draft.WorkspaceId
-            || editor is null
-            || editor.WorkspaceId != checkpoint.Draft.WorkspaceId
-            || editor.ContentRevision != binding.ContentRevision
             || binding.IsDirty
             || !string.IsNullOrWhiteSpace(binding.Error))
         {
             return Unknown(
                 checkpoint,
-                "A fresh clean typed skill-group projection was unavailable for one saved revision.");
+                "A fresh clean runner binding was unavailable for the atomic Core result.");
         }
 
-        CharacterCareerSkillGroupAdvanceReceipt[] matchingReceipts = editor.RecoverableReceipts
-            .Where(candidate => candidate.TransactionId == checkpoint.Draft.Plan.TransactionId)
-            .Take(2)
-            .ToArray();
+        if (!CharacterCareerSkillGroupAdvanceServiceIntegrity.TryComputeCommandDigest(
+                checkpoint.Draft.ToCommand(),
+                out string expectedCommandDigest)
+            || result is null
+            || !string.Equals(
+                result.ContractName,
+                CharacterCareerSkillGroupAdvanceServiceSchemas.ResultV1,
+                StringComparison.Ordinal)
+            || result.WorkspaceId != checkpoint.Draft.WorkspaceId
+            || result.ExpectedWorkspaceRevision != checkpoint.Draft.ExpectedContentRevision
+            || result.Identity != checkpoint.Draft.Quote.Identity
+            || result.TransactionId != checkpoint.Draft.Plan.TransactionId
+            || !string.Equals(result.CommandDigest, expectedCommandDigest, StringComparison.Ordinal))
+        {
+            return Unknown(
+                checkpoint,
+                "The atomic Core result is absent or belongs to another exact command.");
+        }
+
         bool appliedRevision = checkpoint.Draft.ExpectedContentRevision < long.MaxValue
             && binding.ContentRevision == checkpoint.Draft.ExpectedContentRevision + 1
             && binding.SavedRevision == binding.ContentRevision;
         if (appliedRevision
-            && matchingReceipts.Length == 1
-            && ReceiptMatchesDraft(checkpoint.Draft, matchingReceipts[0]))
+            && result.Outcome is CharacterCareerSkillGroupAdvanceServiceOutcome.Applied
+                or CharacterCareerSkillGroupAdvanceServiceOutcome.Replayed
+            && result.CurrentWorkspaceRevision == binding.ContentRevision
+            && result.ReviewedQuote is { } reviewedQuote
+            && CharacterCareerSkillGroupAdvanceRules.IsCoherent(reviewedQuote)
+            && reviewedQuote.Identity == checkpoint.Draft.Quote.Identity
+            && string.Equals(
+                reviewedQuote.LogicalRevision,
+                checkpoint.Draft.Quote.LogicalRevision,
+                StringComparison.Ordinal)
+            && string.Equals(
+                reviewedQuote.SourceRevision,
+                checkpoint.Draft.Quote.SourceRevision,
+                StringComparison.Ordinal)
+            && string.Equals(
+                reviewedQuote.RuleDigest,
+                checkpoint.Draft.Quote.RuleDigest,
+                StringComparison.Ordinal)
+            && CharacterCareerSkillGroupAdvanceServiceIntegrity.TryComputeBindingDigest(
+                checkpoint.Draft.WorkspaceId,
+                checkpoint.Draft.ExpectedContentRevision,
+                reviewedQuote,
+                out string resultBindingDigest)
+            && string.Equals(
+                resultBindingDigest,
+                checkpoint.Draft.Binding.BindingDigest,
+                StringComparison.Ordinal)
+            && result.Receipt is { } receipt
+            && ReceiptMatchesDraft(checkpoint.Draft, receipt)
+            && CharacterCareerSkillGroupAdvanceServiceIntegrity.TryComputeResultDigest(
+                result with { ResultDigest = string.Empty },
+                out string resultDigest)
+            && string.Equals(resultDigest, result.ResultDigest, StringComparison.Ordinal))
         {
             return Sr5CareerSkillGroupRecoveryProof.Create(
                 checkpoint,
                 Sr5CareerSkillGroupRecoveryStatus.AppliedVerified,
-                matchingReceipts[0],
-                "Fresh typed skill-group and persisted receipt projections verify the exact saved advancement.");
+                receipt,
+                "The atomic Core result and receipt verify the exact saved advancement.");
         }
 
-        CharacterCareerSkillGroupAdvanceQuote[] matchingQuotes = editor.SkillGroups
-            .Where(candidate => candidate.Identity == checkpoint.Draft.Quote.Identity)
-            .Take(2)
-            .ToArray();
-        bool originalQuoteStillExact = matchingQuotes.Length == 1
-            && CharacterCareerSkillGroupAdvanceRules.IsCoherent(matchingQuotes[0])
-            && string.Equals(
-                matchingQuotes[0].LogicalRevision,
-                checkpoint.Draft.Quote.LogicalRevision,
-                StringComparison.Ordinal)
-            && string.Equals(
-                matchingQuotes[0].SourceRevision,
-                checkpoint.Draft.Quote.SourceRevision,
-                StringComparison.Ordinal)
-            && string.Equals(
-                matchingQuotes[0].RuleDigest,
-                checkpoint.Draft.Quote.RuleDigest,
-                StringComparison.Ordinal);
         bool notAppliedRevision = binding.ContentRevision == checkpoint.Draft.ExpectedContentRevision
             && binding.SavedRevision == checkpoint.Draft.ExpectedContentRevision;
         if (notAppliedRevision
-            && matchingReceipts.Length == 0
-            && originalQuoteStillExact)
+            && result.Outcome is CharacterCareerSkillGroupAdvanceServiceOutcome.Invalid
+                or CharacterCareerSkillGroupAdvanceServiceOutcome.Blocked
+                or CharacterCareerSkillGroupAdvanceServiceOutcome.Conflict
+                or CharacterCareerSkillGroupAdvanceServiceOutcome.IdempotencyConflict
+                or CharacterCareerSkillGroupAdvanceServiceOutcome.Missing
+            && (result.CurrentWorkspaceRevision == 0
+                || result.CurrentWorkspaceRevision == checkpoint.Draft.ExpectedContentRevision)
+            && result.Receipt is null)
         {
             return Sr5CareerSkillGroupRecoveryProof.Create(
                 checkpoint,
                 Sr5CareerSkillGroupRecoveryStatus.NotAppliedVerified,
                 receipt: null,
-                "Fresh typed projections prove that neither the skill group nor its receipt transaction was saved.");
+                "Core rejected the exact command and the runner remains at the reviewed revision.");
         }
 
         return Unknown(

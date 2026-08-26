@@ -17,15 +17,17 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
         model = self.read("Sr5CareerSkillGroupWizardModel.cs")
         shared = self.read("Sr5CareerWizardModel.cs")
         for marker in (
-            "CharacterCareerSkillGroupAdvanceQuote Quote",
+            "CharacterCareerSkillGroupQuoteBinding Binding",
             "CharacterCareerSkillGroupAdvancePlan Plan",
             "CharacterCareerSkillGroupAdvanceRules.IsCoherent(Quote)",
             "CharacterCareerSkillGroupAdvanceRules.TryPlanAdvance",
             "Quote.LogicalRevision",
             "Quote.SourceRevision",
             "Quote.RuleDigest",
-            "editor.RulesetId",
-            "CharacterCareerSkillGroupAdvanceRules.RulesetId",
+            "CharacterCareerSkillGroupPrerequisite.Sr5Ruleset",
+            "CharacterCareerSkillGroupAdvanceCommand ToCommand",
+            "CharacterCareerSkillGroupAdvanceServiceSchemas.CommandV1",
+            "Binding.BindingDigest",
             "Sr5CareerSkillGroupRuntimeAuthority RuntimeAuthority",
             "RuntimeAuthority.ContentDigest",
             "RuntimeAuthority.RuntimeDigest",
@@ -53,10 +55,9 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
         presentation = constant("CurrentPresentationRevision")
         content = constant("CurrentContentDigest")
         runtime = constant("CurrentRuntimeDigest")
-        self.assertEqual(core, manifest["coreRevision"])
         self.assertEqual(content, manifest["bundleDigest"])
-        self.assertEqual(core, "b1d6abd5ea0e00c5063bc6561a87c50ec1b7eb85")
-        self.assertEqual(presentation, "671289bb75994a686308cd3f3a1a52e5590f36a4")
+        self.assertEqual(core, "4450825f53a5a96778e6061c16689e7c5993baf7")
+        self.assertEqual(presentation, "4c88c1810e6ce2754fe7b00e03db9b36b75d517c")
         payload = f"{contract}\n{core}\n{presentation}\n{content}\n".encode()
         self.assertEqual(runtime, hashlib.sha256(payload).hexdigest())
         self.assertIn("contentDigest", shared := self.read("Sr5CareerWizardModel.cs"))
@@ -100,28 +101,27 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
         self.assertIn("_selected is { CanAdvance: true }", page)
         self.assertIn("CharacterCareerSkillGroupAdvanceRules.IsCoherent(_selected)", page)
         self.assertIn("OmittedSkillGroupCount", page)
-        self.assertIn("OmittedReceiptCount", page)
+        self.assertNotIn("OmittedReceiptCount", page)
 
     def test_atomic_save_and_fresh_receipt_recovery_are_required(self) -> None:
         runner = self.read("RunnerSessionCoordinator.cs")
         coordinator = self.read("Sr5CareerSkillGroupCoordinator.cs")
         for marker in (
             "PrepareCareerSkillGroupAdvanceAsync",
-            "ApplyCareerSkillGroupAdvanceAsync",
-            "request.ExpectedRulesetId",
-            "CharacterCareerSkillGroupAdvanceRules.TryPlanAdvance",
-            "CharacterCareerSkillGroupAdvanceRules.IsCoherent(preparedReceipt)",
-            "preparedReceipt.TransactionId == expectedPlan.TransactionId",
-            "State.ContentRevision == request.ExpectedContentRevision + 1",
-            "await _presenter.SaveAsync",
-            "State.SavedRevision == appliedContentRevision",
+            "AdvanceCareerSkillGroupAsync",
+            "ICharacterCareerSkillGroupAdvanceService",
+            "CharacterCareerSkillGroupAdvanceServiceIntegrity.TryComputeCommandDigest",
+            "service.Advance(command)",
+            "State.ContentRevision != result.CurrentWorkspaceRevision",
+            "State.SavedRevision != result.CurrentWorkspaceRevision",
             "!State.IsDirty",
         ):
             self.assertIn(marker, runner)
-        self.assertIn("presenter.LoadSkillGroupsAsync", coordinator)
-        self.assertIn("editor.RecoverableReceipts", coordinator)
+        self.assertIn(".AdvanceAsync(", coordinator)
+        self.assertIn("CharacterCareerSkillGroupAdvanceServiceIntegrity.TryComputeResultDigest", coordinator)
         self.assertIn("ReceiptMatchesDraft", coordinator)
-        self.assertIn("Do not replay or clear it", coordinator)
+        self.assertNotIn("ApplyAndSaveAsync", coordinator)
+        self.assertNotIn("CareerSkillGroupCorrectionRequest", coordinator)
 
     def test_restart_checkpoint_is_cas_bound_and_malformed_data_remains_a_lock(self) -> None:
         store = self.read("Sr5CareerSkillGroupCheckpointStore.cs")
@@ -142,7 +142,9 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
             self.assertIn(marker, store)
         self.assertIn("Sr5CareerSkillGroupRecoveryProof.Verifies", store)
         self.assertIn("AcquireDurableApplyingLeaseAsync", store)
-        self.assertIn("ApplyingMutationGate", store)
+        self.assertIn("Sr5CareerMutationOwnerStore", store)
+        self.assertIn("Sr5CareerMutationDomains.SkillGroupAdvance", store)
+        self.assertNotIn("ApplyingMutationGate", store)
         self.assertIn("TryDeleteCorrected", store)
         self.assertIn("CryptographicOperations.FixedTimeEquals", coordinator)
         self.assertIn("checkpointStore.AcquireDurableApplyingLeaseAsync", coordinator)
@@ -156,11 +158,11 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
             "ApplicationDuration",
             "TimeAuthority",
             "Correct this advancement",
-            "TryDeleteCorrected",
+            "Correction stays unavailable",
         ):
             self.assertIn(marker, page)
         self.assertIn("CorrectAsync", coordinator)
-        self.assertIn("CareerSkillGroupCorrectionRequest", coordinator)
+        self.assertIn("Atomic skill-group correction authority is not exposed", coordinator)
 
     def test_career_and_build_surfaces_enter_the_phone_wizard(self) -> None:
         career = self.read("Sr5CareerWizardPage.cs")
@@ -183,9 +185,10 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
             "ExactDraftBindsTypedIdentityQuotePlanAndDigests",
             "BlockedQuotesNeverBecomeDrafts",
             "CheckpointRejectsTamperingAndPriorSchemaLocks",
-            "CoordinatorVerifiesOnlyFreshExactReceiptAsync",
-            "ApplyingCrashResolvesWithoutReplayAsync",
+            "CoordinatorVerifiesOnlyAtomicCoreResultAsync",
+            "ApplyingCrashResolvesByExactCommandReplayAsync",
             "CheckpointCasRejectsForgedResolutionAndWrongOwner",
+            "SharedMutationOwnerBlocksCrossLaneApply",
         ):
             self.assertIn(marker, harness)
 
