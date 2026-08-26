@@ -1170,6 +1170,18 @@ internal static class Program
     {
         SkillsFixture fixture = NewSkillsFixture();
         Require(
+            CharacterCreationSkillsDraftIntegrity.IsValidAuthority(fixture.State.Authority),
+            "The Skills fixture must carry an exactly valid Core authority packet.");
+        Require(
+            CharacterCreationSkillsDraftIntegrity.IsValidStateProjection(fixture.State),
+            "The Skills fixture must carry an exactly valid Core state projection.");
+        Require(
+            CharacterCreationSkillsDigest.EqualsFixedTime(
+                fixture.State.SnapshotDigest,
+                CharacterCreationSkillsDigest.Compute(
+                    fixture.State with { SnapshotDigest = string.Empty })),
+            "The Skills fixture snapshot digest must bind its exact state projection.");
+        Require(
             CreationSkillsPhoneAuthority.IsReady(fixture.State, fixture.Overview),
             "The phone gate must accept an exactly digest-valid Core Skills packet.");
         Require(
@@ -1366,9 +1378,13 @@ internal static class Program
                 null,
                 false,
                 [],
-                languageAnchors),
+                languageAnchors,
+                canBeNativeLanguage: true),
             [],
-            languageAnchors);
+            languageAnchors)
+        {
+            CanBeNativeLanguage = true
+        };
         string runtimeDigest = CharacterCreationStandardPrioritySkillsRules.ComputeRuntimeDigest(
             usePointsOnBrokenGroups: false,
             strictSkillGroupsInCreateMode: false,
