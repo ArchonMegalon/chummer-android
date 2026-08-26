@@ -820,7 +820,21 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         display_indexes = [
             index for index, observed in enumerate(calls) if observed == ("display_size", (), {})
         ]
-        authority_surface_index = calls.index(("wait", ("home-open-file",), {"timeout": 90}))
+        authority_surface_index = calls.index(
+            (
+                "wait",
+                ("home-open-file",),
+                {"timeout": 90, "scroll": True, "max_scrolls": 16},
+            )
+        )
+        self.assertIn(
+            (
+                "tap_until_visible",
+                ("home-new-runner", "Select Build Method"),
+                {"scroll": True, "max_scrolls": 16},
+            ),
+            calls,
+        )
         self.assertLess(transition_index, route_index)
         self.assertLess(route_index, capture_index)
         self.assertLess(capture_index, save_index)
@@ -1998,7 +2012,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn("reset_swipes=48", source)
         self.assertNotIn('device.wait("creation-wizard-dashboard"', source)
         self.assertIn('"build-save-runner",', source)
-        self.assertIn('device.wait("home-open-file", timeout=90)', source)
+        self.assertEqual(
+            2,
+            source.count(
+                'device.wait("home-open-file", timeout=90, scroll=True, max_scrolls=16)'
+            ),
+        )
         self.assertNotIn('device.wait("Continue building", timeout=120)', source)
         self.assertIn("require_priority_created_workspace_authority", source)
         self.assertIn("prepared.workspace_id == fresh.workspace_id", source)

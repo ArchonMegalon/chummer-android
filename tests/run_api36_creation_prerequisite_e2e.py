@@ -183,7 +183,12 @@ def provision_creation_karma_through_priority_creation(
     device: shared.Device,
 ) -> dict[str, str]:
     """Create a rules-valid Priority runner exclusively through the production phone dialog."""
-    device.tap_until_visible("home-new-runner", "Select Build Method")
+    device.tap_until_visible(
+        "home-new-runner",
+        "Select Build Method",
+        scroll=True,
+        max_scrolls=16,
+    )
     build_method_selector, build_method = PRIORITY_BUILD_METHOD_SELECTION
     priority.select_option(device, build_method_selector, build_method)
     settings_selector, settings_label, settings_id = PRIORITY_SETTINGS_SELECTION
@@ -237,7 +242,7 @@ def provision_creation_karma_through_priority_creation(
         scroll_distance_ratio=0.22,
     )
     shared.tap_phone_destination(device, "phone-destination-runners")
-    device.wait("home-open-file", timeout=90)
+    device.wait("home-open-file", timeout=90, scroll=True, max_scrolls=16)
     return selected
 
 
@@ -1260,7 +1265,7 @@ def main() -> int:
     device.wait("Saved.", timeout=90, scroll=True, max_scrolls=48, scroll_distance_ratio=0.22)
     shared.tap_phone_destination(device, "phone-destination-runners")
     shared.wait_for_phone_runners(device)
-    device.wait("home-open-file", timeout=90)
+    device.wait("home-open-file", timeout=90, scroll=True, max_scrolls=16)
     fresh_authority = shared.read_phone_workspace_authority(device)
     shared.require_saved_authority(fresh_authority)
     priority_creation_selections = provision_creation_karma_through_priority_creation(device)
