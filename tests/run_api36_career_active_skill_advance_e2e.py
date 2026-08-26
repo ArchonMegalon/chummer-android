@@ -19,6 +19,7 @@ CONTROLS = ("SkillControl.btnCareerIncrease",)
 SKILL_ID = "11111111-1111-1111-1111-111111111111"
 SOURCE_SKILL_ID = "ae91a8a6-80e7-4f52-b9eb-21725a5528a4"
 ORIGINAL_EXPENSE_ID = "22222222-2222-2222-2222-222222222222"
+ADVANCE_SUCCESS_NOTICE = "Active skill advanced and Karma expense saved."
 CANONICAL_IMPORT_FIELDS = {
     "name": "CareerActiveSkillAdvanceE2E",
     "alias": "CareerActiveSkillAdvanceE2E",
@@ -251,7 +252,12 @@ def prove_advancement(
     device.wait("career-active-skill-page", timeout=30)
     device.tap("career-active-skill-advance", timeout=60)
     device.tap("Advance", timeout=60)
-    device.wait("build-career-active-skill", timeout=180, scroll=True, max_scrolls=40)
+    device.wait(
+        ADVANCE_SUCCESS_NOTICE,
+        timeout=180,
+        scroll=True,
+        max_scrolls=40,
+    )
     saved = read_saved_authority(device)
     if saved.workspace_id != imported.workspace_id:
         raise RuntimeError("Active-skill save changed workspace identity")

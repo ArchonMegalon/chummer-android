@@ -46,6 +46,27 @@ class Api36CareerActiveSkillAdvanceDriverTests(unittest.TestCase):
         self.assertIn('"Active Skill Pilot Ground Craft 3 -> 4"', source)
         self.assertIn('"ImproveSkill"', source)
 
+    def test_confirm_waits_for_success_notice_before_reading_saved_authority(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        confirm = source.index('device.tap("Advance"')
+        success = source.index("ADVANCE_SUCCESS_NOTICE", confirm)
+        saved_authority = source.index("saved = read_saved_authority(device)", success)
+
+        self.assertEqual(
+            "Active skill advanced and Karma expense saved.",
+            driver.ADVANCE_SUCCESS_NOTICE,
+        )
+        self.assertIn(
+            "ADVANCE_SUCCESS_NOTICE,\n        timeout=180,\n        scroll=True,",
+            source,
+        )
+        self.assertLess(confirm, success)
+        self.assertLess(success, saved_authority)
+        self.assertNotIn(
+            'device.wait("build-career-active-skill", timeout=180',
+            source,
+        )
+
     def test_fixture_has_exact_guid_source_balance_expense_and_nested_authority(self) -> None:
         root = ET.parse(FIXTURE).getroot()
         driver.require_canonical_import_fixture(root)
