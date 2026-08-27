@@ -45,4 +45,22 @@
   <data name="PlayUpdates" xml:space="preserve"><value>Las actualizaciones se reciben mediante Google Play</value></data>
   <data name="UpdateUnavailable" xml:space="preserve"><value>La comprobación de actualizaciones no está disponible</value></data>
   <data name="Ok" xml:space="preserve"><value>Aceptar</value></data>
+  <data name="ApplicationPrintSettingsTitle" xml:space="preserve"><value>Impresión y notas PDF</value></data>
+  <data name="ApplicationPrintSettingsEyebrow" xml:space="preserve"><value>Salida de la aplicación</value></data>
+  <data name="ApplicationPrintSettingsSummary" xml:space="preserve"><value>Estos ajustes de Chummer afectan a todo el dispositivo, no a los datos del runner. Atrás descarta el borrador; Guardar escribe las seis opciones de forma atómica.</value></data>
+  <data name="ApplicationPrintSettingsNavigationDetail" xml:space="preserve"><value>Elige qué contiene la salida imprimible.</value></data>
+  <data name="ApplicationPrintToFileFirstTitle" xml:space="preserve"><value>Renderizar a un archivo antes de imprimir</value></data>
+  <data name="ApplicationPrintToFileFirstDescription" xml:space="preserve"><value>Usa la opción de aplicación printtofilefirst de Chummer5.</value></data>
+  <data name="ApplicationPrintZeroSkillsTitle" xml:space="preserve"><value>Incluir habilidades con valor cero</value></data>
+  <data name="ApplicationPrintZeroSkillsDescription" xml:space="preserve"><value>Mantiene las habilidades con valor cero en las hojas de personaje generadas.</value></data>
+  <data name="ApplicationPrintExpensesTitle" xml:space="preserve"><value>Incluir gastos</value></data>
+  <data name="ApplicationPrintExpensesDescription" xml:space="preserve"><value>Añade el historial de gastos a la salida imprimible.</value></data>
+  <data name="ApplicationPrintFreeExpensesTitle" xml:space="preserve"><value>Incluir gastos gratuitos</value></data>
+  <data name="ApplicationPrintFreeExpensesDescription" xml:space="preserve"><value>Disponible solo si está activada la impresión de gastos, como en Chummer5.</value></data>
+  <data name="ApplicationPrintNotesTitle" xml:space="preserve"><value>Incluir notas</value></data>
+  <data name="ApplicationPrintNotesDescription" xml:space="preserve"><value>Añade las notas del runner a la salida imprimible.</value></data>
+  <data name="ApplicationInsertPdfNotesTitle" xml:space="preserve"><value>Insertar notas PDF cuando estén disponibles</value></data>
+  <data name="ApplicationInsertPdfNotesDescription" xml:space="preserve"><value>Usa notas PDF incrustadas cuando la hoja seleccionada las ofrece.</value></data>
+  <data name="ApplicationSettingsRevision" xml:space="preserve"><value>Revisión de ajustes {0}</value></data>
+  <data name="ApplicationPrintSettingsSaved" xml:space="preserve"><value>Ajustes de impresión guardados.</value></data>
 </root>

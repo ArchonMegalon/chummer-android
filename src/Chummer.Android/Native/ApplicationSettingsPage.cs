@@ -187,6 +187,16 @@ public sealed class ApplicationSettingsPage : NativePageBase
             "Automatically load external save-file changes only when the open character has no pending edits.",
             _liveUpdateCleanCharacterFiles));
 
+        body.Add(NativeTheme.Title(
+            PhoneStrings.Get("ApplicationPrintSettingsEyebrow", "Application output")));
+        body.Add(NativeTheme.NavigationRow(
+            PhoneStrings.Get("ApplicationPrintSettingsTitle", "Print & PDF notes"),
+            PhoneStrings.Get(
+                "ApplicationPrintSettingsNavigationDetail",
+                "Choose what printable output contains."),
+            async () => await Navigation.PushAsync(new ApplicationPrintSettingsPage(Coordinator)),
+            automationId: "settings-open-print-settings"));
+
         body.Add(NativeTheme.Title(PlayReviewStrings.SettingsSection()));
         body.Add(NativeTheme.NavigationRow(
             PlayReviewStrings.RateOnGooglePlay(),

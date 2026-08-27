@@ -2723,6 +2723,35 @@ public sealed class RunnerSessionCoordinator : IDisposable
         return Task.CompletedTask;
     }
 
+    public Task SaveApplicationPrintSettingsAsync(
+        bool printToFileFirst,
+        bool printSkillsWithZeroRating,
+        bool printExpenses,
+        bool printFreeExpenses,
+        bool printNotes,
+        bool insertPdfNotesIfAvailable,
+        long expectedRevision,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        _applicationSettings = _applicationSettingsPresenter.ApplyPrintSettingsSnapshot(
+            new ApplicationPrintSettingsMutation(
+                new(ApplicationSettingIdentity.PrintToFileFirst, printToFileFirst),
+                new(ApplicationSettingIdentity.PrintSkillsWithZeroRating, printSkillsWithZeroRating),
+                new(ApplicationSettingIdentity.PrintExpenses, printExpenses),
+                new(ApplicationSettingIdentity.PrintFreeExpenses, printFreeExpenses),
+                new(ApplicationSettingIdentity.PrintNotes, printNotes),
+                new(
+                    ApplicationSettingIdentity.InsertPdfNotesIfAvailable,
+                    insertPdfNotesIfAvailable),
+                expectedRevision));
+        _notice = PhoneStrings.Get(
+            "ApplicationPrintSettingsSaved",
+            "Print settings saved.");
+        NotifyChanged();
+        return Task.CompletedTask;
+    }
+
     private CharacterRosterDocumentIdentity ResolveRosterIdentity(OpenWorkspaceState workspace)
     {
         string locator = Preferences.Default.Get(

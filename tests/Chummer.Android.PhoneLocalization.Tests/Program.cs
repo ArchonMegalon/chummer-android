@@ -33,6 +33,18 @@ internal static class Program
         Require(PhoneStrings.Get("ShellStories", "fallback", CultureInfo.GetCultureInfo("en-GB")) == "Stories");
         Require(PhoneStrings.Get("ShellStories", "fallback", CultureInfo.GetCultureInfo("de-AT")) == "Geschichten");
         Require(PhoneStrings.Get("ShellStories", "fallback", CultureInfo.GetCultureInfo("es-MX")) == "Historias");
+        Require(PhoneStrings.Get(
+            "ApplicationPrintSettingsTitle",
+            "fallback",
+            CultureInfo.GetCultureInfo("en-GB")) == "Print & PDF notes");
+        Require(PhoneStrings.Get(
+            "ApplicationPrintSettingsTitle",
+            "fallback",
+            CultureInfo.GetCultureInfo("de-AT")) == "Druck & PDF-Notizen");
+        Require(PhoneStrings.Get(
+            "ApplicationPrintSettingsTitle",
+            "fallback",
+            CultureInfo.GetCultureInfo("es-MX")) == "Impresión y notas PDF");
         Require(PhoneStrings.Get("MissingKey", "safe fallback", CultureInfo.GetCultureInfo("de-AT")) == "safe fallback");
     }
 

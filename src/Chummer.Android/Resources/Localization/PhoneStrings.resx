@@ -45,4 +45,22 @@
   <data name="PlayUpdates" xml:space="preserve"><value>Updates come through Google Play</value></data>
   <data name="UpdateUnavailable" xml:space="preserve"><value>Update check unavailable</value></data>
   <data name="Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="ApplicationPrintSettingsTitle" xml:space="preserve"><value>Print &amp; PDF notes</value></data>
+  <data name="ApplicationPrintSettingsEyebrow" xml:space="preserve"><value>Application output</value></data>
+  <data name="ApplicationPrintSettingsSummary" xml:space="preserve"><value>These are device-wide Chummer settings, not runner data. Back discards the draft; Save writes all six options atomically.</value></data>
+  <data name="ApplicationPrintSettingsNavigationDetail" xml:space="preserve"><value>Choose what printable output contains.</value></data>
+  <data name="ApplicationPrintToFileFirstTitle" xml:space="preserve"><value>Render to a file before printing</value></data>
+  <data name="ApplicationPrintToFileFirstDescription" xml:space="preserve"><value>Uses Chummer5's printtofilefirst application option.</value></data>
+  <data name="ApplicationPrintZeroSkillsTitle" xml:space="preserve"><value>Include skills with rating zero</value></data>
+  <data name="ApplicationPrintZeroSkillsDescription" xml:space="preserve"><value>Keeps zero-rated skills on generated character sheets.</value></data>
+  <data name="ApplicationPrintExpensesTitle" xml:space="preserve"><value>Include expenses</value></data>
+  <data name="ApplicationPrintExpensesDescription" xml:space="preserve"><value>Adds the expense history to printable output.</value></data>
+  <data name="ApplicationPrintFreeExpensesTitle" xml:space="preserve"><value>Include free expenses</value></data>
+  <data name="ApplicationPrintFreeExpensesDescription" xml:space="preserve"><value>Available only while expense printing is enabled, matching Chummer5.</value></data>
+  <data name="ApplicationPrintNotesTitle" xml:space="preserve"><value>Include notes</value></data>
+  <data name="ApplicationPrintNotesDescription" xml:space="preserve"><value>Adds runner notes to printable output.</value></data>
+  <data name="ApplicationInsertPdfNotesTitle" xml:space="preserve"><value>Insert PDF notes when available</value></data>
+  <data name="ApplicationInsertPdfNotesDescription" xml:space="preserve"><value>Uses embedded PDF notes when the selected sheet provides them.</value></data>
+  <data name="ApplicationSettingsRevision" xml:space="preserve"><value>Settings revision {0}</value></data>
+  <data name="ApplicationPrintSettingsSaved" xml:space="preserve"><value>Print settings saved.</value></data>
 </root>

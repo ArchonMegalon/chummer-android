@@ -45,4 +45,22 @@
   <data name="PlayUpdates" xml:space="preserve"><value>Updates werden über Google Play bereitgestellt</value></data>
   <data name="UpdateUnavailable" xml:space="preserve"><value>Update-Prüfung nicht verfügbar</value></data>
   <data name="Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="ApplicationPrintSettingsTitle" xml:space="preserve"><value>Druck &amp; PDF-Notizen</value></data>
+  <data name="ApplicationPrintSettingsEyebrow" xml:space="preserve"><value>App-Ausgabe</value></data>
+  <data name="ApplicationPrintSettingsSummary" xml:space="preserve"><value>Dies sind geräteweite Chummer-Einstellungen, keine Runnerdaten. Zurück verwirft den Entwurf; Speichern schreibt alle sechs Optionen atomar.</value></data>
+  <data name="ApplicationPrintSettingsNavigationDetail" xml:space="preserve"><value>Lege fest, was die Druckausgabe enthält.</value></data>
+  <data name="ApplicationPrintToFileFirstTitle" xml:space="preserve"><value>Vor dem Drucken in Datei rendern</value></data>
+  <data name="ApplicationPrintToFileFirstDescription" xml:space="preserve"><value>Verwendet Chummer5s App-Option printtofilefirst.</value></data>
+  <data name="ApplicationPrintZeroSkillsTitle" xml:space="preserve"><value>Fertigkeiten mit Wert null einschließen</value></data>
+  <data name="ApplicationPrintZeroSkillsDescription" xml:space="preserve"><value>Behält Fertigkeiten mit Wert null auf erzeugten Charakterbögen.</value></data>
+  <data name="ApplicationPrintExpensesTitle" xml:space="preserve"><value>Ausgaben einschließen</value></data>
+  <data name="ApplicationPrintExpensesDescription" xml:space="preserve"><value>Fügt der Druckausgabe den Ausgabenverlauf hinzu.</value></data>
+  <data name="ApplicationPrintFreeExpensesTitle" xml:space="preserve"><value>Kostenlose Ausgaben einschließen</value></data>
+  <data name="ApplicationPrintFreeExpensesDescription" xml:space="preserve"><value>Nur verfügbar, wenn die Ausgabe von Ausgaben aktiviert ist, wie in Chummer5.</value></data>
+  <data name="ApplicationPrintNotesTitle" xml:space="preserve"><value>Notizen einschließen</value></data>
+  <data name="ApplicationPrintNotesDescription" xml:space="preserve"><value>Fügt der Druckausgabe Runnernotizen hinzu.</value></data>
+  <data name="ApplicationInsertPdfNotesTitle" xml:space="preserve"><value>PDF-Notizen einfügen, wenn verfügbar</value></data>
+  <data name="ApplicationInsertPdfNotesDescription" xml:space="preserve"><value>Verwendet eingebettete PDF-Notizen, wenn der gewählte Bogen sie bereitstellt.</value></data>
+  <data name="ApplicationSettingsRevision" xml:space="preserve"><value>Einstellungsrevision {0}</value></data>
+  <data name="ApplicationPrintSettingsSaved" xml:space="preserve"><value>Druckeinstellungen gespeichert.</value></data>
 </root>
