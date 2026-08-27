@@ -95,6 +95,11 @@ public static class MauiProgram
         builder.Services.AddSingleton<OriginDossierLifeModulePhoneRuntime>();
         builder.Services.AddSingleton<ICareerQualityAtomicWorkspace,
             AndroidCareerQualityAtomicWorkspace>();
+        builder.Services.AddSingleton<ISr5CustomDrugLabCheckpointStore,
+            PreferencesSr5CustomDrugLabCheckpointStore>();
+        builder.Services.AddSingleton<ISr5CustomDrugWorkspaceStore,
+            AndroidSr5CustomDrugWorkspaceStore>();
+        builder.Services.AddSingleton<Sr5CustomDrugLabService>();
         builder.Services.AddSingleton(new HttpClient
         {
             BaseAddress = new Uri("https://chummer.run"),

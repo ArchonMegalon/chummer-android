@@ -209,6 +209,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly ICharacterCreationQualitiesService? _creationQualitiesService;
     private readonly ICharacterCreationMagicResonanceService? _creationMagicResonanceService;
     private readonly ICharacterCreationFinalizationService? _creationFinalizationService;
+    private readonly Sr5CustomDrugLabService? _customDrugLabService;
     private readonly ICharacterCareerSkillGroupAdvanceService? _careerSkillGroupService;
     private readonly ICharacterAfterRunSettlementService? _afterRunSettlementService;
     private readonly IAndroidAfterRunProposalCatalog? _afterRunProposalCatalog;
@@ -279,7 +280,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         IAndroidAfterRunProposalCatalog? afterRunProposalCatalog = null,
         ICharacterCreationMagicResonanceService? creationMagicResonanceService = null,
         OriginDossierLifeModulePhoneRuntime? originLifeModuleRuntime = null,
-        ICharacterCreationFinalizationService? creationFinalizationService = null)
+        ICharacterCreationFinalizationService? creationFinalizationService = null,
+        Sr5CustomDrugLabService? customDrugLabService = null)
     {
         _presenter = presenter;
         _client = client;
@@ -294,6 +296,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _creationQualitiesService = creationQualitiesService;
         _creationMagicResonanceService = creationMagicResonanceService;
         _creationFinalizationService = creationFinalizationService;
+        _customDrugLabService = customDrugLabService;
         _careerSkillGroupService = careerSkillGroupService;
         _afterRunSettlementService = afterRunSettlementService;
         _afterRunProposalCatalog = afterRunProposalCatalog;
@@ -409,6 +412,106 @@ public sealed class RunnerSessionCoordinator : IDisposable
            && _durableSaveNotice?.Matches(State) == true;
 
     public bool IsBusy => State.IsBusy || Surface.IsBusy;
+
+    public Sr5CustomDrugLabSnapshot LoadCustomDrugLab(CharacterCustomDrugContext context)
+    {
+        if (_customDrugLabService is null
+            || State.WorkspaceId is not { } workspaceId
+            || State.IsDirty
+            || State.ContentRevision != State.SavedRevision
+            || !string.IsNullOrWhiteSpace(State.Error)
+            || State.Profile?.Created != (context == CharacterCustomDrugContext.Career)
+            || !string.Equals(State.Rules?.GameEdition, "SR5", StringComparison.OrdinalIgnoreCase))
+        {
+            return Sr5CustomDrugLabSnapshot.Blocked(
+                State.WorkspaceId ?? default,
+                context,
+                CharacterCustomDrugBlockers.AuthorityUnavailable);
+        }
+        Sr5CustomDrugLabSnapshot result = _customDrugLabService.Load(workspaceId, context);
+        return result.Preparation is { } preparation
+               && preparation.ContentRevision == State.ContentRevision
+            ? result
+            : Sr5CustomDrugLabSnapshot.Blocked(
+                workspaceId,
+                context,
+                CharacterCustomDrugBlockers.StaleRevision);
+    }
+
+    public Sr5CustomDrugLabSnapshot UpdateCustomDrugSelection(
+        CharacterCustomDrugContext context,
+        CharacterCustomDrugSelection selection)
+    {
+        CharacterWorkspaceId workspaceId = RequireCustomDrugWorkspace(context);
+        return _customDrugLabService!.UpdateSelection(workspaceId, context, selection);
+    }
+
+    public Sr5CustomDrugLabSnapshot StartEditingCustomDrug(CharacterCustomDrugContext context)
+    {
+        CharacterWorkspaceId workspaceId = RequireCustomDrugWorkspace(context);
+        return _customDrugLabService!.StartEditing(workspaceId, context);
+    }
+
+    public Sr5CustomDrugLabSnapshot ReviewCustomDrug(CharacterCustomDrugContext context)
+    {
+        CharacterWorkspaceId workspaceId = RequireCustomDrugWorkspace(context);
+        return _customDrugLabService!.Review(workspaceId, context);
+    }
+
+    public Sr5CustomDrugLabSnapshot ConfirmCreationCustomDrug()
+    {
+        CharacterWorkspaceId workspaceId = RequireCustomDrugWorkspace(
+            CharacterCustomDrugContext.Creation);
+        return _customDrugLabService!.ConfirmCreation(workspaceId);
+    }
+
+    public Sr5CreationCustomDrugFinalizationContribution? ReadCreationCustomDrugContribution()
+        => State.WorkspaceId is { } workspaceId && _customDrugLabService is not null
+            ? _customDrugLabService.ReadCreationContribution(workspaceId)
+            : null;
+
+    public async Task<Sr5CustomDrugLabSnapshot> ConfirmCareerCustomDrugAsync(
+        CancellationToken cancellationToken = default)
+    {
+        CharacterWorkspaceId workspaceId = RequireCustomDrugWorkspace(
+            CharacterCustomDrugContext.Career);
+        Sr5CustomDrugLabSnapshot result = _customDrugLabService!.ConfirmCareer(workspaceId);
+        if (result.HasAppliedReceipt
+            || result.Checkpoint?.Phase == Sr5CustomDrugCheckpointPhase.RecoveryUnknown)
+        {
+            await _presenter.LoadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
+            await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+            NotifyChanged();
+        }
+        return result;
+    }
+
+    public async Task<Sr5CustomDrugLabSnapshot> UndoCareerCustomDrugAsync(
+        CancellationToken cancellationToken = default)
+    {
+        CharacterWorkspaceId workspaceId = RequireCustomDrugWorkspace(
+            CharacterCustomDrugContext.Career);
+        Sr5CustomDrugLabSnapshot result = _customDrugLabService!.UndoCareer(workspaceId);
+        if (string.Equals(result.Notice, Sr5CustomDrugLabNotices.UndoApplied, StringComparison.Ordinal)
+            || result.Checkpoint?.Phase == Sr5CustomDrugCheckpointPhase.RecoveryUnknown)
+        {
+            await _presenter.LoadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
+            await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+            NotifyChanged();
+        }
+        return result;
+    }
+
+    private CharacterWorkspaceId RequireCustomDrugWorkspace(CharacterCustomDrugContext context)
+    {
+        Sr5CustomDrugLabSnapshot live = LoadCustomDrugLab(context);
+        if (!live.IsReady || State.WorkspaceId is not { } workspaceId)
+        {
+            throw new InvalidOperationException(
+                live.Blockers.FirstOrDefault() ?? CharacterCustomDrugBlockers.AuthorityUnavailable);
+        }
+        return workspaceId;
+    }
 
     public CharacterCreationContactsInteractionLoadResult LoadCreationContacts()
     {

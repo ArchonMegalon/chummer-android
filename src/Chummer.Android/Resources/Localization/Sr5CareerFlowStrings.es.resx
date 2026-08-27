@@ -543,4 +543,88 @@ Vista previa: {3}…</value></data>
   <data name="Verified runner revision {0} after {1}." xml:space="preserve"><value>Revisión {0} del runner verificada después de {1}.</value></data>
   <data name="Workspace {0} · revision {1} · snapshot {2}" xml:space="preserve"><value>Espacio de trabajo {0} · revisión {1} · instantánea {2}</value></data>
   <data name="{0} rounds · ammo {1} → {2}{3}" xml:space="preserve"><value>{0} proyectiles · munición {1} → {2}{3}</value></data>
+  <data name="Add effect levels only within each component's source limit and the recipe-wide maximum." xml:space="preserve"><value>Añade niveles de efecto solo dentro del límite de origen de cada componente y del máximo de la receta.</value></data>
+  <data name="Add level {0}" xml:space="preserve"><value>Añadir nivel {0}</value></data>
+  <data name="Addiction" xml:space="preserve"><value>Adicción</value></data>
+  <data name="Availability" xml:space="preserve"><value>Disponibilidad</value></data>
+  <data name="Available effect levels" xml:space="preserve"><value>Niveles de efecto disponibles</value></data>
+  <data name="Block" xml:space="preserve"><value>Bloque</value></data>
+  <data name="Build a source-bound recipe here. Confirmation queues a typed contribution; it never writes creation XML directly." xml:space="preserve"><value>Crea aquí una receta vinculada a la fuente. La confirmación pone en cola una contribución tipada; nunca escribe directamente el XML de creación.</value></data>
+  <data name="Build and review a source-bound recipe, then confirm one idempotent Core commit against the clean saved runner." xml:space="preserve"><value>Crea y revisa una receta vinculada a la fuente y confirma una operación idempotente de Core sobre el runner guardado y limpio.</value></data>
+  <data name="Career custom drug lab" xml:space="preserve"><value>Laboratorio de drogas personalizadas de Carrera</value></data>
+  <data name="Catalog" xml:space="preserve"><value>Catálogo</value></data>
+  <data name="Charged now" xml:space="preserve"><value>Cobrado ahora</value></data>
+  <data name="Choose exactly one Foundation. Choosing another Foundation replaces the current one." xml:space="preserve"><value>Elige exactamente una Base. Elegir otra Base reemplaza la actual.</value></data>
+  <data name="Choose grade" xml:space="preserve"><value>Elegir grado</value></data>
+  <data name="Choose one exact grade" xml:space="preserve"><value>Elige un grado exacto</value></data>
+  <data name="Component levels" xml:space="preserve"><value>Niveles del componente</value></data>
+  <data name="Confirm and save recipe" xml:space="preserve"><value>Confirmar y guardar la receta</value></data>
+  <data name="Confirm exact recipe" xml:space="preserve"><value>Confirmar receta exacta</value></data>
+  <data name="Confirm finalizer contribution" xml:space="preserve"><value>Confirmar contribución al finalizador</value></data>
+  <data name="Contribution" xml:space="preserve"><value>Contribución</value></data>
+  <data name="Core proved no recipe was saved. Review and confirm again." xml:space="preserve"><value>Core demostró que no se guardó ninguna receta. Revísala y confírmala de nuevo.</value></data>
+  <data name="Core saved the recipe and receipt on one exact runner revision." xml:space="preserve"><value>Core guardó la receta y el recibo en una revisión exacta del runner.</value></data>
+  <data name="Crash damage" xml:space="preserve"><value>Daño de caída</value></data>
+  <data name="Creation custom drug lab" xml:space="preserve"><value>Laboratorio de drogas personalizadas de Creación</value></data>
+  <data name="Custom drug authority unavailable" xml:space="preserve"><value>Autoridad de drogas personalizadas no disponible</value></data>
+  <data name="Custom drug lab" xml:space="preserve"><value>Laboratorio de drogas personalizadas</value></data>
+  <data name="Design an exact recipe contribution for the atomic creation finalizer" xml:space="preserve"><value>Diseña una contribución de receta exacta para el finalizador atómico de creación</value></data>
+  <data name="Design, confirm, recover, and undo one exact saved recipe" xml:space="preserve"><value>Diseña, confirma, recupera y deshaz una receta guardada exacta</value></data>
+  <data name="Duration" xml:space="preserve"><value>Duración</value></data>
+  <data name="Edit queued recipe" xml:space="preserve"><value>Editar receta en cola</value></data>
+  <data name="Enhancer" xml:space="preserve"><value>Potenciador</value></data>
+  <data name="Enter a unique recipe name" xml:space="preserve"><value>Introduce un nombre de receta único</value></data>
+  <data name="Exact component catalog" xml:space="preserve"><value>Catálogo exacto de componentes</value></data>
+  <data name="Exact effect and cost preview" xml:space="preserve"><value>Vista previa exacta de efectos y coste</value></data>
+  <data name="Exact source grades" xml:space="preserve"><value>Grados exactos de la fuente</value></data>
+  <data name="Foundation" xml:space="preserve"><value>Base</value></data>
+  <data name="Grade" xml:space="preserve"><value>Grado</value></data>
+  <data name="Initiative" xml:space="preserve"><value>Iniciativa</value></data>
+  <data name="Initiative dice" xml:space="preserve"><value>Dados de iniciativa</value></data>
+  <data name="Initiative {0} · dice {1} · crash {2} · speed {3} · duration {4}" xml:space="preserve"><value>Iniciativa {0} · dados {1} · caída {2} · velocidad {3} · duración {4}</value></data>
+  <data name="Keep recipe" xml:space="preserve"><value>Conservar receta</value></data>
+  <data name="Keep reviewing" xml:space="preserve"><value>Seguir revisando</value></data>
+  <data name="Level {0}" xml:space="preserve"><value>Nivel {0}</value></data>
+  <data name="Lock exact review" xml:space="preserve"><value>Bloquear revisión exacta</value></data>
+  <data name="Maximum components" xml:space="preserve"><value>Componentes máximos</value></data>
+  <data name="Queue this reviewed recipe for the atomic whole-character finalizer? No character XML is written now." xml:space="preserve"><value>¿Poner esta receta revisada en cola para el finalizador atómico del personaje completo? Ahora no se escribe XML del personaje.</value></data>
+  <data name="Queued creation contribution" xml:space="preserve"><value>Contribución de creación en cola</value></data>
+  <data name="Receipt lookup proved the interrupted Career commit was already saved." xml:space="preserve"><value>La consulta del recibo demostró que la operación de Carrera interrumpida ya estaba guardada.</value></data>
+  <data name="Recipe components" xml:space="preserve"><value>Componentes de la receta</value></data>
+  <data name="Recipe definition always queues one free, unstolen initial dose with no markup or expense." xml:space="preserve"><value>Definir una receta siempre pone en cola una dosis inicial gratis, no robada, sin recargo ni gasto.</value></data>
+  <data name="Recipe name" xml:space="preserve"><value>Nombre de la receta</value></data>
+  <data name="Recovery is locked because neither the exact saved receipt nor an unchanged pre-commit revision can be proven. Reopen the runner or use support recovery; this phone will not retry the mutation." xml:space="preserve"><value>La recuperación está bloqueada porque no se puede demostrar ni el recibo guardado exacto ni una revisión previa sin cambios. Reabre el runner o usa la recuperación de soporte; este teléfono no repetirá la mutación.</value></data>
+  <data name="Remove level {0}" xml:space="preserve"><value>Eliminar nivel {0}</value></data>
+  <data name="Remove only the recipe proven by this receipt in one new atomic saved revision?" xml:space="preserve"><value>¿Eliminar solo la receta demostrada por este recibo en una nueva revisión atómica guardada?</value></data>
+  <data name="Rules" xml:space="preserve"><value>Reglas</value></data>
+  <data name="SR5 Career · Atomic recipe receipt" xml:space="preserve"><value>Carrera SR5 · Recibo atómico de receta</value></data>
+  <data name="SR5 Creation · Typed finalizer draft" xml:space="preserve"><value>Creación SR5 · Borrador tipado del finalizador</value></data>
+  <data name="Save this reviewed recipe as one free initial dose on the exact current Career revision?" xml:space="preserve"><value>¿Guardar esta receta revisada como una dosis inicial gratis en la revisión actual exacta de Carrera?</value></data>
+  <data name="Selected levels" xml:space="preserve"><value>Niveles seleccionados</value></data>
+  <data name="Selected · " xml:space="preserve"><value>Seleccionado · </value></data>
+  <data name="Settings profile" xml:space="preserve"><value>Perfil de ajustes</value></data>
+  <data name="Source {0} {1}" xml:space="preserve"><value>Fuente {0} {1}</value></data>
+  <data name="Source {0} {1} · source limit {2} · {3} per selected level" xml:space="preserve"><value>Fuente {0} {1} · límite de origen {2} · {3} por nivel seleccionado</value></data>
+  <data name="Speed" xml:space="preserve"><value>Velocidad</value></data>
+  <data name="The atomic finalizer must re-prepare and re-quote this typed selection before its single whole-character write." xml:space="preserve"><value>El finalizador atómico debe volver a preparar y cotizar esta selección tipada antes de su única escritura del personaje completo.</value></data>
+  <data name="The exact preview is durable. Confirm it separately before anything is queued or saved." xml:space="preserve"><value>La vista previa exacta es duradera. Confírmala por separado antes de poner en cola o guardar nada.</value></data>
+  <data name="The outcome cannot be proven from the current receipt and runner revision." xml:space="preserve"><value>El resultado no se puede demostrar con el recibo y la revisión actuales del runner.</value></data>
+  <data name="The receipt-bound recipe was removed in one atomic saved revision." xml:space="preserve"><value>La receta vinculada al recibo se eliminó en una revisión atómica guardada.</value></data>
+  <data name="The runner, catalog, or rules changed. The selection was preserved, but the old review was discarded." xml:space="preserve"><value>El runner, el catálogo o las reglas cambiaron. Se conservó la selección, pero se descartó la revisión anterior.</value></data>
+  <data name="The saved phone draft was restored for this exact runner revision." xml:space="preserve"><value>Se restauró el borrador guardado del teléfono para esta revisión exacta del runner.</value></data>
+  <data name="The typed recipe contribution is queued for the atomic whole-character finalizer." xml:space="preserve"><value>La contribución tipada de receta está en cola para el finalizador atómico del personaje completo.</value></data>
+  <data name="Undo exact recipe" xml:space="preserve"><value>Deshacer receta exacta</value></data>
+  <data name="Undo saved recipe" xml:space="preserve"><value>Deshacer receta guardada</value></data>
+  <data name="Unit cost" xml:space="preserve"><value>Coste unitario</value></data>
+  <data name="Verified Career receipt" xml:space="preserve"><value>Recibo de Carrera verificado</value></data>
+  <data name="forbidden" xml:space="preserve"><value>prohibido</value></data>
+  <data name="legal" xml:space="preserve"><value>legal</value></data>
+  <data name="rating {0} · threshold {1}" xml:space="preserve"><value>índice {0} · umbral {1}</value></data>
+  <data name="restricted" xml:space="preserve"><value>restringido</value></data>
+  <data name="{0} nuyen" xml:space="preserve"><value>{0} nuyen</value></data>
+  <data name="{0} selected · exactly one required" xml:space="preserve"><value>{0} seleccionado · se requiere exactamente uno</value></data>
+  <data name="{0} selected · limit {1} · availability {2} · {3} {4}" xml:space="preserve"><value>{0} seleccionado · límite {1} · disponibilidad {2} · {3} {4}</value></data>
+  <data name="{0} selected · source limits apply" xml:space="preserve"><value>{0} seleccionado · se aplican límites de origen</value></data>
+  <data name="{0} · level {1} · {2} · availability {3}" xml:space="preserve"><value>{0} · nivel {1} · {2} · disponibilidad {3}</value></data>
+  <data name="{0}source {1} · cost ×{2} · threshold {3}" xml:space="preserve"><value>{0}fuente {1} · coste ×{2} · umbral {3}</value></data>
 </root>

@@ -378,6 +378,13 @@ public sealed class BuildPage : NativePageBase
             "Direct deep link · typed skill identity → governed/custom choice → four-revision review",
             OpenSr5CareerSpecializationWizardAsync,
             automationId: "build-career-specialization"));
+        card.Add(NativeTheme.NavigationRow(
+            Sr5CustomDrugLabPage.RouteTitle(CharacterCustomDrugContext.Career),
+            Sr5CustomDrugLabPage.RouteDetail(CharacterCustomDrugContext.Career),
+            () => Navigation.PushAsync(new Sr5CustomDrugLabPage(
+                Coordinator,
+                CharacterCustomDrugContext.Career)),
+            automationId: "build-career-custom-drug-lab"));
         Border route = NativeTheme.Card(card);
         route.AutomationId = Sr5CareerWizardRoutes.Hub;
         _body.Add(route);
@@ -454,6 +461,13 @@ public sealed class BuildPage : NativePageBase
             "Build this runner step by step. The full character editor unlocks after creation is complete.",
             NativeTheme.Muted));
         _body.Add(header);
+        _body.Add(NativeTheme.NavigationRow(
+            Sr5CustomDrugLabPage.RouteTitle(CharacterCustomDrugContext.Creation),
+            Sr5CustomDrugLabPage.RouteDetail(CharacterCustomDrugContext.Creation),
+            () => Navigation.PushAsync(new Sr5CustomDrugLabPage(
+                Coordinator,
+                CharacterCustomDrugContext.Creation)),
+            automationId: "creation-custom-drug-lab-route"));
 
         CharacterCreationWizardSnapshot? snapshot = Coordinator.State.CreationWizard;
         if (snapshot is null)
