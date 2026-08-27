@@ -196,6 +196,52 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
             self.assertEqual("device-offline", failure["classification"])
             self.assertEqual("retrying-read-only", failure["status"])
 
+    def test_exact_package_pidof_exit_one_without_output_means_no_process(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            absent = subprocess.CompletedProcess(
+                ("shell", "pidof", driver.PACKAGE),
+                1,
+                stdout="",
+                stderr="",
+            )
+            with mock.patch.object(
+                driver.subprocess,
+                "run",
+                return_value=absent,
+            ) as run:
+                observed = device.shell("pidof", driver.PACKAGE, timeout=15)
+
+            self.assertEqual("", observed)
+            self.assertFalse(run.call_args.kwargs["check"])
+            self.assertEqual("not-started", device.transport_summary()["status"])
+            self.assertEqual(0, device.transport_summary()["eventCount"])
+
+    def test_package_pidof_nonempty_failure_remains_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            denied = subprocess.CompletedProcess(
+                ("shell", "pidof", driver.PACKAGE),
+                1,
+                stdout="",
+                stderr="permission denied by device policy",
+            )
+            with mock.patch.object(
+                driver.subprocess,
+                "run",
+                return_value=denied,
+            ) as run:
+                with self.assertRaises(driver.AdbTransportError) as raised:
+                    device.shell("pidof", driver.PACKAGE, timeout=15)
+
+            self.assertEqual(1, run.call_count)
+            self.assertEqual(
+                "unclassified-adb-failure",
+                raised.exception.receipt["classification"],
+            )
+            self.assertEqual("fail", device.transport_summary()["status"])
+            self.assertEqual(1, device.transport_summary()["terminalFailureCount"])
+
     def test_read_only_retry_is_bounded_and_final_failure_is_exact(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             device = self.make_device(Path(temporary))

@@ -1985,6 +1985,92 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         )
         self.assertIn("time.sleep(1.25)", source)
 
+    def test_exact_resource_transition_scrolls_one_exact_target_surface(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        source = DRIVER.UiNode(
+            {
+                "resource-id": f"{DRIVER.PACKAGE}:id/home-new-runner",
+                "clickable": "true",
+                "bounds": "[40,400][1040,560]",
+            }
+        )
+        surface = DRIVER.UiNode(
+            {
+                "resource-id": f"{DRIVER.PACKAGE}:id/dialog-surface",
+                "bounds": "[0,275][1080,2400]",
+            }
+        )
+        target = DRIVER.UiNode(
+            {
+                "resource-id": f"{DRIVER.PACKAGE}:id/dialog-action-create-character",
+                "clickable": "true",
+                "bounds": "[53,2080][1028,2200]",
+            }
+        )
+        device.hierarchy.side_effect = [[source], [surface], [target]]
+        device.node_has_tappable_bounds.return_value = True
+        device.display_size.return_value = (1080, 2400)
+        device.dismiss_system_ui_anr.return_value = False
+
+        with patch.object(DRIVER.time, "sleep"):
+            actual = DRIVER.Device.tap_exact_resource_id_until_exact_resource_id(
+                device,
+                "home-new-runner",
+                "dialog-action-create-character",
+                target_scroll_surface="dialog-surface",
+                max_target_scrolls=4,
+            )
+
+        self.assertIs(target, actual)
+        device.shell.assert_called_once_with("input", "tap", "540", "480")
+        device.swipe_up.assert_called_once_with(
+            x_ratio=0.5,
+            distance_ratio=0.22,
+        )
+        device.capture.assert_not_called()
+
+    def test_exact_resource_transition_bounds_target_surface_scrolling(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        source = DRIVER.UiNode(
+            {
+                "resource-id": f"{DRIVER.PACKAGE}:id/home-new-runner",
+                "clickable": "true",
+                "bounds": "[40,400][1040,560]",
+            }
+        )
+        surface = DRIVER.UiNode(
+            {
+                "resource-id": f"{DRIVER.PACKAGE}:id/dialog-surface",
+                "bounds": "[0,275][1080,2400]",
+            }
+        )
+        device.hierarchy.side_effect = [[source], [surface], [surface]]
+        device.node_has_tappable_bounds.return_value = True
+        device.display_size.return_value = (1080, 2400)
+        device.dismiss_system_ui_anr.return_value = False
+
+        with patch.object(DRIVER.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "Timed out waiting for exact create-character build-method action",
+        ):
+            DRIVER.Device.tap_exact_resource_id_until_exact_resource_id(
+                device,
+                "home-new-runner",
+                "dialog-action-create-character",
+                evidence_prefix="new-runner-build-method-dialog",
+                target_name="Create-character build-method action",
+                target_scroll_surface="dialog-surface",
+                max_target_scrolls=1,
+            )
+
+        device.swipe_up.assert_called_once_with(
+            x_ratio=0.5,
+            distance_ratio=0.22,
+        )
+        device.capture.assert_called_once_with(
+            "new-runner-build-method-dialog-target-unavailable"
+        )
+
     def test_full_phone_journey_proves_wizard_then_imports_completed_runner(self) -> None:
         device = Mock()
         fixture_sha256 = "a" * 64
@@ -2016,14 +2102,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     evidence_prefix="new-runner-build-method-dialog",
                     source_name="New runner control",
                     target_name="Create-character build-method action",
+                    target_scroll_surface="dialog-surface",
+                    max_target_scrolls=16,
                 ),
                 call.tap("dialog-action-create-character", scroll=True),
-                call.wait(
-                    "dialog-action-complete-new-character-workflow",
-                    timeout=45,
-                    scroll=True,
-                ),
-                call.tap("dialog-action-complete-new-character-workflow", scroll=True),
                 call.capture("new-runner-creation-wizard"),
                 call.tap("build-save-runner"),
                 call.wait(
@@ -2059,7 +2141,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             "phone",
             open_build_route=False,
         )
-        wait_route.assert_called_once_with(device, created=True)
+        self.assertEqual(
+            [call(device, created=False), call(device, created=True)],
+            wait_route.call_args_list,
+        )
         self.assertEqual(
             [
                 call(device, "phone-destination-runners"),
@@ -2089,14 +2174,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     evidence_prefix="new-runner-build-method-dialog",
                     source_name="New runner control",
                     target_name="Create-character build-method action",
+                    target_scroll_surface="dialog-surface",
+                    max_target_scrolls=16,
                 ),
                 call.tap("dialog-action-create-character", scroll=True),
-                call.wait(
-                    "dialog-action-complete-new-character-workflow",
-                    timeout=45,
-                    scroll=True,
-                ),
-                call.tap("dialog-action-complete-new-character-workflow", scroll=True),
                 call.wait("Continue building", timeout=90),
                 call.wait("home-open-file", timeout=90),
                 call.tap("home-open-file"),

@@ -2360,6 +2360,8 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         evidence_prefix="new-runner-build-method-dialog",
         source_name="New runner control",
         target_name="Create-character build-method action",
+        target_scroll_surface="dialog-surface",
+        max_target_scrolls=16,
     )
     device.tap("dialog-action-create-character", scroll=True)
     require_new_character_dialog_transition(device)

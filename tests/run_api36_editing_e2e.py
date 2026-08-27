@@ -679,6 +679,7 @@ class Device:
     ) -> subprocess.CompletedProcess:
         adb_arguments = tuple(arguments)
         command_policy, policy_reason = adb_command_retry_policy(adb_arguments)
+        package_process_observation = adb_arguments == ("shell", "pidof", PACKAGE)
         if command_policy != "read-only-retryable" and self._mutation_blocker is not None:
             blocker = dict(self._mutation_blocker)
             suppression = RuntimeError(
@@ -712,8 +713,25 @@ class Device:
                     adb_arguments,
                     timeout=timeout,
                     text=text,
-                    check=check,
+                    # Android pidof uses exit 1 with no output for the exact,
+                    # expected observation "this package has no process".  Run
+                    # only that command unchecked so its result can be bound
+                    # below; every other command retains subprocess check=True.
+                    check=check and not package_process_observation,
                 )
+                if package_process_observation and check and result.returncode != 0:
+                    process_absent = (
+                        result.returncode == 1
+                        and not _bounded_adb_detail(result.stdout).strip()
+                        and not _bounded_adb_detail(result.stderr).strip()
+                    )
+                    if not process_absent:
+                        raise subprocess.CalledProcessError(
+                            result.returncode,
+                            result.args,
+                            output=result.stdout,
+                            stderr=result.stderr,
+                        )
                 if adb_arguments == ("get-state",):
                     observed_state = _bounded_adb_detail(result.stdout).strip()
                     if observed_state != "device":
@@ -1775,6 +1793,9 @@ class Device:
         evidence_prefix: str = "exact-resource-transition",
         source_name: str = "Exact source control",
         target_name: str = "Exact target control",
+        target_scroll_surface: str | None = None,
+        max_target_scrolls: int = 0,
+        target_scroll_distance_ratio: float = 0.22,
     ) -> UiNode:
         """Open a route without depending on localized visible text.
 
@@ -1783,6 +1804,7 @@ class Device:
         or stale/non-tappable source fails closed.
         """
         deadline = time.monotonic() + timeout
+        target_scrolls = 0
         while time.monotonic() < deadline:
             nodes = self.hierarchy()
             if not nodes:
@@ -1801,6 +1823,41 @@ class Device:
                 raise RuntimeError(
                     f"{target_name} {target!r} has cardinality {len(targets)}; expected one"
                 )
+            scroll_surfaces = (
+                [
+                    node
+                    for node in nodes
+                    if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                    == target_scroll_surface
+                ]
+                if target_scroll_surface is not None
+                else []
+            )
+            if len(scroll_surfaces) > 1:
+                self.capture(f"{evidence_prefix}-scroll-surface-cardinality-invalid")
+                raise RuntimeError(
+                    f"Target scroll surface {target_scroll_surface!r} has cardinality "
+                    f"{len(scroll_surfaces)}; expected at most one"
+                )
+            if len(scroll_surfaces) == 1:
+                surface = scroll_surfaces[0]
+                if not self.node_has_tappable_bounds(surface):
+                    self.capture(f"{evidence_prefix}-scroll-surface-bounds-invalid")
+                    raise RuntimeError(
+                        f"Target scroll surface {target_scroll_surface!r} did not expose "
+                        "exact on-screen bounds"
+                    )
+                if target_scrolls >= max_target_scrolls:
+                    break
+                left, _, right, _ = surface.bounds
+                display_width, _ = self.display_size()
+                self.swipe_up(
+                    x_ratio=((left + right) / 2) / display_width,
+                    distance_ratio=target_scroll_distance_ratio,
+                )
+                target_scrolls += 1
+                time.sleep(0.75)
+                continue
             sources = [
                 node
                 for node in nodes
@@ -4154,14 +4211,16 @@ def prepare_full_editing_runner(
         evidence_prefix="new-runner-build-method-dialog",
         source_name="New runner control",
         target_name="Create-character build-method action",
+        target_scroll_surface="dialog-surface",
+        max_target_scrolls=16,
     )
     device.tap("dialog-action-create-character", scroll=True)
-    device.wait("dialog-action-complete-new-character-workflow", timeout=45, scroll=True)
-    device.tap("dialog-action-complete-new-character-workflow", scroll=True)
 
     creation_authority: WorkspaceAuthority | None = None
     if profile == "phone":
-        # A new creation-mode runner now routes directly to the fail-closed wizard.
+        # The authoritative bootstrap routes directly to the real Creation
+        # Wizard. The retired legacy metatype dialog is not part of this journey.
+        wait_for_phone_runner_route(device, created=False)
         # The unrestricted editor must remain unavailable until creation is complete.
         open_creation_dashboard(
             device,
