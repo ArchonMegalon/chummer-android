@@ -13,7 +13,7 @@ store = (
     repo / "src/Chummer.Android/Native/OriginDossierLifeModuleDraftStore.cs"
 ).read_text(encoding="utf-8")
 
-assert 'NativeTheme.SecondaryButton("New runner")' in home
+assert 'NativeTheme.SecondaryButton(PhoneStrings.Get("NewRunner", "New runner"))' in home
 assert "home-new-runner" in home
 assert "home-start-origin" not in home
 assert "Start Origin" not in home
