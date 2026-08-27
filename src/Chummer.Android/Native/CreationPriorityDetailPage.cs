@@ -33,8 +33,8 @@ public sealed class CreationPriorityDetailPage : NativePageBase
             _categoryId,
             CharacterCreationPriorityCategoryIds.Heritage,
             StringComparison.Ordinal)
-            ? "Choose heritage"
-            : "Choose talent";
+            ? WizardStrings.Get("Priority.DetailPage.ChooseHeritage", "Choose heritage")
+            : WizardStrings.Get("Priority.DetailPage.ChooseTalent", "Choose talent");
         AutomationId = $"creation-prerequisite-{Token(_categoryId)}-page";
         Content = new ScrollView { Content = _body };
     }
@@ -42,8 +42,9 @@ public sealed class CreationPriorityDetailPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Core-projected choice"));
-        _body.Add(NativeTheme.Title(RunnerSessionCoordinator.HumanizeId(_categoryId)));
+        _body.Add(NativeTheme.Eyebrow(WizardStrings.Get("Priority.DetailPage.Eyebrow", "Core-projected choice")));
+        string categoryFallback = RunnerSessionCoordinator.HumanizeId(_categoryId);
+        _body.Add(NativeTheme.Title(WizardStrings.PriorityCategory(_categoryId, categoryFallback)));
 
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> load =
             Coordinator.LoadCreationPrerequisite();
@@ -69,7 +70,12 @@ public sealed class CreationPriorityDetailPage : NativePageBase
         }
 
         Label binding = NativeTheme.Body(
-            $"Rank {rank.Rank} · source {rank.SourceId} · snapshot {ShortDigest(state.SnapshotDigest)}",
+            WizardStrings.Format(
+                "Priority.DetailPage.Binding",
+                "Rank {0} · source {1} · snapshot {2}",
+                rank.Rank,
+                rank.SourceId,
+                ShortDigest(state.SnapshotDigest)),
             NativeTheme.Muted);
         binding.AutomationId = "creation-prerequisite-detail-binding";
         _body.Add(binding);
@@ -110,14 +116,27 @@ public sealed class CreationPriorityDetailPage : NativePageBase
                 ? option.MetatypeName
                 : $"{option.MetatypeName} · {option.MetavariantName}";
             string detail = JoinDetails(
-                isSelected ? "Current typed draft selection" : null,
-                RunnerSessionCoordinator.HumanizeId(option.Kind),
-                $"Special Attribute points {option.SpecialAttributePoints.ToString(CultureInfo.InvariantCulture)}",
-                $"Karma {option.KarmaCost.ToString(CultureInfo.InvariantCulture)}",
-                option.HalvesNormalAttributePoints ? "Halves normal Attribute points" : null,
+                isSelected ? WizardStrings.Get("Priority.DetailPage.CurrentSelection", "Current typed draft selection") : null,
+                WizardStrings.PriorityHeritageKind(
+                    option.Kind,
+                    RunnerSessionCoordinator.HumanizeId(option.Kind)),
+                WizardStrings.Format(
+                    "Common.SpecialAttributePoints",
+                    "Special Attribute points {0}",
+                    option.SpecialAttributePoints.ToString(CultureInfo.InvariantCulture)),
+                WizardStrings.Format(
+                    "Priority.DetailPage.Karma",
+                    "Karma {0}",
+                    option.KarmaCost.ToString(CultureInfo.InvariantCulture)),
+                option.HalvesNormalAttributePoints
+                    ? WizardStrings.Get("Priority.DetailPage.HalvesAttributes", "Halves normal Attribute points")
+                    : null,
                 option.Blockers.Count > 0 ? string.Join(" · ", option.Blockers) : null,
                 option.SourceAnchorIds.Count > 0
-                    ? $"Anchors {string.Join(" · ", option.SourceAnchorIds)}"
+                    ? WizardStrings.Format(
+                        "Common.Anchors",
+                        "Anchors {0}",
+                        string.Join(" · ", option.SourceAnchorIds))
                     : null);
             _body.Add(NativeTheme.NavigationRow(
                 title,
@@ -157,24 +176,45 @@ public sealed class CreationPriorityDetailPage : NativePageBase
             int? requiredGrantCount = option.ActiveSkillGrant?.Quantity
                                       ?? option.SkillGroupGrant?.Quantity;
             string detail = JoinDetails(
-                isSelected ? "Current typed draft selection" : null,
+                isSelected ? WizardStrings.Get("Priority.DetailPage.CurrentSelection", "Current typed draft selection") : null,
                 option.Value,
-                $"Special Attribute points {option.SpecialAttributePoints.ToString(CultureInfo.InvariantCulture)}",
+                WizardStrings.Format(
+                    "Common.SpecialAttributePoints",
+                    "Special Attribute points {0}",
+                    option.SpecialAttributePoints.ToString(CultureInfo.InvariantCulture)),
                 option.GrantedQualities.Count > 0
-                    ? $"Granted qualities {string.Join(" · ", option.GrantedQualities)}"
+                    ? WizardStrings.Format(
+                        "Priority.DetailPage.GrantedQualities",
+                        "Granted qualities {0}",
+                        string.Join(" · ", option.GrantedQualities))
                     : null,
                 option.ActiveSkillGrant is { } activeGrant
-                    ? $"Choose {activeGrant.Quantity.ToString(CultureInfo.InvariantCulture)} active skills at rating {activeGrant.BaseRating.ToString(CultureInfo.InvariantCulture)}"
+                    ? WizardStrings.Format(
+                        "Priority.DetailPage.ChooseActiveSkills",
+                        "Choose {0} active skills at rating {1}",
+                        activeGrant.Quantity.ToString(CultureInfo.InvariantCulture),
+                        activeGrant.BaseRating.ToString(CultureInfo.InvariantCulture))
                     : option.SkillGroupGrant is { } groupGrant
-                        ? $"Choose {groupGrant.Quantity.ToString(CultureInfo.InvariantCulture)} skill groups at rating {groupGrant.BaseRating.ToString(CultureInfo.InvariantCulture)}"
+                        ? WizardStrings.Format(
+                            "Priority.DetailPage.ChooseSkillGroups",
+                            "Choose {0} skill groups at rating {1}",
+                            groupGrant.Quantity.ToString(CultureInfo.InvariantCulture),
+                            groupGrant.BaseRating.ToString(CultureInfo.InvariantCulture))
                         : null,
                 requiredGrantCount is int required
-                    ? $"Grant progress {selectedGrantCount.ToString(CultureInfo.InvariantCulture)} / {required.ToString(CultureInfo.InvariantCulture)}"
+                    ? WizardStrings.Format(
+                        "Priority.DetailPage.GrantProgress",
+                        "Grant progress {0} / {1}",
+                        selectedGrantCount.ToString(CultureInfo.InvariantCulture),
+                        required.ToString(CultureInfo.InvariantCulture))
                     : null,
                 grantBlockers.Count > 0 ? string.Join(" · ", grantBlockers) : null,
                 option.Blockers.Count > 0 ? string.Join(" · ", option.Blockers) : null,
                 option.SourceAnchorIds.Count > 0
-                    ? $"Anchors {string.Join(" · ", option.SourceAnchorIds)}"
+                    ? WizardStrings.Format(
+                        "Common.Anchors",
+                        "Anchors {0}",
+                        string.Join(" · ", option.SourceAnchorIds))
                     : null);
             _body.Add(NativeTheme.NavigationRow(
                 option.Name,
@@ -222,7 +262,7 @@ public sealed class CreationPriorityDetailPage : NativePageBase
     private void AddBlockers(IReadOnlyList<string> blockers)
     {
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow("Blockers"));
+        card.Add(NativeTheme.Eyebrow(WizardStrings.Get("Common.Blockers", "Blockers")));
         foreach (string blocker in blockers.Where(static value => !string.IsNullOrWhiteSpace(value)))
             card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
         Border border = NativeTheme.Card(card);
@@ -231,7 +271,9 @@ public sealed class CreationPriorityDetailPage : NativePageBase
     }
 
     private static string ShortDigest(string digest)
-        => string.IsNullOrWhiteSpace(digest) ? "unavailable" : digest[..Math.Min(12, digest.Length)];
+        => string.IsNullOrWhiteSpace(digest)
+            ? WizardStrings.Get("Common.Unavailable", "unavailable")
+            : digest[..Math.Min(12, digest.Length)];
 
     private static string JoinDetails(params string?[] parts)
         => string.Join(

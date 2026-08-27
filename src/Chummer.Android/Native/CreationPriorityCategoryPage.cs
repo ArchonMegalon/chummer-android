@@ -27,7 +27,7 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
             StringComparer.Ordinal)
             ? categoryId
             : throw new ArgumentException("A typed Priority category ID is required.", nameof(categoryId));
-        Title = "Choose rank";
+        Title = WizardStrings.Get("Priority.CategoryPage.PageTitle", "Choose rank");
         AutomationId = "creation-prerequisite-category-page";
         Content = new ScrollView { Content = _body };
     }
@@ -35,8 +35,9 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Priority assignments"));
-        _body.Add(NativeTheme.Title(RunnerSessionCoordinator.HumanizeId(_categoryId)));
+        _body.Add(NativeTheme.Eyebrow(WizardStrings.Get("Priority.CategoryPage.Eyebrow", "Priority assignments")));
+        string categoryFallback = RunnerSessionCoordinator.HumanizeId(_categoryId);
+        _body.Add(NativeTheme.Title(WizardStrings.PriorityCategory(_categoryId, categoryFallback)));
 
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState> load =
             Coordinator.LoadCreationPrerequisite();
@@ -54,7 +55,11 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
         }
 
         Label binding = NativeTheme.Body(
-            $"Revision {state.Binding.ContentRevision} · snapshot {ShortDigest(state.SnapshotDigest)}",
+            WizardStrings.Format(
+                "Priority.CategoryPage.Binding",
+                "Revision {0} · snapshot {1}",
+                state.Binding.ContentRevision,
+                ShortDigest(state.SnapshotDigest)),
             NativeTheme.Muted);
         binding.AutomationId = "creation-prerequisite-category-binding";
         _body.Add(binding);
@@ -75,20 +80,29 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
             bool isSelected = selected is not null
                               && string.Equals(selected.Rank, projection.Rank, StringComparison.Ordinal);
             string detail = JoinDetails(
-                isSelected ? "Current draft selection" : null,
+                isSelected ? WizardStrings.Get("Priority.CategoryPage.CurrentSelection", "Current draft selection") : null,
                 projection.Label,
-                $"Sum value {projection.SumToTenValue.ToString(CultureInfo.InvariantCulture)}",
+                WizardStrings.Format(
+                    "Priority.CategoryPage.SumValue",
+                    "Sum value {0}",
+                    projection.SumToTenValue.ToString(CultureInfo.InvariantCulture)),
                 projection.BaseNormalAttributePoints is int raw
-                    ? $"Raw normal Attribute grant {raw.ToString(CultureInfo.InvariantCulture)}"
+                    ? WizardStrings.Format(
+                        "Priority.CategoryPage.RawGrant",
+                        "Raw normal Attribute grant {0}",
+                        raw.ToString(CultureInfo.InvariantCulture))
                     : null,
-                $"Source {projection.SourceId}",
-                $"Node {ShortDigest(projection.SourceNodeDigest)}",
+                WizardStrings.Format("Common.Source", "Source {0}", projection.SourceId),
+                WizardStrings.Format("Common.Node", "Node {0}", ShortDigest(projection.SourceNodeDigest)),
                 projection.SourceAnchorIds.Count > 0
-                    ? $"Anchors {string.Join(" · ", projection.SourceAnchorIds)}"
+                    ? WizardStrings.Format(
+                        "Common.Anchors",
+                        "Anchors {0}",
+                        string.Join(" · ", projection.SourceAnchorIds))
                     : null,
                 option.DisableReason);
             _body.Add(NativeTheme.NavigationRow(
-                $"Rank {projection.Rank}",
+                WizardStrings.Format("Common.Rank", "Rank {0}", projection.Rank),
                 detail,
                 () => SelectAsync(state, projection.Rank),
                 option.IsEnabled,
@@ -109,7 +123,7 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
     private void AddBlockers(IReadOnlyList<string> blockers)
     {
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow("Blockers"));
+        card.Add(NativeTheme.Eyebrow(WizardStrings.Get("Common.Blockers", "Blockers")));
         foreach (string blocker in blockers.Where(static value => !string.IsNullOrWhiteSpace(value)))
             card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
         Border border = NativeTheme.Card(card);
@@ -118,7 +132,9 @@ public sealed class CreationPriorityCategoryPage : NativePageBase
     }
 
     private static string ShortDigest(string digest)
-        => string.IsNullOrWhiteSpace(digest) ? "unavailable" : digest[..Math.Min(12, digest.Length)];
+        => string.IsNullOrWhiteSpace(digest)
+            ? WizardStrings.Get("Common.Unavailable", "unavailable")
+            : digest[..Math.Min(12, digest.Length)];
 
     private static string JoinDetails(params string?[] parts)
         => string.Join(

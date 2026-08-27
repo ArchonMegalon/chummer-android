@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Common.Anchors" xml:space="preserve"><value>Quellenanker {0}</value></data>
+  <data name="Common.Blockers" xml:space="preserve"><value>Blockaden</value></data>
+  <data name="Common.Node" xml:space="preserve"><value>Knoten {0}</value></data>
+  <data name="Common.NotSelected" xml:space="preserve"><value>nicht ausgewählt</value></data>
+  <data name="Common.OK" xml:space="preserve"><value>OK</value></data>
+  <data name="Common.PreviewBlockers" xml:space="preserve"><value>Vorschau-Blockaden</value></data>
+  <data name="Common.Rank" xml:space="preserve"><value>Rang {0}</value></data>
+  <data name="Common.RankLabel" xml:space="preserve"><value>Rang</value></data>
+  <data name="Common.Remaining" xml:space="preserve"><value>Verbleibend</value></data>
+  <data name="Common.Retry" xml:space="preserve"><value>Erneut versuchen</value></data>
+  <data name="Common.SelectionId" xml:space="preserve"><value>Auswahl-ID</value></data>
+  <data name="Common.SelectionInline" xml:space="preserve"><value>Auswahl {0}</value></data>
+  <data name="Common.Source" xml:space="preserve"><value>Quelle {0}</value></data>
+  <data name="Common.SourceAnchor" xml:space="preserve"><value>Quellenanker · {0}</value></data>
+  <data name="Common.SourceId" xml:space="preserve"><value>Quellen-ID</value></data>
+  <data name="Common.SourceInline" xml:space="preserve"><value>Quelle {0}</value></data>
+  <data name="Common.SourceNode" xml:space="preserve"><value>Quellknoten</value></data>
+  <data name="Common.SpecialAttributePoints" xml:space="preserve"><value>Spezialattributspunkte {0}</value></data>
+  <data name="Common.SpecialAttributePointsLabel" xml:space="preserve"><value>Spezialattributspunkte</value></data>
+  <data name="Common.Total" xml:space="preserve"><value>Gesamt</value></data>
+  <data name="Common.Unavailable" xml:space="preserve"><value>nicht verfügbar</value></data>
+  <data name="Common.Used" xml:space="preserve"><value>Verwendet</value></data>
+  <data name="Common.Value" xml:space="preserve"><value>Wert</value></data>
+
+  <data name="Priority.Actions.Preview" xml:space="preserve"><value>Zuweisungsentwurf als Vorschau anzeigen</value></data>
+  <data name="Priority.Actions.Reset" xml:space="preserve"><value>Rangauswahl zurücksetzen</value></data>
+  <data name="Priority.Actions.Scope" xml:space="preserve"><value>Die Auswahl bleibt lokal, bis die exakte Core-Vorschau ausdrücklich bestätigt wird. Diese Seite ändert weder das Charakter-XML noch Felder des alten Editors.</value></data>
+  <data name="Priority.Attributes.AdjustmentRequired" xml:space="preserve"><value>Nur Rohwert: Die halveattributepoints-Anpassung für Herkunft/Metatyp ist noch erforderlich.</value></data>
+  <data name="Priority.Attributes.Complete" xml:space="preserve"><value>Core-Voraussetzung erfüllt</value></data>
+  <data name="Priority.Attributes.Disabled" xml:space="preserve"><value>Attribute bleiben deaktiviert</value></data>
+  <data name="Priority.Attributes.EffectiveGrant" xml:space="preserve"><value>Effektive normale Attributspunkte: {0}</value></data>
+  <data name="Priority.Attributes.EffectiveGrantLabel" xml:space="preserve"><value>Effektive normale Attributspunkte</value></data>
+  <data name="Priority.Attributes.NextStage" xml:space="preserve"><value>Core hat die Anpassung für Herkunft/Metatyp aufgelöst; als Nächstes folgt der eigene Attribut-Assistent.</value></data>
+  <data name="Priority.Attributes.NotEnabled" xml:space="preserve"><value>Die Voraussetzungen erlauben noch keine Navigation zu den Attributen.</value></data>
+  <data name="Priority.Attributes.Prerequisite" xml:space="preserve"><value>Attribut-Voraussetzung</value></data>
+  <data name="Priority.Attributes.RawGrant" xml:space="preserve"><value>Normale Attributspunkte (roh): {0}</value></data>
+  <data name="Priority.Attributes.RawGrantLabel" xml:space="preserve"><value>Normale Attributspunkte (roh)</value></data>
+  <data name="Priority.Attributes.SpecialPoints" xml:space="preserve"><value>Spezialattributspunkte: {0}</value></data>
+  <data name="Priority.Attributes.TotalSpecialLabel" xml:space="preserve"><value>Spezialattributspunkte gesamt</value></data>
+  <data name="Priority.AuthorityBlocked" xml:space="preserve"><value>Voraussetzungsinstanz für die Erschaffung blockiert</value></data>
+  <data name="Priority.AuthorityUnavailable" xml:space="preserve"><value>Voraussetzungsinstanz für die Erschaffung nicht verfügbar</value></data>
+  <data name="Priority.Binding" xml:space="preserve"><value>Revision {0} · gespeichert {1} · Snapshot {2} · Instanz {3}</value></data>
+  <data name="Priority.Categories.Heading" xml:space="preserve"><value>Fünf geordnete Kategorien</value></data>
+  <data name="Priority.Categories.Rank" xml:space="preserve"><value>{0}. Rang {1}</value></data>
+  <data name="Priority.Categories.RawGrantInline" xml:space="preserve"><value>Rohwert {0}</value></data>
+  <data name="Priority.Categories.SelectRank" xml:space="preserve"><value>{0}. Einen von der Instanz vorgegebenen Rang auswählen</value></data>
+  <data name="Priority.Category.attributes" xml:space="preserve"><value>Attribute</value></data>
+  <data name="Priority.Category.heritage" xml:space="preserve"><value>Herkunft</value></data>
+  <data name="Priority.Category.resources" xml:space="preserve"><value>Ressourcen</value></data>
+  <data name="Priority.Category.skills" xml:space="preserve"><value>Fertigkeiten</value></data>
+  <data name="Priority.Category.talent" xml:space="preserve"><value>Talent</value></data>
+  <data name="Priority.CategoryPage.Binding" xml:space="preserve"><value>Revision {0} · Snapshot {1}</value></data>
+  <data name="Priority.CategoryPage.CurrentSelection" xml:space="preserve"><value>Aktuelle Auswahl im Entwurf</value></data>
+  <data name="Priority.CategoryPage.Eyebrow" xml:space="preserve"><value>Prioritätszuweisungen</value></data>
+  <data name="Priority.CategoryPage.PageTitle" xml:space="preserve"><value>Rang auswählen</value></data>
+  <data name="Priority.CategoryPage.RawGrant" xml:space="preserve"><value>Normale Attributspunkte (roh) {0}</value></data>
+  <data name="Priority.CategoryPage.SumValue" xml:space="preserve"><value>Summenwert {0}</value></data>
+  <data name="Priority.DetailPage.Binding" xml:space="preserve"><value>Rang {0} · Quelle {1} · Snapshot {2}</value></data>
+  <data name="Priority.DetailPage.ChooseActiveSkills" xml:space="preserve"><value>{0} aktive Fertigkeiten auf Stufe {1} auswählen</value></data>
+  <data name="Priority.DetailPage.ChooseHeritage" xml:space="preserve"><value>Herkunft auswählen</value></data>
+  <data name="Priority.DetailPage.ChooseSkillGroups" xml:space="preserve"><value>{0} Fertigkeitsgruppen auf Stufe {1} auswählen</value></data>
+  <data name="Priority.DetailPage.ChooseTalent" xml:space="preserve"><value>Talent auswählen</value></data>
+  <data name="Priority.DetailPage.CurrentSelection" xml:space="preserve"><value>Aktuelle typisierte Auswahl im Entwurf</value></data>
+  <data name="Priority.DetailPage.Eyebrow" xml:space="preserve"><value>Von Core vorgegebene Auswahl</value></data>
+  <data name="Priority.DetailPage.GrantedQualities" xml:space="preserve"><value>Gewährte Vor- und Nachteile {0}</value></data>
+  <data name="Priority.DetailPage.GrantProgress" xml:space="preserve"><value>Fortschritt {0} / {1}</value></data>
+  <data name="Priority.DetailPage.HalvesAttributes" xml:space="preserve"><value>Halbiert normale Attributspunkte</value></data>
+  <data name="Priority.DetailPage.Karma" xml:space="preserve"><value>Karma {0}</value></data>
+  <data name="Priority.Draft.BaseRevision" xml:space="preserve"><value>Basisrevision</value></data>
+  <data name="Priority.Draft.Digest" xml:space="preserve"><value>Entwurfs-Digest</value></data>
+  <data name="Priority.Draft.Restored" xml:space="preserve"><value>Rang-, Herkunfts- und Talentauswahl wurden nach dem Neuladen aus dem Core-Hilfszustand wiederhergestellt.</value></data>
+  <data name="Priority.Draft.Resumed" xml:space="preserve"><value>Gespeicherten Entwurf fortgesetzt</value></data>
+  <data name="Priority.Draft.Revision" xml:space="preserve"><value>Entwurfsrevision</value></data>
+  <data name="Priority.Eyebrow" xml:space="preserve"><value>Charaktererschaffung</value></data>
+  <data name="Priority.Heading" xml:space="preserve"><value>Priorität / Sum-to-Ten</value></data>
+  <data name="Priority.Heritage.Choice" xml:space="preserve"><value>Herkunftsauswahl</value></data>
+  <data name="Priority.Heritage.Prompt" xml:space="preserve"><value>Einen exakt von Core vorgegebenen Metatyp oder eine Metavariante auswählen</value></data>
+  <data name="Priority.HeritageKind.metatype" xml:space="preserve"><value>Metatyp</value></data>
+  <data name="Priority.HeritageKind.metavariant" xml:space="preserve"><value>Metavariante</value></data>
+  <data name="Priority.Karma.BudgetId" xml:space="preserve"><value>Budget-ID</value></data>
+  <data name="Priority.Karma.Exact" xml:space="preserve"><value>Exaktes autoritatives Budget</value></data>
+  <data name="Priority.Karma.Heading" xml:space="preserve"><value>Globales Erschaffungskarma</value></data>
+  <data name="Priority.Karma.Inexact" xml:space="preserve"><value>Budget ist nicht exakt</value></data>
+  <data name="Priority.Karma.Semantic" xml:space="preserve"><value>Globales Erschaffungskarma. Gesamt {0}. Verwendet {1}. Verbleibend {2}.</value></data>
+  <data name="Priority.Method.Heading" xml:space="preserve"><value>Autoritative Erschaffungsmethode</value></data>
+  <data name="Priority.Method.PriorityTable" xml:space="preserve"><value>Prioritätstabelle</value></data>
+  <data name="Priority.Method.RepeatedRanks" xml:space="preserve"><value>Wiederholte Ränge sind nur zulässig, wenn die Instanz einen exakten Weg zum Ziel vorgibt.</value></data>
+  <data name="Priority.Method.RequiredProfile" xml:space="preserve"><value>Erforderliches Profil-Multiset</value></data>
+  <data name="Priority.Method.SettingsProfile" xml:space="preserve"><value>Einstellungsprofil</value></data>
+  <data name="Priority.PageTitle" xml:space="preserve"><value>Prioritäten</value></data>
+  <data name="Priority.Priority" xml:space="preserve"><value>Priorität</value></data>
+  <data name="Priority.Preview.AssignmentTitle" xml:space="preserve"><value>{0}. {1}</value></data>
+  <data name="Priority.Preview.Assignments" xml:space="preserve"><value>Fünf geordnete Zuweisungen</value></data>
+  <data name="Priority.Preview.AttributesAdjustmentRequired" xml:space="preserve"><value>Die halveattributepoints-Anpassung für Herkunft/Metatyp ist noch erforderlich. Attribute bleiben deaktiviert.</value></data>
+  <data name="Priority.Preview.AttributesReady" xml:space="preserve"><value>Core hat die Anpassung für Herkunft/Metatyp aufgelöst; nach der Bestätigung kann der Attribut-Assistent geöffnet werden.</value></data>
+  <data name="Priority.Preview.BackToBuild" xml:space="preserve"><value>Zurück zum Build</value></data>
+  <data name="Priority.Preview.Binding" xml:space="preserve"><value>Revision {0} · gespeichert {1} · Vorschau {2}</value></data>
+  <data name="Priority.Preview.Confirm" xml:space="preserve"><value>Zuweisungsentwurf bestätigen</value></data>
+  <data name="Priority.Preview.Confirmed" xml:space="preserve"><value>Entwurf der Erschaffungsmethode bestätigt und autoritativer Zustand neu geladen.</value></data>
+  <data name="Priority.Preview.ContentRevision" xml:space="preserve"><value>Inhaltsrevision</value></data>
+  <data name="Priority.Preview.DocumentChanged" xml:space="preserve"><value>Charakterdokument geändert</value></data>
+  <data name="Priority.Preview.Eyebrow" xml:space="preserve"><value>Ausdrückliche Prüfung</value></data>
+  <data name="Priority.Preview.ExplicitConfirmation" xml:space="preserve"><value>Die Bestätigung ist eine eigene ausdrückliche Aktion, die an diesen exakten Vorschau-Digest gebunden ist.</value></data>
+  <data name="Priority.Preview.GrantedQuality" xml:space="preserve"><value>Gewährter Vor- oder Nachteil · {0}</value></data>
+  <data name="Priority.Preview.GrantPlan" xml:space="preserve"><value>Vergabeplan</value></data>
+  <data name="Priority.Preview.GrantPlanSummary" xml:space="preserve"><value>{0} aktive Fertigkeiten · {1} Fertigkeitsgruppen</value></data>
+  <data name="Priority.Preview.GrantSlot" xml:space="preserve"><value>Platz {0} · {1} · Stufe {2} · {3}</value></data>
+  <data name="Priority.Preview.GrantSourceAnchor" xml:space="preserve"><value>Vergabe-Quellenanker · {0}</value></data>
+  <data name="Priority.Preview.HalveAttributePoints" xml:space="preserve"><value>Core wendet halveattributepoints auf die rohen Attributspunkte an.</value></data>
+  <data name="Priority.Preview.HeritageSelection" xml:space="preserve"><value>Herkunftsauswahl</value></data>
+  <data name="Priority.Preview.KarmaCost" xml:space="preserve"><value>Karmakosten</value></data>
+  <data name="Priority.Preview.KarmaRemaining" xml:space="preserve"><value>Verbleibendes Erschaffungskarma</value></data>
+  <data name="Priority.Preview.KeepAttributePoints" xml:space="preserve"><value>Core behält die rohen normalen Attributspunkte bei.</value></data>
+  <data name="Priority.Preview.NoExplicitConfirmation" xml:space="preserve"><value>Die Instanz hat keine ausdrückliche Bestätigung angefordert.</value></data>
+  <data name="Priority.Preview.PageTitle" xml:space="preserve"><value>Zuweisungen prüfen</value></data>
+  <data name="Priority.Preview.PreviousRevision" xml:space="preserve"><value>Vorherige Revision</value></data>
+  <data name="Priority.Preview.PriorityDraft" xml:space="preserve"><value>Prioritätsentwurf</value></data>
+  <data name="Priority.Preview.Receipt" xml:space="preserve"><value>Atomarer Entwurfsbeleg</value></data>
+  <data name="Priority.Preview.ReceiptAttributesClosed" xml:space="preserve"><value>Die regelautoritative Attribut-Voraussetzung bleibt geschlossen.</value></data>
+  <data name="Priority.Preview.ReceiptAttributesDisabled" xml:space="preserve"><value>Attribute bleiben deaktiviert: Die halveattributepoints-Anpassung für Herkunft/Metatyp ist erforderlich.</value></data>
+  <data name="Priority.Preview.ReceiptAttributesReady" xml:space="preserve"><value>Core-Voraussetzung erfüllt: Der eigene Attribut-Assistent kann geöffnet werden.</value></data>
+  <data name="Priority.Preview.SavedRevision" xml:space="preserve"><value>Gespeicherte Revision</value></data>
+  <data name="Priority.Preview.SumToTenDraft" xml:space="preserve"><value>Sum-to-Ten-Entwurf</value></data>
+  <data name="Priority.Preview.SumToTenValue" xml:space="preserve"><value>Sum-to-Ten-Wert</value></data>
+  <data name="Priority.Preview.TalentSelection" xml:space="preserve"><value>Talentauswahl</value></data>
+  <data name="Priority.Preview.UsedTarget" xml:space="preserve"><value>Verwendet / Ziel</value></data>
+  <data name="Priority.Source.AuthorityDigest" xml:space="preserve"><value>Instanz-Digest</value></data>
+  <data name="Priority.Source.Heading" xml:space="preserve"><value>Quelleninstanz</value></data>
+  <data name="Priority.Source.PrioritiesXml" xml:space="preserve"><value>Prioritäten-XML</value></data>
+  <data name="Priority.Source.ProfileInputs" xml:space="preserve"><value>Profileingaben</value></data>
+  <data name="Priority.SumToTen" xml:space="preserve"><value>Sum-to-Ten</value></data>
+  <data name="Priority.Talent.ActiveGrantProgress" xml:space="preserve"><value>Vergabe aktiver Fertigkeiten {0} / {1}</value></data>
+  <data name="Priority.Talent.Choice" xml:space="preserve"><value>Talentauswahl</value></data>
+  <data name="Priority.Talent.GroupGrantProgress" xml:space="preserve"><value>Vergabe von Fertigkeitsgruppen {0} / {1}</value></data>
+  <data name="Priority.Talent.Prompt" xml:space="preserve"><value>Ein exakt von Core vorgegebenes Talent auswählen und alle erforderlichen Vergaben abschließen</value></data>
+
+  <data name="Career.Alert.AuthorityChangedMessage" xml:space="preserve"><value>Zum Karriereassistenten zurückkehren und die aktuelle Runner-Revision laden.</value></data>
+  <data name="Career.Alert.AuthorityChangedTitle" xml:space="preserve"><value>Karriereinstanz geändert</value></data>
+  <data name="Career.Alert.CheckpointMessage" xml:space="preserve"><value>Die typisierte Karriereroute wurde nicht geöffnet, weil ihr Navigations-Checkpoint nicht gespeichert und geprüft werden konnte.</value></data>
+  <data name="Career.Alert.CheckpointTitle" xml:space="preserve"><value>Navigations-Checkpoint nicht verfügbar</value></data>
+  <data name="Career.Alert.QualityMessage" xml:space="preserve"><value>Die exakte atomare SR5-Instanz für Vor- und Nachteile ist nicht mehr verbunden. Es gibt keine Ausweichmutation.</value></data>
+  <data name="Career.Alert.QualityTitle" xml:space="preserve"><value>Instanz für Vor- und Nachteile nicht verfügbar</value></data>
+  <data name="Career.AvailableFamily" xml:space="preserve"><value>{0} verfügbar{1} · {2}</value></data>
+  <data name="Career.Binding" xml:space="preserve"><value>Workspace {0} · Revision {1}/{2} · Laufzeit {3} · Quelle {4} · Inhalt {5}</value></data>
+  <data name="Career.Blocker.AuthorityUnavailable" xml:space="preserve"><value>Für diesen Runner ist keine exakt typisierte SR5-Karriereinstanz verfügbar.</value></data>
+  <data name="Career.Blocker.CheckpointUnavailable" xml:space="preserve"><value>Dauerhafter Speicher für Navigations-Checkpoints ist nicht verfügbar. Keine Karriereroute kann sicher geöffnet werden.</value></data>
+  <data name="Career.Blocker.WorkspaceChanged" xml:space="preserve"><value>Der Runner wurde beim Laden der Karriereinstanzen geändert. Von der aktuellen Revision erneut versuchen.</value></data>
+  <data name="Career.Checkpoint.ActionUnavailable" xml:space="preserve"><value>Die zuvor gewählte typisierte Aktion ist nicht mehr verfügbar und wurde verworfen.</value></data>
+  <data name="Career.Checkpoint.Invalid" xml:space="preserve"><value>Ein ungültiger Karriere-Navigations-Checkpoint wurde verworfen.</value></data>
+  <data name="Career.Checkpoint.Restored" xml:space="preserve"><value>Die letzte Aktionsauswahl wurde für diesen exakten Workspace-Snapshot wiederhergestellt.</value></data>
+  <data name="Career.Checkpoint.RevisionChanged" xml:space="preserve"><value>Die Runner-Revision wurde geändert; die gespeicherte Karriereauswahl wurde deshalb verworfen.</value></data>
+  <data name="Career.Checkpoint.SnapshotChanged" xml:space="preserve"><value>Laufzeit, Quellen, Inhalt oder Aktionsverfügbarkeit wurden geändert; die gespeicherte Auswahl wurde verworfen.</value></data>
+  <data name="Career.Checkpoint.WorkspaceChanged" xml:space="preserve"><value>Die gespeicherte Karriereauswahl gehörte zu einem anderen Workspace und wurde verworfen.</value></data>
+  <data name="Career.ChooseFamily" xml:space="preserve"><value>Eine Aktionsgruppe auswählen. Angezeigt werden nur Routen mit einer aktuellen typisierten Instanz.</value></data>
+  <data name="Career.Eyebrow" xml:space="preserve"><value>Shadowrun Fünfte Edition</value></data>
+  <data name="Career.FamilyBoundary" xml:space="preserve"><value>Die Auswahl einer Zeile schreibt nur einen Digest-gebundenen Navigations-Checkpoint. Das Ziel muss seine eigene typisierte Instanz erneut laden und prüfen.</value></data>
+  <data name="Career.FamilyStale" xml:space="preserve"><value>Der Runner wurde nach der Projektion dieser Aktionsgruppe geändert. Zurückkehren und die Karriereinstanz neu laden.</value></data>
+  <data name="Career.Heading" xml:space="preserve"><value>Karriereassistent</value></data>
+  <data name="Career.LastSelection" xml:space="preserve"><value> · letzte Auswahl</value></data>
+  <data name="Career.Loading" xml:space="preserve"><value>Exakter Workspace und typisierte Karriereinstanzen werden geprüft…</value></data>
+  <data name="Career.NavigationBoundary" xml:space="preserve"><value>Dieser Assistent wählt und speichert nur die Navigation. Prüfung, Bestätigung, Speicherung, Wiederherstellung und Belege bleiben Eigentum des gewählten typisierten Ablaufs.</value></data>
+  <data name="Career.NoActions" xml:space="preserve"><value>Für den exakten Zustand dieses Runners ist keine typisierte SR5-Karriereaktion verfügbar.</value></data>
+  <data name="Career.PageTitle" xml:space="preserve"><value>SR5-Karriere</value></data>
+  <data name="Career.RequiresRunner" xml:space="preserve"><value>Dieser Assistent benötigt einen erschaffenen SR5-Runner. Er weicht nicht auf die allgemeine Bearbeitung aus.</value></data>
+  <data name="Career.Selected" xml:space="preserve"><value>Ausgewählt · </value></data>
+  <data name="Career.Family.career.economy.Title" xml:space="preserve"><value>Karma und Nuyen</value></data>
+  <data name="Career.Family.career.economy.Detail" xml:space="preserve"><value>Exakte manuelle Änderungen erfassen oder vorhandene typisierte Ausgaben bearbeiten.</value></data>
+  <data name="Career.Family.career.advancement.Title" xml:space="preserve"><value>Steigerung</value></data>
+  <data name="Career.Family.career.advancement.Detail" xml:space="preserve"><value>Eine exakte SR5-Steigerungsinstanz in ihrem eigenen Assistenten öffnen und prüfen.</value></data>
+  <data name="Career.Family.career.calendar.Title" xml:space="preserve"><value>Kalender</value></data>
+  <data name="Career.Family.career.calendar.Detail" xml:space="preserve"><value>Exakt gespeicherte Auszeitwochen anhand ihrer stabilen Identität verwalten.</value></data>
+  <data name="Career.Action.career.karma.adjust.Title" xml:space="preserve"><value>Karma erfassen</value></data>
+  <data name="Career.Action.career.karma.adjust.Detail" xml:space="preserve"><value>Den typisierten Editor für manuelles Karma bei dieser exakten Runner-Revision öffnen.</value></data>
+  <data name="Career.Action.career.nuyen.adjust.Title" xml:space="preserve"><value>Nuyen erfassen</value></data>
+  <data name="Career.Action.career.nuyen.adjust.Detail" xml:space="preserve"><value>Den typisierten Editor für manuelle Nuyen bei dieser exakten Runner-Revision öffnen.</value></data>
+  <data name="Career.Action.career.karma-expense.edit.Title" xml:space="preserve"><value>Karmaausgabe bearbeiten</value></data>
+  <data name="Career.Action.career.karma-expense.edit.Detail" xml:space="preserve"><value>Eine stabil gespeicherte Karmaausgabe wählen und nur von Chummer5 erlaubte Felder bearbeiten.</value></data>
+  <data name="Career.Action.career.nuyen-expense.edit.Title" xml:space="preserve"><value>Nuyenausgabe bearbeiten</value></data>
+  <data name="Career.Action.career.nuyen-expense.edit.Detail" xml:space="preserve"><value>Eine stabil gespeicherte Nuyenausgabe wählen und nur von Chummer5 erlaubte Felder bearbeiten.</value></data>
+  <data name="Career.Action.career.attribute.advance.Title" xml:space="preserve"><value>Attribut steigern</value></data>
+  <data name="Career.Action.career.attribute.advance.Detail" xml:space="preserve"><value>Ein exaktes Core-Angebot wählen, Karma und Legalität prüfen und den typisierten Ablauf öffnen.</value></data>
+  <data name="Career.Action.career.active-skill.advance.Title" xml:space="preserve"><value>Aktive Fertigkeit steigern</value></data>
+  <data name="Career.Action.career.active-skill.advance.Detail" xml:space="preserve"><value>Eine exakte Fertigkeitsidentität wählen und den vorhandenen Angebots-/Prüf-/Belegablauf öffnen.</value></data>
+  <data name="Career.Action.career.knowledge-skill.advance.Title" xml:space="preserve"><value>Wissens- oder Sprachfertigkeit steigern</value></data>
+  <data name="Career.Action.career.knowledge-skill.advance.Detail" xml:space="preserve"><value>Eine exakte Identität mit optionaler Quelle wählen und ihren typisierten Steigerungsablauf öffnen.</value></data>
+  <data name="Career.Action.career.skill-group.advance.Title" xml:space="preserve"><value>Fertigkeitsgruppe steigern</value></data>
+  <data name="Career.Action.career.skill-group.advance.Detail" xml:space="preserve"><value>Eine exakte InternalId wählen und den Core-gebundenen Gruppenablauf öffnen.</value></data>
+  <data name="Career.Action.career.skill-specialization.learn.Title" xml:space="preserve"><value>Spezialisierung hinzufügen</value></data>
+  <data name="Career.Action.career.skill-specialization.learn.Detail" xml:space="preserve"><value>Eine typisierte Fertigkeitsidentität wählen und den kontrollierten/eigenen Spezialisierungsablauf öffnen.</value></data>
+  <data name="Career.Action.career.quality.change.Title" xml:space="preserve"><value>Vor- oder Nachteil ändern</value></data>
+  <data name="Career.Action.career.quality.change.Detail" xml:space="preserve"><value>Eine exakte Quellen-/Identitätsoperation wählen und den atomaren Ablauf öffnen.</value></data>
+  <data name="Career.Action.career.calendar-entry.manage.Title" xml:space="preserve"><value>Kalenderwochen verwalten</value></data>
+  <data name="Career.Action.career.calendar-entry.manage.Detail" xml:space="preserve"><value>Exakt gespeicherte ISO-Wochen anhand stabiler Identität hinzufügen, bearbeiten oder löschen.</value></data>
+</root>

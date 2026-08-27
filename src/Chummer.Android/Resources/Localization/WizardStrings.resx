@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Common.Anchors" xml:space="preserve"><value>Anchors {0}</value></data>
+  <data name="Common.Blockers" xml:space="preserve"><value>Blockers</value></data>
+  <data name="Common.Node" xml:space="preserve"><value>Node {0}</value></data>
+  <data name="Common.NotSelected" xml:space="preserve"><value>not selected</value></data>
+  <data name="Common.OK" xml:space="preserve"><value>OK</value></data>
+  <data name="Common.PreviewBlockers" xml:space="preserve"><value>Preview blockers</value></data>
+  <data name="Common.Rank" xml:space="preserve"><value>Rank {0}</value></data>
+  <data name="Common.RankLabel" xml:space="preserve"><value>Rank</value></data>
+  <data name="Common.Remaining" xml:space="preserve"><value>Remaining</value></data>
+  <data name="Common.Retry" xml:space="preserve"><value>Retry</value></data>
+  <data name="Common.SelectionId" xml:space="preserve"><value>Selection ID</value></data>
+  <data name="Common.SelectionInline" xml:space="preserve"><value>selection {0}</value></data>
+  <data name="Common.Source" xml:space="preserve"><value>Source {0}</value></data>
+  <data name="Common.SourceAnchor" xml:space="preserve"><value>Source anchor · {0}</value></data>
+  <data name="Common.SourceId" xml:space="preserve"><value>Source ID</value></data>
+  <data name="Common.SourceInline" xml:space="preserve"><value>source {0}</value></data>
+  <data name="Common.SourceNode" xml:space="preserve"><value>Source node</value></data>
+  <data name="Common.SpecialAttributePoints" xml:space="preserve"><value>Special Attribute points {0}</value></data>
+  <data name="Common.SpecialAttributePointsLabel" xml:space="preserve"><value>Special Attribute points</value></data>
+  <data name="Common.Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Common.Unavailable" xml:space="preserve"><value>unavailable</value></data>
+  <data name="Common.Used" xml:space="preserve"><value>Used</value></data>
+  <data name="Common.Value" xml:space="preserve"><value>Value</value></data>
+
+  <data name="Priority.Actions.Preview" xml:space="preserve"><value>Preview assignments draft</value></data>
+  <data name="Priority.Actions.Reset" xml:space="preserve"><value>Reset rank selections</value></data>
+  <data name="Priority.Actions.Scope" xml:space="preserve"><value>Selection is local until the exact Core preview is explicitly confirmed. No character XML or legacy editor field is changed by this page.</value></data>
+  <data name="Priority.Attributes.AdjustmentRequired" xml:space="preserve"><value>Raw grant only: Heritage/metatype halveattributepoints adjustment is still required.</value></data>
+  <data name="Priority.Attributes.Complete" xml:space="preserve"><value>Core prerequisite complete</value></data>
+  <data name="Priority.Attributes.Disabled" xml:space="preserve"><value>Attributes remain disabled</value></data>
+  <data name="Priority.Attributes.EffectiveGrant" xml:space="preserve"><value>Effective normal Attribute grant: {0}</value></data>
+  <data name="Priority.Attributes.EffectiveGrantLabel" xml:space="preserve"><value>Effective normal Attribute grant</value></data>
+  <data name="Priority.Attributes.NextStage" xml:space="preserve"><value>Core resolved Heritage/metatype adjustment; the dedicated phone Attributes page is the next stage.</value></data>
+  <data name="Priority.Attributes.NotEnabled" xml:space="preserve"><value>The prerequisite authority has not enabled Attributes navigation.</value></data>
+  <data name="Priority.Attributes.Prerequisite" xml:space="preserve"><value>Attributes prerequisite</value></data>
+  <data name="Priority.Attributes.RawGrant" xml:space="preserve"><value>Raw normal Attribute grant: {0}</value></data>
+  <data name="Priority.Attributes.RawGrantLabel" xml:space="preserve"><value>Raw normal Attribute grant</value></data>
+  <data name="Priority.Attributes.SpecialPoints" xml:space="preserve"><value>Special Attribute points: {0}</value></data>
+  <data name="Priority.Attributes.TotalSpecialLabel" xml:space="preserve"><value>Total special Attribute points</value></data>
+  <data name="Priority.AuthorityBlocked" xml:space="preserve"><value>Creation prerequisite authority blocked</value></data>
+  <data name="Priority.AuthorityUnavailable" xml:space="preserve"><value>Creation prerequisite authority unavailable</value></data>
+  <data name="Priority.Binding" xml:space="preserve"><value>Revision {0} · saved {1} · snapshot {2} · authority {3}</value></data>
+  <data name="Priority.Categories.Heading" xml:space="preserve"><value>Five ordered categories</value></data>
+  <data name="Priority.Categories.Rank" xml:space="preserve"><value>{0}. Rank {1}</value></data>
+  <data name="Priority.Categories.RawGrantInline" xml:space="preserve"><value>raw grant {0}</value></data>
+  <data name="Priority.Categories.SelectRank" xml:space="preserve"><value>{0}. Select an authority-projected rank</value></data>
+  <data name="Priority.Category.attributes" xml:space="preserve"><value>Attributes</value></data>
+  <data name="Priority.Category.heritage" xml:space="preserve"><value>Heritage</value></data>
+  <data name="Priority.Category.resources" xml:space="preserve"><value>Resources</value></data>
+  <data name="Priority.Category.skills" xml:space="preserve"><value>Skills</value></data>
+  <data name="Priority.Category.talent" xml:space="preserve"><value>Talent</value></data>
+  <data name="Priority.CategoryPage.Binding" xml:space="preserve"><value>Revision {0} · snapshot {1}</value></data>
+  <data name="Priority.CategoryPage.CurrentSelection" xml:space="preserve"><value>Current draft selection</value></data>
+  <data name="Priority.CategoryPage.Eyebrow" xml:space="preserve"><value>Priority assignments</value></data>
+  <data name="Priority.CategoryPage.PageTitle" xml:space="preserve"><value>Choose rank</value></data>
+  <data name="Priority.CategoryPage.RawGrant" xml:space="preserve"><value>Raw normal Attribute grant {0}</value></data>
+  <data name="Priority.CategoryPage.SumValue" xml:space="preserve"><value>Sum value {0}</value></data>
+  <data name="Priority.DetailPage.Binding" xml:space="preserve"><value>Rank {0} · source {1} · snapshot {2}</value></data>
+  <data name="Priority.DetailPage.ChooseActiveSkills" xml:space="preserve"><value>Choose {0} active skills at rating {1}</value></data>
+  <data name="Priority.DetailPage.ChooseHeritage" xml:space="preserve"><value>Choose heritage</value></data>
+  <data name="Priority.DetailPage.ChooseSkillGroups" xml:space="preserve"><value>Choose {0} skill groups at rating {1}</value></data>
+  <data name="Priority.DetailPage.ChooseTalent" xml:space="preserve"><value>Choose talent</value></data>
+  <data name="Priority.DetailPage.CurrentSelection" xml:space="preserve"><value>Current typed draft selection</value></data>
+  <data name="Priority.DetailPage.Eyebrow" xml:space="preserve"><value>Core-projected choice</value></data>
+  <data name="Priority.DetailPage.GrantedQualities" xml:space="preserve"><value>Granted qualities {0}</value></data>
+  <data name="Priority.DetailPage.GrantProgress" xml:space="preserve"><value>Grant progress {0} / {1}</value></data>
+  <data name="Priority.DetailPage.HalvesAttributes" xml:space="preserve"><value>Halves normal Attribute points</value></data>
+  <data name="Priority.DetailPage.Karma" xml:space="preserve"><value>Karma {0}</value></data>
+  <data name="Priority.Draft.BaseRevision" xml:space="preserve"><value>Base revision</value></data>
+  <data name="Priority.Draft.Digest" xml:space="preserve"><value>Draft digest</value></data>
+  <data name="Priority.Draft.Restored" xml:space="preserve"><value>The rank, Heritage, and Talent selections were restored from Core auxiliary state after reload.</value></data>
+  <data name="Priority.Draft.Resumed" xml:space="preserve"><value>Resumed persisted draft</value></data>
+  <data name="Priority.Draft.Revision" xml:space="preserve"><value>Draft revision</value></data>
+  <data name="Priority.Eyebrow" xml:space="preserve"><value>Character creation</value></data>
+  <data name="Priority.Heading" xml:space="preserve"><value>Priority / Sum-to-Ten</value></data>
+  <data name="Priority.Heritage.Choice" xml:space="preserve"><value>Heritage choice</value></data>
+  <data name="Priority.Heritage.Prompt" xml:space="preserve"><value>Select an exact Core-projected metatype or metavariant</value></data>
+  <data name="Priority.HeritageKind.metatype" xml:space="preserve"><value>Metatype</value></data>
+  <data name="Priority.HeritageKind.metavariant" xml:space="preserve"><value>Metavariant</value></data>
+  <data name="Priority.Karma.BudgetId" xml:space="preserve"><value>Budget ID</value></data>
+  <data name="Priority.Karma.Exact" xml:space="preserve"><value>Exact authoritative budget</value></data>
+  <data name="Priority.Karma.Heading" xml:space="preserve"><value>Global Creation Karma</value></data>
+  <data name="Priority.Karma.Inexact" xml:space="preserve"><value>Budget is not exact</value></data>
+  <data name="Priority.Karma.Semantic" xml:space="preserve"><value>Global Creation Karma. Total {0}. Used {1}. Remaining {2}.</value></data>
+  <data name="Priority.Method.Heading" xml:space="preserve"><value>Authoritative build method</value></data>
+  <data name="Priority.Method.PriorityTable" xml:space="preserve"><value>Priority table</value></data>
+  <data name="Priority.Method.RepeatedRanks" xml:space="preserve"><value>Repeated ranks are allowed only when the authority projects an exact route to the target.</value></data>
+  <data name="Priority.Method.RequiredProfile" xml:space="preserve"><value>Required profile multiset</value></data>
+  <data name="Priority.Method.SettingsProfile" xml:space="preserve"><value>Settings profile</value></data>
+  <data name="Priority.PageTitle" xml:space="preserve"><value>Priorities</value></data>
+  <data name="Priority.Priority" xml:space="preserve"><value>Priority</value></data>
+  <data name="Priority.Preview.AssignmentTitle" xml:space="preserve"><value>{0}. {1}</value></data>
+  <data name="Priority.Preview.Assignments" xml:space="preserve"><value>Five ordered assignments</value></data>
+  <data name="Priority.Preview.AttributesAdjustmentRequired" xml:space="preserve"><value>Heritage/metatype halveattributepoints adjustment is still required. Attributes remain disabled.</value></data>
+  <data name="Priority.Preview.AttributesReady" xml:space="preserve"><value>Core resolved the Heritage/metatype adjustment; Attributes can enter their dedicated wizard stage after confirmation.</value></data>
+  <data name="Priority.Preview.BackToBuild" xml:space="preserve"><value>Back to Build</value></data>
+  <data name="Priority.Preview.Binding" xml:space="preserve"><value>Revision {0} · saved {1} · preview {2}</value></data>
+  <data name="Priority.Preview.Confirm" xml:space="preserve"><value>Confirm assignments draft</value></data>
+  <data name="Priority.Preview.Confirmed" xml:space="preserve"><value>Creation-method draft confirmed and authoritative state reloaded.</value></data>
+  <data name="Priority.Preview.ContentRevision" xml:space="preserve"><value>Content revision</value></data>
+  <data name="Priority.Preview.DocumentChanged" xml:space="preserve"><value>Character document changed</value></data>
+  <data name="Priority.Preview.Eyebrow" xml:space="preserve"><value>Explicit review</value></data>
+  <data name="Priority.Preview.ExplicitConfirmation" xml:space="preserve"><value>Confirmation is a separate explicit action bound to this exact preview digest.</value></data>
+  <data name="Priority.Preview.GrantedQuality" xml:space="preserve"><value>Granted quality · {0}</value></data>
+  <data name="Priority.Preview.GrantPlan" xml:space="preserve"><value>Grant plan</value></data>
+  <data name="Priority.Preview.GrantPlanSummary" xml:space="preserve"><value>{0} active skills · {1} skill groups</value></data>
+  <data name="Priority.Preview.GrantSlot" xml:space="preserve"><value>Slot {0} · {1} · rating {2} · {3}</value></data>
+  <data name="Priority.Preview.GrantSourceAnchor" xml:space="preserve"><value>Grant source anchor · {0}</value></data>
+  <data name="Priority.Preview.HalveAttributePoints" xml:space="preserve"><value>Core applies halveattributepoints to the raw Attribute grant.</value></data>
+  <data name="Priority.Preview.HeritageSelection" xml:space="preserve"><value>Heritage selection</value></data>
+  <data name="Priority.Preview.KarmaCost" xml:space="preserve"><value>Karma cost</value></data>
+  <data name="Priority.Preview.KarmaRemaining" xml:space="preserve"><value>Creation Karma remaining</value></data>
+  <data name="Priority.Preview.KeepAttributePoints" xml:space="preserve"><value>Core keeps the raw normal Attribute grant.</value></data>
+  <data name="Priority.Preview.NoExplicitConfirmation" xml:space="preserve"><value>The authority did not request explicit confirmation.</value></data>
+  <data name="Priority.Preview.PageTitle" xml:space="preserve"><value>Review assignments</value></data>
+  <data name="Priority.Preview.PreviousRevision" xml:space="preserve"><value>Previous revision</value></data>
+  <data name="Priority.Preview.PriorityDraft" xml:space="preserve"><value>Priority draft</value></data>
+  <data name="Priority.Preview.Receipt" xml:space="preserve"><value>Atomic draft receipt</value></data>
+  <data name="Priority.Preview.ReceiptAttributesClosed" xml:space="preserve"><value>The rules-authoritative Attributes prerequisite remains closed.</value></data>
+  <data name="Priority.Preview.ReceiptAttributesDisabled" xml:space="preserve"><value>Attributes remain disabled: Heritage/metatype halveattributepoints adjustment is required.</value></data>
+  <data name="Priority.Preview.ReceiptAttributesReady" xml:space="preserve"><value>Core prerequisite complete: Attributes can enter their dedicated wizard stage.</value></data>
+  <data name="Priority.Preview.SavedRevision" xml:space="preserve"><value>Saved revision</value></data>
+  <data name="Priority.Preview.SumToTenDraft" xml:space="preserve"><value>Sum-to-Ten draft</value></data>
+  <data name="Priority.Preview.SumToTenValue" xml:space="preserve"><value>Sum-to-Ten value</value></data>
+  <data name="Priority.Preview.TalentSelection" xml:space="preserve"><value>Talent selection</value></data>
+  <data name="Priority.Preview.UsedTarget" xml:space="preserve"><value>Used / target</value></data>
+  <data name="Priority.Source.AuthorityDigest" xml:space="preserve"><value>Authority digest</value></data>
+  <data name="Priority.Source.Heading" xml:space="preserve"><value>Source authority</value></data>
+  <data name="Priority.Source.PrioritiesXml" xml:space="preserve"><value>Priorities XML</value></data>
+  <data name="Priority.Source.ProfileInputs" xml:space="preserve"><value>Profile inputs</value></data>
+  <data name="Priority.SumToTen" xml:space="preserve"><value>Sum-to-Ten</value></data>
+  <data name="Priority.Talent.ActiveGrantProgress" xml:space="preserve"><value>Active-skill grant {0} / {1}</value></data>
+  <data name="Priority.Talent.Choice" xml:space="preserve"><value>Talent choice</value></data>
+  <data name="Priority.Talent.GroupGrantProgress" xml:space="preserve"><value>Skill-group grant {0} / {1}</value></data>
+  <data name="Priority.Talent.Prompt" xml:space="preserve"><value>Select an exact Core-projected Talent and complete any required grants</value></data>
+
+  <data name="Career.Alert.AuthorityChangedMessage" xml:space="preserve"><value>Return to the Career wizard and load the current runner revision.</value></data>
+  <data name="Career.Alert.AuthorityChangedTitle" xml:space="preserve"><value>Career authority changed</value></data>
+  <data name="Career.Alert.CheckpointMessage" xml:space="preserve"><value>The typed Career route was not opened because its navigation checkpoint could not be saved and verified.</value></data>
+  <data name="Career.Alert.CheckpointTitle" xml:space="preserve"><value>Navigation checkpoint unavailable</value></data>
+  <data name="Career.Alert.QualityMessage" xml:space="preserve"><value>Exact atomic SR5 quality authority is no longer connected. No fallback mutation is available.</value></data>
+  <data name="Career.Alert.QualityTitle" xml:space="preserve"><value>Quality authority unavailable</value></data>
+  <data name="Career.AvailableFamily" xml:space="preserve"><value>{0} available{1} · {2}</value></data>
+  <data name="Career.Binding" xml:space="preserve"><value>Workspace {0} · revision {1}/{2} · runtime {3} · source {4} · content {5}</value></data>
+  <data name="Career.Blocker.AuthorityUnavailable" xml:space="preserve"><value>Exact typed SR5 Career authority is unavailable for this runner.</value></data>
+  <data name="Career.Blocker.CheckpointUnavailable" xml:space="preserve"><value>Durable navigation checkpoint storage is unavailable. No Career route can be opened safely.</value></data>
+  <data name="Career.Blocker.WorkspaceChanged" xml:space="preserve"><value>The runner changed while Career authorities were loading. Retry from the current revision.</value></data>
+  <data name="Career.Checkpoint.ActionUnavailable" xml:space="preserve"><value>The previously selected typed action is no longer available and was discarded.</value></data>
+  <data name="Career.Checkpoint.Invalid" xml:space="preserve"><value>An invalid Career navigation checkpoint was discarded.</value></data>
+  <data name="Career.Checkpoint.Restored" xml:space="preserve"><value>The last action selection was restored for this exact workspace snapshot.</value></data>
+  <data name="Career.Checkpoint.RevisionChanged" xml:space="preserve"><value>The runner revision changed, so the saved Career selection was discarded.</value></data>
+  <data name="Career.Checkpoint.SnapshotChanged" xml:space="preserve"><value>Runtime, sources, content, or action availability changed; the saved selection was discarded.</value></data>
+  <data name="Career.Checkpoint.WorkspaceChanged" xml:space="preserve"><value>The saved Career selection belonged to another workspace and was discarded.</value></data>
+  <data name="Career.ChooseFamily" xml:space="preserve"><value>Choose an action family. Only routes backed by a current typed authority are shown.</value></data>
+  <data name="Career.Eyebrow" xml:space="preserve"><value>Shadowrun Fifth Edition</value></data>
+  <data name="Career.FamilyBoundary" xml:space="preserve"><value>Selecting a row writes only a digest-bound navigation checkpoint. The destination must load and validate its own typed authority again.</value></data>
+  <data name="Career.FamilyStale" xml:space="preserve"><value>The runner changed after this action family was projected. Return and reload Career authority.</value></data>
+  <data name="Career.Heading" xml:space="preserve"><value>Career wizard</value></data>
+  <data name="Career.LastSelection" xml:space="preserve"><value> · last selection</value></data>
+  <data name="Career.Loading" xml:space="preserve"><value>Checking the exact workspace and typed Career authorities…</value></data>
+  <data name="Career.NavigationBoundary" xml:space="preserve"><value>This chooser can select and checkpoint navigation only. Review, confirmation, persistence, recovery, and receipts remain owned by the selected typed flow.</value></data>
+  <data name="Career.NoActions" xml:space="preserve"><value>No typed SR5 Career action is available for this exact runner state.</value></data>
+  <data name="Career.PageTitle" xml:space="preserve"><value>SR5 Career</value></data>
+  <data name="Career.RequiresRunner" xml:space="preserve"><value>This wizard requires a created SR5 runner. It does not fall through to generic editing.</value></data>
+  <data name="Career.Selected" xml:space="preserve"><value>Selected · </value></data>
+  <data name="Career.Family.career.economy.Title" xml:space="preserve"><value>Karma and Nuyen</value></data>
+  <data name="Career.Family.career.economy.Detail" xml:space="preserve"><value>Record exact manual changes or edit existing typed expense entries.</value></data>
+  <data name="Career.Family.career.advancement.Title" xml:space="preserve"><value>Advancement</value></data>
+  <data name="Career.Family.career.advancement.Detail" xml:space="preserve"><value>Open one exact SR5 advancement authority and review it in its own wizard.</value></data>
+  <data name="Career.Family.career.calendar.Title" xml:space="preserve"><value>Calendar</value></data>
+  <data name="Career.Family.career.calendar.Detail" xml:space="preserve"><value>Manage exact saved downtime weeks by stable identity.</value></data>
+  <data name="Career.Action.career.karma.adjust.Title" xml:space="preserve"><value>Record Karma</value></data>
+  <data name="Career.Action.career.karma.adjust.Detail" xml:space="preserve"><value>Open the typed manual Karma editor for this exact runner revision.</value></data>
+  <data name="Career.Action.career.nuyen.adjust.Title" xml:space="preserve"><value>Record Nuyen</value></data>
+  <data name="Career.Action.career.nuyen.adjust.Detail" xml:space="preserve"><value>Open the typed manual Nuyen editor for this exact runner revision.</value></data>
+  <data name="Career.Action.career.karma-expense.edit.Title" xml:space="preserve"><value>Edit Karma expense</value></data>
+  <data name="Career.Action.career.karma-expense.edit.Detail" xml:space="preserve"><value>Choose one stable saved Karma expense and edit only Chummer5-authorized fields.</value></data>
+  <data name="Career.Action.career.nuyen-expense.edit.Title" xml:space="preserve"><value>Edit Nuyen expense</value></data>
+  <data name="Career.Action.career.nuyen-expense.edit.Detail" xml:space="preserve"><value>Choose one stable saved Nuyen expense and edit only Chummer5-authorized fields.</value></data>
+  <data name="Career.Action.career.attribute.advance.Title" xml:space="preserve"><value>Advance an attribute</value></data>
+  <data name="Career.Action.career.attribute.advance.Detail" xml:space="preserve"><value>Choose an exact Core quote, review Karma and legality, then enter its typed flow.</value></data>
+  <data name="Career.Action.career.active-skill.advance.Title" xml:space="preserve"><value>Advance an active skill</value></data>
+  <data name="Career.Action.career.active-skill.advance.Detail" xml:space="preserve"><value>Choose an exact skill identity and enter the existing quote/review/receipt flow.</value></data>
+  <data name="Career.Action.career.knowledge-skill.advance.Title" xml:space="preserve"><value>Advance Knowledge or Language</value></data>
+  <data name="Career.Action.career.knowledge-skill.advance.Detail" xml:space="preserve"><value>Choose an exact nullable-source identity and enter its typed advancement flow.</value></data>
+  <data name="Career.Action.career.skill-group.advance.Title" xml:space="preserve"><value>Advance a skill group</value></data>
+  <data name="Career.Action.career.skill-group.advance.Detail" xml:space="preserve"><value>Choose an exact InternalId and enter the Core-bound group flow.</value></data>
+  <data name="Career.Action.career.skill-specialization.learn.Title" xml:space="preserve"><value>Add a specialization</value></data>
+  <data name="Career.Action.career.skill-specialization.learn.Detail" xml:space="preserve"><value>Choose a typed skill identity and enter the governed/custom specialization flow.</value></data>
+  <data name="Career.Action.career.quality.change.Title" xml:space="preserve"><value>Change a quality</value></data>
+  <data name="Career.Action.career.quality.change.Detail" xml:space="preserve"><value>Choose an exact source/identity operation and enter the atomic quality flow.</value></data>
+  <data name="Career.Action.career.calendar-entry.manage.Title" xml:space="preserve"><value>Manage calendar weeks</value></data>
+  <data name="Career.Action.career.calendar-entry.manage.Detail" xml:space="preserve"><value>Add, edit, or delete exact saved ISO weeks by stable identity.</value></data>
+</root>

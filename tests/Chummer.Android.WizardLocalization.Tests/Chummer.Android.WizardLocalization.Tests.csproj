@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <RootNamespace>Chummer.Android</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../../src/Chummer.Android/Native/WizardStrings.cs"
+             Link="Native/WizardStrings.cs" />
+    <Compile Include="Program.cs" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/WizardStrings.resx"
+                      Link="Resources/Localization/WizardStrings.resx">
+      <ManifestResourceName>Chummer.Android.Resources.Localization.WizardStrings</ManifestResourceName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/WizardStrings.de.resx"
+                      Link="Resources/Localization/WizardStrings.de.resx">
+      <WithCulture>true</WithCulture>
+      <Culture>de</Culture>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/WizardStrings.es.resx"
+                      Link="Resources/Localization/WizardStrings.es.resx">
+      <WithCulture>true</WithCulture>
+      <Culture>es</Culture>
+    </EmbeddedResource>
+  </ItemGroup>
+</Project>

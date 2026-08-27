@@ -25,7 +25,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
 
     public Sr5CareerWizardPage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
-        Title = "SR5 Career";
+        Title = WizardStrings.Get("Career.PageTitle", "SR5 Career");
         AutomationId = Sr5CareerWizardRoutes.Hub;
         _authority = new RunnerSessionSr5CareerWizardPhoneAuthority(coordinator);
         _checkpointStore = new Sr5CareerWizardPhoneCheckpointStore(
@@ -64,15 +64,17 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         }
 
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Shadowrun Fifth Edition"));
-        _body.Add(NativeTheme.Title("Career wizard"));
+        _body.Add(NativeTheme.Eyebrow(WizardStrings.Get("Career.Eyebrow", "Shadowrun Fifth Edition")));
+        _body.Add(NativeTheme.Title(WizardStrings.Get("Career.Heading", "Career wizard")));
 
         if (!Sr5CareerWizardCatalog.IsSr5CareerRunner(
                 Coordinator.State.Profile?.Created == true,
                 Coordinator.State.Rules?.GameEdition))
         {
             AddStatus(
-                "This wizard requires a created SR5 runner. It does not fall through to generic editing.",
+                WizardStrings.Get(
+                    "Career.RequiresRunner",
+                    "This wizard requires a created SR5 runner. It does not fall through to generic editing."),
                 "sr5-career-wizard-edition-blocker",
                 NativeTheme.Danger);
             return;
@@ -81,7 +83,9 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         if (_loading)
         {
             AddStatus(
-                "Checking the exact workspace and typed Career authorities…",
+                WizardStrings.Get(
+                    "Career.Loading",
+                    "Checking the exact workspace and typed Career authorities…"),
                 "sr5-career-wizard-loading",
                 NativeTheme.Muted);
             return;
@@ -93,7 +97,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
                 SafeBlockerMessage(_loadBlocker),
                 "sr5-career-wizard-unavailable",
                 NativeTheme.Danger);
-            Button retry = NativeTheme.SecondaryButton("Retry");
+            Button retry = NativeTheme.SecondaryButton(WizardStrings.Get("Common.Retry", "Retry"));
             retry.AutomationId = "sr5-career-wizard-retry";
             retry.Clicked += async (_, _) => await ReloadAsync();
             _body.Add(retry);
@@ -103,11 +107,15 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         Sr5CareerWizardDesktopSession session = _session;
         Sr5CareerWizardDesktopState state = session.State;
         Label binding = NativeTheme.Body(
-            $"Workspace {state.Snapshot.Binding.WorkspaceId} · revision "
-            + $"{state.Snapshot.Binding.WorkspaceRevision}/{state.Snapshot.Binding.SavedRevision} · "
-            + $"runtime {ShortDigest(state.Snapshot.Binding.RuntimeFingerprint)} · "
-            + $"source {ShortDigest(state.Snapshot.Binding.SourceDigest)} · "
-            + $"content {ShortDigest(state.Snapshot.Binding.ContentDigest)}",
+            WizardStrings.Format(
+                "Career.Binding",
+                "Workspace {0} · revision {1}/{2} · runtime {3} · source {4} · content {5}",
+                state.Snapshot.Binding.WorkspaceId,
+                state.Snapshot.Binding.WorkspaceRevision,
+                state.Snapshot.Binding.SavedRevision,
+                ShortDigest(state.Snapshot.Binding.RuntimeFingerprint),
+                ShortDigest(state.Snapshot.Binding.SourceDigest),
+                ShortDigest(state.Snapshot.Binding.ContentDigest)),
             NativeTheme.Muted);
         binding.AutomationId = "sr5-career-wizard-binding";
         _body.Add(NativeTheme.Card(binding));
@@ -123,14 +131,18 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         if (!state.Snapshot.CanOpenAnyAction)
         {
             AddStatus(
-                "No typed SR5 Career action is available for this exact runner state.",
+                WizardStrings.Get(
+                    "Career.NoActions",
+                    "No typed SR5 Career action is available for this exact runner state."),
                 "sr5-career-wizard-no-actions",
                 NativeTheme.Danger);
             return;
         }
 
         _body.Add(NativeTheme.Body(
-            "Choose an action family. Only routes backed by a current typed authority are shown.",
+            WizardStrings.Get(
+                "Career.ChooseFamily",
+                "Choose an action family. Only routes backed by a current typed authority are shown."),
             NativeTheme.Muted));
         foreach (Sr5CareerWizardFamilyState family in state.Snapshot.Families
                      .Where(static family => family.HasAvailableAction))
@@ -140,11 +152,16 @@ public sealed class Sr5CareerWizardPage : NativePageBase
             int available = family.Actions.Count(static action => action.CanOpen);
             string selected = family.Actions.Any(action =>
                 string.Equals(action.ActionId, state.SelectedActionId, StringComparison.Ordinal))
-                ? " · last selection"
+                ? WizardStrings.Get("Career.LastSelection", " · last selection")
                 : string.Empty;
             _body.Add(NativeTheme.NavigationRow(
-                definition.Title,
-                $"{available} available{selected} · {definition.Detail}",
+                WizardStrings.CareerFamilyTitle(definition.FamilyId, definition.Title),
+                WizardStrings.Format(
+                    "Career.AvailableFamily",
+                    "{0} available{1} · {2}",
+                    available,
+                    selected,
+                    WizardStrings.CareerFamilyDetail(definition.FamilyId, definition.Detail)),
                 () => Navigation.PushAsync(new Sr5CareerActionFamilyPage(
                     Coordinator,
                     session,
@@ -154,8 +171,10 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         }
 
         Label boundary = NativeTheme.Body(
-            "This chooser can select and checkpoint navigation only. Review, confirmation, "
-            + "persistence, recovery, and receipts remain owned by the selected typed flow.",
+            WizardStrings.Get(
+                "Career.NavigationBoundary",
+                "This chooser can select and checkpoint navigation only. Review, confirmation, "
+                + "persistence, recovery, and receipts remain owned by the selected typed flow."),
             NativeTheme.Muted);
         boundary.AutomationId = "sr5-career-wizard-navigation-boundary";
         _body.Add(NativeTheme.Card(boundary));
@@ -289,26 +308,44 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         => blocker switch
         {
             Sr5CareerWizardPhoneBlockers.WorkspaceChangedDuringProjection =>
-                "The runner changed while Career authorities were loading. Retry from the current revision.",
+                WizardStrings.Get(
+                    "Career.Blocker.WorkspaceChanged",
+                    "The runner changed while Career authorities were loading. Retry from the current revision."),
             "career-wizard-checkpoint-store-unavailable" =>
-                "Durable navigation checkpoint storage is unavailable. No Career route can be opened safely.",
-            _ => "Exact typed SR5 Career authority is unavailable for this runner."
+                WizardStrings.Get(
+                    "Career.Blocker.CheckpointUnavailable",
+                    "Durable navigation checkpoint storage is unavailable. No Career route can be opened safely."),
+            _ => WizardStrings.Get(
+                "Career.Blocker.AuthorityUnavailable",
+                "Exact typed SR5 Career authority is unavailable for this runner.")
         };
 
     private static string CheckpointMessage(string notice)
         => notice switch
         {
             "career-wizard-checkpoint-restored" =>
-                "The last action selection was restored for this exact workspace snapshot.",
+                WizardStrings.Get(
+                    "Career.Checkpoint.Restored",
+                    "The last action selection was restored for this exact workspace snapshot."),
             Sr5CareerWizardCheckpointInvalidationReasons.WorkspaceChanged =>
-                "The saved Career selection belonged to another workspace and was discarded.",
+                WizardStrings.Get(
+                    "Career.Checkpoint.WorkspaceChanged",
+                    "The saved Career selection belonged to another workspace and was discarded."),
             Sr5CareerWizardCheckpointInvalidationReasons.WorkspaceRevisionChanged =>
-                "The runner revision changed, so the saved Career selection was discarded.",
+                WizardStrings.Get(
+                    "Career.Checkpoint.RevisionChanged",
+                    "The runner revision changed, so the saved Career selection was discarded."),
             Sr5CareerWizardCheckpointInvalidationReasons.SnapshotChanged =>
-                "Runtime, sources, content, or action availability changed; the saved selection was discarded.",
+                WizardStrings.Get(
+                    "Career.Checkpoint.SnapshotChanged",
+                    "Runtime, sources, content, or action availability changed; the saved selection was discarded."),
             Sr5CareerWizardCheckpointInvalidationReasons.ActionUnavailable =>
-                "The previously selected typed action is no longer available and was discarded.",
-            _ => "An invalid Career navigation checkpoint was discarded."
+                WizardStrings.Get(
+                    "Career.Checkpoint.ActionUnavailable",
+                    "The previously selected typed action is no longer available and was discarded."),
+            _ => WizardStrings.Get(
+                "Career.Checkpoint.Invalid",
+                "An invalid Career navigation checkpoint was discarded.")
         };
 
     private static string ShortDigest(string value)
@@ -337,7 +374,7 @@ public sealed class Sr5CareerActionFamilyPage : NativePageBase
         _familyId = Sr5CareerWizardPhoneCatalog.RequireFamily(familyId).FamilyId;
         Sr5CareerWizardPhoneFamilyDefinition definition =
             Sr5CareerWizardPhoneCatalog.RequireFamily(_familyId);
-        Title = definition.Title;
+        Title = WizardStrings.CareerFamilyTitle(definition.FamilyId, definition.Title);
         AutomationId = definition.RouteId;
         Content = new ScrollView { Content = _body };
     }
@@ -347,16 +384,21 @@ public sealed class Sr5CareerActionFamilyPage : NativePageBase
         _body.Clear();
         Sr5CareerWizardPhoneFamilyDefinition definition =
             Sr5CareerWizardPhoneCatalog.RequireFamily(_familyId);
-        _body.Add(NativeTheme.Eyebrow("SR5 Career"));
-        _body.Add(NativeTheme.Title(definition.Title));
-        _body.Add(NativeTheme.Body(definition.Detail, NativeTheme.Muted));
+        _body.Add(NativeTheme.Eyebrow(WizardStrings.Get("Career.PageTitle", "SR5 Career")));
+        _body.Add(NativeTheme.Title(
+            WizardStrings.CareerFamilyTitle(definition.FamilyId, definition.Title)));
+        _body.Add(NativeTheme.Body(
+            WizardStrings.CareerFamilyDetail(definition.FamilyId, definition.Detail),
+            NativeTheme.Muted));
 
         Sr5CareerWizardDesktopState state = _session.State;
         if (!MatchesCurrentRunner(state.Snapshot.Binding))
         {
             _checkpointStore.Clear();
             Label blocker = NativeTheme.Body(
-                "The runner changed after this action family was projected. Return and reload Career authority.",
+                WizardStrings.Get(
+                    "Career.FamilyStale",
+                    "The runner changed after this action family was projected. Return and reload Career authority."),
                 NativeTheme.Danger);
             blocker.AutomationId = "sr5-career-family-stale";
             _body.Add(NativeTheme.Card(blocker));
@@ -374,18 +416,20 @@ public sealed class Sr5CareerActionFamilyPage : NativePageBase
                 state.SelectedActionId,
                 action.ActionId,
                 StringComparison.Ordinal)
-                ? "Selected · "
+                ? WizardStrings.Get("Career.Selected", "Selected · ")
                 : string.Empty;
             _body.Add(NativeTheme.NavigationRow(
-                route.Title,
-                selected + route.Detail,
+                WizardStrings.CareerActionTitle(route.ActionId, route.Title),
+                selected + WizardStrings.CareerActionDetail(route.ActionId, route.Detail),
                 () => RunAsync(() => OpenActionAsync(action.ActionId)),
                 automationId: route.AutomationId));
         }
 
         Label boundary = NativeTheme.Body(
-            "Selecting a row writes only a digest-bound navigation checkpoint. The destination "
-            + "must load and validate its own typed authority again.",
+            WizardStrings.Get(
+                "Career.FamilyBoundary",
+                "Selecting a row writes only a digest-bound navigation checkpoint. The destination "
+                + "must load and validate its own typed authority again."),
             NativeTheme.Muted);
         boundary.AutomationId = "sr5-career-family-navigation-boundary";
         _body.Add(NativeTheme.Card(boundary));
@@ -398,17 +442,21 @@ public sealed class Sr5CareerActionFamilyPage : NativePageBase
         {
             _checkpointStore.Clear();
             await DisplayAlertAsync(
-                "Career authority changed",
-                "Return to the Career wizard and load the current runner revision.",
-                "OK");
+                WizardStrings.Get("Career.Alert.AuthorityChangedTitle", "Career authority changed"),
+                WizardStrings.Get(
+                    "Career.Alert.AuthorityChangedMessage",
+                    "Return to the Career wizard and load the current runner revision."),
+                WizardStrings.Get("Common.OK", "OK"));
             return;
         }
         if (!_checkpointStore.TryWrite(_session))
         {
             await DisplayAlertAsync(
-                "Navigation checkpoint unavailable",
-                "The typed Career route was not opened because its navigation checkpoint could not be saved and verified.",
-                "OK");
+                WizardStrings.Get("Career.Alert.CheckpointTitle", "Navigation checkpoint unavailable"),
+                WizardStrings.Get(
+                    "Career.Alert.CheckpointMessage",
+                    "The typed Career route was not opened because its navigation checkpoint could not be saved and verified."),
+                WizardStrings.Get("Common.OK", "OK"));
             return;
         }
 
@@ -472,9 +520,11 @@ public sealed class Sr5CareerActionFamilyPage : NativePageBase
             return;
         }
         await DisplayAlertAsync(
-            "Quality authority unavailable",
-            "Exact atomic SR5 quality authority is no longer connected. No fallback mutation is available.",
-            "OK");
+            WizardStrings.Get("Career.Alert.QualityTitle", "Quality authority unavailable"),
+            WizardStrings.Get(
+                "Career.Alert.QualityMessage",
+                "Exact atomic SR5 quality authority is no longer connected. No fallback mutation is available."),
+            WizardStrings.Get("Common.OK", "OK"));
     }
 
     private async Task OpenKnowledgeSkillWizardAsync()
