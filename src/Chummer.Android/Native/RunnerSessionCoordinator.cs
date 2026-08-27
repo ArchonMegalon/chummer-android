@@ -3340,6 +3340,10 @@ public sealed class RunnerSessionCoordinator : IDisposable
         CancellationToken cancellationToken = default)
         => _presenter.PrepareCareerWeaponFireAsync(weaponId, cancellationToken);
 
+    public Task<CareerWeaponFireCatalogEditorState?> PrepareCareerWeaponFireCatalogAsync(
+        CancellationToken cancellationToken = default)
+        => _presenter.PrepareCareerWeaponFireCatalogAsync(cancellationToken);
+
     public async Task ApplyCareerWeaponFireAsync(
         CareerWeaponFireRequest request,
         CancellationToken cancellationToken = default)

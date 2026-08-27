@@ -197,4 +197,10 @@
   <data name="Career.Action.career.quality.change.Detail" xml:space="preserve"><value>Eine exakte Quellen-/Identitätsoperation wählen und den atomaren Ablauf öffnen.</value></data>
   <data name="Career.Action.career.calendar-entry.manage.Title" xml:space="preserve"><value>Kalenderwochen verwalten</value></data>
   <data name="Career.Action.career.calendar-entry.manage.Detail" xml:space="preserve"><value>Exakt gespeicherte ISO-Wochen anhand stabiler Identität hinzufügen, bearbeiten oder löschen.</value></data>
+  <data name="Career.Family.career.table.Title" xml:space="preserve"><value>Am Spieltisch</value></data>
+  <data name="Career.Family.career.table.Detail" xml:space="preserve"><value>Auf einen Run vorbereiten oder beim Spiel exakte spieltischsichere Aktionen verwenden.</value></data>
+  <data name="Career.Action.career.before-run.prepare.Title" xml:space="preserve"><value>Vor dem Run</value></data>
+  <data name="Career.Action.career.before-run.prepare.Detail" xml:space="preserve"><value>Eine exakte, revisionsgebundene Edge-Vorbereitungsaktion prüfen.</value></data>
+  <data name="Career.Action.career.playtime.open.Title" xml:space="preserve"><value>Live / Spielzeit</value></data>
+  <data name="Career.Action.career.playtime.open.Detail" xml:space="preserve"><value>Exakte Edge- oder direkte Waffenfeuer-Aktionen ohne uneingeschränkte Bearbeitung verwenden.</value></data>
 </root>

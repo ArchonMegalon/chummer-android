@@ -81,7 +81,12 @@ internal static class Program
                 .Distinct(StringComparer.Ordinal).Count() == Sr5CareerWizardPhoneCatalog.Actions.Count,
             "action selectors must be unique");
         Require(Sr5CareerWizardPhoneCatalog.Families.Select(static family => family.RouteId)
-                .SequenceEqual(["sr5-career/economy", "sr5-career/advancement", "sr5-career/calendar"]),
+                .SequenceEqual([
+                    "sr5-career/economy",
+                    "sr5-career/advancement",
+                    "sr5-career/table",
+                    "sr5-career/calendar"
+                ]),
             "family routes must be stable and deterministic");
         Require(IsDigest(Sr5CareerWizardPhoneCatalog.RuntimeFingerprint), "runtime fingerprint");
         RequireThrows<InvalidOperationException>(

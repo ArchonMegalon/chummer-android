@@ -160,6 +160,24 @@ internal sealed class RunnerSessionSr5CareerWizardPhoneAuthority
                 actionId,
                 expected,
                 cancellationToken),
+            Sr5CareerWizardActionIds.BeforeRun => LoadTypedAsync(
+                actionId,
+                token => new RunnerSessionSr5TableWizardPhoneAuthority(_coordinator)
+                    .LoadAsync(Sr5TableWizardLane.BeforeRun, token),
+                static state => state.WorkspaceId.Value,
+                static state => state.WorkspaceRevision,
+                static state => state.Actions.Count > 0,
+                expected,
+                cancellationToken),
+            Sr5CareerWizardActionIds.Playtime => LoadTypedAsync(
+                actionId,
+                token => new RunnerSessionSr5TableWizardPhoneAuthority(_coordinator)
+                    .LoadAsync(Sr5TableWizardLane.Playtime, token),
+                static state => state.WorkspaceId.Value,
+                static state => state.WorkspaceRevision,
+                static state => state.Actions.Count > 0,
+                expected,
+                cancellationToken),
             Sr5CareerWizardActionIds.ManageCalendarEntry => LoadTypedAsync(
                 actionId,
                 _coordinator.PrepareCareerCalendarEditAsync,

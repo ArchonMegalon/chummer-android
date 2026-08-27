@@ -492,4 +492,55 @@ Status: {4}</value></data>
 Operation: {1}
 Week: {2}
 Preview: {3}…</value></data>
+  <data name=" This confirms Chummer5's shortened burst using all remaining rounds." xml:space="preserve"><value> This confirms Chummer5's shortened burst using all remaining rounds.</value></data>
+  <data name=" · shortened burst" xml:space="preserve"><value> · shortened burst</value></data>
+  <data name="Action {0} · target {1} · review {2}" xml:space="preserve"><value>Action {0} · target {1} · review {2}</value></data>
+  <data name="An invalid table review draft was discarded." xml:space="preserve"><value>An invalid table review draft was discarded.</value></data>
+  <data name="Before the run" xml:space="preserve"><value>Before the run</value></data>
+  <data name="Confirm and save exact action" xml:space="preserve"><value>Confirm and save exact action</value></data>
+  <data name="Confirming does not use a generic editor. It sends the exact typed request through the existing revision-checked save boundary." xml:space="preserve"><value>Confirming does not use a generic editor. It sends the exact typed request through the existing revision-checked save boundary.</value></data>
+  <data name="Consume {0} rounds from active clip {1}. Ammunition changes {2} → {3}.{4}" xml:space="preserve"><value>Consume {0} rounds from active clip {1}. Ammunition changes {2} → {3}.{4}</value></data>
+  <data name="Digest-bound review" xml:space="preserve"><value>Digest-bound review</value></data>
+  <data name="Direct Career Weapons" xml:space="preserve"><value>Direct Career Weapons</value></data>
+  <data name="Edge" xml:space="preserve"><value>Edge</value></data>
+  <data name="Edge used {0} → {1}" xml:space="preserve"><value>Edge used {0} → {1}</value></data>
+  <data name="Edge, ammunition, modes, or table authority changed; the saved review was discarded." xml:space="preserve"><value>Edge, ammunition, modes, or table authority changed; the saved review was discarded.</value></data>
+  <data name="Exact SR5 table authority is unavailable. No fallback action was opened." xml:space="preserve"><value>Exact SR5 table authority is unavailable. No fallback action was opened.</value></data>
+  <data name="Fire · {0}" xml:space="preserve"><value>Fire · {0}</value></data>
+  <data name="Full Burst" xml:space="preserve"><value>Full Burst</value></data>
+  <data name="Live / playtime" xml:space="preserve"><value>Live / playtime</value></data>
+  <data name="Loading exact table authority…" xml:space="preserve"><value>Loading exact table authority…</value></data>
+  <data name="Long Burst" xml:space="preserve"><value>Long Burst</value></data>
+  <data name="No exact table-safe action is available for this runner state." xml:space="preserve"><value>No exact table-safe action is available for this runner state.</value></data>
+  <data name="Regain 1 Edge" xml:space="preserve"><value>Regain 1 Edge</value></data>
+  <data name="Reopen the table wizard and review the current runner revision." xml:space="preserve"><value>Reopen the table wizard and review the current runner revision.</value></data>
+  <data name="Resume reviewed action" xml:space="preserve"><value>Resume reviewed action</value></data>
+  <data name="Retry" xml:space="preserve"><value>Retry</value></data>
+  <data name="Return to Career and load the current runner revision." xml:space="preserve"><value>Return to Career and load the current runner revision.</value></data>
+  <data name="Review draft unavailable" xml:space="preserve"><value>Review draft unavailable</value></data>
+  <data name="Review one exact point of Edge use before the run. Loadout, healing, contacts, and acquisitions remain unavailable until they have typed authority." xml:space="preserve"><value>Review one exact point of Edge use before the run. Loadout, healing, contacts, and acquisitions remain unavailable until they have typed authority.</value></data>
+  <data name="Review table action" xml:space="preserve"><value>Review table action</value></data>
+  <data name="SR5 Career · table-safe actions" xml:space="preserve"><value>SR5 Career · table-safe actions</value></data>
+  <data name="Save not verified" xml:space="preserve"><value>Save not verified</value></data>
+  <data name="Saved EdgeUsed changes by exactly one: {0} → {1}." xml:space="preserve"><value>Saved EdgeUsed changes by exactly one: {0} → {1}.</value></data>
+  <data name="Selection saves a digest-bound review draft. Apply still rechecks workspace revision and uses only the existing typed Edge or Weapon request." xml:space="preserve"><value>Selection saves a digest-bound review draft. Apply still rechecks workspace revision and uses only the existing typed Edge or Weapon request.</value></data>
+  <data name="Short Burst" xml:space="preserve"><value>Short Burst</value></data>
+  <data name="Single Shot" xml:space="preserve"><value>Single Shot</value></data>
+  <data name="Spend 1 Edge" xml:space="preserve"><value>Spend 1 Edge</value></data>
+  <data name="Suppressive Fire" xml:space="preserve"><value>Suppressive Fire</value></data>
+  <data name="Table action saved" xml:space="preserve"><value>Table action saved</value></data>
+  <data name="Table authority changed" xml:space="preserve"><value>Table authority changed</value></data>
+  <data name="The action was not opened because its durable review draft could not be saved and verified." xml:space="preserve"><value>The action was not opened because its durable review draft could not be saved and verified.</value></data>
+  <data name="The exact post-save revision was not observed. The review remains locked for recovery." xml:space="preserve"><value>The exact post-save revision was not observed. The review remains locked for recovery.</value></data>
+  <data name="The exact reviewed action was restored. Confirm it again before saving." xml:space="preserve"><value>The exact reviewed action was restored. Confirm it again before saving.</value></data>
+  <data name="The reviewed table action is no longer available and was discarded." xml:space="preserve"><value>The reviewed table action is no longer available and was discarded.</value></data>
+  <data name="The runner changed after review. This action cannot be saved." xml:space="preserve"><value>The runner changed after review. This action cannot be saved.</value></data>
+  <data name="The runner revision changed, so the saved table review was discarded." xml:space="preserve"><value>The runner revision changed, so the saved table review was discarded.</value></data>
+  <data name="The saved review belonged to another runner and was discarded." xml:space="preserve"><value>The saved review belonged to another runner and was discarded.</value></data>
+  <data name="The saved review belonged to another table lane and was discarded." xml:space="preserve"><value>The saved review belonged to another table lane and was discarded.</value></data>
+  <data name="The saved runner changed. Return to Career and reopen this table wizard." xml:space="preserve"><value>The saved runner changed. Return to Career and reopen this table wizard.</value></data>
+  <data name="Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing." xml:space="preserve"><value>Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing.</value></data>
+  <data name="Verified runner revision {0} after {1}." xml:space="preserve"><value>Verified runner revision {0} after {1}.</value></data>
+  <data name="Workspace {0} · revision {1} · snapshot {2}" xml:space="preserve"><value>Workspace {0} · revision {1} · snapshot {2}</value></data>
+  <data name="{0} rounds · ammo {1} → {2}{3}" xml:space="preserve"><value>{0} rounds · ammo {1} → {2}{3}</value></data>
 </root>

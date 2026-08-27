@@ -197,7 +197,8 @@ static string[] TargetPages()
         "Sr5CareerSpecializationWizardPage.cs",
         "Sr5CareerQualityWizardPage.cs",
         "Sr5AfterRunSettlementWizardPage.cs",
-        "Sr5DowntimeCalendarWizardPage.cs"
+        "Sr5DowntimeCalendarWizardPage.cs",
+        "Sr5TableWizardPage.cs"
     ];
 
 static HashSet<string> ReadSourceKeys(string workspace)

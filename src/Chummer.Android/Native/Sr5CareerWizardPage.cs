@@ -476,6 +476,10 @@ public sealed class Sr5CareerActionFamilyPage : NativePageBase
             Sr5CareerWizardActionIds.AdvanceSkillGroup => OpenSkillGroupWizardAsync(),
             Sr5CareerWizardActionIds.LearnSpecialization => OpenSpecializationWizardAsync(),
             Sr5CareerWizardActionIds.ChangeQuality => OpenQualityWizardAsync(),
+            Sr5CareerWizardActionIds.BeforeRun => Navigation.PushAsync(
+                new Sr5TableWizardPage(Coordinator, Sr5TableWizardLane.BeforeRun)),
+            Sr5CareerWizardActionIds.Playtime => Navigation.PushAsync(
+                new Sr5TableWizardPage(Coordinator, Sr5TableWizardLane.Playtime)),
             Sr5CareerWizardActionIds.ManageCalendarEntry => OpenCalendarAsync(),
             _ => throw new InvalidOperationException("Unknown SR5 Career destination.")
         };

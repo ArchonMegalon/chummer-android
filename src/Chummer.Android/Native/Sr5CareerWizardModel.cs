@@ -47,6 +47,10 @@ public static class Sr5CareerWizardRoutes
     public const string QualityChoose = "sr5-career/advancement/quality/choose";
     public const string QualityReview = "sr5-career/advancement/quality/review";
     public const string QualityReceipt = "sr5-career/advancement/quality/receipt";
+    public const string BeforeRun = "sr5-career/before-run";
+    public const string BeforeRunReview = "sr5-career/before-run/review";
+    public const string Playtime = "sr5-career/playtime";
+    public const string PlaytimeReview = "sr5-career/playtime/review";
     public const string AfterRunEnter = "sr5-career/after-run/settlement/enter";
     public const string AfterRunChoose = "sr5-career/after-run/settlement/choose";
     public const string AfterRunRewards = "sr5-career/after-run/settlement/rewards";

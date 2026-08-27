@@ -71,6 +71,12 @@ public static class Sr5CareerWizardPhoneCatalog
             "sr5-career-family-advancement",
             "sr5-career/advancement"),
         new(
+            Sr5CareerWizardFamilyIds.Table,
+            "At the table",
+            "Prepare for a run or use exact table-safe actions during play.",
+            "sr5-career-family-table",
+            "sr5-career/table"),
+        new(
             Sr5CareerWizardFamilyIds.Calendar,
             "Calendar",
             "Manage exact saved downtime weeks by stable identity.",
@@ -150,6 +156,20 @@ public static class Sr5CareerWizardPhoneCatalog
             "Choose an exact source/identity operation and enter the atomic quality flow.",
             "sr5-career-action-quality",
             "sr5-career/advancement/quality/choose"),
+        new(
+            Sr5CareerWizardActionIds.BeforeRun,
+            Sr5CareerWizardFamilyIds.Table,
+            "Before the run",
+            "Review one exact, revision-bound Edge preparation action.",
+            "sr5-career-action-before-run",
+            "sr5-career/before-run"),
+        new(
+            Sr5CareerWizardActionIds.Playtime,
+            Sr5CareerWizardFamilyIds.Table,
+            "Live / playtime",
+            "Use exact Edge or direct Weapon-fire actions without unrestricted editing.",
+            "sr5-career-action-playtime",
+            "sr5-career/playtime"),
         new(
             Sr5CareerWizardActionIds.ManageCalendarEntry,
             Sr5CareerWizardFamilyIds.Calendar,

@@ -197,4 +197,10 @@
   <data name="Career.Action.career.quality.change.Detail" xml:space="preserve"><value>Choose an exact source/identity operation and enter the atomic quality flow.</value></data>
   <data name="Career.Action.career.calendar-entry.manage.Title" xml:space="preserve"><value>Manage calendar weeks</value></data>
   <data name="Career.Action.career.calendar-entry.manage.Detail" xml:space="preserve"><value>Add, edit, or delete exact saved ISO weeks by stable identity.</value></data>
+  <data name="Career.Family.career.table.Title" xml:space="preserve"><value>At the table</value></data>
+  <data name="Career.Family.career.table.Detail" xml:space="preserve"><value>Prepare for a run or use exact table-safe actions during play.</value></data>
+  <data name="Career.Action.career.before-run.prepare.Title" xml:space="preserve"><value>Before the run</value></data>
+  <data name="Career.Action.career.before-run.prepare.Detail" xml:space="preserve"><value>Review one exact, revision-bound Edge preparation action.</value></data>
+  <data name="Career.Action.career.playtime.open.Title" xml:space="preserve"><value>Live / playtime</value></data>
+  <data name="Career.Action.career.playtime.open.Detail" xml:space="preserve"><value>Use exact Edge or direct Weapon-fire actions without unrestricted editing.</value></data>
 </root>

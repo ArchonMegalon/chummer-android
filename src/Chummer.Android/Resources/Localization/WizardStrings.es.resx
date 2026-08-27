@@ -197,4 +197,10 @@
   <data name="Career.Action.career.quality.change.Detail" xml:space="preserve"><value>Elige una operación exacta de fuente e identidad y entra en el flujo atómico de cualidades.</value></data>
   <data name="Career.Action.career.calendar-entry.manage.Title" xml:space="preserve"><value>Gestionar semanas del calendario</value></data>
   <data name="Career.Action.career.calendar-entry.manage.Detail" xml:space="preserve"><value>Añade, edita o elimina semanas ISO guardadas mediante identidad estable.</value></data>
+  <data name="Career.Family.career.table.Title" xml:space="preserve"><value>En la mesa</value></data>
+  <data name="Career.Family.career.table.Detail" xml:space="preserve"><value>Prepárate para una misión o usa acciones exactas y seguras durante la partida.</value></data>
+  <data name="Career.Action.career.before-run.prepare.Title" xml:space="preserve"><value>Antes de la misión</value></data>
+  <data name="Career.Action.career.before-run.prepare.Detail" xml:space="preserve"><value>Revisa una acción exacta de preparación de Edge vinculada a la revisión.</value></data>
+  <data name="Career.Action.career.playtime.open.Title" xml:space="preserve"><value>En vivo / partida</value></data>
+  <data name="Career.Action.career.playtime.open.Detail" xml:space="preserve"><value>Usa acciones exactas de Edge o disparo directo sin edición irrestricta.</value></data>
 </root>

@@ -492,4 +492,55 @@ Status: {4}</value></data>
 Vorgang: {1}
 Woche: {2}
 Vorschau: {3}…</value></data>
+  <data name=" This confirms Chummer5's shortened burst using all remaining rounds." xml:space="preserve"><value> Dies bestätigt Chummer5s verkürzte Salve mit allen verbleibenden Schuss.</value></data>
+  <data name=" · shortened burst" xml:space="preserve"><value> · verkürzte Salve</value></data>
+  <data name="Action {0} · target {1} · review {2}" xml:space="preserve"><value>Aktion {0} · Ziel {1} · Prüfung {2}</value></data>
+  <data name="An invalid table review draft was discarded." xml:space="preserve"><value>Ein ungültiger Spieltisch-Prüfentwurf wurde verworfen.</value></data>
+  <data name="Before the run" xml:space="preserve"><value>Vor dem Run</value></data>
+  <data name="Confirm and save exact action" xml:space="preserve"><value>Exakte Aktion bestätigen und speichern</value></data>
+  <data name="Confirming does not use a generic editor. It sends the exact typed request through the existing revision-checked save boundary." xml:space="preserve"><value>Die Bestätigung verwendet keinen allgemeinen Editor. Sie sendet die exakte typisierte Anfrage über die vorhandene revisionsgeprüfte Speichergrenze.</value></data>
+  <data name="Consume {0} rounds from active clip {1}. Ammunition changes {2} → {3}.{4}" xml:space="preserve"><value>{0} Schuss aus aktivem Magazin {1} verbrauchen. Munition ändert sich {2} → {3}.{4}</value></data>
+  <data name="Digest-bound review" xml:space="preserve"><value>Digest-gebundene Prüfung</value></data>
+  <data name="Direct Career Weapons" xml:space="preserve"><value>Direkte Karrierewaffen</value></data>
+  <data name="Edge" xml:space="preserve"><value>Edge</value></data>
+  <data name="Edge used {0} → {1}" xml:space="preserve"><value>Verwendetes Edge {0} → {1}</value></data>
+  <data name="Edge, ammunition, modes, or table authority changed; the saved review was discarded." xml:space="preserve"><value>Edge, Munition, Modi oder Spieltischinstanz wurden geändert; die gespeicherte Prüfung wurde verworfen.</value></data>
+  <data name="Exact SR5 table authority is unavailable. No fallback action was opened." xml:space="preserve"><value>Die exakte SR5-Spieltischinstanz ist nicht verfügbar. Es wurde keine Ausweichaktion geöffnet.</value></data>
+  <data name="Fire · {0}" xml:space="preserve"><value>Feuern · {0}</value></data>
+  <data name="Full Burst" xml:space="preserve"><value>Lange volle Salve</value></data>
+  <data name="Live / playtime" xml:space="preserve"><value>Live / Spielzeit</value></data>
+  <data name="Loading exact table authority…" xml:space="preserve"><value>Exakte Spieltischinstanz wird geladen…</value></data>
+  <data name="Long Burst" xml:space="preserve"><value>Lange Salve</value></data>
+  <data name="No exact table-safe action is available for this runner state." xml:space="preserve"><value>Für diesen Runner-Zustand ist keine exakte spieltischsichere Aktion verfügbar.</value></data>
+  <data name="Regain 1 Edge" xml:space="preserve"><value>1 Edge zurückerhalten</value></data>
+  <data name="Reopen the table wizard and review the current runner revision." xml:space="preserve"><value>Den Spieltischassistenten erneut öffnen und die aktuelle Runner-Revision prüfen.</value></data>
+  <data name="Resume reviewed action" xml:space="preserve"><value>Geprüfte Aktion fortsetzen</value></data>
+  <data name="Retry" xml:space="preserve"><value>Erneut versuchen</value></data>
+  <data name="Return to Career and load the current runner revision." xml:space="preserve"><value>Zur Karriere zurückkehren und die aktuelle Runner-Revision laden.</value></data>
+  <data name="Review draft unavailable" xml:space="preserve"><value>Prüfentwurf nicht verfügbar</value></data>
+  <data name="Review one exact point of Edge use before the run. Loadout, healing, contacts, and acquisitions remain unavailable until they have typed authority." xml:space="preserve"><value>Vor dem Run einen exakten Punkt Edge-Verwendung prüfen. Ausrüstung, Heilung, Kontakte und Anschaffungen bleiben ohne typisierte Instanz nicht verfügbar.</value></data>
+  <data name="Review table action" xml:space="preserve"><value>Spieltischaktion prüfen</value></data>
+  <data name="SR5 Career · table-safe actions" xml:space="preserve"><value>SR5-Karriere · spieltischsichere Aktionen</value></data>
+  <data name="Save not verified" xml:space="preserve"><value>Speichern nicht bestätigt</value></data>
+  <data name="Saved EdgeUsed changes by exactly one: {0} → {1}." xml:space="preserve"><value>Gespeichertes EdgeUsed ändert sich exakt um eins: {0} → {1}.</value></data>
+  <data name="Selection saves a digest-bound review draft. Apply still rechecks workspace revision and uses only the existing typed Edge or Weapon request." xml:space="preserve"><value>Die Auswahl speichert einen Digest-gebundenen Prüfentwurf. Anwenden prüft die Workspace-Revision erneut und verwendet nur die vorhandene typisierte Edge- oder Waffenanfrage.</value></data>
+  <data name="Short Burst" xml:space="preserve"><value>Kurze Salve</value></data>
+  <data name="Single Shot" xml:space="preserve"><value>Einzelschuss</value></data>
+  <data name="Spend 1 Edge" xml:space="preserve"><value>1 Edge ausgeben</value></data>
+  <data name="Suppressive Fire" xml:space="preserve"><value>Unterdrückungsfeuer</value></data>
+  <data name="Table action saved" xml:space="preserve"><value>Spieltischaktion gespeichert</value></data>
+  <data name="Table authority changed" xml:space="preserve"><value>Spieltischinstanz geändert</value></data>
+  <data name="The action was not opened because its durable review draft could not be saved and verified." xml:space="preserve"><value>Die Aktion wurde nicht geöffnet, weil ihr dauerhafter Prüfentwurf nicht gespeichert und bestätigt werden konnte.</value></data>
+  <data name="The exact post-save revision was not observed. The review remains locked for recovery." xml:space="preserve"><value>Die exakte Revision nach dem Speichern wurde nicht beobachtet. Die Prüfung bleibt zur Wiederherstellung gesperrt.</value></data>
+  <data name="The exact reviewed action was restored. Confirm it again before saving." xml:space="preserve"><value>Die exakte geprüfte Aktion wurde wiederhergestellt. Vor dem Speichern erneut bestätigen.</value></data>
+  <data name="The reviewed table action is no longer available and was discarded." xml:space="preserve"><value>Die geprüfte Spieltischaktion ist nicht mehr verfügbar und wurde verworfen.</value></data>
+  <data name="The runner changed after review. This action cannot be saved." xml:space="preserve"><value>Der Runner wurde nach der Prüfung geändert. Diese Aktion kann nicht gespeichert werden.</value></data>
+  <data name="The runner revision changed, so the saved table review was discarded." xml:space="preserve"><value>Die Runner-Revision wurde geändert; die gespeicherte Spieltischprüfung wurde verworfen.</value></data>
+  <data name="The saved review belonged to another runner and was discarded." xml:space="preserve"><value>Die gespeicherte Prüfung gehörte zu einem anderen Runner und wurde verworfen.</value></data>
+  <data name="The saved review belonged to another table lane and was discarded." xml:space="preserve"><value>Die gespeicherte Prüfung gehörte zu einem anderen Spieltischbereich und wurde verworfen.</value></data>
+  <data name="The saved runner changed. Return to Career and reopen this table wizard." xml:space="preserve"><value>Der gespeicherte Runner wurde geändert. Zur Karriere zurückkehren und diesen Spieltischassistenten erneut öffnen.</value></data>
+  <data name="Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing." xml:space="preserve"><value>Exakte Edge- und direkte Waffenfeuer-Aktionen verwenden, ohne die uneingeschränkte Runner-Bearbeitung zu öffnen.</value></data>
+  <data name="Verified runner revision {0} after {1}." xml:space="preserve"><value>Runner-Revision {0} nach {1} bestätigt.</value></data>
+  <data name="Workspace {0} · revision {1} · snapshot {2}" xml:space="preserve"><value>Workspace {0} · Revision {1} · Snapshot {2}</value></data>
+  <data name="{0} rounds · ammo {1} → {2}{3}" xml:space="preserve"><value>{0} Schuss · Munition {1} → {2}{3}</value></data>
 </root>
