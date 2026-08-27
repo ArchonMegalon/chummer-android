@@ -191,6 +191,7 @@ public sealed class CreationPrerequisitePage : NativePageBase
         }
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-prerequisite-method";
+        SemanticProperties.SetDescription(border, state.BuildMethod);
         _body.Add(border);
     }
 

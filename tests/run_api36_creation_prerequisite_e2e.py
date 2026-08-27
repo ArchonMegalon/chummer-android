@@ -87,14 +87,14 @@ INITIAL_AUTHORITY_MILESTONE_ORDER = (
     "dialog-acquisition-complete",
     "create-bootstrap-transaction-complete",
     "dashboard-render-complete",
-    "dashboard-authority-complete",
-    "dashboard-scan-complete",
-    "prerequisite-navigation-complete",
-    "prerequisite-scan-complete",
 )
 PHASE_BUDGET_MS = {
     "device-preflight-install": 180_000,
     "initial-authority": 90_000,
+    # Exhaustive scroll inventories are kept outside initial create/render
+    # latency. They retain their own strict bound and the unchanged 15-minute
+    # aggregate target; no authority field or stable-end proof is removed.
+    "authority-inventory": 90_000,
     "priority-ranks": 150_000,
     "typed-authority-options": 150_000,
     "preview-confirm": 150_000,
@@ -134,6 +134,24 @@ def read_only_hierarchy_timed(
     # allowing the production driver to regress to a device-side dump file.
     reader = getattr(type(device), "read_only_hierarchy", None)
     nodes = device.read_only_hierarchy() if callable(reader) else device.hierarchy()
+    durations_ms.append(round((time.perf_counter() - started) * 1000))
+    return nodes
+
+
+def fresh_hierarchy_timed(
+    device: shared.Device,
+    durations_ms: list[int],
+) -> list[shared.UiNode]:
+    """Acquire a post-gesture hierarchy through UIAutomator's dump file.
+
+    API 36 can return an older viewport from the direct ``/dev/tty`` stream
+    immediately after a swipe even though the rendered frame has moved.  The
+    normal dump-to-file plus read path is slower, but it is the authority for
+    every scroll-dependent inventory.  Busy-state polling deliberately keeps
+    using :func:`read_only_hierarchy_timed` because it never changes viewport.
+    """
+    started = time.perf_counter()
+    nodes = device.hierarchy()
     durations_ms.append(round((time.perf_counter() - started) * 1000))
     return nodes
 
@@ -329,7 +347,7 @@ def scan_forward_until_stable(
     total_empty_reads = 0
     hierarchy_durations_ms: list[int] = []
     while swipes <= max_scrolls:
-        nodes = read_only_hierarchy_timed(device, hierarchy_durations_ms)
+        nodes = fresh_hierarchy_timed(device, hierarchy_durations_ms)
         if not nodes:
             consecutive_empty_reads += 1
             total_empty_reads += 1
@@ -464,7 +482,7 @@ def rewind_to_stable_start(
     screens = 0
     hierarchy_durations_ms: list[int] = []
     while swipes <= max_scrolls:
-        nodes = read_only_hierarchy_timed(device, hierarchy_durations_ms)
+        nodes = fresh_hierarchy_timed(device, hierarchy_durations_ms)
         if not nodes:
             time.sleep(0.75)
             continue
@@ -546,7 +564,7 @@ def rewind_to_exact_resource_id(
     if max_swipes < 0:
         raise ValueError("A nonnegative scan-proven reverse bound is required")
     for reverse_swipes in range(max_swipes + 1):
-        nodes = read_only_hierarchy_timed(device, [])
+        nodes = fresh_hierarchy_timed(device, [])
         if not nodes:
             time.sleep(0.75)
             continue
@@ -3480,19 +3498,18 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     )
     require_initial_creation_dashboard_snapshot(device, transition_nodes)
     progress.record_initial_authority_milestone("dashboard-render-complete")
+    progress.advance("authority-inventory")
     dashboard_authority_observation: dict[str, object] = {}
     authority_projection_waited = wait_creation_dashboard_authority(
         device,
         observation_out=dashboard_authority_observation,
     )
     progress.record_scan(dashboard_authority_observation)
-    progress.record_initial_authority_milestone("dashboard-authority-complete")
     dashboard_scan = assert_uncreated_advanced_editor_gated(
         device,
         scan_observer=progress.record_scan,
         scan_id="advanced-editor-gate-initial",
     )
-    progress.record_initial_authority_milestone("dashboard-scan-complete")
     dashboard_binding = dashboard_scan.binding
     move_between_measured_viewports(
         device,
@@ -3501,7 +3518,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     )
     method_nodes = [
         node
-        for node in read_only_hierarchy_timed(device, [])
+        for node in fresh_hierarchy_timed(device, [])
         if _exact_resource_id(node) == "creation-stage-method"
     ]
     if len(method_nodes) != 1:
@@ -3538,12 +3555,10 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         evidence_prefix="creation-prerequisite-route",
         surface_name="Creation prerequisite route",
     )
-    progress.record_initial_authority_milestone("prerequisite-navigation-complete")
     prerequisite_scan = scan_prerequisite_authority(
         device,
         scan_observer=progress.record_scan,
     )
-    progress.record_initial_authority_milestone("prerequisite-scan-complete")
     prerequisite_values = prerequisite_scan.values
     prerequisite_binding = prerequisite_values["creation-prerequisite-binding"]
     prerequisite_binding_authority = require_prerequisite_binding(prerequisite_binding)

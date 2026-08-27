@@ -254,11 +254,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             @staticmethod
             def read_only_hierarchy():
-                return nodes
+                raise AssertionError("scroll-dependent scan used the stale direct stream")
 
             @staticmethod
             def hierarchy():
-                raise AssertionError("stable scan used the two-command hierarchy path")
+                return nodes
 
             def swipe_up(self, **_options: object) -> None:
                 self.up += 1
@@ -447,7 +447,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary, mock.patch("builtins.print"):
             progress = driver.ProgressRecorder(Path(temporary))
             with self.assertRaisesRegex(RuntimeError, "Expected prerequisite progress phase"):
-                progress.advance("priority-ranks")
+                progress.advance("authority-inventory")
             progress.advance(driver.PHASE_ORDER[0])
             with self.assertRaisesRegex(RuntimeError, "progress is incomplete"):
                 progress.finish()
@@ -462,7 +462,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ) + 1
 
             with self.assertRaisesRegex(RuntimeError, "explicit phase timing budget"):
-                progress.advance("priority-ranks")
+                progress.advance("authority-inventory")
 
             self.assertTrue(any(
                 phase["phaseId"] == "initial-authority"
@@ -1105,6 +1105,16 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "223a11ff-80e0-428b-89a9-6ef1c243b8b6",
             driver.STANDARD_PRIORITY_SETTINGS_ID,
         )
+
+    def test_prerequisite_method_card_exposes_canonical_build_method_semantics(self) -> None:
+        source = (
+            REPO / "src" / "Chummer.Android" / "Native" / "CreationPrerequisitePage.cs"
+        ).read_text(encoding="utf-8")
+        method = source[source.index("private void AddMethod") :]
+        method = method[: method.index("private void AddPendingDraft")]
+
+        self.assertIn('border.AutomationId = "creation-prerequisite-method";', method)
+        self.assertIn("SemanticProperties.SetDescription(border, state.BuildMethod);", method)
 
     def test_prerequisite_navigation_uses_exact_bounded_bidirectional_search(self) -> None:
         device = mock.Mock()

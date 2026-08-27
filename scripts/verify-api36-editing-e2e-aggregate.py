@@ -28,6 +28,7 @@ CREATION_TOTAL_TARGET_MS = 15 * 60 * 1000
 CREATION_PHASE_BUDGETS_MS = {
     "device-preflight-install": 180_000,
     "initial-authority": 90_000,
+    "authority-inventory": 90_000,
     "priority-ranks": 150_000,
     "typed-authority-options": 150_000,
     "preview-confirm": 150_000,
