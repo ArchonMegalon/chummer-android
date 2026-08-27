@@ -12,6 +12,9 @@ decision = (
 store = (
     repo / "src/Chummer.Android/Native/OriginDossierLifeModuleDraftStore.cs"
 ).read_text(encoding="utf-8")
+copy = (
+    repo / "src/Chummer.Android/Native/AndroidSurfaceStrings.cs"
+).read_text(encoding="utf-8")
 
 assert 'NativeTheme.SecondaryButton(PhoneStrings.Get("NewRunner", "New runner"))' in home
 assert "home-new-runner" in home
@@ -39,13 +42,14 @@ assert "activeAppLocale" in decision
 assert "OriginDossierNarrativeLocalePolicy.Resolve(activeAppLocale)" in decision
 assert "locale.CanRenderNarrativeLocale(_state.Locale)" in decision
 assert "BoundTurnSeedDigest" in decision
-assert "Origin story resource language" in decision
-assert "English fallback" in decision
+assert '"Origin.LocaleSemantic"' in decision
+assert '("Origin.LocaleSemantic", "Origin story resource language {0}; formatting locale {1}; English fallback {2}")' in copy
 assert "choice.Source" in decision
 assert "choice.PageReference" in decision
 assert "effect.BeforeValue" in decision
 assert "effect.AfterValue" in decision
-assert "narrative only; mechanics unchanged" in decision
+assert '"Origin.NarrativeOnly"' in decision
+assert '("Origin.NarrativeOnly", "{0} · narrative only; mechanics unchanged")' in copy
 assert "_confirmChoice(selectedChoiceId, previewDigest)" in decision
 
 assert "FileOriginDossierDraftTimelineStore" in store
