@@ -208,6 +208,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly ICharacterCreationSkillsService? _creationSkillsService;
     private readonly ICharacterCreationQualitiesService? _creationQualitiesService;
     private readonly ICharacterCreationMagicResonanceService? _creationMagicResonanceService;
+    private readonly ICharacterCreationFinalizationService? _creationFinalizationService;
     private readonly ICharacterCareerSkillGroupAdvanceService? _careerSkillGroupService;
     private readonly ICharacterAfterRunSettlementService? _afterRunSettlementService;
     private readonly IAndroidAfterRunProposalCatalog? _afterRunProposalCatalog;
@@ -277,7 +278,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         ICharacterAfterRunSettlementService? afterRunSettlementService = null,
         IAndroidAfterRunProposalCatalog? afterRunProposalCatalog = null,
         ICharacterCreationMagicResonanceService? creationMagicResonanceService = null,
-        OriginDossierLifeModulePhoneRuntime? originLifeModuleRuntime = null)
+        OriginDossierLifeModulePhoneRuntime? originLifeModuleRuntime = null,
+        ICharacterCreationFinalizationService? creationFinalizationService = null)
     {
         _presenter = presenter;
         _client = client;
@@ -291,6 +293,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _creationSkillsService = creationSkillsService;
         _creationQualitiesService = creationQualitiesService;
         _creationMagicResonanceService = creationMagicResonanceService;
+        _creationFinalizationService = creationFinalizationService;
         _careerSkillGroupService = careerSkillGroupService;
         _afterRunSettlementService = afterRunSettlementService;
         _afterRunProposalCatalog = afterRunProposalCatalog;
@@ -857,6 +860,137 @@ public sealed class RunnerSessionCoordinator : IDisposable
                 [CharacterCreationPrerequisiteBlockers.StaleWorkspaceRevision]);
         }
         return result;
+    }
+
+    public CharacterCreationFinalizationResult<CharacterCreationFinalizationState>
+        LoadCreationFinalization()
+    {
+        if (_creationFinalizationService is null
+            || State.Profile?.Created != false
+            || State.WorkspaceId is not { } workspaceId)
+        {
+            return new CharacterCreationFinalizationResult<CharacterCreationFinalizationState>(
+                CharacterCreationFinalizationOutcomes.Unavailable,
+                null,
+                [CharacterCreationFinalizationBlockers.WorkspaceUnavailable]);
+        }
+
+        CharacterCreationFinalizationResult<CharacterCreationFinalizationState> result =
+            _creationFinalizationService.Load(new(workspaceId));
+        if (result.Value is { } authority
+            && (authority.Binding.WorkspaceId != workspaceId
+                || authority.Binding.ContentRevision != State.ContentRevision
+                || authority.Binding.SavedRevision != State.SavedRevision))
+        {
+            return new CharacterCreationFinalizationResult<CharacterCreationFinalizationState>(
+                CharacterCreationFinalizationOutcomes.Conflict,
+                null,
+                [CharacterCreationFinalizationBlockers.StaleWorkspaceRevision]);
+        }
+        return result;
+    }
+
+    public CharacterCreationFinalizationResult<CharacterCreationFinalizationReview>
+        ReviewCreationFinalization(CharacterCreationFinalizationBinding binding)
+    {
+        ArgumentNullException.ThrowIfNull(binding);
+        CharacterCreationFinalizationResult<CharacterCreationFinalizationState> load =
+            LoadCreationFinalization();
+        if (_creationFinalizationService is null
+            || load.Value is not { CanReview: true } state
+            || state.Binding != binding)
+        {
+            return new CharacterCreationFinalizationResult<CharacterCreationFinalizationReview>(
+                CharacterCreationFinalizationOutcomes.Conflict,
+                null,
+                load.Blockers.Count > 0
+                    ? load.Blockers
+                    : [CharacterCreationFinalizationBlockers.StaleWorkspaceRevision]);
+        }
+        return _creationFinalizationService.Review(new(binding));
+    }
+
+    public Task<CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt>>
+        ConfirmCreationFinalizationAsync(
+            CharacterCreationFinalizationReview review,
+            string idempotencyKey,
+            CancellationToken cancellationToken = default) =>
+        WithWorkspaceActivationGateAsync(
+            () => ConfirmCreationFinalizationCoreAsync(review, idempotencyKey, cancellationToken),
+            cancellationToken);
+
+    private async Task<CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt>>
+        ConfirmCreationFinalizationCoreAsync(
+            CharacterCreationFinalizationReview review,
+            string idempotencyKey,
+            CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(review);
+        if (_creationFinalizationService is null
+            || review is not { CanConfirm: true, Plan: not null }
+            || State.Profile?.Created != false
+            || State.WorkspaceId != review.Binding.WorkspaceId
+            || State.ContentRevision != review.Binding.ContentRevision
+            || State.SavedRevision != review.Binding.SavedRevision)
+        {
+            return new CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt>(
+                CharacterCreationFinalizationOutcomes.Conflict,
+                null,
+                [CharacterCreationFinalizationBlockers.StaleWorkspaceRevision]);
+        }
+
+        CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt>? result = null;
+        try
+        {
+            result = _creationFinalizationService.Confirm(new(
+                review.Binding,
+                review.PreviewDigest,
+                review.Plan.PlanDigest,
+                idempotencyKey,
+                ExplicitlyConfirmed: true));
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // A durable atomic commit may have completed before its result reached this
+            // boundary. Recover only the exact retained idempotency key; never retry with
+            // a new command identity.
+        }
+
+        CharacterCreationFinalizationReceipt? receipt = result?.Value;
+        if (receipt is null
+            || result!.Outcome is not (CharacterCreationFinalizationOutcomes.Applied
+                or CharacterCreationFinalizationOutcomes.Replayed))
+        {
+            CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt> lookup =
+                _creationFinalizationService.LookupReceipt(new(
+                    review.Binding.WorkspaceId,
+                    idempotencyKey));
+            if (lookup.Outcome != CharacterCreationFinalizationOutcomes.Replayed
+                || lookup.Value is null)
+                return result ?? lookup;
+            result = lookup;
+            receipt = lookup.Value;
+        }
+
+        await _presenter.LoadAsync(receipt.WorkspaceId, cancellationToken);
+        await SyncShellAsync(cancellationToken);
+        if (State.Profile?.Created != true
+            || State.WorkspaceId != receipt.WorkspaceId
+            || State.ContentRevision != receipt.ContentRevision
+            || State.SavedRevision != receipt.SavedRevision)
+        {
+            return new CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt>(
+                CharacterCreationFinalizationOutcomes.Applied,
+                receipt,
+                [CharacterCreationFinalizationBlockers.PostCommitReopenRequired]);
+        }
+
+        _notice = "Character creation finalized. Career mode reopened from the durable receipt.";
+        NotifyChanged();
+        return new CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt>(
+            result.Outcome,
+            receipt,
+            []);
     }
 
     internal CharacterCreationFoundationResult<CharacterCreationPrerequisitePreview>

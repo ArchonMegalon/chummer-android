@@ -209,10 +209,16 @@ public sealed class BuildPage : NativePageBase
     private readonly LatestBackgroundProjectionQueue<
         CreationDashboardProjectionBinding,
         CharacterCreationResourcesInteractionLoadResult> _creationResourcesQueue = new();
+    private readonly LatestBackgroundProjectionQueue<
+        CreationDashboardProjectionBinding,
+        CharacterCreationFinalizationResult<CharacterCreationFinalizationState>> _creationFinalizationQueue = new();
     private readonly ICharacterCreationResourcesInteractionPresenter? _resourcesPresenter;
     private readonly ICharacterCreationGearInteractionPresenter? _gearPresenter;
     private readonly ICharacterOverviewPresenter? _overviewPresenter;
     private CreationDashboardAuthorityProjection? _creationProjection;
+    private CreationDashboardProjectionBinding? _creationFinalizationBinding;
+    private CharacterCreationFinalizationResult<CharacterCreationFinalizationState>?
+        _creationFinalizationAuthority;
 
     public BuildPage(
         RunnerSessionCoordinator coordinator,
@@ -282,6 +288,10 @@ public sealed class BuildPage : NativePageBase
             failure.Request,
             CreationDashboardAuthorityPhase.Resources,
             AcceptCreationResources);
+        _creationFinalizationQueue.Completed += completion =>
+            ScheduleCreationFinalizationAcceptance(completion.Request);
+        _creationFinalizationQueue.Failed += failure =>
+            ScheduleCreationFinalizationAcceptance(failure.Request);
         Content = new ScrollView { Content = _body };
     }
 
@@ -544,6 +554,96 @@ public sealed class BuildPage : NativePageBase
             skills,
             creationContacts,
             creationResources);
+        AddFinalizationReviewAction(snapshot);
+    }
+
+    private void AddFinalizationReviewAction(CharacterCreationWizardSnapshot snapshot)
+    {
+        if (!CreationDashboardProjectionBinding.TryCreate(
+                Coordinator.State,
+                snapshot,
+                out CreationDashboardProjectionBinding? binding)
+            || binding is null)
+            return;
+        if (_creationFinalizationBinding?.Equals(binding) != true)
+        {
+            _creationFinalizationQueue.Cancel();
+            _creationFinalizationBinding = binding;
+            _creationFinalizationAuthority = null;
+        }
+        if (_creationFinalizationAuthority is null)
+        {
+            _creationFinalizationQueue.TryRequest(
+                binding,
+                (_, cancellationToken) =>
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    CharacterCreationFinalizationResult<CharacterCreationFinalizationState> result =
+                        Coordinator.LoadCreationFinalization();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    return result;
+                },
+                out BackgroundProjectionRequest<CreationDashboardProjectionBinding> request);
+            if (_creationFinalizationQueue.TryTake(
+                    request,
+                    out CharacterCreationFinalizationResult<CharacterCreationFinalizationState> completed,
+                    out Exception? error)
+                && error is null)
+                _creationFinalizationAuthority = completed;
+        }
+
+        CharacterCreationFinalizationResult<CharacterCreationFinalizationState>? authority =
+            _creationFinalizationAuthority;
+        if (authority is not
+            {
+                Outcome: CharacterCreationFinalizationOutcomes.Available,
+                Value.CanReview: true
+            })
+        {
+            return;
+        }
+
+        Button review = NativeTheme.PrimaryButton("Review and finish creation");
+        review.AutomationId = "creation-finalization-open-review";
+        review.Clicked += async (_, _) => await RunAsync(async () =>
+        {
+            CharacterCreationFinalizationResult<CharacterCreationFinalizationReview> result =
+                Coordinator.ReviewCreationFinalization(authority.Value.Binding);
+            if (result is not
+                {
+                    Outcome: CharacterCreationFinalizationOutcomes.Available,
+                    Value.CanConfirm: true
+                })
+            {
+                throw new InvalidOperationException(
+                    result.Blockers.FirstOrDefault()
+                    ?? "The final creation authority changed. Reload the runner and review again.");
+            }
+            await Navigation.PushAsync(new CreationFinalizationPage(Coordinator, result.Value));
+        });
+        _body.Add(review);
+    }
+
+    private void ScheduleCreationFinalizationAcceptance(
+        BackgroundProjectionRequest<CreationDashboardProjectionBinding> request)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            if (_creationFinalizationBinding?.Equals(request.Key) != true
+                || Coordinator.State.CreationWizard is not { } snapshot
+                || !request.Key.Matches(Coordinator.State, snapshot))
+            {
+                _creationFinalizationQueue.TryAccept(request);
+                return;
+            }
+            if (!_creationFinalizationQueue.TryTake(
+                    request,
+                    out CharacterCreationFinalizationResult<CharacterCreationFinalizationState> completed,
+                    out Exception? error))
+                return;
+            _creationFinalizationAuthority = error is null ? completed : null;
+            Refresh();
+        });
     }
 
     private CreationDashboardAuthorityProjection? ResolveCreationProjection(
@@ -807,6 +907,9 @@ public sealed class BuildPage : NativePageBase
         _creationSkillsQueue.Cancel();
         _creationContactsQueue.Cancel();
         _creationResourcesQueue.Cancel();
+        _creationFinalizationQueue.Cancel();
+        _creationFinalizationBinding = null;
+        _creationFinalizationAuthority = null;
     }
 
     private void RetryCreationProjection()
