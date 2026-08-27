@@ -24,6 +24,19 @@ SPEC.loader.exec_module(driver)
 
 
 class CreationPrerequisiteSourceContractTests(unittest.TestCase):
+    def test_artifact_binding_digest_uses_canonical_sorted_json(self) -> None:
+        first = {"driver": "a", "apk": "b", "nested": {"events": "c"}}
+        reordered = {"nested": {"events": "c"}, "apk": "b", "driver": "a"}
+        changed = {"nested": {"events": "d"}, "apk": "b", "driver": "a"}
+        self.assertEqual(
+            driver.canonical_json_sha256(first),
+            driver.canonical_json_sha256(reordered),
+        )
+        self.assertNotEqual(
+            driver.canonical_json_sha256(first),
+            driver.canonical_json_sha256(changed),
+        )
+
     def test_accessibility_signature_is_order_independent_and_preserves_duplicates(self) -> None:
         first = driver.shared.UiNode(
             {
@@ -208,6 +221,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 snapshot = progress.finish()
 
             evidence = json.loads(progress.evidence_path.read_text(encoding="utf-8"))
+            event_log = [
+                json.loads(line)
+                for line in progress.events_path.read_text(encoding="utf-8").splitlines()
+            ]
             self.assertEqual(snapshot, evidence)
             self.assertEqual("timing-complete", evidence["status"])
             self.assertEqual(list(driver.PHASE_ORDER), [
@@ -219,6 +236,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.assertEqual("rank-cardinality-heritage", evidence["scans"][0]["scanId"])
             self.assertEqual(driver.TOTAL_PERFORMANCE_TARGET_MS, evidence["configuredTotalTargetMs"])
             self.assertFalse((root / f".{driver.PROGRESS_FILE_NAME}.tmp").exists())
+            self.assertFalse((root / f".{driver.PROGRESS_EVENTS_FILE_NAME}.tmp").exists())
+            self.assertEqual("phase-start", event_log[0]["event"])
+            self.assertEqual("timing-complete", event_log[-1]["event"])
+            self.assertEqual(len(progress.events), len(event_log))
             events = [call.args[0] for call in emit.call_args_list]
             self.assertTrue(any('"event": "phase-start"' in event for event in events))
             self.assertTrue(any('"event": "timing-complete"' in event for event in events))
@@ -297,6 +318,142 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "clickable": "true",
                 "bounds": "[0,0][100,100]",
             }
+        )
+
+    @staticmethod
+    def talent_grant_nodes(
+        *,
+        kind: str = "Active skills",
+        option_id: str = "choice-0001",
+        selected: bool = True,
+        completion_enabled: bool = True,
+    ) -> list[driver.shared.UiNode]:
+        prefix = driver.TALENT_GRANT_OPTION_PREFIX[kind]
+        selected_count = 1 if selected else 0
+        return [
+            driver.shared.UiNode(
+                {
+                    "resource-id": "creation-prerequisite-talent-grant-authority",
+                    "content-desc": f"Required. {selected_count} / 1 {kind}",
+                    "bounds": "[0,0][100,100]",
+                }
+            ),
+            driver.shared.UiNode(
+                {
+                    "resource-id": "creation-prerequisite-talent-grant-digest",
+                    "text": "sha256:" + ("a" * 64),
+                    "bounds": "[0,100][100,200]",
+                }
+            ),
+            driver.shared.UiNode(
+                {
+                    "resource-id": prefix + option_id,
+                    "content-desc": ("✓ " if selected else "") + "Arcana",
+                    "enabled": "true",
+                    "clickable": "true",
+                    "bounds": "[0,200][100,300]",
+                }
+            ),
+            driver.shared.UiNode(
+                {
+                    "resource-id": "creation-prerequisite-talent-grant-complete",
+                    "text": "Continue with exact grant" if completion_enabled else "Choose 1 more",
+                    "enabled": "true" if completion_enabled else "false",
+                    "clickable": "true",
+                    "bounds": "[0,300][100,400]",
+                }
+            ),
+        ]
+
+    def test_talent_grant_surface_binds_exact_cardinality_digest_and_selected_ids(self) -> None:
+        nodes = self.talent_grant_nodes()
+
+        class GrantDevice:
+            up = 0
+
+            @staticmethod
+            def wait_for_single_exact_resource_id(*_arguments, **_options):
+                return nodes[0]
+
+            @staticmethod
+            def hierarchy():
+                return nodes
+
+            def swipe_up(self, **_options: object) -> None:
+                self.up += 1
+
+            @staticmethod
+            def capture(name: str) -> None:
+                raise AssertionError(f"unexpected capture: {name}")
+
+        device = GrantDevice()
+        with mock.patch.object(driver.shared, "reset_scroll_to_top"), \
+             mock.patch.object(driver.time, "sleep"):
+            surface = driver.read_talent_grant_surface(
+                device,
+                "Active skills",
+                max_scrolls=2,
+            )
+
+        self.assertEqual("Active skills", surface.kind)
+        self.assertEqual(1, surface.selected_count)
+        self.assertEqual(1, surface.required_count)
+        self.assertEqual("sha256:" + ("a" * 64), surface.grant_digest)
+        self.assertEqual(
+            ("creation-prerequisite-talent-active-skill-option-choice-0001",),
+            surface.option_ids,
+        )
+        self.assertEqual(surface.option_ids, surface.selected_option_ids)
+        self.assertTrue(surface.completion_enabled)
+        self.assertEqual(2, device.up)
+
+    def test_talent_grant_surface_rejects_malformed_or_opposite_kind_ids(self) -> None:
+        malformed = self.talent_grant_nodes(option_id="forged-")
+        opposite = self.talent_grant_nodes()
+        opposite.append(
+            driver.shared.UiNode(
+                {
+                    "resource-id": (
+                        "creation-prerequisite-talent-skill-group-option-forged"
+                    ),
+                    "enabled": "true",
+                    "clickable": "true",
+                    "bounds": "[0,400][100,500]",
+                }
+            )
+        )
+
+        for nodes, expected in ((malformed, "malformed"), (opposite, "opposite")):
+            with self.subTest(expected=expected):
+                device = mock.Mock()
+                device.hierarchy.return_value = nodes
+                with mock.patch.object(driver.shared, "reset_scroll_to_top"), \
+                     mock.patch.object(driver.time, "sleep"), \
+                     self.assertRaisesRegex(RuntimeError, expected):
+                    driver.read_talent_grant_surface(
+                        device,
+                        "Active skills",
+                        max_scrolls=2,
+                    )
+                device.capture.assert_called_once_with(
+                    "creation-prerequisite-talent-grant-authority-invalid"
+                )
+
+    def test_talent_grant_surface_rejects_selected_but_disabled_choice(self) -> None:
+        nodes = self.talent_grant_nodes()
+        nodes[2].attributes["enabled"] = "false"
+        device = mock.Mock()
+        device.hierarchy.return_value = nodes
+        with mock.patch.object(driver.shared, "reset_scroll_to_top"), \
+             mock.patch.object(driver.time, "sleep"), \
+             self.assertRaisesRegex(RuntimeError, "count did not match"):
+            driver.read_talent_grant_surface(
+                device,
+                "Active skills",
+                max_scrolls=2,
+            )
+        device.capture.assert_called_once_with(
+            "creation-prerequisite-talent-grant-cardinality-invalid"
         )
 
     def test_authority_option_collector_rejects_zero_candidates(self) -> None:
@@ -869,7 +1026,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             {
                 "resource-id": (
                     "com.myexternalbrain.chummer:id/"
-                    "creation-prerequisite-rank-heritage-a"
+                    "creation-prerequisite-rank-heritage-e"
                 ),
                 "enabled": "true",
                 "clickable": "true",
@@ -885,7 +1042,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     "bounds": "[100,650][900,850]",
                 }
             )
-            for rank in "bcde"
+            for rank in "abcd"
         ]
 
         class RankDevice:
@@ -916,7 +1073,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             @staticmethod
             def assert_exact(selector: str) -> None:
-                if selector != "creation-prerequisite-rank-heritage-a":
+                if selector != "creation-prerequisite-rank-heritage-e":
                     raise AssertionError(selector)
 
             def shell(self, *arguments: str) -> str:
@@ -930,7 +1087,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         with mock.patch.object(driver.time, "sleep"):
             selected = driver.tap_prescribed_exact_enabled_priority_rank(device, "heritage")
 
-        self.assertEqual("creation-prerequisite-rank-heritage-a", selected)
+        self.assertEqual("creation-prerequisite-rank-heritage-e", selected)
         self.assertEqual(44, device.down)
         self.assertEqual(2, device.up)
         self.assertEqual([("input", "tap", "500", "500")], device.taps)
@@ -1072,9 +1229,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     def test_priority_physical_proof_uses_the_explicit_legal_rank_allocation(self) -> None:
         self.assertEqual(
             {
-                "heritage": "a",
-                "talent": "e",
-                "attributes": "b",
+                "heritage": "e",
+                "talent": "b",
+                "attributes": "a",
                 "skills": "c",
                 "resources": "d",
             },
@@ -2392,6 +2549,25 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('"buildGhostLaunchPostponedAndAbsent": "pass"', source)
         self.assertIn('"advancedEditorNeverExposedWhileCreatedFalse": "pass"', source)
         self.assertIn("require_binding_matches_canonical_digests(", source)
+        for marker in (
+            "ACTIVE_SKILL_TALENT_LABEL",
+            "SKILL_GROUP_TALENT_LABEL",
+            "choose_and_prove_talent_grant(",
+            '"Active skills"',
+            '"Skill groups"',
+            "require_exact_preview_talent_grant_plan(",
+            "require_restored_talent_grant(",
+            '"talentChangeClearsActiveSkillGrantSlots": "pass"',
+            '"skillGroupGrantProcessRestartResume": "pass"',
+            '"atomicJsonl"',
+            "sha256(progress.events_path)",
+            '"artifactBinding": artifact_binding',
+            '"artifactBindingSha256": canonical_json_sha256(artifact_binding)',
+            '"digestDomain": "raw-file-bytes"',
+            '"writeProtocol": "same-directory temporary file then os.replace-compatible Path.replace"',
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, source)
 
     def test_api36_driver_reads_scroll_surfaces_in_native_page_order(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
@@ -2400,7 +2576,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         typed = typed[: typed.index("# A plain Back from a category route")]
         self.assertLess(
             typed.index("shared.reset_scroll_to_top(device, swipes=22)"),
-            typed.index('for category, label in (("heritage", "Human"), ("talent", "Mundane"))'),
+            typed.index('"creation-prerequisite-heritage-selection"'),
         )
 
         preview = source[source.index('device.wait("creation-prerequisite-preview-page"') :]

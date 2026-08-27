@@ -17,6 +17,7 @@ import time
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_api36_editing_e2e as shared
@@ -24,12 +25,27 @@ import run_api36_editing_e2e as shared
 
 CATEGORIES = ("heritage", "talent", "attributes", "skills", "resources")
 PRIORITY_PROOF_RANKS = {
-    "heritage": "a",
-    "talent": "e",
-    "attributes": "b",
+    "heritage": "e",
+    "talent": "b",
+    "attributes": "a",
     "skills": "c",
     "resources": "d",
 }
+ACTIVE_SKILL_TALENT_LABEL = "Adept - 6 Magic"
+SKILL_GROUP_TALENT_LABEL = "Aspected Magician - 5 Magic"
+TALENT_GRANT_KINDS = ("Active skills", "Skill groups")
+TALENT_GRANT_OPTION_PREFIX = {
+    "Active skills": "creation-prerequisite-talent-active-skill-option-",
+    "Skill groups": "creation-prerequisite-talent-skill-group-option-",
+}
+TALENT_GRANT_PREVIEW_PREFIX = {
+    "Active skills": "creation-prerequisite-preview-talent-active-skill-",
+    "Skill groups": "creation-prerequisite-preview-talent-skill-group-",
+}
+TALENT_GRANT_REQUIRED = re.compile(
+    r"(?<![0-9])(?P<selected>[0-9]+) / (?P<required>[0-9]+) "
+    r"(?P<kind>Active skills|Skill groups)(?=$|[. ·])"
+)
 CREATION_KARMA_AUTHORITY_BLOCKER = "creation-karma-authority-required"
 STANDARD_PRIORITY_SETTINGS_ID = "223a11ff-80e0-428b-89a9-6ef1c243b8b6"
 SHORT_AUTHORITY_BINDING = re.compile(
@@ -50,6 +66,7 @@ CREATION_AUTHORITY_PENDING_TIMEOUT_HIERARCHY = (
 CREATION_AUTHORITY_PENDING_TIMEOUT_TEXT_LIMIT = 1_000_000
 PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v1"
 PROGRESS_FILE_NAME = "creation-prerequisite-progress.json"
+PROGRESS_EVENTS_FILE_NAME = "creation-prerequisite-progress.jsonl"
 TOTAL_PERFORMANCE_TARGET_MS = 15 * 60 * 1000
 PHASE_BUDGET_MS = {
     "device-preflight-install": 180_000,
@@ -187,9 +204,11 @@ class ProgressRecorder:
 
     def __init__(self, evidence_root: Path) -> None:
         self.evidence_path = evidence_root.resolve() / PROGRESS_FILE_NAME
+        self.events_path = evidence_root.resolve() / PROGRESS_EVENTS_FILE_NAME
         self.started = time.monotonic()
         self.phases: list[dict[str, object]] = []
         self.scans: list[dict[str, object]] = []
+        self.events: list[dict[str, object]] = []
         self._active_id: str | None = None
         self._active_started = 0.0
         self._finished = False
@@ -301,13 +320,44 @@ class ProgressRecorder:
         )
         temporary.replace(self.evidence_path)
 
-    @staticmethod
-    def _emit(payload: dict[str, object]) -> None:
+    def _emit(self, payload: dict[str, object]) -> None:
+        self.events.append(dict(payload))
+        self.events_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.events_path.with_name(f".{self.events_path.name}.tmp")
+        temporary.write_text(
+            "".join(
+                json.dumps(event, sort_keys=True, separators=(",", ":")) + "\n"
+                for event in self.events
+            ),
+            encoding="utf-8",
+        )
+        temporary.replace(self.events_path)
         print(json.dumps(payload, sort_keys=True), flush=True)
+
+
+class TalentGrantSurface(NamedTuple):
+    kind: str
+    selected_count: int
+    required_count: int
+    grant_digest: str
+    option_ids: tuple[str, ...]
+    enabled_option_ids: tuple[str, ...]
+    selected_option_ids: tuple[str, ...]
+    completion_enabled: bool
 
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def canonical_json_sha256(payload: dict[str, object]) -> str:
+    canonical = json.dumps(
+        payload,
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
 
 
 def node_text(device: shared.Device, selector: str, *, scroll: bool = False) -> str:
@@ -1367,6 +1417,537 @@ def exact_enabled_authority_option_ids(
     return candidates
 
 
+def _exact_resource_id(node: shared.UiNode) -> str:
+    return node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+
+
+def _accessible_values(node: shared.UiNode) -> tuple[str, ...]:
+    return tuple(
+        value.strip()
+        for value in (
+            node.attributes.get("text", ""),
+            node.attributes.get("content-desc", ""),
+        )
+        if value.strip()
+    )
+
+
+def _is_exact_tokenized_resource_id(resource_id: str, prefix: str) -> bool:
+    if not resource_id.startswith(prefix):
+        return False
+    suffix = resource_id[len(prefix) :]
+    return re.fullmatch(r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", suffix) is not None
+
+
+def read_talent_grant_surface(
+    device: shared.Device,
+    expected_kind: str,
+    *,
+    max_scrolls: int = 40,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+    scan_id: str | None = None,
+) -> TalentGrantSurface:
+    """Read one complete, exact Core-projected Talent grant prompt.
+
+    The scan accepts overlapping viewports but rejects duplicate IDs within a
+    viewport, malformed tokenized selectors, contradictory selected state, or
+    more than one authority count/digest/completion state.  This makes a future
+    UI projection change fail closed instead of silently selecting a convenient
+    first row.
+    """
+    if expected_kind not in TALENT_GRANT_KINDS:
+        raise RuntimeError(f"Unsupported Talent grant kind {expected_kind!r}")
+    option_prefix = TALENT_GRANT_OPTION_PREFIX[expected_kind]
+    opposite_prefix = TALENT_GRANT_OPTION_PREFIX[
+        next(kind for kind in TALENT_GRANT_KINDS if kind != expected_kind)
+    ]
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-talent-grant-page",
+        timeout=45,
+        evidence_prefix="creation-prerequisite-talent-grant-route",
+        surface_name=f"{expected_kind} Talent grant route",
+    )
+    shared.reset_scroll_to_top(device, swipes=max_scrolls)
+    screens = scan_forward_until_stable(
+        device,
+        scan_id=scan_id or (
+            "talent-grant-cardinality-"
+            + re.sub(r"[^a-z0-9]+", "-", expected_kind.casefold()).strip("-")
+        ),
+        max_scrolls=max_scrolls,
+        distance_ratio=0.22,
+        observer=scan_observer,
+    )
+
+    option_ids: set[str] = set()
+    enabled_option_ids: set[str] = set()
+    selected_option_ids: set[str] = set()
+    explicitly_unselected_option_ids: set[str] = set()
+    malformed_option_ids: set[str] = set()
+    opposite_option_ids: set[str] = set()
+    duplicate_ids: set[str] = set()
+    authority_counts: set[tuple[int, int, str]] = set()
+    grant_digests: set[str] = set()
+    completion_states: set[bool] = set()
+    seen_authority = False
+    seen_digest = False
+    seen_completion = False
+
+    for nodes in screens:
+        screen_ids: list[str] = []
+        for node in nodes:
+            resource_id = _exact_resource_id(node)
+            values = _accessible_values(node)
+            if resource_id.startswith(opposite_prefix):
+                opposite_option_ids.add(resource_id)
+            if resource_id.startswith(option_prefix):
+                screen_ids.append(resource_id)
+                if not _is_exact_tokenized_resource_id(resource_id, option_prefix):
+                    malformed_option_ids.add(resource_id)
+                    continue
+                option_ids.add(resource_id)
+                is_selected = any(value.startswith("✓ ") for value in values)
+                if is_selected:
+                    selected_option_ids.add(resource_id)
+                else:
+                    explicitly_unselected_option_ids.add(resource_id)
+                if (
+                    node.attributes.get("enabled") == "true"
+                    and node.attributes.get("clickable") == "true"
+                ):
+                    enabled_option_ids.add(resource_id)
+            if resource_id == "creation-prerequisite-talent-grant-authority":
+                seen_authority = True
+            if resource_id == "creation-prerequisite-talent-grant-digest":
+                seen_digest = True
+                grant_digests.update(
+                    value for value in values if CANONICAL_AUTHORITY_DIGEST.fullmatch(value)
+                )
+            if resource_id == "creation-prerequisite-talent-grant-complete":
+                seen_completion = True
+                completion_states.add(node.attributes.get("enabled") == "true")
+            for value in values:
+                authority_counts.update(
+                    (
+                        int(match.group("selected")),
+                        int(match.group("required")),
+                        match.group("kind"),
+                    )
+                    for match in TALENT_GRANT_REQUIRED.finditer(value)
+                )
+        duplicate_ids.update(
+            resource_id
+            for resource_id in set(screen_ids)
+            if screen_ids.count(resource_id) > 1
+        )
+
+    contradictions = selected_option_ids & explicitly_unselected_option_ids
+    if (
+        not seen_authority
+        or not seen_digest
+        or not seen_completion
+        or malformed_option_ids
+        or opposite_option_ids
+        or duplicate_ids
+        or contradictions
+        or len(authority_counts) != 1
+        or len(grant_digests) != 1
+        or len(completion_states) != 1
+    ):
+        device.capture("creation-prerequisite-talent-grant-authority-invalid")
+        raise RuntimeError(
+            "Talent grant prompt authority was ambiguous: "
+            f"kind={expected_kind!r}, authority={seen_authority}, digest={seen_digest}, "
+            f"completion={seen_completion}, counts={sorted(authority_counts)!r}, "
+            f"digests={sorted(grant_digests)!r}, malformed={sorted(malformed_option_ids)!r}, "
+            f"opposite={sorted(opposite_option_ids)!r}, duplicates={sorted(duplicate_ids)!r}, "
+            f"contradictions={sorted(contradictions)!r}"
+        )
+
+    selected_count, required_count, observed_kind = next(iter(authority_counts))
+    completion_enabled = next(iter(completion_states))
+    if (
+        observed_kind != expected_kind
+        or required_count < 1
+        or selected_count > required_count
+        or len(option_ids) < required_count
+        or len(enabled_option_ids) < selected_count
+        or not selected_option_ids.issubset(enabled_option_ids)
+        or selected_count != len(selected_option_ids)
+        or completion_enabled != (selected_count == required_count)
+    ):
+        device.capture("creation-prerequisite-talent-grant-cardinality-invalid")
+        raise RuntimeError(
+            "Talent grant prompt count did not match its exact option state: "
+            f"expectedKind={expected_kind!r}, observedKind={observed_kind!r}, "
+            f"selected={selected_count}, required={required_count}, "
+            f"options={sorted(option_ids)!r}, enabled={sorted(enabled_option_ids)!r}, "
+            f"selectedIds={sorted(selected_option_ids)!r}, "
+            f"completionEnabled={completion_enabled}"
+        )
+    return TalentGrantSurface(
+        kind=observed_kind,
+        selected_count=selected_count,
+        required_count=required_count,
+        grant_digest=next(iter(grant_digests)),
+        option_ids=tuple(sorted(option_ids)),
+        enabled_option_ids=tuple(sorted(enabled_option_ids)),
+        selected_option_ids=tuple(sorted(selected_option_ids)),
+        completion_enabled=completion_enabled,
+    )
+
+
+def tap_exact_talent_grant_option(
+    device: shared.Device,
+    expected_kind: str,
+    resource_id: str,
+    *,
+    max_scrolls: int = 40,
+) -> None:
+    if expected_kind not in TALENT_GRANT_OPTION_PREFIX:
+        raise RuntimeError(f"Unsupported Talent grant kind {expected_kind!r}")
+    prefix = TALENT_GRANT_OPTION_PREFIX[expected_kind]
+    if not _is_exact_tokenized_resource_id(resource_id, prefix):
+        raise RuntimeError(
+            f"Malformed exact {expected_kind} Talent grant option ID {resource_id!r}"
+        )
+    node = device.wait_exact_resource_id_bidirectional(
+        resource_id,
+        timeout=90,
+        backward_scrolls=max_scrolls,
+        forward_scrolls=max_scrolls,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="creation-prerequisite-talent-grant-option",
+        surface_name=f"Exact {expected_kind} Talent grant option",
+    )
+    if (
+        node.attributes.get("enabled") != "true"
+        or node.attributes.get("clickable") != "true"
+        or not device.node_has_tappable_bounds(node)
+    ):
+        device.capture("creation-prerequisite-talent-grant-option-not-tappable")
+        raise RuntimeError(
+            f"Exact {expected_kind} Talent grant option {resource_id!r} was not tappable"
+        )
+    device.shell("input", "tap", *(str(value) for value in node.center))
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-talent-grant-page",
+        timeout=45,
+        evidence_prefix="creation-prerequisite-talent-grant-refresh",
+        surface_name=f"Refreshed {expected_kind} Talent grant route",
+    )
+
+
+def tap_exact_talent_option(
+    device: shared.Device,
+    resource_id: str,
+    *,
+    max_scrolls: int = 40,
+) -> None:
+    prefix = "creation-prerequisite-talent-option-"
+    if not _is_exact_tokenized_resource_id(resource_id, prefix):
+        raise RuntimeError(f"Malformed exact Talent option ID {resource_id!r}")
+    node = device.wait_exact_resource_id_bidirectional(
+        resource_id,
+        timeout=90,
+        backward_scrolls=max_scrolls,
+        forward_scrolls=max_scrolls,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="creation-prerequisite-talent-option",
+        surface_name="Exact selected Talent option",
+    )
+    if (
+        node.attributes.get("enabled") != "true"
+        or node.attributes.get("clickable") != "true"
+        or not device.node_has_tappable_bounds(node)
+    ):
+        device.capture("creation-prerequisite-talent-option-not-tappable")
+        raise RuntimeError(f"Exact Talent option {resource_id!r} was not tappable")
+    device.shell("input", "tap", *(str(value) for value in node.center))
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-talent-grant-page",
+        timeout=45,
+        evidence_prefix="creation-prerequisite-talent-grant-route",
+        surface_name="Selected Talent grant route",
+    )
+
+
+def choose_and_prove_talent_grant(
+    device: shared.Device,
+    expected_kind: str,
+    talent_option_id: str,
+    *,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+    scan_id_prefix: str,
+) -> dict[str, object]:
+    initial = read_talent_grant_surface(
+        device,
+        expected_kind,
+        scan_observer=scan_observer,
+        scan_id=f"{scan_id_prefix}-initial",
+    )
+    if initial.selected_count != 0 or initial.completion_enabled:
+        device.capture(f"{scan_id_prefix}-initial-selection-not-empty")
+        raise RuntimeError(
+            f"Fresh {expected_kind} Talent prompt retained stale grant selections: {initial!r}"
+        )
+    device.capture(f"{scan_id_prefix}-initial-zero")
+    available = tuple(
+        resource_id
+        for resource_id in initial.enabled_option_ids
+        if resource_id not in initial.selected_option_ids
+    )
+    if len(available) < initial.required_count:
+        raise RuntimeError(
+            f"{expected_kind} Talent prompt exposed too few enabled exact choices: "
+            f"required={initial.required_count}, available={available!r}"
+        )
+    chosen = tuple(sorted(available)[: initial.required_count])
+    for resource_id in chosen:
+        tap_exact_talent_grant_option(device, expected_kind, resource_id)
+    complete = read_talent_grant_surface(
+        device,
+        expected_kind,
+        scan_observer=scan_observer,
+        scan_id=f"{scan_id_prefix}-complete",
+    )
+    if (
+        complete.grant_digest != initial.grant_digest
+        or complete.option_ids != initial.option_ids
+        or complete.selected_option_ids != chosen
+        or set(complete.enabled_option_ids) != set(chosen)
+        or not complete.completion_enabled
+    ):
+        device.capture(f"{scan_id_prefix}-selection-mismatch")
+        raise RuntimeError(
+            f"{expected_kind} exact selection/capacity changed authority: "
+            f"initial={initial!r}, complete={complete!r}, chosen={chosen!r}"
+        )
+
+    # A native Back followed by the exact same Talent option must preserve the
+    # in-memory typed choices.  Toggling one selected row off and on again then
+    # proves explicit reset/reselection without any implicit default.
+    device.back()
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-talent-page",
+        timeout=45,
+        evidence_prefix=f"{scan_id_prefix}-back-to-talent",
+        surface_name="Talent detail route after grant Back",
+    )
+    tap_exact_talent_option(device, talent_option_id)
+    preserved = read_talent_grant_surface(
+        device,
+        expected_kind,
+        scan_observer=scan_observer,
+        scan_id=f"{scan_id_prefix}-preserved",
+    )
+    if preserved != complete:
+        device.capture(f"{scan_id_prefix}-back-preservation-mismatch")
+        raise RuntimeError(
+            f"{expected_kind} native Back/re-enter did not preserve the exact draft: "
+            f"complete={complete!r}, preserved={preserved!r}"
+        )
+
+    reset_id = chosen[0]
+    tap_exact_talent_grant_option(device, expected_kind, reset_id)
+    incomplete = read_talent_grant_surface(
+        device,
+        expected_kind,
+        scan_observer=scan_observer,
+        scan_id=f"{scan_id_prefix}-explicit-reset",
+    )
+    expected_after_reset = tuple(resource_id for resource_id in chosen if resource_id != reset_id)
+    if (
+        incomplete.selected_option_ids != expected_after_reset
+        or incomplete.completion_enabled
+        or incomplete.selected_count != initial.required_count - 1
+    ):
+        device.capture(f"{scan_id_prefix}-explicit-reset-mismatch")
+        raise RuntimeError(
+            f"{expected_kind} explicit deselection did not reopen the exact prompt: {incomplete!r}"
+        )
+    tap_exact_talent_grant_option(device, expected_kind, reset_id)
+    restored = read_talent_grant_surface(
+        device,
+        expected_kind,
+        scan_observer=scan_observer,
+        scan_id=f"{scan_id_prefix}-explicit-reselect",
+    )
+    if restored != complete:
+        device.capture(f"{scan_id_prefix}-explicit-reselect-mismatch")
+        raise RuntimeError(
+            f"{expected_kind} explicit reselection did not restore exact authority: "
+            f"expected={complete!r}, actual={restored!r}"
+        )
+    device.capture(f"{scan_id_prefix}-complete-exact")
+    return {
+        "kind": expected_kind,
+        "talentOptionAutomationId": talent_option_id,
+        "grantDigest": restored.grant_digest,
+        "requiredCount": restored.required_count,
+        "allOptionAutomationIds": list(restored.option_ids),
+        "selectedOptionAutomationIds": list(restored.selected_option_ids),
+        "backPreservedSelection": True,
+        "explicitDeselectReselect": True,
+    }
+
+
+def complete_talent_grant_to_prerequisite(device: shared.Device) -> None:
+    device.tap_bidirectional(
+        "creation-prerequisite-talent-grant-complete",
+        timeout=90,
+        backward_scrolls=40,
+        forward_scrolls=40,
+        scroll_distance_ratio=0.22,
+        exact_resource_id=True,
+    )
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-talent-page",
+        timeout=45,
+        evidence_prefix="creation-prerequisite-talent-after-grant",
+        surface_name="Talent detail route after exact grant completion",
+    )
+    device.back()
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-page",
+        timeout=45,
+        evidence_prefix="creation-prerequisite-after-talent-grant",
+        surface_name="Creation prerequisite route after Talent grant completion",
+    )
+
+
+def require_exact_preview_talent_grant_plan(
+    device: shared.Device,
+    expected_kind: str,
+    selected_option_ids: tuple[str, ...],
+    *,
+    max_scrolls: int = 40,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+    scan_id: str,
+) -> str:
+    option_prefix = TALENT_GRANT_OPTION_PREFIX[expected_kind]
+    preview_prefix = TALENT_GRANT_PREVIEW_PREFIX[expected_kind]
+    opposite_prefix = TALENT_GRANT_PREVIEW_PREFIX[
+        next(kind for kind in TALENT_GRANT_KINDS if kind != expected_kind)
+    ]
+    expected_ids = {
+        preview_prefix + resource_id[len(option_prefix) :]
+        for resource_id in selected_option_ids
+        if _is_exact_tokenized_resource_id(resource_id, option_prefix)
+    }
+    if len(expected_ids) != len(selected_option_ids) or not expected_ids:
+        raise RuntimeError(
+            f"Expected {expected_kind} preview IDs were not exact: {selected_option_ids!r}"
+        )
+    shared.reset_scroll_to_top(device, swipes=max_scrolls)
+    plan_digest = canonical_digest(
+        device,
+        "creation-prerequisite-preview-talent-grant-plan-digest",
+        scroll=True,
+    )
+    shared.reset_scroll_to_top(device, swipes=max_scrolls)
+    screens = scan_forward_until_stable(
+        device,
+        scan_id=scan_id,
+        max_scrolls=max_scrolls,
+        distance_ratio=0.22,
+        observer=scan_observer,
+    )
+    observed_ids: set[str] = set()
+    opposite_ids: set[str] = set()
+    malformed_ids: set[str] = set()
+    duplicate_ids: set[str] = set()
+    for nodes in screens:
+        screen_ids: list[str] = []
+        for node in nodes:
+            resource_id = _exact_resource_id(node)
+            if resource_id.startswith(opposite_prefix):
+                opposite_ids.add(resource_id)
+            if not resource_id.startswith(preview_prefix):
+                continue
+            screen_ids.append(resource_id)
+            if _is_exact_tokenized_resource_id(resource_id, preview_prefix):
+                observed_ids.add(resource_id)
+            else:
+                malformed_ids.add(resource_id)
+        duplicate_ids.update(
+            resource_id
+            for resource_id in set(screen_ids)
+            if screen_ids.count(resource_id) > 1
+        )
+    if malformed_ids or opposite_ids or duplicate_ids or observed_ids != expected_ids:
+        device.capture(f"{scan_id}-mismatch")
+        raise RuntimeError(
+            f"{expected_kind} preview grant plan was not exact: expected={sorted(expected_ids)!r}, "
+            f"observed={sorted(observed_ids)!r}, opposite={sorted(opposite_ids)!r}, "
+            f"malformed={sorted(malformed_ids)!r}, duplicates={sorted(duplicate_ids)!r}"
+        )
+    return plan_digest
+
+
+def require_restored_talent_grant(
+    device: shared.Device,
+    talent_option_id: str,
+    expected_kind: str,
+    expected_grant_digest: str,
+    expected_selected_option_ids: tuple[str, ...],
+    *,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+    scan_id: str,
+) -> TalentGrantSurface:
+    row = device.wait_exact_resource_id_bidirectional(
+        "creation-prerequisite-talent-selection",
+        timeout=90,
+        backward_scrolls=40,
+        forward_scrolls=40,
+        scroll_distance_ratio=0.22,
+        evidence_prefix=f"{scan_id}-talent-selection",
+        surface_name="Restored Talent selection row",
+    )
+    device.shell("input", "tap", *(str(value) for value in row.center))
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-talent-page",
+        timeout=45,
+        evidence_prefix=f"{scan_id}-talent-route",
+        surface_name="Restored Talent detail route",
+    )
+    tap_exact_talent_option(device, talent_option_id)
+    surface = read_talent_grant_surface(
+        device,
+        expected_kind,
+        scan_observer=scan_observer,
+        scan_id=scan_id,
+    )
+    if (
+        surface.grant_digest != expected_grant_digest
+        or surface.selected_option_ids != expected_selected_option_ids
+        or not surface.completion_enabled
+    ):
+        device.capture(f"{scan_id}-restored-grant-mismatch")
+        raise RuntimeError(
+            "Persisted Talent grant was not restored exactly: "
+            f"expectedDigest={expected_grant_digest!r}, "
+            f"actualDigest={surface.grant_digest!r}, "
+            f"expectedIds={expected_selected_option_ids!r}, "
+            f"actualIds={surface.selected_option_ids!r}"
+        )
+    device.back()
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-talent-page",
+        timeout=45,
+        evidence_prefix=f"{scan_id}-back-to-talent",
+        surface_name="Talent detail after restored grant proof",
+    )
+    device.back()
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-page",
+        timeout=45,
+        evidence_prefix=f"{scan_id}-back-to-prerequisite",
+        surface_name="Prerequisite route after restored grant proof",
+    )
+    return surface
+
+
 def exact_current_authority_option_ids(
     nodes: list[shared.UiNode],
     prefix: str,
@@ -1577,38 +2158,144 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     typed_selections: dict[str, str] = {}
     typed_selection_ids: dict[str, str] = {}
     shared.reset_scroll_to_top(device, swipes=22)
-    for category, label in (("heritage", "Human"), ("talent", "Mundane")):
-        device.tap(
-            f"creation-prerequisite-{category}-selection",
-            scroll=True,
-            max_scrolls=22,
+    device.tap(
+        "creation-prerequisite-heritage-selection",
+        scroll=True,
+        max_scrolls=22,
+    )
+    device.wait("creation-prerequisite-heritage-page", timeout=45)
+    typed_selections["heritage"] = tap_enabled_authority_option(
+        device,
+        "creation-prerequisite-heritage-option-",
+        "Human",
+        max_scrolls=40,
+        scan_observer=progress.record_scan,
+    )
+    device.wait("creation-prerequisite-page", timeout=45)
+    heritage_row = node_text(
+        device,
+        "creation-prerequisite-heritage-selection",
+        scroll=True,
+    )
+    if "selection" not in heritage_row.lower():
+        raise RuntimeError(
+            "Core-projected heritage choice did not bind to the typed phone draft: "
+            f"{heritage_row!r}"
         )
-        device.wait(f"creation-prerequisite-{category}-page", timeout=45)
-        typed_selections[category] = tap_enabled_authority_option(
-            device,
-            f"creation-prerequisite-{category}-option-",
-            label,
-            max_scrolls=40,
-            scan_observer=progress.record_scan,
+    typed_selection_ids["heritage"] = node_text(
+        device,
+        "creation-prerequisite-heritage-selection-id",
+        scroll=True,
+    ).strip()
+    if not typed_selection_ids["heritage"]:
+        raise RuntimeError("Typed heritage SelectionId was not exposed by Core authority")
+
+    device.tap(
+        "creation-prerequisite-talent-selection",
+        scroll=True,
+        max_scrolls=22,
+    )
+    device.wait("creation-prerequisite-talent-page", timeout=45)
+    active_talent_option_id = tap_enabled_authority_option(
+        device,
+        "creation-prerequisite-talent-option-",
+        ACTIVE_SKILL_TALENT_LABEL,
+        max_scrolls=40,
+        scan_observer=progress.record_scan,
+    )
+    device.wait("creation-prerequisite-talent-grant-page", timeout=45)
+    active_grant = choose_and_prove_talent_grant(
+        device,
+        "Active skills",
+        active_talent_option_id,
+        scan_observer=progress.record_scan,
+        scan_id_prefix="talent-active-skill-grant",
+    )
+    active_selected_option_ids = tuple(active_grant["selectedOptionAutomationIds"])
+    complete_talent_grant_to_prerequisite(device)
+    active_talent_selection_id = node_text(
+        device,
+        "creation-prerequisite-talent-selection-id",
+        scroll=True,
+    ).strip()
+    if not active_talent_selection_id:
+        raise RuntimeError("Active-skill Talent SelectionId was not exposed by Core authority")
+
+    progress.advance("preview-confirm")
+    device.tap("creation-prerequisite-prepare-preview", scroll=True, max_scrolls=22)
+    device.wait("creation-prerequisite-preview-page", timeout=60)
+    active_preview_digest = canonical_digest(
+        device,
+        "creation-prerequisite-preview-digest",
+        scroll=True,
+    )
+    active_plan_digest = require_exact_preview_talent_grant_plan(
+        device,
+        "Active skills",
+        active_selected_option_ids,
+        scan_observer=progress.record_scan,
+        scan_id="talent-active-skill-preview-plan",
+    )
+    device.capture("creation-prerequisite-talent-active-skill-preview")
+    device.back()
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-page",
+        timeout=45,
+        evidence_prefix="talent-active-skill-preview-back",
+        surface_name="Prerequisite route after active-skill preview",
+    )
+
+    # Changing the selected Talent must clear the prior active-skill slots.  The
+    # new skill-group prompt is required to start at zero and is then subjected
+    # to the same Back-preservation and explicit deselect/reselect proof.
+    device.tap(
+        "creation-prerequisite-talent-selection",
+        scroll=True,
+        max_scrolls=22,
+    )
+    device.wait("creation-prerequisite-talent-page", timeout=45)
+    typed_selections["talent"] = tap_enabled_authority_option(
+        device,
+        "creation-prerequisite-talent-option-",
+        SKILL_GROUP_TALENT_LABEL,
+        max_scrolls=40,
+        scan_observer=progress.record_scan,
+    )
+    device.wait("creation-prerequisite-talent-grant-page", timeout=45)
+    skill_group_grant = choose_and_prove_talent_grant(
+        device,
+        "Skill groups",
+        typed_selections["talent"],
+        scan_observer=progress.record_scan,
+        scan_id_prefix="talent-skill-group-grant",
+    )
+    skill_group_selected_option_ids = tuple(
+        skill_group_grant["selectedOptionAutomationIds"]
+    )
+    complete_talent_grant_to_prerequisite(device)
+    talent_row = node_text(
+        device,
+        "creation-prerequisite-talent-selection",
+        scroll=True,
+    )
+    if "selection" not in talent_row.lower():
+        raise RuntimeError(
+            "Core-projected Talent choice did not bind to the typed phone draft: "
+            f"{talent_row!r}"
         )
-        device.wait("creation-prerequisite-page", timeout=45)
-        selection_row = node_text(
-            device,
-            f"creation-prerequisite-{category}-selection",
-            scroll=True,
+    typed_selection_ids["talent"] = node_text(
+        device,
+        "creation-prerequisite-talent-selection-id",
+        scroll=True,
+    ).strip()
+    if (
+        not typed_selection_ids["talent"]
+        or typed_selection_ids["talent"] == active_talent_selection_id
+    ):
+        raise RuntimeError(
+            "Switching from active-skill to skill-group Talent did not bind a distinct "
+            "Core SelectionId"
         )
-        if "selection" not in selection_row.lower():
-            raise RuntimeError(
-                f"Core-projected {category} choice did not bind to the typed phone draft: "
-                f"{selection_row!r}"
-            )
-        typed_selection_ids[category] = node_text(
-            device,
-            f"creation-prerequisite-{category}-selection-id",
-            scroll=True,
-        ).strip()
-        if not typed_selection_ids[category]:
-            raise RuntimeError(f"Typed {category} SelectionId was not exposed by Core authority")
 
     # A plain Back from a category route preserves the exact in-memory typed rank choice.
     attributes_before = node_text(
@@ -1635,9 +2322,15 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     if "raw" not in attributes_gate.lower() or "metatype" not in attributes_gate.lower():
         raise RuntimeError(f"Attribute prerequisite reason is not explicit: {attributes_gate!r}")
 
-    progress.advance("preview-confirm")
     device.tap("creation-prerequisite-prepare-preview", scroll=True, max_scrolls=22)
     device.wait("creation-prerequisite-preview-page", timeout=60)
+    skill_group_plan_digest = require_exact_preview_talent_grant_plan(
+        device,
+        "Skill groups",
+        skill_group_selected_option_ids,
+        scan_observer=progress.record_scan,
+        scan_id="talent-skill-group-preview-plan",
+    )
     # The pushed preview route can inherit the prerequisite page's bottom offset.
     shared.reset_scroll_to_top(device, swipes=22)
     preview_digest = canonical_digest(
@@ -1783,6 +2476,15 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
             scan_observer=progress.record_scan,
             scan_id=f"same-process-restored-authority-option-{category}",
         )
+    resumed_talent_grant = require_restored_talent_grant(
+        device,
+        typed_selections["talent"],
+        "Skill groups",
+        str(skill_group_grant["grantDigest"]),
+        skill_group_selected_option_ids,
+        scan_observer=progress.record_scan,
+        scan_id="same-process-restored-talent-skill-group-grant",
+    )
     resumed_attributes = node_text(
         device,
         "creation-prerequisite-category-attributes",
@@ -1822,10 +2524,30 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
             scan_observer=progress.record_scan,
             scan_id=f"process-restart-restored-authority-option-{category}",
         )
+    restarted_talent_grant = require_restored_talent_grant(
+        device,
+        typed_selections["talent"],
+        "Skill groups",
+        str(skill_group_grant["grantDigest"]),
+        skill_group_selected_option_ids,
+        scan_observer=progress.record_scan,
+        scan_id="process-restart-restored-talent-skill-group-grant",
+    )
     device.wait("creation-prerequisite-attributes-ready", scroll=True, max_scrolls=22)
     device.capture("creation-prerequisite-process-restart")
 
     timing = progress.finish()
+    artifact_binding: dict[str, object] = {
+        "schema": "chummer.android.creation-prerequisite-artifact-binding/v1",
+        "hashAlgorithm": "sha256",
+        "digestDomain": "raw-file-bytes",
+        "apkSha256": sha256(args.apk.resolve()),
+        "driverSha256": sha256(driver_path),
+        "sharedDriverSha256": sha256(shared_path),
+        "priorityCompatibilityDriverSha256": sha256(priority_compatibility_path),
+        "progressSnapshotSha256": sha256(progress.evidence_path),
+        "progressEventsJsonlSha256": sha256(progress.events_path),
+    }
     receipt = {
         "schema": "chummer.android.creation-prerequisite-e2e/v1",
         "status": "pass",
@@ -1835,14 +2557,32 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         "profile": "phone",
         "apiLevel": int(api),
         "apk": str(args.apk.resolve()),
-        "apkSha256": sha256(args.apk.resolve()),
-        "driverSha256": sha256(driver_path),
-        "sharedDriverSha256": sha256(shared_path),
-        "priorityCompatibilityDriverSha256": sha256(priority_compatibility_path),
+        "apkSha256": artifact_binding["apkSha256"],
+        "driverSha256": artifact_binding["driverSha256"],
+        "sharedDriverSha256": artifact_binding["sharedDriverSha256"],
+        "priorityCompatibilityDriverSha256": artifact_binding[
+            "priorityCompatibilityDriverSha256"
+        ],
+        "artifactBinding": artifact_binding,
+        "artifactBindingSha256": canonical_json_sha256(artifact_binding),
+        "selectorSemantics": {
+            "identity": "full lowercase ASCII tokenized resource ID",
+            "ordering": "ascending full resource ID; equivalent to UTF-8 byte order",
+            "enabled": "enabled=true and clickable=true; exact row must also have tappable bounds",
+            "selected": "accessible text or description begins with U+2713 plus one space",
+            "completion": "exact completion resource ID enabled iff selected count equals required count",
+        },
         "timing": timing,
         "progressEvidence": {
-            "path": str(progress.evidence_path),
-            "sha256": sha256(progress.evidence_path),
+            "snapshot": {
+                "path": str(progress.evidence_path),
+                "sha256": sha256(progress.evidence_path),
+            },
+            "atomicJsonl": {
+                "path": str(progress.events_path),
+                "sha256": sha256(progress.events_path),
+                "writeProtocol": "same-directory temporary file then os.replace-compatible Path.replace",
+            },
         },
         "journeys": {
             "publicPriorityRunnerBootstrappedByCore": "pass",
@@ -1858,6 +2598,18 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
             "selectedRankAutomationIds": selected,
             "selectedAuthorityOptionAutomationIds": typed_selections,
             "selectedAuthoritySelectionIds": typed_selection_ids,
+            "activeSkillTalentSelectionId": active_talent_selection_id,
+            "activeSkillTalentGrant": {
+                **active_grant,
+                "previewDigest": active_preview_digest,
+                "previewGrantPlanDigest": active_plan_digest,
+            },
+            "skillGroupTalentGrant": {
+                **skill_group_grant,
+                "previewGrantPlanDigest": skill_group_plan_digest,
+                "sameProcessRestoredSurface": dict(resumed_talent_grant._asdict()),
+                "processRestartRestoredSurface": dict(restarted_talent_grant._asdict()),
+            },
             "prerequisiteSnapshotDigest": prerequisite_snapshot_digest,
             "confirmedDraftDigest": confirmed_draft_digest,
             "previewDigest": preview_digest,
@@ -1867,6 +2619,15 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
             "sameSessionPersistedAuthority": resumed_authority,
             "restartedPersistedAuthority": restarted_authority,
             "backRestoresDraftSelection": "pass",
+            "activeSkillGrantExactSelectorCardinality": "pass",
+            "activeSkillGrantBackPreserveAndExplicitReset": "pass",
+            "activeSkillGrantPreviewExact": "pass",
+            "talentChangeClearsActiveSkillGrantSlots": "pass",
+            "skillGroupGrantExactSelectorCardinality": "pass",
+            "skillGroupGrantBackPreserveAndExplicitReset": "pass",
+            "skillGroupGrantPreviewAndConfirmExact": "pass",
+            "skillGroupGrantSameProcessResume": "pass",
+            "skillGroupGrantProcessRestartResume": "pass",
             "heritageAndTalentSelectionsProjectedByCore": "pass",
             "previewDigestBeforeExplicitConfirmation": "pass",
             "atomicDraftReceiptVerified": "pass",
@@ -1895,7 +2656,12 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         },
     }
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
-    args.receipt.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+    temporary_receipt = args.receipt.with_name(f".{args.receipt.name}.tmp")
+    temporary_receipt.write_text(
+        json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    temporary_receipt.replace(args.receipt)
     print(json.dumps(receipt, indent=2))
     return 0
 
