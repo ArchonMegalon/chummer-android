@@ -619,7 +619,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "27a59ab95d5ab4a2411d91391276694b56207c6bac1b3a9872f693b25c069061"
+        "sha256": "59824187f307b3ad7f928618510c3a95ea512e38f6e6a9aa38559ba8cd50d4bd"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
@@ -1039,7 +1039,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "b0455dafcc02f0c9b00cfbe2df61c3fbd07a5bf535205da4fdb32681ee9a2656"
+        "sha256": "dca2298537059bb6e544ec8586b30ba40771cb05d04fcbae8b19e4f8d2bce518"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
