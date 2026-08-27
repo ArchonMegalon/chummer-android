@@ -24,7 +24,10 @@ class Sr5LifeModuleOriginRuntimeSourceContractTests(unittest.TestCase):
     def test_entry_is_sr5_life_modules_only_and_never_home(self):
         coordinator = (NATIVE / "RunnerSessionCoordinator.cs").read_text(encoding="utf-8")
         build = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        copy = (NATIVE / "AndroidSurfaceStrings.cs").read_text(encoding="utf-8")
         home = (NATIVE / "HomePage.cs").read_text(encoding="utf-8")
+        origin_entry = build[build.index("private async Task OpenSr5LifeModuleOriginAsync"):]
+        origin_entry = origin_entry[: origin_entry.index("private Task OpenCreationPrerequisiteAsync")]
 
         gate = coordinator[coordinator.index("CanOpenSr5LifeModuleOrigin"):]
         gate = gate[: gate.index("PrepareSr5LifeModuleOriginAsync")]
@@ -34,6 +37,18 @@ class Sr5LifeModuleOriginRuntimeSourceContractTests(unittest.TestCase):
         self.assertIn("CharacterCreationWizardStepIds.LifeModules", build)
         self.assertIn("OpenSr5LifeModuleOriginAsync", build)
         self.assertIn('creation-stage-{Token(stage.StepId)}', build)
+        self.assertEqual(3, origin_entry.count("await DisplayAlertAsync("))
+        self.assertNotIn("await DisplayAlert(", origin_entry)
+        for key in (
+            "Origin.UnavailableTitle",
+            "Origin.UnavailableDetail",
+            "Origin.PreviewUnavailableTitle",
+            "Origin.PreviewUnavailableDetail",
+            "Origin.DecisionNotSavedTitle",
+            "Origin.DecisionNotSavedDetail",
+        ):
+            self.assertIn(f'copy["{key}"]', origin_entry)
+            self.assertEqual(3, copy.count(f'("{key}",'))
         self.assertNotIn("OpenSr5LifeModuleOriginAsync", home)
         self.assertNotIn("origin-life-decision", home)
 

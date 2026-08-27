@@ -1359,15 +1359,16 @@ public sealed class BuildPage : NativePageBase
 
     private async Task OpenSr5LifeModuleOriginAsync()
     {
+        AndroidSurfaceCopy copy = AndroidSurfaceStrings.Resolve();
         OriginDossierLifeModulePhoneResult opened =
             await Coordinator.OpenSr5LifeModuleOriginAsync();
         if (!opened.IsSuccess || opened.State is null)
         {
-            await DisplayAlert(
-                "Life Modules unavailable",
+            await DisplayAlertAsync(
+                copy["Origin.UnavailableTitle"],
                 opened.Blockers.FirstOrDefault()
-                ?? "The source-bound SR5 Life Module authority is unavailable.",
-                "OK");
+                ?? copy["Origin.UnavailableDetail"],
+                copy["Common.Ok"]);
             return;
         }
 
@@ -1380,10 +1381,10 @@ public sealed class BuildPage : NativePageBase
                     await Coordinator.PrepareSr5LifeModuleOriginAsync(choiceId);
                 if (prepared.IsSuccess)
                     return prepared.State;
-                await DisplayAlert(
-                    "Preview unavailable",
-                    prepared.Blockers.FirstOrDefault() ?? "The decision changed. Reopen this step.",
-                    "OK");
+                await DisplayAlertAsync(
+                    copy["Origin.PreviewUnavailableTitle"],
+                    prepared.Blockers.FirstOrDefault() ?? copy["Origin.PreviewUnavailableDetail"],
+                    copy["Common.Ok"]);
                 return null;
             },
             async (choiceId, previewDigest) =>
@@ -1392,10 +1393,10 @@ public sealed class BuildPage : NativePageBase
                     await Coordinator.ConfirmSr5LifeModuleOriginAsync(choiceId, previewDigest);
                 if (confirmed.IsSuccess && confirmed.Completed)
                     return true;
-                await DisplayAlert(
-                    "Decision not saved",
-                    confirmed.Blockers.FirstOrDefault() ?? "The authority rejected the decision.",
-                    "OK");
+                await DisplayAlertAsync(
+                    copy["Origin.DecisionNotSavedTitle"],
+                    confirmed.Blockers.FirstOrDefault() ?? copy["Origin.DecisionNotSavedDetail"],
+                    copy["Common.Ok"]);
                 return false;
             });
         await Navigation.PushAsync(page);
