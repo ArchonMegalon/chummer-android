@@ -11,6 +11,8 @@
     <ProjectReference Include="$(ChummerCoreEngineRoot)/Chummer.Contracts/Chummer.Contracts.csproj" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5VehicleWorkshopPhoneDraft.cs"
              Link="Native/Sr5VehicleWorkshopPhoneDraft.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5VehicleWorkshopFactoryModificationConsumer.cs"
+             Link="Native/Sr5VehicleWorkshopFactoryModificationConsumer.cs" />
     <Compile Include="Program.cs" />
   </ItemGroup>
 </Project>

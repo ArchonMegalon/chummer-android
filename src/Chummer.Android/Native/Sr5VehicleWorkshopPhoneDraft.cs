@@ -7,6 +7,7 @@ namespace Chummer.Android.Native;
 public static class Sr5VehicleWorkshopRoutes
 {
     public const string Catalog = "sr5-career/vehicle-workshop/catalog";
+    public const string FactoryModifications = "sr5-career/vehicle-workshop/factory-modifications";
     public const string Modifications = "sr5-career/vehicle-workshop/modifications";
     public const string WeaponMounts = "sr5-career/vehicle-workshop/weapon-mounts";
     public const string Review = "sr5-career/vehicle-workshop/review";
@@ -14,7 +15,7 @@ public static class Sr5VehicleWorkshopRoutes
     public const string Recovery = "sr5-career/vehicle-workshop/recovery";
 
     public static bool IsKnown(string routeId)
-        => routeId is Catalog or Modifications or WeaponMounts or Review or Receipt or Recovery;
+        => routeId is Catalog or FactoryModifications or Modifications or WeaponMounts or Review or Receipt or Recovery;
 }
 
 public enum Sr5VehicleWorkshopCheckpointStage
@@ -233,7 +234,7 @@ public sealed record Sr5VehicleWorkshopCheckpoint(
     string ExpectedOutputDigest,
     string BlockReason)
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public static Sr5VehicleWorkshopCheckpoint ForDraft(Sr5VehicleWorkshopDraft draft)
         => new(CurrentSchemaVersion, Sr5VehicleWorkshopCheckpointStage.Draft, draft,

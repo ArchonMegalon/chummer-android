@@ -703,7 +703,7 @@ Vista previa: {3}…</value></data>
   <data name="Add weapon mount" xml:space="preserve"><value>Añadir montaje de arma</value></data>
   <data name="Capacity" xml:space="preserve"><value>Capacidad</value></data>
   <data name="Capacity used" xml:space="preserve"><value>Capacidad usada</value></data>
-  <data name="Choose an exact stock chassis, modifications, and complete weapon mounts. Core calculates every price and rule." xml:space="preserve"><value>Elige un chasis de serie exacto, modificaciones y montajes de arma completos. Core calcula cada precio y regla.</value></data>
+  <data name="Choose a stock chassis, review its included factory modifications, then add optional modifications and complete weapon mounts. Core calculates every price and rule." xml:space="preserve"><value>Elige un chasis de serie, revisa sus modificaciones de fábrica incluidas y después añade modificaciones opcionales y montajes de arma completos. Core calcula cada precio y regla.</value></data>
   <data name="Complete all four typed parts of every weapon mount before review." xml:space="preserve"><value>Completa las cuatro partes tipadas de cada montaje de arma antes de revisar.</value></data>
   <data name="Compose weapon mount {0}" xml:space="preserve"><value>Componer montaje de arma {0}</value></data>
   <data name="Confirm purchase" xml:space="preserve"><value>Confirmar compra</value></data>
@@ -742,10 +742,11 @@ Vista previa: {3}…</value></data>
   <data name="Slots" xml:space="preserve"><value>Ranuras</value></data>
   <data name="Slots used" xml:space="preserve"><value>Ranuras usadas</value></data>
   <data name="Start another workshop purchase" xml:space="preserve"><value>Iniciar otra compra del taller</value></data>
-  <data name="Step 2 of 4" xml:space="preserve"><value>Paso 2 de 4</value></data>
-  <data name="Step 3 of 4" xml:space="preserve"><value>Paso 3 de 4</value></data>
-  <data name="Step 4 of 4" xml:space="preserve"><value>Paso 4 de 4</value></data>
-  <data name="Stock vehicle or drone → modifications → four-part weapon mounts → exact quote and receipt" xml:space="preserve"><value>Vehículo o dron de serie → modificaciones → montajes de arma de cuatro partes → presupuesto y recibo exactos</value></data>
+  <data name="Step 2 of 5" xml:space="preserve"><value>Paso 2 de 5</value></data>
+  <data name="Step 3 of 5" xml:space="preserve"><value>Paso 3 de 5</value></data>
+  <data name="Step 4 of 5" xml:space="preserve"><value>Paso 4 de 5</value></data>
+  <data name="Step 5 of 5" xml:space="preserve"><value>Paso 5 de 5</value></data>
+  <data name="Stock vehicle or drone → included factory modifications → optional modifications → four-part weapon mounts → exact quote and receipt" xml:space="preserve"><value>Vehículo o dron de serie → modificaciones de fábrica incluidas → modificaciones opcionales → montajes de arma de cuatro partes → presupuesto y recibo exactos</value></data>
   <data name="Stock vehicles and drones" xml:space="preserve"><value>Vehículos y drones de serie</value></data>
   <data name="The optional vehicle name is too long." xml:space="preserve"><value>El nombre opcional del vehículo es demasiado largo.</value></data>
   <data name="The saved command is idempotent. Recovery first checks the exact current runner, then safely completes or reports why it cannot." xml:space="preserve"><value>La orden guardada es idempotente. La recuperación comprueba primero el runner actual exacto y después completa con seguridad o indica el motivo exacto.</value></data>
@@ -772,4 +773,16 @@ Vista previa: {3}…</value></data>
   <data name="−" xml:space="preserve"><value>−</value></data>
   <data name="Drone" xml:space="preserve"><value>Dron</value></data>
   <data name="A durable workshop checkpoint belongs to another runner. Reopen that runner before recovering or replacing it." xml:space="preserve"><value>Un punto de control duradero del taller pertenece a otro runner. Vuelve a abrir ese runner antes de recuperarlo o reemplazarlo.</value></data>
+  <data name="Factory modifications" xml:space="preserve"><value>Modificaciones de fábrica</value></data>
+  <data name="Included factory modifications" xml:space="preserve"><value>Modificaciones de fábrica incluidas</value></data>
+  <data name="These Core-projected modifications come with the chassis. They are visible here but cannot be removed or edited." xml:space="preserve"><value>Estas modificaciones proyectadas por Core vienen con el chasis. Son visibles aquí, pero no se pueden quitar ni editar.</value></data>
+  <data name="No factory modifications are included with this chassis." xml:space="preserve"><value>Este chasis no incluye modificaciones de fábrica.</value></data>
+  <data name="Unsupported factory instructions" xml:space="preserve"><value>Instrucciones de fábrica no compatibles</value></data>
+  <data name="This chassis cannot continue because at least one factory instruction is not projected exactly." xml:space="preserve"><value>Este chasis no puede continuar porque al menos una instrucción de fábrica no se proyecta de forma exacta.</value></data>
+  <data name="Continue to optional modifications" xml:space="preserve"><value>Continuar a las modificaciones opcionales</value></data>
+  <data name="Included · cannot be removed" xml:space="preserve"><value>Incluida · no se puede quitar</value></data>
+  <data name="Unsupported factory instruction" xml:space="preserve"><value>Instrucción de fábrica no compatible</value></data>
+  <data name="{0} · rating {1}/{2} · slots {3} · saved cost {4} ¥" xml:space="preserve"><value>{0} · nivel {1}/{2} · ranuras {3} · coste guardado {4} ¥</value></data>
+  <data name="{0} · page {1}" xml:space="preserve"><value>{0} · página {1}</value></data>
+  <data name="{0} · {1:N0} ¥ · {2} {3} · {4} {5} · {6} included factory modifications" xml:space="preserve"><value>{0} · {1:N0} ¥ · {2} {3} · {4} {5} · {6} modificaciones de fábrica incluidas</value></data>
 </root>

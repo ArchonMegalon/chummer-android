@@ -4,8 +4,31 @@ using Chummer.Contracts.Characters;
 CharacterVehicleWorkshopCatalog catalog = Catalog();
 CharacterVehicleWorkshopPreparation preparation = Preparation(catalog);
 Sr5VehicleWorkshopDraft draft = CompleteDraft(preparation);
+CharacterVehicleWorkshopChassisEntry selectedChassis = preparation.Chassis.Single();
+Sr5VehicleWorkshopFactoryModificationProjection factoryProjection =
+    Sr5VehicleWorkshopFactoryModificationConsumer.Project(
+        selectedChassis,
+        draft.NewVehicleInstanceId);
 
+Check(Sr5VehicleWorkshopCheckpoint.CurrentSchemaVersion == 2
+      && Sr5VehicleWorkshopRoutes.IsKnown(Sr5VehicleWorkshopRoutes.FactoryModifications),
+    "factory-modification deep route and schema-v2 checkpoint must be explicit");
 Check(draft.IsValid(out _), "complete typed draft must validate");
+Check(factoryProjection.CanContinue
+      && factoryProjection.Rows is [{ Included: true, Removable: false }],
+    "exact factory modification must be included and non-removable");
+Sr5VehicleWorkshopFactoryModificationRow includedFactoryModification =
+    factoryProjection.Rows.Single();
+Check(includedFactoryModification.SourceId.Value
+      == Guid.Parse("70000000-0000-4000-8000-000000000001")
+      && includedFactoryModification.InstructionId.Value != Guid.Empty
+      && includedFactoryModification.InstanceId.Value != Guid.Empty,
+    "factory preview must preserve typed source, instruction, and deterministic instance identities");
+Check(includedFactoryModification.InstanceId
+      == CharacterVehicleWorkshopRules.DeriveFactoryModificationInstanceId(
+          draft.NewVehicleInstanceId,
+          includedFactoryModification.InstructionId),
+    "factory instance identity must be derived from the durable vehicle and instruction identities");
 Check(draft.Matches("workspace-1", preparation), "draft must resume against exact binding");
 Check(!draft.Matches("workspace-2", preparation), "draft must reject another workspace");
 Check(!draft.Matches("workspace-1", preparation with { ContentRevision = 8 }),
@@ -52,6 +75,14 @@ Check(store.TryRead(out Sr5VehicleWorkshopCheckpoint? resumed, out _)
       && CharacterVehicleWorkshopRules.ComputeCommandDigest(command with { Selection = resumedSelection })
          == CharacterVehicleWorkshopRules.ComputeCommandDigest(command),
     "pending checkpoint must round-trip without losing typed identities");
+Sr5VehicleWorkshopFactoryModificationProjection reopenedFactoryProjection =
+    Sr5VehicleWorkshopFactoryModificationConsumer.Project(
+        selectedChassis,
+        resumed!.Draft.NewVehicleInstanceId);
+Check(reopenedFactoryProjection.CanContinue
+      && reopenedFactoryProjection.Rows.Single().InstanceId
+         == includedFactoryModification.InstanceId,
+    "restart must rehydrate the same deterministic factory instance without an editable draft copy");
 
 CharacterVehicleWorkshopCommitReceipt receipt = Receipt(command, quote, preparation);
 var completed = pending with
@@ -156,6 +187,45 @@ Check(incompleteMount.TryCreateSelection(out CharacterVehicleWorkshopSelection i
 Check(!CharacterVehicleWorkshopRules.Quote(preparation, incompleteSelection).Exact,
     "Core must fail closed until all four mount kinds exist");
 
+CharacterVehicleWorkshopFactoryModificationEntry unsupportedFactoryModification =
+    selectedChassis.FactoryModifications.Single() with
+    {
+        ProjectionStatus = CharacterVehicleWorkshopProjectionStatus.Unsupported,
+        UnsupportedReason = "The factory select prompt is not projected exactly."
+    };
+CharacterVehicleWorkshopChassisEntry unsupportedFactoryChassis = selectedChassis with
+{
+    ProjectionStatus = CharacterVehicleWorkshopProjectionStatus.Unsupported,
+    UnsupportedReason = unsupportedFactoryModification.UnsupportedReason,
+    FactoryModifications = [unsupportedFactoryModification]
+};
+Sr5VehicleWorkshopFactoryModificationProjection unsupportedFactoryProjection =
+    Sr5VehicleWorkshopFactoryModificationConsumer.Project(
+        unsupportedFactoryChassis,
+        draft.NewVehicleInstanceId);
+Check(!unsupportedFactoryProjection.CanContinue
+      && unsupportedFactoryProjection.Rows.Single().Posture
+         == Sr5VehicleWorkshopFactoryModificationPosture.Unsupported
+      && !unsupportedFactoryProjection.Rows.Single().Included
+      && !unsupportedFactoryProjection.Rows.Single().Removable
+      && unsupportedFactoryProjection.Blockers.Contains(
+          unsupportedFactoryModification.UnsupportedReason),
+    "unsupported factory instruction must remain visible, non-editable, and fail closed");
+
+CharacterVehicleWorkshopFactoryModificationEntry forgedFactoryInstruction =
+    selectedChassis.FactoryModifications.Single() with
+    {
+        InstructionId = new CharacterVehicleFactoryModificationInstructionId(Guid.NewGuid())
+    };
+Sr5VehicleWorkshopFactoryModificationProjection forgedFactoryProjection =
+    Sr5VehicleWorkshopFactoryModificationConsumer.Project(
+        selectedChassis with { FactoryModifications = [forgedFactoryInstruction] },
+        draft.NewVehicleInstanceId);
+Check(!forgedFactoryProjection.CanContinue
+      && forgedFactoryProjection.Rows.Single().Posture
+         == Sr5VehicleWorkshopFactoryModificationPosture.Unsupported,
+    "consumer must reject a forged typed factory instruction identity");
+
 backend.Payload = "{ malformed";
 Check(!store.TryRead(out _, out string malformedReason)
       && malformedReason.Length != 0,
@@ -172,7 +242,7 @@ static CharacterVehicleWorkshopCatalog Catalog()
 {
     var binding = new CharacterVehicleWorkshopSourceBinding(
         "SR5", "settings.xml", CharacterVehicleWorkshopRules.SemanticsVersion,
-        H('1'), H('2'), H('3'), H('4'),
+        H('1'), H('2'), H('3'), H('4'), H('5'),
         false, 1m, false, 1m, true);
     var chassisId = new CharacterVehicleChassisSourceId(
         Guid.Parse("10000000-0000-0000-0000-000000000001"));
@@ -187,7 +257,9 @@ static CharacterVehicleWorkshopCatalog Catalog()
         new CharacterVehicleWorkshopAvailability(6, CharacterVehicleWorkshopLegality.Restricted, false),
         "SR5", "466", string.Empty,
         CharacterVehicleWorkshopProjectionStatus.Exact,
-        string.Empty);
+        string.Empty,
+        [],
+        [FactoryModification(chassisId)]);
     var modification = new CharacterVehicleWorkshopModificationEntry(
         new CharacterVehicleModificationSourceId(
             Guid.Parse("20000000-0000-0000-0000-000000000001")),
@@ -214,6 +286,53 @@ static CharacterVehicleWorkshopCatalog Catalog()
         .ToArray();
     var unsigned = new CharacterVehicleWorkshopCatalog(binding, [chassis], [modification], components, string.Empty);
     return unsigned with { DeclaredCatalogDigest = CharacterVehicleWorkshopRules.ComputeCatalogDigest(unsigned) };
+}
+
+static CharacterVehicleWorkshopFactoryModificationEntry FactoryModification(
+    CharacterVehicleChassisSourceId chassisId)
+{
+    var sourceId = new CharacterVehicleFactoryModificationSourceId(
+        Guid.Parse("70000000-0000-4000-8000-000000000001"));
+    string instructionDigest = CharacterVehicleWorkshopRules.ComputeCharacterDigest(
+        "<name>Rigger Interface</name>");
+    CharacterVehicleFactoryModificationInstructionId instructionId =
+        CharacterVehicleWorkshopRules.DeriveFactoryModificationInstructionId(
+            chassisId,
+            sourceId,
+            0,
+            instructionDigest);
+    return new CharacterVehicleWorkshopFactoryModificationEntry(
+        instructionId,
+        chassisId,
+        0,
+        sourceId,
+        "Rigger Interface",
+        "Electromagnetic",
+        string.Empty,
+        "0",
+        string.Empty,
+        0,
+        "0",
+        "String_Rating",
+        0,
+        new CharacterVehicleWorkshopAvailability(
+            4,
+            CharacterVehicleWorkshopLegality.Legal,
+            false),
+        "1000",
+        string.Empty,
+        "SR5",
+        "461",
+        string.Empty,
+        string.Empty,
+        0m,
+        0m,
+        string.Empty,
+        false,
+        H('7'),
+        instructionDigest,
+        CharacterVehicleWorkshopProjectionStatus.Exact,
+        string.Empty);
 }
 
 static CharacterVehicleWorkshopPreparation Preparation(CharacterVehicleWorkshopCatalog catalog)

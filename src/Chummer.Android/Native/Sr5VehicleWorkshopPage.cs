@@ -40,10 +40,10 @@ public sealed class Sr5VehicleWorkshopPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(T("SR5 Career")));
         _body.Add(NativeTheme.Title(T("Vehicle & Drone Workshop")));
         _body.Add(NativeTheme.Body(
-            T("Choose an exact stock chassis, modifications, and complete weapon mounts. Core calculates every price and rule."),
+            T("Choose a stock chassis, review its included factory modifications, then add optional modifications and complete weapon mounts. Core calculates every price and rule."),
             NativeTheme.Muted));
         _body.Add(NativeTheme.Body(
-            T("Stock vehicle or drone → modifications → four-part weapon mounts → exact quote and receipt"),
+            T("Stock vehicle or drone → included factory modifications → optional modifications → four-part weapon mounts → exact quote and receipt"),
             NativeTheme.Muted));
 
         if (_loading)
@@ -162,25 +162,28 @@ public sealed class Sr5VehicleWorkshopPage : NativePageBase
         }
         foreach (CharacterVehicleWorkshopChassisEntry row in rows)
         {
-            bool selectable = row.ProjectionStatus == CharacterVehicleWorkshopProjectionStatus.Exact
-                              && row.Posture == CharacterVehicleChassisPosture.Stock;
-            string reason = selectable
-                ? string.Format(CultureInfo.CurrentCulture,
-                    "{0} · {1:N0} ¥ · {2} {3} · {4} {5}",
+            bool exact = row.ProjectionStatus == CharacterVehicleWorkshopProjectionStatus.Exact;
+            bool viewable = row.Posture == CharacterVehicleChassisPosture.Stock;
+            string reason = row.Posture != CharacterVehicleChassisPosture.Stock
+                ? T("Custom chassis require an exact GM authorization and are unavailable in this stock lane.")
+                : exact
+                    ? string.Format(CultureInfo.CurrentCulture,
+                    T("{0} · {1:N0} ¥ · {2} {3} · {4} {5} · {6} included factory modifications"),
                     ChassisKind(row.Kind),
                     row.Cost,
                     T("Slots"),
                     row.ModificationSlots,
                     T("Capacity"),
-                    row.ModificationCapacity)
-                : row.ProjectionStatus == CharacterVehicleWorkshopProjectionStatus.Unsupported
+                    row.ModificationCapacity,
+                    row.FactoryModifications.Count)
+                    : row.ProjectionStatus == CharacterVehicleWorkshopProjectionStatus.Unsupported
                     ? ExactReason(row.UnsupportedReason)
-                    : T("Custom chassis require an exact GM authorization and are unavailable in this stock lane.");
+                    : CharacterVehicleWorkshopBlockers.UnsupportedSelection;
             _body.Add(NativeTheme.NavigationRow(
                 row.Name,
                 reason,
                 () => SelectChassisAsync(snapshot, row),
-                selectable,
+                viewable,
                 $"sr5-vehicle-workshop-chassis-{Token(row.SourceId.Value)}"));
         }
     }
@@ -190,12 +193,11 @@ public sealed class Sr5VehicleWorkshopPage : NativePageBase
         CharacterVehicleWorkshopChassisEntry chassis)
     {
         if (_draft is null
-            || chassis.ProjectionStatus != CharacterVehicleWorkshopProjectionStatus.Exact
             || chassis.Posture != CharacterVehicleChassisPosture.Stock)
             return;
         Sr5VehicleWorkshopDraft next = _draft with
         {
-            RouteId = Sr5VehicleWorkshopRoutes.Modifications,
+            RouteId = Sr5VehicleWorkshopRoutes.FactoryModifications,
             ChassisSourceId = chassis.SourceId,
             GmAuthorityDigest = string.Empty,
             Modifications = [],
@@ -204,7 +206,7 @@ public sealed class Sr5VehicleWorkshopPage : NativePageBase
         };
         if (!SaveDraft(next))
             return;
-        await Navigation.PushAsync(new Sr5VehicleWorkshopModificationsPage(
+        await Navigation.PushAsync(new Sr5VehicleWorkshopFactoryModificationsPage(
             Coordinator, _authority, _store, snapshot, next));
     }
 
@@ -214,13 +216,15 @@ public sealed class Sr5VehicleWorkshopPage : NativePageBase
     {
         Page page = draft.RouteId switch
         {
+            Sr5VehicleWorkshopRoutes.FactoryModifications => new Sr5VehicleWorkshopFactoryModificationsPage(
+                Coordinator, _authority, _store, snapshot, draft),
             Sr5VehicleWorkshopRoutes.Modifications => new Sr5VehicleWorkshopModificationsPage(
                 Coordinator, _authority, _store, snapshot, draft),
             Sr5VehicleWorkshopRoutes.WeaponMounts => new Sr5VehicleWorkshopMountsPage(
                 Coordinator, _authority, _store, snapshot, draft),
             Sr5VehicleWorkshopRoutes.Review => new Sr5VehicleWorkshopReviewPage(
                 Coordinator, _authority, _store, snapshot, draft),
-            _ => new Sr5VehicleWorkshopModificationsPage(
+            _ => new Sr5VehicleWorkshopFactoryModificationsPage(
                 Coordinator, _authority, _store, snapshot, draft)
         };
         await Navigation.PushAsync(page);
@@ -340,6 +344,177 @@ public sealed class Sr5VehicleWorkshopPage : NativePageBase
     }
 }
 
+public sealed class Sr5VehicleWorkshopFactoryModificationsPage : NativePageBase
+{
+    private readonly RunnerSessionSr5VehicleWorkshopAuthority _authority;
+    private readonly Sr5VehicleWorkshopCheckpointStore _store;
+    private readonly Sr5VehicleWorkshopPhoneSnapshot _snapshot;
+    private readonly VerticalStackLayout _body = Sr5VehicleWorkshopPage.BodyLayout();
+    private Sr5VehicleWorkshopDraft _draft;
+    private string _notice = string.Empty;
+
+    public Sr5VehicleWorkshopFactoryModificationsPage(
+        RunnerSessionCoordinator coordinator,
+        RunnerSessionSr5VehicleWorkshopAuthority authority,
+        Sr5VehicleWorkshopCheckpointStore store,
+        Sr5VehicleWorkshopPhoneSnapshot snapshot,
+        Sr5VehicleWorkshopDraft draft) : base(coordinator)
+    {
+        _authority = authority;
+        _store = store;
+        _snapshot = snapshot;
+        _draft = draft;
+        Title = T("Factory modifications");
+        AutomationId = "sr5-vehicle-workshop-factory-modifications-page";
+        Content = new ScrollView { Content = _body };
+    }
+
+    protected override void Refresh()
+    {
+        _body.Clear();
+        CharacterVehicleWorkshopChassisEntry? chassis = Chassis();
+        _body.Add(NativeTheme.Eyebrow(T("Step 2 of 5")));
+        _body.Add(NativeTheme.Title(T("Included factory modifications")));
+        _body.Add(NativeTheme.Body(
+            T("These Core-projected modifications come with the chassis. They are visible here but cannot be removed or edited."),
+            NativeTheme.Muted));
+        if (!string.IsNullOrWhiteSpace(_notice))
+            AddNotice(_notice);
+        if (chassis is null)
+        {
+            AddNotice(CharacterVehicleWorkshopBlockers.UnsupportedSelection);
+            return;
+        }
+
+        Sr5VehicleWorkshopFactoryModificationProjection projection =
+            Sr5VehicleWorkshopFactoryModificationConsumer.Project(
+                chassis,
+                _draft.NewVehicleInstanceId);
+        if (projection.Rows.Count == 0)
+        {
+            _body.Add(NativeTheme.Body(
+                T("No factory modifications are included with this chassis."),
+                NativeTheme.Muted));
+        }
+        foreach (Sr5VehicleWorkshopFactoryModificationRow row in projection.Rows)
+            AddFactoryModification(row);
+
+        if (projection.Blockers.Count != 0)
+        {
+            _body.Add(NativeTheme.Eyebrow(T("Unsupported factory instructions")));
+            foreach (string blocker in projection.Blockers)
+                AddNotice(blocker);
+            _body.Add(NativeTheme.Body(
+                T("This chassis cannot continue because at least one factory instruction is not projected exactly."),
+                NativeTheme.Danger));
+        }
+
+        Button next = NativeTheme.PrimaryButton(T("Continue to optional modifications"));
+        next.AutomationId = "sr5-vehicle-workshop-factory-modifications-next";
+        next.IsEnabled = projection.CanContinue
+                         && _draft.Matches(
+                             _snapshot.Workspace.Id.Value,
+                             _snapshot.Preparation);
+        next.Clicked += async (_, _) => await ContinueAsync();
+        _body.Add(next);
+    }
+
+    private void AddFactoryModification(Sr5VehicleWorkshopFactoryModificationRow row)
+    {
+        bool included = row.Posture == Sr5VehicleWorkshopFactoryModificationPosture.Included;
+        VerticalStackLayout values = new() { Spacing = 6 };
+        values.Add(NativeTheme.Title(row.Name, 18));
+        values.Add(NativeTheme.Body(
+            included ? T("Included · cannot be removed") : T("Unsupported factory instruction"),
+            included ? NativeTheme.Success : NativeTheme.Danger));
+        values.Add(NativeTheme.Body(
+            string.Format(
+                CultureInfo.CurrentCulture,
+                T("{0} · rating {1}/{2} · slots {3} · saved cost {4} ¥"),
+                row.Category,
+                row.Rating,
+                row.MaximumRating,
+                row.Slots,
+                row.Cost),
+            NativeTheme.Muted));
+        values.Add(NativeTheme.Body(
+            string.Format(
+                CultureInfo.CurrentCulture,
+                T("{0} · page {1}"),
+                row.SourceBook,
+                row.Page),
+            NativeTheme.Muted));
+        if (!included)
+            values.Add(NativeTheme.Body(row.BlockReason, NativeTheme.Danger));
+        values.Add(Sr5VehicleWorkshopPage.Exact(
+            $"sr5-vehicle-workshop-factory-instruction-{Token(row.InstructionId.Value)}",
+            row.InstructionId.Value));
+        values.Add(Sr5VehicleWorkshopPage.Exact(
+            $"sr5-vehicle-workshop-factory-source-{Token(row.SourceId.Value)}",
+            row.SourceId.Value));
+        values.Add(Sr5VehicleWorkshopPage.Exact(
+            $"sr5-vehicle-workshop-factory-instance-{Token(row.InstanceId.Value)}",
+            row.InstanceId.Value));
+        Border card = NativeTheme.Card(values);
+        card.AutomationId = $"sr5-vehicle-workshop-factory-mod-{Token(row.InstructionId.Value)}";
+        _body.Add(card);
+    }
+
+    private CharacterVehicleWorkshopChassisEntry? Chassis()
+        => _draft.ChassisSourceId is { } sourceId
+            ? _snapshot.Preparation.Chassis.SingleOrDefault(item => item.SourceId == sourceId)
+            : null;
+
+    private async Task ContinueAsync()
+    {
+        CharacterVehicleWorkshopChassisEntry? chassis = Chassis();
+        if (chassis is null
+            || !Sr5VehicleWorkshopFactoryModificationConsumer.Project(
+                chassis,
+                _draft.NewVehicleInstanceId).CanContinue)
+        {
+            _notice = CharacterVehicleWorkshopBlockers.UnsupportedSelection;
+            Refresh();
+            return;
+        }
+        Sr5VehicleWorkshopDraft next = _draft with
+        {
+            RouteId = Sr5VehicleWorkshopRoutes.Modifications,
+            QuoteDigest = string.Empty
+        };
+        if (!Save(next))
+            return;
+        await Navigation.PushAsync(new Sr5VehicleWorkshopModificationsPage(
+            Coordinator,
+            _authority,
+            _store,
+            _snapshot,
+            next));
+    }
+
+    private bool Save(Sr5VehicleWorkshopDraft next)
+    {
+        if (!_store.TryWrite(Sr5VehicleWorkshopCheckpoint.ForDraft(next), out _notice))
+        {
+            Refresh();
+            return false;
+        }
+        _notice = string.Empty;
+        _draft = next;
+        return true;
+    }
+
+    private void AddNotice(string reason)
+    {
+        Label label = NativeTheme.Body(reason, NativeTheme.Danger);
+        label.AutomationId = "sr5-vehicle-workshop-factory-modifications-notice";
+        _body.Add(NativeTheme.Card(label));
+    }
+
+    private static string T(string value) => Sr5VehicleWorkshopPage.T(value);
+    private static string Token(Guid value) => Sr5VehicleWorkshopPage.Token(value);
+}
+
 public sealed class Sr5VehicleWorkshopModificationsPage : NativePageBase
 {
     private readonly RunnerSessionSr5VehicleWorkshopAuthority _authority;
@@ -369,7 +544,7 @@ public sealed class Sr5VehicleWorkshopModificationsPage : NativePageBase
     {
         _body.Clear();
         CharacterVehicleWorkshopChassisEntry? chassis = Chassis();
-        _body.Add(NativeTheme.Eyebrow(T("Step 2 of 4")));
+        _body.Add(NativeTheme.Eyebrow(T("Step 3 of 5")));
         _body.Add(NativeTheme.Title(T("Vehicle modifications")));
         _body.Add(NativeTheme.Body(chassis?.Name ?? T("No chassis selected"), NativeTheme.Muted));
         if (!string.IsNullOrWhiteSpace(_notice))
@@ -581,7 +756,7 @@ public sealed class Sr5VehicleWorkshopMountsPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow(T("Step 3 of 4")));
+        _body.Add(NativeTheme.Eyebrow(T("Step 4 of 5")));
         _body.Add(NativeTheme.Title(T("Weapon mounts")));
         _body.Add(NativeTheme.Body(
             T("Every mount needs one exact Size, Visibility, Flexibility, and Control component."),
@@ -833,7 +1008,7 @@ public sealed class Sr5VehicleWorkshopReviewPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow(T("Step 4 of 4")));
+        _body.Add(NativeTheme.Eyebrow(T("Step 5 of 5")));
         _body.Add(NativeTheme.Title(T("Review workshop quote")));
         if (!string.IsNullOrWhiteSpace(_notice))
             AddNotice(_notice);
@@ -854,6 +1029,8 @@ public sealed class Sr5VehicleWorkshopReviewPage : NativePageBase
         Border card = NativeTheme.Card(totals);
         card.AutomationId = "sr5-vehicle-workshop-quote";
         _body.Add(card);
+
+        AddFactoryModificationPreview();
 
         _body.Add(NativeTheme.Eyebrow(T("Quote lines")));
         foreach (CharacterVehicleWorkshopQuoteLine line in quote.Lines)
@@ -883,6 +1060,14 @@ public sealed class Sr5VehicleWorkshopReviewPage : NativePageBase
 
     private void PrepareQuote()
     {
+        Sr5VehicleWorkshopFactoryModificationProjection? factoryProjection = FactoryProjection();
+        if (factoryProjection is null || !factoryProjection.CanContinue)
+        {
+            _quote = null;
+            _notice = factoryProjection?.Blockers.FirstOrDefault()
+                      ?? CharacterVehicleWorkshopBlockers.UnsupportedSelection;
+            return;
+        }
         CharacterVehicleWorkshopQuote quote = _authority.Quote(_snapshot, _draft);
         _quote = quote;
         if (!quote.Exact)
@@ -890,6 +1075,52 @@ public sealed class Sr5VehicleWorkshopReviewPage : NativePageBase
         _draft = _draft with { QuoteDigest = quote.QuoteDigest };
         if (!_store.TryWrite(Sr5VehicleWorkshopCheckpoint.ForDraft(_draft), out _notice))
             _quote = null;
+    }
+
+    private Sr5VehicleWorkshopFactoryModificationProjection? FactoryProjection()
+    {
+        CharacterVehicleWorkshopChassisEntry? chassis = _draft.ChassisSourceId is { } sourceId
+            ? _snapshot.Preparation.Chassis.SingleOrDefault(item => item.SourceId == sourceId)
+            : null;
+        return chassis is null
+            ? null
+            : Sr5VehicleWorkshopFactoryModificationConsumer.Project(
+                chassis,
+                _draft.NewVehicleInstanceId);
+    }
+
+    private void AddFactoryModificationPreview()
+    {
+        Sr5VehicleWorkshopFactoryModificationProjection? projection = FactoryProjection();
+        if (projection is null)
+            return;
+        _body.Add(NativeTheme.Eyebrow(T("Included factory modifications")));
+        if (projection.Rows.Count == 0)
+        {
+            _body.Add(NativeTheme.Body(
+                T("No factory modifications are included with this chassis."),
+                NativeTheme.Muted));
+            return;
+        }
+        foreach (Sr5VehicleWorkshopFactoryModificationRow row in projection.Rows)
+        {
+            VerticalStackLayout values = new() { Spacing = 6 };
+            values.Add(NativeTheme.Title(row.Name, 18));
+            values.Add(NativeTheme.Body(
+                row.Included
+                    ? T("Included · cannot be removed")
+                    : T("Unsupported factory instruction"),
+                row.Included ? NativeTheme.Success : NativeTheme.Danger));
+            if (!row.Included)
+                values.Add(NativeTheme.Body(row.BlockReason, NativeTheme.Danger));
+            values.Add(Sr5VehicleWorkshopPage.Exact(
+                $"sr5-vehicle-workshop-review-factory-instance-{Sr5VehicleWorkshopPage.Token(row.InstanceId.Value)}",
+                row.InstanceId.Value));
+            Border factoryCard = NativeTheme.Card(values);
+            factoryCard.AutomationId =
+                $"sr5-vehicle-workshop-review-factory-{Sr5VehicleWorkshopPage.Token(row.InstructionId.Value)}";
+            _body.Add(factoryCard);
+        }
     }
 
     private async Task ConfirmAsync()
