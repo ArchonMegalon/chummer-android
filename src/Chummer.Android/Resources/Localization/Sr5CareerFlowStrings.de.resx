@@ -562,6 +562,7 @@ Vorschau: {3}…</value></data>
   <data name="Confirm exact recipe" xml:space="preserve"><value>Exaktes Rezept bestätigen</value></data>
   <data name="Confirm finalizer contribution" xml:space="preserve"><value>Finalisierungsbeitrag bestätigen</value></data>
   <data name="Contribution" xml:space="preserve"><value>Beitrag</value></data>
+  <data name="Core recovered the exact queued creation contribution after restart or an interrupted response." xml:space="preserve"><value>Core hat den exakten eingereihten Erstellungsbeitrag nach einem Neustart oder einer unterbrochenen Antwort wiederhergestellt.</value></data>
   <data name="Core proved no recipe was saved. Review and confirm again." xml:space="preserve"><value>Core hat belegt, dass kein Rezept gespeichert wurde. Erneut prüfen und bestätigen.</value></data>
   <data name="Core saved the recipe and receipt on one exact runner revision." xml:space="preserve"><value>Core hat Rezept und Beleg in einer exakten Runner-Revision gespeichert.</value></data>
   <data name="Crash damage" xml:space="preserve"><value>Crash-Schaden</value></data>
@@ -571,7 +572,6 @@ Vorschau: {3}…</value></data>
   <data name="Design an exact recipe contribution for the atomic creation finalizer" xml:space="preserve"><value>Einen exakten Rezeptbeitrag für die atomare Erstellungsfinalisierung entwerfen</value></data>
   <data name="Design, confirm, recover, and undo one exact saved recipe" xml:space="preserve"><value>Ein exaktes gespeichertes Rezept entwerfen, bestätigen, wiederherstellen und rückgängig machen</value></data>
   <data name="Duration" xml:space="preserve"><value>Dauer</value></data>
-  <data name="Edit queued recipe" xml:space="preserve"><value>Eingereihtes Rezept bearbeiten</value></data>
   <data name="Enhancer" xml:space="preserve"><value>Verstärker</value></data>
   <data name="Enter a unique recipe name" xml:space="preserve"><value>Einen eindeutigen Rezeptnamen eingeben</value></data>
   <data name="Exact component catalog" xml:space="preserve"><value>Exakter Komponentenkatalog</value></data>
@@ -607,6 +607,7 @@ Vorschau: {3}…</value></data>
   <data name="Source {0} {1} · source limit {2} · {3} per selected level" xml:space="preserve"><value>Quelle {0} {1} · Quellenlimit {2} · {3} pro gewählter Stufe</value></data>
   <data name="Speed" xml:space="preserve"><value>Geschwindigkeit</value></data>
   <data name="The atomic finalizer must re-prepare and re-quote this typed selection before its single whole-character write." xml:space="preserve"><value>Die atomare Finalisierung muss diese typisierte Auswahl vor ihrem einmaligen Gesamtcharakter-Schreibvorgang erneut vorbereiten und berechnen.</value></data>
+  <data name="This durable contribution is immutable until the whole-character finalizer consumes it." xml:space="preserve"><value>Dieser dauerhafte Beitrag bleibt unveränderlich, bis die Gesamtcharakter-Finalisierung ihn verarbeitet.</value></data>
   <data name="The exact preview is durable. Confirm it separately before anything is queued or saved." xml:space="preserve"><value>Die exakte Vorschau ist dauerhaft. Separat bestätigen, bevor etwas eingereiht oder gespeichert wird.</value></data>
   <data name="The outcome cannot be proven from the current receipt and runner revision." xml:space="preserve"><value>Das Ergebnis kann mit dem aktuellen Beleg und der Runner-Revision nicht belegt werden.</value></data>
   <data name="The receipt-bound recipe was removed in one atomic saved revision." xml:space="preserve"><value>Das beleggebundene Rezept wurde in einer atomar gespeicherten Revision entfernt.</value></data>

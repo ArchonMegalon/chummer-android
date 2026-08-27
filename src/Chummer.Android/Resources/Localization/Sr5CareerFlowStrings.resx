@@ -562,6 +562,7 @@ Preview: {3}…</value></data>
   <data name="Confirm exact recipe" xml:space="preserve"><value>Confirm exact recipe</value></data>
   <data name="Confirm finalizer contribution" xml:space="preserve"><value>Confirm finalizer contribution</value></data>
   <data name="Contribution" xml:space="preserve"><value>Contribution</value></data>
+  <data name="Core recovered the exact queued creation contribution after restart or an interrupted response." xml:space="preserve"><value>Core recovered the exact queued creation contribution after restart or an interrupted response.</value></data>
   <data name="Core proved no recipe was saved. Review and confirm again." xml:space="preserve"><value>Core proved no recipe was saved. Review and confirm again.</value></data>
   <data name="Core saved the recipe and receipt on one exact runner revision." xml:space="preserve"><value>Core saved the recipe and receipt on one exact runner revision.</value></data>
   <data name="Crash damage" xml:space="preserve"><value>Crash damage</value></data>
@@ -571,7 +572,6 @@ Preview: {3}…</value></data>
   <data name="Design an exact recipe contribution for the atomic creation finalizer" xml:space="preserve"><value>Design an exact recipe contribution for the atomic creation finalizer</value></data>
   <data name="Design, confirm, recover, and undo one exact saved recipe" xml:space="preserve"><value>Design, confirm, recover, and undo one exact saved recipe</value></data>
   <data name="Duration" xml:space="preserve"><value>Duration</value></data>
-  <data name="Edit queued recipe" xml:space="preserve"><value>Edit queued recipe</value></data>
   <data name="Enhancer" xml:space="preserve"><value>Enhancer</value></data>
   <data name="Enter a unique recipe name" xml:space="preserve"><value>Enter a unique recipe name</value></data>
   <data name="Exact component catalog" xml:space="preserve"><value>Exact component catalog</value></data>
@@ -607,6 +607,7 @@ Preview: {3}…</value></data>
   <data name="Source {0} {1} · source limit {2} · {3} per selected level" xml:space="preserve"><value>Source {0} {1} · source limit {2} · {3} per selected level</value></data>
   <data name="Speed" xml:space="preserve"><value>Speed</value></data>
   <data name="The atomic finalizer must re-prepare and re-quote this typed selection before its single whole-character write." xml:space="preserve"><value>The atomic finalizer must re-prepare and re-quote this typed selection before its single whole-character write.</value></data>
+  <data name="This durable contribution is immutable until the whole-character finalizer consumes it." xml:space="preserve"><value>This durable contribution is immutable until the whole-character finalizer consumes it.</value></data>
   <data name="The exact preview is durable. Confirm it separately before anything is queued or saved." xml:space="preserve"><value>The exact preview is durable. Confirm it separately before anything is queued or saved.</value></data>
   <data name="The outcome cannot be proven from the current receipt and runner revision." xml:space="preserve"><value>The outcome cannot be proven from the current receipt and runner revision.</value></data>
   <data name="The receipt-bound recipe was removed in one atomic saved revision." xml:space="preserve"><value>The receipt-bound recipe was removed in one atomic saved revision.</value></data>
