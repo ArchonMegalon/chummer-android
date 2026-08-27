@@ -391,6 +391,11 @@ public sealed class BuildPage : NativePageBase
             "Direct deep link · typed skill identity → governed/custom choice → four-revision review",
             OpenSr5CareerSpecializationWizardAsync,
             automationId: "build-career-specialization"));
+        card.Add(NativeTheme.NavigationRow(
+            Sr5CareerFlowStrings.Text("Gear and implants"),
+            Sr5CareerFlowStrings.Text("Purchase and manage exact Gear, Cyberware, and Bioware identities"),
+            () => Navigation.PushAsync(new Sr5CareerCommerceHubPage(Coordinator)),
+            automationId: "build-career-commerce"));
         Border route = NativeTheme.Card(card);
         route.AutomationId = Sr5CareerWizardRoutes.Hub;
         _body.Add(route);

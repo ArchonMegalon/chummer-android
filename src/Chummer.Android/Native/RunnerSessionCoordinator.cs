@@ -209,6 +209,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly ICharacterCreationQualitiesService? _creationQualitiesService;
     private readonly ICharacterCreationMagicResonanceService? _creationMagicResonanceService;
     private readonly ICharacterCreationFinalizationService? _creationFinalizationService;
+    private readonly Sr5CareerCyberwarePurchaseService? _careerCyberwarePurchaseService;
     private readonly ICharacterCareerSkillGroupAdvanceService? _careerSkillGroupService;
     private readonly ICharacterAfterRunSettlementService? _afterRunSettlementService;
     private readonly IAndroidAfterRunProposalCatalog? _afterRunProposalCatalog;
@@ -279,7 +280,8 @@ public sealed class RunnerSessionCoordinator : IDisposable
         IAndroidAfterRunProposalCatalog? afterRunProposalCatalog = null,
         ICharacterCreationMagicResonanceService? creationMagicResonanceService = null,
         OriginDossierLifeModulePhoneRuntime? originLifeModuleRuntime = null,
-        ICharacterCreationFinalizationService? creationFinalizationService = null)
+        ICharacterCreationFinalizationService? creationFinalizationService = null,
+        Sr5CareerCyberwarePurchaseService? careerCyberwarePurchaseService = null)
     {
         _presenter = presenter;
         _client = client;
@@ -294,6 +296,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
         _creationQualitiesService = creationQualitiesService;
         _creationMagicResonanceService = creationMagicResonanceService;
         _creationFinalizationService = creationFinalizationService;
+        _careerCyberwarePurchaseService = careerCyberwarePurchaseService;
         _careerSkillGroupService = careerSkillGroupService;
         _afterRunSettlementService = afterRunSettlementService;
         _afterRunProposalCatalog = afterRunProposalCatalog;
@@ -409,6 +412,103 @@ public sealed class RunnerSessionCoordinator : IDisposable
            && _durableSaveNotice?.Matches(State) == true;
 
     public bool IsBusy => State.IsBusy || Surface.IsBusy;
+
+    public Sr5CareerCyberwarePurchaseSnapshot LoadCareerCyberwarePurchase()
+    {
+        if (_careerCyberwarePurchaseService is null
+            || State.WorkspaceId is not { } workspaceId
+            || State.Profile?.Created != true
+            || !string.Equals(State.Rules?.GameEdition, "SR5", StringComparison.OrdinalIgnoreCase)
+            || State.IsDirty
+            || State.ContentRevision != State.SavedRevision
+            || !string.IsNullOrWhiteSpace(State.Error))
+        {
+            return Sr5CareerCyberwarePurchaseSnapshot.Blocked(
+                State.WorkspaceId ?? default,
+                CharacterCyberwarePurchaseBlockers.SourceAuthorityUnavailable);
+        }
+        Sr5CareerCyberwarePurchaseSnapshot snapshot =
+            _careerCyberwarePurchaseService.Load(workspaceId);
+        return snapshot.Preparation is { } preparation
+               && preparation.ContentRevision == State.ContentRevision
+            ? snapshot
+            : Sr5CareerCyberwarePurchaseSnapshot.Blocked(
+                workspaceId,
+                CharacterCyberwarePurchaseBlockers.StaleRevision);
+    }
+
+    public Sr5CareerCyberwarePurchaseSnapshot UpdateCareerCyberwarePurchaseSelection(
+        CharacterCyberwarePurchaseSelection selection)
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerCyberwarePurchaseWorkspace();
+        return _careerCyberwarePurchaseService!.UpdateSelection(workspaceId, selection);
+    }
+
+    public Sr5CareerCyberwarePurchaseSnapshot ReviewCareerCyberwarePurchase()
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerCyberwarePurchaseWorkspace();
+        return _careerCyberwarePurchaseService!.Review(workspaceId);
+    }
+
+    public async Task<Sr5CareerCyberwarePurchaseSnapshot> ConfirmCareerCyberwarePurchaseAsync(
+        CancellationToken cancellationToken = default)
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerCyberwarePurchaseWorkspace();
+        Sr5CareerCyberwarePurchaseSnapshot result =
+            _careerCyberwarePurchaseService!.Confirm(workspaceId);
+        if (result.HasAppliedReceipt || result.IsRecoveryUnknown)
+        {
+            await _presenter.LoadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
+            await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+            NotifyChanged();
+        }
+        return result;
+    }
+
+    public async Task<Sr5CareerCyberwarePurchaseSnapshot> UndoCareerCyberwarePurchaseAsync(
+        CancellationToken cancellationToken = default)
+    {
+        CharacterWorkspaceId workspaceId = RequireCareerCyberwarePurchaseWorkspace();
+        Sr5CareerCyberwarePurchaseSnapshot result =
+            _careerCyberwarePurchaseService!.Undo(workspaceId);
+        if (string.Equals(
+                result.Notice,
+                Sr5CareerCyberwarePurchaseNotices.UndoApplied,
+                StringComparison.Ordinal)
+            || result.IsRecoveryUnknown)
+        {
+            await _presenter.LoadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
+            await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+            NotifyChanged();
+        }
+        return result;
+    }
+
+    public Sr5CareerCyberwarePurchaseSnapshot ReopenCareerCyberwarePurchase()
+    {
+        if (State.WorkspaceId is not { } workspaceId
+            || _careerCyberwarePurchaseService is null)
+        {
+            throw new InvalidOperationException(
+                CharacterCyberwarePurchaseBlockers.SourceAuthorityUnavailable);
+        }
+        Sr5CareerCyberwarePurchaseSnapshot current = LoadCareerCyberwarePurchase();
+        if (!current.HasAppliedReceipt)
+            throw new InvalidOperationException("Only a verified applied receipt can be closed.");
+        return _careerCyberwarePurchaseService.Reopen(workspaceId);
+    }
+
+    private CharacterWorkspaceId RequireCareerCyberwarePurchaseWorkspace()
+    {
+        Sr5CareerCyberwarePurchaseSnapshot live = LoadCareerCyberwarePurchase();
+        if (!live.IsReady || State.WorkspaceId is not { } workspaceId)
+        {
+            throw new InvalidOperationException(
+                live.Blockers.FirstOrDefault()
+                ?? CharacterCyberwarePurchaseBlockers.SourceAuthorityUnavailable);
+        }
+        return workspaceId;
+    }
 
     public CharacterCreationContactsInteractionLoadResult LoadCreationContacts()
     {

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ChummerCoreRoot Condition="'$(ChummerCoreRoot)' == ''">../../../../chummer-core-engine</ChummerCoreRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
+    <Compile Include="NativeCompileStubs.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCyberwarePurchaseRules.cs"
+             Link="Core/CharacterCyberwarePurchaseRules.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/NativeTheme.cs" Link="Native/NativeTheme.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerFlowStrings.cs" Link="Native/Sr5CareerFlowStrings.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerCyberwarePurchaseModel.cs"
+             Link="Native/Sr5CareerCyberwarePurchaseModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerCommercePages.cs"
+             Link="Native/Sr5CareerCommercePages.cs" />
+  </ItemGroup>
+</Project>

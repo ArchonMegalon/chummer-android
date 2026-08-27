@@ -543,4 +543,74 @@ Preview: {3}…</value></data>
   <data name="Verified runner revision {0} after {1}." xml:space="preserve"><value>Verified runner revision {0} after {1}.</value></data>
   <data name="Workspace {0} · revision {1} · snapshot {2}" xml:space="preserve"><value>Workspace {0} · revision {1} · snapshot {2}</value></data>
   <data name="{0} rounds · ammo {1} → {2}{3}" xml:space="preserve"><value>{0} rounds · ammo {1} → {2}{3}</value></data>
+  <data name="-99.00 through 1000.00" xml:space="preserve"><value>-99.00 through 1000.00</value></data>
+  <data name="A new purchase draft is bound to the current saved runner revision." xml:space="preserve"><value>A new purchase draft is bound to the current saved runner revision.</value></data>
+  <data name="Apply this digest-bound Core quote to the current clean saved Career revision?" xml:space="preserve"><value>Apply this digest-bound Core quote to the current clean saved Career revision?</value></data>
+  <data name="Available nuyen" xml:space="preserve"><value>Available nuyen</value></data>
+  <data name="Base cost" xml:space="preserve"><value>Base cost</value></data>
+  <data name="Black-market discount" xml:space="preserve"><value>Black-market discount</value></data>
+  <data name="Choose a bounded commerce lane. Each destination reloads its own exact authority before review or persistence." xml:space="preserve"><value>Choose a bounded commerce lane. Each destination reloads its own exact authority before review or persistence.</value></data>
+  <data name="Choose an exact Cyberware source before selecting its grade." xml:space="preserve"><value>Choose an exact Cyberware source before selecting its grade.</value></data>
+  <data name="Choose cyberware" xml:space="preserve"><value>Choose cyberware</value></data>
+  <data name="Choose one exact grade identity" xml:space="preserve"><value>Choose one exact grade identity</value></data>
+  <data name="Choose one exact source identity" xml:space="preserve"><value>Choose one exact source identity</value></data>
+  <data name="Close this phone undo receipt and prepare a new purchase from the current saved revision?" xml:space="preserve"><value>Close this phone undo receipt and prepare a new purchase from the current saved revision?</value></data>
+  <data name="Commerce route unavailable" xml:space="preserve"><value>Commerce route unavailable</value></data>
+  <data name="Confirm and save purchase" xml:space="preserve"><value>Confirm and save purchase</value></data>
+  <data name="Confirm exact Cyberware purchase" xml:space="preserve"><value>Confirm exact Cyberware purchase</value></data>
+  <data name="Continue" xml:space="preserve"><value>Continue</value></data>
+  <data name="Core proved the purchase was not saved. Review the current quote before confirming again." xml:space="preserve"><value>Core proved the purchase was not saved. Review the current quote before confirming again.</value></data>
+  <data name="Core saved the Cyberware, Nuyen expense, Essence bookkeeping, and receipt atomically." xml:space="preserve"><value>Core saved the Cyberware, Nuyen expense, Essence bookkeeping, and receipt atomically.</value></data>
+  <data name="Cyberware" xml:space="preserve"><value>Cyberware</value></data>
+  <data name="Cyberware and bioware" xml:space="preserve"><value>Cyberware and bioware</value></data>
+  <data name="Cyberware purchase" xml:space="preserve"><value>Cyberware purchase</value></data>
+  <data name="Cyberware purchase authority unavailable" xml:space="preserve"><value>Cyberware purchase authority unavailable</value></data>
+  <data name="Discount and markup must be exact invariant numbers." xml:space="preserve"><value>Discount and markup must be exact invariant numbers.</value></data>
+  <data name="Essence discount percent" xml:space="preserve"><value>Essence discount percent</value></data>
+  <data name="Exact Core quote" xml:space="preserve"><value>Exact Core quote</value></data>
+  <data name="Finish receipt and start another purchase" xml:space="preserve"><value>Finish receipt and start another purchase</value></data>
+  <data name="Free cost" xml:space="preserve"><value>Free cost</value></data>
+  <data name="Gear" xml:space="preserve"><value>Gear</value></data>
+  <data name="Gear and implants" xml:space="preserve"><value>Gear and implants</value></data>
+  <data name="Installed Essence" xml:space="preserve"><value>Installed Essence</value></data>
+  <data name="Installed cyberware and bioware" xml:space="preserve"><value>Installed cyberware and bioware</value></data>
+  <data name="Installed gear" xml:space="preserve"><value>Installed gear</value></data>
+  <data name="Instance" xml:space="preserve"><value>Instance</value></data>
+  <data name="Integer percentage" xml:space="preserve"><value>Integer percentage</value></data>
+  <data name="Item" xml:space="preserve"><value>Item</value></data>
+  <data name="Keep purchase" xml:space="preserve"><value>Keep purchase</value></data>
+  <data name="Keep receipt" xml:space="preserve"><value>Keep receipt</value></data>
+  <data name="Markup percent" xml:space="preserve"><value>Markup percent</value></data>
+  <data name="New Gear and Bioware catalog purchases remain unavailable until Core exposes their exact source, capacity, availability, side-effect, and receipt authorities. Android never substitutes a generic XML add." xml:space="preserve"><value>New Gear and Bioware catalog purchases remain unavailable until Core exposes their exact source, capacity, availability, side-effect, and receipt authorities. Android never substitutes a generic XML add.</value></data>
+  <data name="Open exact saved Gear identities for quantity purchases, reduction, split, merge, and safe edits" xml:space="preserve"><value>Open exact saved Gear identities for quantity purchases, reduction, split, merge, and safe edits</value></data>
+  <data name="Open exact saved implant identities; eligible Cyberware exposes upgrade and sale quotes" xml:space="preserve"><value>Open exact saved implant identities; eligible Cyberware exposes upgrade and sale quotes</value></data>
+  <data name="Pinned effective cyberware catalog" xml:space="preserve"><value>Pinned effective cyberware catalog</value></data>
+  <data name="Purchase and manage exact Gear, Cyberware, and Bioware identities" xml:space="preserve"><value>Purchase and manage exact Gear, Cyberware, and Bioware identities</value></data>
+  <data name="Purchase cyberware" xml:space="preserve"><value>Purchase cyberware</value></data>
+  <data name="Quote" xml:space="preserve"><value>Quote</value></data>
+  <data name="Receipt lookup proved the interrupted purchase was already saved." xml:space="preserve"><value>Receipt lookup proved the interrupted purchase was already saved.</value></data>
+  <data name="Recovery is locked because neither the exact saved receipt nor an unchanged pre-commit revision can be proven. This phone will not replay the purchase." xml:space="preserve"><value>Recovery is locked because neither the exact saved receipt nor an unchanged pre-commit revision can be proven. This phone will not replay the purchase.</value></data>
+  <data name="Remove only the Cyberware and expense proven by this receipt in one new atomic saved revision?" xml:space="preserve"><value>Remove only the Cyberware and expense proven by this receipt in one new atomic saved revision?</value></data>
+  <data name="SR5 Career · Atomic purchase receipt" xml:space="preserve"><value>SR5 Career · Atomic purchase receipt</value></data>
+  <data name="SR5 Career · Typed commerce" xml:space="preserve"><value>SR5 Career · Typed commerce</value></data>
+  <data name="Select one exact top-level Cyberware source and grade, review Core's current Nuyen and Essence quote, then confirm separately." xml:space="preserve"><value>Select one exact top-level Cyberware source and grade, review Core's current Nuyen and Essence quote, then confirm separately.</value></data>
+  <data name="Source bytes" xml:space="preserve"><value>Source bytes</value></data>
+  <data name="Source-authorized grades" xml:space="preserve"><value>Source-authorized grades</value></data>
+  <data name="Source-bound catalog → configuration → Core quote → durable receipt" xml:space="preserve"><value>Source-bound catalog → configuration → Core quote → durable receipt</value></data>
+  <data name="Start another purchase" xml:space="preserve"><value>Start another purchase</value></data>
+  <data name="The exact Cyberware catalog changed or became unavailable. Return to the purchase page." xml:space="preserve"><value>The exact Cyberware catalog changed or became unavailable. Return to the purchase page.</value></data>
+  <data name="The exact quote and new stable identities are durably reviewed. Confirm separately." xml:space="preserve"><value>The exact quote and new stable identities are durably reviewed. Confirm separately.</value></data>
+  <data name="The exact saved-data section could not be loaded. No fallback editor was opened." xml:space="preserve"><value>The exact saved-data section could not be loaded. No fallback editor was opened.</value></data>
+  <data name="The exact saved-data section is not available for this runner and ruleset." xml:space="preserve"><value>The exact saved-data section is not available for this runner and ruleset.</value></data>
+  <data name="The phone draft was restored for this exact runner and catalog revision." xml:space="preserve"><value>The phone draft was restored for this exact runner and catalog revision.</value></data>
+  <data name="The purchase outcome is not provable from the current receipt and runner revision." xml:space="preserve"><value>The purchase outcome is not provable from the current receipt and runner revision.</value></data>
+  <data name="The receipt-bound Cyberware purchase was undone in one saved revision." xml:space="preserve"><value>The receipt-bound Cyberware purchase was undone in one saved revision.</value></data>
+  <data name="The runner or catalog changed. The selection was rebound and the old review was discarded." xml:space="preserve"><value>The runner or catalog changed. The selection was rebound and the old review was discarded.</value></data>
+  <data name="This commerce hub requires one loaded, created SR5 runner." xml:space="preserve"><value>This commerce hub requires one loaded, created SR5 runner.</value></data>
+  <data name="Undo exact Cyberware purchase" xml:space="preserve"><value>Undo exact Cyberware purchase</value></data>
+  <data name="Undo this purchase" xml:space="preserve"><value>Undo this purchase</value></data>
+  <data name="Update exact quote" xml:space="preserve"><value>Update exact quote</value></data>
+  <data name="{0} · {1} · {2} {3}" xml:space="preserve"><value>{0} · {1} · {2} {3}</value></data>
+  <data name="{0} · Essence {1} · availability {2} · {3} {4}" xml:space="preserve"><value>{0} · Essence {1} · availability {2} · {3} {4}</value></data>
+  <data name="Cost × {0} · Essence × {1} · availability {2}" xml:space="preserve"><value>Cost × {0} · Essence × {1} · availability {2}</value></data>
 </root>
