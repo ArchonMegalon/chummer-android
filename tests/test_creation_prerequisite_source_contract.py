@@ -681,22 +681,25 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.tap_bidirectional.assert_called_once_with(
             "creation-stage-method",
             timeout=180,
-            backward_scrolls=22,
-            forward_scrolls=22,
-            scroll_distance_ratio=0.22,
+            backward_scrolls=0,
+            forward_scrolls=8,
+            scroll_distance_ratio=0.68,
             exact_resource_id=True,
         )
         device.wait_exact_resource_id_bidirectional.assert_called_once_with(
             "creation-prerequisite-method",
             timeout=90,
-            backward_scrolls=6,
-            forward_scrolls=16,
+            backward_scrolls=0,
+            forward_scrolls=4,
             scroll_distance_ratio=0.18,
             evidence_prefix="creation-prerequisite-method",
             surface_name="Creation prerequisite build-method authority",
             require_tappable=False,
         )
-        self.assertEqual([mock.call(device, swipes=22)] * 2, reset.call_args_list)
+        self.assertEqual(
+            [mock.call(device, swipes=8), mock.call(device, swipes=4)],
+            reset.call_args_list,
+        )
         device.tap_until_visible.assert_not_called()
 
     def test_prerequisite_navigation_proves_route_before_reading_content(self) -> None:
@@ -718,7 +721,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(
             [
                 ("wait", ("creation-prerequisite-page",), {"timeout": 60}),
-                ("reset", (device,), {"swipes": 22}),
+                ("reset", (device,), {"swipes": 8}),
                 (
                     "wait",
                     ("creation-prerequisite-karma-budget",),
@@ -729,19 +732,22 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     ("creation-prerequisite-method",),
                     {
                         "timeout": 90,
-                        "backward_scrolls": 6,
-                        "forward_scrolls": 16,
+                        "backward_scrolls": 0,
+                        "forward_scrolls": 4,
                         "scroll_distance_ratio": 0.18,
                         "evidence_prefix": "creation-prerequisite-method",
                         "surface_name": "Creation prerequisite build-method authority",
                         "require_tappable": False,
                     },
                 ),
-                ("reset", (device,), {"swipes": 22}),
+                ("reset", (device,), {"swipes": 4}),
             ],
             events,
         )
-        self.assertEqual([mock.call(device, swipes=22)] * 2, reset.call_args_list)
+        self.assertEqual(
+            [mock.call(device, swipes=8), mock.call(device, swipes=4)],
+            reset.call_args_list,
+        )
 
     def test_bidirectional_exact_read_can_bind_a_noninteractive_authority_card(self) -> None:
         authority = driver.shared.UiNode(
@@ -1359,11 +1365,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn("distance_ratio=0.68", dashboard_source)
         self.assertIn("max_scrolls=18", dashboard_source)
         self.assertEqual(1, dashboard_source.count("reset_scroll_to_top"))
-        self.assertIn("reset_scroll_to_top(device, swipes=8)", dashboard_source)
+        self.assertIn("reset_scroll_to_top(device, swipes=12)", dashboard_source)
 
         execute_source = inspect.getsource(driver.execute)
-        self.assertIn("reset_swipes=12", execute_source)
+        self.assertIn("reset_swipes=8", execute_source)
         self.assertNotIn("reset_swipes=48", execute_source)
+
+        prerequisite_source = inspect.getsource(driver.open_prerequisite)
+        self.assertEqual(2, prerequisite_source.count("backward_scrolls=0"))
+        self.assertIn("forward_scrolls=8", prerequisite_source)
+        self.assertIn("scroll_distance_ratio=0.68", prerequisite_source)
+        self.assertIn("reset_scroll_to_top(device, swipes=8)", prerequisite_source)
+        self.assertIn("forward_scrolls=4", prerequisite_source)
 
         # The former fixed loops always spent 404 forward swipes before any
         # selector reacquisition. A stable viewport now requires exactly two.
@@ -2512,7 +2525,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn('device.wait("Select Metatype Priority"', source)
         self.assertIn("toolbar_timeout=120", source)
         self.assertIn("dashboard_timeout=30", source)
-        self.assertIn("reset_swipes=12", source)
+        self.assertIn("reset_swipes=8", source)
         self.assertNotIn("reset_swipes=48", source)
         self.assertNotIn('device.wait("creation-wizard-dashboard"', source)
         self.assertNotIn("shared.select_android_document", source)

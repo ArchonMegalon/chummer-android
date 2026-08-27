@@ -395,7 +395,7 @@ def assert_uncreated_advanced_editor_gated(
                     "Creation dashboard exposed a Career/advanced-editor control while "
                     f"the authoritative runner is still uncreated: {selector!r}"
                 )
-    shared.reset_scroll_to_top(device, swipes=8)
+    shared.reset_scroll_to_top(device, swipes=12)
 
 
 def canonical_digest(device: shared.Device, selector: str, *, scroll: bool = False) -> str:
@@ -1298,15 +1298,15 @@ def open_prerequisite(device: shared.Device) -> None:
     device.tap_bidirectional(
         "creation-stage-method",
         timeout=180,
-        backward_scrolls=22,
-        forward_scrolls=22,
-        scroll_distance_ratio=0.22,
+        backward_scrolls=0,
+        forward_scrolls=8,
+        scroll_distance_ratio=0.68,
         exact_resource_id=True,
     )
     device.wait("creation-prerequisite-page", timeout=60)
     # Android can carry the deeply scrolled Build viewport into this newly pushed page.
     # Bind the route first, then establish the native page origin before reading top cards.
-    shared.reset_scroll_to_top(device, swipes=22)
+    shared.reset_scroll_to_top(device, swipes=8)
     device.wait("creation-prerequisite-karma-budget", timeout=60, scroll=True, max_scrolls=22)
     # A full-height Android swipe can jump from the tall Karma card directly to
     # the category list and never expose the shorter method card to UIAutomator.
@@ -1314,8 +1314,8 @@ def open_prerequisite(device: shared.Device) -> None:
     device.wait_exact_resource_id_bidirectional(
         "creation-prerequisite-method",
         timeout=90,
-        backward_scrolls=6,
-        forward_scrolls=16,
+        backward_scrolls=0,
+        forward_scrolls=4,
         scroll_distance_ratio=0.18,
         evidence_prefix="creation-prerequisite-method",
         surface_name="Creation prerequisite build-method authority",
@@ -1324,7 +1324,7 @@ def open_prerequisite(device: shared.Device) -> None:
     # Both authority cards can push the binding above UIAutomator's visible hierarchy.
     # Leave this route at a deterministic origin so every caller can read the binding
     # without depending on the height of the cards it just verified.
-    shared.reset_scroll_to_top(device, swipes=22)
+    shared.reset_scroll_to_top(device, swipes=4)
 
 
 def tap_enabled_authority_option(
@@ -2093,7 +2093,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         open_build_route=False,
         toolbar_timeout=120,
         dashboard_timeout=30,
-        reset_swipes=12,
+        reset_swipes=8,
     )
     assert_uncreated_advanced_editor_gated(
         device,
