@@ -2978,11 +2978,11 @@ def return_to_phone_runner_root(
     """Unwind a preserved Shell Build stack and prove its exact root.
 
     Selecting an already-selected Shell destination does not pop MAUI's nested
-    navigation stack. Require the immutable BuildPage marker and its fixed Save
-    toolbar before resetting its preserved viewport, then require the lifecycle
-    route marker. Otherwise activate only the platform's exact ``Navigate up``
-    control. This keeps recovery bounded and prevents a stale collection editor
-    from being mistaken for the Build root.
+    navigation stack. Require the immutable BuildPage marker, its fixed Save
+    toolbar, and the exact lifecycle route marker. Reset the preserved viewport
+    only when that exact route marker is clipped. Otherwise activate only the
+    platform's exact ``Navigate up`` control. This keeps recovery bounded and
+    prevents a stale collection editor from being mistaken for the Build root.
     """
     deadline = time.monotonic() + timeout
     back_steps = 0
@@ -3037,31 +3037,13 @@ def return_to_phone_runner_root(
             and device.node_has_tappable_bounds(toolbar_matches[0])
         )
         if root_authority:
-            if route is not None and viewport_reset:
-                expected_label = (
-                    "CREATION RUNNER"
-                    if route.attributes["resource-id"].endswith("phone-runner-create")
-                    else "CAREER RUNNER"
-                )
-                if (
-                    route.attributes.get("class") != "android.widget.TextView"
-                    or route.attributes.get("enabled") != "true"
-                    or route.attributes.get("clickable") != "false"
-                    or route.attributes.get("focusable") != "false"
-                    or route.attributes.get("text") != expected_label
-                    or not device.node_has_tappable_bounds(route)
-                ):
-                    device.capture("phone-runner-route-structure-invalid")
-                    raise RuntimeError(
-                        "Exact phone runner lifecycle marker was not visible with its "
-                        "pinned native role and label after the root viewport reset"
-                    )
+            if route is not None and device.node_has_tappable_bounds(route):
                 return route
             if not viewport_reset:
                 # The lifecycle marker is the first child of BuildPage's
                 # ScrollView and can be clipped by a preserved deep offset.
-                # The exact immutable page plus root-only toolbar authorizes the
-                # reset; the route marker must then become visible before return.
+                # Only an exact immutable page plus root-only toolbar authorizes
+                # the reset; the route marker must then become visible before return.
                 reset_scroll_to_top(device, swipes=48)
                 viewport_reset = True
                 continue

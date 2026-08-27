@@ -329,7 +329,9 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             [page, toolbar, clipped_route],
             [page, toolbar, route],
         ]
-        device.node_has_tappable_bounds.return_value = True
+        device.node_has_tappable_bounds.side_effect = (
+            lambda node: node is not clipped_route
+        )
 
         with patch.object(DRIVER, "reset_scroll_to_top") as reset_scroll:
             observed = DRIVER.wait_for_phone_runner_route(device, created=True)
@@ -404,7 +406,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             ],
             device.shell.call_args_list,
         )
-        reset_scroll.assert_called_once_with(device, swipes=48)
+        reset_scroll.assert_not_called()
 
     def test_phone_runner_root_does_not_accept_toolbar_without_exact_route(self) -> None:
         device = Mock(spec=DRIVER.Device)
@@ -456,7 +458,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             observed = DRIVER.return_to_phone_runner_root(device, timeout=1)
 
         self.assertIs(route, observed)
-        reset_scroll.assert_called_once_with(device, swipes=48)
+        reset_scroll.assert_not_called()
         device.shell.assert_not_called()
 
     def test_phone_runner_root_rejects_toolbar_outside_viewport(self) -> None:
@@ -483,10 +485,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
     def test_phone_runner_root_rejects_route_omitted_after_viewport_reset(self) -> None:
         device = Mock(spec=DRIVER.Device)
-        route = self.phone_runner_route()
+        route = self.phone_runner_route(bounds="[53,-6506][1028,-6467]")
         root = [self.phone_runner_page(), self.phone_runner_toolbar(), route]
         device.hierarchy.side_effect = [root, root[:2], root[:2]]
-        device.node_has_tappable_bounds.return_value = True
+        device.node_has_tappable_bounds.side_effect = lambda node: node is not route
 
         with (
             patch.object(
