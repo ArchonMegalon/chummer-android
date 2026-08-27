@@ -1,6 +1,7 @@
 using Chummer.Android.Platform;
 using Chummer.Android.Native;
 using Chummer.Application.Characters;
+using Chummer.Application.LifeModules;
 using Chummer.Application.Tools;
 using Chummer.Application.Workspaces;
 using Chummer.Desktop.Runtime;
@@ -84,6 +85,14 @@ public static class MauiProgram
             contentPath,
             contentPath,
             "android");
+        builder.Services.AddSingleton<ILifeModuleDecisionAuthority>(provider =>
+            new CharacterCreationFoundationLifeModuleDecisionAuthority(
+                provider.GetRequiredService<IWorkspaceStore>(),
+                provider.GetRequiredService<ICharacterCreationFoundationService>(),
+                provider.GetRequiredService<ICharacterFileQueries>()));
+        builder.Services.AddSingleton<LifeModuleOriginDossierService>();
+        builder.Services.AddSingleton<LifeModuleOriginDossierInteractionService>();
+        builder.Services.AddSingleton<OriginDossierLifeModulePhoneRuntime>();
         builder.Services.AddSingleton<ICareerQualityAtomicWorkspace,
             AndroidCareerQualityAtomicWorkspace>();
         builder.Services.AddSingleton(new HttpClient

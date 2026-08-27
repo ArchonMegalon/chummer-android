@@ -200,6 +200,7 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private readonly IChummerClient _client;
     private readonly IWorkspaceOperationCoordinator _workspaceOperationCoordinator;
     private readonly ICharacterCreationFoundationInteractionPresenter _foundationInteractionPresenter;
+    private readonly OriginDossierLifeModulePhoneRuntime? _originLifeModuleRuntime;
     private readonly ICharacterCreationContactsInteractionPresenter _creationContactsPresenter;
     private readonly ICharacterCreationLifestylesInteractionPresenter _creationLifestylesPresenter;
     private readonly ICharacterCreationPrerequisiteService _creationPrerequisiteService;
@@ -275,12 +276,14 @@ public sealed class RunnerSessionCoordinator : IDisposable
         ICharacterCareerSkillGroupAdvanceService? careerSkillGroupService = null,
         ICharacterAfterRunSettlementService? afterRunSettlementService = null,
         IAndroidAfterRunProposalCatalog? afterRunProposalCatalog = null,
-        ICharacterCreationMagicResonanceService? creationMagicResonanceService = null)
+        ICharacterCreationMagicResonanceService? creationMagicResonanceService = null,
+        OriginDossierLifeModulePhoneRuntime? originLifeModuleRuntime = null)
     {
         _presenter = presenter;
         _client = client;
         _workspaceOperationCoordinator = workspaceOperationCoordinator;
         _foundationInteractionPresenter = foundationInteractionPresenter;
+        _originLifeModuleRuntime = originLifeModuleRuntime;
         _creationContactsPresenter = creationContactsPresenter;
         _creationLifestylesPresenter = creationLifestylesPresenter;
         _creationPrerequisiteService = creationPrerequisiteService;
@@ -1699,6 +1702,63 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     public CharacterCreationFoundationInteractionLoadResult LoadCreationFoundation()
         => _foundationInteractionPresenter.Load(State);
+
+    internal bool CanOpenSr5LifeModuleOrigin()
+        => _originLifeModuleRuntime is not null
+           && State.Profile?.Created == false
+           && State.WorkspaceId is { } workspaceId
+           && State.CreationWizard is { } wizard
+           && string.Equals(wizard.BuildMethod, CharacterCreationBuildMethods.LifeModules, StringComparison.Ordinal)
+           && State.CreationFoundation is { } foundation
+           && string.Equals(foundation.RulesetId, "sr5", StringComparison.Ordinal)
+           && string.Equals(foundation.BuildMethod, CharacterCreationBuildMethods.LifeModules, StringComparison.Ordinal)
+           && foundation.Binding.WorkspaceId == workspaceId
+           && foundation.Binding.ContentRevision == State.ContentRevision
+           && foundation.Binding.SavedRevision == State.SavedRevision
+           && !foundation.CharacterCreated;
+
+    internal Task<OriginDossierLifeModulePhoneResult> OpenSr5LifeModuleOriginAsync(
+        CancellationToken cancellationToken = default)
+        => CanOpenSr5LifeModuleOrigin() && State.WorkspaceId is { } workspaceId
+            ? _originLifeModuleRuntime!.OpenAsync(workspaceId.Value, cancellationToken)
+            : Task.FromResult(new OriginDossierLifeModulePhoneResult(
+                "blocked",
+                null,
+                ["sr5-life-module-origin-authority-unavailable"]));
+
+    internal Task<OriginDossierLifeModulePhoneResult> PrepareSr5LifeModuleOriginAsync(
+        string choiceId,
+        CancellationToken cancellationToken = default)
+        => CanOpenSr5LifeModuleOrigin() && State.WorkspaceId is { } workspaceId
+            ? _originLifeModuleRuntime!.PrepareAsync(workspaceId.Value, choiceId, cancellationToken)
+            : Task.FromResult(new OriginDossierLifeModulePhoneResult(
+                "blocked",
+                null,
+                ["sr5-life-module-origin-authority-unavailable"]));
+
+    internal async Task<OriginDossierLifeModulePhoneResult> ConfirmSr5LifeModuleOriginAsync(
+        string choiceId,
+        string previewDigest,
+        CancellationToken cancellationToken = default)
+    {
+        if (!CanOpenSr5LifeModuleOrigin() || State.WorkspaceId is not { } workspaceId)
+        {
+            return new OriginDossierLifeModulePhoneResult(
+                "blocked",
+                null,
+                ["sr5-life-module-origin-authority-unavailable"]);
+        }
+        OriginDossierLifeModulePhoneResult result = await _originLifeModuleRuntime!
+            .ConfirmAsync(workspaceId.Value, choiceId, previewDigest, cancellationToken);
+        if (result.IsSuccess && result.Completed)
+        {
+            await _presenter.LoadAsync(workspaceId, cancellationToken);
+            await SyncShellAsync(cancellationToken);
+            _notice = "Life Module decision saved. Continue character creation.";
+            NotifyChanged();
+        }
+        return result;
+    }
 
     public CharacterCreationFoundationInteractionPrepareResult PrepareCreationFoundation(
         CharacterCreationFoundationSelectionInput input)

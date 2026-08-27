@@ -896,8 +896,15 @@ public sealed class BuildPage : NativePageBase
         foreach (CharacterCreationWizardStageState stage in snapshot.Steps)
         {
             bool foundation = IsFoundationStage(stage.StepId);
+            bool lifeModuleStep = string.Equals(
+                stage.StepId,
+                CharacterCreationWizardStepIds.LifeModules,
+                StringComparison.Ordinal);
+            bool lifeModuleOrigin = lifeModuleStep && stage.IsAvailable
+                && Coordinator.CanOpenSr5LifeModuleOrigin();
             bool priorityPrerequisite = IsPrerequisiteStage(stage.StepId, snapshot.BuildMethod);
             bool canOpenFoundation = foundation
+                                     && !lifeModuleStep
                                      && stage.IsAvailable
                                      && HasAuthoritativeFoundationOptions();
             bool canOpenPrerequisite = priorityPrerequisite
@@ -933,7 +940,7 @@ public sealed class BuildPage : NativePageBase
             bool canOpenResources = resourcesStage
                                     && stage.IsAvailable
                                     && HasAuthoritativeResources(creationResources);
-            bool canOpen = canOpenFoundation || canOpenPrerequisite || canOpenAttributes
+            bool canOpen = lifeModuleOrigin || canOpenFoundation || canOpenPrerequisite || canOpenAttributes
                            || canOpenSkills || canOpenQualities || canOpenMagicResonance
                            || canOpenContacts || canOpenResources;
             bool projectionBoundStage =
@@ -945,7 +952,9 @@ public sealed class BuildPage : NativePageBase
                 skillStage,
                 contactsStage,
                 resourcesStage);
-            Func<Task> selected = canOpenResources
+            Func<Task> selected = lifeModuleOrigin
+                ? OpenSr5LifeModuleOriginAsync
+                : canOpenResources
                 ? OpenCreationResourcesAsync
                 : canOpenPrerequisite
                 ? OpenCreationPrerequisiteAsync
@@ -962,7 +971,9 @@ public sealed class BuildPage : NativePageBase
                 : canOpenFoundation
                     ? OpenCreationFoundationAsync
                     : () => Task.CompletedTask;
-            string detail = canOpenResources
+            string detail = lifeModuleOrigin
+                ? "Read the source-bound Origin scene, preview exact effects, then confirm"
+                : canOpenResources
                 ? CreationResourcesStageDetail(creationResources!.State!)
                 : canOpenPrerequisite
                 ? PrerequisiteStageDetail(prerequisite!.Value!)
@@ -1078,7 +1089,14 @@ public sealed class BuildPage : NativePageBase
                 CharacterCreationWizardStepIds.Attributes,
                 StringComparison.Ordinal);
             bool foundation = IsFoundationStage(stepId);
+            bool lifeModuleStep = string.Equals(
+                stepId,
+                CharacterCreationWizardStepIds.LifeModules,
+                StringComparison.Ordinal);
+            bool lifeModuleOrigin = lifeModuleStep && stage.IsAvailable
+                && Coordinator.CanOpenSr5LifeModuleOrigin();
             bool canOpenFoundation = foundation
+                                     && !lifeModuleStep
                                      && stage.IsAvailable
                                      && HasAuthoritativeFoundationOptions();
             bool canOpenAttributes = attributeStep
@@ -1106,10 +1124,12 @@ public sealed class BuildPage : NativePageBase
                                     && HasAuthoritativeResources(creationResources);
             // The post-create AttributeEditRequest path must never serve as a wizard fallback.
             // Core's dedicated creation authority is the only Attributes route here.
-            bool canOpen = canOpenFoundation || canOpenAttributes || canOpenSkills
+            bool canOpen = lifeModuleOrigin || canOpenFoundation || canOpenAttributes || canOpenSkills
                            || canOpenQualities || canOpenMagicResonance || canOpenContacts
                            || canOpenResources;
-            Func<Task> selected = canOpenResources
+            Func<Task> selected = lifeModuleOrigin
+                ? OpenSr5LifeModuleOriginAsync
+                : canOpenResources
                 ? OpenCreationResourcesAsync
                 : canOpenFoundation
                 ? OpenCreationFoundationAsync
@@ -1124,7 +1144,9 @@ public sealed class BuildPage : NativePageBase
                 : canOpenContacts
                     ? OpenCreationContactsAsync
                 : () => Task.CompletedTask;
-            string detail = canOpenResources
+            string detail = lifeModuleOrigin
+                ? "Read the source-bound Origin scene, preview exact effects, then confirm"
+                : canOpenResources
                 ? CreationResourcesStageDetail(creationResources!.State!)
                 : canOpenFoundation
                 ? "Choose an exact metatype and Nationality Life Module"
@@ -1334,6 +1356,50 @@ public sealed class BuildPage : NativePageBase
 
     private Task OpenCreationFoundationAsync()
         => Navigation.PushAsync(new CreationFoundationPage(Coordinator));
+
+    private async Task OpenSr5LifeModuleOriginAsync()
+    {
+        OriginDossierLifeModulePhoneResult opened =
+            await Coordinator.OpenSr5LifeModuleOriginAsync();
+        if (!opened.IsSuccess || opened.State is null)
+        {
+            await DisplayAlert(
+                "Life Modules unavailable",
+                opened.Blockers.FirstOrDefault()
+                ?? "The source-bound SR5 Life Module authority is unavailable.",
+                "OK");
+            return;
+        }
+
+        var page = new OriginDossierLifeModuleDecisionPage(
+            opened.State,
+            CultureInfo.CurrentUICulture.Name,
+            async choiceId =>
+            {
+                OriginDossierLifeModulePhoneResult prepared =
+                    await Coordinator.PrepareSr5LifeModuleOriginAsync(choiceId);
+                if (prepared.IsSuccess)
+                    return prepared.State;
+                await DisplayAlert(
+                    "Preview unavailable",
+                    prepared.Blockers.FirstOrDefault() ?? "The decision changed. Reopen this step.",
+                    "OK");
+                return null;
+            },
+            async (choiceId, previewDigest) =>
+            {
+                OriginDossierLifeModulePhoneResult confirmed =
+                    await Coordinator.ConfirmSr5LifeModuleOriginAsync(choiceId, previewDigest);
+                if (confirmed.IsSuccess && confirmed.Completed)
+                    return true;
+                await DisplayAlert(
+                    "Decision not saved",
+                    confirmed.Blockers.FirstOrDefault() ?? "The authority rejected the decision.",
+                    "OK");
+                return false;
+            });
+        await Navigation.PushAsync(page);
+    }
 
     private Task OpenCreationPrerequisiteAsync()
         => Navigation.PushAsync(new CreationPrerequisitePage(Coordinator));

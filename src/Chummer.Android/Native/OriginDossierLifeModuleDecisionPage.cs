@@ -9,17 +9,17 @@ namespace Chummer.Android.Native;
 /// </summary>
 internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
 {
-    private readonly OriginDossierLifeModuleDecisionState _state;
+    private OriginDossierLifeModuleDecisionState _state;
     private readonly OriginDossierNarrativeLocaleBinding _locale;
     private readonly AndroidSurfaceCopy _copy;
-    private readonly Func<string, Task> _prepareChoice;
-    private readonly Func<string, string, Task> _confirmChoice;
+    private readonly Func<string, Task<OriginDossierLifeModuleDecisionState?>> _prepareChoice;
+    private readonly Func<string, string, Task<bool>> _confirmChoice;
 
     public OriginDossierLifeModuleDecisionPage(
         OriginDossierLifeModuleDecisionState state,
         string activeAppLocale,
-        Func<string, Task> prepareChoice,
-        Func<string, string, Task> confirmChoice)
+        Func<string, Task<OriginDossierLifeModuleDecisionState?>> prepareChoice,
+        Func<string, string, Task<bool>> confirmChoice)
     {
         _state = state ?? throw new ArgumentNullException(nameof(state));
         OriginDossierNarrativeLocaleBinding locale =
@@ -81,7 +81,16 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 : NativeTheme.SecondaryButton(choice.Label);
             select.AutomationId = $"origin-life-choice-{choiceIndex}";
             string choiceId = choice.ChoiceId;
-            select.Clicked += async (_, _) => await _prepareChoice(choiceId);
+            select.Clicked += async (_, _) =>
+            {
+                OriginDossierLifeModuleDecisionState? prepared =
+                    await _prepareChoice(choiceId);
+                if (prepared is not null)
+                {
+                    _state = prepared;
+                    Content = new ScrollView { Content = BuildBody() };
+                }
+            };
             card.Add(select);
 
             Label source = NativeTheme.Body(
@@ -126,7 +135,11 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             confirm.AutomationId = "origin-life-confirm";
             confirm.IsEnabled = _state.CanConfirm;
             confirm.Clicked += async (_, _) =>
-                await _confirmChoice(selectedChoiceId, previewDigest);
+            {
+                bool completed = await _confirmChoice(selectedChoiceId, previewDigest);
+                if (completed)
+                    await Navigation.PopAsync();
+            };
             body.Add(confirm);
         }
 
