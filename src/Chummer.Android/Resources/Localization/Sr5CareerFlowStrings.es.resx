@@ -627,4 +627,74 @@ Vista previa: {3}…</value></data>
   <data name="{0} selected · source limits apply" xml:space="preserve"><value>{0} seleccionado · se aplican límites de origen</value></data>
   <data name="{0} · level {1} · {2} · availability {3}" xml:space="preserve"><value>{0} · nivel {1} · {2} · disponibilidad {3}</value></data>
   <data name="{0}source {1} · cost ×{2} · threshold {3}" xml:space="preserve"><value>{0}fuente {1} · coste ×{2} · umbral {3}</value></data>
+  <data name="-99.00 through 1000.00" xml:space="preserve"><value>de -99,00 a 1000,00</value></data>
+  <data name="A new purchase draft is bound to the current saved runner revision." xml:space="preserve"><value>Un nuevo borrador de compra está vinculado a la revisión guardada actual del runner.</value></data>
+  <data name="Apply this digest-bound Core quote to the current clean saved Career revision?" xml:space="preserve"><value>¿Aplicar esta cotización de Core vinculada por resumen a la revisión de Carrera actual, limpia y guardada?</value></data>
+  <data name="Available nuyen" xml:space="preserve"><value>Nuyen disponibles</value></data>
+  <data name="Base cost" xml:space="preserve"><value>Coste base</value></data>
+  <data name="Black-market discount" xml:space="preserve"><value>Descuento de mercado negro</value></data>
+  <data name="Choose a bounded commerce lane. Each destination reloads its own exact authority before review or persistence." xml:space="preserve"><value>Elige una ruta comercial limitada. Cada destino recarga su propia autoridad exacta antes de revisar o guardar.</value></data>
+  <data name="Choose an exact Cyberware source before selecting its grade." xml:space="preserve"><value>Elige una fuente exacta de ciberware antes de seleccionar su grado.</value></data>
+  <data name="Choose cyberware" xml:space="preserve"><value>Elegir ciberware</value></data>
+  <data name="Choose one exact grade identity" xml:space="preserve"><value>Elige una identidad de grado exacta</value></data>
+  <data name="Choose one exact source identity" xml:space="preserve"><value>Elige una identidad de fuente exacta</value></data>
+  <data name="Close this phone undo receipt and prepare a new purchase from the current saved revision?" xml:space="preserve"><value>¿Cerrar este recibo de deshacer del teléfono y preparar otra compra desde la revisión guardada actual?</value></data>
+  <data name="Commerce route unavailable" xml:space="preserve"><value>Ruta comercial no disponible</value></data>
+  <data name="Confirm and save purchase" xml:space="preserve"><value>Confirmar y guardar compra</value></data>
+  <data name="Confirm exact Cyberware purchase" xml:space="preserve"><value>Confirmar compra exacta de ciberware</value></data>
+  <data name="Continue" xml:space="preserve"><value>Continuar</value></data>
+  <data name="Core proved the purchase was not saved. Review the current quote before confirming again." xml:space="preserve"><value>Core demostró que la compra no se guardó. Revisa la cotización actual antes de volver a confirmar.</value></data>
+  <data name="Core saved the Cyberware, Nuyen expense, Essence bookkeeping, and receipt atomically." xml:space="preserve"><value>Core guardó atómicamente el ciberware, el gasto de Nuyen, la contabilidad de Esencia y el recibo.</value></data>
+  <data name="Cyberware" xml:space="preserve"><value>Ciberware</value></data>
+  <data name="Cyberware and bioware" xml:space="preserve"><value>Ciberware y bioware</value></data>
+  <data name="Cyberware purchase" xml:space="preserve"><value>Compra de ciberware</value></data>
+  <data name="Cyberware purchase authority unavailable" xml:space="preserve"><value>Autoridad de compra de ciberware no disponible</value></data>
+  <data name="Discount and markup must be exact invariant numbers." xml:space="preserve"><value>El descuento y el recargo deben ser números invariantes exactos.</value></data>
+  <data name="Essence discount percent" xml:space="preserve"><value>Porcentaje de descuento de Esencia</value></data>
+  <data name="Exact Core quote" xml:space="preserve"><value>Cotización exacta de Core</value></data>
+  <data name="Finish receipt and start another purchase" xml:space="preserve"><value>Finalizar recibo e iniciar otra compra</value></data>
+  <data name="Free cost" xml:space="preserve"><value>Coste gratuito</value></data>
+  <data name="Gear" xml:space="preserve"><value>Equipo</value></data>
+  <data name="Gear and implants" xml:space="preserve"><value>Equipo e implantes</value></data>
+  <data name="Installed Essence" xml:space="preserve"><value>Esencia instalada</value></data>
+  <data name="Installed cyberware and bioware" xml:space="preserve"><value>Ciberware y bioware instalados</value></data>
+  <data name="Installed gear" xml:space="preserve"><value>Equipo instalado</value></data>
+  <data name="Instance" xml:space="preserve"><value>Instancia</value></data>
+  <data name="Integer percentage" xml:space="preserve"><value>Porcentaje entero</value></data>
+  <data name="Item" xml:space="preserve"><value>Objeto</value></data>
+  <data name="Keep purchase" xml:space="preserve"><value>Mantener compra</value></data>
+  <data name="Keep receipt" xml:space="preserve"><value>Mantener recibo</value></data>
+  <data name="Markup percent" xml:space="preserve"><value>Porcentaje de recargo</value></data>
+  <data name="New Gear and Bioware catalog purchases remain unavailable until Core exposes their exact source, capacity, availability, side-effect, and receipt authorities. Android never substitutes a generic XML add." xml:space="preserve"><value>Las compras nuevas de equipo y bioware del catálogo no estarán disponibles hasta que Core exponga sus autoridades exactas de fuente, capacidad, disponibilidad, efectos secundarios y recibos. Android nunca las sustituye por una inserción XML genérica.</value></data>
+  <data name="Open exact saved Gear identities for quantity purchases, reduction, split, merge, and safe edits" xml:space="preserve"><value>Abrir identidades exactas de equipo guardado para compras por cantidad, reducción, división, combinación y ediciones seguras</value></data>
+  <data name="Open exact saved implant identities; eligible Cyberware exposes upgrade and sale quotes" xml:space="preserve"><value>Abrir identidades exactas de implantes guardados; el ciberware apto ofrece cotizaciones de mejora y venta</value></data>
+  <data name="Pinned effective cyberware catalog" xml:space="preserve"><value>Catálogo efectivo de ciberware fijado</value></data>
+  <data name="Purchase and manage exact Gear, Cyberware, and Bioware identities" xml:space="preserve"><value>Comprar y gestionar identidades exactas de equipo, ciberware y bioware</value></data>
+  <data name="Purchase cyberware" xml:space="preserve"><value>Comprar ciberware</value></data>
+  <data name="Quote" xml:space="preserve"><value>Cotización</value></data>
+  <data name="Receipt lookup proved the interrupted purchase was already saved." xml:space="preserve"><value>La búsqueda del recibo demostró que la compra interrumpida ya estaba guardada.</value></data>
+  <data name="Recovery is locked because neither the exact saved receipt nor an unchanged pre-commit revision can be proven. This phone will not replay the purchase." xml:space="preserve"><value>La recuperación está bloqueada porque no se puede demostrar ni el recibo guardado exacto ni una revisión anterior al commit sin cambios. Este teléfono no repetirá la compra.</value></data>
+  <data name="Remove only the Cyberware and expense proven by this receipt in one new atomic saved revision?" xml:space="preserve"><value>¿Eliminar solo el ciberware y el gasto demostrados por este recibo en una nueva revisión atómica guardada?</value></data>
+  <data name="SR5 Career · Atomic purchase receipt" xml:space="preserve"><value>SR5 Carrera · Recibo de compra atómico</value></data>
+  <data name="SR5 Career · Typed commerce" xml:space="preserve"><value>SR5 Carrera · Comercio tipado</value></data>
+  <data name="Select one exact top-level Cyberware source and grade, review Core's current Nuyen and Essence quote, then confirm separately." xml:space="preserve"><value>Selecciona una fuente y un grado exactos de ciberware de nivel superior, revisa la cotización actual de Nuyen y Esencia de Core y luego confirma por separado.</value></data>
+  <data name="Source bytes" xml:space="preserve"><value>Bytes de fuente</value></data>
+  <data name="Source-authorized grades" xml:space="preserve"><value>Grados autorizados por la fuente</value></data>
+  <data name="Source-bound catalog → configuration → Core quote → durable receipt" xml:space="preserve"><value>Catálogo vinculado a fuente → configuración → cotización de Core → recibo duradero</value></data>
+  <data name="Start another purchase" xml:space="preserve"><value>Iniciar otra compra</value></data>
+  <data name="The exact Cyberware catalog changed or became unavailable. Return to the purchase page." xml:space="preserve"><value>El catálogo exacto de ciberware cambió o dejó de estar disponible. Vuelve a la página de compra.</value></data>
+  <data name="The exact quote and new stable identities are durably reviewed. Confirm separately." xml:space="preserve"><value>La cotización exacta y las nuevas identidades estables están revisadas de forma duradera. Confirma por separado.</value></data>
+  <data name="The exact saved-data section could not be loaded. No fallback editor was opened." xml:space="preserve"><value>No se pudo cargar la sección exacta de datos guardados. No se abrió ningún editor alternativo.</value></data>
+  <data name="The exact saved-data section is not available for this runner and ruleset." xml:space="preserve"><value>La sección exacta de datos guardados no está disponible para este runner y conjunto de reglas.</value></data>
+  <data name="The phone draft was restored for this exact runner and catalog revision." xml:space="preserve"><value>El borrador del teléfono se restauró para este runner exacto y esta revisión de catálogo.</value></data>
+  <data name="The purchase outcome is not provable from the current receipt and runner revision." xml:space="preserve"><value>El resultado de la compra no se puede demostrar con el recibo y la revisión del runner actuales.</value></data>
+  <data name="The receipt-bound Cyberware purchase was undone in one saved revision." xml:space="preserve"><value>La compra de ciberware vinculada al recibo se deshizo en una revisión guardada.</value></data>
+  <data name="The runner or catalog changed. The selection was rebound and the old review was discarded." xml:space="preserve"><value>El runner o el catálogo cambiaron. La selección se volvió a vincular y se descartó la revisión anterior.</value></data>
+  <data name="This commerce hub requires one loaded, created SR5 runner." xml:space="preserve"><value>Este centro de comercio requiere un runner de SR5 cargado y creado.</value></data>
+  <data name="Undo exact Cyberware purchase" xml:space="preserve"><value>Deshacer compra exacta de ciberware</value></data>
+  <data name="Undo this purchase" xml:space="preserve"><value>Deshacer esta compra</value></data>
+  <data name="Update exact quote" xml:space="preserve"><value>Actualizar cotización exacta</value></data>
+  <data name="{0} · {1} · {2} {3}" xml:space="preserve"><value>{0} · {1} · {2} {3}</value></data>
+  <data name="{0} · Essence {1} · availability {2} · {3} {4}" xml:space="preserve"><value>{0} · Esencia {1} · disponibilidad {2} · {3} {4}</value></data>
+  <data name="Cost × {0} · Essence × {1} · availability {2}" xml:space="preserve"><value>Coste × {0} · Esencia × {1} · disponibilidad {2}</value></data>
 </root>

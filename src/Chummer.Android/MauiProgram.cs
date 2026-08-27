@@ -100,6 +100,11 @@ public static class MauiProgram
         builder.Services.AddSingleton<ISr5CustomDrugWorkspaceStore,
             AndroidSr5CustomDrugWorkspaceStore>();
         builder.Services.AddSingleton<Sr5CustomDrugLabService>();
+        builder.Services.AddSingleton<ISr5CareerCyberwarePurchaseCheckpointStore,
+            PreferencesSr5CareerCyberwarePurchaseCheckpointStore>();
+        builder.Services.AddSingleton<ISr5CareerCyberwareWorkspaceStore,
+            AndroidSr5CareerCyberwareWorkspaceStore>();
+        builder.Services.AddSingleton<Sr5CareerCyberwarePurchaseService>();
         builder.Services.AddSingleton(new HttpClient
         {
             BaseAddress = new Uri("https://chummer.run"),

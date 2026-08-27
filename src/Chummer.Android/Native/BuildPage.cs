@@ -379,6 +379,11 @@ public sealed class BuildPage : NativePageBase
             OpenSr5CareerSpecializationWizardAsync,
             automationId: "build-career-specialization"));
         card.Add(NativeTheme.NavigationRow(
+            Sr5CareerFlowStrings.Text("Gear and implants"),
+            Sr5CareerFlowStrings.Text("Purchase and manage exact Gear, Cyberware, and Bioware identities"),
+            () => Navigation.PushAsync(new Sr5CareerCommerceHubPage(Coordinator)),
+            automationId: "build-career-commerce"));
+        card.Add(NativeTheme.NavigationRow(
             Sr5CustomDrugLabPage.RouteTitle(CharacterCustomDrugContext.Career),
             Sr5CustomDrugLabPage.RouteDetail(CharacterCustomDrugContext.Career),
             () => Navigation.PushAsync(new Sr5CustomDrugLabPage(
