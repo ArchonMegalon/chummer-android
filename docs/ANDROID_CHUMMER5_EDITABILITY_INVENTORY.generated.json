@@ -604,7 +604,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "10948278f0215fe8eadfdfe3aa8d27624d7b1e1e519ddac851033555268c94c1"
+        "sha256": "a6fd05341c1487c129708d262517c44b0d799d84b8b553e0d2250222e9a3b274"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -1039,7 +1039,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "e41d7aaf3710114393d513cfc6b9d3c5bf71218ed3fb276673e422fc9d12770a"
+        "sha256": "b0455dafcc02f0c9b00cfbe2df61c3fbd07a5bf535205da4fdb32681ee9a2656"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",

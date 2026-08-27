@@ -26,6 +26,8 @@ internal static class Program
             (nameof(PreAuthorityCreationSnapshotCanScheduleBootstrapAsync), PreAuthorityCreationSnapshotCanScheduleBootstrapAsync),
             (nameof(BuildPageProjectsExactlyOneLifecycleRouteAsync), BuildPageProjectsExactlyOneLifecycleRouteAsync),
             (nameof(DurableSaveNoticeFailsClosedAcrossStateChangesAsync), DurableSaveNoticeFailsClosedAcrossStateChangesAsync),
+            (nameof(AuthoritativeCreateReusesExactlyOnePresenterShellSyncAsync), AuthoritativeCreateReusesExactlyOnePresenterShellSyncAsync),
+            (nameof(AmbiguousOrFailedCreateRetainsFullAndroidShellSyncAsync), AmbiguousOrFailedCreateRetainsFullAndroidShellSyncAsync),
             (nameof(PlayReviewPolicyEnforcesUsageVersionAndCooldownAsync), PlayReviewPolicyEnforcesUsageVersionAndCooldownAsync),
             (nameof(PlayReviewSafetyRejectsEveryMutationBoundaryAsync), PlayReviewSafetyRejectsEveryMutationBoundaryAsync),
             (nameof(PlayReviewInstallGateAndBackupBindingFailClosedAsync), PlayReviewInstallGateAndBackupBindingFailClosedAsync),
@@ -176,6 +178,113 @@ internal static class Program
             && BuildPageUiProjection.SaveToolbarText(hasDurableSaveNotice: false) == "Save",
             "The toolbar must expose Saved. only for an exact durable notice match.");
         return Task.CompletedTask;
+    }
+
+    private static async Task AuthoritativeCreateReusesExactlyOnePresenterShellSyncAsync()
+    {
+        var previousWorkspace = new CharacterWorkspaceId("previous-runner");
+        var createdWorkspace = new CharacterWorkspaceId("created-runner");
+        CharacterOverviewState created = NewCreationOverview(createdWorkspace, 1, 1);
+        var timing = new NativeCreationBootstrapTimingSnapshot(
+            StartedTimestamp: 10,
+            LoadStartedTimestamp: 20,
+            WorkspaceStatePublishedTimestamp: 30,
+            PublishedWorkspaceId: createdWorkspace.Value);
+
+        bool reuse = RunnerSessionCoordinator.CanReusePresenterShellSync(
+            "create_character",
+            previousWorkspace,
+            created,
+            timing);
+        Require(
+            reuse,
+            "An exact successful authoritative create must reuse Presentation's completed shell sync.");
+
+        int fullShellSyncCount = 0;
+        int retainedAndroidRefreshCount = 0;
+        await RunnerSessionCoordinator.ExecutePostDialogShellSyncAsync(
+            reuse,
+            _ =>
+            {
+                fullShellSyncCount++;
+                return Task.CompletedTask;
+            },
+            _ =>
+            {
+                retainedAndroidRefreshCount++;
+                return Task.CompletedTask;
+            },
+            CancellationToken.None);
+        Require(
+            fullShellSyncCount == 0 && retainedAndroidRefreshCount == 1,
+            "Successful create must skip exactly the one duplicate shell sync while retaining one Android refresh.");
+    }
+
+    private static async Task AmbiguousOrFailedCreateRetainsFullAndroidShellSyncAsync()
+    {
+        var previousWorkspace = new CharacterWorkspaceId("previous-runner");
+        var createdWorkspace = new CharacterWorkspaceId("created-runner");
+        CharacterOverviewState created = NewCreationOverview(createdWorkspace, 1, 1);
+        var exactTiming = new NativeCreationBootstrapTimingSnapshot(
+            StartedTimestamp: 10,
+            LoadStartedTimestamp: 20,
+            WorkspaceStatePublishedTimestamp: 30,
+            PublishedWorkspaceId: createdWorkspace.Value);
+        DesktopDialogState stillOpen = new(
+            "dialog.new_character",
+            "New runner",
+            null,
+            [],
+            [new DesktopDialogAction("create_character", "Create")]);
+        (string Name, string ActionId, CharacterWorkspaceId? Before, CharacterOverviewState State, NativeCreationBootstrapTimingSnapshot? Timing)[] rejected =
+        [
+            ("other action", "save", previousWorkspace, created, exactTiming),
+            ("missing timing", "create_character", previousWorkspace, created, null),
+            ("load start absent", "create_character", previousWorkspace, created,
+                exactTiming with { LoadStartedTimestamp = 0 }),
+            ("workspace publication absent", "create_character", previousWorkspace, created,
+                exactTiming with { WorkspaceStatePublishedTimestamp = 0 }),
+            ("published workspace mismatch", "create_character", previousWorkspace, created,
+                exactTiming with { PublishedWorkspaceId = "different-runner" }),
+            ("same workspace", "create_character", createdWorkspace, created, exactTiming),
+            ("presenter failure", "create_character", previousWorkspace,
+                created with { Error = "bootstrap failed" }, exactTiming),
+            ("presenter still busy", "create_character", previousWorkspace,
+                created with { IsBusy = true }, exactTiming),
+            ("dialog still open", "create_character", previousWorkspace,
+                created with { ActiveDialog = stillOpen }, exactTiming),
+            ("career profile", "create_character", previousWorkspace,
+                created with { Profile = created.Profile! with { Created = true } }, exactTiming)
+        ];
+
+        foreach (var candidate in rejected)
+        {
+            bool reuse = RunnerSessionCoordinator.CanReusePresenterShellSync(
+                candidate.ActionId,
+                candidate.Before,
+                candidate.State,
+                candidate.Timing);
+            Require(!reuse, $"{candidate.Name} must not reuse Presenter shell synchronization.");
+
+            int fullShellSyncCount = 0;
+            int retainedAndroidRefreshCount = 0;
+            await RunnerSessionCoordinator.ExecutePostDialogShellSyncAsync(
+                reuse,
+                _ =>
+                {
+                    fullShellSyncCount++;
+                    return Task.CompletedTask;
+                },
+                _ =>
+                {
+                    retainedAndroidRefreshCount++;
+                    return Task.CompletedTask;
+                },
+                CancellationToken.None);
+            Require(
+                fullShellSyncCount == 1 && retainedAndroidRefreshCount == 0,
+                $"{candidate.Name} must retain exactly one full Android shell sync.");
+        }
     }
 
     private static Task PlayReviewPolicyEnforcesUsageVersionAndCooldownAsync()

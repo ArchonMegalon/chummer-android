@@ -24,6 +24,97 @@ SPEC.loader.exec_module(driver)
 
 
 class CreationPrerequisiteSourceContractTests(unittest.TestCase):
+    @staticmethod
+    def bootstrap_timing_payload(**changes: object) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "schema": "chummer.android.creation-bootstrap-timing/v1",
+            "actionId": "create_character",
+            "loadStartObserved": True,
+            "workspaceStatePublished": True,
+            "exactPublishedWorkspace": True,
+            "reusedPresenterShellSync": True,
+            "coreCreateMs": 12,
+            "presenterLoadMs": 20,
+            "presenterNavigationAndShellMs": 5,
+            "activeSectionMs": 0,
+            "androidRetainedRefreshMs": 1,
+            "androidFullShellSyncMs": -1,
+            "processPendingOutputsMs": 0,
+            "totalMs": 38,
+        }
+        payload.update(changes)
+        return payload
+
+    def test_creation_bootstrap_timing_requires_exact_partition_and_reused_sync(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            payload = self.bootstrap_timing_payload()
+
+            class TimingDevice:
+                evidence = Path(temporary)
+
+                @staticmethod
+                def run(*_arguments: str, **_options: object) -> subprocess.CompletedProcess:
+                    return subprocess.CompletedProcess(
+                        [],
+                        0,
+                        stdout=(
+                            "08-27 12:00:00.000 I/ChummerBootstrap: "
+                            + driver.CREATION_BOOTSTRAP_TIMING_PREFIX
+                            + json.dumps(payload, separators=(",", ":"))
+                            + "\n"
+                        ),
+                        stderr="",
+                    )
+
+                @staticmethod
+                def capture(name: str) -> None:
+                    raise AssertionError(f"unexpected capture: {name}")
+
+            timing = driver.capture_creation_bootstrap_timing(TimingDevice())
+            self.assertEqual(payload, timing)
+            self.assertEqual(
+                payload,
+                json.loads(
+                    (Path(temporary) / driver.CREATION_BOOTSTRAP_TIMING_FILE_NAME)
+                    .read_text(encoding="utf-8")
+                ),
+            )
+            self.assertTrue(
+                (Path(temporary) / driver.CREATION_BOOTSTRAP_LOGCAT_FILE_NAME).is_file()
+            )
+
+    def test_creation_bootstrap_timing_rejects_fallback_or_forged_totals(self) -> None:
+        for changes, expected in (
+            ({"reusedPresenterShellSync": False}, "reusedPresenterShellSync"),
+            ({"totalMs": 400}, "did not partition"),
+            ({"coreCreateMs": -1}, "nonnegative integer"),
+        ):
+            with self.subTest(changes=changes), tempfile.TemporaryDirectory() as temporary:
+                payload = self.bootstrap_timing_payload(**changes)
+
+                class TimingDevice:
+                    evidence = Path(temporary)
+                    captures: list[str] = []
+
+                    @staticmethod
+                    def run(*_arguments: str, **_options: object) -> subprocess.CompletedProcess:
+                        return subprocess.CompletedProcess(
+                            [],
+                            0,
+                            stdout=(
+                                driver.CREATION_BOOTSTRAP_TIMING_PREFIX
+                                + json.dumps(payload, separators=(",", ":"))
+                            ),
+                            stderr="",
+                        )
+
+                    @classmethod
+                    def capture(cls, name: str) -> None:
+                        cls.captures.append(name)
+
+                with self.assertRaisesRegex(RuntimeError, expected):
+                    driver.capture_creation_bootstrap_timing(TimingDevice())
+
     def test_artifact_binding_digest_uses_canonical_sorted_json(self) -> None:
         first = {"driver": "a", "apk": "b", "nested": {"events": "c"}}
         reordered = {"nested": {"events": "c"}, "apk": "b", "driver": "a"}
@@ -74,8 +165,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             up = 0
 
             @staticmethod
-            def hierarchy():
+            def read_only_hierarchy():
                 return nodes
+
+            @staticmethod
+            def hierarchy():
+                raise AssertionError("stable scan used the two-command hierarchy path")
 
             def swipe_up(self, **_options: object) -> None:
                 self.up += 1
@@ -101,6 +196,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual("stable-end", observations[0]["status"])
         self.assertEqual(2, observations[0]["swipes"])
         self.assertEqual(40, observations[0]["configuredMaxScrolls"])
+        self.assertEqual(3, observations[0]["hierarchyReadCount"])
+        self.assertGreaterEqual(observations[0]["hierarchyElapsedMs"], 0)
+        self.assertGreaterEqual(observations[0]["maximumHierarchyReadMs"], 0)
 
     def test_stable_end_scan_fails_closed_when_the_bound_never_proves_an_end(self) -> None:
         class MovingDevice:
@@ -1570,7 +1668,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             execute_source,
         )
         self.assertNotIn('device.tap("dialog-action-create-character"', execute_source)
-        self.assertIn("require_new_character_dialog_transition(device)", source)
+        self.assertIn("require_new_character_dialog_transition(", source)
+        self.assertIn("observation_out=transition_observation", source)
         self.assertNotIn("provision_creation_karma_through_priority_creation", source)
         self.assertNotIn('device.wait("dialog-action-complete-new-character-workflow"', source)
         self.assertNotIn('device.wait("Select Metatype Priority"', source)
@@ -1664,7 +1763,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             return_value=driver.StableViewportScan([[binding], [method]], 4),
         ):
             proof = driver.assert_uncreated_advanced_editor_gated(device)
-        self.assertEqual(driver.CreationDashboardScanProof("Revision 7", "Priority", 4), proof)
+        self.assertEqual(
+            driver.CreationDashboardScanProof("Revision 7", "Priority", 4, 1),
+            proof,
+        )
 
         with mock.patch.object(
             driver,
@@ -2358,7 +2460,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(["creation-dashboard-authority-failed"], failed.captures)
 
         pending = ProjectionDevice(failed=False)
-        with mock.patch.object(driver.time, "monotonic", side_effect=[10.0, 40.1]), \
+        with mock.patch.object(
+            driver.time,
+            "monotonic",
+            side_effect=[10.0, 10.0, 40.1, 40.1],
+        ), \
              mock.patch.object(driver.time, "sleep"), \
              mock.patch.object(
                  driver,
@@ -2376,7 +2482,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 {"resource-id": "creation-dashboard-authority-loading"}
             )
         ]
-        with mock.patch.object(driver.time, "monotonic", side_effect=[10.0, 40.1]), \
+        with mock.patch.object(
+            driver.time,
+            "monotonic",
+            side_effect=[10.0, 10.0, 40.1, 40.1],
+        ), \
              mock.patch.object(
                  driver,
                  "capture_creation_authority_pending_timeout_diagnostics",
@@ -2925,7 +3035,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn('"creation-stage-method"', source)
         self.assertIn("require_creation_method_navigation", source)
         self.assertIn("shared.open_creation_dashboard(", source)
-        self.assertIn("require_new_character_dialog_transition(device)", source)
+        self.assertIn("require_new_character_dialog_transition(", source)
+        self.assertIn("observation_out=transition_observation", source)
         self.assertNotIn('device.wait("dialog-action-complete-new-character-workflow"', source)
         self.assertNotIn('device.wait("Select Metatype Priority"', source)
         execute_source = inspect.getsource(driver.execute)

@@ -77,6 +77,9 @@ CREATION_AUTHORITY_PENDING_TIMEOUT_TEXT_LIMIT = 1_000_000
 PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v1"
 PROGRESS_FILE_NAME = "creation-prerequisite-progress.json"
 PROGRESS_EVENTS_FILE_NAME = "creation-prerequisite-progress.jsonl"
+CREATION_BOOTSTRAP_TIMING_PREFIX = "CHUMMER_CREATION_BOOTSTRAP_TIMING "
+CREATION_BOOTSTRAP_TIMING_FILE_NAME = "creation-bootstrap-timing.json"
+CREATION_BOOTSTRAP_LOGCAT_FILE_NAME = "creation-bootstrap-timing-logcat.txt"
 TOTAL_PERFORMANCE_TARGET_MS = 15 * 60 * 1000
 INITIAL_AUTHORITY_MILESTONE_ORDER = (
     "app-cold-start-complete",
@@ -119,6 +122,109 @@ def accessibility_signature(
     return tuple(sorted(tuple(node.attributes.get(key, "") for key in keys) for node in nodes))
 
 
+def read_only_hierarchy_timed(
+    device: shared.Device,
+    durations_ms: list[int],
+) -> list[shared.UiNode]:
+    """Read the same UIAutomator XML in one non-mutating ADB round trip."""
+    started = time.perf_counter()
+    # Real ``Device`` instances always take the one-command read-only path.
+    # Minimal contract fakes predating that API may expose only ``hierarchy``;
+    # retaining that structural fallback keeps pure tests usable without
+    # allowing the production driver to regress to a device-side dump file.
+    reader = getattr(type(device), "read_only_hierarchy", None)
+    nodes = device.read_only_hierarchy() if callable(reader) else device.hierarchy()
+    durations_ms.append(round((time.perf_counter() - started) * 1000))
+    return nodes
+
+
+def capture_creation_bootstrap_timing(
+    device: shared.Device,
+) -> dict[str, object]:
+    """Capture the product-emitted, exact create/load/shell timing partition."""
+    result = device.run("logcat", "-d", "-t", "500", timeout=30)
+    logcat = str(result.stdout)
+    device.evidence.mkdir(parents=True, exist_ok=True)
+    (device.evidence / CREATION_BOOTSTRAP_LOGCAT_FILE_NAME).write_text(
+        logcat,
+        encoding="utf-8",
+    )
+    decoded: dict[str, dict[str, object]] = {}
+    for line in logcat.splitlines():
+        if CREATION_BOOTSTRAP_TIMING_PREFIX not in line:
+            continue
+        payload_text = line.split(CREATION_BOOTSTRAP_TIMING_PREFIX, 1)[1].strip()
+        try:
+            payload = json.loads(payload_text)
+        except json.JSONDecodeError as error:
+            device.capture("creation-bootstrap-timing-json-invalid")
+            raise RuntimeError(
+                "Creation bootstrap timing log contained invalid JSON"
+            ) from error
+        if not isinstance(payload, dict):
+            raise RuntimeError("Creation bootstrap timing payload was not an object")
+        decoded[json.dumps(payload, sort_keys=True, separators=(",", ":"))] = payload
+
+    if len(decoded) != 1:
+        device.capture("creation-bootstrap-timing-cardinality-invalid")
+        raise RuntimeError(
+            "Expected exactly one unique create bootstrap timing receipt, "
+            f"found {len(decoded)}"
+        )
+    timing = next(iter(decoded.values()))
+    required_literal = {
+        "schema": "chummer.android.creation-bootstrap-timing/v1",
+        "actionId": "create_character",
+        "loadStartObserved": True,
+        "workspaceStatePublished": True,
+        "exactPublishedWorkspace": True,
+        "reusedPresenterShellSync": True,
+        "androidFullShellSyncMs": -1,
+    }
+    for key, expected in required_literal.items():
+        if timing.get(key) != expected:
+            device.capture("creation-bootstrap-timing-authority-invalid")
+            raise RuntimeError(
+                f"Creation bootstrap timing field {key!r} was not exact: "
+                f"expected={expected!r}, actual={timing.get(key)!r}"
+            )
+    duration_fields = (
+        "coreCreateMs",
+        "presenterLoadMs",
+        "presenterNavigationAndShellMs",
+        "activeSectionMs",
+        "androidRetainedRefreshMs",
+        "processPendingOutputsMs",
+        "totalMs",
+    )
+    for field in duration_fields:
+        value = timing.get(field)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise RuntimeError(
+                f"Creation bootstrap timing field {field!r} was not a nonnegative integer"
+            )
+    partition_total = sum(int(timing[field]) for field in duration_fields[:-1])
+    if abs(partition_total - int(timing["totalMs"])) > len(duration_fields) - 1:
+        raise RuntimeError(
+            "Creation bootstrap timing segments did not partition the product transaction: "
+            f"segments={partition_total}, total={timing['totalMs']}"
+        )
+    timing_path = device.evidence / CREATION_BOOTSTRAP_TIMING_FILE_NAME
+    timing_path.write_text(
+        json.dumps(timing, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return timing
+
+
+def hierarchy_timing_fields(durations_ms: list[int]) -> dict[str, int]:
+    return {
+        "hierarchyReadCount": len(durations_ms),
+        "hierarchyElapsedMs": sum(durations_ms),
+        "maximumHierarchyReadMs": max(durations_ms, default=0),
+    }
+
+
 def scan_forward_until_stable(
     device: shared.Device,
     *,
@@ -150,8 +256,9 @@ def scan_forward_until_stable(
     swipes = 0
     consecutive_empty_reads = 0
     total_empty_reads = 0
+    hierarchy_durations_ms: list[int] = []
     while swipes <= max_scrolls:
-        nodes = device.hierarchy()
+        nodes = read_only_hierarchy_timed(device, hierarchy_durations_ms)
         if not nodes:
             consecutive_empty_reads += 1
             total_empty_reads += 1
@@ -165,6 +272,7 @@ def scan_forward_until_stable(
                     "stableRepeats": stable_repeats,
                     "emptyHierarchyReads": total_empty_reads,
                     "maximumConsecutiveEmptyReads": max_consecutive_empty_reads,
+                    **hierarchy_timing_fields(hierarchy_durations_ms),
                     "elapsedMs": round((time.monotonic() - started) * 1000),
                 }
                 if observer is not None:
@@ -190,6 +298,7 @@ def scan_forward_until_stable(
                 "stableRepeats": stable_repeats,
                 "emptyHierarchyReads": total_empty_reads,
                 "maximumConsecutiveEmptyReads": max_consecutive_empty_reads,
+                **hierarchy_timing_fields(hierarchy_durations_ms),
                 "elapsedMs": round((time.monotonic() - started) * 1000),
             }
             if observer is not None:
@@ -210,6 +319,7 @@ def scan_forward_until_stable(
         "stableRepeats": stable_repeats,
         "emptyHierarchyReads": total_empty_reads,
         "maximumConsecutiveEmptyReads": max_consecutive_empty_reads,
+        **hierarchy_timing_fields(hierarchy_durations_ms),
         "elapsedMs": round((time.monotonic() - started) * 1000),
     }
     if observer is not None:
@@ -281,8 +391,9 @@ def rewind_to_stable_start(
     unchanged = 0
     swipes = 0
     screens = 0
+    hierarchy_durations_ms: list[int] = []
     while swipes <= max_scrolls:
-        nodes = device.hierarchy()
+        nodes = read_only_hierarchy_timed(device, hierarchy_durations_ms)
         if not nodes:
             time.sleep(0.75)
             continue
@@ -299,6 +410,7 @@ def rewind_to_stable_start(
                 "movementSwipes": swipes - stable_repeats,
                 "configuredMaxScrolls": max_scrolls,
                 "stableRepeats": stable_repeats,
+                **hierarchy_timing_fields(hierarchy_durations_ms),
                 "elapsedMs": round((time.monotonic() - started) * 1000),
             }
             if observer is not None:
@@ -316,6 +428,7 @@ def rewind_to_stable_start(
         "swipes": swipes,
         "configuredMaxScrolls": max_scrolls,
         "stableRepeats": stable_repeats,
+        **hierarchy_timing_fields(hierarchy_durations_ms),
         "elapsedMs": round((time.monotonic() - started) * 1000),
     }
     if observer is not None:
@@ -362,7 +475,7 @@ def rewind_to_exact_resource_id(
     if max_swipes < 0:
         raise ValueError("A nonnegative scan-proven reverse bound is required")
     for reverse_swipes in range(max_swipes + 1):
-        nodes = device.hierarchy()
+        nodes = read_only_hierarchy_timed(device, [])
         if not nodes:
             time.sleep(0.75)
             continue
@@ -633,6 +746,7 @@ class CreationDashboardScanProof(NamedTuple):
     binding: str
     method_detail: str
     swipes: int
+    method_viewport: int
 
 
 def assert_uncreated_advanced_editor_gated(
@@ -659,7 +773,8 @@ def assert_uncreated_advanced_editor_gated(
     )
     bindings: set[str] = set()
     method_states: set[tuple[str, str, str]] = set()
-    for nodes in scan.screens:
+    method_viewports: set[int] = set()
+    for viewport_index, nodes in enumerate(scan.screens):
         for selector in forbidden:
             if any(shared.Device._matches(node, selector) for node in nodes):
                 device.capture(f"wizard-forbidden-{selector}")
@@ -689,16 +804,18 @@ def assert_uncreated_advanced_editor_gated(
                     if selector == "creation-wizard-binding":
                         bindings.add(value)
                     else:
+                        method_viewports.add(min(viewport_index, scan.swipes))
                         method_states.add((
                             value,
                             matches[0].attributes.get("enabled", ""),
                             matches[0].attributes.get("clickable", ""),
                         ))
-    if len(bindings) != 1 or len(method_states) != 1:
+    if len(bindings) != 1 or len(method_states) != 1 or not method_viewports:
         device.capture(f"{scan_id}-authority-incomplete")
         raise RuntimeError(
             "Creation dashboard stable scan did not expose one binding and one method row: "
-            f"bindings={sorted(bindings)!r}, methods={sorted(method_states)!r}"
+            f"bindings={sorted(bindings)!r}, methods={sorted(method_states)!r}, "
+            f"methodViewports={sorted(method_viewports)!r}"
         )
     method_detail, method_enabled, method_clickable = next(iter(method_states))
     require_creation_method_navigation(
@@ -715,6 +832,7 @@ def assert_uncreated_advanced_editor_gated(
         binding=next(iter(bindings)),
         method_detail=method_detail,
         swipes=scan.swipes,
+        method_viewport=max(method_viewports),
     )
 
 
@@ -750,12 +868,29 @@ def require_new_character_dialog_transition(
     device: shared.Device,
     *,
     timeout: int = 120,
+    observation_out: dict[str, object] | None = None,
 ) -> list[shared.UiNode]:
     """Require the production modal to publish either Build or one exact error."""
     deadline = time.monotonic() + timeout
     selectors = ("dialog-surface", "dialog-error", "build-save-runner")
+    started = time.monotonic()
+    hierarchy_durations_ms: list[int] = []
+    empty_hierarchy_reads = 0
+
+    def record_observation(status: str) -> None:
+        if observation_out is not None:
+            observation_out.update({
+                "scanId": "dialog-transition-poll",
+                "status": status,
+                "emptyHierarchyReads": empty_hierarchy_reads,
+                **hierarchy_timing_fields(hierarchy_durations_ms),
+                "elapsedMs": round((time.monotonic() - started) * 1000),
+            })
+
     while time.monotonic() < deadline:
-        nodes = device.hierarchy()
+        nodes = read_only_hierarchy_timed(device, hierarchy_durations_ms)
+        if not nodes:
+            empty_hierarchy_reads += 1
         matches = {
             selector: [
                 node
@@ -774,11 +909,13 @@ def require_new_character_dialog_transition(
             if len(candidates) > 1
         }
         if ambiguous:
+            record_observation("cardinality-invalid")
             device.capture("creation-priority-dialog-transition-cardinality-invalid")
             raise RuntimeError(
                 f"New-character modal transition was ambiguous: {ambiguous!r}"
             )
         if len(matches["dialog-error"]) == 1:
+            record_observation("product-error")
             error = matches["dialog-error"][0]
             message = (
                 error.attributes.get("text")
@@ -791,16 +928,19 @@ def require_new_character_dialog_transition(
             )
         if len(matches["build-save-runner"]) == 1:
             if matches["dialog-surface"]:
+                record_observation("route-overlap")
                 device.capture("creation-priority-dialog-route-overlap")
                 raise RuntimeError(
                     "New-character modal and Build toolbar were published together"
                 )
+            record_observation("resolved")
             return nodes
-        if device.dismiss_system_ui_anr():
+        if device.dismiss_system_ui_anr(nodes):
             time.sleep(2)
             continue
         time.sleep(0.75)
 
+    record_observation("timeout")
     device.capture("creation-priority-dialog-transition-unavailable")
     raise RuntimeError(
         "New-character production modal published neither one exact error nor the Build route"
@@ -1208,12 +1348,27 @@ def wait_creation_dashboard_authority(
     device: shared.Device,
     *,
     timeout: float = 30.0,
+    observation_out: dict[str, object] | None = None,
 ) -> bool:
     """Wait for the explicitly asynchronous authority projection, never for a guessed row state."""
     deadline = time.monotonic() + timeout
     saw_loading = False
+    started = time.monotonic()
+    hierarchy_durations_ms: list[int] = []
+    empty_hierarchy_reads = 0
+
+    def record_observation(status: str) -> None:
+        if observation_out is not None:
+            observation_out.update({
+                "scanId": "dashboard-authority-poll",
+                "status": status,
+                "emptyHierarchyReads": empty_hierarchy_reads,
+                **hierarchy_timing_fields(hierarchy_durations_ms),
+                "elapsedMs": round((time.monotonic() - started) * 1000),
+            })
 
     def raise_pending_timeout() -> None:
+        record_observation("timeout")
         try:
             capture_creation_authority_pending_timeout_diagnostics(
                 device,
@@ -1237,8 +1392,9 @@ def wait_creation_dashboard_authority(
         )
 
     while True:
-        nodes = device.hierarchy()
+        nodes = read_only_hierarchy_timed(device, hierarchy_durations_ms)
         if not nodes:
+            empty_hierarchy_reads += 1
             if time.monotonic() >= deadline:
                 raise_pending_timeout()
             time.sleep(0.75)
@@ -1261,16 +1417,19 @@ def wait_creation_dashboard_authority(
             if len(candidates) > 1
         }
         if ambiguous:
+            record_observation("cardinality-invalid")
             device.capture("creation-dashboard-authority-cardinality-invalid")
             raise RuntimeError(
                 f"Creation dashboard authority state was ambiguous: {ambiguous!r}"
             )
         if matches["creation-dashboard-authority-failed"]:
+            record_observation("product-failed")
             device.capture("creation-dashboard-authority-failed")
             raise RuntimeError(
                 "Creation dashboard reported an explicit authority projection failure"
             )
         if not matches["creation-dashboard-authority-loading"]:
+            record_observation("resolved")
             return saw_loading
         saw_loading = True
         if time.monotonic() >= deadline:
@@ -3229,11 +3388,22 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         "tap",
         *(str(value) for value in create_character.center),
     )
-    transition_nodes = require_new_character_dialog_transition(device)
+    transition_observation: dict[str, object] = {}
+    transition_nodes = require_new_character_dialog_transition(
+        device,
+        observation_out=transition_observation,
+    )
+    progress.record_scan(transition_observation)
     progress.record_initial_authority_milestone("create-bootstrap-transaction-complete")
+    creation_bootstrap_timing = capture_creation_bootstrap_timing(device)
     require_initial_creation_dashboard_snapshot(device, transition_nodes)
     progress.record_initial_authority_milestone("dashboard-render-complete")
-    authority_projection_waited = wait_creation_dashboard_authority(device)
+    dashboard_authority_observation: dict[str, object] = {}
+    authority_projection_waited = wait_creation_dashboard_authority(
+        device,
+        observation_out=dashboard_authority_observation,
+    )
+    progress.record_scan(dashboard_authority_observation)
     progress.record_initial_authority_milestone("dashboard-authority-complete")
     dashboard_scan = assert_uncreated_advanced_editor_gated(
         device,
@@ -3242,15 +3412,28 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     )
     progress.record_initial_authority_milestone("dashboard-scan-complete")
     dashboard_binding = dashboard_scan.binding
-    method_node, _ = rewind_to_exact_resource_id(
+    move_between_measured_viewports(
         device,
-        "creation-stage-method",
-        max_swipes=dashboard_scan.swipes,
-        distance_ratio=0.68,
-        evidence_prefix="creation-stage-method-ready",
-        surface_name="Ready creation method navigation",
-        require_tappable=True,
+        dashboard_scan.swipes,
+        dashboard_scan.method_viewport,
     )
+    method_nodes = [
+        node
+        for node in read_only_hierarchy_timed(device, [])
+        if _exact_resource_id(node) == "creation-stage-method"
+    ]
+    if len(method_nodes) != 1:
+        device.capture("creation-stage-method-ready-cardinality-invalid")
+        raise RuntimeError(
+            "Measured ready creation method navigation has cardinality "
+            f"{len(method_nodes)} after exact viewport restore"
+        )
+    method_node = method_nodes[0]
+    if not device.node_has_tappable_bounds(method_node):
+        device.capture("creation-stage-method-ready-not-tappable")
+        raise RuntimeError(
+            "Measured ready creation method navigation was not visible after exact viewport restore"
+        )
     method_detail = require_creation_method_navigation(method_node, ready=True)
     if method_detail != dashboard_scan.method_detail:
         device.capture("creation-stage-method-changed-after-dashboard-scan")
@@ -3815,6 +3998,9 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         "priorityCompatibilityDriverSha256": sha256(priority_compatibility_path),
         "progressSnapshotSha256": sha256(progress.evidence_path),
         "progressEventsJsonlSha256": sha256(progress.events_path),
+        "creationBootstrapTimingSha256": sha256(
+            device.evidence / CREATION_BOOTSTRAP_TIMING_FILE_NAME
+        ),
     }
     receipt = {
         "schema": "chummer.android.creation-prerequisite-e2e/v1",
@@ -3842,6 +4028,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
             "completion": "exact completion resource ID enabled iff selected count equals required count",
         },
         "timing": timing,
+        "creationBootstrapTiming": creation_bootstrap_timing,
         "progressEvidence": {
             "snapshot": {
                 "path": str(progress.evidence_path),
