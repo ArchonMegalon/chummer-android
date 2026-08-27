@@ -14,6 +14,7 @@ internal static class NativeTheme
     public static readonly Color Muted = Color.FromArgb("#61706E");
     public static readonly Color Line = Color.FromArgb("#DCE5E1");
     public static readonly Color Danger = Color.FromArgb("#B3261E");
+    public static readonly Color Success = Color.FromArgb("#27715E");
 
     public static Label Eyebrow(string text) => new()
     {
@@ -21,7 +22,7 @@ internal static class NativeTheme
         FontSize = 11,
         CharacterSpacing = 1.5,
         FontAttributes = FontAttributes.Bold,
-        TextColor = Color.FromArgb("#27715E")
+        TextColor = Success
     };
 
     public static Label Title(string text, double size = 26) => new()
