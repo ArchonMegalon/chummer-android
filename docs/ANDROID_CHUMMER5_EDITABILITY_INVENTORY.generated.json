@@ -79,12 +79,12 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "ff3876fb9695ba7d750b9d5145100f2fbf282577208d9532c9506fece7e5813d"
+        "sha256": "4df5562ca40bf9ff0d5200f3b9f3eb72832efc1ce3c2631638eec7cc579c00fc"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
         "exists": true,
-        "sha256": "6d5a62af0de005975e79e74695e110f5bd6377fab4d437c4477f7c95883fa256"
+        "sha256": "52fdbf3c6fa329a555eb3809de7b69634106de81469e22a93ccfab3f9d897387"
       },
       {
         "path": "src/Chummer.Android/Native/CareerReputationPage.cs",
@@ -119,12 +119,12 @@
       {
         "path": "src/Chummer.Android/Native/HomePage.cs",
         "exists": true,
-        "sha256": "a5e53365808ad44b26104fee4f513a3a22cbcb6a7a7ab8d9ceb5fbf2044018f1"
+        "sha256": "a3a6acf259ab78a1ecfde78958c15bd2c1d4a56aa47e5126a7e31cd3edc3cc69"
       },
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "3bcc79f855e18adc07a4dbdca7cfb6d2fcccf8e6a641a0aba48cc3e554b715c1"
+        "sha256": "46b263aacf8d09b546ba69ad1d395a9ed4f4ae961e2e3da1e0c72918b9db69da"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -564,7 +564,7 @@
       {
         "path": "src/Chummer.Android/Native/NativeDialogPage.cs",
         "exists": true,
-        "sha256": "92926cbe23ee927a6b276fca98ab430e38792524068ddefa6d5fe15d1d8505f6"
+        "sha256": "68bfba61e8d1a75485bb6def2e873358d3fd263fa6909212fa0c54917fc63267"
       },
       {
         "path": "src/Chummer.Android/Native/NativeCommandPage.cs",
@@ -574,32 +574,37 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
         "exists": true,
-        "sha256": "b5883a8747e36f961d9541c3f77546ac8061c542fc39acebb373c8eb134d56dd"
+        "sha256": "fca88aa01360da4c081d8c76151731cce33bb48aa9ca62fe914ffdcd75ebc6c3"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
         "exists": true,
-        "sha256": "8ec5e42c8502470f57015832574cbb80644223948ad4be24273f6f06aa6af57b"
+        "sha256": "a6ca14546ba26b60b9def0e33a90255437886fcd94755766096cbae937bbaf5f"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityDetailPage.cs",
         "exists": true,
-        "sha256": "4a563b7e5c260f54ab7ffaf13022b860d42b55d53e7ffd51f56c42090a596025"
+        "sha256": "8f8f9903e903b7b3384edbeec91faf89c0269752b02df07a0b331ad66c24219a"
+      },
+      {
+        "path": "src/Chummer.Android/Native/CreationTalentSkillGrantPage.cs",
+        "exists": true,
+        "sha256": "e724b14b0fe3c2f07d13a070aa3953b6a6ec5580258a88a1285fe6b2f4207a9b"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
         "exists": true,
-        "sha256": "03f3c0ab20201b0cdb6001b37d2f17a3720a1aea4616e1ca684d2ecede2750e8"
+        "sha256": "726d20e11f332bacbe473cd4afd79e47000d1e52965894a0711ba7e0b1938b01"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
         "exists": true,
-        "sha256": "ea3ab02a526ad3962019898999bd824f82a13444476c75fc391dc03cd865f42c"
+        "sha256": "352d251725ed809213fb2541f4a2bd736bddad2c4bcd44ef11d7ca1954d512ec"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "ee759e63ed7bc2935bbe6a9246a50824bcb2a40b950c7104fcfa9efa25242dc4"
+        "sha256": "10948278f0215fe8eadfdfe3aa8d27624d7b1e1e519ddac851033555268c94c1"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -614,7 +619,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "dab87dbadd0461fbfbbe252b1ccff6e083438d2cbc98dbf75239285f3979e6ab"
+        "sha256": "f34a6a36564751dc82ed1d455333491b0c70748601c0befcd143520853f97fbe"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
@@ -1029,12 +1034,12 @@
       {
         "path": "tests/run_api36_new_character_priority_e2e.py",
         "exists": true,
-        "sha256": "dc67dd3f2cb4f34bf744869575c6b51d9800ab338fffae33e6d8e23423488e5f"
+        "sha256": "608969e4406348b0163b9e6ac061c146fbf1aebd2e38fe1992b38f4176eb5347"
       },
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "8501be1ceb9f731c943bd4897731a999535157923eded7e0820b7c30153bf6ce"
+        "sha256": "042131bb977e7c8872484bfbf3168dff8cce4ccf139cb5c5154e237fb2aa3d68"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
@@ -2069,7 +2074,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "e94989c6a676dcea3ca034d6ed5a45edf3a063e86098e804ad5c937b79e0f871"
+        "sha256": "6373a8d89f02c68f368b6f2c9cec6916e5f3bae064f9bc038e7531205c99f7ce"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -2089,7 +2094,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "e2d4bf2fa29990dab8a99187a8b980ce16d579e1c50dac25b8251f08c9ee396d"
+        "sha256": "b5686400b4f3424e6f607bcd736834596805efb3d99a72767527f8fa4b33672c"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -2319,7 +2324,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "9ab84f780365c4f1983f61c93816c3fcd9665d053af7cd920a53a7465b8b935f"
+        "sha256": "04a00b27697c3757a88e76e2fdd6d73a16e3913e5a2ff2a10f33f67ad2bfaeb0"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2374,7 +2379,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/WorkspaceXmlMutationCatalog.cs",
         "exists": true,
-        "sha256": "2b372c17d3ad04f20cc49f56a88de977373d63daf6e0b7e8b2993ee81683b1e0"
+        "sha256": "651f09eec0f0181b56b9ddd54ee4e863983748cae461073a0b242214a9e32154"
       },
       {
         "path": "chummer-presentation/Chummer.Tests/Presentation/Chummer5CharacterSettingsProfilesTests.cs",
@@ -2384,7 +2389,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "8bb0af96749e32f90f5a40fcdb82e29cefc65cf7584249aa9fb8e81502d3cc9b"
+      "sha256": "92e3fe52289ac4cfb5b3afbe0f487a93689055ff51c1e6449da79bf5aabb34b7"
     }
   },
   "coverageByFamily": {
@@ -14228,8 +14233,8 @@
       "persistenceAssertion": "character/metatypecategory equals the submitted category after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_new_character_priority_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -14348,8 +14353,8 @@
       "persistenceAssertion": "character/metavariant equals the submitted metavariant after workspace reopen, UI readback, and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_new_character_priority_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -14533,6 +14538,7 @@
           "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
           "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
           "src/Chummer.Android/Native/CreationPriorityDetailPage.cs",
+          "src/Chummer.Android/Native/CreationTalentSkillGrantPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
           "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
           "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
@@ -14608,8 +14614,8 @@
       "persistenceAssertion": "the nested character/priorityskills/priorityskill sequence retains the submitted first free skill after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_new_character_priority_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -14666,8 +14672,8 @@
       "persistenceAssertion": "the nested character/priorityskills/priorityskill sequence retains the submitted second free skill in order after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_new_character_priority_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -14724,8 +14730,8 @@
       "persistenceAssertion": "the nested character/priorityskills/priorityskill sequence retains the submitted third free skill in order after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_new_character_priority_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -15117,8 +15123,8 @@
       "persistenceAssertion": "the enabled possess-based tradition writes the selected possession method and matching critter power after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_new_character_priority_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -15175,8 +15181,8 @@
       "persistenceAssertion": "character/possessionmethod and the matching Chummer5 critterpower retain the submitted Possession or Inhabitation method after workspace reopen and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_new_character_priority_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
@@ -15233,8 +15239,8 @@
       "persistenceAssertion": "character/force equals the submitted force after workspace reopen, UI readback, and process restart",
       "e2e": {
         "phone": {
-          "status": "scripted_not_executed",
-          "ref": "tests/run_api36_new_character_priority_e2e.py"
+          "status": "missing",
+          "ref": null
         },
         "tablet": {
           "status": "missing",
