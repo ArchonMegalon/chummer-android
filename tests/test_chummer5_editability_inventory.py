@@ -3066,8 +3066,8 @@ namespace Chummer
         )
         self.assertEqual(
             {
-                "implemented_pending_emulator": 547,
-                "missing": 918,
+                "implemented_pending_emulator": 536,
+                "missing": 929,
                 "not_applicable_non_mutating": 478,
                 "partial_create_only": 106,
                 "partial_exact_saved_data": 180,
@@ -3781,16 +3781,21 @@ int ammoRemaining = savedAmmoRemaining;
         for control in ("cboCharacterSetting", "chkIgnoreRules", "cmdOK"):
             row = rows[control]
             self.assertTrue(row["editParityRequired"])
-            verified = inventory._validated_new_character_settings_phone_e2e_receipt() is not None
-            self.assertEqual(
-                "implemented_verified_api36" if verified else "implemented_pending_emulator",
-                row["phone"]["status"],
-            )
-            self.assertEqual(
-                "executed_api36" if verified else "scripted_not_executed",
-                row["e2e"]["phone"]["status"],
-            )
+            self.assertEqual("missing", row["phone"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
             self.assertEqual("missing", row["tablet"]["status"])
+
+        coordinator = (
+            PRESENTATION_ROOT
+            / "Chummer.Presentation"
+            / "Overview"
+            / "DialogCoordinator.cs"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "This legacy setup cannot create an authoritative runner.",
+            coordinator,
+        )
+        self.assertIn("Start the real Creation Wizard from New Runner.", coordinator)
 
         self.assertEqual("missing", rows["cmdEditCharacterSetting"]["phone"]["status"])
         self.assertEqual("not_applicable_non_mutating", rows["cmdCancel"]["phone"]["status"])
@@ -3974,17 +3979,10 @@ int ammoRemaining = savedAmmoRemaining;
                 if row["editParityRequired"]
             },
         )
-        verified = inventory._validated_new_character_karma_phone_e2e_receipt() is not None
         for control in proven:
             row = rows[control]
-            self.assertEqual(
-                "implemented_verified_api36" if verified else "implemented_pending_emulator",
-                row["phone"]["status"],
-            )
-            self.assertEqual(
-                "executed_api36" if verified else "scripted_not_executed",
-                row["e2e"]["phone"]["status"],
-            )
+            self.assertEqual("missing", row["phone"]["status"])
+            self.assertEqual("scripted_not_executed", row["e2e"]["phone"]["status"])
             self.assertEqual("missing", row["tablet"]["status"])
             self.assertIn("Select Metatype", row["phone"]["route"])
         self.assertEqual(

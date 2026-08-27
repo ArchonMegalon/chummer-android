@@ -57,8 +57,8 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
         self.assertIsNotNone(content)
         self.assertIsNotNone(runtime)
         self.assertIsNotNone(contract)
-        self.assertEqual(core.group(1), "2fb2ae9bb48e5a1a6b25a174ba88008ce995fcd5")
-        self.assertEqual(presentation.group(1), "fad57e99c772450c5aea3c4dc6315d18dca65637")
+        self.assertEqual(core.group(1), "c85ea198c19c149375913b44b304acd4d6353053")
+        self.assertEqual(presentation.group(1), "35e57b5b94334488c27a7a5bae27e0b125eeed85")
         expected = hashlib.sha256(
             f"{contract.group(1)}\n{core.group(1)}\n{presentation.group(1)}\n{content.group(1)}\n".encode()
         ).hexdigest()
@@ -223,9 +223,9 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
             .read_text(encoding="utf-8")
         )
         self.assertEqual(
-            manifest["coreRevision"], "2fb2ae9bb48e5a1a6b25a174ba88008ce995fcd5"
+            manifest["coreRevision"], "c85ea198c19c149375913b44b304acd4d6353053"
         )
-        self.assertEqual(manifest["bundleDigest"], "7a108fe4e18340166c1ae206191e7b132e5d04656e24bc2dcd71da263892ebff")
+        self.assertEqual(manifest["bundleDigest"], "2729e9577506ab0fc32f28c642783df2246118ab7b03dcb80533f8857a80b4fc")
         self.assertEqual(len(manifest["files"]), 110)
 
     def test_focused_compile_harness_uses_exact_authority_sources(self) -> None:

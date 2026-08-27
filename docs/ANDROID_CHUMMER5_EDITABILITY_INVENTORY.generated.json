@@ -14,8 +14,8 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 478,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 547,
-      "missing": 918,
+      "implemented_pending_emulator": 536,
+      "missing": 929,
       "not_applicable_non_mutating": 478,
       "partial_create_only": 106,
       "partial_exact_saved_data": 180
@@ -2054,7 +2054,7 @@
       {
         "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "7adcbe6a2a0522ca85146148296e2fd2cc5b6be57aca4ee9bb8618886ef165b7"
+        "sha256": "5dc99ca6b3aa0d4d124b2411e9c1caaa04467c39658067ee31c58747b24a51a5"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
@@ -2069,12 +2069,12 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
         "exists": true,
-        "sha256": "cf67cffb9bc7c35146b01d22f22595f5ee77a4b84b1347cfe61da5538e5aa00c"
+        "sha256": "d2a77c80c153b14a99058bd428d600b90c7284ed2a8d9c5da0ec7f3748bb7e95"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "6373a8d89f02c68f368b6f2c9cec6916e5f3bae064f9bc038e7531205c99f7ce"
+        "sha256": "696af5fdce6594629d224a4f462d96445eae90ea594ab59586fc86748490ce58"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -2094,7 +2094,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "b5686400b4f3424e6f607bcd736834596805efb3d99a72767527f8fa4b33672c"
+        "sha256": "5d3f4156c6b03e0168ca3c08c6428e871a2e0dac452914809a375100b578accc"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -2144,7 +2144,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerWeaponFireRequest.cs",
         "exists": true,
-        "sha256": "387f65d88f099bb83cf74b7faac0cd13630f999b9a22abf9257fd902283bc874"
+        "sha256": "8d60cba9a1ac538cf20027a64a1b9bd032aee3b34ca5a6f85025ca7c4c7b8b6b"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerActiveSkillAdvanceEditRequest.cs",
@@ -2314,7 +2314,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewState.cs",
         "exists": true,
-        "sha256": "3cdf7425e1c0dfabbe7ee1bd4e345e19c18b4b4fcc91b996d151f7fa3cdf7c47"
+        "sha256": "25344339580baa08ffaa7434c1e9d81f0e08642d04abb2130e77294a2980ad18"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
@@ -2324,7 +2324,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "04a00b27697c3757a88e76e2fdd6d73a16e3913e5a2ff2a10f33f67ad2bfaeb0"
+        "sha256": "7c7d62245f7352d36d912fe466faacfe09836e7cb0fc954b82373d2b36e7828b"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2339,12 +2339,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
         "exists": true,
-        "sha256": "12bf0a51a914a0f85653d8e350ed34170b8eaf041964301cfee91c2f9e6eeea6"
+        "sha256": "06f1abd56e29f366d920c21841fb0933b83eb95a20a50a104eae5bf390ef5874"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
         "exists": true,
-        "sha256": "69dd033f37ec517c6f7e139f72d82decaf631ac5c4a6c776c79bd569538f7a18"
+        "sha256": "3f9c41de15d3d807c00e74edd79c3d3878d2f9f2786e45bcdd8dbdc125108120"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
@@ -2389,7 +2389,7 @@
     ],
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "92e3fe52289ac4cfb5b3afbe0f487a93689055ff51c1e6449da79bf5aabb34b7"
+      "sha256": "e4709d3a3e4ca6cd4baa8888dafcb0f72c92c2f56eae9fc7e1669bd17db7bd1f"
     }
   },
   "coverageByFamily": {
@@ -2459,7 +2459,7 @@
     "character_settings": {
       "rowCount": 209,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 17,
+      "phoneMissingCount": 28,
       "tabletMissingCount": 197,
       "completionProvenCount": 12
     },
@@ -12729,7 +12729,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterignorerules",
@@ -12792,7 +12792,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactersetting",
@@ -12912,7 +12912,7 @@
       "mutationFamily": "character_settings",
       "operation": "commit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method",
         "surface": "NativeDialogPage",
         "automationId": "dialog-action-create-character",
@@ -13586,7 +13586,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterpossessionmethod",
@@ -13650,7 +13650,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterpossessionbased",
@@ -13709,7 +13709,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterforce",
@@ -13773,7 +13773,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactermetatypecategory",
@@ -13837,7 +13837,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactermetavariant",
@@ -13905,7 +13905,7 @@
       "mutationFamily": "character_settings",
       "operation": "select_or_mutate_collection",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactermetatype",
@@ -14083,7 +14083,7 @@
       "mutationFamily": "character_settings",
       "operation": "commit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-action-complete-new-character-workflow",
@@ -14147,7 +14147,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactermetatypesearch",

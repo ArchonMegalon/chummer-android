@@ -16,7 +16,7 @@ from typing import Any
 
 
 SCHEMA = "chummer.android.content-bundle/v1"
-CORE_REVISION = "2fb2ae9bb48e5a1a6b25a174ba88008ce995fcd5"
+CORE_REVISION = "c85ea198c19c149375913b44b304acd4d6353053"
 PACKAGED_ROOT = "assets/chummer-content"
 MANIFEST_ENTRY = f"{PACKAGED_ROOT}/manifest.json"
 CANONICAL_SEGMENTS = ("data", "lang")

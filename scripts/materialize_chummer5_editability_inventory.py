@@ -7572,8 +7572,14 @@ def _known_phone_mapping(
         e2e_driver = REPO_ROOT / "tests" / "run_api36_new_character_settings_e2e.py"
         dialog_factory = presentation_root / "Chummer.Presentation" / "Overview" / "DesktopDialogFactory.cs"
         dialog_coordinator = presentation_root / "Chummer.Presentation" / "Overview" / "DialogCoordinator.cs"
+        legacy_completion_blocked = _contains(
+            dialog_coordinator,
+            "This legacy setup cannot create an authoritative runner.",
+            "Start the real Creation Wizard from New Runner.",
+        )
         implementation_complete = (
-            _contains(native_dialog, 'AutomationId = $"dialog-field-{Token(field.Id)}"', 'AutomationId = $"dialog-action-{Token(action.Id)}"')
+            not legacy_completion_blocked
+            and _contains(native_dialog, 'AutomationId = $"dialog-field-{Token(field.Id)}"', 'AutomationId = $"dialog-action-{Token(action.Id)}"')
             and _contains(build_page, 'NativeTheme.Metric("Character Setting"', "Coordinator.State.Rules?.Settings")
             and _contains(dialog_factory, '"newCharacterSetting"', '"newCharacterIgnoreRules"', '"newCharacterWorkflowSetting"', '"newCharacterWorkflowIgnoreRules"')
             and _contains(dialog_coordinator, '"newCharacterSetting"', '"newCharacterIgnoreRules"', '"settings"', '"ignorerules"', "CompleteNewCharacterWorkflowAsync")
@@ -7643,8 +7649,14 @@ def _known_phone_mapping(
         helper_driver = REPO_ROOT / "tests" / "run_api36_new_character_priority_e2e.py"
         dialog_factory = presentation_root / "Chummer.Presentation" / "Overview" / "DesktopDialogFactory.cs"
         dialog_coordinator = presentation_root / "Chummer.Presentation" / "Overview" / "DialogCoordinator.cs"
+        legacy_completion_blocked = _contains(
+            dialog_coordinator,
+            "This legacy setup cannot create an authoritative runner.",
+            "Start the real Creation Wizard from New Runner.",
+        )
         implementation_complete = (
-            _contains(
+            not legacy_completion_blocked
+            and _contains(
                 native_dialog,
                 'AutomationId = $"dialog-field-{Token(field.Id)}"',
                 'AutomationId = $"dialog-action-{Token(action.Id)}"',
