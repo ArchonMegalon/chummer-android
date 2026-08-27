@@ -1355,6 +1355,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.assertIn("scan_forward_until_stable(", source)
                 self.assertNotIn("for scroll_index in range(", source)
 
+        dashboard_source = inspect.getsource(driver.assert_uncreated_advanced_editor_gated)
+        self.assertIn("distance_ratio=0.68", dashboard_source)
+        self.assertIn("max_scrolls=18", dashboard_source)
+        self.assertIn("reset_scroll_to_top(device, swipes=12)", dashboard_source)
+
         # The former fixed loops always spent 404 forward swipes before any
         # selector reacquisition. A stable viewport now requires exactly two.
         legacy_fixed_forward_swipes = (18 * 3) + (22 * 5) + (40 * 2) + (40 * 4)

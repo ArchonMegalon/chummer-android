@@ -380,12 +380,12 @@ def assert_uncreated_advanced_editor_gated(
         "creation-wizard-attributes",
         "attribute-save-",
     )
-    shared.reset_scroll_to_top(device, swipes=18)
+    shared.reset_scroll_to_top(device, swipes=12)
     screens = scan_forward_until_stable(
         device,
         scan_id=scan_id,
         max_scrolls=18,
-        distance_ratio=0.22,
+        distance_ratio=0.68,
         observer=scan_observer,
     )
     for nodes in screens:
