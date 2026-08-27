@@ -254,6 +254,25 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "progress is incomplete"):
                 progress.finish()
 
+    def test_progress_recorder_rejects_a_pass_phase_outside_its_budget(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary, mock.patch("builtins.print"):
+            progress = driver.ProgressRecorder(Path(temporary))
+            progress.advance("device-preflight-install")
+            progress.advance("initial-authority")
+            progress._active_started -= (
+                driver.PHASE_BUDGET_MS["initial-authority"] / 1000
+            ) + 1
+
+            with self.assertRaisesRegex(RuntimeError, "explicit phase timing budget"):
+                progress.advance("priority-ranks")
+
+            self.assertTrue(any(
+                phase["phaseId"] == "initial-authority"
+                and phase["status"] == "pass"
+                and phase["withinBudget"] is False
+                for phase in progress.phases
+            ))
+
     def test_creation_karma_budget_cards_expose_readable_semantic_totals(self) -> None:
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
         preview = (NATIVE / "CreationPrerequisitePreviewPage.cs").read_text(encoding="utf-8")
@@ -748,6 +767,40 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             [mock.call(device, swipes=8), mock.call(device, swipes=4)],
             reset.call_args_list,
         )
+
+    def test_talent_grant_completion_taps_the_single_checked_exact_node(self) -> None:
+        device = mock.Mock()
+
+        driver.complete_talent_grant_to_prerequisite(device)
+
+        device.tap_exact_resource_id_bidirectional.assert_called_once_with(
+            "creation-prerequisite-talent-grant-complete",
+            timeout=90,
+            backward_scrolls=40,
+            forward_scrolls=40,
+            scroll_distance_ratio=0.22,
+            evidence_prefix="creation-prerequisite-talent-grant-complete",
+            surface_name="Exact enabled Talent grant completion",
+        )
+        device.tap_bidirectional.assert_not_called()
+        self.assertEqual(
+            [
+                mock.call(
+                    "creation-prerequisite-talent-page",
+                    timeout=45,
+                    evidence_prefix="creation-prerequisite-talent-after-grant",
+                    surface_name="Talent detail route after exact grant completion",
+                ),
+                mock.call(
+                    "creation-prerequisite-page",
+                    timeout=45,
+                    evidence_prefix="creation-prerequisite-after-talent-grant",
+                    surface_name="Creation prerequisite route after Talent grant completion",
+                ),
+            ],
+            device.wait_for_single_exact_resource_id.call_args_list,
+        )
+        device.back.assert_called_once_with()
 
     def test_bidirectional_exact_read_can_bind_a_noninteractive_authority_card(self) -> None:
         authority = driver.shared.UiNode(

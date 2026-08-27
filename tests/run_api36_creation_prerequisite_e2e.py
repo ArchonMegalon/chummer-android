@@ -260,8 +260,20 @@ class ProgressRecorder:
                 f"Prerequisite progress is incomplete: expected={PHASE_ORDER!r}, "
                 f"actual={completed!r}"
             )
-        self._finished = True
         snapshot = self.snapshot("timing-complete")
+        over_budget = tuple(
+            str(phase["phaseId"])
+            for phase in self.phases
+            if phase.get("withinBudget") is not True
+            or phase.get("elapsedMs", 0) > phase.get("budgetMs", -1)
+        )
+        if over_budget or snapshot["withinConfiguredTotalTarget"] is not True:
+            raise RuntimeError(
+                "Prerequisite progress exceeded its explicit timing budget: "
+                f"phases={over_budget!r}, totalElapsedMs={snapshot['totalElapsedMs']}, "
+                f"configuredTotalTargetMs={snapshot['configuredTotalTargetMs']}"
+            )
+        self._finished = True
         self._atomic_write(snapshot)
         self._emit({
             "schema": PROGRESS_SCHEMA,
@@ -318,6 +330,12 @@ class ProgressRecorder:
         self._emit({"schema": PROGRESS_SCHEMA, "event": "phase-complete", **phase})
         self._active_id = None
         self._active_started = 0.0
+        if status == "pass" and phase["withinBudget"] is not True:
+            raise RuntimeError(
+                "Prerequisite progress exceeded its explicit phase timing budget: "
+                f"phase={phase['phaseId']!r}, elapsedMs={phase['elapsedMs']}, "
+                f"budgetMs={phase['budgetMs']}"
+            )
 
     def _write(self, status: str) -> None:
         self._atomic_write(self.snapshot(status))
@@ -1819,13 +1837,14 @@ def choose_and_prove_talent_grant(
 
 
 def complete_talent_grant_to_prerequisite(device: shared.Device) -> None:
-    device.tap_bidirectional(
+    device.tap_exact_resource_id_bidirectional(
         "creation-prerequisite-talent-grant-complete",
         timeout=90,
         backward_scrolls=40,
         forward_scrolls=40,
         scroll_distance_ratio=0.22,
-        exact_resource_id=True,
+        evidence_prefix="creation-prerequisite-talent-grant-complete",
+        surface_name="Exact enabled Talent grant completion",
     )
     device.wait_for_single_exact_resource_id(
         "creation-prerequisite-talent-page",

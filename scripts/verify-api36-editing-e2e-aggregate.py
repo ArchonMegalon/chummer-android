@@ -23,6 +23,18 @@ JOURNEYS = {
     "career-active-skill-advance": "career-active-skill-advance",
     "career-weapon-fire": "career-weapon-fire",
 }
+CREATION_PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v1"
+CREATION_TOTAL_TARGET_MS = 15 * 60 * 1000
+CREATION_PHASE_BUDGETS_MS = {
+    "device-preflight-install": 180_000,
+    "initial-authority": 90_000,
+    "priority-ranks": 150_000,
+    "typed-authority-options": 150_000,
+    "preview-confirm": 150_000,
+    "same-process-reopen": 90_000,
+    "resources-preview-confirm": 150_000,
+    "process-restart-reopen": 90_000,
+}
 STARTED_FIELDS = {
     "profile",
     "matrix_journey",
@@ -128,6 +140,54 @@ def canonical_authority(
     }
 
 
+def require_creation_timing_within_budget(receipt: dict[str, Any]) -> None:
+    timing = receipt.get("timing")
+    if not isinstance(timing, dict):
+        raise ValueError("creation prerequisite timing evidence is missing")
+    if timing.get("schema") != CREATION_PROGRESS_SCHEMA:
+        raise ValueError("creation prerequisite timing schema differs")
+    if timing.get("status") != "timing-complete" or timing.get("clock") != "time.monotonic":
+        raise ValueError("creation prerequisite timing is not complete and monotonic")
+    if timing.get("configuredTotalTargetMs") != CREATION_TOTAL_TARGET_MS:
+        raise ValueError("creation prerequisite total timing target differs")
+    total_elapsed = timing.get("totalElapsedMs")
+    if type(total_elapsed) is not int or total_elapsed < 0:
+        raise ValueError("creation prerequisite total elapsed time is invalid")
+    if (
+        timing.get("withinConfiguredTotalTarget") is not True
+        or total_elapsed > CREATION_TOTAL_TARGET_MS
+    ):
+        raise ValueError("creation prerequisite total timing target was exceeded")
+    if timing.get("phaseBudgetsMs") != CREATION_PHASE_BUDGETS_MS:
+        raise ValueError("creation prerequisite phase timing budgets differ")
+    phases = timing.get("phases")
+    if not isinstance(phases, list) or len(phases) != len(CREATION_PHASE_BUDGETS_MS):
+        raise ValueError("creation prerequisite timing phase cardinality differs")
+    for ordinal, (phase_id, budget_ms) in enumerate(
+        CREATION_PHASE_BUDGETS_MS.items(),
+        start=1,
+    ):
+        phase = phases[ordinal - 1]
+        if not isinstance(phase, dict):
+            raise ValueError("creation prerequisite timing phase is not an object")
+        elapsed_ms = phase.get("elapsedMs")
+        if (
+            phase.get("ordinal") != ordinal
+            or phase.get("phaseId") != phase_id
+            or phase.get("status") != "pass"
+            or phase.get("budgetMs") != budget_ms
+            or phase.get("withinBudget") is not True
+            or type(elapsed_ms) is not int
+            or elapsed_ms < 0
+            or elapsed_ms > budget_ms
+        ):
+            raise ValueError(
+                f"creation prerequisite phase timing is outside budget: {phase_id}"
+            )
+    if not isinstance(timing.get("scans"), list):
+        raise ValueError("creation prerequisite scan timing evidence is missing")
+
+
 def validate_aggregate(
     evidence_root: Path,
     *,
@@ -223,6 +283,8 @@ def validate_aggregate(
             raise ValueError(f"APK SHA-256 differs: {journey}")
         if receipt.get("artifactAuthority") != authority:
             raise ValueError(f"artifact authority differs: {journey}")
+        if journey == "creation-prerequisite":
+            require_creation_timing_within_budget(receipt)
         aggregate_journeys[journey] = {
             "status": "pass",
             "driverJourney": driver_journey,

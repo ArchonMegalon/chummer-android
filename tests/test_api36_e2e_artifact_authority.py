@@ -69,6 +69,30 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
         }
         if journey == "creation-prerequisite":
             receipt["executionStatus"] = "pass"
+            receipt["timing"] = {
+                "schema": AGGREGATE.CREATION_PROGRESS_SCHEMA,
+                "status": "timing-complete",
+                "clock": "time.monotonic",
+                "configuredTotalTargetMs": AGGREGATE.CREATION_TOTAL_TARGET_MS,
+                "totalElapsedMs": 8_000,
+                "withinConfiguredTotalTarget": True,
+                "phaseBudgetsMs": dict(AGGREGATE.CREATION_PHASE_BUDGETS_MS),
+                "phases": [
+                    {
+                        "ordinal": ordinal,
+                        "phaseId": phase_id,
+                        "status": "pass",
+                        "elapsedMs": 1_000,
+                        "budgetMs": budget_ms,
+                        "withinBudget": True,
+                    }
+                    for ordinal, (phase_id, budget_ms) in enumerate(
+                        AGGREGATE.CREATION_PHASE_BUDGETS_MS.items(),
+                        start=1,
+                    )
+                ],
+                "scans": [],
+            }
         else:
             receipt["journey"] = driver_journey
         return receipt
@@ -275,6 +299,36 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                     matrix_result="failure",
                     **self.authority(),
                 )
+
+    def test_creation_timing_outside_explicit_budgets_fails_closed(self) -> None:
+        cases = (
+            ("withinBudget", "phase timing is outside budget"),
+            ("elapsedMs", "phase timing is outside budget"),
+            ("withinConfiguredTotalTarget", "total timing target was exceeded"),
+        )
+        for field, expected_error in cases:
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                self.materialize_all(root)
+                directory = root / AGGREGATE.expected_artifact_directory(
+                    "creation-prerequisite",
+                    RUN_ID,
+                )
+                receipt_path = directory / "receipt.json"
+                receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                if field == "withinConfiguredTotalTarget":
+                    receipt["timing"][field] = False
+                elif field == "withinBudget":
+                    receipt["timing"]["phases"][1][field] = False
+                else:
+                    receipt["timing"]["phases"][1][field] = (
+                        AGGREGATE.CREATION_PHASE_BUDGETS_MS["initial-authority"] + 1
+                    )
+                receipt_path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
+                self.reseal(directory)
+
+                with self.assertRaisesRegex(ValueError, expected_error):
+                    self.validate(root)
 
 
 if __name__ == "__main__":
