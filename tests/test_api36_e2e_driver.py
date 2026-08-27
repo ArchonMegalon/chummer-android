@@ -1956,6 +1956,44 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.capture_product_anr_evidence.assert_called_once_with()
         device.shell.assert_not_called()
 
+    def test_product_anr_diagnostics_are_read_only_and_do_not_signal_process(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = Mock(spec=DRIVER.Device)
+            device.evidence = evidence
+            device.run.return_value = subprocess.CompletedProcess(
+                args=[], returncode=0, stdout=b"exact screenshot", stderr=b""
+            )
+
+            def shell(*arguments: str, **_kwargs: object) -> str:
+                if arguments == ("pidof", DRIVER.PACKAGE):
+                    return "3105"
+                return "diagnostic output"
+
+            device.shell.side_effect = shell
+
+            DRIVER.Device.capture_product_anr_evidence(device)
+
+        self.assertNotIn(
+            call("kill", "-3", "3105", timeout=15),
+            device.shell.call_args_list,
+        )
+        self.assertEqual(
+            ("pidof", DRIVER.PACKAGE),
+            device.shell.call_args_list[0].args,
+        )
+        self.assertEqual(
+            [
+                ("dumpsys", "activity", "lastanr"),
+                ("dumpsys", "activity", "processes"),
+                ("dumpsys", "activity", "exit-info", DRIVER.PACKAGE),
+                ("dumpsys", "window", "windows"),
+                ("ls", "-la", "/data/anr"),
+                ("logcat", "-d", "-b", "all", "-v", "threadtime", "-t", "4000"),
+            ],
+            [entry.args for entry in device.shell.call_args_list[1:]],
+        )
+
     def test_wait_hard_fails_on_anr_without_scrolling_or_retrying(self) -> None:
         device = Mock(spec=DRIVER.Device)
         device.find.return_value = None

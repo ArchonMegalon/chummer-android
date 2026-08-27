@@ -1447,12 +1447,6 @@ class Device:
             "product-anr-process-ids.txt",
             "\n".join(process_ids) or "process id unavailable",
         )
-        for process_id in process_ids:
-            _write_launch_evidence(
-                self,
-                f"product-anr-sigquit-{process_id}.txt",
-                _safe_shell(self, "kill", "-3", process_id, timeout=15),
-            )
 
         diagnostics = (
             (
