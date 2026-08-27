@@ -230,6 +230,10 @@ def import_fixture(
 ) -> tuple[shared.LaunchState, shared.WorkspaceAuthority]:
     launch = shared.launch_app(device)
     shared.wait_for_phone_runners(device, timeout=120)
+    shared.record_phone_ui_locale_evidence(
+        device,
+        evidence_prefix="sr5-career-knowledge-language",
+    )
     device.tap("home-open-file")
     shared.select_android_document(device, fixture.name)
     device.wait("CareerKnowledgeLanguageAdvanceE2E", timeout=120)

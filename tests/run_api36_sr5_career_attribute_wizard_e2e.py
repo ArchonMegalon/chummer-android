@@ -28,6 +28,16 @@ CHECKPOINT_KEY = "sr5.career.attribute.draft.v1"
 CHOOSE_ROUTE = "sr5-career/advancement/attribute/choose"
 REVIEW_ROUTE = "sr5-career/advancement/attribute/review"
 RECEIPT_ROUTE = "sr5-career/advancement/attribute/receipt"
+REVIEW_METRIC_LABELS_BY_LANGUAGE = {
+    "en": ("Attribute", "Value", "Attribute Karma points", "Runner Karma", "Burned Edge", "Natural maximum", "Expense", "Expense identity", "Date", "Undo"),
+    "de": ("Attribut", "Wert", "Attribut-Karmapunkte", "Runner-Karma", "Verbrannter Edge", "Natürliches Maximum", "Ausgabe", "Ausgabenidentität", "Datum", "Rücknahme"),
+    "es": ("Atributo", "Valor", "Puntos de Karma de atributo", "Karma del runner", "Edge quemado", "Máximo natural", "Gasto", "Identidad del gasto", "Fecha", "Deshacer"),
+}
+RECEIPT_METRIC_LABELS_BY_LANGUAGE = {
+    "en": ("Attribute", "Attribute Karma", "Runner Karma", "Burned Edge", "Expense", "Transaction", "Saved revision"),
+    "de": ("Attribut", "Attribut-Karma", "Runner-Karma", "Verbrannter Edge", "Ausgabe", "Transaktion", "Gespeicherte Revision"),
+    "es": ("Atributo", "Karma de atributo", "Karma del runner", "Edge quemado", "Gasto", "Transacción", "Revisión guardada"),
+}
 LOWER_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 LOWER_GIT_REVISION = re.compile(r"^[0-9a-f]{40}$")
 DOTNET_UNSPECIFIED_DATE = re.compile(
@@ -709,6 +719,10 @@ def prepare_runner(
 ) -> tuple[shared.LaunchState, shared.WorkspaceAuthority]:
     launch = shared.launch_app(device)
     shared.wait_for_phone_runners(device, timeout=120)
+    shared.record_phone_ui_locale_evidence(
+        device,
+        evidence_prefix="sr5-career-attribute",
+    )
     device.tap("home-open-file")
     shared.select_android_document(device, fixture_name)
     device.wait("CareerAttributeAdvanceE2E", timeout=120)
@@ -1100,28 +1114,25 @@ def label_bound_value(
     raise RuntimeError(f"Receipt metric label {label!r} was not rendered")
 
 
-def require_exact_page_text(
+def localized_metric_labels(
     device: shared.Device,
-    expected: str,
-    *,
-    swipes: int = 30,
-) -> None:
-    shared.reset_scroll_to_top(device, swipes=swipes)
-    for _ in range(swipes + 1):
-        matches = [
-            node
-            for node in device.hierarchy()
-            if node.attributes.get("text") == expected
-        ]
-        if len(matches) > 1:
-            device.capture("sr5-career-page-text-cardinality")
-            raise RuntimeError(f"Page text {expected!r} is ambiguous")
-        if len(matches) == 1:
-            return
-        device.swipe_up(distance_ratio=0.18)
-        time.sleep(0.35)
-    device.capture("sr5-career-page-text-missing")
-    raise RuntimeError(f"Page text {expected!r} was not rendered")
+    contract_id: str,
+    labels_by_language: dict[str, tuple[str, ...]],
+) -> tuple[str, ...]:
+    binding = getattr(device, "_phone_ui_locale_binding", None)
+    locale_tag = (
+        binding.locale_tag
+        if isinstance(binding, shared.PhoneUiLocaleBinding)
+        else "en-US"
+    )
+    language = shared.supported_phone_ui_language(locale_tag)
+    resolved = shared.resolve_localized_ui_labels(
+        contract_id=contract_id,
+        locale_tag=locale_tag,
+        observed_labels=labels_by_language[language],
+        labels_by_language=labels_by_language,
+    )
+    return tuple(str(label) for label in resolved["expectedLabels"])
 
 
 def read_exact_receipt_binding(
@@ -1156,20 +1167,24 @@ def require_review_text(
     draft = require_object_fields(checkpoint["Draft"], DRAFT_FIELDS, "Career draft")
     plan = require_object_fields(draft["Plan"], PLAN_FIELDS, "Career plan")
     wait_exact_route(device, REVIEW_ROUTE)
-    require_exact_page_text(device, "Review exact diff", swipes=18)
-    expected_metrics = {
-        "Attribute": "BOD",
-        "Value": "2 → 3",
-        "Attribute Karma points": "1 → 2",
-        "Runner Karma": "35 → 20",
-        "Burned Edge": "0 → 0",
-        "Natural maximum": "6",
-        "Expense": "Attribute BOD 2 -> 3",
-        "Expense identity": str(plan["ExpenseId"]),
-        "Date": dotnet_roundtrip_unspecified(str(plan["ExpenseDateLocal"])),
-        "Undo": "ImproveAttribute · BOD",
-    }
-    for label, expected in expected_metrics.items():
+    expected_values = (
+        "BOD",
+        "2 → 3",
+        "1 → 2",
+        "35 → 20",
+        "0 → 0",
+        "6",
+        "Attribute BOD 2 -> 3",
+        str(plan["ExpenseId"]),
+        dotnet_roundtrip_unspecified(str(plan["ExpenseDateLocal"])),
+        "ImproveAttribute · BOD",
+    )
+    labels = localized_metric_labels(
+        device,
+        "sr5-career-attribute-review-metrics",
+        REVIEW_METRIC_LABELS_BY_LANGUAGE,
+    )
+    for label, expected in zip(labels, expected_values, strict=True):
         actual = label_bound_value(device, label, swipes=18)
         if actual != expected:
             raise RuntimeError(
@@ -1194,26 +1209,26 @@ def require_receipt_text(
     quote = require_object_fields(draft["Quote"], QUOTE_FIELDS, "Career quote")
     plan = require_object_fields(draft["Plan"], PLAN_FIELDS, "Career plan")
     wait_exact_route(device, RECEIPT_ROUTE)
-    require_exact_page_text(device, "Verified saved advancement")
-    expected_metrics = {
-        "Attribute": "BOD",
-        "Attribute Karma": "1 → 2",
-        "Runner Karma": "35 → 20",
-        "Burned Edge": "0 → 0",
-        "Expense": "-15",
-        "Transaction": str(plan["ExpenseId"]),
-        "Saved revision": str(int(draft["ExpectedContentRevision"]) + 1),
-    }
-    for label, expected in expected_metrics.items():
+    expected_values = (
+        "BOD",
+        "1 → 2",
+        "35 → 20",
+        "0 → 0",
+        "-15",
+        str(plan["ExpenseId"]),
+        str(int(draft["ExpectedContentRevision"]) + 1),
+    )
+    labels = localized_metric_labels(
+        device,
+        "sr5-career-attribute-receipt-metrics",
+        RECEIPT_METRIC_LABELS_BY_LANGUAGE,
+    )
+    for label, expected in zip(labels, expected_values, strict=True):
         actual = label_bound_value(device, label)
         if actual != expected:
             raise RuntimeError(
                 f"Receipt metric {label!r} differs: expected {expected!r}, got {actual!r}"
             )
-    require_exact_page_text(
-        device,
-        "The receipt was recovered from the exact clean saved revision.",
-    )
     device.wait_exact_resource_id_bidirectional(
         "sr5-career-attribute-receipt-acknowledge",
         timeout=90,

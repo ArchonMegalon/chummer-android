@@ -31,6 +31,16 @@ PRIORITY_PROOF_RANKS = {
     "skills": "c",
     "resources": "d",
 }
+PRIORITY_RANK_LABEL_BY_LANGUAGE = {
+    "en": "Rank",
+    "de": "Rang",
+    "es": "Rango",
+}
+PRIORITY_KARMA_LABELS_BY_LANGUAGE = {
+    "en": ("Total", "Used", "Remaining"),
+    "de": ("Gesamt", "Verwendet", "Verbleibend"),
+    "es": ("Total", "Usado", "Restante"),
+}
 ACTIVE_SKILL_TALENT_LABEL = "Adept - 6 Magic"
 SKILL_GROUP_TALENT_LABEL = "Aspected Magician - 5 Magic"
 TALENT_GRANT_KINDS = ("Active skills", "Skill groups")
@@ -1072,36 +1082,42 @@ def assert_persisted_prerequisite_authority(
 
 
 def read_source_authority_digests(device: shared.Device) -> list[str]:
-    required_labels = {"Authority digest", "Profile inputs", "Priorities XML"}
-    seen_labels: set[str] = set()
+    """Read source authority by stable IDs; localized labels are not authority."""
     digests: set[str] = set()
-    seen_card = False
-    shared.reset_scroll_to_top(device, swipes=22)
-    for scroll_index in range(23):
-        nodes = device.hierarchy()
-        seen_card = seen_card or any(
-            shared.Device._matches(node, "creation-prerequisite-source-authority")
-            for node in nodes
+    for selector in (
+        "creation-prerequisite-authority-digest",
+        "creation-prerequisite-profile-inputs-digest",
+        "creation-prerequisite-priorities-xml-digest",
+    ):
+        shared.reset_scroll_to_top(device, swipes=22)
+        node = device.wait_for_single_exact_resource_id(
+            selector,
+            timeout=90,
+            scroll=True,
+            max_scrolls=22,
+            scroll_distance_ratio=0.22,
+            evidence_prefix=f"{selector}-source-authority",
+            surface_name="Creation prerequisite source-authority digest",
         )
-        for node in nodes:
-            values = (
-                node.attributes.get("text", ""),
-                node.attributes.get("content-desc", ""),
+        value = (
+            node.attributes.get("text")
+            or node.attributes.get("content-desc")
+            or ""
+        ).strip()
+        if CANONICAL_AUTHORITY_DIGEST.fullmatch(value) is None:
+            device.capture(f"{selector}-not-canonical")
+            raise RuntimeError(
+                f"Creation prerequisite source authority {selector!r} did not "
+                f"expose one canonical digest: {value!r}"
             )
-            for value in values:
-                if value in required_labels:
-                    seen_labels.add(value)
-                digests.update(shared.SHA256_TEXT.findall(value))
-        if seen_card and seen_labels == required_labels and len(digests) >= 3:
-            return sorted(digests)
-        if scroll_index < 22:
-            device.swipe_up(distance_ratio=0.22)
-            time.sleep(0.75)
-    device.capture("creation-prerequisite-source-authority-incomplete")
-    raise RuntimeError(
-        "Creation prerequisite source authority was incomplete: "
-        f"card={seen_card}, labels={sorted(seen_labels)!r}, canonicalDigests={sorted(digests)!r}"
-    )
+        digests.add(value)
+    if len(digests) != 3:
+        device.capture("creation-prerequisite-source-authority-incomplete")
+        raise RuntimeError(
+            "Creation prerequisite source authority did not expose three distinct "
+            f"exact digest values: {sorted(digests)!r}"
+        )
+    return sorted(digests)
 
 
 def tap_prescribed_exact_enabled_priority_rank(
@@ -1281,11 +1297,21 @@ def select_priority_rank(
     )
     detail = row.attributes.get("content-desc", "")
     expected_rank = rank_token.upper()
+    locale_binding = getattr(device, "_phone_ui_locale_binding", None)
+    language = (
+        locale_binding.language
+        if isinstance(locale_binding, shared.PhoneUiLocaleBinding)
+        else "en"
+    )
+    rank_label = PRIORITY_RANK_LABEL_BY_LANGUAGE[language]
     if (
         row.attributes.get("enabled") != "true"
         or row.attributes.get("clickable") != "true"
         or not device.node_has_tappable_bounds(row)
-        or re.search(rf"\bRank {re.escape(expected_rank)}\b", detail) is None
+        or re.search(
+            rf"(?:^|[. ·]){re.escape(rank_label)} {re.escape(expected_rank)}(?:$|[. ·])",
+            detail,
+        ) is None
     ):
         device.capture(f"creation-prerequisite-{category}-draft-not-refreshed")
         raise RuntimeError(
@@ -2324,7 +2350,17 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     progress.advance("initial-authority")
     initial_launch = shared.launch_app(device)
     shared.wait_for_phone_runners(device)
-    device.tap_until_visible("home-new-runner", "Select Build Method")
+    phone_ui_locale = shared.record_phone_ui_locale_evidence(
+        device,
+        evidence_prefix="creation-prerequisite",
+    )
+    device.tap_exact_resource_id_until_exact_resource_id(
+        "home-new-runner",
+        "dialog-action-create-character",
+        evidence_prefix="new-runner-build-method-dialog",
+        source_name="New runner control",
+        target_name="Create-character build-method action",
+    )
     device.tap("dialog-action-create-character", scroll=True)
     require_new_character_dialog_transition(device)
     shared.wait_for_phone_runner_route(device, created=False)
@@ -2376,9 +2412,18 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         prerequisite_digests["authority"],
     )
     karma = node_text(device, "creation-prerequisite-karma-budget", scroll=True)
-    for label in ("Total", "Used", "Remaining"):
-        if label.lower() not in karma.lower():
-            raise RuntimeError(f"Global Creation Karma omitted {label!r}: {karma!r}")
+    karma_labels = PRIORITY_KARMA_LABELS_BY_LANGUAGE[
+        str(phone_ui_locale["language"])
+    ]
+    cursor = 0
+    for label in karma_labels:
+        position = karma.find(label, cursor)
+        if position < 0:
+            raise RuntimeError(
+                "Global Creation Karma omitted or reordered the exact localized "
+                f"{phone_ui_locale['language']!r} label {label!r}: {karma!r}"
+            )
+        cursor = position + len(label)
     source_authority_digests = read_source_authority_digests(device)
 
     progress.advance("priority-ranks")
@@ -2411,16 +2456,15 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         scan_observer=progress.record_scan,
     )
     device.wait("creation-prerequisite-page", timeout=45)
-    heritage_row = node_text(
-        device,
+    device.wait_for_single_exact_resource_id(
         "creation-prerequisite-heritage-selection",
+        timeout=60,
         scroll=True,
+        max_scrolls=22,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="creation-prerequisite-heritage-selection",
+        surface_name="Typed Heritage selection row",
     )
-    if "selection" not in heritage_row.lower():
-        raise RuntimeError(
-            "Core-projected heritage choice did not bind to the typed phone draft: "
-            f"{heritage_row!r}"
-        )
     typed_selection_ids["heritage"] = node_text(
         device,
         "creation-prerequisite-heritage-selection-id",
@@ -2512,16 +2556,15 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         skill_group_grant["selectedOptionAutomationIds"]
     )
     complete_talent_grant_to_prerequisite(device)
-    talent_row = node_text(
-        device,
+    device.wait_for_single_exact_resource_id(
         "creation-prerequisite-talent-selection",
+        timeout=60,
         scroll=True,
+        max_scrolls=22,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="creation-prerequisite-talent-selection",
+        surface_name="Typed Talent selection row",
     )
-    if "selection" not in talent_row.lower():
-        raise RuntimeError(
-            "Core-projected Talent choice did not bind to the typed phone draft: "
-            f"{talent_row!r}"
-        )
     typed_selection_ids["talent"] = node_text(
         device,
         "creation-prerequisite-talent-selection-id",
@@ -2553,13 +2596,15 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     if attributes_after != attributes_before:
         raise RuntimeError("Back navigation did not restore the typed Attribute rank selection")
 
-    attributes_gate = node_text(
-        device,
+    device.wait_for_single_exact_resource_id(
         "creation-prerequisite-attributes-disabled",
+        timeout=60,
         scroll=True,
+        max_scrolls=22,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="creation-prerequisite-attributes-disabled",
+        surface_name="Core-disabled Attributes prerequisite row",
     )
-    if "raw" not in attributes_gate.lower() or "metatype" not in attributes_gate.lower():
-        raise RuntimeError(f"Attribute prerequisite reason is not explicit: {attributes_gate!r}")
 
     device.tap("creation-prerequisite-prepare-preview", scroll=True, max_scrolls=22)
     device.wait("creation-prerequisite-preview-page", timeout=60)
@@ -2609,28 +2654,34 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     device.wait("creation-prerequisite-preview-heritage", scroll=True, max_scrolls=22)
     device.wait("creation-prerequisite-preview-talent", scroll=True, max_scrolls=22)
     device.wait("creation-prerequisite-preview-karma-budget", timeout=45, scroll=True, max_scrolls=22)
-    preview_attributes = node_text(
-        device,
+    device.wait_for_single_exact_resource_id(
         "creation-prerequisite-preview-attributes-ready",
+        timeout=60,
         scroll=True,
+        max_scrolls=22,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="creation-prerequisite-preview-attributes-ready",
+        surface_name="Core-ready Attributes preview authority",
     )
-    if "effective" not in preview_attributes.lower() or "special" not in preview_attributes.lower():
-        raise RuntimeError(
-            "Core preview did not expose effective normal and special Attribute authority: "
-            f"{preview_attributes!r}"
-        )
     device.tap("creation-prerequisite-confirm", scroll=True, max_scrolls=22)
     device.wait("creation-prerequisite-confirm-receipt", timeout=90, scroll=True, max_scrolls=22)
     # Confirmation replaces the deeply scrolled preview content in place. Read the
     # receipt and its ordered authority fields from a deterministic page origin.
     shared.reset_scroll_to_top(device, swipes=22)
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-confirmed",
+        timeout=60,
+        scroll=True,
+        max_scrolls=22,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="creation-prerequisite-confirmed",
+        surface_name="Explicit prerequisite confirmation state",
+    )
     receipt_text = node_text(device, "creation-prerequisite-confirm-receipt", scroll=True)
-    if "false" not in receipt_text.lower():
-        raise RuntimeError("Prerequisite receipt did not prove CharacterDocumentChanged=false")
-    if "core prerequisite complete" not in receipt_text.lower():
+    if re.search(r"(?:^|[. ·])false(?:$|[. ·])", receipt_text.casefold()) is None:
         raise RuntimeError(
-            "Prerequisite receipt did not prove the post-confirm Attributes gate: "
-            f"{receipt_text!r}"
+            "Prerequisite receipt did not expose the invariant "
+            f"CharacterDocumentChanged=false value: {receipt_text!r}"
         )
     confirmed_revisions = {
         "contentRevision": nonnegative_integer(
@@ -2730,8 +2781,11 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         "creation-prerequisite-category-attributes",
         scroll=True,
     )
-    if "rank" not in resumed_attributes.lower():
-        raise RuntimeError("Confirmed prerequisite draft did not resume its Attribute rank")
+    if resumed_attributes != attributes_before:
+        raise RuntimeError(
+            "Confirmed prerequisite draft did not resume the exact localized Attribute "
+            f"rank row: before={attributes_before!r}, resumed={resumed_attributes!r}"
+        )
 
     device.back()
     shared.open_creation_dashboard(
@@ -2857,6 +2911,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
         "serial": args.serial,
         "profile": "phone",
+        "phoneUiLocale": phone_ui_locale,
         "apiLevel": int(api),
         "apk": str(args.apk.resolve()),
         "apkSha256": artifact_binding["apkSha256"],

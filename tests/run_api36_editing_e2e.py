@@ -39,6 +39,9 @@ PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE = {
     "de": ("Runner", "Runner", "Geschichten", "Mehr"),
     "es": ("Runners", "Runner", "Historias", "Más"),
 }
+SUPPORTED_PHONE_UI_LANGUAGES = ("en", "de", "es")
+PHONE_UI_LOCALE_PROPERTIES = ("persist.sys.locale", "ro.product.locale")
+PHONE_UI_LOCALE_EVIDENCE_SCHEMA = "chummer.android.phone-ui-locale-evidence/v1"
 # Backward-compatible conceptual labels for evidence and callers. Native tab binding below
 # accepts only one complete supported-language tuple and binds route identity by position.
 PHONE_SHELL_DESTINATION_LABELS = PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE["en"]
@@ -394,6 +397,74 @@ class FullEditingFixtureContract:
     next_improvement_cost: int
 
 
+@dataclass(frozen=True)
+class PhoneUiLocaleBinding:
+    locale_tag: str
+    language: str
+    authority_property: str
+
+
+def supported_phone_ui_language(locale_tag: str) -> str:
+    """Resolve one exact DE/EN/ES phone language or fail closed.
+
+    Physical localization proof never silently treats an unsupported/empty
+    device locale as English.  Regional tags and Android's underscore form are
+    accepted, but only their canonical primary language is used for UI labels.
+    """
+    normalized = locale_tag.strip().replace("_", "-")
+    if re.fullmatch(r"[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*", normalized) is None:
+        raise RuntimeError(f"Phone UI locale is not a canonical locale tag: {locale_tag!r}")
+    language = normalized.split("-", 1)[0].casefold()
+    if language not in SUPPORTED_PHONE_UI_LANGUAGES:
+        raise RuntimeError(
+            f"Phone UI locale {locale_tag!r} is outside the exact DE/EN/ES proof set"
+        )
+    return language
+
+
+def resolve_localized_ui_labels(
+    *,
+    contract_id: str,
+    locale_tag: str,
+    observed_labels: tuple[str, ...],
+    labels_by_language: dict[str, tuple[str, ...]],
+) -> dict[str, object]:
+    """Bind one ordered label surface to exactly one detected phone language."""
+    if not contract_id.strip():
+        raise ValueError("A localized UI label contract requires a stable contract id")
+    if tuple(labels_by_language) != SUPPORTED_PHONE_UI_LANGUAGES:
+        raise RuntimeError(
+            f"Localized UI contract {contract_id!r} must define ordered en/de/es labels"
+        )
+    language = supported_phone_ui_language(locale_tag)
+    arities = {len(labels) for labels in labels_by_language.values()}
+    if len(arities) != 1 or not arities or next(iter(arities)) == 0:
+        raise RuntimeError(
+            f"Localized UI contract {contract_id!r} has inconsistent/empty label tuples"
+        )
+    if any(not label.strip() for labels in labels_by_language.values() for label in labels):
+        raise RuntimeError(f"Localized UI contract {contract_id!r} has a blank label")
+    matching_languages = tuple(
+        candidate_language
+        for candidate_language, expected in labels_by_language.items()
+        if observed_labels == expected
+    )
+    if matching_languages != (language,):
+        raise RuntimeError(
+            f"Localized UI contract {contract_id!r} observed {observed_labels!r} for "
+            f"phone locale {locale_tag!r}; expected exactly {labels_by_language[language]!r} "
+            f"and one unambiguous language, matched={matching_languages!r}"
+        )
+    return {
+        "contractId": contract_id,
+        "localeTag": locale_tag,
+        "language": language,
+        "observedLabels": list(observed_labels),
+        "expectedLabels": list(labels_by_language[language]),
+        "matchingLanguages": list(matching_languages),
+    }
+
+
 class ProductAnrDetected(RuntimeError):
     """Raised when Android reports that the Chummer process is not responding."""
 
@@ -408,6 +479,7 @@ class Device:
         self._transport_events: list[dict[str, object]] = []
         self._transport_preflight: dict[str, object] | None = None
         self._mutation_blocker: dict[str, object] | None = None
+        self._phone_ui_locale_binding: PhoneUiLocaleBinding | None = None
         self.evidence.mkdir(parents=True, exist_ok=True)
         stale_transport_evidence = [
             path
@@ -1694,6 +1766,70 @@ class Device:
             f"Timed out waiting for UI node {target!r} after tapping {selector!r}"
         )
 
+    def tap_exact_resource_id_until_exact_resource_id(
+        self,
+        selector: str,
+        target: str,
+        *,
+        timeout: int = 45,
+        evidence_prefix: str = "exact-resource-transition",
+        source_name: str = "Exact source control",
+        target_name: str = "Exact target control",
+    ) -> UiNode:
+        """Open a route without depending on localized visible text.
+
+        Both ends use exact resource-id cardinality.  The source is reacquired
+        from the current hierarchy before every tap; a duplicate source/target
+        or stale/non-tappable source fails closed.
+        """
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            nodes = self.hierarchy()
+            if not nodes:
+                time.sleep(0.75)
+                continue
+            targets = [
+                node
+                for node in nodes
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == target
+            ]
+            if len(targets) == 1:
+                return targets[0]
+            if len(targets) > 1:
+                self.capture(f"{evidence_prefix}-target-cardinality-invalid")
+                raise RuntimeError(
+                    f"{target_name} {target!r} has cardinality {len(targets)}; expected one"
+                )
+            sources = [
+                node
+                for node in nodes
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == selector
+            ]
+            if len(sources) > 1:
+                self.capture(f"{evidence_prefix}-source-cardinality-invalid")
+                raise RuntimeError(
+                    f"{source_name} {selector!r} has cardinality {len(sources)}; expected one"
+                )
+            if len(sources) == 1:
+                source = sources[0]
+                if not self.node_has_tappable_bounds(source):
+                    self.capture(f"{evidence_prefix}-source-not-tappable")
+                    raise RuntimeError(
+                        f"{source_name} {selector!r} did not expose exact tappable bounds"
+                    )
+                self.shell("input", "tap", *(str(value) for value in source.center))
+            if self.dismiss_system_ui_anr(nodes):
+                time.sleep(2)
+                continue
+            time.sleep(1.25)
+        self.capture(f"{evidence_prefix}-target-unavailable")
+        raise RuntimeError(
+            f"Timed out waiting for exact {target_name.lower()} {target!r} after "
+            f"tapping exact {source_name.lower()} {selector!r}"
+        )
+
     def set_text(
         self,
         selector: str,
@@ -2268,6 +2404,29 @@ def _native_phone_bottom_tab_bounds_are_plausible(
     )
 
 
+def detect_phone_ui_locale(device: Device) -> PhoneUiLocaleBinding:
+    """Read and cache the exact system locale that governs this proof run."""
+    if device._phone_ui_locale_binding is not None:
+        return device._phone_ui_locale_binding
+    observed: list[tuple[str, str]] = []
+    for property_name in PHONE_UI_LOCALE_PROPERTIES:
+        value = device.shell("getprop", property_name).strip()
+        observed.append((property_name, value))
+        if not value:
+            continue
+        binding = PhoneUiLocaleBinding(
+            locale_tag=value,
+            language=supported_phone_ui_language(value),
+            authority_property=property_name,
+        )
+        device._phone_ui_locale_binding = binding
+        return binding
+    raise RuntimeError(
+        "Phone UI locale was unavailable from the bounded Android property set: "
+        f"{observed!r}"
+    )
+
+
 def bind_phone_shell_destinations(
     device: Device,
     nodes: list[UiNode] | None = None,
@@ -2313,6 +2472,14 @@ def bind_phone_shell_destinations(
         raise RuntimeError(
             f"Native phone bottom bar order is {labels!r}; expected exactly one "
             f"supported DE/EN/ES tuple {PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE!r}"
+        )
+    locale_binding = getattr(device, "_phone_ui_locale_binding", None)
+    if isinstance(locale_binding, PhoneUiLocaleBinding):
+        resolve_localized_ui_labels(
+            contract_id="phone-shell-destinations",
+            locale_tag=locale_binding.locale_tag,
+            observed_labels=labels,
+            labels_by_language=PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE,
         )
 
     bounds = [node.bounds for node in ordered]
@@ -2447,6 +2614,44 @@ def wait_for_phone_shell_destinations(
         selected_label=selected_label,
     )
     return destinations
+
+
+def record_phone_ui_locale_evidence(
+    device: Device,
+    *,
+    evidence_prefix: str,
+    timeout: int = 45,
+) -> dict[str, object]:
+    """Bind system locale and native no-ID shell labels in one durable receipt."""
+    binding = detect_phone_ui_locale(device)
+    _, destinations = wait_for_phone_shell_destination_snapshot(
+        device,
+        timeout=timeout,
+        evidence_prefix=evidence_prefix,
+    )
+    observed_labels = tuple(
+        node.attributes.get("content-desc", "") for _, node in destinations
+    )
+    label_binding = resolve_localized_ui_labels(
+        contract_id="phone-shell-destinations",
+        locale_tag=binding.locale_tag,
+        observed_labels=observed_labels,
+        labels_by_language=PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE,
+    )
+    receipt: dict[str, object] = {
+        "schema": PHONE_UI_LOCALE_EVIDENCE_SCHEMA,
+        "status": "pass",
+        "serial": device.serial,
+        "authorityProperty": binding.authority_property,
+        **label_binding,
+        "destinationResourceIds": list(PHONE_SHELL_DESTINATION_IDS),
+        "nativeResourceIdPosture": "empty-pinned-maui-api36",
+    }
+    _write_new_json_receipt(
+        device.evidence / f"{evidence_prefix}-phone-ui-locale.json",
+        receipt,
+    )
+    return receipt
 
 
 def wait_for_phone_runners(device: Device, *, timeout: int = 90) -> UiNode:
@@ -3943,7 +4148,13 @@ def prepare_full_editing_runner(
     completed_runner_alias: str,
     completed_runner_sha256: str,
 ) -> WorkspaceAuthority | None:
-    device.tap_until_visible("home-new-runner", "Select Build Method")
+    device.tap_exact_resource_id_until_exact_resource_id(
+        "home-new-runner",
+        "dialog-action-create-character",
+        evidence_prefix="new-runner-build-method-dialog",
+        source_name="New runner control",
+        target_name="Create-character build-method action",
+    )
     device.tap("dialog-action-create-character", scroll=True)
     device.wait("dialog-action-complete-new-character-workflow", timeout=45, scroll=True)
     device.tap("dialog-action-complete-new-character-workflow", scroll=True)
@@ -4602,6 +4813,10 @@ def main() -> int:
     initial_launch_state = launch_app(device)
     if args.profile == "phone":
         wait_for_phone_runners(device)
+        record_phone_ui_locale_evidence(
+            device,
+            evidence_prefix="full-editing",
+        )
     else:
         device.wait("Your runners", timeout=90)
 

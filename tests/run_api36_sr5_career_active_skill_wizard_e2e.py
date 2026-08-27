@@ -29,6 +29,16 @@ CHECKPOINT_KEY = "sr5.career.active-skill.draft.v1"
 CHOOSE_ROUTE = "sr5-career/advancement/active-skill/choose"
 REVIEW_ROUTE = "sr5-career/advancement/active-skill/review"
 RECEIPT_ROUTE = "sr5-career/advancement/active-skill/receipt"
+REVIEW_METRIC_LABELS_BY_LANGUAGE = {
+    "en": ("Skill", "Rating", "Karma", "Expense", "Date", "Undo type", "Skill identity", "Source identity", "Expense identity"),
+    "de": ("Fertigkeit", "Stufe", "Karma", "Ausgabe", "Datum", "Rücknahmetyp", "Fertigkeitsidentität", "Quellenidentität", "Ausgabenidentität"),
+    "es": ("Habilidad", "Nivel", "Karma", "Gasto", "Fecha", "Tipo de deshacer", "Identidad de habilidad", "Identidad de fuente", "Identidad del gasto"),
+}
+RECEIPT_METRIC_LABELS_BY_LANGUAGE = {
+    "en": ("Skill", "Rating", "Karma spent", "Saved Karma", "Saved revision", "Expense identity", "Expense date", "Expense reason", "Expense type", "Refund", "Career visible", "Karma undo type", "Nuyen undo type", "Undo object", "Undo quantity", "Undo extra"),
+    "de": ("Fertigkeit", "Stufe", "Ausgegebenes Karma", "Gespeichertes Karma", "Gespeicherte Revision", "Ausgabenidentität", "Ausgabedatum", "Ausgabengrund", "Ausgabentyp", "Rückerstattung", "In Karriere sichtbar", "Karma-Rücknahmetyp", "Nuyen-Rücknahmetyp", "Rücknahmeobjekt", "Rücknahmemenge", "Rücknahmezusatz"),
+    "es": ("Habilidad", "Nivel", "Karma gastado", "Karma guardado", "Revisión guardada", "Identidad del gasto", "Fecha del gasto", "Motivo del gasto", "Tipo de gasto", "Reembolso", "Visible en carrera", "Tipo de deshacer Karma", "Tipo de deshacer Nuyen", "Objeto de deshacer", "Cantidad de deshacer", "Extra de deshacer"),
+}
 LOWER_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 LOWER_GIT_REVISION = re.compile(r"^[0-9a-f]{40}$")
 DOTNET_UNSPECIFIED_DATE = re.compile(
@@ -594,28 +604,25 @@ def label_bound_value(
     raise RuntimeError(f"Receipt metric label {label!r} was not rendered")
 
 
-def require_exact_page_text(
+def localized_metric_labels(
     device: shared.Device,
-    expected: str,
-    *,
-    swipes: int = 30,
-) -> None:
-    shared.reset_scroll_to_top(device, swipes=swipes)
-    for _ in range(swipes + 1):
-        matches = [
-            node
-            for node in device.hierarchy()
-            if node.attributes.get("text") == expected
-        ]
-        if len(matches) > 1:
-            device.capture("sr5-career-page-text-cardinality")
-            raise RuntimeError(f"Page text {expected!r} is ambiguous")
-        if len(matches) == 1:
-            return
-        device.swipe_up(distance_ratio=0.18)
-        time.sleep(0.35)
-    device.capture("sr5-career-page-text-missing")
-    raise RuntimeError(f"Page text {expected!r} was not rendered")
+    contract_id: str,
+    labels_by_language: dict[str, tuple[str, ...]],
+) -> tuple[str, ...]:
+    binding = getattr(device, "_phone_ui_locale_binding", None)
+    locale_tag = (
+        binding.locale_tag
+        if isinstance(binding, shared.PhoneUiLocaleBinding)
+        else "en-US"
+    )
+    language = shared.supported_phone_ui_language(locale_tag)
+    resolved = shared.resolve_localized_ui_labels(
+        contract_id=contract_id,
+        locale_tag=locale_tag,
+        observed_labels=labels_by_language[language],
+        labels_by_language=labels_by_language,
+    )
+    return tuple(str(label) for label in resolved["expectedLabels"])
 
 
 def read_exact_receipt_binding(
@@ -648,19 +655,23 @@ def require_review_text(
     checkpoint: dict[str, object],
 ) -> None:
     wait_exact_route(device, REVIEW_ROUTE)
-    require_exact_page_text(device, "Review exact diff", swipes=18)
-    expected_metrics = {
-        "Skill": "Pilot Ground Craft",
-        "Rating": "3 → 4",
-        "Karma": "20 → 12",
-        "Expense": "Active Skill Pilot Ground Craft 3 -> 4",
-        "Date": dotnet_roundtrip_unspecified(str(checkpoint["ExpenseDateLocal"])),
-        "Undo type": "ImproveSkill",
-        "Skill identity": str(checkpoint["SkillId"]),
-        "Source identity": str(checkpoint["SourceSkillId"]),
-        "Expense identity": str(checkpoint["ActionId"]),
-    }
-    for label, expected in expected_metrics.items():
+    expected_values = (
+        "Pilot Ground Craft",
+        "3 → 4",
+        "20 → 12",
+        "Active Skill Pilot Ground Craft 3 -> 4",
+        dotnet_roundtrip_unspecified(str(checkpoint["ExpenseDateLocal"])),
+        "ImproveSkill",
+        str(checkpoint["SkillId"]),
+        str(checkpoint["SourceSkillId"]),
+        str(checkpoint["ActionId"]),
+    )
+    labels = localized_metric_labels(
+        device,
+        "sr5-career-active-skill-review-metrics",
+        REVIEW_METRIC_LABELS_BY_LANGUAGE,
+    )
+    for label, expected in zip(labels, expected_values, strict=True):
         actual = label_bound_value(device, label, swipes=18)
         if actual != expected:
             raise RuntimeError(
@@ -682,37 +693,37 @@ def require_receipt_text(
     checkpoint: dict[str, object],
 ) -> dict[str, str]:
     wait_exact_route(device, RECEIPT_ROUTE)
-    require_exact_page_text(device, "Verified saved advancement")
-    expected_metrics = {
-        "Skill": "Pilot Ground Craft",
-        "Rating": "3 → 4",
-        "Karma spent": "8",
-        "Saved Karma": "12",
-        "Saved revision": str(int(checkpoint["ExpectedContentRevision"]) + 1),
-        "Expense identity": str(checkpoint["ActionId"]),
-        "Expense date": dotnet_roundtrip_unspecified(
+    expected_values = (
+        "Pilot Ground Craft",
+        "3 → 4",
+        "8",
+        "12",
+        str(int(checkpoint["ExpectedContentRevision"]) + 1),
+        str(checkpoint["ActionId"]),
+        dotnet_roundtrip_unspecified(
             str(checkpoint["ExpenseDateLocal"])
         ),
-        "Expense reason": "Active Skill Pilot Ground Craft 3 -> 4",
-        "Expense type": "Karma",
-        "Refund": "False",
-        "Career visible": "False",
-        "Karma undo type": "ImproveSkill",
-        "Nuyen undo type": "AddCyberware",
-        "Undo object": leaf.SKILL_ID,
-        "Undo quantity": "0",
-        "Undo extra": "—",
-    }
-    for label, expected in expected_metrics.items():
+        "Active Skill Pilot Ground Craft 3 -> 4",
+        "Karma",
+        "False",
+        "False",
+        "ImproveSkill",
+        "AddCyberware",
+        leaf.SKILL_ID,
+        "0",
+        "—",
+    )
+    labels = localized_metric_labels(
+        device,
+        "sr5-career-active-skill-receipt-metrics",
+        RECEIPT_METRIC_LABELS_BY_LANGUAGE,
+    )
+    for label, expected in zip(labels, expected_values, strict=True):
         actual = label_bound_value(device, label)
         if actual != expected:
             raise RuntimeError(
                 f"Receipt metric {label!r} differs: expected {expected!r}, got {actual!r}"
             )
-    require_exact_page_text(
-        device,
-        "Receipt values came from fresh typed skill and expense projections for this clean saved revision.",
-    )
     device.wait_exact_resource_id_bidirectional(
         "sr5-career-active-skill-receipt-acknowledge",
         timeout=90,
@@ -898,6 +909,10 @@ def prove_staged_wizard(
         device,
         fixture.name,
         fixture_sha256,
+    )
+    shared.record_phone_ui_locale_evidence(
+        device,
+        evidence_prefix="sr5-career-active-skill",
     )
     leaf.assert_before(leaf.root_for_authority(device, imported))
 

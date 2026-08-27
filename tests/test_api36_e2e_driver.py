@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import subprocess
 import sys
 import tempfile
@@ -47,9 +48,15 @@ class FakeDevice(DRIVER.Device):
 
 
 class RecordingDevice(DRIVER.Device):
-    def __init__(self, evidence: Path, display_size: str) -> None:
+    def __init__(
+        self,
+        evidence: Path,
+        display_size: str,
+        locale_output: str = "en-US",
+    ) -> None:
         super().__init__(Path("/unused/adb"), "emulator-5554", evidence)
         self.display_size_output = display_size
+        self.locale_output = locale_output
         self.commands: list[tuple[str, ...]] = []
         self.nodes: list[DRIVER.UiNode] = []
         self.input_method_output = ""
@@ -60,6 +67,10 @@ class RecordingDevice(DRIVER.Device):
         self.commands.append(arguments)
         if arguments == ("wm", "size"):
             return self.display_size_output
+        if arguments == ("getprop", "persist.sys.locale"):
+            return self.locale_output
+        if arguments == ("getprop", "ro.product.locale"):
+            return "en-US"
         if arguments == ("dumpsys", "input_method"):
             return self.input_method_output
         if (
@@ -688,6 +699,82 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                         DRIVER.PHONE_SHELL_DESTINATION_IDS,
                         tuple(resource_id for resource_id, _ in bound),
                     )
+
+    def test_localized_label_contract_accepts_exact_german_and_spanish(self) -> None:
+        for locale_tag, language in (("de-AT", "de"), ("es-MX", "es")):
+            with self.subTest(locale_tag=locale_tag):
+                labels = DRIVER.PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE[language]
+                resolved = DRIVER.resolve_localized_ui_labels(
+                    contract_id="phone-shell-destinations",
+                    locale_tag=locale_tag,
+                    observed_labels=labels,
+                    labels_by_language=DRIVER.PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE,
+                )
+                self.assertEqual(language, resolved["language"])
+                self.assertEqual(list(labels), resolved["observedLabels"])
+                self.assertEqual([language], resolved["matchingLanguages"])
+
+    def test_localized_label_contract_rejects_mixed_locale_tuple(self) -> None:
+        german = DRIVER.PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE["de"]
+        spanish = DRIVER.PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE["es"]
+        mixed = (german[0], spanish[1], german[2], spanish[3])
+        with self.assertRaisesRegex(RuntimeError, "expected exactly"):
+            DRIVER.resolve_localized_ui_labels(
+                contract_id="phone-shell-destinations",
+                locale_tag="de-AT",
+                observed_labels=mixed,
+                labels_by_language=DRIVER.PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE,
+            )
+
+    def test_localized_label_contract_rejects_unknown_phone_locale(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "outside the exact DE/EN/ES"):
+            DRIVER.resolve_localized_ui_labels(
+                contract_id="phone-shell-destinations",
+                locale_tag="fr-FR",
+                observed_labels=DRIVER.PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE["en"],
+                labels_by_language=DRIVER.PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE,
+            )
+
+    def test_localized_label_contract_rejects_ambiguous_language_tuple(self) -> None:
+        ambiguous = {
+            "en": ("Same", "Tuple"),
+            "de": ("Same", "Tuple"),
+            "es": ("Distinto", "Tuple"),
+        }
+        with self.assertRaisesRegex(RuntimeError, "unambiguous"):
+            DRIVER.resolve_localized_ui_labels(
+                contract_id="ambiguous-test",
+                locale_tag="de-DE",
+                observed_labels=ambiguous["de"],
+                labels_by_language=ambiguous,
+            )
+
+    def test_phone_locale_evidence_records_exact_locale_language_and_native_labels(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = RecordingDevice(
+                evidence,
+                "Physical size: 1080x2400",
+                locale_output="de-AT",
+            )
+            labels = DRIVER.PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE["de"]
+            device.nodes = self.native_phone_tabs(labels=labels, selected_index=0)
+
+            receipt = DRIVER.record_phone_ui_locale_evidence(
+                device,
+                evidence_prefix="localized-proof",
+                timeout=2,
+            )
+
+            self.assertEqual("pass", receipt["status"])
+            self.assertEqual("de-AT", receipt["localeTag"])
+            self.assertEqual("de", receipt["language"])
+            self.assertEqual(list(labels), receipt["observedLabels"])
+            self.assertEqual("persist.sys.locale", receipt["authorityProperty"])
+            persisted = (evidence / "localized-proof-phone-ui-locale.json").read_text(
+                encoding="utf-8"
+            )
+            self.assertEqual(receipt, json.loads(persisted))
 
     def test_structural_phone_destination_binding_fails_closed_on_adversarial_nodes(self) -> None:
         def altered(
@@ -1888,10 +1975,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.swipe_up.assert_not_called()
         device.capture.assert_not_called()
 
-    def test_new_runner_launch_retries_until_the_build_method_dialog_is_visible(self) -> None:
+    def test_new_runner_launch_uses_exact_resource_ids_not_localized_dialog_text(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
         self.assertIn(
-            'device.tap_until_visible("home-new-runner", "Select Build Method")',
+            'device.tap_exact_resource_id_until_exact_resource_id(\n'
+            '        "home-new-runner",\n'
+            '        "dialog-action-create-character",',
             source,
         )
         self.assertIn("time.sleep(1.25)", source)
@@ -1921,7 +2010,13 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         device.assert_has_calls(
             [
-                call.tap_until_visible("home-new-runner", "Select Build Method"),
+                call.tap_exact_resource_id_until_exact_resource_id(
+                    "home-new-runner",
+                    "dialog-action-create-character",
+                    evidence_prefix="new-runner-build-method-dialog",
+                    source_name="New runner control",
+                    target_name="Create-character build-method action",
+                ),
                 call.tap("dialog-action-create-character", scroll=True),
                 call.wait(
                     "dialog-action-complete-new-character-workflow",
@@ -1988,7 +2083,13 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         device.assert_has_calls(
             [
-                call.tap_until_visible("home-new-runner", "Select Build Method"),
+                call.tap_exact_resource_id_until_exact_resource_id(
+                    "home-new-runner",
+                    "dialog-action-create-character",
+                    evidence_prefix="new-runner-build-method-dialog",
+                    source_name="New runner control",
+                    target_name="Create-character build-method action",
+                ),
                 call.tap("dialog-action-create-character", scroll=True),
                 call.wait(
                     "dialog-action-complete-new-character-workflow",
