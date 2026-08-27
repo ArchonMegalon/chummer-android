@@ -45,9 +45,15 @@ public sealed class CreationPrerequisitePage : NativePageBase
         }
 
         _draft.Bind(state, Coordinator.State);
+        // Keep the build-method authority in the first native viewport.  The
+        // following digest and Karma cards are deliberately tall; rendering the
+        // short method card between them can move it through Android's
+        // accessibility viewport between two otherwise overlapping swipes.
+        // This is presentation order only.  Every value still comes from the
+        // same revision-bound prerequisite state.
+        AddMethod(state);
         AddBinding(state);
         AddCreationKarma(state.CreationKarmaBudget);
-        AddMethod(state);
         if (state.PendingDraft is { } pending)
             AddPendingDraft(pending);
 

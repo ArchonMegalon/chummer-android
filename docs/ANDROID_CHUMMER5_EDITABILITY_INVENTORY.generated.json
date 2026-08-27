@@ -574,7 +574,7 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
         "exists": true,
-        "sha256": "fca88aa01360da4c081d8c76151731cce33bb48aa9ca62fe914ffdcd75ebc6c3"
+        "sha256": "ff78ddf012f6235b2d529d18d173c1c178dc42bf162d906330d0b11a434a05f5"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
@@ -1039,7 +1039,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "5c98a79161a355288a38fec6f3d949c02c6632913bb9dd8cda90c4e07e3e7ccc"
+        "sha256": "e41d7aaf3710114393d513cfc6b9d3c5bf71218ed3fb276673e422fc9d12770a"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",

@@ -206,6 +206,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 progress = driver.ProgressRecorder(root)
                 for phase_id in driver.PHASE_ORDER:
                     progress.advance(phase_id)
+                    if phase_id == "initial-authority":
+                        for milestone_id in driver.INITIAL_AUTHORITY_MILESTONE_ORDER:
+                            progress.record_initial_authority_milestone(milestone_id)
                     if phase_id == "priority-ranks":
                         progress.record_scan(
                             {
@@ -234,6 +237,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 phase["phaseId"] for phase in evidence["phases"]
             ])
             self.assertEqual("rank-cardinality-heritage", evidence["scans"][0]["scanId"])
+            self.assertEqual(
+                list(driver.INITIAL_AUTHORITY_MILESTONE_ORDER),
+                [milestone["milestoneId"] for milestone in evidence["milestones"]],
+            )
+            self.assertTrue(all(
+                milestone["phaseId"] == "initial-authority"
+                and milestone["segmentElapsedMs"] >= 0
+                for milestone in evidence["milestones"]
+            ))
             self.assertEqual(driver.TOTAL_PERFORMANCE_TARGET_MS, evidence["configuredTotalTargetMs"])
             self.assertFalse((root / f".{driver.PROGRESS_FILE_NAME}.tmp").exists())
             self.assertFalse((root / f".{driver.PROGRESS_EVENTS_FILE_NAME}.tmp").exists())
@@ -272,6 +284,20 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 and phase["withinBudget"] is False
                 for phase in progress.phases
             ))
+
+    def test_progress_recorder_rejects_out_of_order_or_wrong_phase_milestones(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary, mock.patch("builtins.print"):
+            progress = driver.ProgressRecorder(Path(temporary))
+            progress.advance("device-preflight-install")
+            with self.assertRaisesRegex(RuntimeError, "outside the active initial phase"):
+                progress.record_initial_authority_milestone(
+                    driver.INITIAL_AUTHORITY_MILESTONE_ORDER[0]
+                )
+            progress.advance("initial-authority")
+            with self.assertRaisesRegex(RuntimeError, "Expected initial-authority milestone"):
+                progress.record_initial_authority_milestone(
+                    driver.INITIAL_AUTHORITY_MILESTONE_ORDER[1]
+                )
 
     def test_creation_karma_budget_cards_expose_readable_semantic_totals(self) -> None:
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
@@ -389,6 +415,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         class GrantDevice:
             up = 0
+            down = 0
 
             @staticmethod
             def wait_for_single_exact_resource_id(*_arguments, **_options):
@@ -401,17 +428,25 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             def swipe_up(self, **_options: object) -> None:
                 self.up += 1
 
+            def swipe_down(self, **_options: object) -> None:
+                self.down += 1
+
+            @staticmethod
+            def node_has_tappable_bounds(node) -> bool:
+                return bool(node.attributes.get("bounds"))
+
             @staticmethod
             def capture(name: str) -> None:
                 raise AssertionError(f"unexpected capture: {name}")
 
         device = GrantDevice()
-        with mock.patch.object(driver.shared, "reset_scroll_to_top"), \
-             mock.patch.object(driver.time, "sleep"):
+        navigation: dict[str, object] = {}
+        with mock.patch.object(driver.time, "sleep"):
             surface = driver.read_talent_grant_surface(
                 device,
                 "Active skills",
                 max_scrolls=2,
+                navigation_out=navigation,
             )
 
         self.assertEqual("Active skills", surface.kind)
@@ -425,6 +460,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(surface.option_ids, surface.selected_option_ids)
         self.assertTrue(surface.completion_enabled)
         self.assertEqual(2, device.up)
+        self.assertEqual(2, device.down)
+        self.assertEqual(0, navigation["endViewport"])
+        self.assertEqual(
+            0,
+            navigation["resourceViewports"][
+                "creation-prerequisite-talent-grant-complete"
+            ],
+        )
 
     def test_talent_grant_surface_rejects_malformed_or_opposite_kind_ids(self) -> None:
         malformed = self.talent_grant_nodes(option_id="forged-")
@@ -474,6 +517,207 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.capture.assert_called_once_with(
             "creation-prerequisite-talent-grant-cardinality-invalid"
         )
+
+    def test_grouped_talent_state_reuses_catalog_and_fails_closed_on_drift(self) -> None:
+        option_id = "creation-prerequisite-talent-active-skill-option-choice-0001"
+        digest = "sha256:" + ("a" * 64)
+        baseline = driver.TalentGrantSurface(
+            kind="Active skills",
+            selected_count=0,
+            required_count=1,
+            grant_digest=digest,
+            option_ids=(option_id,),
+            enabled_option_ids=(option_id,),
+            selected_option_ids=(),
+            completion_enabled=False,
+        )
+        navigation = {
+            "resourceViewports": {
+                "creation-prerequisite-talent-grant-authority": 0,
+                "creation-prerequisite-talent-grant-digest": 0,
+                option_id: 0,
+                "creation-prerequisite-talent-grant-complete": 0,
+            }
+        }
+
+        def nodes(
+            *,
+            selected: int = 1,
+            required: int = 1,
+            kind: str = "Active skills",
+            observed_digest: str = digest,
+            duplicate: bool = False,
+            enabled: bool = True,
+        ) -> list[driver.shared.UiNode]:
+            option = driver.shared.UiNode(
+                {
+                    "resource-id": option_id,
+                    "content-desc": "✓ Arcana" if selected else "Arcana",
+                    "enabled": str(enabled).lower(),
+                    "clickable": "true",
+                    "bounds": "[10,100][900,300]",
+                }
+            )
+            result = [
+                driver.shared.UiNode(
+                    {
+                        "resource-id": "creation-prerequisite-talent-grant-authority",
+                        "content-desc": f"Required. {selected} / {required} {kind}",
+                    }
+                ),
+                driver.shared.UiNode(
+                    {
+                        "resource-id": "creation-prerequisite-talent-grant-digest",
+                        "text": observed_digest,
+                    }
+                ),
+                option,
+                driver.shared.UiNode(
+                    {
+                        "resource-id": "creation-prerequisite-talent-grant-complete",
+                        "enabled": str(selected == required).lower(),
+                    }
+                ),
+            ]
+            if duplicate:
+                result.append(option)
+            return result
+
+        device = mock.Mock()
+        device.hierarchy.return_value = nodes()
+        device.node_has_tappable_bounds.return_value = True
+        state, viewport = driver.read_talent_grant_grouped_state(
+            device,
+            "Active skills",
+            baseline,
+            navigation,
+            0,
+            expected_selected_option_ids=(option_id,),
+            expected_completion_enabled=True,
+            evidence_prefix="grouped",
+        )
+        self.assertEqual(driver.TalentGrantMutableState(1, (option_id,), True), state)
+        self.assertEqual(0, viewport)
+
+        failures = (
+            (nodes(duplicate=True), "cardinality 2"),
+            (nodes(observed_digest="sha256:" + ("b" * 64)), "immutable authority"),
+            (nodes(kind="Skill groups"), "kind or required count"),
+            (nodes(required=2), "kind or required count"),
+            (nodes(enabled=False), "enabled exact selection"),
+        )
+        for hierarchy, message in failures:
+            with self.subTest(message=message):
+                failing = mock.Mock()
+                failing.hierarchy.return_value = hierarchy
+                failing.node_has_tappable_bounds.return_value = True
+                with self.assertRaisesRegex(RuntimeError, message):
+                    driver.read_talent_grant_grouped_state(
+                        failing,
+                        "Active skills",
+                        baseline,
+                        navigation,
+                        0,
+                        expected_selected_option_ids=(option_id,),
+                        expected_completion_enabled=True,
+                        evidence_prefix="grouped",
+                    )
+
+        with self.assertRaisesRegex(RuntimeError, "valid catalog partition"):
+            driver.read_talent_grant_grouped_state(
+                device,
+                "Active skills",
+                baseline,
+                navigation,
+                0,
+                expected_selected_option_ids=(
+                    "creation-prerequisite-talent-active-skill-option-unknown",
+                ),
+                expected_completion_enabled=True,
+                evidence_prefix="grouped",
+            )
+
+    def test_talent_choice_uses_one_catalog_scan_and_no_fixed_reset_searches(self) -> None:
+        source = inspect.getsource(driver.choose_and_prove_talent_grant)
+        self.assertEqual(1, source.count("read_talent_grant_surface("))
+        self.assertEqual(4, source.count("read_talent_grant_grouped_state("))
+        self.assertNotIn("reset_scroll_to_top", source)
+        self.assertNotIn("tap_exact_talent_grant_option", source)
+        self.assertNotIn("tap_exact_talent_option", source)
+        completion = inspect.getsource(driver.complete_talent_grant_to_prerequisite)
+        self.assertIn("tap_exact_measured_talent_resource(", completion)
+        self.assertNotIn("backward_scrolls=40", completion)
+        self.assertNotIn("forward_scrolls=40", completion)
+
+    def test_talent_choice_runs_one_inventory_then_four_fresh_grouped_states(self) -> None:
+        prefix = driver.TALENT_GRANT_OPTION_PREFIX["Active skills"]
+        option_ids = tuple(prefix + suffix for suffix in ("a", "b", "c"))
+        baseline = driver.TalentGrantSurface(
+            kind="Active skills",
+            selected_count=0,
+            required_count=2,
+            grant_digest="sha256:" + ("a" * 64),
+            option_ids=option_ids,
+            enabled_option_ids=option_ids,
+            selected_option_ids=(),
+            completion_enabled=False,
+        )
+        grant_navigation = {
+            "endViewport": 5,
+            "resourceViewports": {
+                **{resource_id: index + 1 for index, resource_id in enumerate(option_ids)},
+                "creation-prerequisite-talent-grant-authority": 0,
+                "creation-prerequisite-talent-grant-digest": 0,
+                "creation-prerequisite-talent-grant-complete": 5,
+            },
+        }
+        talent_option_id = "creation-prerequisite-talent-option-adept"
+        talent_navigation = {
+            "endViewport": 2,
+            "resourceViewports": {talent_option_id: 2},
+        }
+        chosen = option_ids[:2]
+        complete = driver.TalentGrantMutableState(2, chosen, True)
+        incomplete = driver.TalentGrantMutableState(1, (chosen[1],), False)
+        grouped_states = iter(
+            ((complete, 5), (complete, 5), (incomplete, 5), (complete, 5))
+        )
+        device = mock.Mock()
+
+        def inventory(*_args, navigation_out=None, **_kwargs):
+            navigation_out.update(grant_navigation)
+            return baseline
+
+        def measured(_device, resource_id, navigation, _current, **_kwargs):
+            return int(navigation["resourceViewports"][resource_id])
+
+        with mock.patch.object(
+            driver,
+            "read_talent_grant_surface",
+            side_effect=inventory,
+        ) as inventory_scan, mock.patch.object(
+            driver,
+            "tap_exact_measured_talent_resource",
+            side_effect=measured,
+        ) as measured_tap, mock.patch.object(
+            driver,
+            "read_talent_grant_grouped_state",
+            side_effect=lambda *_args, **_kwargs: next(grouped_states),
+        ) as grouped_scan:
+            proof = driver.choose_and_prove_talent_grant(
+                device,
+                "Active skills",
+                talent_option_id,
+                talent_navigation,
+                scan_id_prefix="active",
+            )
+
+        self.assertEqual(1, inventory_scan.call_count)
+        self.assertEqual(4, grouped_scan.call_count)
+        self.assertEqual(5, measured_tap.call_count)
+        self.assertEqual(list(option_ids), proof.receipt["allOptionAutomationIds"])
+        self.assertEqual(list(chosen), proof.receipt["selectedOptionAutomationIds"])
+        self.assertEqual(5, proof.current_viewport)
 
     def test_authority_option_collector_rejects_zero_candidates(self) -> None:
         device = mock.Mock()
@@ -529,7 +773,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
         device.capture.assert_called_once()
 
-    def test_authority_option_reacquisition_backtracks_from_clipped_exact_id(self) -> None:
+    def test_authority_option_reacquires_fresh_measured_node_and_rejects_clipped_drift(self) -> None:
         resource_id = "creation-prerequisite-heritage-option-exact"
         visible = self.authority_option_node(resource_id, "Human")
         visible.attributes["bounds"] = "[100,500][900,700]"
@@ -537,71 +781,36 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         clipped_above.attributes["bounds"] = "[100,230][900,232]"
 
         class AuthorityDevice:
-            reacquiring = False
-            reacquisition_reads = 0
-            up = 0
-            down = 0
-            taps: list[tuple[str, ...]] = []
+            fresh = visible
+
+            def __init__(self) -> None:
+                self.taps: list[tuple[str, ...]] = []
+                self.captures: list[str] = []
 
             def hierarchy(self):
-                if not self.reacquiring:
-                    return [visible]
-                self.reacquisition_reads += 1
-                if self.reacquisition_reads == 1:
-                    return [driver.shared.UiNode({"resource-id": "unrelated-visible-row"})]
-                if self.reacquisition_reads == 2:
-                    return [clipped_above]
-                return [visible]
+                return [self.fresh]
 
             @staticmethod
             def display_size():
                 return 1080, 2400
-
-            @staticmethod
-            def _scroll_x_ratio(_selector: str) -> float:
-                return 0.5
-
-            def swipe_up(self, **_options: object) -> None:
-                self.up += 1
-
-            def swipe_down(self, **_options: object) -> None:
-                self.down += 1
-
-            @staticmethod
-            def dismiss_system_ui_anr(_nodes=None) -> bool:
-                return False
 
             def node_has_tappable_bounds(self, node) -> bool:
                 return driver.shared.Device.node_has_tappable_bounds(self, node)
-
-            @staticmethod
-            def display_size():
-                return 1080, 2400
-
-            def wait_exact_resource_id_bidirectional(
-                self,
-                selector: str,
-                **options: object,
-            ):
-                if selector != resource_id:
-                    raise AssertionError(selector)
-                self.reacquiring = True
-                return driver.shared.Device.wait_exact_resource_id_bidirectional(
-                    self,
-                    selector,
-                    **options,
-                )
 
             def shell(self, *arguments: str) -> str:
                 self.taps.append(arguments)
                 return ""
 
             def capture(self, name: str) -> None:
-                raise AssertionError(f"unexpected capture: {name}")
+                self.captures.append(name)
 
         device = AuthorityDevice()
-        with mock.patch.object(driver.shared, "reset_scroll_to_top") as reset, \
-             mock.patch.object(driver.time, "sleep"):
+        scan = driver.StableViewportScan([[visible]], 0)
+        with mock.patch.object(driver, "rewind_to_stable_start"), mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            return_value=scan,
+        ):
             selected = driver.tap_enabled_authority_option(
                 device,
                 "creation-prerequisite-heritage-option-",
@@ -610,11 +819,27 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
 
         self.assertEqual(resource_id, selected)
-        self.assertEqual(3, device.reacquisition_reads)
-        self.assertEqual(3, device.up)
-        self.assertEqual(1, device.down)
         self.assertEqual([("input", "tap", "500", "600")], device.taps)
-        self.assertEqual([mock.call(device, swipes=2)] * 2, reset.call_args_list)
+        self.assertEqual([], device.captures)
+
+        drifted = AuthorityDevice()
+        drifted.fresh = clipped_above
+        with mock.patch.object(driver, "rewind_to_stable_start"), mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            return_value=scan,
+        ), self.assertRaisesRegex(RuntimeError, "not tappable"):
+            driver.tap_enabled_authority_option(
+                drifted,
+                "creation-prerequisite-heritage-option-",
+                "Human",
+                max_scrolls=2,
+            )
+        self.assertEqual([], drifted.taps)
+        self.assertEqual(
+            ["creation-prerequisite-authority-option-not-tappable"],
+            drifted.captures,
+        )
 
     def test_restored_authority_option_rejects_mismatch_and_duplicate(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "did not mark exactly"):
@@ -774,19 +999,32 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
     def test_talent_grant_completion_taps_the_single_checked_exact_node(self) -> None:
         device = mock.Mock()
+        device.hierarchy.return_value = [
+            driver.shared.UiNode(
+                {
+                    "resource-id": "creation-prerequisite-talent-grant-complete",
+                    "enabled": "true",
+                    "clickable": "true",
+                    "bounds": "[10,100][900,300]",
+                }
+            )
+        ]
+        device.node_has_tappable_bounds.return_value = True
+        navigation = {
+            "resourceViewports": {
+                "creation-prerequisite-talent-grant-complete": 7,
+            }
+        }
 
-        driver.complete_talent_grant_to_prerequisite(device)
+        driver.complete_talent_grant_to_prerequisite(device, navigation, 7)
 
-        device.tap_exact_resource_id_bidirectional.assert_called_once_with(
-            "creation-prerequisite-talent-grant-complete",
-            timeout=90,
-            backward_scrolls=40,
-            forward_scrolls=40,
-            scroll_distance_ratio=0.22,
-            evidence_prefix="creation-prerequisite-talent-grant-complete",
-            surface_name="Exact enabled Talent grant completion",
+        device.shell.assert_called_once_with(
+            "input",
+            "tap",
+            "455",
+            "200",
         )
-        device.tap_bidirectional.assert_not_called()
+        device.tap_exact_resource_id_bidirectional.assert_not_called()
         self.assertEqual(
             [
                 mock.call(
@@ -1124,7 +1362,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
             def swipe_up(self, **_options: object) -> None:
                 self.up += 1
-                self.viewport += 1
+                self.viewport = 1
 
             def swipe_down(self, **_options: object) -> None:
                 self.down += 1
@@ -1158,7 +1396,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         self.assertEqual("creation-prerequisite-rank-resources-e", selected)
         self.assertEqual(3, device.up)
-        self.assertEqual(3, device.down)
+        self.assertEqual(1, device.down)
         self.assertEqual([("input", "tap", "500", "1900")], device.taps)
 
     def test_exact_rank_scan_rejects_duplicate_or_malformed_resource_ids_before_tap(self) -> None:
@@ -1377,10 +1615,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn("reset_scroll_to_top", dashboard_source)
 
         execute_source = inspect.getsource(driver.execute)
-        self.assertIn("reset_swipes=0", execute_source)
+        self.assertIn(
+            "require_initial_creation_dashboard_snapshot(device, transition_nodes)",
+            execute_source,
+        )
         self.assertIn("scan_prerequisite_authority(", execute_source)
         initial_source = execute_source[: execute_source.index('progress.advance("priority-ranks")')]
         self.assertNotIn("open_prerequisite(device)", initial_source)
+        self.assertNotIn("shared.open_creation_dashboard(", initial_source)
+        self.assertNotIn("shared.wait_for_phone_runner_route(", initial_source)
         self.assertNotIn("reset_swipes=48", execute_source)
 
         prerequisite_source = inspect.getsource(driver.scan_prerequisite_authority)
@@ -1450,7 +1693,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             for selector, value in values.items()
         ]
         device = mock.Mock()
-        with mock.patch.object(driver, "rewind_to_exact_resource_id"), mock.patch.object(
+        with mock.patch.object(
             driver,
             "scan_forward_with_receipt",
             return_value=driver.StableViewportScan([nodes], 6),
@@ -1465,12 +1708,22 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "content-desc": "Revision 8",
             }
         )
-        with mock.patch.object(driver, "rewind_to_exact_resource_id"), mock.patch.object(
+        with mock.patch.object(
             driver,
             "scan_forward_with_receipt",
             return_value=driver.StableViewportScan([nodes, [changed]], 6),
         ), self.assertRaisesRegex(RuntimeError, "changed while scrolling"):
             driver.scan_prerequisite_authority(device)
+
+    def test_prerequisite_page_pins_short_method_authority_before_tall_cards(self) -> None:
+        source = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
+        refresh = source[source.index("protected override void Refresh()") :]
+        refresh = refresh[: refresh.index("private void AddBinding(")]
+        self.assertLess(refresh.index("AddMethod(state);"), refresh.index("AddBinding(state);"))
+        self.assertLess(
+            refresh.index("AddBinding(state);"),
+            refresh.index("AddCreationKarma(state.CreationKarmaBudget);"),
+        )
 
     def test_stable_scan_receipt_returns_the_observed_swipe_delta(self) -> None:
         node = driver.shared.UiNode({"resource-id": "stable"})
@@ -1482,7 +1735,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             max_scrolls=5,
             distance_ratio=0.68,
         )
-        self.assertEqual(2, receipt.swipes)
+        self.assertEqual(0, receipt.swipes)
         self.assertEqual(3, len(receipt.screens))
         self.assertEqual(2, device.swipe_up.call_count)
 
@@ -1537,9 +1790,48 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device = mock.Mock()
         device.hierarchy.return_value = [route]
 
-        driver.require_new_character_dialog_transition(device, timeout=1)
+        observed = driver.require_new_character_dialog_transition(device, timeout=1)
 
+        self.assertEqual([route], observed)
         device.capture.assert_not_called()
+
+    def test_creation_dashboard_handoff_reuses_one_exact_transition_snapshot(self) -> None:
+        nodes = [
+            driver.shared.UiNode(
+                {
+                    "resource-id": "phone-runner-page",
+                    "class": "android.view.ViewGroup",
+                    "enabled": "true",
+                }
+            ),
+            driver.shared.UiNode(
+                {
+                    "resource-id": "phone-runner-create",
+                    "class": "android.widget.TextView",
+                    "text": "CREATION RUNNER",
+                    "enabled": "true",
+                    "clickable": "false",
+                }
+            ),
+            driver.shared.UiNode(
+                {
+                    "resource-id": "creation-wizard-dashboard",
+                    "enabled": "true",
+                }
+            ),
+        ]
+        device = mock.Mock()
+
+        driver.require_initial_creation_dashboard_snapshot(device, nodes)
+
+        device.hierarchy.assert_not_called()
+        device.capture.assert_not_called()
+
+        with self.assertRaisesRegex(RuntimeError, "one exact creation dashboard"):
+            driver.require_initial_creation_dashboard_snapshot(device, nodes[:-1])
+        device.capture.assert_called_once_with(
+            "creation-priority-dashboard-handoff-cardinality-invalid"
+        )
 
     def test_new_character_dialog_transition_surfaces_exact_product_error(self) -> None:
         surface = driver.shared.UiNode(
@@ -2636,9 +2928,15 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn("require_new_character_dialog_transition(device)", source)
         self.assertNotIn('device.wait("dialog-action-complete-new-character-workflow"', source)
         self.assertNotIn('device.wait("Select Metatype Priority"', source)
-        self.assertIn("toolbar_timeout=120", source)
-        self.assertIn("dashboard_timeout=30", source)
-        self.assertIn("reset_swipes=0", source)
+        execute_source = inspect.getsource(driver.execute)
+        initial_source = execute_source[: execute_source.index('progress.advance("priority-ranks")')]
+        self.assertIn(
+            "require_initial_creation_dashboard_snapshot(device, transition_nodes)",
+            initial_source,
+        )
+        self.assertNotIn("toolbar_timeout=120", initial_source)
+        self.assertNotIn("dashboard_timeout=30", initial_source)
+        self.assertNotIn("reset_swipes=0", initial_source)
         self.assertNotIn("reset_swipes=48", source)
         self.assertNotIn('device.wait("creation-wizard-dashboard"', source)
         self.assertNotIn("shared.select_android_document", source)
