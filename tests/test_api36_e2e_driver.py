@@ -3040,10 +3040,17 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         helper = source[source.index("def _open_phone_relationship_collection") :]
         helper = helper[: helper.index("\ndef ", 5)]
-        self.assertEqual(2, helper.count("device.tap_exact_resource_id_bidirectional("))
+        self.assertEqual(1, helper.count("device.tap_exact_resource_id_bidirectional("))
+        self.assertIn('tap_phone_build_section(device, "relationships")', helper)
         self.assertNotIn("device.tap_bidirectional(", helper)
         self.assertNotIn("exact_resource_id=True", helper)
-        self.assertIn('"build-section-tab-relationships"', helper)
+        section_helper = source[source.index("def tap_phone_build_section") :]
+        section_helper = section_helper[: section_helper.index("\ndef ", 5)]
+        self.assertIn('selector = f"build-section-tab-{section}"', section_helper)
+        section_authority = source[
+            source.index("PHONE_BUILD_SECTIONS") : source.index("def tap_phone_build_section")
+        ]
+        self.assertIn("relationships", section_authority)
         self.assertIn("forward_scrolls=48", helper)
         self.assertIn("device.wait_exact_resource_id_bidirectional(", helper)
         self.assertIn("reset_scroll_to_top(device, swipes=24)", helper)
@@ -3801,8 +3808,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 self.calls: list[tuple[str, str]] = []
                 self.row_wait_options: dict[str, object] = {}
 
-            def tap_bidirectional(self, selector: str, **_: object) -> None:
-                self.calls.append(("tap_bidirectional", selector))
+            def tap_exact_resource_id_bidirectional(self, selector: str, **_: object) -> None:
+                self.calls.append(("tap_exact", selector))
 
             def swipe_down(self, **_: object) -> None:
                 self.calls.append(("swipe", "down"))
@@ -3818,7 +3825,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         self.assertEqual(
             [
-                ("tap_bidirectional", "build-section-tab-attributes"),
+                ("tap_exact", "build-section-tab-attributes"),
                 ("swipe", "down"),
                 ("swipe", "down"),
                 ("wait", "attribute-body"),
@@ -3841,8 +3848,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 self.calls: list[tuple[str, str]] = []
                 self.total = 1
 
-            def tap_bidirectional(self, selector: str, **_: object) -> None:
-                self.calls.append(("tap_bidirectional", selector))
+            def tap_exact_resource_id_bidirectional(self, selector: str, **_: object) -> None:
+                self.calls.append(("tap_exact", selector))
 
             def swipe_down(self, **_: object) -> None:
                 self.calls.append(("swipe", "down"))
@@ -3883,8 +3890,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             def __init__(self) -> None:
                 self.calls: list[tuple[str, str, dict[str, object]]] = []
 
-            def tap_bidirectional(self, selector: str, **options: object) -> None:
-                self.calls.append(("tap_bidirectional", selector, options))
+            def tap_exact_resource_id_bidirectional(
+                self,
+                selector: str,
+                **options: object,
+            ) -> None:
+                self.calls.append(("tap_exact", selector, options))
 
             def wait_exact_resource_id_bidirectional(
                 self,
@@ -3909,14 +3920,15 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         )
         self.assertEqual(
             (
-                "tap_bidirectional",
+                "tap_exact",
                 "build-section-tab-gear",
                 {
                     "timeout": 120,
                     "backward_scrolls": 24,
                     "forward_scrolls": 24,
                     "scroll_distance_ratio": 0.22,
-                    "exact_resource_id": True,
+                    "evidence_prefix": "gear-section-route",
+                    "surface_name": "Gear section route",
                 },
             ),
             device.calls[1],
@@ -4425,6 +4437,13 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             def __init__(self) -> None:
                 self.calls: list[tuple[str, str]] = []
 
+            def tap_exact_resource_id_bidirectional(
+                self,
+                selector: str,
+                **_: object,
+            ) -> None:
+                self.calls.append(("tap_exact", selector))
+
             def tap(self, selector: str, **_: object) -> None:
                 self.calls.append(("tap", selector))
 
@@ -4436,7 +4455,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         self.assertEqual(
             [
-                ("tap", "build-section-tab-combat"),
+                ("tap_exact", "build-section-tab-combat"),
                 ("tap", "build-action-tab-combat-conditionmonitor"),
                 ("wait", "condition-monitor-physical"),
             ],

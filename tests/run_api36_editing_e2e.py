@@ -3183,6 +3183,25 @@ def reset_collection_editor_to_top(device: Device, profile: str) -> None:
     )
 
 
+PHONE_BUILD_SECTIONS = frozenset({"attributes", "combat", "gear", "relationships"})
+
+
+def tap_phone_build_section(device: Device, section: str) -> None:
+    """Activate one canonical phone Build section from one checked hierarchy node."""
+    if section not in PHONE_BUILD_SECTIONS:
+        raise RuntimeError(f"Unsupported canonical phone Build section {section!r}")
+    selector = f"build-section-tab-{section}"
+    device.tap_exact_resource_id_bidirectional(
+        selector,
+        timeout=120,
+        backward_scrolls=24,
+        forward_scrolls=24,
+        scroll_distance_ratio=0.22,
+        evidence_prefix=f"{section}-section-route",
+        surface_name=f"{section.title()} section route",
+    )
+
+
 def open_attribute_section(
     device: Device,
     profile: str,
@@ -3195,13 +3214,7 @@ def open_attribute_section(
         device.wait(f"tablet-attribute-{attribute_token}", timeout=45)
         device.tap(f"tablet-attribute-{attribute_token}")
         return
-    device.tap_bidirectional(
-        "build-section-tab-attributes",
-        timeout=120,
-        backward_scrolls=24,
-        forward_scrolls=24,
-        scroll_distance_ratio=0.22,
-    )
+    tap_phone_build_section(device, "attributes")
     reset_scroll_to_top(device)
     device.wait(
         f"attribute-{attribute_token}",
@@ -3349,13 +3362,7 @@ def open_condition_monitor_section(device: Device, profile: str) -> None:
             scroll_distance_ratio=0.22,
         )
         return
-    device.tap(
-        "build-section-tab-combat",
-        scroll=True,
-        timeout=120,
-        max_scrolls=24,
-        scroll_distance_ratio=0.22,
-    )
+    tap_phone_build_section(device, "combat")
     device.tap(
         "build-action-tab-combat-conditionmonitor",
         timeout=120,
@@ -3453,14 +3460,7 @@ def open_gear_section(device: Device, profile: str) -> None:
         )
         return
     return_to_phone_runner_root(device, created=True)
-    device.tap_bidirectional(
-        "build-section-tab-gear",
-        timeout=120,
-        backward_scrolls=24,
-        forward_scrolls=24,
-        scroll_distance_ratio=0.22,
-        exact_resource_id=True,
-    )
+    tap_phone_build_section(device, "gear")
     device.wait_exact_resource_id_bidirectional(
         "section-quick-gear-add",
         timeout=180,
@@ -3567,15 +3567,7 @@ def _open_phone_relationship_collection(
     quick_add_selector: str,
     expected_item: str | None,
 ) -> None:
-    device.tap_exact_resource_id_bidirectional(
-        "build-section-tab-relationships",
-        timeout=120,
-        backward_scrolls=24,
-        forward_scrolls=24,
-        scroll_distance_ratio=0.22,
-        evidence_prefix="relationships-section-route",
-        surface_name="Relationships section route",
-    )
+    tap_phone_build_section(device, "relationships")
     time.sleep(5)
     device.tap_exact_resource_id_bidirectional(
         action_selector,

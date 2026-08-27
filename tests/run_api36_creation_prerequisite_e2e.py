@@ -210,6 +210,96 @@ def scan_forward_until_stable(
     )
 
 
+class StableViewportScan(NamedTuple):
+    screens: list[list[shared.UiNode]]
+    swipes: int
+
+
+def scan_forward_with_receipt(
+    device: shared.Device,
+    *,
+    scan_id: str,
+    max_scrolls: int,
+    distance_ratio: float,
+    observer: Callable[[dict[str, object]], None] | None = None,
+) -> StableViewportScan:
+    """Return the stable scan's actual viewport delta without another dump."""
+    receipt: dict[str, object] = {}
+
+    def record(value: dict[str, object]) -> None:
+        receipt.update(value)
+        if observer is not None:
+            observer(value)
+
+    screens = scan_forward_until_stable(
+        device,
+        scan_id=scan_id,
+        max_scrolls=max_scrolls,
+        distance_ratio=distance_ratio,
+        observer=record,
+    )
+    swipes = receipt.get("swipes")
+    if receipt.get("status") != "stable-end" or type(swipes) is not int or swipes < 0:
+        raise RuntimeError(f"Accessibility scan {scan_id!r} emitted no stable swipe receipt")
+    return StableViewportScan(screens, swipes)
+
+
+def rewind_to_exact_resource_id(
+    device: shared.Device,
+    selector: str,
+    *,
+    max_swipes: int,
+    distance_ratio: float,
+    evidence_prefix: str,
+    surface_name: str,
+    require_tappable: bool,
+) -> tuple[shared.UiNode, int]:
+    """Reverse only as far as needed, observing one hierarchy per viewport."""
+    if max_swipes < 0:
+        raise ValueError("A nonnegative scan-proven reverse bound is required")
+    for reverse_swipes in range(max_swipes + 1):
+        nodes = device.hierarchy()
+        if not nodes:
+            time.sleep(0.75)
+            continue
+        matches = [
+            node
+            for node in nodes
+            if node.attributes.get("resource-id", "").rsplit("/", 1)[-1] == selector
+        ]
+        if len(matches) > 1:
+            device.capture(f"{evidence_prefix}-cardinality-invalid")
+            raise RuntimeError(
+                f"{surface_name} {selector!r} has cardinality {len(matches)}; expected one"
+            )
+        if len(matches) == 1:
+            node = matches[0]
+            visible = device.node_has_tappable_bounds(node)
+            interactive = (
+                node.attributes.get("enabled") == "true"
+                and node.attributes.get("clickable") == "true"
+            )
+            if visible and (interactive or not require_tappable):
+                return node, reverse_swipes
+            device.capture(f"{evidence_prefix}-not-tappable")
+            raise RuntimeError(
+                f"{surface_name} {selector!r} was not visible"
+                + (", enabled, and clickable" if require_tappable else "")
+            )
+        if device.dismiss_system_ui_anr(nodes):
+            time.sleep(2)
+            continue
+        if reverse_swipes >= max_swipes:
+            break
+        device.swipe_down(distance_ratio=distance_ratio)
+        time.sleep(0.2)
+    device.capture(f"{evidence_prefix}-unavailable")
+    raise RuntimeError(
+        f"Timed out reversing to exact {surface_name.lower()} {selector!r} "
+        f"within the scan-proven {max_swipes}-swipe bound"
+    )
+
+
 class ProgressRecorder:
     """Deterministic phase events plus atomic timing evidence for a physical run."""
 
@@ -394,13 +484,19 @@ def node_text(device: shared.Device, selector: str, *, scroll: bool = False) -> 
     return node.attributes.get("text") or node.attributes.get("content-desc") or ""
 
 
+class CreationDashboardScanProof(NamedTuple):
+    binding: str
+    method_detail: str
+    swipes: int
+
+
 def assert_uncreated_advanced_editor_gated(
     device: shared.Device,
     *,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     scan_id: str = "advanced-editor-gate",
-) -> None:
-    """Scan the whole creation dashboard for Career/editor escape hatches."""
+) -> CreationDashboardScanProof:
+    """Scan the dashboard once for forbidden controls and reusable authority."""
     forbidden = (
         "Actions",
         "build-origin-dossier",
@@ -409,14 +505,16 @@ def assert_uncreated_advanced_editor_gated(
         "creation-wizard-attributes",
         "attribute-save-",
     )
-    screens = scan_forward_until_stable(
+    scan = scan_forward_with_receipt(
         device,
         scan_id=scan_id,
         max_scrolls=18,
         distance_ratio=0.68,
         observer=scan_observer,
     )
-    for nodes in screens:
+    bindings: set[str] = set()
+    method_states: set[tuple[str, str, str]] = set()
+    for nodes in scan.screens:
         for selector in forbidden:
             if any(shared.Device._matches(node, selector) for node in nodes):
                 device.capture(f"wizard-forbidden-{selector}")
@@ -424,7 +522,55 @@ def assert_uncreated_advanced_editor_gated(
                     "Creation dashboard exposed a Career/advanced-editor control while "
                     f"the authoritative runner is still uncreated: {selector!r}"
                 )
-    shared.reset_scroll_to_top(device, swipes=12)
+        for selector in ("creation-wizard-binding", "creation-stage-method"):
+            matches = [
+                node
+                for node in nodes
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == selector
+            ]
+            if len(matches) > 1:
+                device.capture(f"{scan_id}-{selector}-cardinality-invalid")
+                raise RuntimeError(
+                    f"Creation dashboard {selector!r} has cardinality {len(matches)}"
+                )
+            if len(matches) == 1:
+                value = (
+                    matches[0].attributes.get("text")
+                    or matches[0].attributes.get("content-desc")
+                    or ""
+                ).strip()
+                if value:
+                    if selector == "creation-wizard-binding":
+                        bindings.add(value)
+                    else:
+                        method_states.add((
+                            value,
+                            matches[0].attributes.get("enabled", ""),
+                            matches[0].attributes.get("clickable", ""),
+                        ))
+    if len(bindings) != 1 or len(method_states) != 1:
+        device.capture(f"{scan_id}-authority-incomplete")
+        raise RuntimeError(
+            "Creation dashboard stable scan did not expose one binding and one method row: "
+            f"bindings={sorted(bindings)!r}, methods={sorted(method_states)!r}"
+        )
+    method_detail, method_enabled, method_clickable = next(iter(method_states))
+    require_creation_method_navigation(
+        shared.UiNode(
+            {
+                "content-desc": method_detail,
+                "enabled": method_enabled,
+                "clickable": method_clickable,
+            }
+        ),
+        ready=True,
+    )
+    return CreationDashboardScanProof(
+        binding=next(iter(bindings)),
+        method_detail=method_detail,
+        swipes=scan.swipes,
+    )
 
 
 def canonical_digest(device: shared.Device, selector: str, *, scroll: bool = False) -> str:
@@ -874,38 +1020,69 @@ def wait_creation_dashboard_authority(
     """Wait for the explicitly asynchronous authority projection, never for a guessed row state."""
     deadline = time.monotonic() + timeout
     saw_loading = False
+
+    def raise_pending_timeout() -> None:
+        try:
+            capture_creation_authority_pending_timeout_diagnostics(
+                device,
+                timeout=timeout,
+            )
+        except Exception as error:
+            # Evidence collection is deliberately best-effort. It must never
+            # turn the product's bounded pending timeout into a false success
+            # or replace the stable timeout contract with a tooling exception.
+            try:
+                _write_pending_timeout_artifact(
+                    device,
+                    f"{CREATION_AUTHORITY_PENDING_TIMEOUT_PREFIX}-collection-error.txt",
+                    _pending_timeout_error(error),
+                    status="collection-error",
+                )
+            except Exception:
+                pass
+        raise RuntimeError(
+            "Creation dashboard authority projection remained pending past the bounded wait"
+        )
+
     while True:
-        if device.find("creation-dashboard-authority-failed") is not None:
+        nodes = device.hierarchy()
+        if not nodes:
+            if time.monotonic() >= deadline:
+                raise_pending_timeout()
+            time.sleep(0.75)
+            continue
+        matches = {
+            selector: [
+                node
+                for node in nodes
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == selector
+            ]
+            for selector in (
+                "creation-dashboard-authority-failed",
+                "creation-dashboard-authority-loading",
+            )
+        }
+        ambiguous = {
+            selector: len(candidates)
+            for selector, candidates in matches.items()
+            if len(candidates) > 1
+        }
+        if ambiguous:
+            device.capture("creation-dashboard-authority-cardinality-invalid")
+            raise RuntimeError(
+                f"Creation dashboard authority state was ambiguous: {ambiguous!r}"
+            )
+        if matches["creation-dashboard-authority-failed"]:
             device.capture("creation-dashboard-authority-failed")
             raise RuntimeError(
                 "Creation dashboard reported an explicit authority projection failure"
             )
-        loading = device.find("creation-dashboard-authority-loading")
-        if loading is None:
+        if not matches["creation-dashboard-authority-loading"]:
             return saw_loading
         saw_loading = True
         if time.monotonic() >= deadline:
-            try:
-                capture_creation_authority_pending_timeout_diagnostics(
-                    device,
-                    timeout=timeout,
-                )
-            except Exception as error:
-                # Evidence collection is deliberately best-effort. It must never
-                # turn the product's bounded pending timeout into a false success
-                # or replace the stable timeout contract with a tooling exception.
-                try:
-                    _write_pending_timeout_artifact(
-                        device,
-                        f"{CREATION_AUTHORITY_PENDING_TIMEOUT_PREFIX}-collection-error.txt",
-                        _pending_timeout_error(error),
-                        status="collection-error",
-                    )
-                except Exception:
-                    pass
-            raise RuntimeError(
-                "Creation dashboard authority projection remained pending past the bounded wait"
-            )
+            raise_pending_timeout()
         time.sleep(0.5)
 
 
@@ -1138,6 +1315,112 @@ def read_source_authority_digests(device: shared.Device) -> list[str]:
     return sorted(digests)
 
 
+PREREQUISITE_AUTHORITY_SELECTORS = (
+    "creation-prerequisite-binding",
+    "creation-prerequisite-method",
+    "creation-prerequisite-karma-budget",
+    "creation-prerequisite-snapshot-digest",
+    "creation-prerequisite-raw-character-xml-digest",
+    "creation-prerequisite-auxiliary-state-digest",
+    "creation-prerequisite-authority-digest",
+    "creation-prerequisite-profile-inputs-digest",
+    "creation-prerequisite-priorities-xml-digest",
+)
+
+
+class PrerequisiteAuthorityScanProof(NamedTuple):
+    values: dict[str, str]
+    swipes: int
+
+
+def scan_prerequisite_authority(
+    device: shared.Device,
+    *,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+) -> PrerequisiteAuthorityScanProof:
+    """Read every initial prerequisite authority field in one stable traversal."""
+    rewind_to_exact_resource_id(
+        device,
+        "creation-prerequisite-binding",
+        max_swipes=8,
+        distance_ratio=0.68,
+        evidence_prefix="creation-prerequisite-authority-origin",
+        surface_name="Creation prerequisite authority origin",
+        require_tappable=False,
+    )
+    scan = scan_forward_with_receipt(
+        device,
+        scan_id="prerequisite-authority-initial",
+        max_scrolls=22,
+        distance_ratio=0.68,
+        observer=scan_observer,
+    )
+    observed: dict[str, set[str]] = {
+        selector: set() for selector in PREREQUISITE_AUTHORITY_SELECTORS
+    }
+    for nodes in scan.screens:
+        for selector in PREREQUISITE_AUTHORITY_SELECTORS:
+            matches = [
+                node
+                for node in nodes
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == selector
+            ]
+            if len(matches) > 1:
+                device.capture(f"{selector}-cardinality-invalid")
+                raise RuntimeError(
+                    f"Creation prerequisite authority {selector!r} has cardinality "
+                    f"{len(matches)} in one viewport"
+                )
+            if len(matches) == 1:
+                value = (
+                    matches[0].attributes.get("text")
+                    or matches[0].attributes.get("content-desc")
+                    or ""
+                ).strip()
+                if value:
+                    observed[selector].add(value)
+    invalid = {
+        selector: sorted(values)
+        for selector, values in observed.items()
+        if len(values) != 1
+    }
+    if invalid:
+        device.capture("creation-prerequisite-authority-scan-invalid")
+        raise RuntimeError(
+            "Creation prerequisite authority scan was incomplete or changed while scrolling: "
+            f"{invalid!r}"
+        )
+    values = {selector: next(iter(entries)) for selector, entries in observed.items()}
+    for selector in (
+        "creation-prerequisite-snapshot-digest",
+        "creation-prerequisite-raw-character-xml-digest",
+        "creation-prerequisite-authority-digest",
+        "creation-prerequisite-profile-inputs-digest",
+        "creation-prerequisite-priorities-xml-digest",
+    ):
+        if CANONICAL_AUTHORITY_DIGEST.fullmatch(values[selector]) is None:
+            raise RuntimeError(
+                f"{selector} did not expose one canonical digest: {values[selector]!r}"
+            )
+    auxiliary = values["creation-prerequisite-auxiliary-state-digest"]
+    if CANONICAL_AUXILIARY_STATE_DIGEST.fullmatch(auxiliary) is None:
+        raise RuntimeError(
+            "creation-prerequisite-auxiliary-state-digest did not expose one "
+            f"canonical auxiliary-state digest: {auxiliary!r}"
+        )
+    source_digests = {
+        values["creation-prerequisite-authority-digest"],
+        values["creation-prerequisite-profile-inputs-digest"],
+        values["creation-prerequisite-priorities-xml-digest"],
+    }
+    if len(source_digests) != 3:
+        raise RuntimeError(
+            "Creation prerequisite source authority did not expose three distinct digests"
+        )
+    return PrerequisiteAuthorityScanProof(values=values, swipes=scan.swipes)
+
+
 def tap_prescribed_exact_enabled_priority_rank(
     device: shared.Device,
     category: str,
@@ -1157,17 +1440,26 @@ def tap_prescribed_exact_enabled_priority_rank(
     selected_resource_id = f"{prefix}{prescribed_rank}"
     observed_ids: set[str] = set()
     candidates: set[str] = set()
+    selected_viewports: list[int] = []
     invalid_ids: set[str] = set()
     duplicate_ids: set[str] = set()
-    shared.reset_scroll_to_top(device, swipes=22)
-    screens = scan_forward_until_stable(
+    rewind_to_exact_resource_id(
+        device,
+        f"{prefix}a",
+        max_swipes=8,
+        distance_ratio=0.68,
+        evidence_prefix=f"creation-prerequisite-{category}-rank-origin",
+        surface_name=f"{category} rank scan origin",
+        require_tappable=False,
+    )
+    scan = scan_forward_with_receipt(
         device,
         scan_id=f"rank-cardinality-{category}",
-        max_scrolls=22,
-        distance_ratio=0.22,
+        max_scrolls=8,
+        distance_ratio=0.68,
         observer=scan_observer,
     )
-    for nodes in screens:
+    for viewport_index, nodes in enumerate(scan.screens):
         screen_ids: list[str] = []
         for node in nodes:
             resource_id = node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
@@ -1185,6 +1477,8 @@ def tap_prescribed_exact_enabled_priority_rank(
                 and device.node_has_tappable_bounds(node)
             ):
                 candidates.add(resource_id)
+                if resource_id == selected_resource_id:
+                    selected_viewports.append(viewport_index)
         duplicate_ids.update(
             resource_id
             for resource_id in set(screen_ids)
@@ -1195,6 +1489,7 @@ def tap_prescribed_exact_enabled_priority_rank(
         or duplicate_ids
         or observed_ids != expected_ids
         or selected_resource_id not in candidates
+        or not selected_viewports
     ):
         device.capture(f"creation-prerequisite-{category}-rank-cardinality-invalid")
         raise RuntimeError(
@@ -1203,16 +1498,25 @@ def tap_prescribed_exact_enabled_priority_rank(
             f"invalidIds={sorted(invalid_ids)!r}, duplicateIds={sorted(duplicate_ids)!r}"
         )
 
-    shared.reset_scroll_to_top(device, swipes=22)
-    node = device.wait_exact_resource_id_bidirectional(
-        selected_resource_id,
-        timeout=45,
-        backward_scrolls=0,
-        forward_scrolls=22,
-        scroll_distance_ratio=0.22,
-        evidence_prefix=f"creation-prerequisite-{category}-rank-option",
-        surface_name=f"Enabled {category} rank option",
-    )
+    selected_viewport = max(selected_viewports)
+    reverse_swipes = max(0, scan.swipes - selected_viewport)
+    for _ in range(reverse_swipes):
+        device.swipe_down(distance_ratio=0.68)
+        time.sleep(0.2)
+    nodes = device.hierarchy()
+    exact_selected = [
+        node
+        for node in nodes
+        if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+        == selected_resource_id
+    ]
+    if len(exact_selected) != 1:
+        device.capture(f"creation-prerequisite-{category}-rank-option-cardinality-invalid")
+        raise RuntimeError(
+            f"Enabled {category} rank option {selected_resource_id!r} has cardinality "
+            f"{len(exact_selected)} after reversing the exact scan delta"
+        )
+    node = exact_selected[0]
     if (
         node.attributes.get("enabled") != "true"
         or node.attributes.get("clickable") != "true"
@@ -1245,14 +1549,14 @@ def select_priority_rank(
         raise RuntimeError(f"Unsupported prerequisite category {category!r}")
 
     category_selector = f"creation-prerequisite-category-{category}"
-    category_row = device.wait_exact_resource_id_bidirectional(
+    category_row, _ = rewind_to_exact_resource_id(
+        device,
         category_selector,
-        timeout=90,
-        backward_scrolls=22,
-        forward_scrolls=22,
-        scroll_distance_ratio=0.22,
+        max_swipes=22,
+        distance_ratio=0.68,
         evidence_prefix=f"creation-prerequisite-{category}-category-row",
         surface_name=f"{category} priority category row",
+        require_tappable=True,
     )
     device.shell("input", "tap", *(str(value) for value in category_row.center))
     device.wait_for_single_exact_resource_id(
@@ -1284,35 +1588,51 @@ def select_priority_rank(
         )
 
     deadline = time.monotonic() + 45
+    row: shared.UiNode | None = None
     while time.monotonic() < deadline:
-        if device.find_exact_resource_id("creation-prerequisite-category-page") is None:
+        nodes = device.hierarchy()
+        if not nodes:
+            time.sleep(0.75)
+            continue
+        matches = {
+            selector: [
+                node
+                for node in nodes
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == selector
+            ]
+            for selector in (
+                "creation-prerequisite-category-page",
+                "creation-prerequisite-page",
+                category_selector,
+            )
+        }
+        ambiguous = {
+            selector: len(candidates)
+            for selector, candidates in matches.items()
+            if len(candidates) > 1
+        }
+        if ambiguous:
+            device.capture(f"creation-prerequisite-{category}-pop-cardinality-invalid")
+            raise RuntimeError(
+                f"{category} rank selection published ambiguous parent state: {ambiguous!r}"
+            )
+        if (
+            not matches["creation-prerequisite-category-page"]
+            and len(matches["creation-prerequisite-page"]) == 1
+            and len(matches[category_selector]) == 1
+        ):
+            row = matches[category_selector][0]
             break
-        if device.dismiss_system_ui_anr():
+        if device.dismiss_system_ui_anr(nodes):
             time.sleep(2)
             continue
         time.sleep(0.25)
-    else:
+    if row is None:
         device.capture(f"creation-prerequisite-{category}-category-pop-timeout")
-        raise RuntimeError(f"{category} rank selection did not leave the category route")
-
-    device.wait_for_single_exact_resource_id(
-        "creation-prerequisite-page",
-        timeout=45,
-        evidence_prefix=f"creation-prerequisite-{category}-parent-route",
-        surface_name="Creation prerequisite parent route",
-    )
-    # PopAsync returns to the same long ScrollView offset.  Reacquire the exact
-    # row with the same bounded overlapping scan, then require the selected rank
-    # text. This proves the shared in-memory phone draft survived deep navigation.
-    row = device.wait_exact_resource_id_bidirectional(
-        category_selector,
-        timeout=90,
-        backward_scrolls=22,
-        forward_scrolls=22,
-        scroll_distance_ratio=0.22,
-        evidence_prefix=f"creation-prerequisite-{category}-selected-row",
-        surface_name=f"Selected {category} category row",
-    )
+        raise RuntimeError(
+            f"{category} rank selection did not publish one refreshed parent row"
+        )
     detail = row.attributes.get("content-desc", "")
     expected_rank = rank_token.upper()
     locale_binding = getattr(device, "_phone_ui_locale_binding", None)
@@ -2373,7 +2693,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         device,
         evidence_prefix="creation-prerequisite",
     )
-    device.tap_exact_resource_id_until_exact_resource_id(
+    create_character = device.tap_exact_resource_id_until_exact_resource_id(
         "home-new-runner",
         "dialog-action-create-character",
         evidence_prefix="new-runner-build-method-dialog",
@@ -2382,7 +2702,20 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         target_scroll_surface="dialog-surface",
         max_target_scrolls=16,
     )
-    device.tap("dialog-action-create-character", scroll=True)
+    if (
+        create_character.attributes.get("enabled") != "true"
+        or create_character.attributes.get("clickable") != "true"
+        or not device.node_has_tappable_bounds(create_character)
+    ):
+        device.capture("dialog-action-create-character-not-tappable")
+        raise RuntimeError(
+            "Exact create-character dialog action was not visible, enabled, and clickable"
+        )
+    device.shell(
+        "input",
+        "tap",
+        *(str(value) for value in create_character.center),
+    )
     require_new_character_dialog_transition(device)
     shared.wait_for_phone_runner_route(device, created=False)
     shared.open_creation_dashboard(
@@ -2390,49 +2723,73 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         open_build_route=False,
         toolbar_timeout=120,
         dashboard_timeout=30,
-        reset_swipes=8,
+        reset_swipes=0,
     )
-    assert_uncreated_advanced_editor_gated(
+    authority_projection_waited = wait_creation_dashboard_authority(device)
+    dashboard_scan = assert_uncreated_advanced_editor_gated(
         device,
         scan_observer=progress.record_scan,
         scan_id="advanced-editor-gate-initial",
     )
-
-    dashboard_binding = node_text(device, "creation-wizard-binding", scroll=True)
-    ready_navigation = wait_creation_method_navigation(device, ready=True)
+    dashboard_binding = dashboard_scan.binding
+    method_node, _ = rewind_to_exact_resource_id(
+        device,
+        "creation-stage-method",
+        max_swipes=dashboard_scan.swipes,
+        distance_ratio=0.68,
+        evidence_prefix="creation-stage-method-ready",
+        surface_name="Ready creation method navigation",
+        require_tappable=True,
+    )
+    method_detail = require_creation_method_navigation(method_node, ready=True)
+    if method_detail != dashboard_scan.method_detail:
+        device.capture("creation-stage-method-changed-after-dashboard-scan")
+        raise RuntimeError(
+            "Creation method authority changed between the stable dashboard scan and tap: "
+            f"scan={dashboard_scan.method_detail!r}, tap={method_detail!r}"
+        )
+    ready_navigation = {
+        "detail": method_detail,
+        "clickable": True,
+        "enabled": True,
+        "authorityProjectionWaited": authority_projection_waited,
+    }
     device.capture("creation-priority-core-bootstrap-ready")
 
-    open_prerequisite(device)
-    prerequisite_binding = node_text(device, "creation-prerequisite-binding", scroll=True)
-    prerequisite_binding_authority = require_prerequisite_binding(prerequisite_binding)
-    prerequisite_snapshot_digest = canonical_digest(
-        device,
-        "creation-prerequisite-snapshot-digest",
-        scroll=True,
+    device.shell("input", "tap", *(str(value) for value in method_node.center))
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-page",
+        timeout=60,
+        evidence_prefix="creation-prerequisite-route",
+        surface_name="Creation prerequisite route",
     )
+    prerequisite_scan = scan_prerequisite_authority(
+        device,
+        scan_observer=progress.record_scan,
+    )
+    prerequisite_values = prerequisite_scan.values
+    prerequisite_binding = prerequisite_values["creation-prerequisite-binding"]
+    prerequisite_binding_authority = require_prerequisite_binding(prerequisite_binding)
+    prerequisite_snapshot_digest = prerequisite_values[
+        "creation-prerequisite-snapshot-digest"
+    ]
     prerequisite_digests = {
-        "rawCharacterXml": canonical_digest(
-            device,
-            "creation-prerequisite-raw-character-xml-digest",
-            scroll=True,
-        ),
-        "auxiliaryState": canonical_auxiliary_state_digest(
-            device,
-            "creation-prerequisite-auxiliary-state-digest",
-            scroll=True,
-        ),
-        "authority": canonical_digest(
-            device,
-            "creation-prerequisite-authority-digest",
-            scroll=True,
-        ),
+        "rawCharacterXml": prerequisite_values[
+            "creation-prerequisite-raw-character-xml-digest"
+        ],
+        "auxiliaryState": prerequisite_values[
+            "creation-prerequisite-auxiliary-state-digest"
+        ],
+        "authority": prerequisite_values[
+            "creation-prerequisite-authority-digest"
+        ],
     }
     require_binding_matches_canonical_digests(
         prerequisite_binding_authority,
         prerequisite_snapshot_digest,
         prerequisite_digests["authority"],
     )
-    karma = node_text(device, "creation-prerequisite-karma-budget", scroll=True)
+    karma = prerequisite_values["creation-prerequisite-karma-budget"]
     karma_labels = PRIORITY_KARMA_LABELS_BY_LANGUAGE[
         str(phone_ui_locale["language"])
     ]
@@ -2445,7 +2802,13 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
                 f"{phone_ui_locale['language']!r} label {label!r}: {karma!r}"
             )
         cursor = position + len(label)
-    source_authority_digests = read_source_authority_digests(device)
+    source_authority_digests = sorted(
+        {
+            prerequisite_values["creation-prerequisite-authority-digest"],
+            prerequisite_values["creation-prerequisite-profile-inputs-digest"],
+            prerequisite_values["creation-prerequisite-priorities-xml-digest"],
+        }
+    )
 
     progress.advance("priority-ranks")
     selected: dict[str, str] = {}

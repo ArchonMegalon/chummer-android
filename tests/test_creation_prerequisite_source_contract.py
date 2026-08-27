@@ -574,6 +574,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             def node_has_tappable_bounds(self, node) -> bool:
                 return driver.shared.Device.node_has_tappable_bounds(self, node)
 
+            @staticmethod
+            def display_size():
+                return 1080, 2400
+
             def wait_exact_resource_id_bidirectional(
                 self,
                 selector: str,
@@ -905,7 +909,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         self.assertLess(persisted_reset, persisted_selection)
 
-    def test_rank_selection_resets_bottom_viewport_and_proves_refreshed_draft_row(self) -> None:
+    def test_rank_selection_rewinds_only_to_exact_row_and_proves_one_refreshed_snapshot(self) -> None:
         calls: list[tuple[str, object]] = []
         category_page = driver.shared.UiNode(
             {"resource-id": "creation-prerequisite-category-page"}
@@ -935,21 +939,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         class FakeDevice:
             route = "parent"
             viewport = "bottom"
-            category_poll_count = 0
 
-            category_scan_count = 0
-
-            def wait_exact_resource_id_bidirectional(
-                self,
-                selector: str,
-                **options: object,
-            ):
-                if self.route != "parent":
-                    raise AssertionError("Category row was acquired outside the parent route")
-                self.category_scan_count += 1
-                self.viewport = "top"
-                calls.append(("wait_bidirectional", (selector, options)))
-                return initial_row if self.category_scan_count == 1 else selected_row
+            def hierarchy(self):
+                calls.append(("hierarchy", self.route))
+                if self.route == "parent":
+                    return [parent_page] if self.viewport == "bottom" else [parent_page, initial_row]
+                if self.route == "parent-refreshed":
+                    return [parent_page, selected_row]
+                return [category_page]
 
             def shell(self, *arguments: str) -> None:
                 calls.append(("shell", arguments))
@@ -960,18 +957,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                         )
                     self.route = "category"
 
-            def find_exact_resource_id(self, selector: str):
-                calls.append(("find_exact", selector))
-                if selector == "creation-prerequisite-category-page" and self.route == "category":
-                    self.category_poll_count += 1
-                    if self.category_poll_count == 1:
-                        return category_page
-                    self.route = "parent"
-                    self.viewport = "bottom"
-                    return category_page
-                return None
-
-            def dismiss_system_ui_anr(self) -> bool:
+            def dismiss_system_ui_anr(self, _nodes=None) -> bool:
                 return False
 
             def wait_for_single_exact_resource_id(self, selector: str, **options: object):
@@ -980,10 +966,6 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     if self.route != "category":
                         raise AssertionError("Category route was not active")
                     return category_page
-                if selector == "creation-prerequisite-page":
-                    if self.route != "parent":
-                        raise AssertionError("Parent route was checked before the category pop")
-                    return parent_page
                 raise AssertionError(f"unexpected exact wait: {selector}")
 
             def swipe_down(self, **options: object) -> None:
@@ -1003,6 +985,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             self.assertIs(device, _device)
             self.assertEqual("heritage", category)
             calls.append(("select", category))
+            device.route = "parent-refreshed"
+            device.viewport = "top"
             return "creation-prerequisite-rank-heritage-a"
 
         with mock.patch.object(
@@ -1014,26 +998,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             selected = driver.select_priority_rank(device, "heritage")
 
         self.assertEqual("creation-prerequisite-rank-heritage-a", selected)
-        self.assertEqual(2, sum(call[0] == "wait_bidirectional" for call in calls))
-        self.assertEqual(0, sum(call[0] == "swipe_down" for call in calls))
+        self.assertEqual(0, sum(call[0] == "wait_bidirectional" for call in calls))
+        self.assertEqual(1, sum(call[0] == "swipe_down" for call in calls))
         self.assertIn(("shell", ("input", "tap", "455", "200")), calls)
-        self.assertIn(
-            (
-                "wait_bidirectional",
-                (
-                    "creation-prerequisite-category-heritage",
-                    {
-                        "timeout": 90,
-                        "backward_scrolls": 22,
-                        "forward_scrolls": 22,
-                        "scroll_distance_ratio": 0.22,
-                        "evidence_prefix": "creation-prerequisite-heritage-category-row",
-                        "surface_name": "heritage priority category row",
-                    },
-                ),
-            ),
-            calls,
-        )
         self.assertIn(
             (
                 "wait_exact",
@@ -1048,37 +1015,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ),
             calls,
         )
-        self.assertIn(
-            (
-                "wait_exact",
-                (
-                    "creation-prerequisite-page",
-                    {
-                        "timeout": 45,
-                        "evidence_prefix": "creation-prerequisite-heritage-parent-route",
-                        "surface_name": "Creation prerequisite parent route",
-                    },
-                ),
-            ),
-            calls,
-        )
-        self.assertIn(
-            (
-                "wait_bidirectional",
-                (
-                    "creation-prerequisite-category-heritage",
-                    {
-                        "timeout": 90,
-                        "backward_scrolls": 22,
-                        "forward_scrolls": 22,
-                        "scroll_distance_ratio": 0.22,
-                        "evidence_prefix": "creation-prerequisite-heritage-selected-row",
-                        "surface_name": "Selected heritage category row",
-                    },
-                ),
-            ),
-            calls,
-        )
+        self.assertEqual(1, sum(call[0] == "select" for call in calls))
 
     def test_exact_rank_scan_cardinality_checks_then_taps_one_exact_enabled_option(self) -> None:
         enabled = driver.shared.UiNode(
@@ -1147,7 +1084,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             selected = driver.tap_prescribed_exact_enabled_priority_rank(device, "heritage")
 
         self.assertEqual("creation-prerequisite-rank-heritage-e", selected)
-        self.assertEqual(44, device.down)
+        self.assertEqual(0, device.down)
         self.assertEqual(2, device.up)
         self.assertEqual([("input", "tap", "500", "500")], device.taps)
 
@@ -1173,31 +1110,25 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ] + [visible]
 
         class RankDevice:
-            reacquiring = False
-            reacquisition_reads = 0
+            viewport = 0
+            hierarchy_reads = 0
             up = 0
+            down = 0
             taps: list[tuple[str, ...]] = []
 
             def hierarchy(self):
-                if not self.reacquiring:
+                self.hierarchy_reads += 1
+                if self.viewport == 0:
                     return projected
-                self.reacquisition_reads += 1
-                return [clipped] if self.reacquisition_reads == 1 else [visible]
-
-            @staticmethod
-            def display_size():
-                return 1080, 2400
-
-            @staticmethod
-            def _scroll_x_ratio(_selector: str) -> float:
-                return 0.5
+                return [*projected[:-1], clipped]
 
             def swipe_up(self, **_options: object) -> None:
                 self.up += 1
+                self.viewport += 1
 
-            @staticmethod
-            def swipe_down(**_options: object) -> None:
-                return None
+            def swipe_down(self, **_options: object) -> None:
+                self.down += 1
+                self.viewport = max(0, self.viewport - 1)
 
             @staticmethod
             def dismiss_system_ui_anr(_nodes=None) -> bool:
@@ -1206,17 +1137,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             def node_has_tappable_bounds(self, node) -> bool:
                 return driver.shared.Device.node_has_tappable_bounds(self, node)
 
-            def wait_exact_resource_id_bidirectional(
-                self,
-                selector: str,
-                **options: object,
-            ):
-                self.reacquiring = True
-                return driver.shared.Device.wait_exact_resource_id_bidirectional(
-                    self,
-                    selector,
-                    **options,
-                )
+            @staticmethod
+            def display_size():
+                return 1080, 2400
 
             def shell(self, *arguments: str) -> str:
                 self.taps.append(arguments)
@@ -1226,8 +1149,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 raise AssertionError(f"unexpected capture: {name}")
 
         device = RankDevice()
-        with mock.patch.object(driver.shared, "reset_scroll_to_top") as reset, \
-             mock.patch.object(driver.time, "sleep"):
+        with mock.patch.object(driver.time, "sleep"):
             selected = driver.tap_prescribed_exact_enabled_priority_rank(
                 device,
                 "resources",
@@ -1235,10 +1157,9 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             )
 
         self.assertEqual("creation-prerequisite-rank-resources-e", selected)
-        self.assertEqual(2, device.reacquisition_reads)
         self.assertEqual(3, device.up)
+        self.assertEqual(3, device.down)
         self.assertEqual([("input", "tap", "500", "1900")], device.taps)
-        self.assertEqual([mock.call(device, swipes=22)] * 2, reset.call_args_list)
 
     def test_exact_rank_scan_rejects_duplicate_or_malformed_resource_ids_before_tap(self) -> None:
         duplicate = self.authority_option_node(
@@ -1255,15 +1176,40 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ([malformed], "invalidIds"),
         ):
             with self.subTest(expected=expected):
-                device = mock.Mock()
-                device.hierarchy.return_value = nodes
-                device.node_has_tappable_bounds.return_value = True
-                with mock.patch.object(driver.shared, "reset_scroll_to_top"), \
-                     mock.patch.object(driver.time, "sleep"), \
+                origin = self.authority_option_node(
+                    "creation-prerequisite-rank-heritage-a",
+                    "Rank A",
+                )
+
+                class InvalidRankDevice:
+                    reads = 0
+
+                    def hierarchy(self):
+                        self.reads += 1
+                        return [origin] if self.reads == 1 else nodes
+
+                    @staticmethod
+                    def node_has_tappable_bounds(_node) -> bool:
+                        return True
+
+                    @staticmethod
+                    def swipe_up(**_options: object) -> None:
+                        return None
+
+                    @staticmethod
+                    def dismiss_system_ui_anr(_nodes=None) -> bool:
+                        return False
+
+                    def capture(self, _name: str) -> None:
+                        return None
+
+                    def shell(self, *_arguments: str) -> None:
+                        raise AssertionError("invalid rank scan must not tap")
+
+                device = InvalidRankDevice()
+                with mock.patch.object(driver.time, "sleep"), \
                      self.assertRaisesRegex(RuntimeError, expected):
                     driver.tap_prescribed_exact_enabled_priority_rank(device, "heritage")
-                device.wait_exact_resource_id_bidirectional.assert_not_called()
-                device.shell.assert_not_called()
 
     def test_exact_rank_scan_requires_the_complete_a_to_e_projection(self) -> None:
         nodes = [
@@ -1277,12 +1223,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.hierarchy.return_value = nodes
         device.node_has_tappable_bounds.return_value = True
 
-        with mock.patch.object(driver.shared, "reset_scroll_to_top"), \
-             mock.patch.object(driver.time, "sleep"), \
+        with mock.patch.object(driver.time, "sleep"), \
              self.assertRaisesRegex(RuntimeError, "expectedIds"):
             driver.tap_prescribed_exact_enabled_priority_rank(device, "heritage")
 
-        device.wait_exact_resource_id_bidirectional.assert_not_called()
         device.shell.assert_not_called()
 
     def test_priority_physical_proof_uses_the_explicit_legal_rank_allocation(self) -> None:
@@ -1320,8 +1264,7 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         device.hierarchy.return_value = projected
         device.node_has_tappable_bounds.return_value = True
 
-        with mock.patch.object(driver.shared, "reset_scroll_to_top"), \
-             mock.patch.object(driver.time, "sleep"), \
+        with mock.patch.object(driver.time, "sleep"), \
              self.assertRaisesRegex(RuntimeError, "candidates=.*talent-d"):
             driver.tap_prescribed_exact_enabled_priority_rank(
                 device,
@@ -1329,14 +1272,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 expected_rank="e",
             )
 
-        device.wait_exact_resource_id_bidirectional.assert_not_called()
         device.shell.assert_not_called()
 
     def test_rank_selection_fails_closed_on_unbound_or_unrefreshed_rank(self) -> None:
         device = mock.Mock()
-        device.wait.return_value = driver.shared.UiNode({})
-        device.find_exact_resource_id.return_value = None
-        device.wait_exact_resource_id_bidirectional.return_value = driver.shared.UiNode(
+        initial_row = driver.shared.UiNode(
             {
                 "resource-id": "creation-prerequisite-category-heritage",
                 "enabled": "true",
@@ -1347,17 +1287,18 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         parent = driver.shared.UiNode({"resource-id": "creation-prerequisite-page"})
         stale_row = driver.shared.UiNode(
             {
+                "resource-id": "creation-prerequisite-category-heritage",
                 "content-desc": "Heritage. 1. Select an authority-projected rank",
                 "enabled": "true",
                 "clickable": "true",
                 "bounds": "[10,100][900,300]",
             }
         )
-        device.wait_for_single_exact_resource_id.side_effect = (
-            lambda selector, **_options: parent
-            if selector == "creation-prerequisite-page"
-            else stale_row
+        device.wait_for_single_exact_resource_id.return_value = driver.shared.UiNode(
+            {"resource-id": "creation-prerequisite-category-page"}
         )
+        device.hierarchy.return_value = [parent, stale_row]
+        device.dismiss_system_ui_anr.return_value = False
         device.node_has_tappable_bounds.return_value = True
 
         for selected_id, expected_error in (
@@ -1366,7 +1307,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ("creation-prerequisite-rank-heritage-a", "was not projected"),
         ):
             with self.subTest(selected_id=selected_id), \
-                 mock.patch.object(driver.shared, "reset_scroll_to_top"), \
+                 mock.patch.object(
+                     driver,
+                     "rewind_to_exact_resource_id",
+                     return_value=(initial_row, 0),
+                 ), \
                  mock.patch.object(
                      driver,
                      "tap_prescribed_exact_enabled_priority_rank",
@@ -1377,7 +1322,16 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
     def test_direct_priority_bootstrap_skips_legacy_continuation_and_public_save_detour(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
-        self.assertIn('device.tap("dialog-action-create-character", scroll=True)', source)
+        execute_source = inspect.getsource(driver.execute)
+        self.assertIn(
+            "create_character = device.tap_exact_resource_id_until_exact_resource_id(",
+            execute_source,
+        )
+        self.assertIn(
+            '*(str(value) for value in create_character.center)',
+            execute_source,
+        )
+        self.assertNotIn('device.tap("dialog-action-create-character"', execute_source)
         self.assertIn("require_new_character_dialog_transition(device)", source)
         self.assertNotIn("provision_creation_karma_through_priority_creation", source)
         self.assertNotIn('device.wait("dialog-action-complete-new-character-workflow"', source)
@@ -1411,31 +1365,126 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ):
             with self.subTest(function=function.__name__):
                 source = inspect.getsource(function)
-                self.assertIn("scan_forward_until_stable(", source)
+                self.assertTrue(
+                    "scan_forward_until_stable(" in source
+                    or "scan_forward_with_receipt(" in source
+                )
                 self.assertNotIn("for scroll_index in range(", source)
 
         dashboard_source = inspect.getsource(driver.assert_uncreated_advanced_editor_gated)
         self.assertIn("distance_ratio=0.68", dashboard_source)
         self.assertIn("max_scrolls=18", dashboard_source)
-        self.assertEqual(1, dashboard_source.count("reset_scroll_to_top"))
-        self.assertIn("reset_scroll_to_top(device, swipes=12)", dashboard_source)
+        self.assertNotIn("reset_scroll_to_top", dashboard_source)
 
         execute_source = inspect.getsource(driver.execute)
-        self.assertIn("reset_swipes=8", execute_source)
+        self.assertIn("reset_swipes=0", execute_source)
+        self.assertIn("scan_prerequisite_authority(", execute_source)
+        initial_source = execute_source[: execute_source.index('progress.advance("priority-ranks")')]
+        self.assertNotIn("open_prerequisite(device)", initial_source)
         self.assertNotIn("reset_swipes=48", execute_source)
 
-        prerequisite_source = inspect.getsource(driver.open_prerequisite)
-        self.assertEqual(2, prerequisite_source.count("backward_scrolls=0"))
-        self.assertIn("forward_scrolls=8", prerequisite_source)
-        self.assertIn("scroll_distance_ratio=0.68", prerequisite_source)
-        self.assertIn("reset_scroll_to_top(device, swipes=8)", prerequisite_source)
-        self.assertIn("forward_scrolls=4", prerequisite_source)
+        prerequisite_source = inspect.getsource(driver.scan_prerequisite_authority)
+        self.assertIn("scan_forward_with_receipt(", prerequisite_source)
+        self.assertIn("distance_ratio=0.68", prerequisite_source)
+        self.assertNotIn("reset_scroll_to_top", prerequisite_source)
+
+        rank_source = inspect.getsource(driver.tap_prescribed_exact_enabled_priority_rank)
+        self.assertIn("reverse_swipes = max(0, scan.swipes - selected_viewport)", rank_source)
+        self.assertNotIn("reset_scroll_to_top", rank_source)
 
         # The former fixed loops always spent 404 forward swipes before any
-        # selector reacquisition. A stable viewport now requires exactly two.
+        # selector reacquisition. Stable scans now spend only the observed delta.
         legacy_fixed_forward_swipes = (18 * 3) + (22 * 5) + (40 * 2) + (40 * 4)
         self.assertEqual(404, legacy_fixed_forward_swipes)
         self.assertEqual(2, driver.scan_forward_until_stable.__kwdefaults__["stable_repeats"])
+
+    def test_dashboard_scan_reuses_one_cardinality_checked_authority_snapshot(self) -> None:
+        binding = driver.shared.UiNode(
+            {
+                "resource-id": "creation-wizard-binding",
+                "content-desc": "Revision 7",
+            }
+        )
+        method = driver.shared.UiNode(
+            {
+                "resource-id": "creation-stage-method",
+                "content-desc": "Priority",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[10,100][900,300]",
+            }
+        )
+        device = mock.Mock()
+        with mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            return_value=driver.StableViewportScan([[binding], [method]], 4),
+        ):
+            proof = driver.assert_uncreated_advanced_editor_gated(device)
+        self.assertEqual(driver.CreationDashboardScanProof("Revision 7", "Priority", 4), proof)
+
+        with mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            return_value=driver.StableViewportScan([[binding], [method, method]], 4),
+        ), self.assertRaisesRegex(RuntimeError, "cardinality 2"):
+            driver.assert_uncreated_advanced_editor_gated(device)
+
+    def test_prerequisite_authority_scan_collects_once_and_rejects_drift(self) -> None:
+        digest_values = {
+            "creation-prerequisite-snapshot-digest": "sha256:" + "1" * 64,
+            "creation-prerequisite-raw-character-xml-digest": "sha256:" + "2" * 64,
+            "creation-prerequisite-auxiliary-state-digest": "3" * 64,
+            "creation-prerequisite-authority-digest": "sha256:" + "4" * 64,
+            "creation-prerequisite-profile-inputs-digest": "sha256:" + "5" * 64,
+            "creation-prerequisite-priorities-xml-digest": "sha256:" + "6" * 64,
+        }
+        values = {
+            "creation-prerequisite-binding": "Revision 7",
+            "creation-prerequisite-method": "Priority",
+            "creation-prerequisite-karma-budget": "Total 25 · Used 0 · Remaining 25",
+            **digest_values,
+        }
+        nodes = [
+            driver.shared.UiNode({"resource-id": selector, "content-desc": value})
+            for selector, value in values.items()
+        ]
+        device = mock.Mock()
+        with mock.patch.object(driver, "rewind_to_exact_resource_id"), mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            return_value=driver.StableViewportScan([nodes], 6),
+        ):
+            proof = driver.scan_prerequisite_authority(device)
+        self.assertEqual(values, proof.values)
+        self.assertEqual(6, proof.swipes)
+
+        changed = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-binding",
+                "content-desc": "Revision 8",
+            }
+        )
+        with mock.patch.object(driver, "rewind_to_exact_resource_id"), mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            return_value=driver.StableViewportScan([nodes, [changed]], 6),
+        ), self.assertRaisesRegex(RuntimeError, "changed while scrolling"):
+            driver.scan_prerequisite_authority(device)
+
+    def test_stable_scan_receipt_returns_the_observed_swipe_delta(self) -> None:
+        node = driver.shared.UiNode({"resource-id": "stable"})
+        device = mock.Mock()
+        device.hierarchy.return_value = [node]
+        receipt = driver.scan_forward_with_receipt(
+            device,
+            scan_id="stable-receipt",
+            max_scrolls=5,
+            distance_ratio=0.68,
+        )
+        self.assertEqual(2, receipt.swipes)
+        self.assertEqual(3, len(receipt.screens))
+        self.assertEqual(2, device.swipe_up.call_count)
 
     def test_execute_emits_all_phase_and_scan_timing_into_digest_bound_receipt(self) -> None:
         source = inspect.getsource(driver.execute)
@@ -1772,6 +1821,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     return None if self.reset_count < 2 else driver.shared.UiNode({})
                 return None
 
+            @staticmethod
+            def hierarchy():
+                return [driver.shared.UiNode({"resource-id": "creation-wizard-dashboard"})]
+
             def shell(self, *arguments: str) -> str:
                 self.taps.append(arguments)
                 return ""
@@ -1854,12 +1907,17 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.taps: list[tuple[str, ...]] = []
                 self.captures: list[str] = []
 
+            def hierarchy(self):
+                self.loading_reads += 1
+                if self.loading_reads < 3:
+                    return [
+                        driver.shared.UiNode(
+                            {"resource-id": "creation-dashboard-authority-loading"}
+                        )
+                    ]
+                return [driver.shared.UiNode({"resource-id": "creation-wizard-dashboard"})]
+
             def find(self, selector: str):
-                if selector == "creation-dashboard-authority-failed":
-                    return None
-                if selector == "creation-dashboard-authority-loading":
-                    self.loading_reads += 1
-                    return driver.shared.UiNode({}) if self.loading_reads < 3 else None
                 if selector == "creation-stage-method":
                     return blocked
                 if selector == "creation-prerequisite-page":
@@ -1991,12 +2049,13 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 self.failed = failed
                 self.captures: list[str] = []
 
-            def find(self, selector: str):
-                if selector == "creation-dashboard-authority-failed":
-                    return driver.shared.UiNode({}) if self.failed else None
-                if selector == "creation-dashboard-authority-loading":
-                    return driver.shared.UiNode({})
-                return None
+            def hierarchy(self):
+                selector = (
+                    "creation-dashboard-authority-failed"
+                    if self.failed
+                    else "creation-dashboard-authority-loading"
+                )
+                return [driver.shared.UiNode({"resource-id": selector})]
 
             def capture(self, name: str) -> None:
                 self.captures.append(name)
@@ -2020,10 +2079,11 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
     def test_async_authority_wait_preserves_timeout_when_diagnostics_fail(self) -> None:
         device = mock.Mock()
-        device.find.side_effect = (
-            None,
-            driver.shared.UiNode({}),
-        )
+        device.hierarchy.return_value = [
+            driver.shared.UiNode(
+                {"resource-id": "creation-dashboard-authority-loading"}
+            )
+        ]
         with mock.patch.object(driver.time, "monotonic", side_effect=[10.0, 40.1]), \
              mock.patch.object(
                  driver,
@@ -2578,13 +2638,13 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn('device.wait("Select Metatype Priority"', source)
         self.assertIn("toolbar_timeout=120", source)
         self.assertIn("dashboard_timeout=30", source)
-        self.assertIn("reset_swipes=8", source)
+        self.assertIn("reset_swipes=0", source)
         self.assertNotIn("reset_swipes=48", source)
         self.assertNotIn('device.wait("creation-wizard-dashboard"', source)
         self.assertNotIn("shared.select_android_document", source)
         self.assertNotIn("shared.require_import_authority", source)
         self.assertNotIn("--creation-karma-runner", source)
-        self.assertIn("read_source_authority_digests", source)
+        self.assertIn("scan_prerequisite_authority", source)
         self.assertIn('"publicPriorityRunnerBootstrappedByCore": "pass"', source)
         self.assertIn('"legacyPriorityContinuationSkipped": "pass"', source)
         self.assertIn('"canonicalPrioritySettingsProfileBound": "pass"', source)
