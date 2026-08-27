@@ -75,6 +75,7 @@ PHASE_BUDGET_MS = {
     "typed-authority-options": 150_000,
     "preview-confirm": 150_000,
     "same-process-reopen": 90_000,
+    "resources-preview-confirm": 150_000,
     "process-restart-reopen": 90_000,
 }
 PHASE_ORDER = tuple(PHASE_BUDGET_MS)
@@ -2055,6 +2056,245 @@ def require_exact_restored_authority_option(
     device.wait("creation-prerequisite-page", timeout=45)
 
 
+def open_resources(device: shared.Device) -> None:
+    row = device.wait_exact_resource_id_bidirectional(
+        "creation-stage-resources",
+        timeout=180,
+        backward_scrolls=22,
+        forward_scrolls=22,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="creation-resources-stage",
+        surface_name="Core-authoritative Resources stage",
+    )
+    if row.attributes.get("enabled") != "true" or row.attributes.get("clickable") != "true":
+        device.capture("creation-resources-stage-disabled")
+        raise RuntimeError("Core-authoritative Resources stage was not enabled")
+    device.shell("input", "tap", *(str(value) for value in row.center))
+    device.wait("creation-resources-page", timeout=60)
+    shared.reset_scroll_to_top(device, swipes=22)
+
+
+def read_resources_binding(device: shared.Device) -> dict[str, object]:
+    authority = {
+        "contentRevision": nonnegative_integer(
+            device,
+            "creation-resources-binding-content-revision",
+            scroll=True,
+        ),
+        "savedRevision": nonnegative_integer(
+            device,
+            "creation-resources-binding-saved-revision",
+            scroll=True,
+        ),
+        "snapshotDigest": canonical_digest(
+            device,
+            "creation-resources-binding-snapshot-digest",
+            scroll=True,
+        ),
+        "rawCharacterXmlDigest": canonical_digest(
+            device,
+            "creation-resources-binding-raw-character-xml-digest",
+            scroll=True,
+        ),
+        "auxiliaryStateDigest": canonical_auxiliary_state_digest(
+            device,
+            "creation-resources-binding-auxiliary-state-digest",
+            scroll=True,
+        ),
+        "prerequisiteDraftDigest": canonical_digest(
+            device,
+            "creation-resources-binding-prerequisite-draft-digest",
+            scroll=True,
+        ),
+        "authorityDigest": canonical_digest(
+            device,
+            "creation-resources-authority-digest",
+            scroll=True,
+        ),
+        "priorityNuyen": nonnegative_integer(
+            device,
+            "creation-resources-budget-priority-nuyen",
+            scroll=True,
+        ),
+        "totalStartingNuyen": nonnegative_integer(
+            device,
+            "creation-resources-budget-total-starting-nuyen",
+            scroll=True,
+        ),
+    }
+    if authority["contentRevision"] <= 0:
+        raise RuntimeError(f"Resources authority revision was invalid: {authority!r}")
+    if authority["priorityNuyen"] != 50_000 or authority["totalStartingNuyen"] != 50_000:
+        raise RuntimeError(
+            "Priority Resources rank D did not project the canonical 50,000 nuyen grant: "
+            f"{authority!r}"
+        )
+    return authority
+
+
+def select_and_confirm_resources(
+    device: shared.Device,
+    before: dict[str, object],
+) -> dict[str, object]:
+    option_id = "creation-resources-option-karma-0"
+    option = device.wait_exact_resource_id_bidirectional(
+        option_id,
+        timeout=90,
+        backward_scrolls=22,
+        forward_scrolls=22,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="creation-resources-option-karma-0",
+        surface_name="Exact zero-conversion Resources option",
+    )
+    detail = option.attributes.get("content-desc", "")
+    if (
+        option.attributes.get("enabled") != "true"
+        or option.attributes.get("clickable") != "true"
+        or "0 Karma" not in detail
+        or "50,000" not in detail
+    ):
+        device.capture("creation-resources-option-karma-0-invalid")
+        raise RuntimeError(
+            "Exact zero-conversion Resources option did not expose the 50,000 nuyen grant: "
+            f"{detail!r}"
+        )
+    device.shell("input", "tap", *(str(value) for value in option.center))
+    device.wait("creation-resources-preview-page", timeout=60)
+    shared.reset_scroll_to_top(device, swipes=22)
+
+    preview = {
+        "optionId": node_text(
+            device,
+            "creation-resources-preview-option-id",
+            scroll=True,
+        ).strip(),
+        "priorityGrant": nonnegative_integer(
+            device,
+            "creation-resources-preview-priority-grant",
+            scroll=True,
+        ),
+        "totalStartingNuyen": nonnegative_integer(
+            device,
+            "creation-resources-preview-total-starting-nuyen",
+            scroll=True,
+        ),
+        "previewDigest": canonical_digest(
+            device,
+            "creation-resources-preview-digest",
+            scroll=True,
+        ),
+    }
+    if (
+        preview["optionId"] != "karma:0"
+        or preview["priorityGrant"] != 50_000
+        or preview["totalStartingNuyen"] != 50_000
+    ):
+        device.capture("creation-resources-preview-authority-mismatch")
+        raise RuntimeError(f"Resources preview changed the exact rank-D grant: {preview!r}")
+
+    confirm = device.wait_exact_resource_id_bidirectional(
+        "creation-resources-confirm",
+        timeout=90,
+        backward_scrolls=22,
+        forward_scrolls=22,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="creation-resources-explicit-confirm",
+        surface_name="Explicit Resources confirmation",
+    )
+    if confirm.attributes.get("enabled") != "true" or confirm.attributes.get("clickable") != "true":
+        device.capture("creation-resources-confirm-disabled")
+        raise RuntimeError("Exact Resources preview was not explicitly confirmable")
+    device.shell("input", "tap", *(str(value) for value in confirm.center))
+    device.wait("creation-resources-confirm-receipt", timeout=90, scroll=True, max_scrolls=22)
+    shared.reset_scroll_to_top(device, swipes=22)
+
+    receipt = {
+        "optionId": node_text(device, "creation-resources-receipt-option-id", scroll=True).strip(),
+        "workspaceRevision": nonnegative_integer(
+            device,
+            "creation-resources-receipt-workspace-revision",
+            scroll=True,
+        ),
+        "savedRevision": nonnegative_integer(
+            device,
+            "creation-resources-receipt-saved-revision",
+            scroll=True,
+        ),
+        "draftRevision": nonnegative_integer(
+            device,
+            "creation-resources-receipt-draft-revision",
+            scroll=True,
+        ),
+        "totalStartingNuyen": nonnegative_integer(
+            device,
+            "creation-resources-receipt-total-starting-nuyen",
+            scroll=True,
+        ),
+        "previewDigest": canonical_digest(
+            device,
+            "creation-resources-receipt-preview-digest",
+            scroll=True,
+        ),
+        "draftDigest": canonical_digest(
+            device,
+            "creation-resources-receipt-draft-digest",
+            scroll=True,
+        ),
+        "receiptDigest": canonical_digest(
+            device,
+            "creation-resources-receipt-digest",
+            scroll=True,
+        ),
+    }
+    if (
+        receipt["optionId"] != "karma:0"
+        or receipt["workspaceRevision"] != before["contentRevision"] + 1
+        or receipt["savedRevision"] != before["savedRevision"] + 1
+        or receipt["draftRevision"] <= 0
+        or receipt["totalStartingNuyen"] != 50_000
+        or receipt["previewDigest"] != preview["previewDigest"]
+    ):
+        device.capture("creation-resources-receipt-authority-mismatch")
+        raise RuntimeError(
+            "Resources receipt was not bound to the exact preview and next workspace revision: "
+            f"before={before!r}, preview={preview!r}, receipt={receipt!r}"
+        )
+    return {"preview": preview, "receipt": receipt}
+
+
+def read_persisted_resources_authority(
+    device: shared.Device,
+    expected_receipt: dict[str, object],
+) -> dict[str, object]:
+    binding = read_resources_binding(device)
+    saved = {
+        "optionId": node_text(device, "creation-resources-saved-option-id", scroll=True).strip(),
+        "draftRevision": nonnegative_integer(
+            device,
+            "creation-resources-saved-draft-revision",
+            scroll=True,
+        ),
+        "draftDigest": canonical_digest(
+            device,
+            "creation-resources-saved-draft-digest",
+            scroll=True,
+        ),
+    }
+    if (
+        binding["contentRevision"] != expected_receipt["workspaceRevision"]
+        or binding["savedRevision"] != expected_receipt["savedRevision"]
+        or saved["optionId"] != expected_receipt["optionId"]
+        or saved["draftRevision"] != expected_receipt["draftRevision"]
+        or saved["draftDigest"] != expected_receipt["draftDigest"]
+    ):
+        device.capture("creation-resources-persisted-authority-mismatch")
+        raise RuntimeError(
+            "Persisted Resources authority changed across reopen/restart: "
+            f"expected={expected_receipt!r}, binding={binding!r}, saved={saved!r}"
+        )
+    return {"binding": binding, "savedDraft": saved}
+
+
 def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     progress.advance("device-preflight-install")
     driver_path = Path(__file__).resolve()
@@ -2455,7 +2695,8 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     if node_text(device, "creation-wizard-binding", scroll=True) == dashboard_binding:
         raise RuntimeError("Atomic prerequisite confirmation did not refresh the wizard revision")
 
-    # Same-process reload and a real process restart must both restore Core's persisted draft.
+    # Prove the prerequisite receipt before the Resources write legitimately advances
+    # the shared auxiliary-state revision.
     progress.advance("same-process-reopen")
     open_prerequisite(device)
     resumed_authority = read_persisted_prerequisite_authority(device)
@@ -2492,6 +2733,59 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     if "rank" not in resumed_attributes.lower():
         raise RuntimeError("Confirmed prerequisite draft did not resume its Attribute rank")
 
+    device.back()
+    shared.open_creation_dashboard(
+        device,
+        open_build_route=False,
+        dashboard_timeout=60,
+        reset_swipes=22,
+    )
+    progress.advance("resources-preview-confirm")
+    open_resources(device)
+    resources_before = read_resources_binding(device)
+    resources_confirmation = select_and_confirm_resources(device, resources_before)
+    resources_receipt = resources_confirmation["receipt"]
+    device.capture("creation-resources-confirmed")
+    device.tap("creation-resources-reopen", scroll=True, max_scrolls=22)
+    device.wait("creation-resources-page", timeout=60)
+    resources_same_process = read_persisted_resources_authority(device, resources_receipt)
+    device.back()
+    shared.open_creation_dashboard(
+        device,
+        open_build_route=False,
+        dashboard_timeout=60,
+        reset_swipes=22,
+    )
+    open_prerequisite(device)
+    post_resources_prerequisite_authority = read_persisted_prerequisite_authority(device)
+    resources_binding = resources_same_process.get("binding")
+    if not isinstance(resources_binding, dict):
+        raise RuntimeError("Reopened Resources binding receipt is absent")
+    post_resources_binding_digests = {
+        "rawCharacterXml": str(resources_binding.get("rawCharacterXmlDigest", "")),
+        "auxiliaryState": str(resources_binding.get("auxiliaryStateDigest", "")),
+        "authority": str(resources_binding.get("authorityDigest", "")),
+    }
+    if (
+        post_resources_binding_digests["rawCharacterXml"]
+        != confirmed_binding_digests["rawCharacterXml"]
+        or post_resources_binding_digests["authority"]
+        != confirmed_binding_digests["authority"]
+        or post_resources_binding_digests["auxiliaryState"]
+        == confirmed_binding_digests["auxiliaryState"]
+    ):
+        raise RuntimeError(
+            "Resources confirmation changed raw/rules authority or failed to advance auxiliary state: "
+            f"prerequisite={confirmed_binding_digests!r}, resources={resources_binding!r}"
+        )
+    assert_persisted_prerequisite_authority(
+        post_resources_prerequisite_authority,
+        confirmed_draft_digest,
+        post_resources_binding_digests,
+        int(resources_receipt["workspaceRevision"]),
+        int(resources_receipt["savedRevision"]),
+    )
+
     progress.advance("process-restart-reopen")
     restart = shared.force_stop_and_launch_new_process(device, initial_launch)
     shared.wait_for_phone_runner_route(device, created=False)
@@ -2510,9 +2804,9 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     assert_persisted_prerequisite_authority(
         restarted_authority,
         confirmed_draft_digest,
-        confirmed_binding_digests,
-        confirmed_revisions["contentRevision"],
-        confirmed_revisions["savedRevision"],
+        post_resources_binding_digests,
+        int(resources_receipt["workspaceRevision"]),
+        int(resources_receipt["savedRevision"]),
     )
     for category in ("heritage", "talent"):
         require_exact_restored_authority_option(
@@ -2533,6 +2827,15 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         scan_id="process-restart-restored-talent-skill-group-grant",
     )
     device.wait("creation-prerequisite-attributes-ready", scroll=True, max_scrolls=22)
+    device.back()
+    shared.open_creation_dashboard(
+        device,
+        open_build_route=False,
+        dashboard_timeout=60,
+        reset_swipes=22,
+    )
+    open_resources(device)
+    resources_restarted = read_persisted_resources_authority(device, resources_receipt)
     device.capture("creation-prerequisite-process-restart")
 
     timing = progress.finish()
@@ -2636,6 +2939,14 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
             "attributesPrerequisiteOpenedByCore": "pass",
             "pendingDraftSameProcessResume": "pass",
             "pendingDraftProcessRestartResume": "pass",
+            "resourcesRankDCanonicalGrant": resources_before,
+            "resourcesPreviewAndReceipt": resources_confirmation,
+            "resourcesSameProcessPersistedAuthority": resources_same_process,
+            "prerequisiteAuthorityAfterResources": post_resources_prerequisite_authority,
+            "resourcesRestartedPersistedAuthority": resources_restarted,
+            "resourcesExplicitConfirmationOnly": "pass",
+            "resourcesReceiptRevisionAndDigestBound": "pass",
+            "resourcesPendingDraftProcessRestartResume": "pass",
             "buildGhostLaunchPostponedAndAbsent": "pass",
             "advancedEditorNeverExposedWhileCreatedFalse": "pass",
         },
