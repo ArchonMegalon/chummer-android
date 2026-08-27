@@ -2064,7 +2064,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "538300dad3365ab7848e356905afdeec6127953441f1a0600970613d5c05b087"
+        "sha256": "d1727b57898c1d4718dc76e963f92d1014f4f8cb070d6f54840959dffb1f1c4a"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
