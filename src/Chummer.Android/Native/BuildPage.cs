@@ -77,14 +77,16 @@ public enum CreationDashboardAuthorityPhase
     Prerequisite,
     Attributes,
     Skills,
-    Contacts
+    Contacts,
+    Resources
 }
 
 public sealed record CreationDashboardAuthorityPhaseProgress(
     CreationDashboardAuthorityPhaseState Prerequisite,
     CreationDashboardAuthorityPhaseState Attributes,
     CreationDashboardAuthorityPhaseState Skills,
-    CreationDashboardAuthorityPhaseState Contacts)
+    CreationDashboardAuthorityPhaseState Contacts,
+    CreationDashboardAuthorityPhaseState Resources)
 {
     public static CreationDashboardAuthorityPhaseProgress ForBuildMethod(string buildMethod)
     {
@@ -100,7 +102,10 @@ public sealed record CreationDashboardAuthorityPhaseProgress(
             string.Equals(buildMethod, CharacterCreationBuildMethods.Priority, StringComparison.Ordinal)
                 ? CreationDashboardAuthorityPhaseState.Loading
                 : CreationDashboardAuthorityPhaseState.NotApplicable,
-            CreationDashboardAuthorityPhaseState.Loading);
+            CreationDashboardAuthorityPhaseState.Loading,
+            priorityOrSumToTen
+                ? CreationDashboardAuthorityPhaseState.Loading
+                : CreationDashboardAuthorityPhaseState.NotApplicable);
     }
 
     public CreationDashboardAuthorityPhaseProgress WithTerminal(
@@ -116,6 +121,7 @@ public sealed record CreationDashboardAuthorityPhaseProgress(
             CreationDashboardAuthorityPhase.Attributes => this with { Attributes = terminal },
             CreationDashboardAuthorityPhase.Skills => this with { Skills = terminal },
             CreationDashboardAuthorityPhase.Contacts => this with { Contacts = terminal },
+            CreationDashboardAuthorityPhase.Resources => this with { Resources = terminal },
             _ => throw new ArgumentOutOfRangeException(nameof(phase), phase, null)
         };
     }
@@ -128,10 +134,12 @@ public sealed record CreationDashboardAuthorityProjection(
     CharacterCreationFoundationResult<CharacterCreationAttributesState>? Attributes,
     CharacterCreationFoundationResult<CharacterCreationSkillsState>? Skills,
     CharacterCreationContactsInteractionLoadResult? Contacts,
+    CharacterCreationResourcesInteractionLoadResult? Resources,
     string? PrerequisiteFailureReason = null,
     string? AttributesFailureReason = null,
     string? SkillsFailureReason = null,
-    string? ContactsFailureReason = null)
+    string? ContactsFailureReason = null,
+    string? ResourcesFailureReason = null)
 {
     public static CreationDashboardAuthorityProjection Loading(
         CreationDashboardProjectionBinding binding)
@@ -141,13 +149,15 @@ public sealed record CreationDashboardAuthorityProjection(
             Prerequisite: null,
             Attributes: null,
             Skills: null,
-            Contacts: null);
+            Contacts: null,
+            Resources: null);
 
     public bool HasFailure
         => Progress.Prerequisite == CreationDashboardAuthorityPhaseState.Failed
            || Progress.Attributes == CreationDashboardAuthorityPhaseState.Failed
            || Progress.Skills == CreationDashboardAuthorityPhaseState.Failed
-           || Progress.Contacts == CreationDashboardAuthorityPhaseState.Failed;
+           || Progress.Contacts == CreationDashboardAuthorityPhaseState.Failed
+           || Progress.Resources == CreationDashboardAuthorityPhaseState.Failed;
 }
 
 public static class BuildPageUiProjection
@@ -196,10 +206,20 @@ public sealed class BuildPage : NativePageBase
     private readonly LatestBackgroundProjectionQueue<
         CreationDashboardProjectionBinding,
         CharacterCreationContactsInteractionLoadResult> _creationContactsQueue = new();
+    private readonly LatestBackgroundProjectionQueue<
+        CreationDashboardProjectionBinding,
+        CharacterCreationResourcesInteractionLoadResult> _creationResourcesQueue = new();
+    private readonly ICharacterCreationResourcesInteractionPresenter? _resourcesPresenter;
+    private readonly ICharacterOverviewPresenter? _overviewPresenter;
     private CreationDashboardAuthorityProjection? _creationProjection;
 
-    public BuildPage(RunnerSessionCoordinator coordinator) : base(coordinator)
+    public BuildPage(
+        RunnerSessionCoordinator coordinator,
+        ICharacterCreationResourcesInteractionPresenter? resourcesPresenter = null,
+        ICharacterOverviewPresenter? overviewPresenter = null) : base(coordinator)
     {
+        _resourcesPresenter = resourcesPresenter;
+        _overviewPresenter = overviewPresenter;
         Title = "Runner";
         AutomationId = "phone-runner-page";
         _save = new ToolbarItem
@@ -249,6 +269,16 @@ public sealed class BuildPage : NativePageBase
             failure.Request,
             CreationDashboardAuthorityPhase.Contacts,
             AcceptCreationContacts);
+        _creationResourcesQueue.Completed += completion => ScheduleCreationPhaseAcceptance(
+            _creationResourcesQueue,
+            completion.Request,
+            CreationDashboardAuthorityPhase.Resources,
+            AcceptCreationResources);
+        _creationResourcesQueue.Failed += failure => ScheduleCreationPhaseAcceptance(
+            _creationResourcesQueue,
+            failure.Request,
+            CreationDashboardAuthorityPhase.Resources,
+            AcceptCreationResources);
         Content = new ScrollView { Content = _body };
     }
 
@@ -464,6 +494,8 @@ public sealed class BuildPage : NativePageBase
             projection?.Skills;
         CharacterCreationContactsInteractionLoadResult? creationContacts =
             projection?.Contacts;
+        CharacterCreationResourcesInteractionLoadResult? creationResources =
+            projection?.Resources;
         if (projection is null
             || projection.Progress.Prerequisite == CreationDashboardAuthorityPhaseState.Loading)
         {
@@ -498,7 +530,8 @@ public sealed class BuildPage : NativePageBase
             prerequisite,
             attributes,
             skills,
-            creationContacts);
+            creationContacts,
+            creationResources);
         AddCompletionBlockers(snapshot);
         AddLegalNextSteps(
             snapshot,
@@ -506,7 +539,8 @@ public sealed class BuildPage : NativePageBase
             prerequisite,
             attributes,
             skills,
-            creationContacts);
+            creationContacts,
+            creationResources);
     }
 
     private CreationDashboardAuthorityProjection? ResolveCreationProjection(
@@ -543,6 +577,28 @@ public sealed class BuildPage : NativePageBase
             _creationContactsQueue,
             Coordinator.LoadCreationContacts,
             AcceptCreationContacts);
+        if (_resourcesPresenter is not null)
+        {
+            CharacterOverviewState resourcesOverview = Coordinator.State;
+            ResolveCreationPhase(
+                binding,
+                _creationProjection?.Progress.Resources,
+                CreationDashboardAuthorityPhase.Resources,
+                _creationResourcesQueue,
+                () => _resourcesPresenter.Load(resourcesOverview),
+                AcceptCreationResources);
+        }
+        else if (_creationProjection is { Progress.Resources: CreationDashboardAuthorityPhaseState.Loading }
+                 projectionWithoutResources)
+        {
+            _creationProjection = projectionWithoutResources with
+            {
+                Progress = projectionWithoutResources.Progress.WithTerminal(
+                    CreationDashboardAuthorityPhase.Resources,
+                    failed: true),
+                ResourcesFailureReason = "creation-resources-presenter-unavailable"
+            };
+        }
         if (_creationProjection is { Progress.Prerequisite: CreationDashboardAuthorityPhaseState.Ready })
         {
             ResolveCreationPhase(
@@ -722,12 +778,32 @@ public sealed class BuildPage : NativePageBase
         };
     }
 
+    private void AcceptCreationResources(
+        CreationDashboardProjectionBinding binding,
+        CharacterCreationResourcesInteractionLoadResult result,
+        Exception? error)
+    {
+        if (_creationProjection is not { } projection || !projection.Binding.Equals(binding))
+            return;
+        _creationProjection = projection with
+        {
+            Progress = projection.Progress.WithTerminal(
+                CreationDashboardAuthorityPhase.Resources,
+                failed: error is not null),
+            Resources = error is null ? result : null,
+            ResourcesFailureReason = error is null
+                ? null
+                : "creation-resources-authority-load-failed"
+        };
+    }
+
     private void CancelCreationProjectionQueues()
     {
         _creationPrerequisiteQueue.Cancel();
         _creationAttributesQueue.Cancel();
         _creationSkillsQueue.Cancel();
         _creationContactsQueue.Cancel();
+        _creationResourcesQueue.Cancel();
     }
 
     private void RetryCreationProjection()
@@ -810,7 +886,8 @@ public sealed class BuildPage : NativePageBase
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite,
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributes,
         CharacterCreationFoundationResult<CharacterCreationSkillsState>? skills,
-        CharacterCreationContactsInteractionLoadResult? creationContacts)
+        CharacterCreationContactsInteractionLoadResult? creationContacts,
+        CharacterCreationResourcesInteractionLoadResult? creationResources)
     {
         _body.Add(NativeTheme.Eyebrow("Generation steps"));
         foreach (CharacterCreationWizardStageState stage in snapshot.Steps)
@@ -849,18 +926,25 @@ public sealed class BuildPage : NativePageBase
             bool canOpenContacts = contactsStage
                                    && stage.IsAvailable
                                    && HasAuthoritativeCreationContacts(creationContacts);
+            bool resourcesStage = IsResourcesStage(stage.StepId);
+            bool canOpenResources = resourcesStage
+                                    && stage.IsAvailable
+                                    && HasAuthoritativeResources(creationResources);
             bool canOpen = canOpenFoundation || canOpenPrerequisite || canOpenAttributes
                            || canOpenSkills || canOpenQualities || canOpenMagicResonance
-                           || canOpenContacts;
+                           || canOpenContacts || canOpenResources;
             bool projectionBoundStage =
-                priorityPrerequisite || attributeStage || skillStage || contactsStage;
+                priorityPrerequisite || attributeStage || skillStage || contactsStage || resourcesStage;
             string? projectionBlocker = ProjectionStageBlocker(
                 projection,
                 priorityPrerequisite,
                 attributeStage,
                 skillStage,
-                contactsStage);
-            Func<Task> selected = canOpenPrerequisite
+                contactsStage,
+                resourcesStage);
+            Func<Task> selected = canOpenResources
+                ? OpenCreationResourcesAsync
+                : canOpenPrerequisite
                 ? OpenCreationPrerequisiteAsync
                 : canOpenAttributes
                     ? OpenCreationAttributesAsync
@@ -875,7 +959,9 @@ public sealed class BuildPage : NativePageBase
                 : canOpenFoundation
                     ? OpenCreationFoundationAsync
                     : () => Task.CompletedTask;
-            string detail = canOpenPrerequisite
+            string detail = canOpenResources
+                ? CreationResourcesStageDetail(creationResources!.State!)
+                : canOpenPrerequisite
                 ? PrerequisiteStageDetail(prerequisite!.Value!)
                 : canOpenAttributes
                     ? AttributeStageDetail(attributes!.Value!)
@@ -902,7 +988,8 @@ public sealed class BuildPage : NativePageBase
                 && !canOpenSkills
                 && !canOpenQualities
                 && !canOpenMagicResonance
-                && !canOpenContacts)
+                && !canOpenContacts
+                && !canOpenResources)
             {
                 detail += $" · {stage.Blockers[0]}";
             }
@@ -940,7 +1027,8 @@ public sealed class BuildPage : NativePageBase
         CharacterCreationFoundationResult<CharacterCreationPrerequisiteState>? prerequisite,
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? attributeResult,
         CharacterCreationFoundationResult<CharacterCreationSkillsState>? skillsResult,
-        CharacterCreationContactsInteractionLoadResult? creationContacts)
+        CharacterCreationContactsInteractionLoadResult? creationContacts,
+        CharacterCreationResourcesInteractionLoadResult? creationResources)
     {
         CharacterCreationWizardStageState? active = snapshot.Steps.FirstOrDefault(stage =>
             string.Equals(stage.StepId, snapshot.ActiveStepId, StringComparison.Ordinal));
@@ -960,6 +1048,9 @@ public sealed class BuildPage : NativePageBase
                 : [])
             .Concat(HasAuthoritativeCreationContacts(creationContacts)
                 ? [CharacterCreationWizardStepIds.ContactsLifestyles]
+                : [])
+            .Concat(HasAuthoritativeResources(creationResources)
+                ? [CharacterCreationWizardStepIds.Resources]
                 : [])
             .Where(static id => !string.IsNullOrWhiteSpace(id))
             .Distinct(StringComparer.Ordinal)
@@ -1006,11 +1097,18 @@ public sealed class BuildPage : NativePageBase
             bool canOpenContacts = contactsStep
                                    && stage.IsAvailable
                                    && HasAuthoritativeCreationContacts(creationContacts);
+            bool resourcesStep = IsResourcesStage(stepId);
+            bool canOpenResources = resourcesStep
+                                    && stage.IsAvailable
+                                    && HasAuthoritativeResources(creationResources);
             // The post-create AttributeEditRequest path must never serve as a wizard fallback.
             // Core's dedicated creation authority is the only Attributes route here.
             bool canOpen = canOpenFoundation || canOpenAttributes || canOpenSkills
-                           || canOpenQualities || canOpenMagicResonance || canOpenContacts;
-            Func<Task> selected = canOpenFoundation
+                           || canOpenQualities || canOpenMagicResonance || canOpenContacts
+                           || canOpenResources;
+            Func<Task> selected = canOpenResources
+                ? OpenCreationResourcesAsync
+                : canOpenFoundation
                 ? OpenCreationFoundationAsync
                 : canOpenAttributes
                     ? OpenCreationAttributesAsync
@@ -1023,7 +1121,9 @@ public sealed class BuildPage : NativePageBase
                 : canOpenContacts
                     ? OpenCreationContactsAsync
                 : () => Task.CompletedTask;
-            string detail = canOpenFoundation
+            string detail = canOpenResources
+                ? CreationResourcesStageDetail(creationResources!.State!)
+                : canOpenFoundation
                 ? "Choose an exact metatype and Nationality Life Module"
                 : canOpenAttributes
                     ? AttributeStageDetail(attributeResult!.Value!)
@@ -1058,6 +1158,16 @@ public sealed class BuildPage : NativePageBase
                     ? creationContacts.Blockers.FirstOrDefault()
                       ?? creationContacts.State?.Blockers.FirstOrDefault()
                       ?? "creation-contacts-authority-unavailable"
+                : resourcesStep
+                  && projection?.Progress.Resources == CreationDashboardAuthorityPhaseState.Loading
+                    ? "creation-authority-loading"
+                : resourcesStep
+                  && projection?.Progress.Resources == CreationDashboardAuthorityPhaseState.Failed
+                    ? projection.ResourcesFailureReason ?? "creation-resources-authority-load-failed"
+                : resourcesStep && creationResources is not null
+                    ? creationResources.Blockers.FirstOrDefault()
+                      ?? creationResources.State?.Blockers.FirstOrDefault()
+                      ?? "creation-resources-authority-unavailable"
                 : attributeStep && prerequisite?.Value is { } prerequisiteState
                     ? AttributeGateDetail(prerequisiteState)
                 : attributeStep && stage.IsAvailable
@@ -1079,7 +1189,8 @@ public sealed class BuildPage : NativePageBase
         bool prerequisiteStage,
         bool attributeStage,
         bool skillStage,
-        bool contactsStage)
+        bool contactsStage,
+        bool resourcesStage)
     {
         if (projection is null)
             return "creation-authority-loading";
@@ -1120,6 +1231,16 @@ public sealed class BuildPage : NativePageBase
                 CreationDashboardAuthorityPhaseState.Loading => "creation-authority-loading",
                 CreationDashboardAuthorityPhaseState.Failed => projection.ContactsFailureReason
                     ?? "creation-contacts-authority-load-failed",
+                _ => null
+            };
+        }
+        if (resourcesStage)
+        {
+            return projection.Progress.Resources switch
+            {
+                CreationDashboardAuthorityPhaseState.Loading => "creation-authority-loading",
+                CreationDashboardAuthorityPhaseState.Failed => projection.ResourcesFailureReason
+                    ?? "creation-resources-authority-load-failed",
                 _ => null
             };
         }
@@ -1181,6 +1302,15 @@ public sealed class BuildPage : NativePageBase
            }
            && CreationContactsPhoneAuthority.IsReady(state, Coordinator.State);
 
+    private bool HasAuthoritativeResources(
+        CharacterCreationResourcesInteractionLoadResult? result)
+        => result is
+           {
+               Outcome: CharacterCreationResourcesOutcomes.Available,
+               State: { } state
+           }
+           && CreationResourcesPhoneAuthority.IsReady(state, Coordinator.State);
+
     private static bool IsPrerequisiteStage(string stepId, string buildMethod)
         => string.Equals(stepId, CharacterCreationWizardStepIds.Method, StringComparison.Ordinal)
            && buildMethod is (CharacterCreationBuildMethods.Priority
@@ -1195,6 +1325,9 @@ public sealed class BuildPage : NativePageBase
             stepId,
             CharacterCreationWizardStepIds.ContactsLifestyles,
             StringComparison.Ordinal);
+
+    private static bool IsResourcesStage(string stepId)
+        => string.Equals(stepId, CharacterCreationWizardStepIds.Resources, StringComparison.Ordinal);
 
     private Task OpenCreationFoundationAsync()
         => Navigation.PushAsync(new CreationFoundationPage(Coordinator));
@@ -1217,10 +1350,23 @@ public sealed class BuildPage : NativePageBase
     private Task OpenCreationContactsAsync()
         => Navigation.PushAsync(new CreationContactsPage(Coordinator));
 
+    private Task OpenCreationResourcesAsync()
+        => _resourcesPresenter is not null && _overviewPresenter is not null
+            ? Navigation.PushAsync(new CreationResourcesPage(
+                Coordinator,
+                _resourcesPresenter,
+                _overviewPresenter))
+            : Task.CompletedTask;
+
     private static string CreationContactsStageDetail(
         CharacterCreationContactsInteractionState state)
         => $"Edit {state.Contacts.Count.ToString(CultureInfo.InvariantCulture)} existing Contacts · "
            + $"{state.ContactBudget.Remaining.ToString(CultureInfo.InvariantCulture)} exact points remain";
+
+    private static string CreationResourcesStageDetail(
+        CharacterCreationResourcesInteractionState state)
+        => $"Choose 0–{state.Authority.MaximumKarmaInvestment.ToString(CultureInfo.InvariantCulture)} Karma · "
+           + $"{state.Budget.TotalStartingNuyen.ToString("N0", CultureInfo.InvariantCulture)} exact starting nuyen";
 
     private static string PrerequisiteStageDetail(CharacterCreationPrerequisiteState state)
     {
