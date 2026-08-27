@@ -2654,21 +2654,53 @@ def wait_for_phone_shell_destination_snapshot(
     timeout: int,
     evidence_prefix: str,
     selected_label: str | None = None,
+    required_route_resource_id: str | None = None,
 ) -> tuple[list[UiNode], tuple[tuple[str, UiNode], ...]]:
     deadline = time.monotonic() + timeout
     last_error = "native phone bottom bar was absent"
     previous_signature: tuple[tuple[object, ...], ...] | None = None
     while time.monotonic() < deadline:
         binding_failed = False
+        hierarchy = device.hierarchy()
+        route_signature: tuple[object, ...] = ()
+        if required_route_resource_id is not None:
+            route_matches = [
+                node
+                for node in hierarchy
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == required_route_resource_id
+            ]
+            if len(route_matches) > 1:
+                device.capture(f"{evidence_prefix}-route-cardinality-invalid")
+                raise RuntimeError(
+                    f"Required phone route {required_route_resource_id!r} has "
+                    f"cardinality {len(route_matches)}; expected one"
+                )
+            if not route_matches:
+                last_error = (
+                    f"required phone route {required_route_resource_id!r} was absent"
+                )
+                previous_signature = None
+                time.sleep(0.75)
+                continue
+            route = route_matches[0]
+            route_signature = (
+                required_route_resource_id,
+                route.attributes.get("class", ""),
+                route.attributes.get("enabled", ""),
+                route.attributes.get("bounds", ""),
+            )
         try:
-            hierarchy = device.hierarchy()
             destinations = bind_phone_shell_destinations(device, hierarchy)
             selected = [
                 PHONE_SHELL_DESTINATION_MAPPING[resource_id]
                 for resource_id, node in destinations
                 if node.attributes.get("selected") == "true"
             ]
-            signature = _phone_shell_destination_signature(destinations)
+            signature = (
+                *_phone_shell_destination_signature(destinations),
+                route_signature,
+            )
             if selected_label is not None and selected != [selected_label]:
                 last_error = (
                     f"selected destination remained {selected!r}; "
@@ -2715,6 +2747,7 @@ def record_phone_ui_locale_evidence(
     *,
     evidence_prefix: str,
     timeout: int = 45,
+    required_route_resource_id: str | None = None,
 ) -> dict[str, object]:
     """Bind system locale and native no-ID shell labels in one durable receipt."""
     binding = detect_phone_ui_locale(device)
@@ -2722,6 +2755,7 @@ def record_phone_ui_locale_evidence(
         device,
         timeout=timeout,
         evidence_prefix=evidence_prefix,
+        required_route_resource_id=required_route_resource_id,
     )
     observed_labels = tuple(
         node.attributes.get("content-desc", "") for _, node in destinations
@@ -2741,6 +2775,8 @@ def record_phone_ui_locale_evidence(
         "destinationResourceIds": list(PHONE_SHELL_DESTINATION_IDS),
         "nativeResourceIdPosture": "empty-pinned-maui-api36",
     }
+    if required_route_resource_id is not None:
+        receipt["boundRouteResourceId"] = required_route_resource_id
     _write_new_json_receipt(
         device.evidence / f"{evidence_prefix}-phone-ui-locale.json",
         receipt,
@@ -4813,9 +4849,12 @@ def add_and_edit_gear(device: Device, profile: str) -> str | None:
     custom_name_id = f"collection-field-customname-{item_id}"
     save_id = f"collection-save-{item_id}"
     device.set_text(custom_name_id, "Custom Name", "GearProofE2E")
-    device.tap_single_exact_resource_id(
+    device.tap_exact_resource_id_bidirectional(
         save_id,
-        timeout=60,
+        timeout=90,
+        backward_scrolls=0,
+        forward_scrolls=32,
+        scroll_distance_ratio=0.22,
         evidence_prefix="gear-save",
         surface_name="Exact typed gear save action",
     )

@@ -1995,6 +1995,28 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual([route], observed)
         device.capture.assert_not_called()
 
+    def test_new_character_dialog_transition_uses_one_fresh_post_marker_snapshot(self) -> None:
+        route = driver.shared.UiNode({"content-desc": "build-save-runner"})
+        device = mock.Mock()
+
+        with mock.patch.object(
+            driver,
+            "fresh_hierarchy_timed",
+            return_value=[route],
+        ) as fresh, mock.patch.object(
+            driver,
+            "read_only_hierarchy_timed",
+        ) as read_only:
+            observed = driver.require_new_character_dialog_transition(
+                device,
+                timeout=1,
+                fresh_first=True,
+            )
+
+        self.assertEqual([route], observed)
+        fresh.assert_called_once()
+        read_only.assert_not_called()
+
     def test_creation_dashboard_handoff_reuses_one_exact_transition_snapshot(self) -> None:
         nodes = [
             driver.shared.UiNode(
@@ -3135,10 +3157,13 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn("shared.open_creation_dashboard(", source)
         self.assertIn("require_new_character_dialog_transition(", source)
         self.assertIn("observation_out=transition_observation", source)
+        self.assertIn("fresh_first=True", source)
         self.assertNotIn('device.wait("dialog-action-complete-new-character-workflow"', source)
         self.assertNotIn('device.wait("Select Metatype Priority"', source)
         execute_source = inspect.getsource(driver.execute)
         initial_source = execute_source[: execute_source.index('progress.advance("priority-ranks")')]
+        self.assertNotIn("shared.wait_for_phone_runners(device)", initial_source)
+        self.assertIn('required_route_resource_id="phone-runners"', initial_source)
         self.assertIn(
             "require_initial_creation_dashboard_snapshot(device, transition_nodes)",
             initial_source,

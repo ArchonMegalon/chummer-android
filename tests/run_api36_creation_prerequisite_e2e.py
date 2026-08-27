@@ -958,6 +958,7 @@ def require_new_character_dialog_transition(
     *,
     timeout: int = 120,
     observation_out: dict[str, object] | None = None,
+    fresh_first: bool = False,
 ) -> list[shared.UiNode]:
     """Require the production modal to publish either Build or one exact error."""
     deadline = time.monotonic() + timeout
@@ -965,6 +966,7 @@ def require_new_character_dialog_transition(
     started = time.monotonic()
     hierarchy_durations_ms: list[int] = []
     empty_hierarchy_reads = 0
+    first_observation = True
 
     def record_observation(status: str) -> None:
         if observation_out is not None:
@@ -977,7 +979,11 @@ def require_new_character_dialog_transition(
             })
 
     while time.monotonic() < deadline:
-        nodes = read_only_hierarchy_timed(device, hierarchy_durations_ms)
+        if first_observation and fresh_first:
+            nodes = fresh_hierarchy_timed(device, hierarchy_durations_ms)
+        else:
+            nodes = read_only_hierarchy_timed(device, hierarchy_durations_ms)
+        first_observation = False
         if not nodes:
             empty_hierarchy_reads += 1
         matches = {
@@ -3447,10 +3453,10 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     progress.advance("initial-authority")
     initial_launch = shared.launch_app(device)
     progress.record_initial_authority_milestone("app-cold-start-complete")
-    shared.wait_for_phone_runners(device)
     phone_ui_locale = shared.record_phone_ui_locale_evidence(
         device,
         evidence_prefix="creation-prerequisite",
+        required_route_resource_id="phone-runners",
     )
     progress.record_initial_authority_milestone("phone-shell-locale-complete")
     create_character = device.tap_exact_resource_id_until_exact_resource_id(
@@ -3489,6 +3495,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         device,
         timeout=30,
         observation_out=transition_observation,
+        fresh_first=True,
     )
     progress.record_scan(transition_observation)
     progress.record_initial_authority_milestone("create-bootstrap-transaction-complete")

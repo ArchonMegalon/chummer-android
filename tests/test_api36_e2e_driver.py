@@ -907,6 +907,67 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         )
         device.capture.assert_not_called()
 
+    def test_phone_locale_evidence_reuses_stable_snapshot_for_required_route(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = RecordingDevice(
+                Path(temporary),
+                "Physical size: 1080x2400",
+                locale_output="en-US",
+            )
+            route = DRIVER.UiNode(
+                {
+                    "resource-id": "phone-runners",
+                    "class": "android.view.ViewGroup",
+                    "enabled": "true",
+                    "bounds": "[0,275][1080,2190]",
+                }
+            )
+            device.nodes = [route, *self.native_phone_tabs(selected_index=0)]
+
+            with patch.object(
+                device,
+                "hierarchy",
+                wraps=device.hierarchy,
+            ) as hierarchy:
+                receipt = DRIVER.record_phone_ui_locale_evidence(
+                    device,
+                    evidence_prefix="route-bound-locale",
+                    timeout=2,
+                    required_route_resource_id="phone-runners",
+                )
+
+            self.assertEqual("phone-runners", receipt["boundRouteResourceId"])
+            self.assertEqual(2, hierarchy.call_count)
+
+    def test_phone_destination_wait_rejects_duplicate_required_route(self) -> None:
+        route = DRIVER.UiNode(
+            {
+                "resource-id": "phone-runners",
+                "class": "android.view.ViewGroup",
+                "enabled": "true",
+                "bounds": "[0,275][1080,2190]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        device.display_size.return_value = (1080, 2400)
+        device.hierarchy.return_value = [
+            route,
+            route,
+            *self.native_phone_tabs(selected_index=0),
+        ]
+
+        with self.assertRaisesRegex(RuntimeError, "cardinality 2"):
+            DRIVER.wait_for_phone_shell_destination_snapshot(
+                device,
+                timeout=2,
+                evidence_prefix="duplicate-route",
+                required_route_resource_id="phone-runners",
+            )
+
+        device.capture.assert_called_once_with(
+            "duplicate-route-route-cardinality-invalid"
+        )
+
     def test_phone_destination_tap_refuses_changed_pre_tap_snapshot(self) -> None:
         device = Mock(spec=DRIVER.Device)
         stable_destinations = tuple(
@@ -3335,7 +3396,9 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             phone_save.index("rewind_surface_to_stable_start("),
             phone_save.index('device.assert_text("GearProofE2E")'),
         )
-        self.assertIn("device.tap_single_exact_resource_id(", phone_save)
+        self.assertIn("device.tap_exact_resource_id_bidirectional(", phone_save)
+        self.assertIn("backward_scrolls=0", phone_save)
+        self.assertIn("forward_scrolls=32", phone_save)
 
     def test_contact_and_pet_editors_reset_before_field_mutations(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
@@ -4941,9 +5004,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         )
         self.assertLess(name_edit, add_tap)
         self.assertIn(
-            call.tap_single_exact_resource_id(
+            call.tap_exact_resource_id_bidirectional(
                 "collection-save-22222222-2222-2222-2222-222222222222",
-                timeout=60,
+                timeout=90,
+                backward_scrolls=0,
+                forward_scrolls=32,
+                scroll_distance_ratio=0.22,
                 evidence_prefix="gear-save",
                 surface_name="Exact typed gear save action",
             ),
