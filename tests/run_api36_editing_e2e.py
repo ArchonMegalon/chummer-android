@@ -1673,6 +1673,30 @@ class Device:
             "after a bounded bidirectional search"
         )
 
+    def tap_exact_resource_id_bidirectional(
+        self,
+        selector: str,
+        *,
+        timeout: int = 90,
+        backward_scrolls: int = 24,
+        forward_scrolls: int = 24,
+        scroll_distance_ratio: float = 0.22,
+        evidence_prefix: str = "exact-resource-bidirectional-tap",
+        surface_name: str = "Exact resource-id control",
+    ) -> None:
+        """Tap the exact cardinality-checked node from one observed hierarchy."""
+        node = self.wait_exact_resource_id_bidirectional(
+            selector,
+            timeout=timeout,
+            backward_scrolls=backward_scrolls,
+            forward_scrolls=forward_scrolls,
+            scroll_distance_ratio=scroll_distance_ratio,
+            evidence_prefix=evidence_prefix,
+            surface_name=surface_name,
+        )
+        x, y = node.center
+        self.shell("input", "tap", str(x), str(y))
+
     def tap_bidirectional(
         self,
         selector: str,
@@ -3543,22 +3567,24 @@ def _open_phone_relationship_collection(
     quick_add_selector: str,
     expected_item: str | None,
 ) -> None:
-    device.tap_bidirectional(
+    device.tap_exact_resource_id_bidirectional(
         "build-section-tab-relationships",
         timeout=120,
         backward_scrolls=24,
         forward_scrolls=24,
         scroll_distance_ratio=0.22,
-        exact_resource_id=True,
+        evidence_prefix="relationships-section-route",
+        surface_name="Relationships section route",
     )
     time.sleep(5)
-    device.tap_bidirectional(
+    device.tap_exact_resource_id_bidirectional(
         action_selector,
         timeout=180,
         backward_scrolls=24,
         forward_scrolls=48,
         scroll_distance_ratio=0.22,
-        exact_resource_id=True,
+        evidence_prefix="relationships-collection-route",
+        surface_name="Relationships collection route",
     )
     time.sleep(2)
     if expected_item is not None:

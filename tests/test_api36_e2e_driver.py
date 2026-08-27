@@ -3040,8 +3040,9 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         helper = source[source.index("def _open_phone_relationship_collection") :]
         helper = helper[: helper.index("\ndef ", 5)]
-        self.assertEqual(2, helper.count("device.tap_bidirectional("))
-        self.assertEqual(2, helper.count("exact_resource_id=True"))
+        self.assertEqual(2, helper.count("device.tap_exact_resource_id_bidirectional("))
+        self.assertNotIn("device.tap_bidirectional(", helper)
+        self.assertNotIn("exact_resource_id=True", helper)
         self.assertIn('"build-section-tab-relationships"', helper)
         self.assertIn("forward_scrolls=48", helper)
         self.assertIn("device.wait_exact_resource_id_bidirectional(", helper)
@@ -3945,8 +3946,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             def __init__(self) -> None:
                 self.calls: list[tuple[str, str, dict[str, object]]] = []
 
-            def tap_bidirectional(self, selector: str, **options: object) -> None:
-                self.calls.append(("tap_bidirectional", selector, options))
+            def tap_exact_resource_id_bidirectional(
+                self,
+                selector: str,
+                **options: object,
+            ) -> None:
+                self.calls.append(("tap_exact", selector, options))
 
             def wait_exact_resource_id_bidirectional(
                 self,
@@ -3974,25 +3979,27 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 self.assertEqual(
                     [
                         (
-                            "tap_bidirectional",
+                            "tap_exact",
                             "build-section-tab-relationships",
                             {
                                 "timeout": 120,
                                 "backward_scrolls": 24,
                                 "forward_scrolls": 24,
                                 "scroll_distance_ratio": 0.22,
-                                "exact_resource_id": True,
+                                "evidence_prefix": "relationships-section-route",
+                                "surface_name": "Relationships section route",
                             },
                         ),
                         (
-                            "tap_bidirectional",
+                            "tap_exact",
                             action_selector,
                             {
                                 "timeout": 180,
                                 "backward_scrolls": 24,
                                 "forward_scrolls": 48,
                                 "scroll_distance_ratio": 0.22,
-                                "exact_resource_id": True,
+                                "evidence_prefix": "relationships-collection-route",
+                                "surface_name": "Relationships collection route",
                             },
                         ),
                         (
@@ -4047,7 +4054,11 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 self.stale_quick_add_visible = True
                 self.quick_add_waited = False
 
-            def tap_bidirectional(self, _: str, **__: object) -> None:
+            def tap_exact_resource_id_bidirectional(
+                self,
+                _: str,
+                **__: object,
+            ) -> None:
                 return None
 
             def swipe_down(self, **_: object) -> None:
@@ -4087,8 +4098,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             def __init__(self) -> None:
                 self.calls: list[tuple[str, str, dict[str, object]]] = []
 
-            def tap_bidirectional(self, selector: str, **options: object) -> None:
-                self.calls.append(("tap_bidirectional", selector, options))
+            def tap_exact_resource_id_bidirectional(
+                self,
+                selector: str,
+                **options: object,
+            ) -> None:
+                self.calls.append(("tap_exact", selector, options))
 
             def swipe_down(self, **options: object) -> None:
                 self.calls.append(("swipe_down", "", options))
@@ -4121,13 +4136,13 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     [
                         selector
                         for kind, selector, _ in device.calls
-                        if kind == "tap_bidirectional"
+                        if kind == "tap_exact"
                     ],
                 )
                 action_index = next(
                     index
                     for index, call_value in enumerate(device.calls)
-                    if call_value[0:2] == ("tap_bidirectional", action_selector)
+                    if call_value[0:2] == ("tap_exact", action_selector)
                 )
                 wait_index = next(
                     index
@@ -4241,6 +4256,44 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     scroll_distance_ratio=0.22,
                 )
         self.assertGreater(old_offset["rows_below_top"], 24)
+
+    def test_exact_bidirectional_tap_uses_the_cardinality_checked_waited_node(self) -> None:
+        target = DRIVER.UiNode(
+            {
+                "resource-id": (
+                    "com.myexternalbrain.chummer:id/"
+                    "build-section-tab-relationships"
+                ),
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,420][984,640]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        device.wait_exact_resource_id_bidirectional.return_value = target
+
+        DRIVER.Device.tap_exact_resource_id_bidirectional(
+            device,
+            "build-section-tab-relationships",
+            timeout=120,
+            backward_scrolls=24,
+            forward_scrolls=24,
+            scroll_distance_ratio=0.22,
+            evidence_prefix="relationships-section-route",
+            surface_name="Relationships section route",
+        )
+
+        device.wait_exact_resource_id_bidirectional.assert_called_once_with(
+            "build-section-tab-relationships",
+            timeout=120,
+            backward_scrolls=24,
+            forward_scrolls=24,
+            scroll_distance_ratio=0.22,
+            evidence_prefix="relationships-section-route",
+            surface_name="Relationships section route",
+        )
+        device.hierarchy.assert_not_called()
+        device.shell.assert_called_once_with("input", "tap", "541", "530")
 
     def test_exact_bidirectional_wait_does_not_scroll_after_empty_hierarchy(self) -> None:
         target = DRIVER.UiNode(
