@@ -38,4 +38,19 @@ namespace Chummer.Android.Native
         public void Write(string payload) => Payload = payload;
         public void Remove() => Payload = string.Empty;
     }
+
+    internal sealed class FaultingRemoveBackend : ISr5CareerCheckpointBackend
+    {
+        public bool FailRemove { get; set; }
+        public string Payload { get; private set; } = string.Empty;
+
+        public string Read() => Payload;
+        public void Write(string payload) => Payload = payload;
+        public void Remove()
+        {
+            if (FailRemove)
+                throw new InvalidOperationException("simulated durable owner release failure");
+            Payload = string.Empty;
+        }
+    }
 }
