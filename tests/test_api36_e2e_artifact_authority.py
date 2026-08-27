@@ -302,9 +302,11 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
 
     def test_creation_timing_outside_explicit_budgets_fails_closed(self) -> None:
         cases = (
+            ("missingTiming", "timing evidence is missing"),
             ("withinBudget", "phase timing is outside budget"),
             ("elapsedMs", "phase timing is outside budget"),
             ("withinConfiguredTotalTarget", "total timing target was exceeded"),
+            ("totalElapsedMs", "total timing target was exceeded"),
         )
         for field, expected_error in cases:
             with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary:
@@ -316,8 +318,12 @@ class Api36ArtifactAuthorityTests(unittest.TestCase):
                 )
                 receipt_path = directory / "receipt.json"
                 receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
-                if field == "withinConfiguredTotalTarget":
+                if field == "missingTiming":
+                    del receipt["timing"]
+                elif field == "withinConfiguredTotalTarget":
                     receipt["timing"][field] = False
+                elif field == "totalElapsedMs":
+                    receipt["timing"][field] = AGGREGATE.CREATION_TOTAL_TARGET_MS + 1
                 elif field == "withinBudget":
                     receipt["timing"]["phases"][1][field] = False
                 else:
