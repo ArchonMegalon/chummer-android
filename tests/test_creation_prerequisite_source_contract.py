@@ -1358,7 +1358,12 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         dashboard_source = inspect.getsource(driver.assert_uncreated_advanced_editor_gated)
         self.assertIn("distance_ratio=0.68", dashboard_source)
         self.assertIn("max_scrolls=18", dashboard_source)
-        self.assertIn("reset_scroll_to_top(device, swipes=12)", dashboard_source)
+        self.assertEqual(1, dashboard_source.count("reset_scroll_to_top"))
+        self.assertIn("reset_scroll_to_top(device, swipes=8)", dashboard_source)
+
+        execute_source = inspect.getsource(driver.execute)
+        self.assertIn("reset_swipes=12", execute_source)
+        self.assertNotIn("reset_swipes=48", execute_source)
 
         # The former fixed loops always spent 404 forward swipes before any
         # selector reacquisition. A stable viewport now requires exactly two.
@@ -2507,7 +2512,8 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertNotIn('device.wait("Select Metatype Priority"', source)
         self.assertIn("toolbar_timeout=120", source)
         self.assertIn("dashboard_timeout=30", source)
-        self.assertIn("reset_swipes=48", source)
+        self.assertIn("reset_swipes=12", source)
+        self.assertNotIn("reset_swipes=48", source)
         self.assertNotIn('device.wait("creation-wizard-dashboard"', source)
         self.assertNotIn("shared.select_android_document", source)
         self.assertNotIn("shared.require_import_authority", source)

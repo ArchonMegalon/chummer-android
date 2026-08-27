@@ -380,7 +380,6 @@ def assert_uncreated_advanced_editor_gated(
         "creation-wizard-attributes",
         "attribute-save-",
     )
-    shared.reset_scroll_to_top(device, swipes=12)
     screens = scan_forward_until_stable(
         device,
         scan_id=scan_id,
@@ -396,7 +395,7 @@ def assert_uncreated_advanced_editor_gated(
                     "Creation dashboard exposed a Career/advanced-editor control while "
                     f"the authoritative runner is still uncreated: {selector!r}"
                 )
-    shared.reset_scroll_to_top(device, swipes=18)
+    shared.reset_scroll_to_top(device, swipes=8)
 
 
 def canonical_digest(device: shared.Device, selector: str, *, scroll: bool = False) -> str:
@@ -2094,7 +2093,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         open_build_route=False,
         toolbar_timeout=120,
         dashboard_timeout=30,
-        reset_swipes=48,
+        reset_swipes=12,
     )
     assert_uncreated_advanced_editor_gated(
         device,
