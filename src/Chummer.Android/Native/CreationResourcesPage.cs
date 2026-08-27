@@ -12,6 +12,7 @@ public sealed class CreationResourcesPage : NativePageBase
 {
     private readonly ICharacterCreationResourcesInteractionPresenter _resources;
     private readonly ICharacterOverviewPresenter _overview;
+    private readonly ICharacterCreationGearInteractionPresenter? _gear;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -21,10 +22,19 @@ public sealed class CreationResourcesPage : NativePageBase
     public CreationResourcesPage(
         RunnerSessionCoordinator coordinator,
         ICharacterCreationResourcesInteractionPresenter resources,
-        ICharacterOverviewPresenter overview) : base(coordinator)
+        ICharacterOverviewPresenter overview) : this(coordinator, resources, overview, null)
+    {
+    }
+
+    public CreationResourcesPage(
+        RunnerSessionCoordinator coordinator,
+        ICharacterCreationResourcesInteractionPresenter resources,
+        ICharacterOverviewPresenter overview,
+        ICharacterCreationGearInteractionPresenter? gear) : base(coordinator)
     {
         _resources = resources ?? throw new ArgumentNullException(nameof(resources));
         _overview = overview ?? throw new ArgumentNullException(nameof(overview));
+        _gear = gear;
         Title = "Creation resources";
         AutomationId = "creation-resources-page";
         Content = new ScrollView { Content = _body };
@@ -100,7 +110,27 @@ public sealed class CreationResourcesPage : NativePageBase
                 $"creation-resources-option-{Token(option.OptionId)}"));
         }
 
+        AddGearRoute(state);
         AddAuthority(state);
+    }
+
+    private void AddGearRoute(CharacterCreationResourcesInteractionState state)
+    {
+        _body.Add(NativeTheme.Eyebrow("Creation purchases"));
+        bool enabled = state.PendingDraft is not null && _gear is not null;
+        string detail = state.PendingDraft is null
+            ? "Confirm an exact Resources draft before selecting Gear."
+            : _gear is null
+                ? "The typed Gear presenter is unavailable."
+                : $"Open the active-source catalog with {state.Budget.RemainingNuyen.ToString("N0", CultureInfo.InvariantCulture)} nuyen remaining.";
+        _body.Add(NativeTheme.NavigationRow(
+            "Choose Gear",
+            detail,
+            () => enabled
+                ? Navigation.PushAsync(new CreationGearPage(Coordinator, _gear!, _overview))
+                : Task.CompletedTask,
+            enabled,
+            "creation-resources-open-gear"));
     }
 
     private async Task OpenPreviewAsync(

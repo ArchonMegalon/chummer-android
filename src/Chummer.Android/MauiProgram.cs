@@ -108,6 +108,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<ICharacterCreationResourcesInteractionPresenter>(provider =>
             new CharacterCreationResourcesInteractionPresenter(
                 provider.GetRequiredService<ICharacterCreationResourcesService>()));
+        builder.Services.AddSingleton<ICharacterCreationGearInteractionPresenter>(provider =>
+            new CharacterCreationGearInteractionPresenter(
+                provider.GetRequiredService<ICharacterCreationGearService>()));
         builder.Services.AddSingleton<IWorkspaceOperationCoordinator, WorkspaceOperationCoordinator>();
         builder.Services.AddSingleton<ICharacterOverviewPresenter, CharacterOverviewPresenter>();
         builder.Services.AddSingleton<IShellPresenter, ShellPresenter>();
