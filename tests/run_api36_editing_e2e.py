@@ -107,6 +107,16 @@ ADB_READ_ONLY_HIERARCHY_ARGUMENTS = (
     "--compressed",
     "/dev/tty",
 )
+ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS = (
+    "logcat",
+    "-d",
+    "-t",
+    "50",
+    "-s",
+    "ChummerBootstrap:I",
+    "*:S",
+)
+ADB_CREATION_BOOTSTRAP_LOGCAT_CLEAR_ARGUMENTS = ("logcat", "-c")
 ADB_PREFLIGHT_REQUIRED_CONSECUTIVE = 3
 ADB_PREFLIGHT_MAX_OBSERVATIONS = 7
 ADB_PREFLIGHT_OBSERVATION_DELAY_SECONDS = 1.0
@@ -261,6 +271,11 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         return ("read-only-retryable", "exact remote-file byte observation")
     if arguments == ("logcat", "-d", "-t", "500"):
         return ("read-only-retryable", "bounded logcat dump observation")
+    if arguments == ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS:
+        return (
+            "read-only-retryable",
+            "bounded exact-tag creation-bootstrap timing observation",
+        )
     if arguments[:1] != ("shell",):
         return (
             "non-replayable",
@@ -3187,14 +3202,24 @@ PHONE_BUILD_SECTIONS = frozenset({"attributes", "combat", "gear", "relationships
 
 
 def tap_phone_build_section(device: Device, section: str) -> None:
-    """Activate one canonical phone Build section from one checked hierarchy node."""
+    """Activate one canonical phone Build section from the proven Build root.
+
+    Section routes do not exist on nested collection pages.  Bind the immutable
+    root page, toolbar, and exactly one lifecycle marker before searching for the
+    requested exact resource ID.  ``created=None`` is intentional: this helper is
+    shared by the created full-editing journey and the uncreated contact/pet
+    journey, while the root binder still requires one unambiguous lifecycle
+    marker.  The bound root is already at its measured top viewport, so a blind
+    downward reset would only add latency and could move the search off authority.
+    """
     if section not in PHONE_BUILD_SECTIONS:
         raise RuntimeError(f"Unsupported canonical phone Build section {section!r}")
+    return_to_phone_runner_root(device, created=None)
     selector = f"build-section-tab-{section}"
     device.tap_exact_resource_id_bidirectional(
         selector,
         timeout=120,
-        backward_scrolls=24,
+        backward_scrolls=0,
         forward_scrolls=24,
         scroll_distance_ratio=0.22,
         evidence_prefix=f"{section}-section-route",
@@ -3459,7 +3484,6 @@ def open_gear_section(device: Device, profile: str) -> None:
             scroll_distance_ratio=0.22,
         )
         return
-    return_to_phone_runner_root(device, created=True)
     tap_phone_build_section(device, "gear")
     device.wait_exact_resource_id_bidirectional(
         "section-quick-gear-add",

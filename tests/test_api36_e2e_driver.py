@@ -3026,6 +3026,47 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertNotIn("dialog.new_character.priority_workflow", block)
         self.assertNotIn("dialog.new_character.karma_workflow", block)
 
+    def test_phone_build_section_binds_created_or_uncreated_root_before_exact_tap(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+
+        with patch.object(DRIVER, "return_to_phone_runner_root") as return_to_root:
+            DRIVER.tap_phone_build_section(device, "attributes")
+
+        return_to_root.assert_called_once_with(device, created=None)
+        device.tap_exact_resource_id_bidirectional.assert_called_once_with(
+            "build-section-tab-attributes",
+            timeout=120,
+            backward_scrolls=0,
+            forward_scrolls=24,
+            scroll_distance_ratio=0.22,
+            evidence_prefix="attributes-section-route",
+            surface_name="Attributes section route",
+        )
+
+    def test_phone_build_section_rejects_unknown_route_before_root_or_tap(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+
+        with (
+            patch.object(DRIVER, "return_to_phone_runner_root") as return_to_root,
+            self.assertRaisesRegex(RuntimeError, "Unsupported canonical phone Build section"),
+        ):
+            DRIVER.tap_phone_build_section(device, "custom-data")
+
+        return_to_root.assert_not_called()
+        device.tap_exact_resource_id_bidirectional.assert_not_called()
+
+    def test_open_gear_uses_shared_root_bound_section_helper_once(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+
+        with (
+            patch.object(DRIVER, "return_to_phone_runner_root") as return_to_root,
+            patch.object(DRIVER, "tap_phone_build_section") as tap_section,
+        ):
+            DRIVER.open_gear_section(device, "phone")
+
+        return_to_root.assert_not_called()
+        tap_section.assert_called_once_with(device, "gear")
+
     def test_collection_openers_use_overlapping_search_below_the_action_list(self) -> None:
         source = Path(DRIVER.__file__).read_text(encoding="utf-8")
         for function_name, action, quick_add in (
@@ -3820,7 +3861,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     self.row_wait_options = options
 
         device = AttributeRouteDevice()
-        with patch.object(DRIVER.time, "sleep"):
+        with (
+            patch.object(DRIVER.time, "sleep"),
+            patch.object(DRIVER, "return_to_phone_runner_root"),
+        ):
             DRIVER.open_attribute_section(device, "phone")
 
         self.assertEqual(
@@ -3875,7 +3919,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
 
         device = CareerAttributeDevice()
         contract = DRIVER.FullEditingFixtureContract(1, 2, 10, 35, 25, 15)
-        with patch.object(DRIVER.time, "sleep"):
+        with (
+            patch.object(DRIVER.time, "sleep"),
+            patch.object(DRIVER, "return_to_phone_runner_root"),
+        ):
             DRIVER.improve_body_in_career(device, "phone", contract)
 
         self.assertIn(("tap", "attribute-improve-bod"), device.calls)
@@ -3915,7 +3962,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             DRIVER.open_gear_section(device, "phone")
 
         self.assertEqual(
-            ("return_to_root", "", {"created": True}),
+            ("return_to_root", "", {"created": None}),
             device.calls[0],
         )
         self.assertEqual(
@@ -3924,7 +3971,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 "build-section-tab-gear",
                 {
                     "timeout": 120,
-                    "backward_scrolls": 24,
+                    "backward_scrolls": 0,
                     "forward_scrolls": 24,
                     "scroll_distance_ratio": 0.22,
                     "evidence_prefix": "gear-section-route",
@@ -3985,7 +4032,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         ):
             with self.subTest(action_selector=action_selector):
                 device = RelationshipRouteDevice()
-                with patch.object(DRIVER.time, "sleep"):
+                with (
+                    patch.object(DRIVER.time, "sleep"),
+                    patch.object(DRIVER, "return_to_phone_runner_root"),
+                ):
                     opener(device, "phone")
 
                 self.assertEqual(
@@ -3995,7 +4045,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                             "build-section-tab-relationships",
                             {
                                 "timeout": 120,
-                                "backward_scrolls": 24,
+                                "backward_scrolls": 0,
                                 "forward_scrolls": 24,
                                 "scroll_distance_ratio": 0.22,
                                 "evidence_prefix": "relationships-section-route",
@@ -4094,6 +4144,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device = StaleRelationshipsDevice()
         with (
             patch.object(DRIVER.time, "sleep"),
+            patch.object(DRIVER, "return_to_phone_runner_root"),
             self.assertRaisesRegex(RuntimeError, "empty marker absent on stale Relationships"),
         ):
             DRIVER._open_phone_relationship_collection(
@@ -4137,7 +4188,10 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         ):
             with self.subTest(action_selector=action_selector):
                 device = RelationshipFixtureDevice()
-                with patch.object(DRIVER.time, "sleep"):
+                with (
+                    patch.object(DRIVER.time, "sleep"),
+                    patch.object(DRIVER, "return_to_phone_runner_root"),
+                ):
                     opener(device, "phone", expected_item=expected_item)
 
                 self.assertEqual(
@@ -4432,6 +4486,67 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device.swipe_up.assert_not_called()
         device.swipe_down.assert_not_called()
 
+    def test_exact_bidirectional_wait_rejects_disabled_exact_route(self) -> None:
+        disabled = DRIVER.UiNode(
+            {
+                "resource-id": "build-section-tab-attributes",
+                "enabled": "false",
+                "clickable": "true",
+                "bounds": "[98,420][984,640]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        device._scroll_x_ratio.return_value = 0.5
+        device.display_size.return_value = (1080, 2400)
+        device.hierarchy.return_value = [disabled]
+        device.node_has_tappable_bounds.return_value = True
+
+        with patch.object(DRIVER.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "not enabled, clickable, and tappable",
+        ):
+            DRIVER.Device.wait_exact_resource_id_bidirectional(
+                device,
+                "build-section-tab-attributes",
+                backward_scrolls=0,
+                forward_scrolls=0,
+                evidence_prefix="attributes-section-route",
+                surface_name="Attributes section route",
+            )
+
+        device.capture.assert_called_once_with("attributes-section-route-not-tappable")
+        device.shell.assert_not_called()
+
+    def test_exact_bidirectional_wait_fails_closed_when_exact_route_is_missing(self) -> None:
+        prefix_decoy = DRIVER.UiNode(
+            {
+                "resource-id": "build-section-tab-attributes-sources",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,420][984,640]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        device._scroll_x_ratio.return_value = 0.5
+        device.hierarchy.return_value = [prefix_decoy]
+        device.dismiss_system_ui_anr.return_value = False
+
+        with patch.object(DRIVER.time, "sleep"), self.assertRaisesRegex(
+            RuntimeError,
+            "exactly one tappable attributes section route",
+        ):
+            DRIVER.Device.wait_exact_resource_id_bidirectional(
+                device,
+                "build-section-tab-attributes",
+                backward_scrolls=0,
+                forward_scrolls=0,
+                evidence_prefix="attributes-section-route",
+                surface_name="Attributes section route",
+            )
+
+        device.capture.assert_called_once_with("attributes-section-route-unavailable")
+        device.shell.assert_not_called()
+
     def test_phone_condition_route_uses_overlapping_scrolls(self) -> None:
         class ConditionRouteDevice:
             def __init__(self) -> None:
@@ -4451,7 +4566,8 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 self.calls.append(("wait", selector))
 
         device = ConditionRouteDevice()
-        DRIVER.open_condition_monitor_section(device, "phone")
+        with patch.object(DRIVER, "return_to_phone_runner_root"):
+            DRIVER.open_condition_monitor_section(device, "phone")
 
         self.assertEqual(
             [

@@ -412,6 +412,30 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
             )[0],
         )
 
+    def test_only_exact_bounded_creation_bootstrap_log_filter_is_retryable(self) -> None:
+        self.assertEqual(
+            "read-only-retryable",
+            driver.adb_command_retry_policy(
+                driver.ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS
+            )[0],
+        )
+        for arguments in (
+            ("logcat", "-d", "-s", "ChummerBootstrap:I", "*:S"),
+            ("logcat", "-d", "-t", "500", "-s", "ChummerBootstrap:I", "*:S"),
+            ("logcat", "-d", "-t", "50", "-s", "*:I"),
+        ):
+            with self.subTest(arguments=arguments):
+                self.assertEqual(
+                    "non-replayable",
+                    driver.adb_command_retry_policy(arguments)[0],
+                )
+        self.assertEqual(
+            "non-replayable",
+            driver.adb_command_retry_policy(
+                driver.ADB_CREATION_BOOTSTRAP_LOGCAT_CLEAR_ARGUMENTS
+            )[0],
+        )
+
     def test_verified_install_and_push_never_replay_unknown_outcomes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

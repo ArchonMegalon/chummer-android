@@ -140,10 +140,16 @@ def read_only_hierarchy_timed(
 
 def capture_creation_bootstrap_timing(
     device: shared.Device,
+    *,
+    logcat: str | None = None,
 ) -> dict[str, object]:
     """Capture the product-emitted, exact create/load/shell timing partition."""
-    result = device.run("logcat", "-d", "-t", "500", timeout=30)
-    logcat = str(result.stdout)
+    if logcat is None:
+        result = device.run(
+            *shared.ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS,
+            timeout=30,
+        )
+        logcat = str(result.stdout)
     device.evidence.mkdir(parents=True, exist_ok=True)
     (device.evidence / CREATION_BOOTSTRAP_LOGCAT_FILE_NAME).write_text(
         logcat,
@@ -215,6 +221,71 @@ def capture_creation_bootstrap_timing(
         encoding="utf-8",
     )
     return timing
+
+
+def wait_for_creation_bootstrap_timing_log(
+    device: shared.Device,
+    *,
+    timeout: float = 90.0,
+    observation_out: dict[str, object] | None = None,
+) -> str:
+    """Wait cheaply for the post-action product marker before observing the UI."""
+    if timeout <= 0:
+        raise ValueError("Creation bootstrap timing wait requires a positive timeout")
+    deadline = time.monotonic() + timeout
+    started = time.monotonic()
+    read_durations_ms: list[int] = []
+    last_logcat = ""
+
+    def record(status: str) -> None:
+        if observation_out is not None:
+            observation_out.update({
+                "scanId": "creation-bootstrap-timing-log-poll",
+                "status": status,
+                "logcatReadCount": len(read_durations_ms),
+                "logcatElapsedMs": sum(read_durations_ms),
+                "maximumLogcatReadMs": max(read_durations_ms, default=0),
+                "elapsedMs": round((time.monotonic() - started) * 1000),
+            })
+
+    while time.monotonic() < deadline:
+        read_started = time.perf_counter()
+        result = device.run(
+            *shared.ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS,
+            timeout=30,
+        )
+        read_durations_ms.append(round((time.perf_counter() - read_started) * 1000))
+        last_logcat = str(result.stdout)
+        if CREATION_BOOTSTRAP_TIMING_PREFIX in last_logcat:
+            record("resolved")
+            device.evidence.mkdir(parents=True, exist_ok=True)
+            (device.evidence / CREATION_BOOTSTRAP_LOGCAT_FILE_NAME).write_text(
+                last_logcat,
+                encoding="utf-8",
+            )
+            return last_logcat
+        time.sleep(0.75)
+
+    record("timeout")
+    device.evidence.mkdir(parents=True, exist_ok=True)
+    (device.evidence / CREATION_BOOTSTRAP_LOGCAT_FILE_NAME).write_text(
+        last_logcat,
+        encoding="utf-8",
+    )
+    device.capture("creation-bootstrap-timing-log-timeout")
+    raise RuntimeError(
+        "Timed out waiting for the exact post-action creation bootstrap timing marker"
+    )
+
+
+def clear_creation_bootstrap_timing_log(device: shared.Device) -> None:
+    """Remove stale log authority immediately before the create mutation.
+
+    The clear is deliberately a one-shot, non-replayable ADB command.  A marker
+    observed by the following exact-tag poll must therefore have been emitted by
+    the create action under proof, never by an earlier app process or journey.
+    """
+    device.run(*shared.ADB_CREATION_BOOTSTRAP_LOGCAT_CLEAR_ARGUMENTS, timeout=30)
 
 
 def hierarchy_timing_fields(durations_ms: list[int]) -> dict[str, int]:
@@ -3383,19 +3454,30 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         raise RuntimeError(
             "Exact create-character dialog action was not visible, enabled, and clickable"
         )
+    clear_creation_bootstrap_timing_log(device)
     device.shell(
         "input",
         "tap",
         *(str(value) for value in create_character.center),
     )
+    bootstrap_log_observation: dict[str, object] = {}
+    bootstrap_logcat = wait_for_creation_bootstrap_timing_log(
+        device,
+        observation_out=bootstrap_log_observation,
+    )
+    progress.record_scan(bootstrap_log_observation)
     transition_observation: dict[str, object] = {}
     transition_nodes = require_new_character_dialog_transition(
         device,
+        timeout=30,
         observation_out=transition_observation,
     )
     progress.record_scan(transition_observation)
     progress.record_initial_authority_milestone("create-bootstrap-transaction-complete")
-    creation_bootstrap_timing = capture_creation_bootstrap_timing(device)
+    creation_bootstrap_timing = capture_creation_bootstrap_timing(
+        device,
+        logcat=bootstrap_logcat,
+    )
     require_initial_creation_dashboard_snapshot(device, transition_nodes)
     progress.record_initial_authority_milestone("dashboard-render-complete")
     dashboard_authority_observation: dict[str, object] = {}

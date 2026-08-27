@@ -115,6 +115,94 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, expected):
                     driver.capture_creation_bootstrap_timing(TimingDevice())
 
+    def test_creation_bootstrap_marker_poll_uses_only_exact_tagged_logcat(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            payload = self.bootstrap_timing_payload()
+
+            class TimingDevice:
+                evidence = Path(temporary)
+                calls: list[tuple[str, ...]] = []
+
+                @classmethod
+                def run(cls, *arguments: str, **_options: object) -> subprocess.CompletedProcess:
+                    cls.calls.append(arguments)
+                    return subprocess.CompletedProcess(
+                        arguments,
+                        0,
+                        stdout=(
+                            driver.CREATION_BOOTSTRAP_TIMING_PREFIX
+                            + json.dumps(payload, separators=(",", ":"))
+                        ),
+                        stderr="",
+                    )
+
+                @staticmethod
+                def hierarchy() -> None:
+                    raise AssertionError("marker polling must not observe UI hierarchy")
+
+                @staticmethod
+                def capture(name: str) -> None:
+                    raise AssertionError(f"unexpected capture: {name}")
+
+            observation: dict[str, object] = {}
+            logcat = driver.wait_for_creation_bootstrap_timing_log(
+                TimingDevice(),
+                observation_out=observation,
+            )
+            self.assertIn(driver.CREATION_BOOTSTRAP_TIMING_PREFIX, logcat)
+            self.assertEqual(
+                [driver.shared.ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS],
+                TimingDevice.calls,
+            )
+            self.assertEqual("resolved", observation["status"])
+            self.assertEqual(1, observation["logcatReadCount"])
+
+    def test_creation_bootstrap_log_is_cleared_once_without_retry_before_tap(self) -> None:
+        device = mock.Mock()
+
+        driver.clear_creation_bootstrap_timing_log(device)
+
+        device.run.assert_called_once_with(
+            *driver.shared.ADB_CREATION_BOOTSTRAP_LOGCAT_CLEAR_ARGUMENTS,
+            timeout=30,
+        )
+        self.assertEqual(
+            "non-replayable",
+            driver.shared.adb_command_retry_policy(
+                driver.shared.ADB_CREATION_BOOTSTRAP_LOGCAT_CLEAR_ARGUMENTS
+            )[0],
+        )
+
+    def test_creation_bootstrap_marker_poll_times_out_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = mock.Mock()
+            device.evidence = Path(temporary)
+            device.run.return_value = subprocess.CompletedProcess(
+                driver.shared.ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS,
+                0,
+                stdout="",
+                stderr="",
+            )
+            observation: dict[str, object] = {}
+            with mock.patch.object(
+                driver.time,
+                "monotonic",
+                side_effect=[0.0, 0.0, 0.0, 2.0, 2.0],
+            ), self.assertRaisesRegex(RuntimeError, "post-action creation bootstrap"):
+                driver.wait_for_creation_bootstrap_timing_log(
+                    device,
+                    timeout=1.0,
+                    observation_out=observation,
+                )
+            device.run.assert_called_once_with(
+                *driver.shared.ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS,
+                timeout=30,
+            )
+            device.capture.assert_called_once_with(
+                "creation-bootstrap-timing-log-timeout"
+            )
+            self.assertEqual("timeout", observation["status"])
+
     def test_artifact_binding_digest_uses_canonical_sorted_json(self) -> None:
         first = {"driver": "a", "apk": "b", "nested": {"events": "c"}}
         reordered = {"nested": {"events": "c"}, "apk": "b", "driver": "a"}
