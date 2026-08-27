@@ -2,6 +2,10 @@ using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
 
+/// <summary>
+/// Native phone renderer for the renderer-neutral Presentation Career chooser. This page owns
+/// only action-family navigation; each destination keeps its existing typed authority boundary.
+/// </summary>
 public sealed class Sr5CareerWizardPage : NativePageBase
 {
     private readonly VerticalStackLayout _body = new()
@@ -9,62 +13,151 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         Padding = new Thickness(20, 18, 20, 40),
         Spacing = 14
     };
+    private readonly RunnerSessionSr5CareerWizardPhoneAuthority _authority;
+    private readonly Sr5CareerWizardPhoneCheckpointStore _checkpointStore;
+    private CancellationTokenSource? _loadLifetime;
+    private Sr5CareerWizardDesktopSession? _session;
+    private Sr5CareerWizardSnapshot? _snapshot;
+    private string? _loadBlocker;
+    private string? _checkpointNotice;
+    private long _loadVersion;
+    private bool _loading;
 
     public Sr5CareerWizardPage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
         Title = "SR5 Career";
         AutomationId = Sr5CareerWizardRoutes.Hub;
+        _authority = new RunnerSessionSr5CareerWizardPhoneAuthority(coordinator);
+        _checkpointStore = new Sr5CareerWizardPhoneCheckpointStore(
+            new PreferencesSr5CareerWizardPhoneCheckpointBackend());
         Content = new ScrollView { Content = _body };
+    }
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        _loadLifetime?.Cancel();
+        _loadLifetime?.Dispose();
+        _loadLifetime = new CancellationTokenSource();
+        await LoadLatestAsync(_loadLifetime.Token);
+    }
+
+    protected override void OnDisappearing()
+    {
+        _loadLifetime?.Cancel();
+        _loadLifetime?.Dispose();
+        _loadLifetime = null;
+        Interlocked.Increment(ref _loadVersion);
+        _loading = false;
+        base.OnDisappearing();
     }
 
     protected override void Refresh()
     {
+        if (_snapshot is not null && !MatchesCurrentRunner(_snapshot.Binding, Coordinator.State))
+        {
+            _snapshot = null;
+            _session = null;
+            _checkpointStore.Clear();
+            _checkpointNotice = Sr5CareerWizardCheckpointInvalidationReasons.WorkspaceRevisionChanged;
+            ScheduleReload();
+        }
+
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow("Shadowrun Fifth Edition"));
         _body.Add(NativeTheme.Title("Career wizard"));
 
-        bool ready = Sr5CareerWizardCatalog.IsSr5CareerRunner(
-            Coordinator.State.Profile?.Created == true,
-            Coordinator.State.Rules?.GameEdition);
-        if (!ready)
+        if (!Sr5CareerWizardCatalog.IsSr5CareerRunner(
+                Coordinator.State.Profile?.Created == true,
+                Coordinator.State.Rules?.GameEdition))
         {
-            Label blocker = NativeTheme.Body(
-                "This wizard is fail-closed. Open a created SR5 runner; creation characters and other rules editions are not accepted.",
+            AddStatus(
+                "This wizard requires a created SR5 runner. It does not fall through to generic editing.",
+                "sr5-career-wizard-edition-blocker",
                 NativeTheme.Danger);
-            blocker.AutomationId = "sr5-career-wizard-edition-blocker";
-            _body.Add(NativeTheme.Card(blocker));
+            return;
+        }
+
+        if (_loading)
+        {
+            AddStatus(
+                "Checking the exact workspace and typed Career authorities…",
+                "sr5-career-wizard-loading",
+                NativeTheme.Muted);
+            return;
+        }
+
+        if (_snapshot is null || _session is null)
+        {
+            AddStatus(
+                SafeBlockerMessage(_loadBlocker),
+                "sr5-career-wizard-unavailable",
+                NativeTheme.Danger);
+            Button retry = NativeTheme.SecondaryButton("Retry");
+            retry.AutomationId = "sr5-career-wizard-retry";
+            retry.Clicked += async (_, _) => await ReloadAsync();
+            _body.Add(retry);
+            return;
+        }
+
+        Sr5CareerWizardDesktopSession session = _session;
+        Sr5CareerWizardDesktopState state = session.State;
+        Label binding = NativeTheme.Body(
+            $"Workspace {state.Snapshot.Binding.WorkspaceId} · revision "
+            + $"{state.Snapshot.Binding.WorkspaceRevision}/{state.Snapshot.Binding.SavedRevision} · "
+            + $"runtime {ShortDigest(state.Snapshot.Binding.RuntimeFingerprint)} · "
+            + $"source {ShortDigest(state.Snapshot.Binding.SourceDigest)} · "
+            + $"content {ShortDigest(state.Snapshot.Binding.ContentDigest)}",
+            NativeTheme.Muted);
+        binding.AutomationId = "sr5-career-wizard-binding";
+        _body.Add(NativeTheme.Card(binding));
+
+        if (!string.IsNullOrWhiteSpace(_checkpointNotice))
+        {
+            AddStatus(
+                CheckpointMessage(_checkpointNotice),
+                "sr5-career-wizard-checkpoint-notice",
+                NativeTheme.Muted);
+        }
+
+        if (!state.Snapshot.CanOpenAnyAction)
+        {
+            AddStatus(
+                "No typed SR5 Career action is available for this exact runner state.",
+                "sr5-career-wizard-no-actions",
+                NativeTheme.Danger);
             return;
         }
 
         _body.Add(NativeTheme.Body(
-            "Choose a player-intent lane. Every enabled action enters its own typed authority; unavailable families stay visible and blocked instead of falling through to generic All actions.",
+            "Choose an action family. Only routes backed by a current typed authority are shown.",
             NativeTheme.Muted));
-        Label binding = NativeTheme.Body(
-            $"Workspace {Coordinator.State.WorkspaceId?.Value} · revision {Coordinator.State.ContentRevision} · saved {Coordinator.State.SavedRevision}",
-            NativeTheme.Muted);
-        binding.AutomationId = "sr5-career-wizard-binding";
-        _body.Add(binding);
-
-        foreach (Sr5CareerWizardLaneDefinition definition in Sr5CareerWizardCatalog.Lanes)
+        foreach (Sr5CareerWizardFamilyState family in state.Snapshot.Families
+                     .Where(static family => family.HasAvailableAction))
         {
-            string status = definition.Availability switch
-            {
-                Sr5CareerWizardAvailability.Available => "Available",
-                Sr5CareerWizardAvailability.Partial => "Partial · exact actions only",
-                _ => "Blocked"
-            };
+            Sr5CareerWizardPhoneFamilyDefinition definition =
+                Sr5CareerWizardPhoneCatalog.RequireFamily(family.FamilyId);
+            int available = family.Actions.Count(static action => action.CanOpen);
+            string selected = family.Actions.Any(action =>
+                string.Equals(action.ActionId, state.SelectedActionId, StringComparison.Ordinal))
+                ? " · last selection"
+                : string.Empty;
             _body.Add(NativeTheme.NavigationRow(
                 definition.Title,
-                $"{status} · {definition.Summary}",
-                () => Navigation.PushAsync(new Sr5CareerJourneyPage(Coordinator, definition)),
-                definition.Availability != Sr5CareerWizardAvailability.Blocked,
-                Sr5CareerWizardRoutes.Lane(definition.Lane)));
+                $"{available} available{selected} · {definition.Detail}",
+                () => Navigation.PushAsync(new Sr5CareerActionFamilyPage(
+                    Coordinator,
+                    session,
+                    _checkpointStore,
+                    family.FamilyId)),
+                automationId: definition.RouteId));
         }
 
         Label boundary = NativeTheme.Body(
-            "The shared typed CostQuote → CareerActionPlan → atomic ApplyResult boundary is proven independently for Active Skill and Attribute actions. Multi-action plans remain blocked until Core publishes an atomic bundle contract.",
+            "This chooser can select and checkpoint navigation only. Review, confirmation, "
+            + "persistence, recovery, and receipts remain owned by the selected typed flow.",
             NativeTheme.Muted);
-        boundary.AutomationId = "sr5-career-wizard-transaction-boundary";
+        boundary.AutomationId = "sr5-career-wizard-navigation-boundary";
         _body.Add(NativeTheme.Card(boundary));
     }
 
@@ -79,256 +172,282 @@ public sealed class Sr5CareerWizardPage : NativePageBase
             Sr5CareerWizardLane.Corrections => "corrections",
             _ => throw new ArgumentOutOfRangeException(nameof(lane))
         };
+
+    private void ScheduleReload()
+    {
+        if (_loading || _loadLifetime is null || _loadLifetime.IsCancellationRequested)
+            return;
+        _loading = true;
+        CancellationToken token = _loadLifetime.Token;
+        Dispatcher.Dispatch(async () => await LoadLatestAsync(token));
+    }
+
+    private async Task ReloadAsync()
+    {
+        _loadLifetime?.Cancel();
+        _loadLifetime?.Dispose();
+        _loadLifetime = new CancellationTokenSource();
+        await LoadLatestAsync(_loadLifetime.Token);
+    }
+
+    private async Task LoadLatestAsync(CancellationToken cancellationToken)
+    {
+        long version = Interlocked.Increment(ref _loadVersion);
+        _loading = true;
+        _loadBlocker = null;
+        Refresh();
+        try
+        {
+            await Coordinator.InitializeAsync();
+            Sr5CareerWizardPhoneLoadResult loaded =
+                await _authority.LoadAsync(cancellationToken);
+            if (cancellationToken.IsCancellationRequested
+                || version != Volatile.Read(ref _loadVersion))
+            {
+                return;
+            }
+            Sr5CareerWizardSnapshot? snapshot = loaded.Snapshot;
+            if (!loaded.IsReady || snapshot is null)
+            {
+                _snapshot = null;
+                _session = null;
+                _loadBlocker = loaded.Blocker;
+                return;
+            }
+
+            Sr5CareerWizardPhoneCheckpointRead checkpoint = _checkpointStore.Read();
+            if (checkpoint.Status == Sr5CareerWizardPhoneCheckpointReadStatus.Unavailable)
+            {
+                _snapshot = null;
+                _session = null;
+                _loadBlocker = "career-wizard-checkpoint-store-unavailable";
+                return;
+            }
+            _checkpointNotice = checkpoint.Status == Sr5CareerWizardPhoneCheckpointReadStatus.Invalid
+                ? Sr5CareerWizardCheckpointInvalidationReasons.InvalidCheckpoint
+                : null;
+
+            var session = new Sr5CareerWizardDesktopSession();
+            Sr5CareerWizardDesktopState state = session.Bind(
+                snapshot,
+                checkpoint.Status == Sr5CareerWizardPhoneCheckpointReadStatus.Ready
+                    ? checkpoint.Checkpoint
+                    : null);
+            if (!state.Resume.Restored && state.Resume.InvalidationReason is not null)
+            {
+                _checkpointStore.Clear();
+                _checkpointNotice = state.Resume.InvalidationReason;
+            }
+            else if (state.Resume.Restored)
+            {
+                _checkpointNotice = "career-wizard-checkpoint-restored";
+            }
+            _snapshot = snapshot;
+            _session = session;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Leaving the page cancels an in-flight read-only projection.
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            if (version == Volatile.Read(ref _loadVersion))
+            {
+                _snapshot = null;
+                _session = null;
+                _loadBlocker = Sr5CareerWizardPhoneBlockers.WorkspaceAuthorityUnavailable;
+            }
+        }
+        finally
+        {
+            if (version == Volatile.Read(ref _loadVersion))
+            {
+                _loading = false;
+                Refresh();
+            }
+        }
+    }
+
+    private void AddStatus(string text, string automationId, Color color)
+    {
+        Label label = NativeTheme.Body(text, color);
+        label.AutomationId = automationId;
+        _body.Add(NativeTheme.Card(label));
+    }
+
+    private static bool MatchesCurrentRunner(
+        Sr5CareerWizardBinding binding,
+        CharacterOverviewState state)
+        => state.Profile?.Created == true
+           && Sr5CareerWizardCatalog.IsSr5CareerRunner(true, state.Rules?.GameEdition)
+           && state.WorkspaceId is { } workspaceId
+           && string.Equals(binding.WorkspaceId, workspaceId.Value, StringComparison.Ordinal)
+           && binding.WorkspaceRevision == state.ContentRevision
+           && binding.SavedRevision == state.SavedRevision;
+
+    private static string SafeBlockerMessage(string? blocker)
+        => blocker switch
+        {
+            Sr5CareerWizardPhoneBlockers.WorkspaceChangedDuringProjection =>
+                "The runner changed while Career authorities were loading. Retry from the current revision.",
+            "career-wizard-checkpoint-store-unavailable" =>
+                "Durable navigation checkpoint storage is unavailable. No Career route can be opened safely.",
+            _ => "Exact typed SR5 Career authority is unavailable for this runner."
+        };
+
+    private static string CheckpointMessage(string notice)
+        => notice switch
+        {
+            "career-wizard-checkpoint-restored" =>
+                "The last action selection was restored for this exact workspace snapshot.",
+            Sr5CareerWizardCheckpointInvalidationReasons.WorkspaceChanged =>
+                "The saved Career selection belonged to another workspace and was discarded.",
+            Sr5CareerWizardCheckpointInvalidationReasons.WorkspaceRevisionChanged =>
+                "The runner revision changed, so the saved Career selection was discarded.",
+            Sr5CareerWizardCheckpointInvalidationReasons.SnapshotChanged =>
+                "Runtime, sources, content, or action availability changed; the saved selection was discarded.",
+            Sr5CareerWizardCheckpointInvalidationReasons.ActionUnavailable =>
+                "The previously selected typed action is no longer available and was discarded.",
+            _ => "An invalid Career navigation checkpoint was discarded."
+        };
+
+    private static string ShortDigest(string value)
+        => value.Length <= 19 ? value : value[..19] + "…";
 }
 
-public sealed class Sr5CareerJourneyPage : NativePageBase
+public sealed class Sr5CareerActionFamilyPage : NativePageBase
 {
-    private readonly Sr5CareerWizardLaneDefinition _definition;
+    private readonly Sr5CareerWizardDesktopSession _session;
+    private readonly Sr5CareerWizardPhoneCheckpointStore _checkpointStore;
+    private readonly string _familyId;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
         Spacing = 14
     };
 
-    public Sr5CareerJourneyPage(
+    public Sr5CareerActionFamilyPage(
         RunnerSessionCoordinator coordinator,
-        Sr5CareerWizardLaneDefinition definition) : base(coordinator)
+        Sr5CareerWizardDesktopSession session,
+        Sr5CareerWizardPhoneCheckpointStore checkpointStore,
+        string familyId) : base(coordinator)
     {
-        _definition = definition ?? throw new ArgumentNullException(nameof(definition));
+        _session = session ?? throw new ArgumentNullException(nameof(session));
+        _checkpointStore = checkpointStore ?? throw new ArgumentNullException(nameof(checkpointStore));
+        _familyId = Sr5CareerWizardPhoneCatalog.RequireFamily(familyId).FamilyId;
+        Sr5CareerWizardPhoneFamilyDefinition definition =
+            Sr5CareerWizardPhoneCatalog.RequireFamily(_familyId);
         Title = definition.Title;
-        AutomationId = Sr5CareerWizardRoutes.Lane(definition.Lane);
+        AutomationId = definition.RouteId;
         Content = new ScrollView { Content = _body };
     }
 
     protected override void Refresh()
     {
         _body.Clear();
+        Sr5CareerWizardPhoneFamilyDefinition definition =
+            Sr5CareerWizardPhoneCatalog.RequireFamily(_familyId);
         _body.Add(NativeTheme.Eyebrow("SR5 Career"));
-        _body.Add(NativeTheme.Title(_definition.Title));
-        _body.Add(NativeTheme.Body(_definition.Summary, NativeTheme.Muted));
+        _body.Add(NativeTheme.Title(definition.Title));
+        _body.Add(NativeTheme.Body(definition.Detail, NativeTheme.Muted));
 
-        bool ready = Sr5CareerWizardCatalog.IsSr5CareerRunner(
-            Coordinator.State.Profile?.Created == true,
-            Coordinator.State.Rules?.GameEdition);
-        if (!ready)
+        Sr5CareerWizardDesktopState state = _session.State;
+        if (!MatchesCurrentRunner(state.Snapshot.Binding))
         {
-            AddBlocked("This runner is no longer a created SR5 runner. Reopen the Career wizard.", "edition");
+            _checkpointStore.Clear();
+            Label blocker = NativeTheme.Body(
+                "The runner changed after this action family was projected. Return and reload Career authority.",
+                NativeTheme.Danger);
+            blocker.AutomationId = "sr5-career-family-stale";
+            _body.Add(NativeTheme.Card(blocker));
             return;
         }
 
-        switch (_definition.Lane)
+        Sr5CareerWizardFamilyState family = state.Snapshot.Families.Single(value =>
+            string.Equals(value.FamilyId, _familyId, StringComparison.Ordinal));
+        foreach (Sr5CareerWizardActionState action in family.Actions
+                     .Where(static action => action.CanOpen))
         {
-            case Sr5CareerWizardLane.Advancement:
-                AddAdvancement();
-                break;
-            case Sr5CareerWizardLane.BeforeRun:
-                AddBeforeRun();
-                break;
-            case Sr5CareerWizardLane.LiveRun:
-                AddLiveRun();
-                break;
-            case Sr5CareerWizardLane.AfterRun:
-                AddAfterRun();
-                break;
-            case Sr5CareerWizardLane.Downtime:
-                AddDowntime();
-                break;
-            case Sr5CareerWizardLane.Corrections:
-                AddCorrections();
-                break;
-            default:
-                throw new ArgumentOutOfRangeException();
+            Sr5CareerWizardPhoneActionDefinition route =
+                Sr5CareerWizardPhoneCatalog.RequireAction(action.ActionId);
+            string selected = string.Equals(
+                state.SelectedActionId,
+                action.ActionId,
+                StringComparison.Ordinal)
+                ? "Selected · "
+                : string.Empty;
+            _body.Add(NativeTheme.NavigationRow(
+                route.Title,
+                selected + route.Detail,
+                () => RunAsync(() => OpenActionAsync(action.ActionId)),
+                automationId: route.AutomationId));
         }
 
-        Label authority = NativeTheme.Body(_definition.AuthorityNote, NativeTheme.Muted);
-        authority.AutomationId = "sr5-career-journey-authority-note";
-        _body.Add(NativeTheme.Card(authority));
+        Label boundary = NativeTheme.Body(
+            "Selecting a row writes only a digest-bound navigation checkpoint. The destination "
+            + "must load and validate its own typed authority again.",
+            NativeTheme.Muted);
+        boundary.AutomationId = "sr5-career-family-navigation-boundary";
+        _body.Add(NativeTheme.Card(boundary));
     }
 
-    private void AddAdvancement()
+    private async Task OpenActionAsync(string actionId)
     {
-        AddAction(
-            "Advance an active skill",
-            "Choose → exact SR5 quote → review diff → durable apply → receipt",
-            OpenActiveSkillWizardAsync,
-            "active-skill");
-        AddAction(
-            "Advance an attribute",
-            "Choose exact Core quote → preview Karma and legality → durable apply → recovered receipt",
-            OpenAttributeWizardAsync,
-            "attribute");
-        AddAction(
-            "Acquire or remove a quality",
-            "Choose an exact source/identity operation, review all GM/effect prerequisites, and commit the full delta plus receipt atomically",
-            OpenQualityWizardAsync,
-            "quality");
-        AddAction(
-            "Advance Knowledge / Language",
-            "Choose exact nullable-source identity → review native-language and Karma authority → durable apply → receipt",
-            OpenKnowledgeSkillWizardAsync,
-            "knowledge-language");
-        AddAction(
-            "Advance a skill group",
-            "Choose exact InternalId → Core-bound quote and command → durable apply lock → atomic receipt",
-            OpenSkillGroupWizardAsync,
-            "skill-group");
-        AddAction(
-            "Add a specialization",
-            "Choose typed skill identity → configure governed/custom option → four-revision quote → durable apply",
-            OpenSpecializationWizardAsync,
-            "specialization");
-        AddBlocked(
-            "Initiation and submersion advancement remain incomplete.",
-            "other-advancement");
-        AddBlocked(
-            "Gear, weapon, armor, bioware, vehicle and general ware acquisition need exact availability, cost, Essence, prerequisite and expense quotes.",
-            "commerce");
+        if (!MatchesCurrentRunner(_session.State.Snapshot.Binding)
+            || !_session.TrySelectAction(actionId))
+        {
+            _checkpointStore.Clear();
+            await DisplayAlertAsync(
+                "Career authority changed",
+                "Return to the Career wizard and load the current runner revision.",
+                "OK");
+            return;
+        }
+        if (!_checkpointStore.TryWrite(_session))
+        {
+            await DisplayAlertAsync(
+                "Navigation checkpoint unavailable",
+                "The typed Career route was not opened because its navigation checkpoint could not be saved and verified.",
+                "OK");
+            return;
+        }
+
+        await OpenTypedDestinationAsync(actionId);
     }
 
-    private void AddBeforeRun()
-    {
-        AddAction(
-            "Review current Edge",
-            "Spend or regain exactly one point through the revision-bound Career authority",
-            OpenEdgeAsync,
-            "edge");
-        AddBlocked(
-            "A typed pre-run checklist for healing, loadout, ammunition, contacts, identities and licenses is not available.",
-            "checklist");
-    }
+    private Task OpenTypedDestinationAsync(string actionId)
+        => actionId switch
+        {
+            Sr5CareerWizardActionIds.AdjustKarma => OpenManualKarmaAsync(),
+            Sr5CareerWizardActionIds.AdjustNuyen => OpenManualNuyenAsync(),
+            Sr5CareerWizardActionIds.EditKarmaExpense => OpenKarmaExpensesAsync(),
+            Sr5CareerWizardActionIds.EditNuyenExpense => OpenNuyenExpensesAsync(),
+            Sr5CareerWizardActionIds.AdvanceAttribute => OpenAttributeWizardAsync(),
+            Sr5CareerWizardActionIds.AdvanceActiveSkill => OpenActiveSkillWizardAsync(),
+            Sr5CareerWizardActionIds.AdvanceKnowledgeSkill => OpenKnowledgeSkillWizardAsync(),
+            Sr5CareerWizardActionIds.AdvanceSkillGroup => OpenSkillGroupWizardAsync(),
+            Sr5CareerWizardActionIds.LearnSpecialization => OpenSpecializationWizardAsync(),
+            Sr5CareerWizardActionIds.ChangeQuality => OpenQualityWizardAsync(),
+            Sr5CareerWizardActionIds.ManageCalendarEntry => OpenCalendarAsync(),
+            _ => throw new InvalidOperationException("Unknown SR5 Career destination.")
+        };
 
-    private void AddLiveRun()
-    {
-        AddAction(
-            "Use Edge",
-            "Spend or regain one saved point without opening unrestricted editing",
-            OpenEdgeAsync,
-            "edge");
-        AddBlocked(
-            "Weapon fire is exact only from a stable selected weapon context; the hub will not guess a weapon identity.",
-            "weapon-fire");
-        AddBlocked(
-            "Dice and quick table notes are local Play state, not a Career transaction receipt.",
-            "play-state");
-    }
-
-    private void AddAfterRun()
-    {
-        AddAction(
-            "Settle a completed run",
-            "Choose exact proposal → rewards → Heat/reputation → contacts → GM review → owner review → atomic receipt",
-            OpenAfterRunSettlementAsync,
-            "settlement");
-        AddAction(
-            "Record Karma",
-            "Independent manual correction only; it is not a substitute for governed run settlement",
-            OpenManualKarmaAsync,
-            "karma");
-        AddAction(
-            "Record Nuyen",
-            "Independent manual correction only; it is not a substitute for governed run settlement",
-            OpenManualNuyenAsync,
-            "nuyen");
-        AddAction(
-            "Update reputation",
-            "Street Cred, Notoriety, Public Awareness and source-gated reputation",
-            OpenReputationAsync,
-            "reputation");
-        AddBlocked(
-            "Reward-ledger application remains owned by Run Services. The character settlement intentionally does not replay reward Karma or Nuyen.",
-            "reward-ledger");
-    }
-
-    private void AddDowntime()
-    {
-        AddAction(
-            "Plan calendar weeks",
-            "Add, edit or delete exact saved ISO weeks by stable identity",
-            OpenCalendarAsync,
-            "calendar");
-        AddAction(
-            "Advance an active skill",
-            "Execute one exact advancement through the reviewed transaction boundary",
-            OpenActiveSkillWizardAsync,
-            "active-skill");
-        AddAction(
-            "Advance an attribute",
-            "Preview and save one exact SR5 attribute advancement; elapsed time remains Chummer5's immediate persistence authority",
-            OpenAttributeWizardAsync,
-            "attribute");
-        AddAction(
-            "Advance Knowledge / Language",
-            "Execute one exact Knowledge or Language advancement with native-language and receipt recovery authority",
-            OpenKnowledgeSkillWizardAsync,
-            "knowledge-language");
-        AddAction(
-            "Advance a skill group",
-            "Execute one exact Core-bound group command; unavailable receipt persistence fails closed without a compatibility mutation",
-            OpenSkillGroupWizardAsync,
-            "skill-group");
-        AddAction(
-            "Add a specialization",
-            "Configure one exact source or custom selection; interrupted outcomes stay locked when persisted receipt authority is unavailable",
-            OpenSpecializationWizardAsync,
-            "specialization");
-        AddBlocked(
-            "Training duration, healing, crafting, acquisition delivery and other scheduled work lack a shared typed execution contract.",
-            "execution");
-    }
-
-    private void AddCorrections()
-    {
-        AddAction(
-            "Edit Karma expense",
-            "Edit only Chummer5-authorized fields on one stable saved entry",
-            OpenKarmaExpensesAsync,
-            "karma-expense");
-        AddAction(
-            "Edit Nuyen expense",
-            "Edit only Chummer5-authorized fields on one stable saved entry",
-            OpenNuyenExpensesAsync,
-            "nuyen-expense");
-        AddBlocked(
-            "Undo Karma/Nuyen Expense and Correct this transaction are not typed on Android yet.",
-            "undo");
-        AddBlocked(
-            "Active-skill, attribute, Knowledge/Language, quality, and skill-group reviews use durable ownership. Skill-group recovery retries only the exact idempotent Core command and never the Presentation compatibility mutation.",
-            "recovery");
-    }
-
-    private void AddAction(
-        string title,
-        string detail,
-        Func<Task> selected,
-        string token)
-        => _body.Add(NativeTheme.NavigationRow(
-            title,
-            detail,
-            selected,
-            automationId: $"sr5-career-action-{token}"));
-
-    private void AddBlocked(string reason, string token)
-    {
-        Button blocked = NativeTheme.SecondaryButton("Unavailable");
-        blocked.AutomationId = $"sr5-career-blocked-{token}";
-        blocked.IsEnabled = false;
-        VerticalStackLayout content = new() { Spacing = 7 };
-        content.Add(blocked);
-        content.Add(NativeTheme.Body(reason, NativeTheme.Danger));
-        _body.Add(NativeTheme.Card(content));
-    }
+    private bool MatchesCurrentRunner(Sr5CareerWizardBinding binding)
+        => Coordinator.State.Profile?.Created == true
+           && Sr5CareerWizardCatalog.IsSr5CareerRunner(true, Coordinator.State.Rules?.GameEdition)
+           && Coordinator.State.WorkspaceId is { } workspaceId
+           && string.Equals(binding.WorkspaceId, workspaceId.Value, StringComparison.Ordinal)
+           && binding.WorkspaceRevision == Coordinator.State.ContentRevision
+           && binding.SavedRevision == Coordinator.State.SavedRevision;
 
     private async Task OpenActiveSkillWizardAsync()
     {
         Sr5CareerActiveSkillCoordinator authority = new(
             new RunnerSessionSr5CareerActiveSkillPresenter(Coordinator),
             new PreferencesSr5CareerCheckpointOwnerAuthority());
-        CareerActiveSkillAdvanceEditorState? editor =
-            await authority.PrepareAsync();
+        CareerActiveSkillAdvanceEditorState? editor = await authority.PrepareAsync();
         if (editor is not null)
-        {
             await Navigation.PushAsync(new Sr5CareerActiveSkillWizardPage(Coordinator, editor));
-        }
     }
 
     private async Task OpenAttributeWizardAsync()
@@ -338,9 +457,7 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
             new PreferencesSr5CareerCheckpointOwnerAuthority());
         CareerAttributeAdvanceEditorState? editor = await authority.PrepareAsync();
         if (editor is not null)
-        {
             await Navigation.PushAsync(new Sr5CareerAttributeWizardPage(Coordinator, editor));
-        }
     }
 
     private async Task OpenQualityWizardAsync()
@@ -352,14 +469,12 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
         if (editor is not null)
         {
             await Navigation.PushAsync(new Sr5CareerQualityWizardPage(Coordinator, editor));
+            return;
         }
-        else
-        {
-            await DisplayAlertAsync(
-                "Quality authority unavailable",
-                "Exact atomic SR5 quality authority is not connected. The wizard stays fail-closed.",
-                "OK");
-        }
+        await DisplayAlertAsync(
+            "Quality authority unavailable",
+            "Exact atomic SR5 quality authority is no longer connected. No fallback mutation is available.",
+            "OK");
     }
 
     private async Task OpenKnowledgeSkillWizardAsync()
@@ -369,9 +484,7 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
             new PreferencesSr5CareerCheckpointOwnerAuthority());
         CareerKnowledgeSkillAdvanceEditorState? editor = await authority.PrepareAsync();
         if (editor is not null)
-        {
             await Navigation.PushAsync(new Sr5CareerKnowledgeSkillWizardPage(Coordinator, editor));
-        }
     }
 
     private async Task OpenSkillGroupWizardAsync()
@@ -381,9 +494,7 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
             new PreferencesSr5CareerCheckpointOwnerAuthority());
         CareerSkillGroupAdvanceEditorState? editor = await authority.PrepareAsync();
         if (editor is not null)
-        {
             await Navigation.PushAsync(new Sr5CareerSkillGroupWizardPage(Coordinator, editor));
-        }
     }
 
     private async Task OpenSpecializationWizardAsync()
@@ -393,87 +504,41 @@ public sealed class Sr5CareerJourneyPage : NativePageBase
             new PreferencesSr5CareerCheckpointOwnerAuthority());
         CareerSkillSpecializationEditorState? editor = await authority.PrepareAsync();
         if (editor is not null)
-        {
             await Navigation.PushAsync(new Sr5CareerSpecializationWizardPage(Coordinator, editor));
-        }
-    }
-
-    private async Task OpenAfterRunSettlementAsync()
-    {
-        Sr5AfterRunSettlementCoordinator authority = new(
-            new RunnerSessionSr5AfterRunSettlementPresenter(Coordinator),
-            new PreferencesSr5CareerCheckpointOwnerAuthority());
-        Sr5AfterRunSettlementEditorState editor = await authority.PrepareAsync();
-        Page destination = editor.Status == Sr5AfterRunCatalogStatus.Missing
-            && Coordinator.SupportsManualAfterRunProposalEntry
-                ? new Sr5AfterRunManualProposalPage(
-                    Coordinator,
-                    editor.WorkspaceId,
-                    editor.WorkspaceRevision)
-                : new Sr5AfterRunSettlementWizardPage(Coordinator, editor);
-        await Navigation.PushAsync(destination);
-    }
-
-    private async Task OpenEdgeAsync()
-    {
-        CareerEdgeUseEditorState? editor = await Coordinator.PrepareCareerEdgeUseEditAsync();
-        if (editor is not null)
-        {
-            await Navigation.PushAsync(new CareerEdgeUsePage(Coordinator, editor));
-        }
     }
 
     private async Task OpenManualKarmaAsync()
     {
         CareerManualKarmaEditorState? editor = await Coordinator.PrepareCareerManualKarmaEditAsync();
         if (editor is not null)
-        {
             await Navigation.PushAsync(new CareerManualKarmaPage(Coordinator, editor));
-        }
     }
 
     private async Task OpenManualNuyenAsync()
     {
         CareerManualNuyenEditorState? editor = await Coordinator.PrepareCareerManualNuyenEditAsync();
         if (editor is not null)
-        {
             await Navigation.PushAsync(new CareerManualNuyenPage(Coordinator, editor));
-        }
-    }
-
-    private async Task OpenReputationAsync()
-    {
-        CareerReputationEditorState? editor = await Coordinator.PrepareCareerReputationEditAsync();
-        if (editor is not null)
-        {
-            await Navigation.PushAsync(new CareerReputationPage(Coordinator, editor));
-        }
     }
 
     private async Task OpenCalendarAsync()
     {
         CareerCalendarEditorState? editor = await Coordinator.PrepareCareerCalendarEditAsync();
         if (editor is not null)
-        {
             await Navigation.PushAsync(new CareerCalendarPage(Coordinator, editor));
-        }
     }
 
     private async Task OpenKarmaExpensesAsync()
     {
         CareerKarmaExpenseEditorState? editor = await Coordinator.PrepareCareerKarmaExpenseEditAsync();
         if (editor is not null)
-        {
             await Navigation.PushAsync(new CareerKarmaExpensePage(Coordinator, editor));
-        }
     }
 
     private async Task OpenNuyenExpensesAsync()
     {
         CareerNuyenExpenseEditorState? editor = await Coordinator.PrepareCareerNuyenExpenseEditAsync();
         if (editor is not null)
-        {
             await Navigation.PushAsync(new CareerNuyenExpensePage(Coordinator, editor));
-        }
     }
 }

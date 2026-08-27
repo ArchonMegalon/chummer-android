@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ChummerPresentationRoot Condition="'$(ChummerPresentationRoot)' == ''">../../../chummer-presentation</ChummerPresentationRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs"
+             Link="Native/Sr5CareerWizardPhoneModel.cs" />
+    <Compile Include="$(ChummerPresentationRoot)/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs"
+             Link="Presentation/Sr5CareerWizardDesktopSession.cs" />
+  </ItemGroup>
+</Project>

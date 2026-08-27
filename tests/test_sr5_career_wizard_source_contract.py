@@ -4,6 +4,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MODEL = ROOT / "src/Chummer.Android/Native/Sr5CareerWizardModel.cs"
 HUB = ROOT / "src/Chummer.Android/Native/Sr5CareerWizardPage.cs"
+PHONE_MODEL = ROOT / "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs"
+PHONE_AUTHORITY = ROOT / "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs"
+COORDINATOR = ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.cs"
 ACTIVE_SKILL = ROOT / "src/Chummer.Android/Native/Sr5CareerActiveSkillWizardPage.cs"
 ACTIVE_SKILL_COORDINATOR = ROOT / "src/Chummer.Android/Native/Sr5CareerActiveSkillCoordinator.cs"
 CHECKPOINT_STORE = ROOT / "src/Chummer.Android/Native/Sr5CareerDraftCheckpointStore.cs"
@@ -23,30 +26,55 @@ def test_sr5_career_hub_is_edition_gated_and_never_falls_through_to_generic_all_
     assert "Rules?.GameEdition" in hub
     assert "CollectionItemEditorPage" not in hub
     assert "ApplyCollection" not in hub
-    assert "generic All actions" in hub
+    assert "Sr5CareerWizardDesktopSession" in hub
+    assert "navigation only" in hub
+    assert ".Where(static action => action.CanOpen)" in hub
+    assert "OpenTypedDestinationAsync" in hub
 
 
-def test_requested_sr5_career_lanes_are_present_and_missing_authority_stays_blocked() -> None:
-    model = MODEL.read_text(encoding="utf-8")
+def test_phone_action_family_chooser_is_exactly_bound_and_missing_authority_stays_hidden() -> None:
     hub = HUB.read_text(encoding="utf-8")
+    phone_model = PHONE_MODEL.read_text(encoding="utf-8")
+    phone_authority = PHONE_AUTHORITY.read_text(encoding="utf-8")
+    coordinator = COORDINATOR.read_text(encoding="utf-8")
 
-    for lane in (
-        "Advancement",
-        "BeforeRun",
-        "LiveRun",
-        "AfterRun",
-        "Downtime",
-        "Corrections",
+    for binding in (
+        "WorkspaceId",
+        "WorkspaceRevision",
+        "SavedRevision",
+        "RulesetId",
+        "RuntimeFingerprint",
+        "SourceDigest",
+        "ContentDigest",
     ):
-        assert f"Sr5CareerWizardLane.{lane}" in model
-    for blocker in (
-        "atomic run-closeout bundle",
-        "Undo Karma/Nuyen Expense",
-        "survive restart",
-        "stable selected weapon context",
-        "There is no Heat field",
+        assert binding in phone_model
+    for action in (
+        "AdjustKarma",
+        "AdjustNuyen",
+        "EditKarmaExpense",
+        "EditNuyenExpense",
+        "AdvanceAttribute",
+        "AdvanceActiveSkill",
+        "AdvanceKnowledgeSkill",
+        "AdvanceSkillGroup",
+        "LearnSpecialization",
+        "ChangeQuality",
+        "ManageCalendarEntry",
     ):
-        assert blocker in hub
+        assert f"Sr5CareerWizardActionIds.{action}" in hub
+
+    assert "Sr5CareerWizardProjector.Project(binding, authorities)" in phone_model
+    assert "Sr5CareerWizardBlockers.AuthorityUnavailable" not in hub
+    assert "family.HasAvailableAction" in hub
+    assert "action.CanOpen" in hub
+    assert phone_authority.count("CaptureSr5CareerWizardWorkspaceAuthorityAsync") == 2
+    assert "verified != first" in phone_authority
+    assert "RequireCurrent(first)" in phone_authority
+    assert "allowReadOnlyProductCapture: true" in coordinator
+    assert "expectedPayloadSha256: null" in coordinator
+    assert "_checkpointStore.TryWrite(_session)" in hub
+    assert "_checkpointStore.Clear()" in hub
+    assert "Sr5CareerWizardCheckpointInvalidationReasons.SnapshotChanged" in hub
 
 
 def test_active_skill_vertical_slice_has_review_apply_and_durable_receipt_boundaries() -> None:

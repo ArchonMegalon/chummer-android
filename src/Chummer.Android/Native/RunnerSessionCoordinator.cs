@@ -313,6 +313,19 @@ public sealed class RunnerSessionCoordinator : IDisposable
 
     public CharacterOverviewState State => _presenter.State;
 
+    /// <summary>
+    /// Captures the exact current document bytes and document metadata for the read-only SR5
+    /// Career action chooser. This does not enable the debug authority cache and grants no
+    /// mutation capability; callers must still double-read around their typed projections.
+    /// </summary>
+    internal Task<NativeWorkspaceAuthoritySnapshot?> CaptureSr5CareerWizardWorkspaceAuthorityAsync(
+        CancellationToken cancellationToken = default)
+        => TryRefreshWorkspaceAuthorityAsync(
+            State.WorkspaceId,
+            expectedPayloadSha256: null,
+            cancellationToken,
+            allowReadOnlyProductCapture: true);
+
     public ShellSurfaceState Surface => _surface;
 
     public AndroidAccountLinkSnapshot Account => _account.Snapshot;
@@ -5535,9 +5548,12 @@ public sealed class RunnerSessionCoordinator : IDisposable
     private async Task<NativeWorkspaceAuthoritySnapshot?> TryRefreshWorkspaceAuthorityAsync(
         CharacterWorkspaceId? expectedWorkspaceId,
         string? expectedPayloadSha256,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool allowReadOnlyProductCapture = false)
     {
-        if (!AndroidE2EAuthority.Enabled && expectedPayloadSha256 is null)
+        if (!allowReadOnlyProductCapture
+            && !AndroidE2EAuthority.Enabled
+            && expectedPayloadSha256 is null)
         {
             ClearWorkspaceAuthority();
             return null;
