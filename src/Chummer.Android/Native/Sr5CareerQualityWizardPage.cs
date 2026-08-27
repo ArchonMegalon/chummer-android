@@ -1,6 +1,7 @@
 using System.Globalization;
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
+using static Chummer.Android.Native.Sr5CareerFlowStrings;
 
 namespace Chummer.Android.Native;
 
@@ -85,27 +86,27 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
             || coordinator.State.SavedRevision != editor.SavedRevision)
         {
             throw new InvalidOperationException(
-                "The SR5 quality route requires the exact clean saved runner revision.");
+                Text("The SR5 quality route requires the exact clean saved runner revision."));
         }
 
         _selected = editor.Quotes.FirstOrDefault();
-        Title = "Change quality";
+        Title = Text("Change quality");
         AutomationId = Sr5CareerWizardRoutes.QualityChoose;
         VerticalStackLayout body = new()
         {
             Padding = new Thickness(20, 18, 20, 40),
             Spacing = 14
         };
-        body.Add(NativeTheme.Eyebrow("SR5 Career · 1 of 3"));
-        body.Add(NativeTheme.Title("Choose a quality operation"));
+        body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 1 of 3")));
+        body.Add(NativeTheme.Title(Text("Choose a quality operation")));
         body.Add(NativeTheme.Body(
-            "Only exact Core candidates from enabled sources, custom data and the active GM policy are shown. Android never identifies a quality by its label and never applies a partial effect family.",
+            Text("Only exact Core candidates from enabled sources, custom data and the active GM policy are shown. Android never identifies a quality by its label and never applies a partial effect family."),
             NativeTheme.Muted));
-        body.Add(NativeTheme.FieldLabel("Quality and operation"));
+        body.Add(NativeTheme.FieldLabel(Text("Quality and operation")));
         _qualities = new Picker
         {
             AutomationId = "sr5-career-quality-picker",
-            Title = "Exact quality operation",
+            Title = Text("Exact quality operation"),
             ItemsSource = editor.Quotes.Select(QualityLabel).ToArray(),
             SelectedIndex = editor.Quotes.Count > 0 ? 0 : -1,
             BackgroundColor = NativeTheme.Surface,
@@ -129,26 +130,28 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
         if (editor.OmittedCandidateCount != 0 || editor.OmittedReceiptCount != 0)
         {
             Label omitted = NativeTheme.Body(
-                $"{editor.OmittedCandidateCount.ToString(CultureInfo.InvariantCulture)} candidate(s) and "
-                + $"{editor.OmittedReceiptCount.ToString(CultureInfo.InvariantCulture)} receipt(s) were omitted. The whole quality lane remains fail-closed.",
+                Format(
+                    "{0} candidate(s) and {1} receipt(s) were omitted. The whole quality lane remains fail-closed.",
+                    editor.OmittedCandidateCount.ToString(CultureInfo.InvariantCulture),
+                    editor.OmittedReceiptCount.ToString(CultureInfo.InvariantCulture)),
                 NativeTheme.Danger);
             omitted.AutomationId = "sr5-career-quality-omitted-authority";
             body.Add(NativeTheme.Card(omitted));
         }
 
-        _review = NativeTheme.PrimaryButton("Review exact quality diff");
+        _review = NativeTheme.PrimaryButton(Text("Review exact quality diff"));
         _review.AutomationId = "sr5-career-quality-review";
         _review.Clicked += async (_, _) => await RunAsync(OpenReviewAsync);
         body.Add(_review);
-        _resume = NativeTheme.SecondaryButton("Resume reviewed quality change");
+        _resume = NativeTheme.SecondaryButton(Text("Resume reviewed quality change"));
         _resume.AutomationId = "sr5-career-quality-resume";
         _resume.Clicked += async (_, _) => await RunAsync(ResumeReviewAsync);
         body.Add(_resume);
-        _resolve = NativeTheme.PrimaryButton("Resolve interrupted atomic commit");
+        _resolve = NativeTheme.PrimaryButton(Text("Resolve interrupted atomic commit"));
         _resolve.AutomationId = "sr5-career-quality-resolve-outcome";
         _resolve.Clicked += async (_, _) => await RunAsync(ResolveCheckpointAsync);
         body.Add(_resolve);
-        _abandon = NativeTheme.SecondaryButton("Abandon reviewed draft");
+        _abandon = NativeTheme.SecondaryButton(Text("Abandon reviewed draft"));
         _abandon.AutomationId = "sr5-career-quality-abandon-reviewed";
         _abandon.Clicked += async (_, _) => await RunAsync(AbandonReviewedAsync);
         body.Add(_abandon);
@@ -173,23 +176,28 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
         }
         catch (Exception exception)
         {
-            await DisplayAlertAsync("Quality recovery unavailable", exception.Message, "OK");
+            await DisplayAlertAsync(Text("Quality recovery unavailable"), exception.Message, Text("OK"));
         }
     }
 
     protected override void Refresh() => RefreshEnabledState();
 
     private static string QualityLabel(CharacterCareerQualityQuote quote)
-        => $"{OperationLabel(quote.Operation)} · {quote.Definition.Name} · level {quote.LevelBefore} → {quote.LevelAfter} · "
-            + (quote.CanApply ? $"{quote.RuleKarmaCost} Karma" : quote.Blocker.ToString());
+        => Format(
+            "{0} · {1} · level {2} → {3} · {4}",
+            OperationLabel(quote.Operation),
+            quote.Definition.Name,
+            quote.LevelBefore,
+            quote.LevelAfter,
+            quote.CanApply ? Format("{0} Karma", quote.RuleKarmaCost) : quote.Blocker.ToString());
 
     private static string OperationLabel(CharacterCareerQualityOperation operation)
         => operation switch
         {
-            CharacterCareerQualityOperation.AcquireLevel => "Acquire level",
-            CharacterCareerQualityOperation.RemoveLevel => "Remove level",
-            CharacterCareerQualityOperation.RemoveAllLevels => "Remove all levels",
-            _ => "Unsupported operation"
+            CharacterCareerQualityOperation.AcquireLevel => Text("Acquire level"),
+            CharacterCareerQualityOperation.RemoveLevel => Text("Remove level"),
+            CharacterCareerQualityOperation.RemoveAllLevels => Text("Remove all levels"),
+            _ => Text("Unsupported operation")
         };
 
     private void SelectQuality()
@@ -216,19 +224,31 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
             && _checkpointAuthority.OwnsReviewed(_checkpoint);
         _qualities.IsEnabled = revisionMatches && completeAuthority && _checkpoint is null;
         _summary.Text = _selected is null
-            ? "No exact quality operation is available."
-            : $"{_selected.Definition.Type} · {OperationLabel(_selected.Operation)} · level {_selected.LevelBefore} → {_selected.LevelAfter} · "
-                + $"runner Karma {_selected.AvailableKarma} → {_selected.AvailableKarma + _selected.CharacterKarmaDelta}";
+            ? Text("No exact quality operation is available.")
+            : Format(
+                "{0} · {1} · level {2} → {3} · runner Karma {4} → {5}",
+                _selected.Definition.Type,
+                OperationLabel(_selected.Operation),
+                _selected.LevelBefore,
+                _selected.LevelAfter,
+                _selected.AvailableKarma,
+                _selected.AvailableKarma + _selected.CharacterKarmaDelta);
         _authorityDetail.Text = _selected is null
             ? string.Empty
-            : $"source {_selected.SourceName} · source id {_selected.Identity.SourceId:D} · internal id {_selected.Identity.InternalId:D} · "
-                + $"effects {_selected.Authority.Effects.MutationCount} · GM {(_selected.Authority.GmAllows ? "allowed" : "blocked")}";
+            : Format(
+                _selected.Authority.GmAllows
+                    ? "source {0} · source id {1} · internal id {2} · effects {3} · GM allowed"
+                    : "source {0} · source id {1} · internal id {2} · effects {3} · GM blocked",
+                _selected.SourceName,
+                _selected.Identity.SourceId.ToString("D"),
+                _selected.Identity.InternalId.ToString("D"),
+                _selected.Authority.Effects.MutationCount);
         _blocker.Text = !revisionMatches
-            ? "The saved runner revision changed. Reopen quality advancement."
+            ? Text("The saved runner revision changed. Reopen quality advancement.")
             : !completeAuthority
-                ? "Ambiguous candidate or receipt authority was omitted. No quality operation may continue."
+                ? Text("Ambiguous candidate or receipt authority was omitted. No quality operation may continue.")
                 : _selected is null
-                    ? "No exact quality projection is available."
+                    ? Text("No exact quality projection is available.")
                     : Sr5CareerQualityDraft.BlockerText(_selected.Blocker);
         _review.IsEnabled = revisionMatches
             && completeAuthority
@@ -252,7 +272,7 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
     {
         if (_selected is null)
         {
-            await DisplayAlertAsync("Cannot review", "Choose an exact quality operation.", "OK");
+            await DisplayAlertAsync(Text("Cannot review"), Text("Choose an exact quality operation."), Text("OK"));
             return;
         }
         Sr5CareerQualityDraft draft = await _authority.ReviewAsync(
@@ -263,7 +283,7 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
         Sr5CareerQualityCheckpoint candidate = Sr5CareerQualityCheckpoint.FromDraft(draft);
         if (!_store.TryCreate(candidate, out Sr5CareerQualityCheckpoint stored, out string blocker))
         {
-            await DisplayAlertAsync("Review not checkpointed", blocker, "OK");
+            await DisplayAlertAsync(Text("Review not checkpointed"), blocker, Text("OK"));
             return;
         }
         _checkpoint = stored;
@@ -284,7 +304,10 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
             || !_checkpointAuthority.OwnsReviewed(_checkpoint)
             || !_checkpoint.MatchesActionDraft(_recoveryDraft))
         {
-            await DisplayAlertAsync("Draft cannot resume", "The exact quality review no longer owns this runner.", "OK");
+            await DisplayAlertAsync(
+                Text("Draft cannot resume"),
+                Text("The exact quality review no longer owns this runner."),
+                Text("OK"));
             return;
         }
         await Navigation.PushAsync(new Sr5CareerQualityReviewPage(
@@ -303,7 +326,7 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
                 or Sr5CareerCheckpointPhase.Applied)
             || !_checkpointAuthority.OwnsCurrentRunner(_checkpoint))
         {
-            _recovery.Text = "This quality recovery lock belongs to another owner or runner revision.";
+            _recovery.Text = Text("This quality recovery lock belongs to another owner or runner revision.");
             _recovery.TextColor = NativeTheme.Danger;
             return;
         }
@@ -340,7 +363,7 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
             return;
         }
         LoadRecoveryCheckpoint();
-        _recovery.Text = "Fresh authority proves the atomic transaction was not saved. Resume the reviewed draft.";
+        _recovery.Text = Text("Fresh authority proves the atomic transaction was not saved. Resume the reviewed draft.");
         _recovery.TextColor = NativeTheme.Muted;
     }
 
@@ -351,17 +374,17 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
             return;
         }
         bool confirmed = await DisplayAlertAsync(
-            "Abandon reviewed quality change?",
-            "This removes only the durable review checkpoint. It never changes the runner.",
-            "Abandon",
-            "Keep");
+            Text("Abandon reviewed quality change?"),
+            Text("This removes only the durable review checkpoint. It never changes the runner."),
+            Text("Abandon"),
+            Text("Keep"));
         if (!confirmed)
         {
             return;
         }
         if (!_store.TryDeleteReviewed(Sr5CareerQualityCheckpointCas.From(_checkpoint), out string blocker))
         {
-            await DisplayAlertAsync("Checkpoint not deleted", blocker, "OK");
+            await DisplayAlertAsync(Text("Checkpoint not deleted"), blocker, Text("OK"));
             return;
         }
         _checkpoint = null;
@@ -386,14 +409,14 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
                 || !_checkpointAuthority.OwnsReviewed(checkpoint))
             {
                 _recovery.Text = string.IsNullOrWhiteSpace(blocker)
-                    ? "A saved quality review is not authorized for this exact runner."
+                    ? Text("A saved quality review is not authorized for this exact runner.")
                     : blocker;
                 _recovery.TextColor = NativeTheme.Danger;
                 return;
             }
             _checkpoint = checkpoint;
             _recoveryDraft = draft;
-            _recovery.Text = "A durable reviewed quality operation can be resumed.";
+            _recovery.Text = Text("A durable reviewed quality operation can be resumed.");
             _recovery.TextColor = NativeTheme.Muted;
             int index = _editor.Quotes
                 .Select((candidate, candidateIndex) => (candidate, candidateIndex))
@@ -405,14 +428,14 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
         }
         if (!_checkpointAuthority.OwnsCurrentRunner(checkpoint))
         {
-            _recovery.Text = "A saved quality commit lock is not authorized for this owner and runner.";
+            _recovery.Text = Text("A saved quality commit lock is not authorized for this owner and runner.");
             _recovery.TextColor = NativeTheme.Danger;
             return;
         }
         _checkpoint = checkpoint;
         _recovery.Text = checkpoint.Phase == Sr5CareerCheckpointPhase.Applying
-            ? "An interrupted atomic commit is locked and will be resolved without replay."
-            : "A verified saved quality receipt is awaiting acknowledgement or correction.";
+            ? Text("An interrupted atomic commit is locked and will be resolved without replay.")
+            : Text("A verified saved quality receipt is awaiting acknowledgement or correction.");
         _recovery.TextColor = NativeTheme.Muted;
     }
 }
@@ -444,48 +467,48 @@ public sealed class Sr5CareerQualityReviewPage : NativePageBase
         if (!_checkpoint.MatchesActionDraft(_draft)
             || !_checkpointAuthority.OwnsReviewed(_checkpoint))
         {
-            throw new InvalidOperationException("The quality preview does not own its exact Reviewed checkpoint.");
+            throw new InvalidOperationException(Text("The quality preview does not own its exact Reviewed checkpoint."));
         }
 
-        Title = "Review quality";
+        Title = Text("Review quality");
         AutomationId = Sr5CareerWizardRoutes.QualityReview;
         VerticalStackLayout body = new()
         {
             Padding = new Thickness(20, 18, 20, 40),
             Spacing = 14
         };
-        body.Add(NativeTheme.Eyebrow("SR5 Career · 2 of 3"));
-        body.Add(NativeTheme.Title("Review exact atomic diff"));
+        body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 2 of 3")));
+        body.Add(NativeTheme.Title(Text("Review exact atomic diff")));
         CharacterCareerQualityQuote quote = draft.Review.Quote;
         VerticalStackLayout diff = new() { Spacing = 8 };
-        diff.Add(NativeTheme.Metric("Quality", quote.Definition.Name));
-        diff.Add(NativeTheme.Metric("Operation", quote.Operation.ToString()));
-        diff.Add(NativeTheme.Metric("Typed identity", $"{quote.Identity.InternalId:D} · source {quote.Identity.SourceId:D}"));
-        diff.Add(NativeTheme.Metric("Level", $"{quote.LevelBefore} → {quote.LevelAfter}"));
-        diff.Add(NativeTheme.Metric("Runner Karma", $"{quote.AvailableKarma} → {quote.AvailableKarma + quote.CharacterKarmaDelta}"));
-        diff.Add(NativeTheme.Metric("Rule cost / delta", $"{quote.RuleKarmaCost} / {quote.CharacterKarmaDelta}"));
-        diff.Add(NativeTheme.Metric("Source", $"{quote.SourceName} · enabled {quote.Definition.SourceEnabled}"));
-        diff.Add(NativeTheme.Metric("GM policy", $"allowed {quote.Authority.GmAllows} · free approved {quote.Authority.GmFreeCostApproved}"));
-        diff.Add(NativeTheme.Metric("Effects", $"exact {quote.Authority.Effects.IsExact} · mutations {quote.Authority.Effects.MutationCount}"));
-        diff.Add(NativeTheme.Metric("Applied effect families", string.Join(", ", quote.Authority.Effects.AppliedFamilies)));
-        diff.Add(NativeTheme.Metric("Unsupported effect families", string.Join(", ", quote.Authority.Effects.UnsupportedFamilies)));
+        diff.Add(NativeTheme.Metric(Text("Quality"), quote.Definition.Name));
+        diff.Add(NativeTheme.Metric(Text("Operation"), quote.Operation.ToString()));
+        diff.Add(NativeTheme.Metric(Text("Typed identity"), Format("{0} · source {1}", quote.Identity.InternalId.ToString("D"), quote.Identity.SourceId.ToString("D"))));
+        diff.Add(NativeTheme.Metric(Text("Level"), $"{quote.LevelBefore} → {quote.LevelAfter}"));
+        diff.Add(NativeTheme.Metric(Text("Runner Karma"), $"{quote.AvailableKarma} → {quote.AvailableKarma + quote.CharacterKarmaDelta}"));
+        diff.Add(NativeTheme.Metric(Text("Rule cost / delta"), $"{quote.RuleKarmaCost} / {quote.CharacterKarmaDelta}"));
+        diff.Add(NativeTheme.Metric(Text("Source"), Format("{0} · enabled {1}", quote.SourceName, quote.Definition.SourceEnabled)));
+        diff.Add(NativeTheme.Metric(Text("GM policy"), Format("allowed {0} · free approved {1}", quote.Authority.GmAllows, quote.Authority.GmFreeCostApproved)));
+        diff.Add(NativeTheme.Metric(Text("Effects"), Format("exact {0} · mutations {1}", quote.Authority.Effects.IsExact, quote.Authority.Effects.MutationCount)));
+        diff.Add(NativeTheme.Metric(Text("Applied effect families"), string.Join(", ", quote.Authority.Effects.AppliedFamilies)));
+        diff.Add(NativeTheme.Metric(Text("Unsupported effect families"), string.Join(", ", quote.Authority.Effects.UnsupportedFamilies)));
         foreach (CharacterCareerQualityPrerequisiteResult prerequisite in quote.Prerequisites)
         {
             diff.Add(NativeTheme.Metric(
-                $"Prerequisite · {prerequisite.Prerequisite}",
-                $"{(prerequisite.Satisfied ? "satisfied" : "blocked")} · {prerequisite.Authority}"));
+                Format("Prerequisite · {0}", prerequisite.Prerequisite),
+                Format(prerequisite.Satisfied ? "satisfied · {0}" : "blocked · {0}", prerequisite.Authority)));
         }
-        diff.Add(NativeTheme.Metric("Transaction", draft.TransactionId.ToString("D")));
-        diff.Add(NativeTheme.Metric("Workspace / saved revisions", $"{draft.ExpectedWorkspaceRevision} / {draft.ExpectedSavedRevision}"));
-        diff.Add(NativeTheme.Metric("Logical revision", quote.LogicalRevision));
-        diff.Add(NativeTheme.Metric("Source revision", quote.SourceRevision));
-        diff.Add(NativeTheme.Metric("Rule digest", quote.RuleDigest));
-        diff.Add(NativeTheme.Metric("Content digest", draft.RuntimeAuthority.ContentDigest));
-        diff.Add(NativeTheme.Metric("Runtime digest", draft.RuntimeAuthority.RuntimeDigest));
+        diff.Add(NativeTheme.Metric(Text("Transaction"), draft.TransactionId.ToString("D")));
+        diff.Add(NativeTheme.Metric(Text("Workspace / saved revisions"), $"{draft.ExpectedWorkspaceRevision} / {draft.ExpectedSavedRevision}"));
+        diff.Add(NativeTheme.Metric(Text("Logical revision"), quote.LogicalRevision));
+        diff.Add(NativeTheme.Metric(Text("Source revision"), quote.SourceRevision));
+        diff.Add(NativeTheme.Metric(Text("Rule digest"), quote.RuleDigest));
+        diff.Add(NativeTheme.Metric(Text("Content digest"), draft.RuntimeAuthority.ContentDigest));
+        diff.Add(NativeTheme.Metric(Text("Runtime digest"), draft.RuntimeAuthority.RuntimeDigest));
         body.Add(NativeTheme.Card(diff));
         _blocker = NativeTheme.Body(string.Empty, NativeTheme.Danger);
         body.Add(_blocker);
-        _apply = NativeTheme.PrimaryButton("Confirm atomic quality transaction");
+        _apply = NativeTheme.PrimaryButton(Text("Confirm atomic quality transaction"));
         _apply.AutomationId = "sr5-career-quality-apply";
         _apply.Clicked += async (_, _) =>
         {
@@ -497,7 +520,7 @@ public sealed class Sr5CareerQualityReviewPage : NativePageBase
         };
         body.Add(_apply);
         body.Add(NativeTheme.Body(
-            "The checkpoint moves to Applying first. Presentation commits the full quality/effect delta, expense and receipt atomically; Android never retries an unknown outcome.",
+            Text("The checkpoint moves to Applying first. Presentation commits the full quality/effect delta, expense and receipt atomically; Android never retries an unknown outcome."),
             NativeTheme.Muted));
         Content = new ScrollView { Content = body };
         Refresh();
@@ -514,9 +537,9 @@ public sealed class Sr5CareerQualityReviewPage : NativePageBase
         bool attempted = Volatile.Read(ref _attempted) != 0;
         _apply.IsEnabled = current && !attempted;
         _blocker.Text = !current
-            ? "Owner, revision, source, rule, effects, runtime, content or durable checkpoint changed."
+            ? Text("Owner, revision, source, rule, effects, runtime, content or durable checkpoint changed.")
             : attempted
-                ? "The one-shot atomic commit is running or awaiting authoritative recovery."
+                ? Text("The one-shot atomic commit is running or awaiting authoritative recovery.")
                 : string.Empty;
     }
 
@@ -527,7 +550,7 @@ public sealed class Sr5CareerQualityReviewPage : NativePageBase
                 out Sr5CareerQualityCheckpoint applying,
                 out string blocker))
         {
-            await DisplayAlertAsync("Commit blocked", blocker, "OK");
+            await DisplayAlertAsync(Text("Commit blocked"), blocker, Text("OK"));
             return;
         }
         _checkpoint = applying;
@@ -535,9 +558,9 @@ public sealed class Sr5CareerQualityReviewPage : NativePageBase
         if (result.Status == Sr5CareerQualityApplyStatus.OutcomeUnknown)
         {
             await DisplayAlertAsync(
-                "Outcome unresolved",
-                $"{result.Message} The Applying lock cannot be cleared or replayed.",
-                "OK");
+                Text("Outcome unresolved"),
+                Format("{0} The Applying lock cannot be cleared or replayed.", result.Message),
+                Text("OK"));
             return;
         }
         if (!_store.TryRecordAuthoritativeResolution(
@@ -546,16 +569,16 @@ public sealed class Sr5CareerQualityReviewPage : NativePageBase
                 out Sr5CareerQualityCheckpoint resolved,
                 out blocker))
         {
-            await DisplayAlertAsync("Outcome not checkpointed", blocker, "OK");
+            await DisplayAlertAsync(Text("Outcome not checkpointed"), blocker, Text("OK"));
             return;
         }
         _checkpoint = resolved;
         if (result.Status == Sr5CareerQualityApplyStatus.RejectedBeforeMutation)
         {
             await DisplayAlertAsync(
-                "Not applied",
-                "Fresh atomic authority proves no quality/effect/expense/receipt transaction was saved.",
-                "OK");
+                Text("Not applied"),
+                Text("Fresh atomic authority proves no quality/effect/expense/receipt transaction was saved."),
+                Text("OK"));
             return;
         }
         await Navigation.PushAsync(new Sr5CareerQualityReceiptPage(
@@ -594,34 +617,41 @@ public sealed class Sr5CareerQualityReceiptPage : NativePageBase
             || !Sr5CareerQualityCoordinator.ReceiptMatchesDraft(checkpoint.Draft, receipt)
             || !_checkpointAuthority.OwnsCurrentRunner(checkpoint))
         {
-            throw new InvalidOperationException("The quality receipt does not own this resolved checkpoint.");
+            throw new InvalidOperationException(Text("The quality receipt does not own this resolved checkpoint."));
         }
 
-        Title = "Quality receipt";
+        Title = Text("Quality receipt");
         AutomationId = Sr5CareerWizardRoutes.QualityReceipt;
         VerticalStackLayout body = new()
         {
             Padding = new Thickness(20, 18, 20, 40),
             Spacing = 14
         };
-        body.Add(NativeTheme.Eyebrow("SR5 Career · 3 of 3"));
-        body.Add(NativeTheme.Title("Verified atomic quality receipt"));
+        body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 3 of 3")));
+        body.Add(NativeTheme.Title(Text("Verified atomic quality receipt")));
         VerticalStackLayout details = new() { Spacing = 8 };
-        details.Add(NativeTheme.Metric("Quality", receipt.Definition.Name));
-        details.Add(NativeTheme.Metric("Operation", receipt.Operation.ToString()));
-        details.Add(NativeTheme.Metric("Typed identity", $"{receipt.Identity.InternalId:D} · {receipt.Identity.SourceId:D}"));
-        details.Add(NativeTheme.Metric("Instances", $"{receipt.InstancesBefore.Count} → {receipt.InstancesAfter.Count}"));
-        details.Add(NativeTheme.Metric("Runner Karma", $"{receipt.CharacterKarmaBefore} → {receipt.CharacterKarmaAfter}"));
-        details.Add(NativeTheme.Metric("Expense", $"{receipt.ExpenseAmount} · {receipt.ExpenseReason}"));
-        details.Add(NativeTheme.Metric("Transaction", receipt.TransactionId.ToString("D")));
-        details.Add(NativeTheme.Metric("Saved revision", receipt.WorkspaceRevisionAfter.ToString(CultureInfo.InvariantCulture)));
+        details.Add(NativeTheme.Metric(Text("Quality"), receipt.Definition.Name));
+        details.Add(NativeTheme.Metric(Text("Operation"), receipt.Operation.ToString()));
+        details.Add(NativeTheme.Metric(Text("Typed identity"), $"{receipt.Identity.InternalId:D} · {receipt.Identity.SourceId:D}"));
+        details.Add(NativeTheme.Metric(Text("Instances"), $"{receipt.InstancesBefore.Count} → {receipt.InstancesAfter.Count}"));
+        details.Add(NativeTheme.Metric(Text("Runner Karma"), $"{receipt.CharacterKarmaBefore} → {receipt.CharacterKarmaAfter}"));
+        details.Add(NativeTheme.Metric(Text("Expense"), $"{receipt.ExpenseAmount} · {receipt.ExpenseReason}"));
+        details.Add(NativeTheme.Metric(Text("Transaction"), receipt.TransactionId.ToString("D")));
+        details.Add(NativeTheme.Metric(Text("Saved revision"), receipt.WorkspaceRevisionAfter.ToString(CultureInfo.InvariantCulture)));
         body.Add(NativeTheme.Card(details));
         _durability = NativeTheme.Body(string.Empty, NativeTheme.Muted);
         body.Add(_durability);
         body.Add(NativeTheme.Body(
-            $"receipt {receipt.ReceiptDigest} · source {receipt.SourceRevisionBefore} → {receipt.SourceRevisionAfter} · rule {receipt.RuleDigestBefore} → {receipt.RuleDigestAfter} · state {receipt.StateDigestAfter}",
+            Format(
+                "receipt {0} · source {1} → {2} · rule {3} → {4} · state {5}",
+                receipt.ReceiptDigest,
+                receipt.SourceRevisionBefore,
+                receipt.SourceRevisionAfter,
+                receipt.RuleDigestBefore,
+                receipt.RuleDigestAfter,
+                receipt.StateDigestAfter),
             NativeTheme.Muted));
-        Button acknowledge = NativeTheme.PrimaryButton("Acknowledge receipt");
+        Button acknowledge = NativeTheme.PrimaryButton(Text("Acknowledge receipt"));
         acknowledge.AutomationId = "sr5-career-quality-receipt-acknowledge";
         acknowledge.Clicked += async (_, _) => await RunAsync(async () =>
         {
@@ -630,18 +660,18 @@ public sealed class Sr5CareerQualityReceiptPage : NativePageBase
                     _receipt,
                     out string blocker))
             {
-                await DisplayAlertAsync("Receipt remains pending", blocker, "OK");
+                await DisplayAlertAsync(Text("Receipt remains pending"), blocker, Text("OK"));
                 return;
             }
             await Navigation.PopToRootAsync();
         });
         body.Add(acknowledge);
-        Button correct = NativeTheme.SecondaryButton("Correct this quality transaction");
+        Button correct = NativeTheme.SecondaryButton(Text("Correct this quality transaction"));
         correct.AutomationId = "sr5-career-quality-receipt-correct";
         correct.Clicked += async (_, _) => await RunAsync(CorrectAsync);
         body.Add(correct);
         body.Add(NativeTheme.Body(
-            "Correction is a separate typed compensating transaction. It restores exact instances and Karma and removes only the original expense; the receipt is never edited in place.",
+            Text("Correction is a separate typed compensating transaction. It restores exact instances and Karma and removes only the original expense; the receipt is never edited in place."),
             NativeTheme.Muted));
         Content = new ScrollView { Content = body };
         Refresh();
@@ -650,21 +680,21 @@ public sealed class Sr5CareerQualityReceiptPage : NativePageBase
     private async Task CorrectAsync()
     {
         string? reason = await DisplayPromptAsync(
-            "Correct quality transaction",
-            "Enter the reason recorded with the compensating transaction.",
-            accept: "Review correction",
-            cancel: "Keep transaction",
-            initialValue: "User-requested correction",
+            Text("Correct quality transaction"),
+            Text("Enter the reason recorded with the compensating transaction."),
+            accept: Text("Review correction"),
+            cancel: Text("Keep transaction"),
+            initialValue: Text("User-requested correction"),
             maxLength: CharacterCareerQualityRules.MaximumReasonLength);
         if (string.IsNullOrWhiteSpace(reason))
         {
             return;
         }
         bool confirmed = await DisplayAlertAsync(
-            "Apply compensating correction?",
-            "This atomically restores the exact pre-transaction quality instances and Karma and removes the bound expense.",
-            "Correct",
-            "Cancel");
+            Text("Apply compensating correction?"),
+            Text("This atomically restores the exact pre-transaction quality instances and Karma and removes the bound expense."),
+            Text("Correct"),
+            Text("Cancel"));
         if (!confirmed)
         {
             return;
@@ -680,13 +710,13 @@ public sealed class Sr5CareerQualityReceiptPage : NativePageBase
                 correction,
                 out string blocker))
         {
-            await DisplayAlertAsync("Correction saved; checkpoint remains locked", blocker, "OK");
+            await DisplayAlertAsync(Text("Correction saved; checkpoint remains locked"), blocker, Text("OK"));
             return;
         }
         await DisplayAlertAsync(
-            "Correction saved",
-            $"Compensating transaction {correction.CorrectionId:D} restored the exact prior state.",
-            "OK");
+            Text("Correction saved"),
+            Format("Compensating transaction {0} restored the exact prior state.", correction.CorrectionId.ToString("D")),
+            Text("OK"));
         await Navigation.PopToRootAsync();
     }
 
@@ -697,8 +727,8 @@ public sealed class Sr5CareerQualityReceiptPage : NativePageBase
             && Coordinator.State.SavedRevision == _receipt.SavedRevisionAfter
             && !Coordinator.State.IsDirty;
         _durability.Text = exact
-            ? "The receipt was recovered from the exact clean atomic saved revision."
-            : "The runner moved past this receipt; it remains bound to the earlier saved revision.";
+            ? Text("The receipt was recovered from the exact clean atomic saved revision.")
+            : Text("The runner moved past this receipt; it remains bound to the earlier saved revision.");
         _durability.TextColor = exact ? NativeTheme.Muted : NativeTheme.Danger;
     }
 }

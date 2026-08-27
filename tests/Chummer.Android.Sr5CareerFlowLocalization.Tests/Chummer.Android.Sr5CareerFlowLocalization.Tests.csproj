@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <RootNamespace>Chummer.Android</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Microsoft.CodeAnalysis">
+      <HintPath>$(MSBuildSDKsPath)/../Roslyn/bincore/Microsoft.CodeAnalysis.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Microsoft.CodeAnalysis.CSharp">
+      <HintPath>$(MSBuildSDKsPath)/../Roslyn/bincore/Microsoft.CodeAnalysis.CSharp.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerFlowStrings.cs"
+             Link="Native/Sr5CareerFlowStrings.cs" />
+    <Compile Include="Program.cs" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx"
+                      Link="Resources/Localization/Sr5CareerFlowStrings.resx">
+      <ManifestResourceName>Chummer.Android.Resources.Localization.Sr5CareerFlowStrings</ManifestResourceName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.de.resx"
+                      Link="Resources/Localization/Sr5CareerFlowStrings.de.resx">
+      <WithCulture>true</WithCulture>
+      <Culture>de</Culture>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.es.resx"
+                      Link="Resources/Localization/Sr5CareerFlowStrings.es.resx">
+      <WithCulture>true</WithCulture>
+      <Culture>es</Culture>
+    </EmbeddedResource>
+  </ItemGroup>
+</Project>

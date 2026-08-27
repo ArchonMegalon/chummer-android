@@ -1,6 +1,7 @@
 using System.Globalization;
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
+using static Chummer.Android.Native.Sr5CareerFlowStrings;
 
 namespace Chummer.Android.Native;
 
@@ -88,11 +89,11 @@ public sealed class Sr5CareerKnowledgeSkillWizardPage : NativePageBase
             || coordinator.State.ContentRevision != editor.ContentRevision)
         {
             throw new InvalidOperationException(
-                "The SR5 Knowledge/Language route requires the current exact runner revision.");
+                Text("The SR5 Knowledge/Language route requires the current exact runner revision."));
         }
 
         _selected = editor.Skills.FirstOrDefault();
-        Title = "Advance knowledge skill";
+        Title = Text("Advance knowledge skill");
         AutomationId = Sr5CareerWizardRoutes.KnowledgeSkillChoose;
 
         VerticalStackLayout body = new()
@@ -100,17 +101,17 @@ public sealed class Sr5CareerKnowledgeSkillWizardPage : NativePageBase
             Padding = new Thickness(20, 18, 20, 40),
             Spacing = 14
         };
-        body.Add(NativeTheme.Eyebrow("SR5 Career · 1 of 3"));
-        body.Add(NativeTheme.Title("Choose a Knowledge or Language skill"));
+        body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 1 of 3")));
+        body.Add(NativeTheme.Title(Text("Choose a Knowledge or Language skill")));
         body.Add(NativeTheme.Body(
-            "Only exact Knowledge and Language skills projected from this saved SR5 revision are shown. Core owns nullable source identity, native-language eligibility, maximum rating, Karma cost and expense semantics.",
+            Text("Only exact Knowledge and Language skills projected from this saved SR5 revision are shown. Core owns nullable source identity, native-language eligibility, maximum rating, Karma cost and expense semantics."),
             NativeTheme.Muted));
 
-        body.Add(NativeTheme.FieldLabel("Knowledge / Language skill"));
+        body.Add(NativeTheme.FieldLabel(Text("Knowledge / Language skill")));
         _skills = new Picker
         {
             AutomationId = "sr5-career-knowledge-skill-picker",
-            Title = "Saved knowledge skill",
+            Title = Text("Saved knowledge skill"),
             ItemsSource = editor.Skills.Select(KnowledgeSkillLabel).ToArray(),
             SelectedIndex = editor.Skills.Count > 0 ? 0 : -1,
             BackgroundColor = NativeTheme.Surface,
@@ -135,26 +136,28 @@ public sealed class Sr5CareerKnowledgeSkillWizardPage : NativePageBase
         if (editor.OmittedSkillCount > 0 || editor.OmittedReceiptCount > 0)
         {
             Label omitted = NativeTheme.Body(
-                $"{editor.OmittedSkillCount.ToString(CultureInfo.InvariantCulture)} knowledge skill quote(s) and "
-                + $"{editor.OmittedReceiptCount.ToString(CultureInfo.InvariantCulture)} receipt(s) were omitted because exact authority could not be reproduced.",
+                Format(
+                    "{0} knowledge skill quote(s) and {1} receipt(s) were omitted because exact authority could not be reproduced.",
+                    editor.OmittedSkillCount.ToString(CultureInfo.InvariantCulture),
+                    editor.OmittedReceiptCount.ToString(CultureInfo.InvariantCulture)),
                 NativeTheme.Danger);
             omitted.AutomationId = "sr5-career-knowledge-skill-omitted";
             body.Add(NativeTheme.Card(omitted));
         }
 
-        _review = NativeTheme.PrimaryButton("Review exact advancement");
+        _review = NativeTheme.PrimaryButton(Text("Review exact advancement"));
         _review.AutomationId = "sr5-career-knowledge-skill-review";
         _review.Clicked += async (_, _) => await RunAsync(OpenReviewAsync);
         body.Add(_review);
-        _resume = NativeTheme.SecondaryButton("Resume reviewed advancement");
+        _resume = NativeTheme.SecondaryButton(Text("Resume reviewed advancement"));
         _resume.AutomationId = "sr5-career-knowledge-skill-resume";
         _resume.Clicked += async (_, _) => await RunAsync(ResumeReviewAsync);
         body.Add(_resume);
-        _resolve = NativeTheme.PrimaryButton("Resolve interrupted apply");
+        _resolve = NativeTheme.PrimaryButton(Text("Resolve interrupted apply"));
         _resolve.AutomationId = "sr5-career-knowledge-skill-resolve-outcome";
         _resolve.Clicked += async (_, _) => await RunAsync(ResolveCheckpointAsync);
         body.Add(_resolve);
-        _abandon = NativeTheme.SecondaryButton("Abandon reviewed draft");
+        _abandon = NativeTheme.SecondaryButton(Text("Abandon reviewed draft"));
         _abandon.AutomationId = "sr5-career-knowledge-skill-abandon-reviewed";
         _abandon.Clicked += async (_, _) => await RunAsync(AbandonReviewedAsync);
         body.Add(_abandon);
@@ -185,18 +188,27 @@ public sealed class Sr5CareerKnowledgeSkillWizardPage : NativePageBase
         }
         catch (Exception exception)
         {
-            await DisplayAlertAsync("Knowledge/Language recovery unavailable", exception.Message, "OK");
+            await DisplayAlertAsync(Text("Knowledge/Language recovery unavailable"), exception.Message, Text("OK"));
         }
     }
 
     protected override void Refresh() => RefreshEnabledState();
 
     private static string KnowledgeSkillLabel(CharacterCareerKnowledgeSkillAdvanceQuote skill)
-        => $"{skill.Name} · {skill.SkillType} · {skill.TotalBaseRating.ToString(CultureInfo.InvariantCulture)} → "
-            + $"{(skill.TotalBaseRating + 1).ToString(CultureInfo.InvariantCulture)} · "
-            + (skill.KarmaCost >= 0
-                ? $"{skill.KarmaCost.ToString(CultureInfo.InvariantCulture)} Karma"
-                : "blocked");
+        => skill.KarmaCost >= 0
+            ? Format(
+                "{0} · {1} · {2} → {3} · {4} Karma",
+                skill.Name,
+                skill.SkillType,
+                skill.TotalBaseRating.ToString(CultureInfo.InvariantCulture),
+                (skill.TotalBaseRating + 1).ToString(CultureInfo.InvariantCulture),
+                skill.KarmaCost.ToString(CultureInfo.InvariantCulture))
+            : Format(
+                "{0} · {1} · {2} → {3} · blocked",
+                skill.Name,
+                skill.SkillType,
+                skill.TotalBaseRating.ToString(CultureInfo.InvariantCulture),
+                (skill.TotalBaseRating + 1).ToString(CultureInfo.InvariantCulture));
 
     private void SelectKnowledgeSkill()
     {
@@ -221,21 +233,25 @@ public sealed class Sr5CareerKnowledgeSkillWizardPage : NativePageBase
             && _checkpointAuthority.OwnsReviewed(_checkpoint);
         _skills.IsEnabled = revisionMatches && _checkpoint is null && _editor.Skills.Count > 0;
         _rating.Text = _selected is null
-            ? "No exact knowledge skill quote is available."
-            : $"Current {_selected.TotalBaseRating.ToString(CultureInfo.InvariantCulture)} · "
-                + $"after {(_selected.TotalBaseRating + 1).ToString(CultureInfo.InvariantCulture)} · "
-                + $"maximum {_selected.RatingMaximum.ToString(CultureInfo.InvariantCulture)}";
+            ? Text("No exact knowledge skill quote is available.")
+            : Format(
+                "Current {0} · after {1} · maximum {2}",
+                _selected.TotalBaseRating.ToString(CultureInfo.InvariantCulture),
+                (_selected.TotalBaseRating + 1).ToString(CultureInfo.InvariantCulture),
+                _selected.RatingMaximum.ToString(CultureInfo.InvariantCulture));
         _cost.Text = _selected is null
             ? string.Empty
-            : $"Cost {_selected.KarmaCost.ToString(CultureInfo.InvariantCulture)} Karma · "
-                + $"available {_selected.AvailableKarma.ToString(CultureInfo.InvariantCulture)} · "
-                + $"after {(_selected.AvailableKarma - Math.Max(0, _selected.KarmaCost)).ToString(CultureInfo.InvariantCulture)}";
+            : Format(
+                "Cost {0} Karma · available {1} · after {2}",
+                _selected.KarmaCost.ToString(CultureInfo.InvariantCulture),
+                _selected.AvailableKarma.ToString(CultureInfo.InvariantCulture),
+                (_selected.AvailableKarma - Math.Max(0, _selected.KarmaCost)).ToString(CultureInfo.InvariantCulture));
         _blocker.Text = !sr5
-            ? "This action is available only to a created SR5 runner."
+            ? Text("This action is available only to a created SR5 runner.")
             : !revisionMatches
-                ? "This runner changed. Reopen knowledge skill advancement."
+                ? Text("This runner changed. Reopen knowledge skill advancement.")
                 : _selected is null
-                    ? "No exact knowledge skill projection is available."
+                    ? Text("No exact knowledge skill projection is available.")
                     : Sr5CareerKnowledgeSkillDraft.BlockerText(_selected.Blocker);
         _review.IsEnabled = revisionMatches
             && _checkpoint is null
@@ -265,12 +281,12 @@ public sealed class Sr5CareerKnowledgeSkillWizardPage : NativePageBase
                 out Sr5CareerKnowledgeSkillDraft draft,
                 out string blocker))
         {
-            await DisplayAlertAsync("Cannot review", blocker, "OK");
+            await DisplayAlertAsync(Text("Cannot review"), blocker, Text("OK"));
             return;
         }
         if (!draft.Matches(Coordinator.State.WorkspaceId, Coordinator.State.ContentRevision))
         {
-            await DisplayAlertAsync("Runner changed", "Reopen knowledge skill advancement.", "OK");
+            await DisplayAlertAsync(Text("Runner changed"), Text("Reopen knowledge skill advancement."), Text("OK"));
             return;
         }
 
@@ -280,7 +296,7 @@ public sealed class Sr5CareerKnowledgeSkillWizardPage : NativePageBase
                 out Sr5CareerKnowledgeSkillCheckpoint stored,
                 out blocker))
         {
-            await DisplayAlertAsync("Review not checkpointed", blocker, "OK");
+            await DisplayAlertAsync(Text("Review not checkpointed"), blocker, Text("OK"));
             return;
         }
         _checkpoint = stored;
@@ -305,9 +321,9 @@ public sealed class Sr5CareerKnowledgeSkillWizardPage : NativePageBase
                 Coordinator.State.ContentRevision))
         {
             await DisplayAlertAsync(
-                "Draft cannot resume",
-                "The saved review no longer owns this exact runner revision.",
-                "OK");
+                Text("Draft cannot resume"),
+                Text("The saved review no longer owns this exact runner revision."),
+                Text("OK"));
             return;
         }
         await Navigation.PushAsync(new Sr5CareerKnowledgeSkillReviewPage(
@@ -326,7 +342,7 @@ public sealed class Sr5CareerKnowledgeSkillWizardPage : NativePageBase
                 or Sr5CareerCheckpointPhase.Applied)
             || !_checkpointAuthority.OwnsCurrentRunner(_checkpoint))
         {
-            _recovery.Text = "This recovery lock belongs to another owner or SR5 runner context.";
+            _recovery.Text = Text("This recovery lock belongs to another owner or SR5 runner context.");
             _recovery.TextColor = NativeTheme.Danger;
             return;
         }
@@ -356,7 +372,7 @@ public sealed class Sr5CareerKnowledgeSkillWizardPage : NativePageBase
         if (resolution.Status == Sr5CareerKnowledgeSkillRecoveryStatus.AppliedVerified
             && resolution.Receipt is { } receipt)
         {
-            _recovery.Text = "The interrupted knowledge skill apply was verified from the saved receipt ledger.";
+            _recovery.Text = Text("The interrupted knowledge skill apply was verified from the saved receipt ledger.");
             _recovery.TextColor = NativeTheme.Muted;
             await Navigation.PushAsync(new Sr5CareerKnowledgeSkillReceiptPage(
                 Coordinator,
@@ -368,7 +384,7 @@ public sealed class Sr5CareerKnowledgeSkillWizardPage : NativePageBase
         }
 
         LoadRecoveryCheckpoint();
-        _recovery.Text = "Fresh typed projections prove the action was not saved. The reviewed draft may be resumed.";
+        _recovery.Text = Text("Fresh typed projections prove the action was not saved. The reviewed draft may be resumed.");
         _recovery.TextColor = NativeTheme.Muted;
     }
 
@@ -377,16 +393,16 @@ public sealed class Sr5CareerKnowledgeSkillWizardPage : NativePageBase
         if (_checkpoint is null || !_checkpointAuthority.OwnsReviewed(_checkpoint))
         {
             await DisplayAlertAsync(
-                "Cannot abandon",
-                "Only the current owner and exact runner revision may abandon this review.",
-                "OK");
+                Text("Cannot abandon"),
+                Text("Only the current owner and exact runner revision may abandon this review."),
+                Text("OK"));
             return;
         }
         bool confirmed = await DisplayAlertAsync(
-            "Abandon reviewed knowledge skill?",
-            "This removes only the durable review checkpoint and does not change the runner.",
-            "Abandon",
-            "Keep");
+            Text("Abandon reviewed knowledge skill?"),
+            Text("This removes only the durable review checkpoint and does not change the runner."),
+            Text("Abandon"),
+            Text("Keep"));
         if (!confirmed)
         {
             return;
@@ -395,7 +411,7 @@ public sealed class Sr5CareerKnowledgeSkillWizardPage : NativePageBase
                 Sr5CareerKnowledgeSkillCheckpointCas.From(_checkpoint),
                 out string blocker))
         {
-            await DisplayAlertAsync("Checkpoint not deleted", blocker, "OK");
+            await DisplayAlertAsync(Text("Checkpoint not deleted"), blocker, Text("OK"));
             return;
         }
         _checkpoint = null;
@@ -424,13 +440,13 @@ public sealed class Sr5CareerKnowledgeSkillWizardPage : NativePageBase
                     out _)
                 || !_checkpointAuthority.OwnsReviewed(checkpoint))
             {
-                _recovery.Text = "A saved knowledge skill review is not authorized for this owner and runner revision.";
+                _recovery.Text = Text("A saved knowledge skill review is not authorized for this owner and runner revision.");
                 _recovery.TextColor = NativeTheme.Danger;
                 return;
             }
             _checkpoint = checkpoint;
             _recoveryDraft = draft;
-            _recovery.Text = "A durable reviewed knowledge skill advancement can be resumed.";
+            _recovery.Text = Text("A durable reviewed knowledge skill advancement can be resumed.");
             _recovery.TextColor = NativeTheme.Muted;
             int index = _editor.Skills
                 .Select((candidate, candidateIndex) => (candidate, candidateIndex))
@@ -441,14 +457,14 @@ public sealed class Sr5CareerKnowledgeSkillWizardPage : NativePageBase
         }
         if (!_checkpointAuthority.OwnsCurrentRunner(checkpoint))
         {
-            _recovery.Text = "A saved knowledge skill apply lock is not authorized for this owner and SR5 runner.";
+            _recovery.Text = Text("A saved knowledge skill apply lock is not authorized for this owner and SR5 runner.");
             _recovery.TextColor = NativeTheme.Danger;
             return;
         }
         _checkpoint = checkpoint;
         _recovery.Text = checkpoint.Phase == Sr5CareerCheckpointPhase.Applying
-            ? "An interrupted apply is locked and will be resolved without replay."
-            : "A verified saved knowledge skill receipt is awaiting acknowledgement.";
+            ? Text("An interrupted apply is locked and will be resolved without replay.")
+            : Text("A verified saved knowledge skill receipt is awaiting acknowledgement.");
         _recovery.TextColor = NativeTheme.Muted;
     }
 }
@@ -486,41 +502,41 @@ public sealed class Sr5CareerKnowledgeSkillReviewPage : NativePageBase
             || !_checkpointAuthority.OwnsReviewed(_checkpoint))
         {
             throw new InvalidOperationException(
-                "The knowledge skill preview does not own its durable review checkpoint.");
+                Text("The knowledge skill preview does not own its durable review checkpoint."));
         }
 
-        Title = "Review knowledge skill";
+        Title = Text("Review knowledge skill");
         AutomationId = Sr5CareerWizardRoutes.KnowledgeSkillReview;
         VerticalStackLayout body = new()
         {
             Padding = new Thickness(20, 18, 20, 40),
             Spacing = 14
         };
-        body.Add(NativeTheme.Eyebrow("SR5 Career · 2 of 3"));
-        body.Add(NativeTheme.Title("Review exact diff"));
+        body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 2 of 3")));
+        body.Add(NativeTheme.Title(Text("Review exact diff")));
         VerticalStackLayout diff = new() { Spacing = 8 };
-        diff.Add(NativeTheme.Metric("Knowledge / Language", $"{_draft.Quote.Name} · {_draft.Quote.SkillType}"));
+        diff.Add(NativeTheme.Metric(Text("Knowledge / Language"), $"{_draft.Quote.Name} · {_draft.Quote.SkillType}"));
         diff.Add(NativeTheme.Metric(
-            "Rating",
+            Text("Rating"),
             $"{_draft.Quote.TotalBaseRating} → {_draft.Quote.TotalBaseRating + 1}"));
         diff.Add(NativeTheme.Metric(
-            "Skill Karma points",
+            Text("Skill Karma points"),
             $"{_draft.Quote.KarmaPoints} → {_draft.Plan.SavedSkillKarmaPoints}"));
         diff.Add(NativeTheme.Metric(
-            "Runner Karma",
+            Text("Runner Karma"),
             $"{_draft.Quote.AvailableKarma} → {_draft.Plan.SavedCharacterKarma}"));
-        diff.Add(NativeTheme.Metric("Maximum", _draft.Quote.RatingMaximum.ToString(CultureInfo.InvariantCulture)));
+        diff.Add(NativeTheme.Metric(Text("Maximum"), _draft.Quote.RatingMaximum.ToString(CultureInfo.InvariantCulture)));
         diff.Add(NativeTheme.Metric(
-            "Source identity",
-            _draft.Quote.Identity.SourceSkillId?.ToString("D") ?? "custom saved skill"));
-        diff.Add(NativeTheme.Metric("Expense", _draft.Plan.ExpenseReason));
-        diff.Add(NativeTheme.Metric("Expense identity", _draft.Plan.ExpenseId.ToString("D")));
-        diff.Add(NativeTheme.Metric("Date", _draft.Plan.ExpenseDateLocal.ToString("O", CultureInfo.InvariantCulture)));
-        diff.Add(NativeTheme.Metric("Undo", $"{_draft.Plan.KarmaUndoType} · {_draft.Plan.UndoObjectId}"));
+            Text("Source identity"),
+            _draft.Quote.Identity.SourceSkillId?.ToString("D") ?? Text("custom saved skill")));
+        diff.Add(NativeTheme.Metric(Text("Expense"), _draft.Plan.ExpenseReason));
+        diff.Add(NativeTheme.Metric(Text("Expense identity"), _draft.Plan.ExpenseId.ToString("D")));
+        diff.Add(NativeTheme.Metric(Text("Date"), _draft.Plan.ExpenseDateLocal.ToString("O", CultureInfo.InvariantCulture)));
+        diff.Add(NativeTheme.Metric(Text("Undo"), $"{_draft.Plan.KarmaUndoType} · {_draft.Plan.UndoObjectId}"));
         body.Add(NativeTheme.Card(diff));
         _blocker = NativeTheme.Body(string.Empty, NativeTheme.Danger);
         body.Add(_blocker);
-        _apply = NativeTheme.PrimaryButton("Apply and verify once");
+        _apply = NativeTheme.PrimaryButton(Text("Apply and verify once"));
         _apply.AutomationId = "sr5-career-knowledge-skill-apply";
         _apply.Clicked += async (_, _) =>
         {
@@ -532,7 +548,7 @@ public sealed class Sr5CareerKnowledgeSkillReviewPage : NativePageBase
         };
         body.Add(_apply);
         body.Add(NativeTheme.Body(
-            "The exact checkpoint moves to Applying before mutation. Success is shown only after atomic save and a fresh recoverable receipt projection match the reviewed identity, costs and digests.",
+            Text("The exact checkpoint moves to Applying before mutation. Success is shown only after atomic save and a fresh recoverable receipt projection match the reviewed identity, costs and digests."),
             NativeTheme.Muted));
         Content = new ScrollView { Content = body };
         RefreshEnabledState();
@@ -550,9 +566,9 @@ public sealed class Sr5CareerKnowledgeSkillReviewPage : NativePageBase
         bool attempted = Volatile.Read(ref _attempted) != 0;
         _apply.IsEnabled = current && !attempted;
         _blocker.Text = !current
-            ? "The runner revision, owner, quote, or durable checkpoint changed. This preview cannot apply."
+            ? Text("The runner revision, owner, quote, or durable checkpoint changed. This preview cannot apply.")
             : attempted
-                ? "The one-shot apply is running or awaiting authoritative recovery."
+                ? Text("The one-shot apply is running or awaiting authoritative recovery.")
                 : string.Empty;
     }
 
@@ -562,9 +578,9 @@ public sealed class Sr5CareerKnowledgeSkillReviewPage : NativePageBase
             || !_checkpointAuthority.OwnsReviewed(_checkpoint))
         {
             await DisplayAlertAsync(
-                "Apply blocked",
-                "The exact reviewed action no longer owns this runner.",
-                "OK");
+                Text("Apply blocked"),
+                Text("The exact reviewed action no longer owns this runner."),
+                Text("OK"));
             return;
         }
         if (!_store.TryBeginApply(
@@ -573,9 +589,9 @@ public sealed class Sr5CareerKnowledgeSkillReviewPage : NativePageBase
                 out string blocker))
         {
             await DisplayAlertAsync(
-                "Apply blocked",
+                Text("Apply blocked"),
                 blocker,
-                "OK");
+                Text("OK"));
             return;
         }
         _checkpoint = applying;
@@ -587,9 +603,9 @@ public sealed class Sr5CareerKnowledgeSkillReviewPage : NativePageBase
         if (result.Status == Sr5CareerKnowledgeSkillApplyStatus.OutcomeUnknown)
         {
             await DisplayAlertAsync(
-                "Outcome unresolved",
-                $"{result.Message} The Applying checkpoint cannot be cleared or replayed.",
-                "OK");
+                Text("Outcome unresolved"),
+                Format("{0} The Applying checkpoint cannot be cleared or replayed.", result.Message),
+                Text("OK"));
             return;
         }
         if (!_store.TryRecordAuthoritativeResolution(
@@ -598,16 +614,16 @@ public sealed class Sr5CareerKnowledgeSkillReviewPage : NativePageBase
                 out Sr5CareerKnowledgeSkillCheckpoint resolved,
                 out blocker))
         {
-            await DisplayAlertAsync("Outcome not checkpointed", blocker, "OK");
+            await DisplayAlertAsync(Text("Outcome not checkpointed"), blocker, Text("OK"));
             return;
         }
         _checkpoint = resolved;
         if (result.Status == Sr5CareerKnowledgeSkillApplyStatus.RejectedBeforeMutation)
         {
             await DisplayAlertAsync(
-                "Not applied",
-                "Fresh typed projections prove no knowledge skill or receipt mutation was saved. Return and resume the review before retrying.",
-                "OK");
+                Text("Not applied"),
+                Text("Fresh typed projections prove no knowledge skill or receipt mutation was saved. Return and resume the review before retrying."),
+                Text("OK"));
             return;
         }
 
@@ -645,34 +661,39 @@ public sealed class Sr5CareerKnowledgeSkillReceiptPage : NativePageBase
             || !_checkpointAuthority.OwnsCurrentRunner(checkpoint))
         {
             throw new InvalidOperationException(
-                "The typed knowledge skill receipt does not own the resolved checkpoint.");
+                Text("The typed knowledge skill receipt does not own the resolved checkpoint."));
         }
 
-        Title = "Knowledge / Language receipt";
+        Title = Text("Knowledge / Language receipt");
         AutomationId = Sr5CareerWizardRoutes.KnowledgeSkillReceipt;
         VerticalStackLayout body = new()
         {
             Padding = new Thickness(20, 18, 20, 40),
             Spacing = 14
         };
-        body.Add(NativeTheme.Eyebrow("SR5 Career · 3 of 3"));
-        body.Add(NativeTheme.Title("Verified saved advancement"));
+        body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 3 of 3")));
+        body.Add(NativeTheme.Title(Text("Verified saved advancement")));
         VerticalStackLayout details = new() { Spacing = 8 };
-        details.Add(NativeTheme.Metric("Knowledge / Language", $"{receipt.Name} · {receipt.SkillType}"));
-        details.Add(NativeTheme.Metric("Skill Karma", $"{receipt.SkillKarmaBefore} → {receipt.SkillKarmaAfter}"));
-        details.Add(NativeTheme.Metric("Runner Karma", $"{receipt.CharacterKarmaBefore} → {receipt.CharacterKarmaAfter}"));
-        details.Add(NativeTheme.Metric("Expense", receipt.ExpenseAmount.ToString(CultureInfo.InvariantCulture)));
-        details.Add(NativeTheme.Metric("Transaction", receipt.TransactionId.ToString("D")));
+        details.Add(NativeTheme.Metric(Text("Knowledge / Language"), $"{receipt.Name} · {receipt.SkillType}"));
+        details.Add(NativeTheme.Metric(Text("Skill Karma"), $"{receipt.SkillKarmaBefore} → {receipt.SkillKarmaAfter}"));
+        details.Add(NativeTheme.Metric(Text("Runner Karma"), $"{receipt.CharacterKarmaBefore} → {receipt.CharacterKarmaAfter}"));
+        details.Add(NativeTheme.Metric(Text("Expense"), receipt.ExpenseAmount.ToString(CultureInfo.InvariantCulture)));
+        details.Add(NativeTheme.Metric(Text("Transaction"), receipt.TransactionId.ToString("D")));
         details.Add(NativeTheme.Metric(
-            "Saved revision",
+            Text("Saved revision"),
             checked(checkpoint.Draft.ExpectedContentRevision + 1).ToString(CultureInfo.InvariantCulture)));
         body.Add(NativeTheme.Card(details));
         _durability = NativeTheme.Body(string.Empty, NativeTheme.Muted);
         body.Add(_durability);
         body.Add(NativeTheme.Body(
-            $"receipt {receipt.ReceiptDigest} · reviewed source {receipt.SourceRevision} · rule {receipt.RuleDigest} · owner {checkpoint.Draft.OwnerId:D}",
+            Format(
+                "receipt {0} · reviewed source {1} · rule {2} · owner {3}",
+                receipt.ReceiptDigest,
+                receipt.SourceRevision,
+                receipt.RuleDigest,
+                checkpoint.Draft.OwnerId.ToString("D")),
             NativeTheme.Muted));
-        Button acknowledge = NativeTheme.PrimaryButton("Acknowledge receipt");
+        Button acknowledge = NativeTheme.PrimaryButton(Text("Acknowledge receipt"));
         acknowledge.AutomationId = "sr5-career-knowledge-skill-receipt-acknowledge";
         acknowledge.Clicked += async (_, _) => await RunAsync(async () =>
         {
@@ -681,7 +702,7 @@ public sealed class Sr5CareerKnowledgeSkillReceiptPage : NativePageBase
                     _receipt,
                     out string blocker))
             {
-                await DisplayAlertAsync("Receipt remains pending", blocker, "OK");
+                await DisplayAlertAsync(Text("Receipt remains pending"), blocker, Text("OK"));
                 return;
             }
             await Navigation.PopToRootAsync();
@@ -699,8 +720,8 @@ public sealed class Sr5CareerKnowledgeSkillReceiptPage : NativePageBase
             && Coordinator.State.SavedRevision == savedRevision
             && !Coordinator.State.IsDirty;
         _durability.Text = stillExact
-            ? "The receipt was recovered from the exact clean saved revision."
-            : "The runner moved past this receipt; it remains bound to its earlier saved revision.";
+            ? Text("The receipt was recovered from the exact clean saved revision.")
+            : Text("The runner moved past this receipt; it remains bound to its earlier saved revision.");
         _durability.TextColor = stillExact ? NativeTheme.Muted : NativeTheme.Danger;
     }
 }

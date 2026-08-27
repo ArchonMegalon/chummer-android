@@ -1,6 +1,7 @@
 using System.Globalization;
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
+using static Chummer.Android.Native.Sr5CareerFlowStrings;
 
 namespace Chummer.Android.Native;
 
@@ -49,26 +50,26 @@ public sealed class Sr5CareerSpecializationWizardPage : NativePageBase
             || coordinator.State.ContentRevision != editor.ContentRevision)
         {
             throw new InvalidOperationException(
-                "The SR5 specialization route requires the current exact runner revision.");
+                Text("The SR5 specialization route requires the current exact runner revision."));
         }
 
         _selected = editor.Skills.FirstOrDefault();
-        Title = "Add specialization";
+        Title = Text("Add specialization");
         AutomationId = Sr5CareerWizardRoutes.SpecializationChoose;
         VerticalStackLayout body = new()
         {
             Padding = new Thickness(20, 18, 20, 40),
             Spacing = 14
         };
-        body.Add(NativeTheme.Eyebrow("SR5 Career · 1 of 4"));
-        body.Add(NativeTheme.Title("Choose a skill"));
+        body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 1 of 4")));
+        body.Add(NativeTheme.Title(Text("Choose a skill")));
         body.Add(NativeTheme.Body(
-            "Only exact saved identities projected by Chummer are selectable. Active, sourced knowledge, and custom knowledge skills remain distinct.",
+            Text("Only exact saved identities projected by Chummer are selectable. Active, sourced knowledge, and custom knowledge skills remain distinct."),
             NativeTheme.Muted));
         _skills = new Picker
         {
             AutomationId = "sr5-career-specialization-skill-picker",
-            Title = "Saved skill",
+            Title = Text("Saved skill"),
             ItemsSource = editor.Skills.Select(SkillLabel).ToArray(),
             SelectedIndex = editor.Skills.Count > 0 ? 0 : -1,
             BackgroundColor = NativeTheme.Surface,
@@ -82,7 +83,9 @@ public sealed class Sr5CareerSpecializationWizardPage : NativePageBase
         if (editor.OmittedSkillCount > 0)
         {
             Label omitted = NativeTheme.Body(
-                $"{editor.OmittedSkillCount.ToString(CultureInfo.InvariantCulture)} skill(s) were omitted because exact source authority was unavailable.",
+                Format(
+                    "{0} skill(s) were omitted because exact source authority was unavailable.",
+                    editor.OmittedSkillCount.ToString(CultureInfo.InvariantCulture)),
                 NativeTheme.Danger);
             omitted.AutomationId = "sr5-career-specialization-omitted";
             body.Add(NativeTheme.Card(omitted));
@@ -90,19 +93,19 @@ public sealed class Sr5CareerSpecializationWizardPage : NativePageBase
         _recovery = NativeTheme.Body(string.Empty, NativeTheme.Muted);
         _recovery.AutomationId = "sr5-career-specialization-recovery";
         body.Add(_recovery);
-        _configure = NativeTheme.PrimaryButton("Choose specialization");
+        _configure = NativeTheme.PrimaryButton(Text("Choose specialization"));
         _configure.AutomationId = "sr5-career-specialization-configure";
         _configure.Clicked += async (_, _) => await RunAsync(OpenConfigureAsync);
         body.Add(_configure);
-        _resume = NativeTheme.SecondaryButton("Resume reviewed purchase");
+        _resume = NativeTheme.SecondaryButton(Text("Resume reviewed purchase"));
         _resume.AutomationId = "sr5-career-specialization-resume";
         _resume.Clicked += async (_, _) => await RunAsync(ResumeAsync);
         body.Add(_resume);
-        _resolve = NativeTheme.PrimaryButton("Resolve interrupted apply");
+        _resolve = NativeTheme.PrimaryButton(Text("Resolve interrupted apply"));
         _resolve.AutomationId = "sr5-career-specialization-resolve";
         _resolve.Clicked += async (_, _) => await RunAsync(ResolveAsync);
         body.Add(_resolve);
-        _abandon = NativeTheme.SecondaryButton("Abandon reviewed purchase");
+        _abandon = NativeTheme.SecondaryButton(Text("Abandon reviewed purchase"));
         _abandon.AutomationId = "sr5-career-specialization-abandon";
         _abandon.Clicked += async (_, _) => await RunAsync(AbandonAsync);
         body.Add(_abandon);
@@ -141,12 +144,17 @@ public sealed class Sr5CareerSpecializationWizardPage : NativePageBase
         }
         catch (Exception exception)
         {
-            await DisplayAlertAsync("Specialization recovery unavailable", exception.Message, "OK");
+            await DisplayAlertAsync(Text("Specialization recovery unavailable"), exception.Message, Text("OK"));
         }
     }
 
     private static string SkillLabel(CareerSkillSpecializationCandidate skill)
-        => $"{skill.SkillName} · {skill.Identity.Kind} · rating {skill.TotalBaseRating.ToString(CultureInfo.InvariantCulture)} · {skill.ExistingSpecializationCount.ToString(CultureInfo.InvariantCulture)} existing";
+        => Format(
+            "{0} · {1} · rating {2} · {3} existing",
+            skill.SkillName,
+            skill.Identity.Kind,
+            skill.TotalBaseRating.ToString(CultureInfo.InvariantCulture),
+            skill.ExistingSpecializationCount.ToString(CultureInfo.InvariantCulture));
 
     private void SelectSkill()
     {
@@ -163,8 +171,12 @@ public sealed class Sr5CareerSpecializationWizardPage : NativePageBase
             && Coordinator.State.SavedRevision == _editor.ContentRevision
             && !Coordinator.State.IsDirty;
         _details.Text = _selected is null
-            ? "No exact specialization candidate is available."
-            : $"{_selected.SkillCategory} · group {(_selected.SkillGroup.Length == 0 ? "none" : _selected.SkillGroup)} · {_selected.AvailableOptions.Count.ToString(CultureInfo.InvariantCulture)} governed option(s) plus custom text";
+            ? Text("No exact specialization candidate is available.")
+            : Format(
+                "{0} · group {1} · {2} governed option(s) plus custom text",
+                _selected.SkillCategory,
+                _selected.SkillGroup.Length == 0 ? Text("none") : _selected.SkillGroup,
+                _selected.AvailableOptions.Count.ToString(CultureInfo.InvariantCulture));
         _skills.IsEnabled = exact && _checkpoint is null;
         _configure.IsEnabled = exact && _selected is not null && _checkpoint is null;
         bool reviewed = _checkpoint?.Phase == Sr5CareerCheckpointPhase.Reviewed
@@ -217,7 +229,7 @@ public sealed class Sr5CareerSpecializationWizardPage : NativePageBase
     {
         if (_checkpoint is null || _checkpoint.Phase != Sr5CareerCheckpointPhase.Applying)
         {
-            _recovery.Text = "A restarted Applied checkpoint has no persisted Core receipt and remains fail-closed.";
+            _recovery.Text = Text("A restarted Applied checkpoint has no persisted Core receipt and remains fail-closed.");
             _recovery.TextColor = NativeTheme.Danger;
             return;
         }
@@ -239,7 +251,7 @@ public sealed class Sr5CareerSpecializationWizardPage : NativePageBase
             return;
         }
         _checkpoint = stored;
-        _recovery.Text = "Fresh authority proved the mutation was not applied. The reviewed action can resume.";
+        _recovery.Text = Text("Fresh authority proved the mutation was not applied. The reviewed action can resume.");
         _recovery.TextColor = NativeTheme.Muted;
         RefreshEnabledState();
     }
@@ -251,10 +263,10 @@ public sealed class Sr5CareerSpecializationWizardPage : NativePageBase
             return;
         }
         bool confirmed = await DisplayAlertAsync(
-            "Abandon reviewed specialization?",
-            "This removes only the durable review and does not change the runner.",
-            "Abandon",
-            "Keep");
+            Text("Abandon reviewed specialization?"),
+            Text("This removes only the durable review and does not change the runner."),
+            Text("Abandon"),
+            Text("Keep"));
         if (!confirmed)
         {
             return;
@@ -268,7 +280,7 @@ public sealed class Sr5CareerSpecializationWizardPage : NativePageBase
             RefreshEnabledState();
             return;
         }
-        await DisplayAlertAsync("Review not abandoned", blocker, "OK");
+        await DisplayAlertAsync(Text("Review not abandoned"), blocker, Text("OK"));
     }
 
     private void LoadCheckpoint()
@@ -279,10 +291,10 @@ public sealed class Sr5CareerSpecializationWizardPage : NativePageBase
             _checkpoint = checkpoint;
             _recovery.Text = checkpoint.Phase switch
             {
-                Sr5CareerCheckpointPhase.Reviewed => "A durable reviewed specialization purchase can resume.",
-                Sr5CareerCheckpointPhase.Applying => "An interrupted apply owns the runner until authoritative recovery succeeds.",
-                Sr5CareerCheckpointPhase.Applied => "A current-process receipt was not acknowledged before restart; no persisted Core receipt exists, so this lock is retained.",
-                _ => "The specialization checkpoint is unsupported."
+                Sr5CareerCheckpointPhase.Reviewed => Text("A durable reviewed specialization purchase can resume."),
+                Sr5CareerCheckpointPhase.Applying => Text("An interrupted apply owns the runner until authoritative recovery succeeds."),
+                Sr5CareerCheckpointPhase.Applied => Text("A current-process receipt was not acknowledged before restart; no persisted Core receipt exists, so this lock is retained."),
+                _ => Text("The specialization checkpoint is unsupported.")
             };
             _recovery.TextColor = checkpoint.Phase == Sr5CareerCheckpointPhase.Reviewed
                 ? NativeTheme.Muted
@@ -322,26 +334,26 @@ public sealed class Sr5CareerSpecializationConfigurePage : NativePageBase
         _authority = authority;
         _store = store;
         _checkpointAuthority = checkpointAuthority;
-        Title = "Choose specialization";
+        Title = Text("Choose specialization");
         AutomationId = Sr5CareerWizardRoutes.SpecializationConfigure;
         VerticalStackLayout body = new()
         {
             Padding = new Thickness(20, 18, 20, 40),
             Spacing = 14
         };
-        body.Add(NativeTheme.Eyebrow("SR5 Career · 2 of 4"));
-        body.Add(NativeTheme.Title($"Specialize {_candidate.SkillName}"));
+        body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 2 of 4")));
+        body.Add(NativeTheme.Title(Format("Specialize {0}", _candidate.SkillName)));
         body.Add(NativeTheme.Body(
-            "Catalog choices preserve their exact option identity and kind. Custom text is explicitly typed Custom and carries no fabricated option ID.",
+            Text("Catalog choices preserve their exact option identity and kind. Custom text is explicitly typed Custom and carries no fabricated option ID."),
             NativeTheme.Muted));
         string[] labels = _candidate.AvailableOptions
             .Select(option => $"{option.Name} · {option.Kind}")
-            .Append("Custom…")
+            .Append(Text("Custom…"))
             .ToArray();
         _options = new Picker
         {
             AutomationId = "sr5-career-specialization-option-picker",
-            Title = "Specialization option",
+            Title = Text("Specialization option"),
             ItemsSource = labels,
             SelectedIndex = labels.Length > 0 ? 0 : -1,
             BackgroundColor = NativeTheme.Surface,
@@ -352,13 +364,13 @@ public sealed class Sr5CareerSpecializationConfigurePage : NativePageBase
         _custom = NativeTheme.TextField(
             "sr5-career-specialization-custom-name",
             value: null,
-            placeholder: "Custom specialization name");
+            placeholder: Text("Custom specialization name"));
         _custom.TextChanged += (_, _) => RefreshEnabledState();
         body.Add(_custom);
         _selectionHelp = NativeTheme.Body(string.Empty, NativeTheme.Muted);
         _selectionHelp.AutomationId = "sr5-career-specialization-selection-help";
         body.Add(_selectionHelp);
-        _quote = NativeTheme.PrimaryButton("Review exact quote");
+        _quote = NativeTheme.PrimaryButton(Text("Review exact quote"));
         _quote.AutomationId = "sr5-career-specialization-quote";
         _quote.Clicked += async (_, _) => await RunAsync(QuoteAsync);
         body.Add(_quote);
@@ -379,10 +391,10 @@ public sealed class Sr5CareerSpecializationConfigurePage : NativePageBase
         _custom.IsVisible = IsCustom;
         _custom.IsEnabled = IsCustom && exact;
         _selectionHelp.Text = IsCustom
-            ? "Custom is typed explicitly and is not treated as a source-catalog identity."
+            ? Text("Custom is typed explicitly and is not treated as a source-catalog identity.")
             : _options.SelectedIndex >= 0 && _options.SelectedIndex < _candidate.AvailableOptions.Count
                 ? _candidate.AvailableOptions[_options.SelectedIndex].SourceAnchor
-                : "Choose one exact option.";
+                : Text("Choose one exact option.");
         _quote.IsEnabled = exact
             && _options.SelectedIndex >= 0
             && (!IsCustom || !string.IsNullOrWhiteSpace(_custom.Text));
@@ -416,7 +428,10 @@ public sealed class Sr5CareerSpecializationConfigurePage : NativePageBase
             selection);
         if (quote is null)
         {
-            await DisplayAlertAsync("Quote unavailable", "Chummer could not reproduce this exact specialization selection.", "OK");
+            await DisplayAlertAsync(
+                Text("Quote unavailable"),
+                Text("Chummer could not reproduce this exact specialization selection."),
+                Text("OK"));
             return;
         }
         if (!Sr5CareerSpecializationDraft.TryCreate(
@@ -429,7 +444,7 @@ public sealed class Sr5CareerSpecializationConfigurePage : NativePageBase
                 out Sr5CareerSpecializationDraft draft,
                 out string blocker))
         {
-            await DisplayAlertAsync("Cannot review", blocker, "OK");
+            await DisplayAlertAsync(Text("Cannot review"), blocker, Text("OK"));
             return;
         }
         Sr5CareerSpecializationCheckpoint candidateCheckpoint =
@@ -439,7 +454,7 @@ public sealed class Sr5CareerSpecializationConfigurePage : NativePageBase
                 out Sr5CareerSpecializationCheckpoint stored,
                 out blocker))
         {
-            await DisplayAlertAsync("Review not checkpointed", blocker, "OK");
+            await DisplayAlertAsync(Text("Review not checkpointed"), blocker, Text("OK"));
             return;
         }
         await Navigation.PushAsync(new Sr5CareerSpecializationReviewPage(
@@ -476,37 +491,49 @@ public sealed class Sr5CareerSpecializationReviewPage : NativePageBase
         _authority = authority;
         _store = store;
         _checkpointAuthority = checkpointAuthority;
-        Title = "Review specialization";
+        Title = Text("Review specialization");
         AutomationId = Sr5CareerWizardRoutes.SpecializationReview;
         VerticalStackLayout body = new()
         {
             Padding = new Thickness(20, 18, 20, 40),
             Spacing = 14
         };
-        body.Add(NativeTheme.Eyebrow("SR5 Career · 3 of 4"));
-        body.Add(NativeTheme.Title($"{draft.Quote.SkillName}: {draft.Quote.Selection.Name}"));
+        body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 3 of 4")));
+        body.Add(NativeTheme.Title(Format("{0}: {1}", draft.Quote.SkillName, draft.Quote.Selection.Name)));
         body.Add(NativeTheme.Card(
             NativeTheme.Body(
-                $"Typed identity: {draft.Quote.Identity.Kind} / {draft.Quote.Identity.SkillId:D}\n"
-                + $"Selection: {draft.Quote.Selection.Kind} / {draft.Quote.Selection.OptionIdentity ?? "custom"}\n"
-                + $"Specializations: {draft.Quote.ExistingSpecializationCount.ToString(CultureInfo.InvariantCulture)} → {(draft.Quote.ExistingSpecializationCount + 1).ToString(CultureInfo.InvariantCulture)}\n"
-                + $"Karma: {draft.Quote.AvailableKarma.ToString(CultureInfo.InvariantCulture)} → {draft.Plan.SavedCharacterKarma.ToString(CultureInfo.InvariantCulture)} (cost {draft.Quote.KarmaCost.ToString(CultureInfo.InvariantCulture)})",
+                Format(
+                    "Typed identity: {0} / {1}\nSelection: {2} / {3}\nSpecializations: {4} → {5}\nKarma: {6} → {7} (cost {8})",
+                    draft.Quote.Identity.Kind,
+                    draft.Quote.Identity.SkillId.ToString("D"),
+                    draft.Quote.Selection.Kind,
+                    draft.Quote.Selection.OptionIdentity?.ToString() ?? Text("custom"),
+                    draft.Quote.ExistingSpecializationCount.ToString(CultureInfo.InvariantCulture),
+                    (draft.Quote.ExistingSpecializationCount + 1).ToString(CultureInfo.InvariantCulture),
+                    draft.Quote.AvailableKarma.ToString(CultureInfo.InvariantCulture),
+                    draft.Plan.SavedCharacterKarma.ToString(CultureInfo.InvariantCulture),
+                    draft.Quote.KarmaCost.ToString(CultureInfo.InvariantCulture)),
                 NativeTheme.Text)));
         if (draft.Quote.WillBreakSkillGroup)
         {
             body.Add(NativeTheme.Card(NativeTheme.Body(
-                "This specialization will break the current skill group under the active setting.",
+                Text("This specialization will break the current skill group under the active setting."),
                 NativeTheme.Danger)));
         }
         body.Add(NativeTheme.Body(
-            $"Character {ShortDigest(draft.Quote.CharacterRevision)} · source {ShortDigest(draft.Quote.SourceRevision)} · rules {ShortDigest(draft.Quote.RuleDigest)} · logical {ShortDigest(draft.Quote.LogicalRevision)}",
+            Format(
+                "Character {0} · source {1} · rules {2} · logical {3}",
+                ShortDigest(draft.Quote.CharacterRevision),
+                ShortDigest(draft.Quote.SourceRevision),
+                ShortDigest(draft.Quote.RuleDigest),
+                ShortDigest(draft.Quote.LogicalRevision)),
             NativeTheme.Muted));
         _status = NativeTheme.Body(
-            "A durable shared mutation owner is acquired before Chummer receives the request.",
+            Text("A durable shared mutation owner is acquired before Chummer receives the request."),
             NativeTheme.Muted);
         _status.AutomationId = "sr5-career-specialization-review-status";
         body.Add(_status);
-        _apply = NativeTheme.PrimaryButton("Confirm and save specialization");
+        _apply = NativeTheme.PrimaryButton(Text("Confirm and save specialization"));
         _apply.AutomationId = "sr5-career-specialization-apply";
         _apply.Clicked += async (_, _) => await RunAsync(ApplyAsync);
         body.Add(_apply);
@@ -529,7 +556,7 @@ public sealed class Sr5CareerSpecializationReviewPage : NativePageBase
                 out Sr5CareerSpecializationCheckpoint applying,
                 out string blocker))
         {
-            await DisplayAlertAsync("Apply not started", blocker, "OK");
+            await DisplayAlertAsync(Text("Apply not started"), blocker, Text("OK"));
             return;
         }
         _checkpoint = applying;
@@ -592,22 +619,28 @@ public sealed class Sr5CareerSpecializationReceiptPage : NativePageBase
         _checkpoint = checkpoint;
         _store = store;
         _checkpointAuthority = checkpointAuthority;
-        Title = "Specialization saved";
+        Title = Text("Specialization saved");
         AutomationId = Sr5CareerWizardRoutes.SpecializationReceipt;
         VerticalStackLayout body = new()
         {
             Padding = new Thickness(20, 18, 20, 40),
             Spacing = 14
         };
-        body.Add(NativeTheme.Eyebrow("SR5 Career · 4 of 4"));
-        body.Add(NativeTheme.Title("Saved and re-projected"));
+        body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 4 of 4")));
+        body.Add(NativeTheme.Title(Text("Saved and re-projected")));
         body.Add(NativeTheme.Body(
-            $"{receipt.SpecializationName} was added. Specializations {receipt.SpecializationCountBefore.ToString(CultureInfo.InvariantCulture)} → {receipt.SpecializationCountAfter.ToString(CultureInfo.InvariantCulture)}; Karma {receipt.KarmaBefore.ToString(CultureInfo.InvariantCulture)} → {receipt.KarmaAfter.ToString(CultureInfo.InvariantCulture)}.",
+            Format(
+                "{0} was added. Specializations {1} → {2}; Karma {3} → {4}.",
+                receipt.SpecializationName,
+                receipt.SpecializationCountBefore.ToString(CultureInfo.InvariantCulture),
+                receipt.SpecializationCountAfter.ToString(CultureInfo.InvariantCulture),
+                receipt.KarmaBefore.ToString(CultureInfo.InvariantCulture),
+                receipt.KarmaAfter.ToString(CultureInfo.InvariantCulture)),
             NativeTheme.Text));
         body.Add(NativeTheme.Card(NativeTheme.Body(
-            "This is a current-process typed projection proof, not a persisted Core receipt. If the process dies before acknowledgement, recovery remains locked rather than guessing.",
+            Text("This is a current-process typed projection proof, not a persisted Core receipt. If the process dies before acknowledgement, recovery remains locked rather than guessing."),
             NativeTheme.Muted)));
-        _done = NativeTheme.PrimaryButton("Acknowledge receipt");
+        _done = NativeTheme.PrimaryButton(Text("Acknowledge receipt"));
         _done.AutomationId = "sr5-career-specialization-receipt-acknowledge";
         _done.Clicked += async (_, _) => await RunAsync(AcknowledgeAsync);
         body.Add(_done);
@@ -629,7 +662,7 @@ public sealed class Sr5CareerSpecializationReceiptPage : NativePageBase
                 _receipt,
                 out string blocker))
         {
-            await DisplayAlertAsync("Receipt remains locked", blocker, "OK");
+            await DisplayAlertAsync(Text("Receipt remains locked"), blocker, Text("OK"));
             return;
         }
         await Navigation.PopToRootAsync();

@@ -1,0 +1,495 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="The SR5 Attribute route requires the current exact runner revision." xml:space="preserve"><value>The SR5 Attribute route requires the current exact runner revision.</value></data>
+  <data name="Advance attribute" xml:space="preserve"><value>Advance attribute</value></data>
+  <data name="SR5 Career · 1 of 3" xml:space="preserve"><value>SR5 Career · 1 of 3</value></data>
+  <data name="Choose an attribute" xml:space="preserve"><value>Choose an attribute</value></data>
+  <data name="Only exact attributes projected from this saved SR5 revision are shown. Core owns identity, natural maximum, special-attribute eligibility, Burned Edge repair, Karma cost and expense semantics." xml:space="preserve"><value>Only exact attributes projected from this saved SR5 revision are shown. Core owns identity, natural maximum, special-attribute eligibility, Burned Edge repair, Karma cost and expense semantics.</value></data>
+  <data name="Attribute" xml:space="preserve"><value>Attribute</value></data>
+  <data name="Saved attribute" xml:space="preserve"><value>Saved attribute</value></data>
+  <data name="{0} attribute quote(s) and {1} receipt(s) were omitted because exact authority could not be reproduced." xml:space="preserve"><value>{0} attribute quote(s) and {1} receipt(s) were omitted because exact authority could not be reproduced.</value></data>
+  <data name="Review exact advancement" xml:space="preserve"><value>Review exact advancement</value></data>
+  <data name="Resume reviewed advancement" xml:space="preserve"><value>Resume reviewed advancement</value></data>
+  <data name="Resolve interrupted apply" xml:space="preserve"><value>Resolve interrupted apply</value></data>
+  <data name="Abandon reviewed draft" xml:space="preserve"><value>Abandon reviewed draft</value></data>
+  <data name="Attribute recovery unavailable" xml:space="preserve"><value>Attribute recovery unavailable</value></data>
+  <data name="OK" xml:space="preserve"><value>OK</value></data>
+  <data name="{0} · {1} → {2} · {3} Karma" xml:space="preserve"><value>{0} · {1} → {2} · {3} Karma</value></data>
+  <data name="{0} · {1} → {2} · blocked" xml:space="preserve"><value>{0} · {1} → {2} · blocked</value></data>
+  <data name="No exact attribute quote is available." xml:space="preserve"><value>No exact attribute quote is available.</value></data>
+  <data name="Current {0} · after {1} · natural maximum {2} · repairs one Burned Edge point" xml:space="preserve"><value>Current {0} · after {1} · natural maximum {2} · repairs one Burned Edge point</value></data>
+  <data name="Current {0} · after {1} · natural maximum {2}" xml:space="preserve"><value>Current {0} · after {1} · natural maximum {2}</value></data>
+  <data name="Cost {0} Karma · available {1} · after {2}" xml:space="preserve"><value>Cost {0} Karma · available {1} · after {2}</value></data>
+  <data name="This action is available only to a created SR5 runner." xml:space="preserve"><value>This action is available only to a created SR5 runner.</value></data>
+  <data name="This runner changed. Reopen attribute advancement." xml:space="preserve"><value>This runner changed. Reopen attribute advancement.</value></data>
+  <data name="No exact attribute projection is available." xml:space="preserve"><value>No exact attribute projection is available.</value></data>
+  <data name="Cannot review" xml:space="preserve"><value>Cannot review</value></data>
+  <data name="Runner changed" xml:space="preserve"><value>Runner changed</value></data>
+  <data name="Reopen attribute advancement." xml:space="preserve"><value>Reopen attribute advancement.</value></data>
+  <data name="Review not checkpointed" xml:space="preserve"><value>Review not checkpointed</value></data>
+  <data name="Draft cannot resume" xml:space="preserve"><value>Draft cannot resume</value></data>
+  <data name="The saved review no longer owns this exact runner revision." xml:space="preserve"><value>The saved review no longer owns this exact runner revision.</value></data>
+  <data name="This recovery lock belongs to another owner or SR5 runner context." xml:space="preserve"><value>This recovery lock belongs to another owner or SR5 runner context.</value></data>
+  <data name="The interrupted attribute apply was verified from the saved receipt ledger." xml:space="preserve"><value>The interrupted attribute apply was verified from the saved receipt ledger.</value></data>
+  <data name="Fresh typed projections prove the action was not saved. The reviewed draft may be resumed." xml:space="preserve"><value>Fresh typed projections prove the action was not saved. The reviewed draft may be resumed.</value></data>
+  <data name="Cannot abandon" xml:space="preserve"><value>Cannot abandon</value></data>
+  <data name="Only the current owner and exact runner revision may abandon this review." xml:space="preserve"><value>Only the current owner and exact runner revision may abandon this review.</value></data>
+  <data name="Abandon reviewed attribute?" xml:space="preserve"><value>Abandon reviewed attribute?</value></data>
+  <data name="This removes only the durable review checkpoint and does not change the runner." xml:space="preserve"><value>This removes only the durable review checkpoint and does not change the runner.</value></data>
+  <data name="Abandon" xml:space="preserve"><value>Abandon</value></data>
+  <data name="Keep" xml:space="preserve"><value>Keep</value></data>
+  <data name="Checkpoint not deleted" xml:space="preserve"><value>Checkpoint not deleted</value></data>
+  <data name="A saved attribute review is not authorized for this owner and runner revision." xml:space="preserve"><value>A saved attribute review is not authorized for this owner and runner revision.</value></data>
+  <data name="A durable reviewed attribute advancement can be resumed." xml:space="preserve"><value>A durable reviewed attribute advancement can be resumed.</value></data>
+  <data name="A saved attribute apply lock is not authorized for this owner and SR5 runner." xml:space="preserve"><value>A saved attribute apply lock is not authorized for this owner and SR5 runner.</value></data>
+  <data name="An interrupted apply is locked and will be resolved without replay." xml:space="preserve"><value>An interrupted apply is locked and will be resolved without replay.</value></data>
+  <data name="A verified saved attribute receipt is awaiting acknowledgement." xml:space="preserve"><value>A verified saved attribute receipt is awaiting acknowledgement.</value></data>
+  <data name="The attribute preview does not own its durable review checkpoint." xml:space="preserve"><value>The attribute preview does not own its durable review checkpoint.</value></data>
+  <data name="Review attribute" xml:space="preserve"><value>Review attribute</value></data>
+  <data name="SR5 Career · 2 of 3" xml:space="preserve"><value>SR5 Career · 2 of 3</value></data>
+  <data name="Review exact diff" xml:space="preserve"><value>Review exact diff</value></data>
+  <data name="Value" xml:space="preserve"><value>Value</value></data>
+  <data name="Attribute Karma points" xml:space="preserve"><value>Attribute Karma points</value></data>
+  <data name="Runner Karma" xml:space="preserve"><value>Runner Karma</value></data>
+  <data name="Burned Edge" xml:space="preserve"><value>Burned Edge</value></data>
+  <data name="Natural maximum" xml:space="preserve"><value>Natural maximum</value></data>
+  <data name="Expense" xml:space="preserve"><value>Expense</value></data>
+  <data name="Expense identity" xml:space="preserve"><value>Expense identity</value></data>
+  <data name="Date" xml:space="preserve"><value>Date</value></data>
+  <data name="Undo" xml:space="preserve"><value>Undo</value></data>
+  <data name="Apply and verify once" xml:space="preserve"><value>Apply and verify once</value></data>
+  <data name="The exact checkpoint moves to Applying before mutation. Success is shown only after atomic save and a fresh recoverable receipt projection match the reviewed identity, costs and digests." xml:space="preserve"><value>The exact checkpoint moves to Applying before mutation. Success is shown only after atomic save and a fresh recoverable receipt projection match the reviewed identity, costs and digests.</value></data>
+  <data name="The runner revision, owner, quote, or durable checkpoint changed. This preview cannot apply." xml:space="preserve"><value>The runner revision, owner, quote, or durable checkpoint changed. This preview cannot apply.</value></data>
+  <data name="The one-shot apply is running or awaiting authoritative recovery." xml:space="preserve"><value>The one-shot apply is running or awaiting authoritative recovery.</value></data>
+  <data name="Apply blocked" xml:space="preserve"><value>Apply blocked</value></data>
+  <data name="The exact reviewed action no longer owns this runner." xml:space="preserve"><value>The exact reviewed action no longer owns this runner.</value></data>
+  <data name="Outcome unresolved" xml:space="preserve"><value>Outcome unresolved</value></data>
+  <data name="{0} The Applying checkpoint cannot be cleared or replayed." xml:space="preserve"><value>{0} The Applying checkpoint cannot be cleared or replayed.</value></data>
+  <data name="Outcome not checkpointed" xml:space="preserve"><value>Outcome not checkpointed</value></data>
+  <data name="Not applied" xml:space="preserve"><value>Not applied</value></data>
+  <data name="Fresh typed projections prove no attribute or receipt mutation was saved. Return and resume the review before retrying." xml:space="preserve"><value>Fresh typed projections prove no attribute or receipt mutation was saved. Return and resume the review before retrying.</value></data>
+  <data name="The typed attribute receipt does not own the resolved checkpoint." xml:space="preserve"><value>The typed attribute receipt does not own the resolved checkpoint.</value></data>
+  <data name="Attribute receipt" xml:space="preserve"><value>Attribute receipt</value></data>
+  <data name="SR5 Career · 3 of 3" xml:space="preserve"><value>SR5 Career · 3 of 3</value></data>
+  <data name="Verified saved advancement" xml:space="preserve"><value>Verified saved advancement</value></data>
+  <data name="Attribute Karma" xml:space="preserve"><value>Attribute Karma</value></data>
+  <data name="Transaction" xml:space="preserve"><value>Transaction</value></data>
+  <data name="Saved revision" xml:space="preserve"><value>Saved revision</value></data>
+  <data name="receipt {0} · reviewed source {1} · rule {2} · owner {3}" xml:space="preserve"><value>receipt {0} · reviewed source {1} · rule {2} · owner {3}</value></data>
+  <data name="Acknowledge receipt" xml:space="preserve"><value>Acknowledge receipt</value></data>
+  <data name="Receipt remains pending" xml:space="preserve"><value>Receipt remains pending</value></data>
+  <data name="The receipt was recovered from the exact clean saved revision." xml:space="preserve"><value>The receipt was recovered from the exact clean saved revision.</value></data>
+  <data name="The runner moved past this receipt; it remains bound to its earlier saved revision." xml:space="preserve"><value>The runner moved past this receipt; it remains bound to its earlier saved revision.</value></data>
+  <data name="The SR5 Active Skill route requires the current exact runner revision." xml:space="preserve"><value>The SR5 Active Skill route requires the current exact runner revision.</value></data>
+  <data name="Advance skill" xml:space="preserve"><value>Advance skill</value></data>
+  <data name="Choose an active skill" xml:space="preserve"><value>Choose an active skill</value></data>
+  <data name="Only exact saved skills from this created SR5 revision are shown. Core owns source resolution, rating limits, Karma cost and expense undo semantics." xml:space="preserve"><value>Only exact saved skills from this created SR5 revision are shown. Core owns source resolution, rating limits, Karma cost and expense undo semantics.</value></data>
+  <data name="Active skill" xml:space="preserve"><value>Active skill</value></data>
+  <data name="Saved active skill" xml:space="preserve"><value>Saved active skill</value></data>
+  <data name="{0} skill(s) are omitted because their exact authority cannot be reproduced safely." xml:space="preserve"><value>{0} skill(s) are omitted because their exact authority cannot be reproduced safely.</value></data>
+  <data name="Review advancement" xml:space="preserve"><value>Review advancement</value></data>
+  <data name="Recovery unavailable" xml:space="preserve"><value>Recovery unavailable</value></data>
+  <data name="No exact active-skill quote is available." xml:space="preserve"><value>No exact active-skill quote is available.</value></data>
+  <data name="Current {0} · after {1} · maximum {2}" xml:space="preserve"><value>Current {0} · after {1} · maximum {2}</value></data>
+  <data name="This public action is available only to a created SR5 runner." xml:space="preserve"><value>This public action is available only to a created SR5 runner.</value></data>
+  <data name="This runner changed. Reopen advancement." xml:space="preserve"><value>This runner changed. Reopen advancement.</value></data>
+  <data name="This skill is already at its exact career maximum." xml:space="preserve"><value>This skill is already at its exact career maximum.</value></data>
+  <data name="The runner does not have enough Karma for this advancement." xml:space="preserve"><value>The runner does not have enough Karma for this advancement.</value></data>
+  <data name="Reopen active-skill advancement." xml:space="preserve"><value>Reopen active-skill advancement.</value></data>
+  <data name="The saved review no longer owns this exact revision." xml:space="preserve"><value>The saved review no longer owns this exact revision.</value></data>
+  <data name="This recovery lock belongs to another local owner or SR5 runner context." xml:space="preserve"><value>This recovery lock belongs to another local owner or SR5 runner context.</value></data>
+  <data name="The interrupted apply was found in fresh typed projections." xml:space="preserve"><value>The interrupted apply was found in fresh typed projections.</value></data>
+  <data name="Fresh typed projections prove the action was not saved. The reviewed draft may now be resumed." xml:space="preserve"><value>Fresh typed projections prove the action was not saved. The reviewed draft may now be resumed.</value></data>
+  <data name="Only the current authenticated SR5 owner and exact runner revision may abandon this Reviewed action." xml:space="preserve"><value>Only the current authenticated SR5 owner and exact runner revision may abandon this Reviewed action.</value></data>
+  <data name="Abandon reviewed draft?" xml:space="preserve"><value>Abandon reviewed draft?</value></data>
+  <data name="A saved reviewed action is not authorized for this current SR5 owner and runner revision." xml:space="preserve"><value>A saved reviewed action is not authorized for this current SR5 owner and runner revision.</value></data>
+  <data name="A durable reviewed advancement can be resumed with the same owner and action identity." xml:space="preserve"><value>A durable reviewed advancement can be resumed with the same owner and action identity.</value></data>
+  <data name="A saved apply lock is not authorized for this current local owner and SR5 runner." xml:space="preserve"><value>A saved apply lock is not authorized for this current local owner and SR5 runner.</value></data>
+  <data name="An interrupted apply is locked. Chummer is resolving the exact skill and expense outcome; it cannot be cleared or replayed." xml:space="preserve"><value>An interrupted apply is locked. Chummer is resolving the exact skill and expense outcome; it cannot be cleared or replayed.</value></data>
+  <data name="A verified applied action is awaiting receipt acknowledgement." xml:space="preserve"><value>A verified applied action is awaiting receipt acknowledgement.</value></data>
+  <data name="The reviewed checkpoint no longer matches this runner revision." xml:space="preserve"><value>The reviewed checkpoint no longer matches this runner revision.</value></data>
+  <data name="The review does not own the durable Career checkpoint." xml:space="preserve"><value>The review does not own the durable Career checkpoint.</value></data>
+  <data name="Skill" xml:space="preserve"><value>Skill</value></data>
+  <data name="Rating" xml:space="preserve"><value>Rating</value></data>
+  <data name="Karma" xml:space="preserve"><value>Karma</value></data>
+  <data name="Undo type" xml:space="preserve"><value>Undo type</value></data>
+  <data name="Skill identity" xml:space="preserve"><value>Skill identity</value></data>
+  <data name="Source identity" xml:space="preserve"><value>Source identity</value></data>
+  <data name="Before mutation, the exact owner/action checkpoint moves from Reviewed to Applying by CAS. A receipt appears only after fresh typed skill and expense reloads match every reviewed identity and value." xml:space="preserve"><value>Before mutation, the exact owner/action checkpoint moves from Reviewed to Applying by CAS. A receipt appears only after fresh typed skill and expense reloads match every reviewed identity and value.</value></data>
+  <data name="This public action boundary is no longer a created SR5 runner." xml:space="preserve"><value>This public action boundary is no longer a created SR5 runner.</value></data>
+  <data name="The runner revision or durable checkpoint changed. This review cannot apply." xml:space="preserve"><value>The runner revision or durable checkpoint changed. This review cannot apply.</value></data>
+  <data name="The one-shot apply is in progress or awaiting authoritative recovery." xml:space="preserve"><value>The one-shot apply is in progress or awaiting authoritative recovery.</value></data>
+  <data name="The current SR5 owner, runner revision, action or schema no longer owns this review." xml:space="preserve"><value>The current SR5 owner, runner revision, action or schema no longer owns this review.</value></data>
+  <data name="{0} This Applying checkpoint cannot be cleared or replayed." xml:space="preserve"><value>{0} This Applying checkpoint cannot be cleared or replayed.</value></data>
+  <data name="Fresh typed projections prove no mutation was saved. Reopen the reviewed draft before another attempt." xml:space="preserve"><value>Fresh typed projections prove no mutation was saved. Reopen the reviewed draft before another attempt.</value></data>
+  <data name="The typed receipt does not own the resolved checkpoint." xml:space="preserve"><value>The typed receipt does not own the resolved checkpoint.</value></data>
+  <data name="Advancement receipt" xml:space="preserve"><value>Advancement receipt</value></data>
+  <data name="Karma spent" xml:space="preserve"><value>Karma spent</value></data>
+  <data name="Saved Karma" xml:space="preserve"><value>Saved Karma</value></data>
+  <data name="Expense date" xml:space="preserve"><value>Expense date</value></data>
+  <data name="Expense reason" xml:space="preserve"><value>Expense reason</value></data>
+  <data name="Expense type" xml:space="preserve"><value>Expense type</value></data>
+  <data name="Refund" xml:space="preserve"><value>Refund</value></data>
+  <data name="Career visible" xml:space="preserve"><value>Career visible</value></data>
+  <data name="Karma undo type" xml:space="preserve"><value>Karma undo type</value></data>
+  <data name="Nuyen undo type" xml:space="preserve"><value>Nuyen undo type</value></data>
+  <data name="Undo object" xml:space="preserve"><value>Undo object</value></data>
+  <data name="Undo quantity" xml:space="preserve"><value>Undo quantity</value></data>
+  <data name="Undo extra" xml:space="preserve"><value>Undo extra</value></data>
+  <data name="skill {0} · source {1} · source digest {2} · reviewed rule {3} · loaded rule {4} · loaded quote {5} · owner {6} · action {7}" xml:space="preserve"><value>skill {0} · source {1} · source digest {2} · reviewed rule {3} · loaded rule {4} · loaded quote {5} · owner {6} · action {7}</value></data>
+  <data name="Receipt values came from fresh typed skill and expense projections for this clean saved revision." xml:space="preserve"><value>Receipt values came from fresh typed skill and expense projections for this clean saved revision.</value></data>
+  <data name="The runner moved past this verified receipt; the receipt remains bound to its earlier saved revision." xml:space="preserve"><value>The runner moved past this verified receipt; the receipt remains bound to its earlier saved revision.</value></data>
+  <data name="The SR5 SkillGroup route requires the current exact runner revision." xml:space="preserve"><value>The SR5 SkillGroup route requires the current exact runner revision.</value></data>
+  <data name="Advance skill group" xml:space="preserve"><value>Advance skill group</value></data>
+  <data name="Choose a skill group" xml:space="preserve"><value>Choose a skill group</value></data>
+  <data name="Only exact skill groups projected from this saved SR5 revision are shown. Core owns the internal identity, exact member projection, group integrity, rating maximum, modifiers, Karma cost and expense semantics." xml:space="preserve"><value>Only exact skill groups projected from this saved SR5 revision are shown. Core owns the internal identity, exact member projection, group integrity, rating maximum, modifiers, Karma cost and expense semantics.</value></data>
+  <data name="Skill group" xml:space="preserve"><value>Skill group</value></data>
+  <data name="Saved skill group" xml:space="preserve"><value>Saved skill group</value></data>
+  <data name="{0} skill-group quote(s) were omitted because exact authority could not be reproduced." xml:space="preserve"><value>{0} skill-group quote(s) were omitted because exact authority could not be reproduced.</value></data>
+  <data name="SkillGroup recovery unavailable" xml:space="preserve"><value>SkillGroup recovery unavailable</value></data>
+  <data name="No exact skill-group quote is available." xml:space="preserve"><value>No exact skill-group quote is available.</value></data>
+  <data name="Group {0} → {1} · cost rating {2} → {3} · {4} enabled member(s) · maximum {5}" xml:space="preserve"><value>Group {0} → {1} · cost rating {2} → {3} · {4} enabled member(s) · maximum {5}</value></data>
+  <data name="This runner changed. Reopen skill-group advancement." xml:space="preserve"><value>This runner changed. Reopen skill-group advancement.</value></data>
+  <data name="No exact skill-group projection is available." xml:space="preserve"><value>No exact skill-group projection is available.</value></data>
+  <data name="Reopen skill-group advancement." xml:space="preserve"><value>Reopen skill-group advancement.</value></data>
+  <data name="The interrupted skill-group apply was verified from the saved receipt ledger." xml:space="preserve"><value>The interrupted skill-group apply was verified from the saved receipt ledger.</value></data>
+  <data name="Abandon reviewed skill group?" xml:space="preserve"><value>Abandon reviewed skill group?</value></data>
+  <data name="A saved skill-group review is not authorized for this owner and runner revision." xml:space="preserve"><value>A saved skill-group review is not authorized for this owner and runner revision.</value></data>
+  <data name="A durable reviewed skill-group advancement can be resumed." xml:space="preserve"><value>A durable reviewed skill-group advancement can be resumed.</value></data>
+  <data name="A saved skill-group apply lock is not authorized for this owner and SR5 runner." xml:space="preserve"><value>A saved skill-group apply lock is not authorized for this owner and SR5 runner.</value></data>
+  <data name="An interrupted apply is locked and will be resolved only by the exact idempotent Core command." xml:space="preserve"><value>An interrupted apply is locked and will be resolved only by the exact idempotent Core command.</value></data>
+  <data name="A verified saved skill-group receipt is awaiting acknowledgement." xml:space="preserve"><value>A verified saved skill-group receipt is awaiting acknowledgement.</value></data>
+  <data name="The skill-group preview does not own its durable review checkpoint." xml:space="preserve"><value>The skill-group preview does not own its durable review checkpoint.</value></data>
+  <data name="Review skill group" xml:space="preserve"><value>Review skill group</value></data>
+  <data name="Group rating" xml:space="preserve"><value>Group rating</value></data>
+  <data name="Cost rating" xml:space="preserve"><value>Cost rating</value></data>
+  <data name="Group Karma points" xml:space="preserve"><value>Group Karma points</value></data>
+  <data name="Enabled members" xml:space="preserve"><value>Enabled members</value></data>
+  <data name="Rating maximum" xml:space="preserve"><value>Rating maximum</value></data>
+  <data name="Application time" xml:space="preserve"><value>Application time</value></data>
+  <data name="Prerequisite · {0}" xml:space="preserve"><value>Prerequisite · {0}</value></data>
+  <data name="satisfied · {0}" xml:space="preserve"><value>satisfied · {0}</value></data>
+  <data name="blocked · {0}" xml:space="preserve"><value>blocked · {0}</value></data>
+  <data name="Content authority" xml:space="preserve"><value>Content authority</value></data>
+  <data name="Runtime authority" xml:space="preserve"><value>Runtime authority</value></data>
+  <data name="The exact checkpoint moves to Applying before mutation. Success is shown only after the atomic Core service returns a digest-verified persisted receipt for the reviewed identity, costs and revisions." xml:space="preserve"><value>The exact checkpoint moves to Applying before mutation. Success is shown only after the atomic Core service returns a digest-verified persisted receipt for the reviewed identity, costs and revisions.</value></data>
+  <data name="{0} The Applying checkpoint cannot be cleared or replaced by a compatibility mutation." xml:space="preserve"><value>{0} The Applying checkpoint cannot be cleared or replaced by a compatibility mutation.</value></data>
+  <data name="Core rejected the exact command and the runner stayed at the reviewed revision. Return and resume the review before retrying." xml:space="preserve"><value>Core rejected the exact command and the runner stayed at the reviewed revision. Return and resume the review before retrying.</value></data>
+  <data name="The typed skill-group receipt does not own the resolved checkpoint." xml:space="preserve"><value>The typed skill-group receipt does not own the resolved checkpoint.</value></data>
+  <data name="Skill-group receipt" xml:space="preserve"><value>Skill-group receipt</value></data>
+  <data name="Group Karma" xml:space="preserve"><value>Group Karma</value></data>
+  <data name="receipt {0} · reviewed source {1} · rule {2} · content {3} · runtime {4} · owner {5}" xml:space="preserve"><value>receipt {0} · reviewed source {1} · rule {2} · content {3} · runtime {4} · owner {5}</value></data>
+  <data name="Correct this advancement" xml:space="preserve"><value>Correct this advancement</value></data>
+  <data name="Correction stays unavailable until Core exposes an atomic compensating service with persisted receipt authority. The original receipt remains immutable." xml:space="preserve"><value>Correction stays unavailable until Core exposes an atomic compensating service with persisted receipt authority. The original receipt remains immutable.</value></data>
+  <data name="Correct skill-group advancement" xml:space="preserve"><value>Correct skill-group advancement</value></data>
+  <data name="Enter the reason recorded with this compensating transaction." xml:space="preserve"><value>Enter the reason recorded with this compensating transaction.</value></data>
+  <data name="Review correction" xml:space="preserve"><value>Review correction</value></data>
+  <data name="Keep advancement" xml:space="preserve"><value>Keep advancement</value></data>
+  <data name="User-requested correction" xml:space="preserve"><value>User-requested correction</value></data>
+  <data name="Apply compensating correction?" xml:space="preserve"><value>Apply compensating correction?</value></data>
+  <data name="This atomically restores the pre-advance group and Karma values and removes the exact expense." xml:space="preserve"><value>This atomically restores the pre-advance group and Karma values and removes the exact expense.</value></data>
+  <data name="Correct" xml:space="preserve"><value>Correct</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Correction saved; checkpoint remains locked" xml:space="preserve"><value>Correction saved; checkpoint remains locked</value></data>
+  <data name="Correction saved" xml:space="preserve"><value>Correction saved</value></data>
+  <data name="Compensating transaction {0} restored the reviewed values." xml:space="preserve"><value>Compensating transaction {0} restored the reviewed values.</value></data>
+  <data name="The SR5 Knowledge/Language route requires the current exact runner revision." xml:space="preserve"><value>The SR5 Knowledge/Language route requires the current exact runner revision.</value></data>
+  <data name="Advance knowledge skill" xml:space="preserve"><value>Advance knowledge skill</value></data>
+  <data name="Choose a Knowledge or Language skill" xml:space="preserve"><value>Choose a Knowledge or Language skill</value></data>
+  <data name="Only exact Knowledge and Language skills projected from this saved SR5 revision are shown. Core owns nullable source identity, native-language eligibility, maximum rating, Karma cost and expense semantics." xml:space="preserve"><value>Only exact Knowledge and Language skills projected from this saved SR5 revision are shown. Core owns nullable source identity, native-language eligibility, maximum rating, Karma cost and expense semantics.</value></data>
+  <data name="Knowledge / Language skill" xml:space="preserve"><value>Knowledge / Language skill</value></data>
+  <data name="Saved knowledge skill" xml:space="preserve"><value>Saved knowledge skill</value></data>
+  <data name="{0} knowledge skill quote(s) and {1} receipt(s) were omitted because exact authority could not be reproduced." xml:space="preserve"><value>{0} knowledge skill quote(s) and {1} receipt(s) were omitted because exact authority could not be reproduced.</value></data>
+  <data name="Knowledge/Language recovery unavailable" xml:space="preserve"><value>Knowledge/Language recovery unavailable</value></data>
+  <data name="{0} · {1} · {2} → {3} · {4} Karma" xml:space="preserve"><value>{0} · {1} · {2} → {3} · {4} Karma</value></data>
+  <data name="{0} · {1} · {2} → {3} · blocked" xml:space="preserve"><value>{0} · {1} · {2} → {3} · blocked</value></data>
+  <data name="No exact knowledge skill quote is available." xml:space="preserve"><value>No exact knowledge skill quote is available.</value></data>
+  <data name="This runner changed. Reopen knowledge skill advancement." xml:space="preserve"><value>This runner changed. Reopen knowledge skill advancement.</value></data>
+  <data name="No exact knowledge skill projection is available." xml:space="preserve"><value>No exact knowledge skill projection is available.</value></data>
+  <data name="Reopen knowledge skill advancement." xml:space="preserve"><value>Reopen knowledge skill advancement.</value></data>
+  <data name="The interrupted knowledge skill apply was verified from the saved receipt ledger." xml:space="preserve"><value>The interrupted knowledge skill apply was verified from the saved receipt ledger.</value></data>
+  <data name="Abandon reviewed knowledge skill?" xml:space="preserve"><value>Abandon reviewed knowledge skill?</value></data>
+  <data name="A saved knowledge skill review is not authorized for this owner and runner revision." xml:space="preserve"><value>A saved knowledge skill review is not authorized for this owner and runner revision.</value></data>
+  <data name="A durable reviewed knowledge skill advancement can be resumed." xml:space="preserve"><value>A durable reviewed knowledge skill advancement can be resumed.</value></data>
+  <data name="A saved knowledge skill apply lock is not authorized for this owner and SR5 runner." xml:space="preserve"><value>A saved knowledge skill apply lock is not authorized for this owner and SR5 runner.</value></data>
+  <data name="A verified saved knowledge skill receipt is awaiting acknowledgement." xml:space="preserve"><value>A verified saved knowledge skill receipt is awaiting acknowledgement.</value></data>
+  <data name="The knowledge skill preview does not own its durable review checkpoint." xml:space="preserve"><value>The knowledge skill preview does not own its durable review checkpoint.</value></data>
+  <data name="Review knowledge skill" xml:space="preserve"><value>Review knowledge skill</value></data>
+  <data name="Knowledge / Language" xml:space="preserve"><value>Knowledge / Language</value></data>
+  <data name="Skill Karma points" xml:space="preserve"><value>Skill Karma points</value></data>
+  <data name="Maximum" xml:space="preserve"><value>Maximum</value></data>
+  <data name="custom saved skill" xml:space="preserve"><value>custom saved skill</value></data>
+  <data name="Fresh typed projections prove no knowledge skill or receipt mutation was saved. Return and resume the review before retrying." xml:space="preserve"><value>Fresh typed projections prove no knowledge skill or receipt mutation was saved. Return and resume the review before retrying.</value></data>
+  <data name="The typed knowledge skill receipt does not own the resolved checkpoint." xml:space="preserve"><value>The typed knowledge skill receipt does not own the resolved checkpoint.</value></data>
+  <data name="Knowledge / Language receipt" xml:space="preserve"><value>Knowledge / Language receipt</value></data>
+  <data name="Skill Karma" xml:space="preserve"><value>Skill Karma</value></data>
+  <data name="The SR5 specialization route requires the current exact runner revision." xml:space="preserve"><value>The SR5 specialization route requires the current exact runner revision.</value></data>
+  <data name="Add specialization" xml:space="preserve"><value>Add specialization</value></data>
+  <data name="SR5 Career · 1 of 4" xml:space="preserve"><value>SR5 Career · 1 of 4</value></data>
+  <data name="Choose a skill" xml:space="preserve"><value>Choose a skill</value></data>
+  <data name="Only exact saved identities projected by Chummer are selectable. Active, sourced knowledge, and custom knowledge skills remain distinct." xml:space="preserve"><value>Only exact saved identities projected by Chummer are selectable. Active, sourced knowledge, and custom knowledge skills remain distinct.</value></data>
+  <data name="Saved skill" xml:space="preserve"><value>Saved skill</value></data>
+  <data name="{0} skill(s) were omitted because exact source authority was unavailable." xml:space="preserve"><value>{0} skill(s) were omitted because exact source authority was unavailable.</value></data>
+  <data name="Choose specialization" xml:space="preserve"><value>Choose specialization</value></data>
+  <data name="Resume reviewed purchase" xml:space="preserve"><value>Resume reviewed purchase</value></data>
+  <data name="Abandon reviewed purchase" xml:space="preserve"><value>Abandon reviewed purchase</value></data>
+  <data name="Specialization recovery unavailable" xml:space="preserve"><value>Specialization recovery unavailable</value></data>
+  <data name="{0} · {1} · rating {2} · {3} existing" xml:space="preserve"><value>{0} · {1} · rating {2} · {3} existing</value></data>
+  <data name="No exact specialization candidate is available." xml:space="preserve"><value>No exact specialization candidate is available.</value></data>
+  <data name="{0} · group {1} · {2} governed option(s) plus custom text" xml:space="preserve"><value>{0} · group {1} · {2} governed option(s) plus custom text</value></data>
+  <data name="none" xml:space="preserve"><value>none</value></data>
+  <data name="A restarted Applied checkpoint has no persisted Core receipt and remains fail-closed." xml:space="preserve"><value>A restarted Applied checkpoint has no persisted Core receipt and remains fail-closed.</value></data>
+  <data name="Fresh authority proved the mutation was not applied. The reviewed action can resume." xml:space="preserve"><value>Fresh authority proved the mutation was not applied. The reviewed action can resume.</value></data>
+  <data name="Abandon reviewed specialization?" xml:space="preserve"><value>Abandon reviewed specialization?</value></data>
+  <data name="This removes only the durable review and does not change the runner." xml:space="preserve"><value>This removes only the durable review and does not change the runner.</value></data>
+  <data name="Review not abandoned" xml:space="preserve"><value>Review not abandoned</value></data>
+  <data name="A durable reviewed specialization purchase can resume." xml:space="preserve"><value>A durable reviewed specialization purchase can resume.</value></data>
+  <data name="An interrupted apply owns the runner until authoritative recovery succeeds." xml:space="preserve"><value>An interrupted apply owns the runner until authoritative recovery succeeds.</value></data>
+  <data name="A current-process receipt was not acknowledged before restart; no persisted Core receipt exists, so this lock is retained." xml:space="preserve"><value>A current-process receipt was not acknowledged before restart; no persisted Core receipt exists, so this lock is retained.</value></data>
+  <data name="The specialization checkpoint is unsupported." xml:space="preserve"><value>The specialization checkpoint is unsupported.</value></data>
+  <data name="SR5 Career · 2 of 4" xml:space="preserve"><value>SR5 Career · 2 of 4</value></data>
+  <data name="Specialize {0}" xml:space="preserve"><value>Specialize {0}</value></data>
+  <data name="Catalog choices preserve their exact option identity and kind. Custom text is explicitly typed Custom and carries no fabricated option ID." xml:space="preserve"><value>Catalog choices preserve their exact option identity and kind. Custom text is explicitly typed Custom and carries no fabricated option ID.</value></data>
+  <data name="Custom…" xml:space="preserve"><value>Custom…</value></data>
+  <data name="Specialization option" xml:space="preserve"><value>Specialization option</value></data>
+  <data name="Custom specialization name" xml:space="preserve"><value>Custom specialization name</value></data>
+  <data name="Review exact quote" xml:space="preserve"><value>Review exact quote</value></data>
+  <data name="Custom is typed explicitly and is not treated as a source-catalog identity." xml:space="preserve"><value>Custom is typed explicitly and is not treated as a source-catalog identity.</value></data>
+  <data name="Choose one exact option." xml:space="preserve"><value>Choose one exact option.</value></data>
+  <data name="Quote unavailable" xml:space="preserve"><value>Quote unavailable</value></data>
+  <data name="Chummer could not reproduce this exact specialization selection." xml:space="preserve"><value>Chummer could not reproduce this exact specialization selection.</value></data>
+  <data name="Review specialization" xml:space="preserve"><value>Review specialization</value></data>
+  <data name="SR5 Career · 3 of 4" xml:space="preserve"><value>SR5 Career · 3 of 4</value></data>
+  <data name="{0}: {1}" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Typed identity: {0} / {1}&#xA;Selection: {2} / {3}&#xA;Specializations: {4} → {5}&#xA;Karma: {6} → {7} (cost {8})" xml:space="preserve"><value>Typed identity: {0} / {1}
+Selection: {2} / {3}
+Specializations: {4} → {5}
+Karma: {6} → {7} (cost {8})</value></data>
+  <data name="custom" xml:space="preserve"><value>custom</value></data>
+  <data name="This specialization will break the current skill group under the active setting." xml:space="preserve"><value>This specialization will break the current skill group under the active setting.</value></data>
+  <data name="Character {0} · source {1} · rules {2} · logical {3}" xml:space="preserve"><value>Character {0} · source {1} · rules {2} · logical {3}</value></data>
+  <data name="A durable shared mutation owner is acquired before Chummer receives the request." xml:space="preserve"><value>A durable shared mutation owner is acquired before Chummer receives the request.</value></data>
+  <data name="Confirm and save specialization" xml:space="preserve"><value>Confirm and save specialization</value></data>
+  <data name="Apply not started" xml:space="preserve"><value>Apply not started</value></data>
+  <data name="Specialization saved" xml:space="preserve"><value>Specialization saved</value></data>
+  <data name="SR5 Career · 4 of 4" xml:space="preserve"><value>SR5 Career · 4 of 4</value></data>
+  <data name="Saved and re-projected" xml:space="preserve"><value>Saved and re-projected</value></data>
+  <data name="{0} was added. Specializations {1} → {2}; Karma {3} → {4}." xml:space="preserve"><value>{0} was added. Specializations {1} → {2}; Karma {3} → {4}.</value></data>
+  <data name="This is a current-process typed projection proof, not a persisted Core receipt. If the process dies before acknowledgement, recovery remains locked rather than guessing." xml:space="preserve"><value>This is a current-process typed projection proof, not a persisted Core receipt. If the process dies before acknowledgement, recovery remains locked rather than guessing.</value></data>
+  <data name="Receipt remains locked" xml:space="preserve"><value>Receipt remains locked</value></data>
+  <data name="The SR5 quality route requires the exact clean saved runner revision." xml:space="preserve"><value>The SR5 quality route requires the exact clean saved runner revision.</value></data>
+  <data name="Change quality" xml:space="preserve"><value>Change quality</value></data>
+  <data name="Choose a quality operation" xml:space="preserve"><value>Choose a quality operation</value></data>
+  <data name="Only exact Core candidates from enabled sources, custom data and the active GM policy are shown. Android never identifies a quality by its label and never applies a partial effect family." xml:space="preserve"><value>Only exact Core candidates from enabled sources, custom data and the active GM policy are shown. Android never identifies a quality by its label and never applies a partial effect family.</value></data>
+  <data name="Quality and operation" xml:space="preserve"><value>Quality and operation</value></data>
+  <data name="Exact quality operation" xml:space="preserve"><value>Exact quality operation</value></data>
+  <data name="{0} candidate(s) and {1} receipt(s) were omitted. The whole quality lane remains fail-closed." xml:space="preserve"><value>{0} candidate(s) and {1} receipt(s) were omitted. The whole quality lane remains fail-closed.</value></data>
+  <data name="Review exact quality diff" xml:space="preserve"><value>Review exact quality diff</value></data>
+  <data name="Resume reviewed quality change" xml:space="preserve"><value>Resume reviewed quality change</value></data>
+  <data name="Resolve interrupted atomic commit" xml:space="preserve"><value>Resolve interrupted atomic commit</value></data>
+  <data name="Quality recovery unavailable" xml:space="preserve"><value>Quality recovery unavailable</value></data>
+  <data name="{0} · {1} · level {2} → {3} · {4}" xml:space="preserve"><value>{0} · {1} · level {2} → {3} · {4}</value></data>
+  <data name="{0} Karma" xml:space="preserve"><value>{0} Karma</value></data>
+  <data name="Acquire level" xml:space="preserve"><value>Acquire level</value></data>
+  <data name="Remove level" xml:space="preserve"><value>Remove level</value></data>
+  <data name="Remove all levels" xml:space="preserve"><value>Remove all levels</value></data>
+  <data name="Unsupported operation" xml:space="preserve"><value>Unsupported operation</value></data>
+  <data name="No exact quality operation is available." xml:space="preserve"><value>No exact quality operation is available.</value></data>
+  <data name="{0} · {1} · level {2} → {3} · runner Karma {4} → {5}" xml:space="preserve"><value>{0} · {1} · level {2} → {3} · runner Karma {4} → {5}</value></data>
+  <data name="source {0} · source id {1} · internal id {2} · effects {3} · GM allowed" xml:space="preserve"><value>source {0} · source id {1} · internal id {2} · effects {3} · GM allowed</value></data>
+  <data name="source {0} · source id {1} · internal id {2} · effects {3} · GM blocked" xml:space="preserve"><value>source {0} · source id {1} · internal id {2} · effects {3} · GM blocked</value></data>
+  <data name="The saved runner revision changed. Reopen quality advancement." xml:space="preserve"><value>The saved runner revision changed. Reopen quality advancement.</value></data>
+  <data name="Ambiguous candidate or receipt authority was omitted. No quality operation may continue." xml:space="preserve"><value>Ambiguous candidate or receipt authority was omitted. No quality operation may continue.</value></data>
+  <data name="No exact quality projection is available." xml:space="preserve"><value>No exact quality projection is available.</value></data>
+  <data name="Choose an exact quality operation." xml:space="preserve"><value>Choose an exact quality operation.</value></data>
+  <data name="The exact quality review no longer owns this runner." xml:space="preserve"><value>The exact quality review no longer owns this runner.</value></data>
+  <data name="This quality recovery lock belongs to another owner or runner revision." xml:space="preserve"><value>This quality recovery lock belongs to another owner or runner revision.</value></data>
+  <data name="Fresh authority proves the atomic transaction was not saved. Resume the reviewed draft." xml:space="preserve"><value>Fresh authority proves the atomic transaction was not saved. Resume the reviewed draft.</value></data>
+  <data name="Abandon reviewed quality change?" xml:space="preserve"><value>Abandon reviewed quality change?</value></data>
+  <data name="This removes only the durable review checkpoint. It never changes the runner." xml:space="preserve"><value>This removes only the durable review checkpoint. It never changes the runner.</value></data>
+  <data name="A saved quality review is not authorized for this exact runner." xml:space="preserve"><value>A saved quality review is not authorized for this exact runner.</value></data>
+  <data name="A durable reviewed quality operation can be resumed." xml:space="preserve"><value>A durable reviewed quality operation can be resumed.</value></data>
+  <data name="A saved quality commit lock is not authorized for this owner and runner." xml:space="preserve"><value>A saved quality commit lock is not authorized for this owner and runner.</value></data>
+  <data name="An interrupted atomic commit is locked and will be resolved without replay." xml:space="preserve"><value>An interrupted atomic commit is locked and will be resolved without replay.</value></data>
+  <data name="A verified saved quality receipt is awaiting acknowledgement or correction." xml:space="preserve"><value>A verified saved quality receipt is awaiting acknowledgement or correction.</value></data>
+  <data name="The quality preview does not own its exact Reviewed checkpoint." xml:space="preserve"><value>The quality preview does not own its exact Reviewed checkpoint.</value></data>
+  <data name="Review quality" xml:space="preserve"><value>Review quality</value></data>
+  <data name="Review exact atomic diff" xml:space="preserve"><value>Review exact atomic diff</value></data>
+  <data name="Quality" xml:space="preserve"><value>Quality</value></data>
+  <data name="Operation" xml:space="preserve"><value>Operation</value></data>
+  <data name="Typed identity" xml:space="preserve"><value>Typed identity</value></data>
+  <data name="{0} · source {1}" xml:space="preserve"><value>{0} · source {1}</value></data>
+  <data name="Level" xml:space="preserve"><value>Level</value></data>
+  <data name="Rule cost / delta" xml:space="preserve"><value>Rule cost / delta</value></data>
+  <data name="Source" xml:space="preserve"><value>Source</value></data>
+  <data name="{0} · enabled {1}" xml:space="preserve"><value>{0} · enabled {1}</value></data>
+  <data name="GM policy" xml:space="preserve"><value>GM policy</value></data>
+  <data name="allowed {0} · free approved {1}" xml:space="preserve"><value>allowed {0} · free approved {1}</value></data>
+  <data name="Effects" xml:space="preserve"><value>Effects</value></data>
+  <data name="exact {0} · mutations {1}" xml:space="preserve"><value>exact {0} · mutations {1}</value></data>
+  <data name="Applied effect families" xml:space="preserve"><value>Applied effect families</value></data>
+  <data name="Unsupported effect families" xml:space="preserve"><value>Unsupported effect families</value></data>
+  <data name="Workspace / saved revisions" xml:space="preserve"><value>Workspace / saved revisions</value></data>
+  <data name="Logical revision" xml:space="preserve"><value>Logical revision</value></data>
+  <data name="Source revision" xml:space="preserve"><value>Source revision</value></data>
+  <data name="Rule digest" xml:space="preserve"><value>Rule digest</value></data>
+  <data name="Content digest" xml:space="preserve"><value>Content digest</value></data>
+  <data name="Runtime digest" xml:space="preserve"><value>Runtime digest</value></data>
+  <data name="Confirm atomic quality transaction" xml:space="preserve"><value>Confirm atomic quality transaction</value></data>
+  <data name="The checkpoint moves to Applying first. Presentation commits the full quality/effect delta, expense and receipt atomically; Android never retries an unknown outcome." xml:space="preserve"><value>The checkpoint moves to Applying first. Presentation commits the full quality/effect delta, expense and receipt atomically; Android never retries an unknown outcome.</value></data>
+  <data name="Owner, revision, source, rule, effects, runtime, content or durable checkpoint changed." xml:space="preserve"><value>Owner, revision, source, rule, effects, runtime, content or durable checkpoint changed.</value></data>
+  <data name="The one-shot atomic commit is running or awaiting authoritative recovery." xml:space="preserve"><value>The one-shot atomic commit is running or awaiting authoritative recovery.</value></data>
+  <data name="Commit blocked" xml:space="preserve"><value>Commit blocked</value></data>
+  <data name="{0} The Applying lock cannot be cleared or replayed." xml:space="preserve"><value>{0} The Applying lock cannot be cleared or replayed.</value></data>
+  <data name="Fresh atomic authority proves no quality/effect/expense/receipt transaction was saved." xml:space="preserve"><value>Fresh atomic authority proves no quality/effect/expense/receipt transaction was saved.</value></data>
+  <data name="The quality receipt does not own this resolved checkpoint." xml:space="preserve"><value>The quality receipt does not own this resolved checkpoint.</value></data>
+  <data name="Quality receipt" xml:space="preserve"><value>Quality receipt</value></data>
+  <data name="Verified atomic quality receipt" xml:space="preserve"><value>Verified atomic quality receipt</value></data>
+  <data name="Instances" xml:space="preserve"><value>Instances</value></data>
+  <data name="receipt {0} · source {1} → {2} · rule {3} → {4} · state {5}" xml:space="preserve"><value>receipt {0} · source {1} → {2} · rule {3} → {4} · state {5}</value></data>
+  <data name="Correct this quality transaction" xml:space="preserve"><value>Correct this quality transaction</value></data>
+  <data name="Correction is a separate typed compensating transaction. It restores exact instances and Karma and removes only the original expense; the receipt is never edited in place." xml:space="preserve"><value>Correction is a separate typed compensating transaction. It restores exact instances and Karma and removes only the original expense; the receipt is never edited in place.</value></data>
+  <data name="Correct quality transaction" xml:space="preserve"><value>Correct quality transaction</value></data>
+  <data name="Enter the reason recorded with the compensating transaction." xml:space="preserve"><value>Enter the reason recorded with the compensating transaction.</value></data>
+  <data name="Keep transaction" xml:space="preserve"><value>Keep transaction</value></data>
+  <data name="This atomically restores the exact pre-transaction quality instances and Karma and removes the bound expense." xml:space="preserve"><value>This atomically restores the exact pre-transaction quality instances and Karma and removes the bound expense.</value></data>
+  <data name="Compensating transaction {0} restored the exact prior state." xml:space="preserve"><value>Compensating transaction {0} restored the exact prior state.</value></data>
+  <data name="The receipt was recovered from the exact clean atomic saved revision." xml:space="preserve"><value>The receipt was recovered from the exact clean atomic saved revision.</value></data>
+  <data name="The runner moved past this receipt; it remains bound to the earlier saved revision." xml:space="preserve"><value>The runner moved past this receipt; it remains bound to the earlier saved revision.</value></data>
+  <data name="The SR5 After Run route requires the exact current clean saved runner revision." xml:space="preserve"><value>The SR5 After Run route requires the exact current clean saved runner revision.</value></data>
+  <data name="After the run" xml:space="preserve"><value>After the run</value></data>
+  <data name="SR5 Career · After Run · 1 of 7" xml:space="preserve"><value>SR5 Career · After Run · 1 of 7</value></data>
+  <data name="Choose the completed run" xml:space="preserve"><value>Choose the completed run</value></data>
+  <data name="Only governed proposal, run, and character IDs are selectable. This page never invents a run from the current character file." xml:space="preserve"><value>Only governed proposal, run, and character IDs are selectable. This page never invents a run from the current character file.</value></data>
+  <data name="Completed run proposal" xml:space="preserve"><value>Completed run proposal</value></data>
+  <data name="{0} proposal(s) were omitted because exact catalog or Core quote authority was unavailable." xml:space="preserve"><value>{0} proposal(s) were omitted because exact catalog or Core quote authority was unavailable.</value></data>
+  <data name="The governed After Run settlement authority is unavailable." xml:space="preserve"><value>The governed After Run settlement authority is unavailable.</value></data>
+  <data name="Review rewards" xml:space="preserve"><value>Review rewards</value></data>
+  <data name="Resume reviewed settlement" xml:space="preserve"><value>Resume reviewed settlement</value></data>
+  <data name="Resolve interrupted settlement" xml:space="preserve"><value>Resolve interrupted settlement</value></data>
+  <data name="Abandon reviewed settlement" xml:space="preserve"><value>Abandon reviewed settlement</value></data>
+  <data name="After Run recovery unavailable" xml:space="preserve"><value>After Run recovery unavailable</value></data>
+  <data name="A reviewed settlement is durable and can be resumed or abandoned." xml:space="preserve"><value>A reviewed settlement is durable and can be resumed or abandoned.</value></data>
+  <data name="An interrupted settlement owns the runner. Resolve the exact command before any other Career mutation." xml:space="preserve"><value>An interrupted settlement owns the runner. Resolve the exact command before any other Career mutation.</value></data>
+  <data name="A verified Core receipt is durable and ready to inspect." xml:space="preserve"><value>A verified Core receipt is durable and ready to inspect.</value></data>
+  <data name="The durable After Run checkpoint is unavailable." xml:space="preserve"><value>The durable After Run checkpoint is unavailable.</value></data>
+  <data name="No exact completed-run proposal is available." xml:space="preserve"><value>No exact completed-run proposal is available.</value></data>
+  <data name="{0} · completed {1}&#xA;Proposal {2}&#xA;Run {3}&#xA;Status: {4}" xml:space="preserve"><value>{0} · completed {1}
+Proposal {2}
+Run {3}
+Status: {4}</value></data>
+  <data name="all Core prerequisites satisfied" xml:space="preserve"><value>all Core prerequisites satisfied</value></data>
+  <data name="Abandon reviewed settlement?" xml:space="preserve"><value>Abandon reviewed settlement?</value></data>
+  <data name="This removes only the durable review. It does not change the runner or approve the proposal." xml:space="preserve"><value>This removes only the durable review. It does not change the runner or approve the proposal.</value></data>
+  <data name="Reviewed settlement abandoned; no runner mutation occurred." xml:space="preserve"><value>Reviewed settlement abandoned; no runner mutation occurred.</value></data>
+  <data name="{0} · {1}" xml:space="preserve"><value>{0} · {1}</value></data>
+  <data name="SR5 Career · After Run · {0} of 7" xml:space="preserve"><value>SR5 Career · After Run · {0} of 7</value></data>
+  <data name="These rewards come from the signed run context. This settlement only applies Heat, reputation, contacts and their Karma cost; it does not duplicate the reward ledger." xml:space="preserve"><value>These rewards come from the signed run context. This settlement only applies Heat, reputation, contacts and their Karma cost; it does not duplicate the reward ledger.</value></data>
+  <data name="Run" xml:space="preserve"><value>Run</value></data>
+  <data name="Karma award" xml:space="preserve"><value>Karma award</value></data>
+  <data name="Nuyen award" xml:space="preserve"><value>Nuyen award</value></data>
+  <data name="Reward receipt" xml:space="preserve"><value>Reward receipt</value></data>
+  <data name="Review every Core-calculated before → delta → after value. None is editable on this page." xml:space="preserve"><value>Review every Core-calculated before → delta → after value. None is editable on this page.</value></data>
+  <data name="Heat" xml:space="preserve"><value>Heat</value></data>
+  <data name="Street Cred" xml:space="preserve"><value>Street Cred</value></data>
+  <data name="Notoriety" xml:space="preserve"><value>Notoriety</value></data>
+  <data name="Public Awareness" xml:space="preserve"><value>Public Awareness</value></data>
+  <data name="Contacts retain stable IDs, origin kind, Connection, Loyalty and exact Karma cost." xml:space="preserve"><value>Contacts retain stable IDs, origin kind, Connection, Loyalty and exact Karma cost.</value></data>
+  <data name="No contacts are proposed." xml:space="preserve"><value>No contacts are proposed.</value></data>
+  <data name="Connection / Loyalty" xml:space="preserve"><value>Connection / Loyalty</value></data>
+  <data name="Origin" xml:space="preserve"><value>Origin</value></data>
+  <data name="Karma cost" xml:space="preserve"><value>Karma cost</value></data>
+  <data name="Total contact Karma" xml:space="preserve"><value>Total contact Karma</value></data>
+  <data name="GM" xml:space="preserve"><value>GM</value></data>
+  <data name="character owner" xml:space="preserve"><value>character owner</value></data>
+  <data name="The exact {0} approval is present and digest-bound. Continue only after reviewing that approval." xml:space="preserve"><value>The exact {0} approval is present and digest-bound. Continue only after reviewing that approval.</value></data>
+  <data name="The exact {0} approval is missing or rejected. Android cannot create or infer it." xml:space="preserve"><value>The exact {0} approval is missing or rejected. Android cannot create or infer it.</value></data>
+  <data name="Review digest" xml:space="preserve"><value>Review digest</value></data>
+  <data name="Proposal logical digest" xml:space="preserve"><value>Proposal logical digest</value></data>
+  <data name="Settlement blocked" xml:space="preserve"><value>Settlement blocked</value></data>
+  <data name="Review checkpoint blocked" xml:space="preserve"><value>Review checkpoint blocked</value></data>
+  <data name="Review Heat and reputation" xml:space="preserve"><value>Review Heat and reputation</value></data>
+  <data name="Review contact proposals" xml:space="preserve"><value>Review contact proposals</value></data>
+  <data name="Review GM approval" xml:space="preserve"><value>Review GM approval</value></data>
+  <data name="Review owner approval" xml:space="preserve"><value>Review owner approval</value></data>
+  <data name="Create exact settlement review" xml:space="preserve"><value>Create exact settlement review</value></data>
+  <data name="Reviewed · continue to {0}" xml:space="preserve"><value>Reviewed · continue to {0}</value></data>
+  <data name="Confirm settlement" xml:space="preserve"><value>Confirm settlement</value></data>
+  <data name="SR5 Career · After Run · 7 of 7" xml:space="preserve"><value>SR5 Career · After Run · 7 of 7</value></data>
+  <data name="Review and confirm once" xml:space="preserve"><value>Review and confirm once</value></data>
+  <data name="This single atomic command applies only the Core plan below. The reward receipt stays external and is not replayed as manual Karma or Nuyen." xml:space="preserve"><value>This single atomic command applies only the Core plan below. The reward receipt stays external and is not replayed as manual Karma or Nuyen.</value></data>
+  <data name="Contacts" xml:space="preserve"><value>Contacts</value></data>
+  <data name="Contact Karma" xml:space="preserve"><value>Contact Karma</value></data>
+  <data name="Binding" xml:space="preserve"><value>Binding</value></data>
+  <data name="Plan" xml:space="preserve"><value>Plan</value></data>
+  <data name="Reviewed checkpoint is durable. Applying reserves the shared Career mutation owner before calling Core." xml:space="preserve"><value>Reviewed checkpoint is durable. Applying reserves the shared Career mutation owner before calling Core.</value></data>
+  <data name="Confirm and settle once" xml:space="preserve"><value>Confirm and settle once</value></data>
+  <data name="The After Run receipt page requires the exact durable Applied checkpoint." xml:space="preserve"><value>The After Run receipt page requires the exact durable Applied checkpoint.</value></data>
+  <data name="Settlement receipt" xml:space="preserve"><value>Settlement receipt</value></data>
+  <data name="SR5 Career · After Run" xml:space="preserve"><value>SR5 Career · After Run</value></data>
+  <data name="Settlement saved" xml:space="preserve"><value>Settlement saved</value></data>
+  <data name="Core verified the exact post-save runner revision, transaction ledger and receipt. Acknowledging removes only this local recovery checkpoint." xml:space="preserve"><value>Core verified the exact post-save runner revision, transaction ledger and receipt. Acknowledging removes only this local recovery checkpoint.</value></data>
+  <data name="Contacts added" xml:space="preserve"><value>Contacts added</value></data>
+  <data name="Receipt" xml:space="preserve"><value>Receipt</value></data>
+  <data name="Receipt acknowledged. The saved runner and Core transaction ledger remain unchanged." xml:space="preserve"><value>Receipt acknowledged. The saved runner and Core transaction ledger remain unchanged.</value></data>
+  <data name="Downtime calendar" xml:space="preserve"><value>Downtime calendar</value></data>
+  <data name="SR5 Table · Downtime" xml:space="preserve"><value>SR5 Table · Downtime</value></data>
+  <data name="Plan one calendar change" xml:space="preserve"><value>Plan one calendar change</value></data>
+  <data name="Review a deterministic Core-owned Calendar change, confirm it, then save once. Restart never preserves confirmation." xml:space="preserve"><value>Review a deterministic Core-owned Calendar change, confirm it, then save once. Restart never preserves confirmation.</value></data>
+  <data name="Loading exact runner authority…" xml:space="preserve"><value>Loading exact runner authority…</value></data>
+  <data name="Calendar action" xml:space="preserve"><value>Calendar action</value></data>
+  <data name="Add next week" xml:space="preserve"><value>Add next week</value></data>
+  <data name="Edit week" xml:space="preserve"><value>Edit week</value></data>
+  <data name="Delete week" xml:space="preserve"><value>Delete week</value></data>
+  <data name="Action" xml:space="preserve"><value>Action</value></data>
+  <data name="Exact saved week" xml:space="preserve"><value>Exact saved week</value></data>
+  <data name="Saved week" xml:space="preserve"><value>Saved week</value></data>
+  <data name="First year (empty calendar only)" xml:space="preserve"><value>First year (empty calendar only)</value></data>
+  <data name="First ISO week" xml:space="preserve"><value>First ISO week</value></data>
+  <data name="Exact week notes" xml:space="preserve"><value>Exact week notes</value></data>
+  <data name="Downtime notes" xml:space="preserve"><value>Downtime notes</value></data>
+  <data name="Notes (edit only)" xml:space="preserve"><value>Notes (edit only)</value></data>
+  <data name="Notes color (edit only)" xml:space="preserve"><value>Notes color (edit only)</value></data>
+  <data name="Create exact preview" xml:space="preserve"><value>Create exact preview</value></data>
+  <data name="No reviewed change." xml:space="preserve"><value>No reviewed change.</value></data>
+  <data name="Confirm reviewed preview" xml:space="preserve"><value>Confirm reviewed preview</value></data>
+  <data name="Save confirmed change" xml:space="preserve"><value>Save confirmed change</value></data>
+  <data name="Start another calendar change" xml:space="preserve"><value>Start another calendar change</value></data>
+  <data name="Exact Downtime Calendar authority is unavailable." xml:space="preserve"><value>Exact Downtime Calendar authority is unavailable.</value></data>
+  <data name="{0} · saved revision {1} · exact SR5 runtime/source/content" xml:space="preserve"><value>{0} · saved revision {1} · exact SR5 runtime/source/content</value></data>
+  <data name="Applied receipt {0}… at revision {1}." xml:space="preserve"><value>Applied receipt {0}… at revision {1}.</value></data>
+  <data name="The durable review no longer matches the exact runner snapshot." xml:space="preserve"><value>The durable review no longer matches the exact runner snapshot.</value></data>
+  <data name="Reviewed preview restored. Confirm it again before saving." xml:space="preserve"><value>Reviewed preview restored. Confirm it again before saving.</value></data>
+  <data name="Interrupted save proven not applied. Confirm again." xml:space="preserve"><value>Interrupted save proven not applied. Confirm again.</value></data>
+  <data name="The unchanged runner no longer matches the reviewed precondition." xml:space="preserve"><value>The unchanged runner no longer matches the reviewed precondition.</value></data>
+  <data name="Interrupted save verified from its exact postcondition and receipt." xml:space="preserve"><value>Interrupted save verified from its exact postcondition and receipt.</value></data>
+  <data name="Runner revision moved outside the one-step Calendar CAS boundary." xml:space="preserve"><value>Runner revision moved outside the one-step Calendar CAS boundary.</value></data>
+  <data name="The saved runner changed. Reopen Downtime before reviewing." xml:space="preserve"><value>The saved runner changed. Reopen Downtime before reviewing.</value></data>
+  <data name="Resolve the interrupted Calendar save first." xml:space="preserve"><value>Resolve the interrupted Calendar save first.</value></data>
+  <data name="Choose an exact saved week." xml:space="preserve"><value>Choose an exact saved week.</value></data>
+  <data name="Preview unavailable" xml:space="preserve"><value>Preview unavailable</value></data>
+  <data name="Exact preview is durable. Confirmation is still required." xml:space="preserve"><value>Exact preview is durable. Confirmation is still required.</value></data>
+  <data name="The saved runner changed. Reopen Downtime before confirming." xml:space="preserve"><value>The saved runner changed. Reopen Downtime before confirming.</value></data>
+  <data name="Confirm Calendar change" xml:space="preserve"><value>Confirm Calendar change</value></data>
+  <data name="{0} This exact preview will be the only allowed save." xml:space="preserve"><value>{0} This exact preview will be the only allowed save.</value></data>
+  <data name="Confirm" xml:space="preserve"><value>Confirm</value></data>
+  <data name="Preview confirmed for this foreground session." xml:space="preserve"><value>Preview confirmed for this foreground session.</value></data>
+  <data name="Review and explicitly confirm the exact preview first." xml:space="preserve"><value>Review and explicitly confirm the exact preview first.</value></data>
+  <data name="The saved runner changed before Applying. Reopen Downtime." xml:space="preserve"><value>The saved runner changed before Applying. Reopen Downtime.</value></data>
+  <data name="Calendar save was interrupted after durable Applying." xml:space="preserve"><value>Calendar save was interrupted after durable Applying.</value></data>
+  <data name="The saved runner could not be projected after Calendar apply." xml:space="preserve"><value>The saved runner could not be projected after Calendar apply.</value></data>
+  <data name="Saved with verified receipt {0}…" xml:space="preserve"><value>Saved with verified receipt {0}…</value></data>
+  <data name="Core proved no mutation. Confirm again." xml:space="preserve"><value>Core proved no mutation. Confirm again.</value></data>
+  <data name="Calendar result is outside its exact expected+1 CAS/postcondition boundary." xml:space="preserve"><value>Calendar result is outside its exact expected+1 CAS/postcondition boundary.</value></data>
+  <data name="Only an exact Applied Calendar receipt can be cleared." xml:space="preserve"><value>Only an exact Applied Calendar receipt can be cleared.</value></data>
+  <data name="Applied receipt cleared. A new preview may be created." xml:space="preserve"><value>Applied receipt cleared. A new preview may be created.</value></data>
+  <data name="{0} The durable Applying journal remains locked." xml:space="preserve"><value>{0} The durable Applying journal remains locked.</value></data>
+  <data name="{0}&#xA;Operation: {1}&#xA;Week: {2}&#xA;Preview: {3}…" xml:space="preserve"><value>{0}
+Operation: {1}
+Week: {2}
+Preview: {3}…</value></data>
+</root>

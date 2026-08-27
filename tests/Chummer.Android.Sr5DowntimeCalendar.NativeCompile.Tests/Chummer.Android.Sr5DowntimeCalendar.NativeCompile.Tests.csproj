@@ -14,6 +14,8 @@
     <Compile Include="NativeCompileStubs.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5DowntimeCalendarPhoneModel.cs" Link="Native/Sr5DowntimeCalendarPhoneModel.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerMutationOwnerStore.cs" Link="Native/Sr5CareerMutationOwnerStore.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerFlowStrings.cs" Link="Native/Sr5CareerFlowStrings.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/PhoneStrings.cs" Link="Native/PhoneStrings.cs" />
     <Compile Include="../../src/Chummer.Android/Native/RunnerSessionSr5DowntimeCalendarAuthority.cs" Link="Native/RunnerSessionSr5DowntimeCalendarAuthority.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5DowntimeCalendarWizardPage.cs" Link="Native/Sr5DowntimeCalendarWizardPage.cs" />
     <Compile Include="../../src/Chummer.Android/Native/PhoneShellPages.cs" Link="Native/PhoneShellPages.cs" />

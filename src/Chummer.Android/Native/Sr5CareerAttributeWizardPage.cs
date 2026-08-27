@@ -1,6 +1,7 @@
 using System.Globalization;
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
+using static Chummer.Android.Native.Sr5CareerFlowStrings;
 
 namespace Chummer.Android.Native;
 
@@ -88,11 +89,11 @@ public sealed class Sr5CareerAttributeWizardPage : NativePageBase
             || coordinator.State.ContentRevision != editor.ContentRevision)
         {
             throw new InvalidOperationException(
-                "The SR5 Attribute route requires the current exact runner revision.");
+                Text("The SR5 Attribute route requires the current exact runner revision."));
         }
 
         _selected = editor.Attributes.FirstOrDefault();
-        Title = "Advance attribute";
+        Title = Text("Advance attribute");
         AutomationId = Sr5CareerWizardRoutes.AttributeChoose;
 
         VerticalStackLayout body = new()
@@ -100,17 +101,17 @@ public sealed class Sr5CareerAttributeWizardPage : NativePageBase
             Padding = new Thickness(20, 18, 20, 40),
             Spacing = 14
         };
-        body.Add(NativeTheme.Eyebrow("SR5 Career · 1 of 3"));
-        body.Add(NativeTheme.Title("Choose an attribute"));
+        body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 1 of 3")));
+        body.Add(NativeTheme.Title(Text("Choose an attribute")));
         body.Add(NativeTheme.Body(
-            "Only exact attributes projected from this saved SR5 revision are shown. Core owns identity, natural maximum, special-attribute eligibility, Burned Edge repair, Karma cost and expense semantics.",
+            Text("Only exact attributes projected from this saved SR5 revision are shown. Core owns identity, natural maximum, special-attribute eligibility, Burned Edge repair, Karma cost and expense semantics."),
             NativeTheme.Muted));
 
-        body.Add(NativeTheme.FieldLabel("Attribute"));
+        body.Add(NativeTheme.FieldLabel(Text("Attribute")));
         _attributes = new Picker
         {
             AutomationId = "sr5-career-attribute-picker",
-            Title = "Saved attribute",
+            Title = Text("Saved attribute"),
             ItemsSource = editor.Attributes.Select(AttributeLabel).ToArray(),
             SelectedIndex = editor.Attributes.Count > 0 ? 0 : -1,
             BackgroundColor = NativeTheme.Surface,
@@ -135,26 +136,28 @@ public sealed class Sr5CareerAttributeWizardPage : NativePageBase
         if (editor.OmittedAttributeCount > 0 || editor.OmittedReceiptCount > 0)
         {
             Label omitted = NativeTheme.Body(
-                $"{editor.OmittedAttributeCount.ToString(CultureInfo.InvariantCulture)} attribute quote(s) and "
-                + $"{editor.OmittedReceiptCount.ToString(CultureInfo.InvariantCulture)} receipt(s) were omitted because exact authority could not be reproduced.",
+                Format(
+                    "{0} attribute quote(s) and {1} receipt(s) were omitted because exact authority could not be reproduced.",
+                    editor.OmittedAttributeCount.ToString(CultureInfo.InvariantCulture),
+                    editor.OmittedReceiptCount.ToString(CultureInfo.InvariantCulture)),
                 NativeTheme.Danger);
             omitted.AutomationId = "sr5-career-attribute-omitted";
             body.Add(NativeTheme.Card(omitted));
         }
 
-        _review = NativeTheme.PrimaryButton("Review exact advancement");
+        _review = NativeTheme.PrimaryButton(Text("Review exact advancement"));
         _review.AutomationId = "sr5-career-attribute-review";
         _review.Clicked += async (_, _) => await RunAsync(OpenReviewAsync);
         body.Add(_review);
-        _resume = NativeTheme.SecondaryButton("Resume reviewed advancement");
+        _resume = NativeTheme.SecondaryButton(Text("Resume reviewed advancement"));
         _resume.AutomationId = "sr5-career-attribute-resume";
         _resume.Clicked += async (_, _) => await RunAsync(ResumeReviewAsync);
         body.Add(_resume);
-        _resolve = NativeTheme.PrimaryButton("Resolve interrupted apply");
+        _resolve = NativeTheme.PrimaryButton(Text("Resolve interrupted apply"));
         _resolve.AutomationId = "sr5-career-attribute-resolve-outcome";
         _resolve.Clicked += async (_, _) => await RunAsync(ResolveCheckpointAsync);
         body.Add(_resolve);
-        _abandon = NativeTheme.SecondaryButton("Abandon reviewed draft");
+        _abandon = NativeTheme.SecondaryButton(Text("Abandon reviewed draft"));
         _abandon.AutomationId = "sr5-career-attribute-abandon-reviewed";
         _abandon.Clicked += async (_, _) => await RunAsync(AbandonReviewedAsync);
         body.Add(_abandon);
@@ -185,18 +188,28 @@ public sealed class Sr5CareerAttributeWizardPage : NativePageBase
         }
         catch (Exception exception)
         {
-            await DisplayAlertAsync("Attribute recovery unavailable", exception.Message, "OK");
+            await DisplayAlertAsync(
+                Text("Attribute recovery unavailable"),
+                exception.Message,
+                Text("OK"));
         }
     }
 
     protected override void Refresh() => RefreshEnabledState();
 
     private static string AttributeLabel(CharacterCareerAttributeAdvanceQuote attribute)
-        => $"{attribute.DisplayName} · {attribute.EffectiveValue.ToString(CultureInfo.InvariantCulture)} → "
-            + $"{attribute.TargetValue.ToString(CultureInfo.InvariantCulture)} · "
-            + (attribute.KarmaCost >= 0
-                ? $"{attribute.KarmaCost.ToString(CultureInfo.InvariantCulture)} Karma"
-                : "blocked");
+        => attribute.KarmaCost >= 0
+            ? Format(
+                "{0} · {1} → {2} · {3} Karma",
+                attribute.DisplayName,
+                attribute.EffectiveValue.ToString(CultureInfo.InvariantCulture),
+                attribute.TargetValue.ToString(CultureInfo.InvariantCulture),
+                attribute.KarmaCost.ToString(CultureInfo.InvariantCulture))
+            : Format(
+                "{0} · {1} → {2} · blocked",
+                attribute.DisplayName,
+                attribute.EffectiveValue.ToString(CultureInfo.InvariantCulture),
+                attribute.TargetValue.ToString(CultureInfo.InvariantCulture));
 
     private void SelectAttribute()
     {
@@ -221,22 +234,27 @@ public sealed class Sr5CareerAttributeWizardPage : NativePageBase
             && _checkpointAuthority.OwnsReviewed(_checkpoint);
         _attributes.IsEnabled = revisionMatches && _checkpoint is null && _editor.Attributes.Count > 0;
         _rating.Text = _selected is null
-            ? "No exact attribute quote is available."
-            : $"Current {_selected.EffectiveValue.ToString(CultureInfo.InvariantCulture)} · "
-                + $"after {_selected.TargetValue.ToString(CultureInfo.InvariantCulture)} · "
-                + $"natural maximum {_selected.NaturalMaximum.ToString(CultureInfo.InvariantCulture)}"
-                + (_selected.RepairsBurnedEdge ? " · repairs one Burned Edge point" : string.Empty);
+            ? Text("No exact attribute quote is available.")
+            : Format(
+                _selected.RepairsBurnedEdge
+                    ? "Current {0} · after {1} · natural maximum {2} · repairs one Burned Edge point"
+                    : "Current {0} · after {1} · natural maximum {2}",
+                _selected.EffectiveValue.ToString(CultureInfo.InvariantCulture),
+                _selected.TargetValue.ToString(CultureInfo.InvariantCulture),
+                _selected.NaturalMaximum.ToString(CultureInfo.InvariantCulture));
         _cost.Text = _selected is null
             ? string.Empty
-            : $"Cost {_selected.KarmaCost.ToString(CultureInfo.InvariantCulture)} Karma · "
-                + $"available {_selected.AvailableKarma.ToString(CultureInfo.InvariantCulture)} · "
-                + $"after {(_selected.AvailableKarma - Math.Max(0, _selected.KarmaCost)).ToString(CultureInfo.InvariantCulture)}";
+            : Format(
+                "Cost {0} Karma · available {1} · after {2}",
+                _selected.KarmaCost.ToString(CultureInfo.InvariantCulture),
+                _selected.AvailableKarma.ToString(CultureInfo.InvariantCulture),
+                (_selected.AvailableKarma - Math.Max(0, _selected.KarmaCost)).ToString(CultureInfo.InvariantCulture));
         _blocker.Text = !sr5
-            ? "This action is available only to a created SR5 runner."
+            ? Text("This action is available only to a created SR5 runner.")
             : !revisionMatches
-                ? "This runner changed. Reopen attribute advancement."
+                ? Text("This runner changed. Reopen attribute advancement.")
                 : _selected is null
-                    ? "No exact attribute projection is available."
+                    ? Text("No exact attribute projection is available.")
                     : Sr5CareerAttributeDraft.BlockerText(_selected.Blocker);
         _review.IsEnabled = revisionMatches
             && _checkpoint is null
@@ -266,12 +284,15 @@ public sealed class Sr5CareerAttributeWizardPage : NativePageBase
                 out Sr5CareerAttributeDraft draft,
                 out string blocker))
         {
-            await DisplayAlertAsync("Cannot review", blocker, "OK");
+            await DisplayAlertAsync(Text("Cannot review"), blocker, Text("OK"));
             return;
         }
         if (!draft.Matches(Coordinator.State.WorkspaceId, Coordinator.State.ContentRevision))
         {
-            await DisplayAlertAsync("Runner changed", "Reopen attribute advancement.", "OK");
+            await DisplayAlertAsync(
+                Text("Runner changed"),
+                Text("Reopen attribute advancement."),
+                Text("OK"));
             return;
         }
 
@@ -281,7 +302,7 @@ public sealed class Sr5CareerAttributeWizardPage : NativePageBase
                 out Sr5CareerAttributeCheckpoint stored,
                 out blocker))
         {
-            await DisplayAlertAsync("Review not checkpointed", blocker, "OK");
+            await DisplayAlertAsync(Text("Review not checkpointed"), blocker, Text("OK"));
             return;
         }
         _checkpoint = stored;
@@ -306,9 +327,9 @@ public sealed class Sr5CareerAttributeWizardPage : NativePageBase
                 Coordinator.State.ContentRevision))
         {
             await DisplayAlertAsync(
-                "Draft cannot resume",
-                "The saved review no longer owns this exact runner revision.",
-                "OK");
+                Text("Draft cannot resume"),
+                Text("The saved review no longer owns this exact runner revision."),
+                Text("OK"));
             return;
         }
         await Navigation.PushAsync(new Sr5CareerAttributeReviewPage(
@@ -327,7 +348,7 @@ public sealed class Sr5CareerAttributeWizardPage : NativePageBase
                 or Sr5CareerCheckpointPhase.Applied)
             || !_checkpointAuthority.OwnsCurrentRunner(_checkpoint))
         {
-            _recovery.Text = "This recovery lock belongs to another owner or SR5 runner context.";
+            _recovery.Text = Text("This recovery lock belongs to another owner or SR5 runner context.");
             _recovery.TextColor = NativeTheme.Danger;
             return;
         }
@@ -357,7 +378,7 @@ public sealed class Sr5CareerAttributeWizardPage : NativePageBase
         if (resolution.Status == Sr5CareerAttributeRecoveryStatus.AppliedVerified
             && resolution.Receipt is { } receipt)
         {
-            _recovery.Text = "The interrupted attribute apply was verified from the saved receipt ledger.";
+            _recovery.Text = Text("The interrupted attribute apply was verified from the saved receipt ledger.");
             _recovery.TextColor = NativeTheme.Muted;
             await Navigation.PushAsync(new Sr5CareerAttributeReceiptPage(
                 Coordinator,
@@ -369,7 +390,7 @@ public sealed class Sr5CareerAttributeWizardPage : NativePageBase
         }
 
         LoadRecoveryCheckpoint();
-        _recovery.Text = "Fresh typed projections prove the action was not saved. The reviewed draft may be resumed.";
+        _recovery.Text = Text("Fresh typed projections prove the action was not saved. The reviewed draft may be resumed.");
         _recovery.TextColor = NativeTheme.Muted;
     }
 
@@ -378,16 +399,16 @@ public sealed class Sr5CareerAttributeWizardPage : NativePageBase
         if (_checkpoint is null || !_checkpointAuthority.OwnsReviewed(_checkpoint))
         {
             await DisplayAlertAsync(
-                "Cannot abandon",
-                "Only the current owner and exact runner revision may abandon this review.",
-                "OK");
+                Text("Cannot abandon"),
+                Text("Only the current owner and exact runner revision may abandon this review."),
+                Text("OK"));
             return;
         }
         bool confirmed = await DisplayAlertAsync(
-            "Abandon reviewed attribute?",
-            "This removes only the durable review checkpoint and does not change the runner.",
-            "Abandon",
-            "Keep");
+            Text("Abandon reviewed attribute?"),
+            Text("This removes only the durable review checkpoint and does not change the runner."),
+            Text("Abandon"),
+            Text("Keep"));
         if (!confirmed)
         {
             return;
@@ -396,7 +417,7 @@ public sealed class Sr5CareerAttributeWizardPage : NativePageBase
                 Sr5CareerAttributeCheckpointCas.From(_checkpoint),
                 out string blocker))
         {
-            await DisplayAlertAsync("Checkpoint not deleted", blocker, "OK");
+            await DisplayAlertAsync(Text("Checkpoint not deleted"), blocker, Text("OK"));
             return;
         }
         _checkpoint = null;
@@ -425,13 +446,13 @@ public sealed class Sr5CareerAttributeWizardPage : NativePageBase
                     out _)
                 || !_checkpointAuthority.OwnsReviewed(checkpoint))
             {
-                _recovery.Text = "A saved attribute review is not authorized for this owner and runner revision.";
+                _recovery.Text = Text("A saved attribute review is not authorized for this owner and runner revision.");
                 _recovery.TextColor = NativeTheme.Danger;
                 return;
             }
             _checkpoint = checkpoint;
             _recoveryDraft = draft;
-            _recovery.Text = "A durable reviewed attribute advancement can be resumed.";
+            _recovery.Text = Text("A durable reviewed attribute advancement can be resumed.");
             _recovery.TextColor = NativeTheme.Muted;
             int index = _editor.Attributes
                 .Select((candidate, candidateIndex) => (candidate, candidateIndex))
@@ -442,14 +463,14 @@ public sealed class Sr5CareerAttributeWizardPage : NativePageBase
         }
         if (!_checkpointAuthority.OwnsCurrentRunner(checkpoint))
         {
-            _recovery.Text = "A saved attribute apply lock is not authorized for this owner and SR5 runner.";
+            _recovery.Text = Text("A saved attribute apply lock is not authorized for this owner and SR5 runner.");
             _recovery.TextColor = NativeTheme.Danger;
             return;
         }
         _checkpoint = checkpoint;
         _recovery.Text = checkpoint.Phase == Sr5CareerCheckpointPhase.Applying
-            ? "An interrupted apply is locked and will be resolved without replay."
-            : "A verified saved attribute receipt is awaiting acknowledgement.";
+            ? Text("An interrupted apply is locked and will be resolved without replay.")
+            : Text("A verified saved attribute receipt is awaiting acknowledgement.");
         _recovery.TextColor = NativeTheme.Muted;
     }
 }
@@ -487,41 +508,41 @@ public sealed class Sr5CareerAttributeReviewPage : NativePageBase
             || !_checkpointAuthority.OwnsReviewed(_checkpoint))
         {
             throw new InvalidOperationException(
-                "The attribute preview does not own its durable review checkpoint.");
+                Text("The attribute preview does not own its durable review checkpoint."));
         }
 
-        Title = "Review attribute";
+        Title = Text("Review attribute");
         AutomationId = Sr5CareerWizardRoutes.AttributeReview;
         VerticalStackLayout body = new()
         {
             Padding = new Thickness(20, 18, 20, 40),
             Spacing = 14
         };
-        body.Add(NativeTheme.Eyebrow("SR5 Career · 2 of 3"));
-        body.Add(NativeTheme.Title("Review exact diff"));
+        body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 2 of 3")));
+        body.Add(NativeTheme.Title(Text("Review exact diff")));
         VerticalStackLayout diff = new() { Spacing = 8 };
-        diff.Add(NativeTheme.Metric("Attribute", _draft.Quote.DisplayName));
+        diff.Add(NativeTheme.Metric(Text("Attribute"), _draft.Quote.DisplayName));
         diff.Add(NativeTheme.Metric(
-            "Value",
+            Text("Value"),
             $"{_draft.Quote.EffectiveValue} → {_draft.Quote.TargetValue}"));
         diff.Add(NativeTheme.Metric(
-            "Attribute Karma points",
+            Text("Attribute Karma points"),
             $"{_draft.Quote.KarmaPoints} → {_draft.Plan.SavedAttributeKarmaPoints}"));
         diff.Add(NativeTheme.Metric(
-            "Runner Karma",
+            Text("Runner Karma"),
             $"{_draft.Quote.AvailableKarma} → {_draft.Plan.SavedCharacterKarma}"));
         diff.Add(NativeTheme.Metric(
-            "Burned Edge",
+            Text("Burned Edge"),
             $"{_draft.Quote.BurnedEdgePoints} → {_draft.Plan.SavedBurnedEdgePoints}"));
-        diff.Add(NativeTheme.Metric("Natural maximum", _draft.Quote.NaturalMaximum.ToString(CultureInfo.InvariantCulture)));
-        diff.Add(NativeTheme.Metric("Expense", _draft.Plan.ExpenseReason));
-        diff.Add(NativeTheme.Metric("Expense identity", _draft.Plan.ExpenseId.ToString("D")));
-        diff.Add(NativeTheme.Metric("Date", _draft.Plan.ExpenseDateLocal.ToString("O", CultureInfo.InvariantCulture)));
-        diff.Add(NativeTheme.Metric("Undo", $"{_draft.Plan.KarmaUndoType} · {_draft.Plan.UndoObjectId}"));
+        diff.Add(NativeTheme.Metric(Text("Natural maximum"), _draft.Quote.NaturalMaximum.ToString(CultureInfo.InvariantCulture)));
+        diff.Add(NativeTheme.Metric(Text("Expense"), _draft.Plan.ExpenseReason));
+        diff.Add(NativeTheme.Metric(Text("Expense identity"), _draft.Plan.ExpenseId.ToString("D")));
+        diff.Add(NativeTheme.Metric(Text("Date"), _draft.Plan.ExpenseDateLocal.ToString("O", CultureInfo.InvariantCulture)));
+        diff.Add(NativeTheme.Metric(Text("Undo"), $"{_draft.Plan.KarmaUndoType} · {_draft.Plan.UndoObjectId}"));
         body.Add(NativeTheme.Card(diff));
         _blocker = NativeTheme.Body(string.Empty, NativeTheme.Danger);
         body.Add(_blocker);
-        _apply = NativeTheme.PrimaryButton("Apply and verify once");
+        _apply = NativeTheme.PrimaryButton(Text("Apply and verify once"));
         _apply.AutomationId = "sr5-career-attribute-apply";
         _apply.Clicked += async (_, _) =>
         {
@@ -533,7 +554,7 @@ public sealed class Sr5CareerAttributeReviewPage : NativePageBase
         };
         body.Add(_apply);
         body.Add(NativeTheme.Body(
-            "The exact checkpoint moves to Applying before mutation. Success is shown only after atomic save and a fresh recoverable receipt projection match the reviewed identity, costs and digests.",
+            Text("The exact checkpoint moves to Applying before mutation. Success is shown only after atomic save and a fresh recoverable receipt projection match the reviewed identity, costs and digests."),
             NativeTheme.Muted));
         Content = new ScrollView { Content = body };
         RefreshEnabledState();
@@ -551,9 +572,9 @@ public sealed class Sr5CareerAttributeReviewPage : NativePageBase
         bool attempted = Volatile.Read(ref _attempted) != 0;
         _apply.IsEnabled = current && !attempted;
         _blocker.Text = !current
-            ? "The runner revision, owner, quote, or durable checkpoint changed. This preview cannot apply."
+            ? Text("The runner revision, owner, quote, or durable checkpoint changed. This preview cannot apply.")
             : attempted
-                ? "The one-shot apply is running or awaiting authoritative recovery."
+                ? Text("The one-shot apply is running or awaiting authoritative recovery.")
                 : string.Empty;
     }
 
@@ -563,9 +584,9 @@ public sealed class Sr5CareerAttributeReviewPage : NativePageBase
             || !_checkpointAuthority.OwnsReviewed(_checkpoint))
         {
             await DisplayAlertAsync(
-                "Apply blocked",
-                "The exact reviewed action no longer owns this runner.",
-                "OK");
+                Text("Apply blocked"),
+                Text("The exact reviewed action no longer owns this runner."),
+                Text("OK"));
             return;
         }
         if (!_store.TryBeginApply(
@@ -574,9 +595,9 @@ public sealed class Sr5CareerAttributeReviewPage : NativePageBase
                 out string blocker))
         {
             await DisplayAlertAsync(
-                "Apply blocked",
+                Text("Apply blocked"),
                 blocker,
-                "OK");
+                Text("OK"));
             return;
         }
         _checkpoint = applying;
@@ -588,9 +609,9 @@ public sealed class Sr5CareerAttributeReviewPage : NativePageBase
         if (result.Status == Sr5CareerAttributeApplyStatus.OutcomeUnknown)
         {
             await DisplayAlertAsync(
-                "Outcome unresolved",
-                $"{result.Message} The Applying checkpoint cannot be cleared or replayed.",
-                "OK");
+                Text("Outcome unresolved"),
+                Format("{0} The Applying checkpoint cannot be cleared or replayed.", result.Message),
+                Text("OK"));
             return;
         }
         if (!_store.TryRecordAuthoritativeResolution(
@@ -599,16 +620,16 @@ public sealed class Sr5CareerAttributeReviewPage : NativePageBase
                 out Sr5CareerAttributeCheckpoint resolved,
                 out blocker))
         {
-            await DisplayAlertAsync("Outcome not checkpointed", blocker, "OK");
+            await DisplayAlertAsync(Text("Outcome not checkpointed"), blocker, Text("OK"));
             return;
         }
         _checkpoint = resolved;
         if (result.Status == Sr5CareerAttributeApplyStatus.RejectedBeforeMutation)
         {
             await DisplayAlertAsync(
-                "Not applied",
-                "Fresh typed projections prove no attribute or receipt mutation was saved. Return and resume the review before retrying.",
-                "OK");
+                Text("Not applied"),
+                Text("Fresh typed projections prove no attribute or receipt mutation was saved. Return and resume the review before retrying."),
+                Text("OK"));
             return;
         }
 
@@ -646,35 +667,40 @@ public sealed class Sr5CareerAttributeReceiptPage : NativePageBase
             || !_checkpointAuthority.OwnsCurrentRunner(checkpoint))
         {
             throw new InvalidOperationException(
-                "The typed attribute receipt does not own the resolved checkpoint.");
+                Text("The typed attribute receipt does not own the resolved checkpoint."));
         }
 
-        Title = "Attribute receipt";
+        Title = Text("Attribute receipt");
         AutomationId = Sr5CareerWizardRoutes.AttributeReceipt;
         VerticalStackLayout body = new()
         {
             Padding = new Thickness(20, 18, 20, 40),
             Spacing = 14
         };
-        body.Add(NativeTheme.Eyebrow("SR5 Career · 3 of 3"));
-        body.Add(NativeTheme.Title("Verified saved advancement"));
+        body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 3 of 3")));
+        body.Add(NativeTheme.Title(Text("Verified saved advancement")));
         VerticalStackLayout details = new() { Spacing = 8 };
-        details.Add(NativeTheme.Metric("Attribute", receipt.Identity.Abbreviation));
-        details.Add(NativeTheme.Metric("Attribute Karma", $"{receipt.AttributeKarmaBefore} → {receipt.AttributeKarmaAfter}"));
-        details.Add(NativeTheme.Metric("Runner Karma", $"{receipt.CharacterKarmaBefore} → {receipt.CharacterKarmaAfter}"));
-        details.Add(NativeTheme.Metric("Burned Edge", $"{receipt.BurnedEdgePointsBefore} → {receipt.BurnedEdgePointsAfter}"));
-        details.Add(NativeTheme.Metric("Expense", receipt.ExpenseAmount.ToString(CultureInfo.InvariantCulture)));
-        details.Add(NativeTheme.Metric("Transaction", receipt.TransactionId.ToString("D")));
+        details.Add(NativeTheme.Metric(Text("Attribute"), receipt.Identity.Abbreviation));
+        details.Add(NativeTheme.Metric(Text("Attribute Karma"), $"{receipt.AttributeKarmaBefore} → {receipt.AttributeKarmaAfter}"));
+        details.Add(NativeTheme.Metric(Text("Runner Karma"), $"{receipt.CharacterKarmaBefore} → {receipt.CharacterKarmaAfter}"));
+        details.Add(NativeTheme.Metric(Text("Burned Edge"), $"{receipt.BurnedEdgePointsBefore} → {receipt.BurnedEdgePointsAfter}"));
+        details.Add(NativeTheme.Metric(Text("Expense"), receipt.ExpenseAmount.ToString(CultureInfo.InvariantCulture)));
+        details.Add(NativeTheme.Metric(Text("Transaction"), receipt.TransactionId.ToString("D")));
         details.Add(NativeTheme.Metric(
-            "Saved revision",
+            Text("Saved revision"),
             checked(checkpoint.Draft.ExpectedContentRevision + 1).ToString(CultureInfo.InvariantCulture)));
         body.Add(NativeTheme.Card(details));
         _durability = NativeTheme.Body(string.Empty, NativeTheme.Muted);
         body.Add(_durability);
         body.Add(NativeTheme.Body(
-            $"receipt {receipt.ReceiptDigest} · reviewed source {receipt.SourceRevision} · rule {receipt.RuleDigest} · owner {checkpoint.Draft.OwnerId:D}",
+            Format(
+                "receipt {0} · reviewed source {1} · rule {2} · owner {3}",
+                receipt.ReceiptDigest,
+                receipt.SourceRevision,
+                receipt.RuleDigest,
+                checkpoint.Draft.OwnerId.ToString("D")),
             NativeTheme.Muted));
-        Button acknowledge = NativeTheme.PrimaryButton("Acknowledge receipt");
+        Button acknowledge = NativeTheme.PrimaryButton(Text("Acknowledge receipt"));
         acknowledge.AutomationId = "sr5-career-attribute-receipt-acknowledge";
         acknowledge.Clicked += async (_, _) => await RunAsync(async () =>
         {
@@ -683,7 +709,7 @@ public sealed class Sr5CareerAttributeReceiptPage : NativePageBase
                     _receipt,
                     out string blocker))
             {
-                await DisplayAlertAsync("Receipt remains pending", blocker, "OK");
+                await DisplayAlertAsync(Text("Receipt remains pending"), blocker, Text("OK"));
                 return;
             }
             await Navigation.PopToRootAsync();
@@ -701,8 +727,8 @@ public sealed class Sr5CareerAttributeReceiptPage : NativePageBase
             && Coordinator.State.SavedRevision == savedRevision
             && !Coordinator.State.IsDirty;
         _durability.Text = stillExact
-            ? "The receipt was recovered from the exact clean saved revision."
-            : "The runner moved past this receipt; it remains bound to its earlier saved revision.";
+            ? Text("The receipt was recovered from the exact clean saved revision.")
+            : Text("The runner moved past this receipt; it remains bound to its earlier saved revision.");
         _durability.TextColor = stillExact ? NativeTheme.Muted : NativeTheme.Danger;
     }
 }

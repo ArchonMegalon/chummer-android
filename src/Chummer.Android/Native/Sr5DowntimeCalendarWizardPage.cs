@@ -1,6 +1,7 @@
 using System.Globalization;
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
+using static Chummer.Android.Native.Sr5CareerFlowStrings;
 
 namespace Chummer.Android.Native;
 
@@ -42,33 +43,33 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
     {
         _authority = authority ?? throw new ArgumentNullException(nameof(authority));
         _journalStore = journalStore ?? throw new ArgumentNullException(nameof(journalStore));
-        Title = "Downtime calendar";
+        Title = Text("Downtime calendar");
         AutomationId = "sr5-downtime-calendar-page";
         VerticalStackLayout body = new() { Padding = new Thickness(20, 18, 20, 40), Spacing = 14 };
-        body.Add(NativeTheme.Eyebrow("SR5 Table · Downtime"));
-        body.Add(NativeTheme.Title("Plan one calendar change"));
+        body.Add(NativeTheme.Eyebrow(Text("SR5 Table · Downtime")));
+        body.Add(NativeTheme.Title(Text("Plan one calendar change")));
         body.Add(NativeTheme.Body(
-            "Review a deterministic Core-owned Calendar change, confirm it, then save once. Restart never preserves confirmation.",
+            Text("Review a deterministic Core-owned Calendar change, confirm it, then save once. Restart never preserves confirmation."),
             NativeTheme.Muted));
-        _binding = NativeTheme.Body("Loading exact runner authority…", NativeTheme.Muted);
+        _binding = NativeTheme.Body(Text("Loading exact runner authority…"), NativeTheme.Muted);
         _binding.AutomationId = "sr5-downtime-calendar-binding";
         body.Add(NativeTheme.Card(_binding));
         _operation = new Picker
         {
-            AutomationId = "sr5-downtime-calendar-operation", Title = "Calendar action",
-            ItemsSource = new[] { "Add next week", "Edit week", "Delete week" }, SelectedIndex = 0,
+            AutomationId = "sr5-downtime-calendar-operation", Title = Text("Calendar action"),
+            ItemsSource = new[] { Text("Add next week"), Text("Edit week"), Text("Delete week") }, SelectedIndex = 0,
             BackgroundColor = NativeTheme.Surface, TextColor = NativeTheme.Text
         };
         _operation.SelectedIndexChanged += (_, _) => RefreshEnabledState();
-        body.Add(NativeTheme.FieldLabel("Action"));
+        body.Add(NativeTheme.FieldLabel(Text("Action")));
         body.Add(_operation);
         _weekPicker = new Picker
         {
-            AutomationId = "sr5-downtime-calendar-week", Title = "Exact saved week",
+            AutomationId = "sr5-downtime-calendar-week", Title = Text("Exact saved week"),
             BackgroundColor = NativeTheme.Surface, TextColor = NativeTheme.Text
         };
         _weekPicker.SelectedIndexChanged += (_, _) => SelectWeek();
-        body.Add(NativeTheme.FieldLabel("Saved week"));
+        body.Add(NativeTheme.FieldLabel(Text("Saved week")));
         body.Add(_weekPicker);
         _year = new Entry
         {
@@ -83,12 +84,12 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
             AutomationId = "sr5-downtime-calendar-iso-week", Keyboard = Keyboard.Numeric, MaxLength = 2,
             BackgroundColor = NativeTheme.Surface, TextColor = NativeTheme.Text, Text = "1"
         };
-        body.Add(NativeTheme.FieldLabel("First year (empty calendar only)"));
+        body.Add(NativeTheme.FieldLabel(Text("First year (empty calendar only)")));
         body.Add(_year);
-        body.Add(NativeTheme.FieldLabel("First ISO week"));
+        body.Add(NativeTheme.FieldLabel(Text("First ISO week")));
         body.Add(_week);
-        _notes = NativeTheme.TextArea("sr5-downtime-calendar-notes", "Exact week notes", "Downtime notes");
-        body.Add(NativeTheme.FieldLabel("Notes (edit only)"));
+        _notes = NativeTheme.TextArea("sr5-downtime-calendar-notes", Text("Exact week notes"), Text("Downtime notes"));
+        body.Add(NativeTheme.FieldLabel(Text("Notes (edit only)")));
         body.Add(_notes);
         _notesColor = new Entry
         {
@@ -96,20 +97,20 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
             BackgroundColor = NativeTheme.Surface, TextColor = NativeTheme.Text,
             Text = CharacterCareerCalendarRules.DefaultNotesColor
         };
-        body.Add(NativeTheme.FieldLabel("Notes color (edit only)"));
+        body.Add(NativeTheme.FieldLabel(Text("Notes color (edit only)")));
         body.Add(_notesColor);
-        _review = NativeTheme.PrimaryButton("Create exact preview");
+        _review = NativeTheme.PrimaryButton(Text("Create exact preview"));
         _review.AutomationId = "sr5-downtime-calendar-review";
         _review.Clicked += async (_, _) => await RunAsync(ReviewAsync);
         body.Add(_review);
-        _preview = NativeTheme.Body("No reviewed change.", NativeTheme.Muted);
+        _preview = NativeTheme.Body(Text("No reviewed change."), NativeTheme.Muted);
         _preview.AutomationId = "sr5-downtime-calendar-preview";
         body.Add(NativeTheme.Card(_preview));
-        _confirm = NativeTheme.SecondaryButton("Confirm reviewed preview");
+        _confirm = NativeTheme.SecondaryButton(Text("Confirm reviewed preview"));
         _confirm.AutomationId = "sr5-downtime-calendar-confirm";
         _confirm.Clicked += async (_, _) => await RunAsync(ConfirmAsync);
         body.Add(_confirm);
-        _apply = NativeTheme.PrimaryButton("Save confirmed change");
+        _apply = NativeTheme.PrimaryButton(Text("Save confirmed change"));
         _apply.AutomationId = "sr5-downtime-calendar-apply";
         _apply.Clicked += async (_, _) => await RunAsync(ApplyAsync);
         body.Add(_apply);
@@ -122,7 +123,7 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
         _receiptStatus = NativeTheme.Body(string.Empty, NativeTheme.Success);
         _receiptStatus.AutomationId = "sr5-downtime-calendar-receipt";
         body.Add(NativeTheme.Card(_receiptStatus));
-        _clear = NativeTheme.SecondaryButton("Start another calendar change");
+        _clear = NativeTheme.SecondaryButton(Text("Start another calendar change"));
         _clear.AutomationId = "sr5-downtime-calendar-clear-applied";
         _clear.Clicked += async (_, _) => await RunAsync(ClearAppliedAsync);
         body.Add(_clear);
@@ -151,11 +152,14 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
         _load = await _authority.LoadAsync();
         if (!_load.IsReady)
         {
-            _binding.Text = _load.Blocker ?? "Exact Downtime Calendar authority is unavailable.";
+            _binding.Text = _load.Blocker ?? Text("Exact Downtime Calendar authority is unavailable.");
             _binding.TextColor = NativeTheme.Danger;
             return;
         }
-        _binding.Text = $"{_load.Binding!.WorkspaceId} · saved revision {_load.Binding.WorkspaceRevision.ToString(CultureInfo.InvariantCulture)} · exact SR5 runtime/source/content";
+        _binding.Text = Format(
+            "{0} · saved revision {1} · exact SR5 runtime/source/content",
+            _load.Binding!.WorkspaceId,
+            _load.Binding.WorkspaceRevision.ToString(CultureInfo.InvariantCulture));
         _binding.TextColor = NativeTheme.Text;
         PopulateWeeks(_load.Editor!);
         if (!_journalStore.TryRead(out _journal, out string readBlocker))
@@ -173,7 +177,10 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
         if (_load is not { IsReady: true }) return;
         if (journal.Phase == Sr5DowntimeCalendarJournalPhase.Applied)
         {
-            _status.Text = $"Applied receipt {journal.Receipt!.ReceiptDigest[..19]}… at revision {journal.Receipt.AppliedWorkspaceRevision}.";
+            _status.Text = Format(
+                "Applied receipt {0}… at revision {1}.",
+                journal.Receipt!.ReceiptDigest[..19],
+                journal.Receipt.AppliedWorkspaceRevision);
             _status.TextColor = NativeTheme.Success;
             _receiptStatus.Text = _status.Text;
             return;
@@ -183,10 +190,10 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
             _session = new Sr5DowntimeCalendarDesktopSession();
             if (!_session.Bind(_load.Binding!, _load.Editor!, journal.Review).Resume.Restored)
             {
-                MarkOutcomeUnknown("The durable review no longer matches the exact runner snapshot.");
+                MarkOutcomeUnknown(Text("The durable review no longer matches the exact runner snapshot."));
                 return;
             }
-            _status.Text = "Reviewed preview restored. Confirm it again before saving.";
+            _status.Text = Text("Reviewed preview restored. Confirm it again before saving.");
             return;
         }
         long current = _load.Binding!.WorkspaceRevision;
@@ -198,11 +205,11 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
                 && _journalStore.TryReturnToReview(journal, out _journal, out blocker))
             {
                 _session = candidate;
-                _status.Text = "Interrupted save proven not applied. Confirm again.";
+                _status.Text = Text("Interrupted save proven not applied. Confirm again.");
                 return;
             }
             MarkOutcomeUnknown(string.IsNullOrWhiteSpace(blocker)
-                ? "The unchanged runner no longer matches the reviewed precondition." : blocker);
+                ? Text("The unchanged runner no longer matches the reviewed precondition.") : blocker);
             return;
         }
         if (current == journal.Review.WorkspaceRevision + 1)
@@ -213,7 +220,7 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
                     journal, _load.Binding, _load.Editor!);
                 if (_journalStore.TryComplete(journal, receipt, out _journal, out string blocker))
                 {
-                    _status.Text = "Interrupted save verified from its exact postcondition and receipt.";
+                    _status.Text = Text("Interrupted save verified from its exact postcondition and receipt.");
                     _status.TextColor = NativeTheme.Success;
                     return;
                 }
@@ -222,7 +229,7 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
             }
             catch (InvalidOperationException exception) { MarkOutcomeUnknown(exception.Message); return; }
         }
-        MarkOutcomeUnknown("Runner revision moved outside the one-step Calendar CAS boundary.");
+        MarkOutcomeUnknown(Text("Runner revision moved outside the one-step Calendar CAS boundary."));
     }
 
     private void PopulateWeeks(CareerCalendarEditorState editor)
@@ -251,9 +258,9 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
     {
         if (_session is null || _load is not { IsReady: true }) return;
         if (!CurrentBindingMatches())
-            throw new InvalidOperationException("The saved runner changed. Reopen Downtime before reviewing.");
+            throw new InvalidOperationException(Text("The saved runner changed. Reopen Downtime before reviewing."));
         if (_journal is { Phase: Sr5DowntimeCalendarJournalPhase.Applying })
-            throw new InvalidOperationException("Resolve the interrupted Calendar save first.");
+            throw new InvalidOperationException(Text("Resolve the interrupted Calendar save first."));
         bool previewed;
         string blocker;
         switch ((Sr5DowntimeCalendarOperation)_operation.SelectedIndex)
@@ -267,13 +274,13 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
             case Sr5DowntimeCalendarOperation.Delete when SelectedWeek() is { } delete:
                 previewed = _session.TryPreviewDelete(delete.Identity.WeekId, out blocker);
                 break;
-            default: previewed = false; blocker = "Choose an exact saved week."; break;
+            default: previewed = false; blocker = Text("Choose an exact saved week."); break;
         }
-        if (!previewed) { await DisplayAlertAsync("Preview unavailable", blocker, "OK"); return; }
+        if (!previewed) { await DisplayAlertAsync(Text("Preview unavailable"), blocker, Text("OK")); return; }
         if (!_journalStore.TryWriteReview(_session, _ownerId, out _journal, out blocker))
-        { await DisplayAlertAsync("Review not checkpointed", blocker, "OK"); return; }
+        { await DisplayAlertAsync(Text("Review not checkpointed"), blocker, Text("OK")); return; }
         _outcomeUnknown = false;
-        _status.Text = "Exact preview is durable. Confirmation is still required.";
+        _status.Text = Text("Exact preview is durable. Confirmation is still required.");
         _status.TextColor = NativeTheme.Muted;
     }
 
@@ -282,11 +289,13 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
         if (_session?.State.Preview is not { } preview
             || _journal is not { Phase: Sr5DowntimeCalendarJournalPhase.Review }) return;
         if (!CurrentBindingMatches())
-            throw new InvalidOperationException("The saved runner changed. Reopen Downtime before confirming.");
-        bool accepted = await DisplayAlertAsync("Confirm Calendar change",
-            preview.Summary + " This exact preview will be the only allowed save.", "Confirm", "Cancel");
+            throw new InvalidOperationException(Text("The saved runner changed. Reopen Downtime before confirming."));
+        bool accepted = await DisplayAlertAsync(Text("Confirm Calendar change"),
+            Format("{0} This exact preview will be the only allowed save.", preview.Summary),
+            Text("Confirm"),
+            Text("Cancel"));
         if (_session.TryConfirm(accepted ? preview.PreviewDigest : string.Empty))
-        { _status.Text = "Preview confirmed for this foreground session."; _status.TextColor = NativeTheme.Text; }
+        { _status.Text = Text("Preview confirmed for this foreground session."); _status.TextColor = NativeTheme.Text; }
     }
 
     private async Task ApplyAsync()
@@ -294,9 +303,9 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
         if (_session is null || !_session.State.CanApply
             || _journal is not { Phase: Sr5DowntimeCalendarJournalPhase.Review } review
             || _session.State.Preview is not { } preview)
-            throw new InvalidOperationException("Review and explicitly confirm the exact preview first.");
+            throw new InvalidOperationException(Text("Review and explicitly confirm the exact preview first."));
         if (!CurrentBindingMatches())
-            throw new InvalidOperationException("The saved runner changed before Applying. Reopen Downtime.");
+            throw new InvalidOperationException(Text("The saved runner changed before Applying. Reopen Downtime."));
         CareerCalendarAddRequest? add = preview.Operation == Sr5DowntimeCalendarOperation.Add ? _session.CreateAddRequest() : null;
         CareerCalendarEditRequest? edit = preview.Operation == Sr5DowntimeCalendarOperation.Edit ? _session.CreateEditRequest() : null;
         CareerCalendarDeleteRequest? delete = preview.Operation == Sr5DowntimeCalendarOperation.Delete ? _session.CreateDeleteRequest() : null;
@@ -316,9 +325,9 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
                 };
             }
         }
-        catch { MarkOutcomeUnknown("Calendar save was interrupted after durable Applying."); throw; }
+        catch { MarkOutcomeUnknown(Text("Calendar save was interrupted after durable Applying.")); throw; }
         _load = await _authority.LoadAsync();
-        if (!_load.IsReady) { MarkOutcomeUnknown("The saved runner could not be projected after Calendar apply."); return; }
+        if (!_load.IsReady) { MarkOutcomeUnknown(Text("The saved runner could not be projected after Calendar apply.")); return; }
         PopulateWeeks(_load.Editor!);
         if (_load.Binding!.WorkspaceRevision == review.Review.WorkspaceRevision + 1)
         {
@@ -328,7 +337,7 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
                     applying, _load.Binding, _load.Editor!);
                 if (_journalStore.TryComplete(applying, receipt, out _journal, out blocker))
                 {
-                    _status.Text = $"Saved with verified receipt {receipt.ReceiptDigest[..19]}…";
+                    _status.Text = Format("Saved with verified receipt {0}…", receipt.ReceiptDigest[..19]);
                     _receiptStatus.Text = _status.Text;
                     _status.TextColor = NativeTheme.Success; _session = null; return;
                 }
@@ -342,10 +351,10 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
             if (restoredSession.Bind(_load.Binding, _load.Editor!, review.Review).Resume.Restored
                 && _journalStore.TryReturnToReview(applying, out _journal, out blocker))
             {
-                _session = restoredSession; _status.Text = "Core proved no mutation. Confirm again."; return;
+                _session = restoredSession; _status.Text = Text("Core proved no mutation. Confirm again."); return;
             }
         }
-        MarkOutcomeUnknown("Calendar result is outside its exact expected+1 CAS/postcondition boundary.");
+        MarkOutcomeUnknown(Text("Calendar result is outside its exact expected+1 CAS/postcondition boundary."));
     }
 
     private async Task ClearAppliedAsync()
@@ -354,7 +363,7 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
         if (_journal is not { Phase: Sr5DowntimeCalendarJournalPhase.Applied } applied
             || !_journalStore.TryClearResolved(applied, out blocker))
             throw new InvalidOperationException(string.IsNullOrWhiteSpace(blocker)
-                ? "Only an exact Applied Calendar receipt can be cleared." : blocker);
+                ? Text("Only an exact Applied Calendar receipt can be cleared.") : blocker);
         _journal = null;
         _load = await _authority.LoadAsync();
         _session = null;
@@ -364,7 +373,7 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
             _session = new Sr5DowntimeCalendarDesktopSession();
             _session.Bind(_load.Binding!, _load.Editor!);
         }
-        _status.Text = "Applied receipt cleared. A new preview may be created.";
+        _status.Text = Text("Applied receipt cleared. A new preview may be created.");
         _status.TextColor = NativeTheme.Muted;
         _receiptStatus.Text = string.Empty;
     }
@@ -372,7 +381,7 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
     private void MarkOutcomeUnknown(string message)
     {
         _outcomeUnknown = true;
-        _status.Text = message + " The durable Applying journal remains locked.";
+        _status.Text = Format("{0} The durable Applying journal remains locked.", message);
         _outcomeUnknownStatus.Text = _status.Text;
         _status.TextColor = NativeTheme.Danger;
     }
@@ -391,8 +400,13 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
         _notes.IsVisible = _operation.SelectedIndex == 1; _notesColor.IsVisible = _notes.IsVisible;
         _review.IsEnabled = ready && !applying && !applied && (!targetRequired || SelectedWeek() is not null);
         Sr5DowntimeCalendarPreview? preview = _session?.State.Preview;
-        _preview.Text = preview is null ? "No reviewed change."
-            : $"{preview.Summary}\nOperation: {preview.Operation}\nWeek: {preview.WeekId:D}\nPreview: {preview.PreviewDigest[..19]}…";
+        _preview.Text = preview is null ? Text("No reviewed change.")
+            : Format(
+                "{0}\nOperation: {1}\nWeek: {2}\nPreview: {3}…",
+                preview.Summary,
+                preview.Operation,
+                preview.WeekId.ToString("D"),
+                preview.PreviewDigest[..19]);
         _confirm.IsVisible = review; _confirm.IsEnabled = ready && review && preview is not null;
         _apply.IsVisible = review; _apply.IsEnabled = ready && review && _session?.State.CanApply == true;
         _clear.IsVisible = applied; _clear.IsEnabled = applied;

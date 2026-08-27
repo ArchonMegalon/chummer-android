@@ -1,5 +1,6 @@
 using System.Globalization;
 using Chummer.Contracts.Characters;
+using static Chummer.Android.Native.Sr5CareerFlowStrings;
 
 namespace Chummer.Android.Native;
 
@@ -51,22 +52,22 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
             || coordinator.State.IsDirty)
         {
             throw new InvalidOperationException(
-                "The SR5 After Run route requires the exact current clean saved runner revision.");
+                Text("The SR5 After Run route requires the exact current clean saved runner revision."));
         }
 
         _selected = editor.Candidates.FirstOrDefault();
-        Title = "After the run";
+        Title = Text("After the run");
         AutomationId = Sr5CareerWizardRoutes.AfterRunChoose;
         VerticalStackLayout body = Body();
-        body.Add(NativeTheme.Eyebrow("SR5 Career · After Run · 1 of 7"));
-        body.Add(NativeTheme.Title("Choose the completed run"));
+        body.Add(NativeTheme.Eyebrow(Text("SR5 Career · After Run · 1 of 7")));
+        body.Add(NativeTheme.Title(Text("Choose the completed run")));
         body.Add(NativeTheme.Body(
-            "Only governed proposal, run, and character IDs are selectable. This page never invents a run from the current character file.",
+            Text("Only governed proposal, run, and character IDs are selectable. This page never invents a run from the current character file."),
             NativeTheme.Muted));
         _proposals = new Picker
         {
             AutomationId = "sr5-after-run-proposal-picker",
-            Title = "Completed run proposal",
+            Title = Text("Completed run proposal"),
             ItemsSource = editor.Candidates.Select(CandidateLabel).ToArray(),
             SelectedIndex = editor.Candidates.Count > 0 ? 0 : -1,
             BackgroundColor = NativeTheme.Surface,
@@ -80,7 +81,9 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
         if (editor.OmittedProposalCount > 0)
         {
             Label omitted = NativeTheme.Body(
-                $"{editor.OmittedProposalCount.ToString(CultureInfo.InvariantCulture)} proposal(s) were omitted because exact catalog or Core quote authority was unavailable.",
+                Format(
+                    "{0} proposal(s) were omitted because exact catalog or Core quote authority was unavailable.",
+                    editor.OmittedProposalCount.ToString(CultureInfo.InvariantCulture)),
                 NativeTheme.Danger);
             omitted.AutomationId = "sr5-after-run-omitted-proposals";
             body.Add(NativeTheme.Card(omitted));
@@ -89,7 +92,7 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
         {
             Label unavailable = NativeTheme.Body(
                 editor.Blockers.FirstOrDefault()
-                    ?? "The governed After Run settlement authority is unavailable.",
+                    ?? Text("The governed After Run settlement authority is unavailable."),
                 NativeTheme.Danger);
             unavailable.AutomationId = "sr5-after-run-authority-unavailable";
             body.Add(NativeTheme.Card(unavailable));
@@ -97,19 +100,19 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
         _recovery = NativeTheme.Body(string.Empty, NativeTheme.Muted);
         _recovery.AutomationId = "sr5-after-run-recovery-status";
         body.Add(_recovery);
-        _continue = NativeTheme.PrimaryButton("Review rewards");
+        _continue = NativeTheme.PrimaryButton(Text("Review rewards"));
         _continue.AutomationId = "sr5-after-run-open-rewards";
         _continue.Clicked += async (_, _) => await RunAsync(OpenRewardsAsync);
         body.Add(_continue);
-        _resume = NativeTheme.SecondaryButton("Resume reviewed settlement");
+        _resume = NativeTheme.SecondaryButton(Text("Resume reviewed settlement"));
         _resume.AutomationId = "sr5-after-run-resume";
         _resume.Clicked += async (_, _) => await RunAsync(ResumeAsync);
         body.Add(_resume);
-        _resolve = NativeTheme.PrimaryButton("Resolve interrupted settlement");
+        _resolve = NativeTheme.PrimaryButton(Text("Resolve interrupted settlement"));
         _resolve.AutomationId = "sr5-after-run-resolve";
         _resolve.Clicked += async (_, _) => await RunAsync(ResolveAsync);
         body.Add(_resolve);
-        _abandon = NativeTheme.SecondaryButton("Abandon reviewed settlement");
+        _abandon = NativeTheme.SecondaryButton(Text("Abandon reviewed settlement"));
         _abandon.AutomationId = "sr5-after-run-abandon";
         _abandon.Clicked += async (_, _) => await RunAsync(AbandonAsync);
         body.Add(_abandon);
@@ -149,9 +152,9 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
         catch (Exception exception)
         {
             await DisplayAlertAsync(
-                "After Run recovery unavailable",
+                Text("After Run recovery unavailable"),
                 exception.Message,
-                "OK");
+                Text("OK"));
         }
     }
 
@@ -172,12 +175,12 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
             _recovery.Text = checkpoint.Phase switch
             {
                 Sr5CareerCheckpointPhase.Reviewed =>
-                    "A reviewed settlement is durable and can be resumed or abandoned.",
+                    Text("A reviewed settlement is durable and can be resumed or abandoned."),
                 Sr5CareerCheckpointPhase.Applying =>
-                    "An interrupted settlement owns the runner. Resolve the exact command before any other Career mutation.",
+                    Text("An interrupted settlement owns the runner. Resolve the exact command before any other Career mutation."),
                 Sr5CareerCheckpointPhase.Applied =>
-                    "A verified Core receipt is durable and ready to inspect.",
-                _ => "The durable After Run checkpoint is unavailable."
+                    Text("A verified Core receipt is durable and ready to inspect."),
+                _ => Text("The durable After Run checkpoint is unavailable.")
             };
             _recovery.TextColor = checkpoint.Phase == Sr5CareerCheckpointPhase.Applying
                 ? NativeTheme.Danger
@@ -201,10 +204,16 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
             && !Coordinator.State.IsDirty
             && string.IsNullOrWhiteSpace(Coordinator.State.Error);
         _details.Text = _selected is null
-            ? "No exact completed-run proposal is available."
-            : $"{_selected.RewardContext.RunTitle} · completed {_selected.RewardContext.CompletedAt.ToLocalTime():g}\n"
-                + $"Proposal {_selected.Quote.Identity.ProposalId:D}\nRun {_selected.Quote.Identity.RunId:D}\n"
-                + $"Status: {(_selected.Quote.CanSettle ? "all Core prerequisites satisfied" : Sr5AfterRunSettlementDraft.BlockerText(_selected.Quote.Blocker))}";
+            ? Text("No exact completed-run proposal is available.")
+            : Format(
+                "{0} · completed {1}\nProposal {2}\nRun {3}\nStatus: {4}",
+                _selected.RewardContext.RunTitle,
+                _selected.RewardContext.CompletedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture),
+                _selected.Quote.Identity.ProposalId.ToString("D"),
+                _selected.Quote.Identity.RunId.ToString("D"),
+                _selected.Quote.CanSettle
+                    ? Text("all Core prerequisites satisfied")
+                    : Sr5AfterRunSettlementDraft.BlockerText(_selected.Quote.Blocker));
         _proposals.IsEnabled = exact && _checkpoint is null;
         _continue.IsEnabled = exact
             && _editor.Status == Sr5AfterRunCatalogStatus.Available
@@ -311,10 +320,10 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
             return;
         }
         bool confirmed = await DisplayAlertAsync(
-            "Abandon reviewed settlement?",
-            "This removes only the durable review. It does not change the runner or approve the proposal.",
-            "Abandon",
-            "Keep");
+            Text("Abandon reviewed settlement?"),
+            Text("This removes only the durable review. It does not change the runner or approve the proposal."),
+            Text("Abandon"),
+            Text("Keep"));
         if (!confirmed)
         {
             RefreshEnabledState();
@@ -325,7 +334,7 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
                 out string blocker))
         {
             _checkpoint = null;
-            _recovery.Text = "Reviewed settlement abandoned; no runner mutation occurred.";
+            _recovery.Text = Text("Reviewed settlement abandoned; no runner mutation occurred.");
             _recovery.TextColor = NativeTheme.Muted;
         }
         else
@@ -337,7 +346,10 @@ public sealed class Sr5AfterRunSettlementWizardPage : NativePageBase
     }
 
     private static string CandidateLabel(Sr5AfterRunSettlementCandidate candidate)
-        => $"{candidate.RewardContext.RunTitle} · {candidate.RewardContext.CompletedAt.ToLocalTime():d}";
+        => Format(
+            "{0} · {1}",
+            candidate.RewardContext.RunTitle,
+            candidate.RewardContext.CompletedAt.ToLocalTime().ToString("d", CultureInfo.CurrentCulture));
 
     internal static VerticalStackLayout Body()
         => new()
@@ -389,7 +401,7 @@ internal sealed class Sr5AfterRunSettlementStagePage : NativePageBase
         Title = StageTitle(stage);
         AutomationId = StageRoute(stage);
         VerticalStackLayout body = Sr5AfterRunSettlementWizardPage.Body();
-        body.Add(NativeTheme.Eyebrow($"SR5 Career · After Run · {StageNumber(stage)} of 7"));
+        body.Add(NativeTheme.Eyebrow(Format("SR5 Career · After Run · {0} of 7", StageNumber(stage))));
         body.Add(NativeTheme.Title(StageTitle(stage)));
         AddStageContent(body);
         _continue = NativeTheme.PrimaryButton(ContinueLabel(stage));
@@ -409,44 +421,44 @@ internal sealed class Sr5AfterRunSettlementStagePage : NativePageBase
         {
             case Sr5AfterRunSettlementStage.Rewards:
                 body.Add(NativeTheme.Body(
-                    "These rewards come from the signed run context. This settlement only applies Heat, reputation, contacts and their Karma cost; it does not duplicate the reward ledger.",
+                    Text("These rewards come from the signed run context. This settlement only applies Heat, reputation, contacts and their Karma cost; it does not duplicate the reward ledger."),
                     NativeTheme.Muted));
                 body.Add(NativeTheme.Card(new VerticalStackLayout
                 {
                     Spacing = 7,
                     Children =
                     {
-                        NativeTheme.Metric("Run", _candidate.RewardContext.RunTitle),
-                        NativeTheme.Metric("Karma award", _candidate.RewardContext.KarmaAward.ToString(CultureInfo.InvariantCulture)),
-                        NativeTheme.Metric("Nuyen award", _candidate.RewardContext.NuyenAward.ToString("N0", CultureInfo.CurrentCulture)),
-                        NativeTheme.Metric("Reward receipt", Short(_candidate.RewardContext.RewardReceiptDigest))
+                        NativeTheme.Metric(Text("Run"), _candidate.RewardContext.RunTitle),
+                        NativeTheme.Metric(Text("Karma award"), _candidate.RewardContext.KarmaAward.ToString(CultureInfo.InvariantCulture)),
+                        NativeTheme.Metric(Text("Nuyen award"), _candidate.RewardContext.NuyenAward.ToString("N0", CultureInfo.CurrentCulture)),
+                        NativeTheme.Metric(Text("Reward receipt"), Short(_candidate.RewardContext.RewardReceiptDigest))
                     }
                 }));
                 break;
             case Sr5AfterRunSettlementStage.Consequences:
                 body.Add(NativeTheme.Body(
-                    "Review every Core-calculated before → delta → after value. None is editable on this page.",
+                    Text("Review every Core-calculated before → delta → after value. None is editable on this page."),
                     NativeTheme.Muted));
                 body.Add(NativeTheme.Card(new VerticalStackLayout
                 {
                     Spacing = 7,
                     Children =
                     {
-                        Delta("Heat", quote.HeatBefore, quote.HeatDelta, quote.HeatAfter),
-                        Delta("Street Cred", quote.StreetCredBefore, quote.StreetCredDelta, quote.StreetCredAfter),
-                        Delta("Notoriety", quote.NotorietyBefore, quote.NotorietyDelta, quote.NotorietyAfter),
-                        NativeTheme.Metric("Public Awareness", $"{quote.PublicAwarenessBefore} → {quote.PublicAwarenessAfter}"),
-                        NativeTheme.Metric("GM policy", Short(quote.GmPolicyDigest))
+                        Delta(Text("Heat"), quote.HeatBefore, quote.HeatDelta, quote.HeatAfter),
+                        Delta(Text("Street Cred"), quote.StreetCredBefore, quote.StreetCredDelta, quote.StreetCredAfter),
+                        Delta(Text("Notoriety"), quote.NotorietyBefore, quote.NotorietyDelta, quote.NotorietyAfter),
+                        NativeTheme.Metric(Text("Public Awareness"), $"{quote.PublicAwarenessBefore} → {quote.PublicAwarenessAfter}"),
+                        NativeTheme.Metric(Text("GM policy"), Short(quote.GmPolicyDigest))
                     }
                 }));
                 break;
             case Sr5AfterRunSettlementStage.Contacts:
                 body.Add(NativeTheme.Body(
-                    "Contacts retain stable IDs, origin kind, Connection, Loyalty and exact Karma cost.",
+                    Text("Contacts retain stable IDs, origin kind, Connection, Loyalty and exact Karma cost."),
                     NativeTheme.Muted));
                 if (quote.Contacts.Count == 0)
                 {
-                    body.Add(NativeTheme.Card(NativeTheme.Body("No contacts are proposed.", NativeTheme.Muted)));
+                    body.Add(NativeTheme.Card(NativeTheme.Body(Text("No contacts are proposed."), NativeTheme.Muted)));
                 }
                 foreach (CharacterAfterRunContactSettlement contact in quote.Contacts)
                 {
@@ -457,20 +469,20 @@ internal sealed class Sr5AfterRunSettlementStagePage : NativePageBase
                         {
                             NativeTheme.Title(contact.Name, 19),
                             NativeTheme.Body($"{contact.Role} · {contact.Location}", NativeTheme.Muted),
-                            NativeTheme.Metric("Connection / Loyalty", $"{contact.Connection} / {contact.Loyalty}"),
-                            NativeTheme.Metric("Origin", contact.Kind.ToString()),
-                            NativeTheme.Metric("Karma cost", contact.KarmaCost.ToString(CultureInfo.InvariantCulture))
+                            NativeTheme.Metric(Text("Connection / Loyalty"), $"{contact.Connection} / {contact.Loyalty}"),
+                            NativeTheme.Metric(Text("Origin"), contact.Kind.ToString()),
+                            NativeTheme.Metric(Text("Karma cost"), contact.KarmaCost.ToString(CultureInfo.InvariantCulture))
                         }
                     }));
                 }
-                body.Add(NativeTheme.Metric("Total contact Karma", quote.ContactKarmaCost.ToString(CultureInfo.InvariantCulture)));
-                body.Add(NativeTheme.Metric("Karma", $"{quote.KarmaBefore} → {quote.KarmaAfter}"));
+                body.Add(NativeTheme.Metric(Text("Total contact Karma"), quote.ContactKarmaCost.ToString(CultureInfo.InvariantCulture)));
+                body.Add(NativeTheme.Metric(Text("Karma"), $"{quote.KarmaBefore} → {quote.KarmaAfter}"));
                 break;
             case Sr5AfterRunSettlementStage.GameMasterReview:
-                AddReview(body, CharacterAfterRunSettlementPrerequisite.GmApproved, quote.GmReviewDigest, "GM");
+                AddReview(body, CharacterAfterRunSettlementPrerequisite.GmApproved, quote.GmReviewDigest, Text("GM"));
                 break;
             case Sr5AfterRunSettlementStage.OwnerReview:
-                AddReview(body, CharacterAfterRunSettlementPrerequisite.OwnerApproved, quote.OwnerReviewDigest, "character owner");
+                AddReview(body, CharacterAfterRunSettlementPrerequisite.OwnerApproved, quote.OwnerReviewDigest, Text("character owner"));
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
@@ -486,13 +498,13 @@ internal sealed class Sr5AfterRunSettlementStagePage : NativePageBase
         bool approved = Approved(prerequisite);
         Label statement = NativeTheme.Body(
             approved
-                ? $"The exact {actor} approval is present and digest-bound. Continue only after reviewing that approval."
-                : $"The exact {actor} approval is missing or rejected. Android cannot create or infer it.",
+                ? Format("The exact {0} approval is present and digest-bound. Continue only after reviewing that approval.", actor)
+                : Format("The exact {0} approval is missing or rejected. Android cannot create or infer it.", actor),
             approved ? NativeTheme.Text : NativeTheme.Danger);
         statement.AutomationId = $"sr5-after-run-{StageToken(_stage)}-authority";
         body.Add(NativeTheme.Card(statement));
-        body.Add(NativeTheme.Metric("Review digest", Short(digest)));
-        body.Add(NativeTheme.Metric("Proposal logical digest", Short(_candidate.Quote.LogicalDigest)));
+        body.Add(NativeTheme.Metric(Text("Review digest"), Short(digest)));
+        body.Add(NativeTheme.Metric(Text("Proposal logical digest"), Short(_candidate.Quote.LogicalDigest)));
     }
 
     private void RefreshEnabledState()
@@ -563,7 +575,7 @@ internal sealed class Sr5AfterRunSettlementStagePage : NativePageBase
                 out Sr5AfterRunSettlementDraft draft,
                 out string blocker))
         {
-            await DisplayAlertAsync("Settlement blocked", blocker, "OK");
+            await DisplayAlertAsync(Text("Settlement blocked"), blocker, Text("OK"));
             return;
         }
         Sr5AfterRunSettlementCheckpoint reviewed =
@@ -573,7 +585,7 @@ internal sealed class Sr5AfterRunSettlementStagePage : NativePageBase
                 out Sr5AfterRunSettlementCheckpoint stored,
                 out blocker))
         {
-            await DisplayAlertAsync("Review checkpoint blocked", blocker, "OK");
+            await DisplayAlertAsync(Text("Review checkpoint blocked"), blocker, Text("OK"));
             return;
         }
         await Navigation.PushAsync(new Sr5AfterRunSettlementReviewPage(
@@ -600,18 +612,18 @@ internal sealed class Sr5AfterRunSettlementStagePage : NativePageBase
     private static string StageTitle(Sr5AfterRunSettlementStage stage)
         => stage switch
         {
-            Sr5AfterRunSettlementStage.Rewards => "Review rewards",
-            Sr5AfterRunSettlementStage.Consequences => "Review Heat and reputation",
-            Sr5AfterRunSettlementStage.Contacts => "Review contact proposals",
-            Sr5AfterRunSettlementStage.GameMasterReview => "Review GM approval",
-            Sr5AfterRunSettlementStage.OwnerReview => "Review owner approval",
+            Sr5AfterRunSettlementStage.Rewards => Text("Review rewards"),
+            Sr5AfterRunSettlementStage.Consequences => Text("Review Heat and reputation"),
+            Sr5AfterRunSettlementStage.Contacts => Text("Review contact proposals"),
+            Sr5AfterRunSettlementStage.GameMasterReview => Text("Review GM approval"),
+            Sr5AfterRunSettlementStage.OwnerReview => Text("Review owner approval"),
             _ => throw new ArgumentOutOfRangeException(nameof(stage))
         };
 
     private static string ContinueLabel(Sr5AfterRunSettlementStage stage)
         => stage == Sr5AfterRunSettlementStage.OwnerReview
-            ? "Create exact settlement review"
-            : $"Reviewed · continue to {StageTitle((Sr5AfterRunSettlementStage)((int)stage + 1))}";
+            ? Text("Create exact settlement review")
+            : Format("Reviewed · continue to {0}", StageTitle((Sr5AfterRunSettlementStage)((int)stage + 1)));
 
     private static string StageToken(Sr5AfterRunSettlementStage stage)
         => stage switch
@@ -667,13 +679,13 @@ public sealed class Sr5AfterRunSettlementReviewPage : NativePageBase
         _authority = authority;
         _store = store;
         _checkpointAuthority = checkpointAuthority;
-        Title = "Confirm settlement";
+        Title = Text("Confirm settlement");
         AutomationId = Sr5CareerWizardRoutes.AfterRunReview;
         VerticalStackLayout body = Sr5AfterRunSettlementWizardPage.Body();
-        body.Add(NativeTheme.Eyebrow("SR5 Career · After Run · 7 of 7"));
-        body.Add(NativeTheme.Title("Review and confirm once"));
+        body.Add(NativeTheme.Eyebrow(Text("SR5 Career · After Run · 7 of 7")));
+        body.Add(NativeTheme.Title(Text("Review and confirm once")));
         body.Add(NativeTheme.Body(
-            "This single atomic command applies only the Core plan below. The reward receipt stays external and is not replayed as manual Karma or Nuyen.",
+            Text("This single atomic command applies only the Core plan below. The reward receipt stays external and is not replayed as manual Karma or Nuyen."),
             NativeTheme.Muted));
         CharacterAfterRunSettlementQuote quote = draft.Quote;
         body.Add(NativeTheme.Card(new VerticalStackLayout
@@ -681,24 +693,24 @@ public sealed class Sr5AfterRunSettlementReviewPage : NativePageBase
             Spacing = 7,
             Children =
             {
-                NativeTheme.Metric("Run", draft.Candidate.RewardContext.RunTitle),
-                NativeTheme.Metric("Heat", $"{quote.HeatBefore} → {quote.HeatAfter}"),
-                NativeTheme.Metric("Street Cred", $"{quote.StreetCredBefore} → {quote.StreetCredAfter}"),
-                NativeTheme.Metric("Notoriety", $"{quote.NotorietyBefore} → {quote.NotorietyAfter}"),
-                NativeTheme.Metric("Public Awareness", $"{quote.PublicAwarenessBefore} → {quote.PublicAwarenessAfter}"),
-                NativeTheme.Metric("Contacts", quote.Contacts.Count.ToString(CultureInfo.InvariantCulture)),
-                NativeTheme.Metric("Contact Karma", quote.ContactKarmaCost.ToString(CultureInfo.InvariantCulture)),
-                NativeTheme.Metric("Karma", $"{quote.KarmaBefore} → {quote.KarmaAfter}"),
-                NativeTheme.Metric("Binding", Short(draft.Binding.BindingDigest)),
-                NativeTheme.Metric("Plan", Short(draft.Plan.PlanDigest))
+                NativeTheme.Metric(Text("Run"), draft.Candidate.RewardContext.RunTitle),
+                NativeTheme.Metric(Text("Heat"), $"{quote.HeatBefore} → {quote.HeatAfter}"),
+                NativeTheme.Metric(Text("Street Cred"), $"{quote.StreetCredBefore} → {quote.StreetCredAfter}"),
+                NativeTheme.Metric(Text("Notoriety"), $"{quote.NotorietyBefore} → {quote.NotorietyAfter}"),
+                NativeTheme.Metric(Text("Public Awareness"), $"{quote.PublicAwarenessBefore} → {quote.PublicAwarenessAfter}"),
+                NativeTheme.Metric(Text("Contacts"), quote.Contacts.Count.ToString(CultureInfo.InvariantCulture)),
+                NativeTheme.Metric(Text("Contact Karma"), quote.ContactKarmaCost.ToString(CultureInfo.InvariantCulture)),
+                NativeTheme.Metric(Text("Karma"), $"{quote.KarmaBefore} → {quote.KarmaAfter}"),
+                NativeTheme.Metric(Text("Binding"), Short(draft.Binding.BindingDigest)),
+                NativeTheme.Metric(Text("Plan"), Short(draft.Plan.PlanDigest))
             }
         }));
         _status = NativeTheme.Body(
-            "Reviewed checkpoint is durable. Applying reserves the shared Career mutation owner before calling Core.",
+            Text("Reviewed checkpoint is durable. Applying reserves the shared Career mutation owner before calling Core."),
             NativeTheme.Muted);
         _status.AutomationId = "sr5-after-run-review-status";
         body.Add(_status);
-        _apply = NativeTheme.PrimaryButton("Confirm and settle once");
+        _apply = NativeTheme.PrimaryButton(Text("Confirm and settle once"));
         _apply.AutomationId = "sr5-after-run-confirm";
         _apply.Clicked += async (_, _) => await RunAsync(ApplyAsync);
         body.Add(_apply);
@@ -790,37 +802,37 @@ public sealed class Sr5AfterRunSettlementReceiptPage : NativePageBase
                 receipt))
         {
             throw new InvalidOperationException(
-                "The After Run receipt page requires the exact durable Applied checkpoint.");
+                Text("The After Run receipt page requires the exact durable Applied checkpoint."));
         }
         _checkpoint = checkpoint;
         _store = store;
-        Title = "Settlement receipt";
+        Title = Text("Settlement receipt");
         AutomationId = Sr5CareerWizardRoutes.AfterRunReceipt;
         VerticalStackLayout body = Sr5AfterRunSettlementWizardPage.Body();
-        body.Add(NativeTheme.Eyebrow("SR5 Career · After Run"));
-        body.Add(NativeTheme.Title("Settlement saved"));
+        body.Add(NativeTheme.Eyebrow(Text("SR5 Career · After Run")));
+        body.Add(NativeTheme.Title(Text("Settlement saved")));
         body.Add(NativeTheme.Body(
-            "Core verified the exact post-save runner revision, transaction ledger and receipt. Acknowledging removes only this local recovery checkpoint.",
+            Text("Core verified the exact post-save runner revision, transaction ledger and receipt. Acknowledging removes only this local recovery checkpoint."),
             NativeTheme.Muted));
         body.Add(NativeTheme.Card(new VerticalStackLayout
         {
             Spacing = 7,
             Children =
             {
-                NativeTheme.Metric("Transaction", receipt.TransactionId.ToString("D")),
-                NativeTheme.Metric("Heat", $"{receipt.HeatBefore} → {receipt.HeatAfter}"),
-                NativeTheme.Metric("Street Cred", $"{receipt.StreetCredBefore} → {receipt.StreetCredAfter}"),
-                NativeTheme.Metric("Notoriety", $"{receipt.NotorietyBefore} → {receipt.NotorietyAfter}"),
-                NativeTheme.Metric("Public Awareness", $"{receipt.PublicAwarenessBefore} → {receipt.PublicAwarenessAfter}"),
-                NativeTheme.Metric("Karma", $"{receipt.KarmaBefore} → {receipt.KarmaAfter}"),
-                NativeTheme.Metric("Contacts added", receipt.AddedContacts.Count.ToString(CultureInfo.InvariantCulture)),
-                NativeTheme.Metric("Receipt", receipt.ReceiptDigest)
+                NativeTheme.Metric(Text("Transaction"), receipt.TransactionId.ToString("D")),
+                NativeTheme.Metric(Text("Heat"), $"{receipt.HeatBefore} → {receipt.HeatAfter}"),
+                NativeTheme.Metric(Text("Street Cred"), $"{receipt.StreetCredBefore} → {receipt.StreetCredAfter}"),
+                NativeTheme.Metric(Text("Notoriety"), $"{receipt.NotorietyBefore} → {receipt.NotorietyAfter}"),
+                NativeTheme.Metric(Text("Public Awareness"), $"{receipt.PublicAwarenessBefore} → {receipt.PublicAwarenessAfter}"),
+                NativeTheme.Metric(Text("Karma"), $"{receipt.KarmaBefore} → {receipt.KarmaAfter}"),
+                NativeTheme.Metric(Text("Contacts added"), receipt.AddedContacts.Count.ToString(CultureInfo.InvariantCulture)),
+                NativeTheme.Metric(Text("Receipt"), receipt.ReceiptDigest)
             }
         }));
         _status = NativeTheme.Body(string.Empty, NativeTheme.Muted);
         _status.AutomationId = "sr5-after-run-receipt-status";
         body.Add(_status);
-        _acknowledge = NativeTheme.PrimaryButton("Acknowledge receipt");
+        _acknowledge = NativeTheme.PrimaryButton(Text("Acknowledge receipt"));
         _acknowledge.AutomationId = "sr5-after-run-receipt-acknowledge";
         _acknowledge.Clicked += async (_, _) => await RunAsync(AcknowledgeAsync);
         body.Add(_acknowledge);
@@ -848,7 +860,7 @@ public sealed class Sr5AfterRunSettlementReceiptPage : NativePageBase
             return;
         }
         _acknowledge.IsEnabled = false;
-        _status.Text = "Receipt acknowledged. The saved runner and Core transaction ledger remain unchanged.";
+        _status.Text = Text("Receipt acknowledged. The saved runner and Core transaction ledger remain unchanged.");
         _status.TextColor = NativeTheme.Muted;
         await Navigation.PopToRootAsync();
     }
