@@ -29,7 +29,7 @@ public sealed class CreationQualitiesPage : NativePageBase
         CharacterCreationQualitiesCheckpointStore store) : base(coordinator)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
-        Title = "Qualities";
+        Title = CreationFlowStrings.Get("Qualities.PageTitle", "Qualities");
         AutomationId = "creation-qualities-page";
         Content = new ScrollView { Content = _body };
     }
@@ -37,10 +37,12 @@ public sealed class CreationQualitiesPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("SR5 Priority · 1 of 4"));
-        _body.Add(NativeTheme.Title("Choose qualities"));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step1", "SR5 Priority · 1 of 4")));
+        _body.Add(NativeTheme.Title(CreationFlowStrings.Get("Qualities.Choose", "Choose qualities")));
         _body.Add(NativeTheme.Body(
-            "Every row is a fixed-cost, source-anchored Core option. Unsupported requirements, variable costs and unresolved custom overlays stay disabled.",
+            CreationFlowStrings.Get(
+                "Qualities.Intro",
+                "Every row is a fixed-cost, source-anchored Core option. Unsupported requirements, variable costs and unresolved custom overlays stay disabled."),
             NativeTheme.Muted));
 
         CharacterCreationFoundationResult<CharacterCreationQualitiesState> load =
@@ -84,7 +86,12 @@ public sealed class CreationQualitiesPage : NativePageBase
     private void AddBinding(CharacterCreationQualitiesState state)
     {
         Label binding = NativeTheme.Body(
-            $"Revision {state.Binding.ContentRevision.ToString(CultureInfo.InvariantCulture)} · prerequisite {state.Binding.PrerequisiteDraftRevision.ToString(CultureInfo.InvariantCulture)} · attributes {state.Binding.AttributesDraftRevision.ToString(CultureInfo.InvariantCulture)}",
+            CreationFlowStrings.Format(
+                "Qualities.Binding",
+                "Revision {0} · prerequisite {1} · attributes {2}",
+                state.Binding.ContentRevision.ToString(CultureInfo.InvariantCulture),
+                state.Binding.PrerequisiteDraftRevision.ToString(CultureInfo.InvariantCulture),
+                state.Binding.AttributesDraftRevision.ToString(CultureInfo.InvariantCulture)),
             NativeTheme.Muted);
         binding.AutomationId = "creation-qualities-binding";
         _body.Add(binding);
@@ -94,24 +101,27 @@ public sealed class CreationQualitiesPage : NativePageBase
 
     private void AddBudgets(CharacterCreationQualitiesPreview preview)
     {
-        _body.Add(NativeTheme.Eyebrow("Core ledgers"));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.CoreLedgers", "Core ledgers")));
         FlexLayout ribbon = new()
         {
             Wrap = Microsoft.Maui.Layouts.FlexWrap.Wrap,
             Direction = Microsoft.Maui.Layouts.FlexDirection.Row
         };
         ribbon.Add(BudgetCard(
-            "Positive qualities",
+            CreationFlowStrings.Get("Qualities.Positive", "Positive qualities"),
             preview.PositiveQualityBudget,
             "creation-qualities-budget-positive"));
         ribbon.Add(BudgetCard(
-            "Negative qualities",
+            CreationFlowStrings.Get("Qualities.Negative", "Negative qualities"),
             preview.NegativeQualityBudget,
             "creation-qualities-budget-negative"));
         VerticalStackLayout karma = new() { Spacing = 5, MinimumWidthRequest = 155 };
-        karma.Add(NativeTheme.Eyebrow("Creation Karma"));
+        karma.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Common.CreationKarma", "Creation Karma")));
         karma.Add(NativeTheme.Title(
-            Signed(preview.KarmaRemaining) + " remaining",
+            CreationFlowStrings.Format(
+                "Qualities.KarmaRemainingInline",
+                "{0} remaining",
+                Signed(preview.KarmaRemaining)),
             20));
         Border karmaCard = NativeTheme.Card(karma, new Thickness(12));
         karmaCard.Margin = new Thickness(0, 0, 8, 8);
@@ -121,7 +131,11 @@ public sealed class CreationQualitiesPage : NativePageBase
         if (preview.MetagenicPositiveKarma != 0 || preview.MetagenicNegativeKarma != 0)
         {
             Label metagenic = NativeTheme.Body(
-                $"Metagenic: +{preview.MetagenicPositiveKarma.ToString(CultureInfo.InvariantCulture)} / -{preview.MetagenicNegativeKarma.ToString(CultureInfo.InvariantCulture)}",
+                CreationFlowStrings.Format(
+                    "Qualities.Metagenic",
+                    "Metagenic: +{0} / -{1}",
+                    preview.MetagenicPositiveKarma.ToString(CultureInfo.InvariantCulture),
+                    preview.MetagenicNegativeKarma.ToString(CultureInfo.InvariantCulture)),
                 NativeTheme.Muted);
             metagenic.AutomationId = "creation-qualities-budget-metagenic";
             _body.Add(metagenic);
@@ -136,10 +150,17 @@ public sealed class CreationQualitiesPage : NativePageBase
         VerticalStackLayout card = new() { Spacing = 5, MinimumWidthRequest = 155 };
         card.Add(NativeTheme.Eyebrow(label));
         card.Add(NativeTheme.Title(
-            $"{budget.Remaining.ToString(CultureInfo.InvariantCulture)} left",
+            CreationFlowStrings.Format(
+                "Qualities.Left",
+                "{0} left",
+                budget.Remaining.ToString(CultureInfo.InvariantCulture)),
             20));
         card.Add(NativeTheme.Body(
-            $"{budget.Used.ToString(CultureInfo.InvariantCulture)} / {budget.Total.ToString(CultureInfo.InvariantCulture)} Karma",
+            CreationFlowStrings.Format(
+                "Qualities.BudgetKarma",
+                "{0} / {1} Karma",
+                budget.Used.ToString(CultureInfo.InvariantCulture),
+                budget.Total.ToString(CultureInfo.InvariantCulture)),
             budget.Blockers.Count == 0 ? NativeTheme.Muted : NativeTheme.Danger));
         Border border = NativeTheme.Card(card, new Thickness(12));
         border.Margin = new Thickness(0, 0, 8, 8);
@@ -164,28 +185,38 @@ public sealed class CreationQualitiesPage : NativePageBase
         }
 
         VerticalStackLayout recovery = new() { Spacing = 8 };
-        recovery.Add(NativeTheme.Eyebrow("Durable review recovery"));
+        recovery.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Common.DurableRecovery", "Durable review recovery")));
         recovery.Add(NativeTheme.Body(
             checkpoint.Phase switch
             {
                 CharacterCreationQualitiesCheckpointPhase.Reviewed =>
-                    "A reviewed quality draft can be resumed without reconstructing rules data.",
+                    CreationFlowStrings.Get(
+                        "Qualities.Recovery.Reviewed",
+                        "A reviewed quality draft can be resumed without reconstructing rules data."),
                 CharacterCreationQualitiesCheckpointPhase.Applying =>
-                    "An interrupted atomic commit is locked. Resolve its exact idempotent command before continuing.",
+                    CreationFlowStrings.Get(
+                        "Common.Recovery.Applying",
+                        "An interrupted atomic commit is locked. Resolve its exact idempotent command before continuing."),
                 CharacterCreationQualitiesCheckpointPhase.Applied =>
-                    "A verified quality-draft receipt is waiting for acknowledgement.",
-                _ => "The quality lane is locked."
+                    CreationFlowStrings.Get(
+                        "Qualities.Recovery.Applied",
+                        "A verified quality-draft receipt is waiting for acknowledgement."),
+                _ => CreationFlowStrings.Get("Qualities.Recovery.Locked", "The quality lane is locked.")
             },
             NativeTheme.Muted));
 
         if (checkpoint.Phase == CharacterCreationQualitiesCheckpointPhase.Reviewed
             && checkpoint.OwnsExactReview(state, Coordinator.State))
         {
-            Button resume = NativeTheme.PrimaryButton("Resume reviewed qualities");
+            Button resume = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
+                "Qualities.Recovery.Resume",
+                "Resume reviewed qualities"));
             resume.AutomationId = "creation-qualities-resume-reviewed";
             resume.Clicked += async (_, _) => await RunAsync(() => ResumeReviewAsync(state, checkpoint));
             recovery.Add(resume);
-            Button abandon = NativeTheme.SecondaryButton("Abandon reviewed draft");
+            Button abandon = NativeTheme.SecondaryButton(CreationFlowStrings.Get(
+                "Common.AbandonReviewedDraft",
+                "Abandon reviewed draft"));
             abandon.AutomationId = "creation-qualities-abandon-reviewed";
             abandon.Clicked += async (_, _) => await RunAsync(() => AbandonReviewedAsync(checkpoint));
             recovery.Add(abandon);
@@ -193,7 +224,9 @@ public sealed class CreationQualitiesPage : NativePageBase
         else if (checkpoint.Phase == CharacterCreationQualitiesCheckpointPhase.Applying
                  && checkpoint.OwnsRecoveryRevision(Coordinator.State))
         {
-            Button resolve = NativeTheme.PrimaryButton("Resolve interrupted commit");
+            Button resolve = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
+                "Common.ResolveInterruptedCommit",
+                "Resolve interrupted commit"));
             resolve.AutomationId = "creation-qualities-resolve-applying";
             resolve.Clicked += async (_, _) => await RunAsync(() => ResolveApplyingAsync(checkpoint));
             recovery.Add(resolve);
@@ -202,7 +235,9 @@ public sealed class CreationQualitiesPage : NativePageBase
                  && checkpoint.OwnsRecoveryRevision(Coordinator.State)
                  && checkpoint.Receipt is { } receipt)
         {
-            Button receiptButton = NativeTheme.PrimaryButton("Open saved receipt");
+            Button receiptButton = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
+                "Common.OpenSavedReceipt",
+                "Open saved receipt"));
             receiptButton.AutomationId = "creation-qualities-open-receipt";
             receiptButton.Clicked += async (_, _) => await Navigation.PushAsync(
                 new CreationQualitiesReceiptPage(Coordinator, checkpoint, receipt, _store));
@@ -211,7 +246,9 @@ public sealed class CreationQualitiesPage : NativePageBase
         else
         {
             Label stale = NativeTheme.Body(
-                "The checkpoint belongs to another revision or its authority changed. The lane remains fail-closed; reopen the exact runner or use support recovery.",
+                CreationFlowStrings.Get(
+                    "Qualities.Recovery.Stale",
+                    "The checkpoint belongs to another revision or its authority changed. The lane remains fail-closed; reopen the exact runner or use support recovery."),
                 NativeTheme.Danger);
             stale.AutomationId = "creation-qualities-stale-checkpoint";
             recovery.Add(stale);
@@ -230,13 +267,20 @@ public sealed class CreationQualitiesPage : NativePageBase
     {
         if (state.Authority.GrantedQualities.Count == 0)
             return;
-        _body.Add(NativeTheme.Eyebrow("Granted by earlier choices"));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get(
+            "Qualities.Granted",
+            "Granted by earlier choices")));
         foreach (CharacterCreationGrantedQuality grant in state.Authority.GrantedQualities)
         {
             VerticalStackLayout card = new() { Spacing = 5 };
             card.Add(NativeTheme.Title(grant.Name, 18));
             card.Add(NativeTheme.Body(
-                $"{grant.Origin} · rating {grant.Rating.ToString(CultureInfo.InvariantCulture)} · Karma {Signed(grant.KarmaCost)}",
+                CreationFlowStrings.Format(
+                    "Qualities.GrantedDetail",
+                    "{0} · rating {1} · Karma {2}",
+                    grant.Origin,
+                    grant.Rating.ToString(CultureInfo.InvariantCulture),
+                    Signed(grant.KarmaCost)),
                 NativeTheme.Muted));
             card.Add(NativeTheme.Body(
                 string.Join(" · ", grant.SourceAnchorIds),
@@ -255,8 +299,8 @@ public sealed class CreationQualitiesPage : NativePageBase
         foreach (CharacterCreationQualityType type in Enum.GetValues<CharacterCreationQualityType>())
         {
             _body.Add(NativeTheme.Eyebrow(type == CharacterCreationQualityType.Positive
-                ? "Positive qualities"
-                : "Negative qualities"));
+                ? CreationFlowStrings.Get("Qualities.Positive", "Positive qualities")
+                : CreationFlowStrings.Get("Qualities.Negative", "Negative qualities")));
             foreach (CharacterCreationQualitiesDesktopOption option in editor.Options
                          .Where(candidate => candidate.Type == type))
             {
@@ -264,8 +308,17 @@ public sealed class CreationQualitiesPage : NativePageBase
                 bool exact = CreationQualitiesPhoneAuthority.IsOptionConfigurable(option);
                 string followUp = string.IsNullOrWhiteSpace(option.FollowUpChoiceLabel)
                     ? string.Empty
-                    : $" · {option.FollowUpChoiceLabel}";
-                string detail = $"{(selected ? "Selected · " : string.Empty)}rating {option.Rating.ToString(CultureInfo.InvariantCulture)} · Karma {Signed(option.KarmaCost)}{followUp}";
+                    : CreationFlowStrings.Format(
+                        "Common.DotValue",
+                        " · {0}",
+                        option.FollowUpChoiceLabel);
+                string detail = CreationFlowStrings.Format(
+                    "Qualities.OptionDetail",
+                    "{0}rating {1} · Karma {2}{3}",
+                    selected ? CreationFlowStrings.Get("Common.SelectedPrefix", "Selected · ") : string.Empty,
+                    option.Rating.ToString(CultureInfo.InvariantCulture),
+                    Signed(option.KarmaCost),
+                    followUp);
                 if (!exact)
                     detail += $" · {option.DisableReasonKey ?? CharacterCreationQualitiesBlockers.EligibilityUnresolved}";
                 Border row = NativeTheme.NavigationRow(
@@ -290,7 +343,10 @@ public sealed class CreationQualitiesPage : NativePageBase
     {
         CharacterCreationQualitiesPreview preview = _draft.Preview ?? state.Preview;
         Button review = NativeTheme.PrimaryButton(
-            $"Review {_draft.SelectedOptionIds.Count.ToString(CultureInfo.InvariantCulture)} selected qualities");
+            CreationFlowStrings.Format(
+                "Qualities.ReviewSelected",
+                "Review {0} selected qualities",
+                _draft.SelectedOptionIds.Count.ToString(CultureInfo.InvariantCulture)));
         review.AutomationId = "creation-qualities-open-review";
         review.IsEnabled = !checkpointOwnsLane
                            && CreationQualitiesPhoneAuthority.CanConfirmPreview(
@@ -301,7 +357,9 @@ public sealed class CreationQualitiesPage : NativePageBase
         review.Clicked += async (_, _) => await RunAsync(() => OpenReviewAsync(state));
         _body.Add(review);
         Label finalization = NativeTheme.Body(
-            "Confirmation stores only a typed Creation draft. Quality effects are applied later by the all-steps finalization authority.",
+            CreationFlowStrings.Get(
+                "Qualities.FinalizationBoundary",
+                "Confirmation stores only a typed Creation draft. Quality effects are applied later by the all-steps finalization authority."),
             NativeTheme.Muted);
         finalization.AutomationId = "creation-qualities-finalization-boundary";
         _body.Add(finalization);
@@ -331,7 +389,10 @@ public sealed class CreationQualitiesPage : NativePageBase
                 Guid.NewGuid());
         if (!_store.TryCreate(candidate, out CharacterCreationQualitiesCheckpoint stored, out string blocker))
         {
-            await DisplayAlertAsync("Review not checkpointed", blocker, "OK");
+            await DisplayAlertAsync(
+                CreationFlowStrings.Get("Common.ReviewNotCheckpointed", "Review not checkpointed"),
+                blocker,
+                CreationFlowStrings.Get("Common.OK", "OK"));
             Refresh();
             return;
         }
@@ -358,9 +419,11 @@ public sealed class CreationQualitiesPage : NativePageBase
                 refreshed))
         {
             await DisplayAlertAsync(
-                "Review cannot resume",
-                "The Core preview, source authority or workspace revision changed.",
-                "OK");
+                CreationFlowStrings.Get("Common.ReviewCannotResume", "Review cannot resume"),
+                CreationFlowStrings.Get(
+                    "Qualities.ReviewChanged",
+                    "The Core preview, source authority or workspace revision changed."),
+                CreationFlowStrings.Get("Common.OK", "OK"));
             return;
         }
         await Navigation.PushAsync(new CreationQualitiesReviewPage(Coordinator, checkpoint, _store));
@@ -369,17 +432,22 @@ public sealed class CreationQualitiesPage : NativePageBase
     private async Task AbandonReviewedAsync(CharacterCreationQualitiesCheckpoint checkpoint)
     {
         bool confirmed = await DisplayAlertAsync(
-            "Abandon reviewed qualities?",
-            "This removes only the durable phone review. It does not change the Creation draft or character.",
-            "Abandon",
-            "Keep");
+            CreationFlowStrings.Get("Qualities.Abandon.Title", "Abandon reviewed qualities?"),
+            CreationFlowStrings.Get(
+                "Qualities.Abandon.Message",
+                "This removes only the durable phone review. It does not change the Creation draft or character."),
+            CreationFlowStrings.Get("Common.Abandon", "Abandon"),
+            CreationFlowStrings.Get("Common.Keep", "Keep"));
         if (!confirmed)
             return;
         if (!_store.TryDeleteReviewed(
                 CharacterCreationQualitiesCheckpointCas.From(checkpoint),
                 out string blocker))
         {
-            await DisplayAlertAsync("Checkpoint not removed", blocker, "OK");
+            await DisplayAlertAsync(
+                CreationFlowStrings.Get("Common.CheckpointNotRemoved", "Checkpoint not removed"),
+                blocker,
+                CreationFlowStrings.Get("Common.OK", "OK"));
         }
         Refresh();
     }
@@ -406,7 +474,10 @@ public sealed class CreationQualitiesPage : NativePageBase
                     _store));
                 return;
             }
-            await DisplayAlertAsync("Receipt remains locked", appliedBlocker, "OK");
+            await DisplayAlertAsync(
+                CreationFlowStrings.Get("Common.ReceiptLocked", "Receipt remains locked"),
+                appliedBlocker,
+                CreationFlowStrings.Get("Common.OK", "OK"));
             Refresh();
             return;
         }
@@ -422,23 +493,28 @@ public sealed class CreationQualitiesPage : NativePageBase
                     out string returnBlocker))
             {
                 await DisplayAlertAsync(
-                    "Commit was not saved",
+                    CreationFlowStrings.Get("Common.CommitNotSaved", "Commit was not saved"),
                     result.Blockers.Count == 0
-                        ? "Fresh authority proved that no mutation occurred; the reviewed draft can be resumed."
+                        ? CreationFlowStrings.Get(
+                            "Qualities.NoMutation",
+                            "Fresh authority proved that no mutation occurred; the reviewed draft can be resumed.")
                         : string.Join("\n", result.Blockers),
-                    "OK");
+                    CreationFlowStrings.Get("Common.OK", "OK"));
             }
             else
             {
-                await DisplayAlertAsync("Recovery remains locked", returnBlocker, "OK");
+                await DisplayAlertAsync(
+                    CreationFlowStrings.Get("Common.RecoveryLocked", "Recovery remains locked"),
+                    returnBlocker,
+                    CreationFlowStrings.Get("Common.OK", "OK"));
             }
             Refresh();
             return;
         }
         await DisplayAlertAsync(
-            "Commit remains locked",
+            CreationFlowStrings.Get("Common.CommitLocked", "Commit remains locked"),
             string.Join("\n", result.Blockers),
-            "OK");
+            CreationFlowStrings.Get("Common.OK", "OK"));
         Refresh();
     }
 
@@ -452,7 +528,7 @@ public sealed class CreationQualitiesPage : NativePageBase
         if (normalized.Length == 0)
             return;
         VerticalStackLayout card = new() { Spacing = 5 };
-        card.Add(NativeTheme.Eyebrow("Core blockers"));
+        card.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Common.CoreBlockers", "Core blockers")));
         foreach (string blocker in normalized)
             card.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
         _body.Add(NativeTheme.Card(card));
@@ -502,7 +578,7 @@ public sealed class CreationQualityConfigurePage : NativePageBase
         _editor = editor ?? throw new ArgumentNullException(nameof(editor));
         _option = option ?? throw new ArgumentNullException(nameof(option));
         _draft = draft ?? throw new ArgumentNullException(nameof(draft));
-        Title = "Configure quality";
+        Title = CreationFlowStrings.Get("Qualities.Configure.PageTitle", "Configure quality");
         AutomationId = "creation-quality-configure-page";
         Content = new ScrollView { Content = _body };
     }
@@ -510,19 +586,19 @@ public sealed class CreationQualityConfigurePage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("SR5 Priority · 2 of 4"));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step2", "SR5 Priority · 2 of 4")));
         _body.Add(NativeTheme.Title(_option.Name));
         VerticalStackLayout details = new() { Spacing = 6 };
-        details.Add(NativeTheme.Metric("Stable option", _option.OptionId));
-        details.Add(NativeTheme.Metric("Source id", _option.SourceId.ToString("D")));
-        details.Add(NativeTheme.Metric("Type", _option.Type.ToString()));
-        details.Add(NativeTheme.Metric("Rating", _option.Rating.ToString(CultureInfo.InvariantCulture)));
-        details.Add(NativeTheme.Metric("Signed Karma", CreationQualitiesPage.Signed(_option.KarmaCost)));
-        details.Add(NativeTheme.Metric("Metagenic", _option.IsMetagenic.ToString().ToLowerInvariant()));
+        details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Qualities.StableOption", "Stable option"), _option.OptionId));
+        details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SourceId", "Source id"), _option.SourceId.ToString("D")));
+        details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Type", "Type"), _option.Type.ToString()));
+        details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Rating", "Rating"), _option.Rating.ToString(CultureInfo.InvariantCulture)));
+        details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SignedKarma", "Signed Karma"), CreationQualitiesPage.Signed(_option.KarmaCost)));
+        details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Qualities.MetagenicLabel", "Metagenic"), _option.IsMetagenic.ToString().ToLowerInvariant()));
         if (!string.IsNullOrWhiteSpace(_option.FollowUpChoiceLabel))
         {
-            details.Add(NativeTheme.Metric("Exact follow-up", _option.FollowUpChoiceLabel));
-            details.Add(NativeTheme.Metric("Follow-up id", _option.FollowUpChoiceId!));
+            details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Qualities.ExactFollowUp", "Exact follow-up"), _option.FollowUpChoiceLabel));
+            details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Qualities.FollowUpId", "Follow-up id"), _option.FollowUpChoiceId!));
         }
         details.Add(NativeTheme.Body(
             string.Join("\n", _option.SourceAnchorIds),
@@ -533,7 +609,12 @@ public sealed class CreationQualityConfigurePage : NativePageBase
 
         CharacterCreationQualitiesPreview preview = _draft.Preview ?? _state.Preview;
         _body.Add(NativeTheme.Body(
-            $"Core preview: +{preview.PositiveQualityBudget.Used.ToString(CultureInfo.InvariantCulture)} positive · -{preview.NegativeQualityBudget.Used.ToString(CultureInfo.InvariantCulture)} negative · {CreationQualitiesPage.Signed(preview.KarmaRemaining)} Karma remaining",
+            CreationFlowStrings.Format(
+                "Qualities.Configure.Preview",
+                "Core preview: +{0} positive · -{1} negative · {2} Karma remaining",
+                preview.PositiveQualityBudget.Used.ToString(CultureInfo.InvariantCulture),
+                preview.NegativeQualityBudget.Used.ToString(CultureInfo.InvariantCulture),
+                CreationQualitiesPage.Signed(preview.KarmaRemaining)),
             preview.Blockers.Count == 0 ? NativeTheme.Muted : NativeTheme.Danger));
 
         foreach (string blocker in preview.Blockers.Concat(_blockers).Distinct(StringComparer.Ordinal))
@@ -546,7 +627,9 @@ public sealed class CreationQualityConfigurePage : NativePageBase
                          _option.OptionId,
                          StringComparison.Ordinal)) == 1;
         Button toggle = NativeTheme.PrimaryButton(
-            _draft.IsSelected(_option.OptionId) ? "Remove from draft" : "Add to draft");
+            _draft.IsSelected(_option.OptionId)
+                ? CreationFlowStrings.Get("Qualities.Configure.Remove", "Remove from draft")
+                : CreationFlowStrings.Get("Qualities.Configure.Add", "Add to draft"));
         toggle.AutomationId = "creation-quality-configure-toggle";
         toggle.IsEnabled = exact;
         toggle.Clicked += async (_, _) => await RunAsync(ToggleAsync);
@@ -560,7 +643,9 @@ public sealed class CreationQualityConfigurePage : NativePageBase
             disabled.AutomationId = "creation-quality-configure-disabled-reason";
             _body.Add(disabled);
         }
-        Button done = NativeTheme.SecondaryButton("Back to qualities");
+        Button done = NativeTheme.SecondaryButton(CreationFlowStrings.Get(
+            "Qualities.Configure.Back",
+            "Back to qualities"));
         done.AutomationId = "creation-quality-configure-done";
         done.Clicked += async (_, _) => await Navigation.PopAsync();
         _body.Add(done);
@@ -601,7 +686,7 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
         if (!_checkpoint.IsStructurallyValid()
             || _checkpoint.Phase != CharacterCreationQualitiesCheckpointPhase.Reviewed)
             throw new InvalidOperationException("The review page requires one exact Reviewed checkpoint.");
-        Title = "Review qualities";
+        Title = CreationFlowStrings.Get("Qualities.Review.PageTitle", "Review qualities");
         AutomationId = "creation-qualities-review-page";
         Content = new ScrollView { Content = _body };
     }
@@ -610,10 +695,16 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
     {
         _body.Clear();
         CharacterCreationQualitiesPreview preview = _checkpoint.Preview;
-        _body.Add(NativeTheme.Eyebrow("SR5 Priority · 3 of 4"));
-        _body.Add(NativeTheme.Title("Review exact quality draft"));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step3", "SR5 Priority · 3 of 4")));
+        _body.Add(NativeTheme.Title(CreationFlowStrings.Get(
+            "Qualities.Review.Heading",
+            "Review exact quality draft")));
         _body.Add(NativeTheme.Body(
-            $"Revision {preview.Binding.ContentRevision.ToString(CultureInfo.InvariantCulture)} · transaction {_checkpoint.TransactionId:D}",
+            CreationFlowStrings.Format(
+                "Qualities.Review.Binding",
+                "Revision {0} · transaction {1}",
+                preview.Binding.ContentRevision.ToString(CultureInfo.InvariantCulture),
+                _checkpoint.TransactionId.ToString("D")),
             NativeTheme.Muted));
         AddDigest("creation-qualities-review-preview-digest", preview.PreviewDigest);
         AddDigest("creation-qualities-review-authority-digest", preview.AuthorityDigest);
@@ -621,29 +712,29 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
         AddDigest("creation-qualities-review-auxiliary-digest", preview.Binding.AuxiliaryStateDigest);
 
         VerticalStackLayout budgets = new() { Spacing = 6 };
-        budgets.Add(NativeTheme.Eyebrow("Final Core ledgers"));
+        budgets.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.FinalLedgers", "Final Core ledgers")));
         budgets.Add(NativeTheme.Metric(
-            "Positive quality Karma",
+            CreationFlowStrings.Get("Qualities.PositiveKarma", "Positive quality Karma"),
             $"{preview.PositiveQualityBudget.Used.ToString(CultureInfo.InvariantCulture)} / {preview.PositiveQualityBudget.Total.ToString(CultureInfo.InvariantCulture)}"));
         budgets.Add(NativeTheme.Metric(
-            "Negative quality Karma",
+            CreationFlowStrings.Get("Qualities.NegativeKarma", "Negative quality Karma"),
             $"-{preview.NegativeQualityBudget.Used.ToString(CultureInfo.InvariantCulture)} / -{preview.NegativeQualityBudget.Total.ToString(CultureInfo.InvariantCulture)}"));
         budgets.Add(NativeTheme.Metric(
-            "Creation Karma remaining",
+            CreationFlowStrings.Get("Common.CreationKarmaRemaining", "Creation Karma remaining"),
             CreationQualitiesPage.Signed(preview.KarmaRemaining)));
         _body.Add(NativeTheme.Card(budgets));
 
-        _body.Add(NativeTheme.Eyebrow("Typed selections"));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Common.TypedSelections", "Typed selections")));
         foreach (CharacterCreationQualitySelection selection in preview.Selections)
         {
             VerticalStackLayout card = new() { Spacing = 5 };
             card.Add(NativeTheme.Title(selection.Name, 18));
-            card.Add(NativeTheme.Metric("Option id", selection.OptionId));
-            card.Add(NativeTheme.Metric("Source id", selection.SourceId.ToString("D")));
-            card.Add(NativeTheme.Metric("Rating", selection.Rating.ToString(CultureInfo.InvariantCulture)));
-            card.Add(NativeTheme.Metric("Signed Karma", CreationQualitiesPage.Signed(selection.KarmaCost)));
+            card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Qualities.OptionId", "Option id"), selection.OptionId));
+            card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SourceId", "Source id"), selection.SourceId.ToString("D")));
+            card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Rating", "Rating"), selection.Rating.ToString(CultureInfo.InvariantCulture)));
+            card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SignedKarma", "Signed Karma"), CreationQualitiesPage.Signed(selection.KarmaCost)));
             if (!string.IsNullOrWhiteSpace(selection.FollowUpChoiceLabel))
-                card.Add(NativeTheme.Metric("Follow-up", selection.FollowUpChoiceLabel));
+                card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Qualities.FollowUp", "Follow-up"), selection.FollowUpChoiceLabel));
             card.Add(NativeTheme.Body(string.Join("\n", selection.SourceAnchorIds), NativeTheme.Muted));
             Border border = NativeTheme.Card(card);
             border.AutomationId = $"creation-qualities-review-selection-{CreationQualitiesPage.Token(selection.OptionId)}";
@@ -653,7 +744,9 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
         foreach (string blocker in preview.Blockers.Concat(_blockers).Distinct(StringComparer.Ordinal))
             _body.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
 
-        Button apply = NativeTheme.PrimaryButton("Confirm Creation qualities draft");
+        Button apply = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
+            "Qualities.Review.Confirm",
+            "Confirm Creation qualities draft"));
         apply.AutomationId = "creation-qualities-confirm-draft";
         apply.IsEnabled = _checkpoint.Phase == CharacterCreationQualitiesCheckpointPhase.Reviewed
                           && preview.CanConfirm
@@ -663,7 +756,9 @@ public sealed class CreationQualitiesReviewPage : NativePageBase
         apply.Clicked += async (_, _) => await RunAsync(ApplyAsync);
         _body.Add(apply);
         Label boundary = NativeTheme.Body(
-            "This commits only auxiliary Creation state and its receipt. CharacterDocumentChanged must remain false until finalization.",
+            CreationFlowStrings.Get(
+                "Qualities.Review.Boundary",
+                "This commits only auxiliary Creation state and its receipt. CharacterDocumentChanged must remain false until finalization."),
             NativeTheme.Muted);
         boundary.AutomationId = "creation-qualities-review-preview-only";
         _body.Add(boundary);
@@ -791,7 +886,7 @@ public sealed class CreationQualitiesReceiptPage : NativePageBase
             || _checkpoint.Phase != CharacterCreationQualitiesCheckpointPhase.Applied
             || _checkpoint.Receipt != _receipt)
             throw new InvalidOperationException("The receipt page requires one exact durable Applied checkpoint.");
-        Title = "Qualities receipt";
+        Title = CreationFlowStrings.Get("Qualities.Receipt.PageTitle", "Qualities receipt");
         AutomationId = "creation-qualities-receipt-page";
         Content = new ScrollView { Content = _body };
     }
@@ -799,17 +894,17 @@ public sealed class CreationQualitiesReceiptPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("SR5 Priority · 4 of 4"));
-        _body.Add(NativeTheme.Title("Creation draft saved"));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step4", "SR5 Priority · 4 of 4")));
+        _body.Add(NativeTheme.Title(CreationFlowStrings.Get("Common.DraftSaved", "Creation draft saved")));
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Metric("Transaction", _receipt.TransactionId.ToString("D")));
-        card.Add(NativeTheme.Metric("Previous revision", _receipt.PreviousContentRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Content revision", _receipt.ContentRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Saved revision", _receipt.SavedRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Positive Karma used", _checkpoint.Preview.PositiveQualityBudget.Used.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Negative Karma used", $"-{_checkpoint.Preview.NegativeQualityBudget.Used.ToString(CultureInfo.InvariantCulture)}"));
-        card.Add(NativeTheme.Metric("Karma remaining", CreationQualitiesPage.Signed(_checkpoint.Preview.KarmaRemaining)));
-        card.Add(NativeTheme.Metric("Character document changed", _receipt.CharacterDocumentChanged.ToString().ToLowerInvariant()));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Transaction", "Transaction"), _receipt.TransactionId.ToString("D")));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.PreviousRevision", "Previous revision"), _receipt.PreviousContentRevision.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.ContentRevision", "Content revision"), _receipt.ContentRevision.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SavedRevision", "Saved revision"), _receipt.SavedRevision.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Qualities.PositiveKarmaUsed", "Positive Karma used"), _checkpoint.Preview.PositiveQualityBudget.Used.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Qualities.NegativeKarmaUsed", "Negative Karma used"), $"-{_checkpoint.Preview.NegativeQualityBudget.Used.ToString(CultureInfo.InvariantCulture)}"));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.KarmaRemaining", "Karma remaining"), CreationQualitiesPage.Signed(_checkpoint.Preview.KarmaRemaining)));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.DocumentChanged", "Character document changed"), _receipt.CharacterDocumentChanged.ToString().ToLowerInvariant()));
         AddDigest(card, "creation-qualities-receipt-digest", _receipt.ReceiptDigest);
         AddDigest(card, "creation-qualities-receipt-draft-digest", _receipt.DraftDigest);
         AddDigest(card, "creation-qualities-receipt-plan-digest", _receipt.PlanDigest);
@@ -819,12 +914,18 @@ public sealed class CreationQualitiesReceiptPage : NativePageBase
         _body.Add(receiptCard);
         Label boundary = NativeTheme.Body(
             !_receipt.CharacterDocumentChanged
-                ? "Typed selections are durable. Character effects remain pending whole-build finalization."
-                : "Unsafe receipt: the character document changed before finalization.",
+                ? CreationFlowStrings.Get(
+                    "Qualities.Receipt.Safe",
+                    "Typed selections are durable. Character effects remain pending whole-build finalization.")
+                : CreationFlowStrings.Get(
+                    "Qualities.Receipt.Unsafe",
+                    "Unsafe receipt: the character document changed before finalization."),
             !_receipt.CharacterDocumentChanged ? NativeTheme.Muted : NativeTheme.Danger);
         boundary.AutomationId = "creation-qualities-receipt-finalization-state";
         _body.Add(boundary);
-        Button acknowledge = NativeTheme.PrimaryButton("Acknowledge receipt");
+        Button acknowledge = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
+            "Common.AcknowledgeReceipt",
+            "Acknowledge receipt"));
         acknowledge.AutomationId = "creation-qualities-receipt-acknowledge";
         acknowledge.IsEnabled = !_receipt.CharacterDocumentChanged
                                 && _checkpoint.OwnsRecoveryRevision(Coordinator.State);
@@ -838,7 +939,10 @@ public sealed class CreationQualitiesReceiptPage : NativePageBase
                 CharacterCreationQualitiesCheckpointCas.From(_checkpoint),
                 out string blocker))
         {
-            await DisplayAlertAsync("Receipt not acknowledged", blocker, "OK");
+            await DisplayAlertAsync(
+                CreationFlowStrings.Get("Common.ReceiptNotAcknowledged", "Receipt not acknowledged"),
+                blocker,
+                CreationFlowStrings.Get("Common.OK", "OK"));
             return;
         }
         await Navigation.PopAsync(animated: false);

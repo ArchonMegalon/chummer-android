@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Common.Abandon" xml:space="preserve"><value>Verwerfen</value></data>
+  <data name="Common.AbandonReviewedDraft" xml:space="preserve"><value>Geprüften Entwurf verwerfen</value></data>
+  <data name="Common.AcknowledgeReceipt" xml:space="preserve"><value>Beleg bestätigen</value></data>
+  <data name="Common.AuthorityBinding" xml:space="preserve"><value>Bindung der Regelinstanz</value></data>
+  <data name="Common.AuthorityInline" xml:space="preserve"><value>Instanz {0}</value></data>
+  <data name="Common.AuxiliaryState" xml:space="preserve"><value>Hilfszustand</value></data>
+  <data name="Common.Binding" xml:space="preserve"><value>Revision {0} · gespeichert {1} · Snapshot {2} · Quelle {3}</value></data>
+  <data name="Common.BudgetInexact" xml:space="preserve"><value>Budgetinstanz ist nicht exakt</value></data>
+  <data name="Common.BudgetSemantic" xml:space="preserve"><value>{0}. Gesamt {1}. Verwendet {2}. Verbleibend {3}.</value></data>
+  <data name="Common.Category" xml:space="preserve"><value>Kategorie</value></data>
+  <data name="Common.CharacterCreation" xml:space="preserve"><value>Charaktererschaffung</value></data>
+  <data name="Common.CheckpointNotRemoved" xml:space="preserve"><value>Checkpoint nicht entfernt</value></data>
+  <data name="Common.CommitLocked" xml:space="preserve"><value>Speicherung bleibt gesperrt</value></data>
+  <data name="Common.CommitNotSaved" xml:space="preserve"><value>Speicherung wurde nicht durchgeführt</value></data>
+  <data name="Common.Content" xml:space="preserve"><value>Inhalt</value></data>
+  <data name="Common.ContentRevision" xml:space="preserve"><value>Inhaltsrevision</value></data>
+  <data name="Common.CoreBlockers" xml:space="preserve"><value>Core-Blockaden</value></data>
+  <data name="Common.CreationKarma" xml:space="preserve"><value>Erschaffungskarma</value></data>
+  <data name="Common.CreationKarmaRemaining" xml:space="preserve"><value>Verbleibendes Erschaffungskarma</value></data>
+  <data name="Common.DocumentChanged" xml:space="preserve"><value>Charakterdokument geändert</value></data>
+  <data name="Common.DotValue" xml:space="preserve"><value> · {0}</value></data>
+  <data name="Common.DraftRevision" xml:space="preserve"><value>Entwurfsrevision</value></data>
+  <data name="Common.DraftSaved" xml:space="preserve"><value>Erschaffungsentwurf gespeichert</value></data>
+  <data name="Common.DurableRecovery" xml:space="preserve"><value>Dauerhafte Prüfwiederherstellung</value></data>
+  <data name="Common.ExactCoreBudget" xml:space="preserve"><value>Exaktes Core-Budget</value></data>
+  <data name="Common.KarmaRemaining" xml:space="preserve"><value>Verbleibendes Karma</value></data>
+  <data name="Common.Keep" xml:space="preserve"><value>Behalten</value></data>
+  <data name="Common.Kind" xml:space="preserve"><value>Art</value></data>
+  <data name="Common.OK" xml:space="preserve"><value>OK</value></data>
+  <data name="Common.OpenSavedReceipt" xml:space="preserve"><value>Gespeicherten Beleg öffnen</value></data>
+  <data name="Common.Page" xml:space="preserve"><value>Seite</value></data>
+  <data name="Common.PreviousRevision" xml:space="preserve"><value>Vorherige Revision</value></data>
+  <data name="Common.Rating" xml:space="preserve"><value>Stufe</value></data>
+  <data name="Common.ReceiptLocked" xml:space="preserve"><value>Beleg bleibt gesperrt</value></data>
+  <data name="Common.ReceiptNotAcknowledged" xml:space="preserve"><value>Beleg nicht bestätigt</value></data>
+  <data name="Common.Recovery.Applying" xml:space="preserve"><value>Eine unterbrochene atomare Speicherung ist gesperrt. Löse ihren exakten idempotenten Befehl auf, bevor du fortfährst.</value></data>
+  <data name="Common.RecoveryLocked" xml:space="preserve"><value>Wiederherstellung bleibt gesperrt</value></data>
+  <data name="Common.Remaining" xml:space="preserve"><value>Verbleibend</value></data>
+  <data name="Common.RemoveFromDraft" xml:space="preserve"><value>Aus Entwurf entfernen</value></data>
+  <data name="Common.ResolveInterruptedCommit" xml:space="preserve"><value>Unterbrochene Speicherung auflösen</value></data>
+  <data name="Common.ResumeReviewedDraft" xml:space="preserve"><value>Geprüften Entwurf fortsetzen</value></data>
+  <data name="Common.ReviewCannotResume" xml:space="preserve"><value>Prüfung kann nicht fortgesetzt werden</value></data>
+  <data name="Common.ReviewNotCheckpointed" xml:space="preserve"><value>Prüfung nicht als Checkpoint gespeichert</value></data>
+  <data name="Common.Rules" xml:space="preserve"><value>Regeln</value></data>
+  <data name="Common.Runtime" xml:space="preserve"><value>Laufzeit</value></data>
+  <data name="Common.SavedRevision" xml:space="preserve"><value>Gespeicherte Revision</value></data>
+  <data name="Common.SelectedPrefix" xml:space="preserve"><value>Ausgewählt · </value></data>
+  <data name="Common.SignedKarma" xml:space="preserve"><value>Karma mit Vorzeichen</value></data>
+  <data name="Common.Source" xml:space="preserve"><value>Quelle</value></data>
+  <data name="Common.SourceAnchors" xml:space="preserve"><value>Quellenanker</value></data>
+  <data name="Common.SourceBook" xml:space="preserve"><value>Quellenbuch</value></data>
+  <data name="Common.SourceId" xml:space="preserve"><value>Quellen-ID</value></data>
+  <data name="Common.SourceIdentity" xml:space="preserve"><value>Quellenidentität</value></data>
+  <data name="Common.SourceNodeDigest" xml:space="preserve"><value>Quellknoten-Digest</value></data>
+  <data name="Common.Total" xml:space="preserve"><value>Gesamt</value></data>
+  <data name="Common.Transaction" xml:space="preserve"><value>Transaktion</value></data>
+  <data name="Common.Type" xml:space="preserve"><value>Typ</value></data>
+  <data name="Common.TypedKind" xml:space="preserve"><value>Typisierte Art</value></data>
+  <data name="Common.TypedSelections" xml:space="preserve"><value>Typisierte Auswahlen</value></data>
+  <data name="Common.Unavailable" xml:space="preserve"><value>nicht verfügbar</value></data>
+  <data name="Common.Unsupported" xml:space="preserve"><value>Nicht unterstützt</value></data>
+  <data name="Common.Used" xml:space="preserve"><value>Verwendet</value></data>
+  <data name="Contacts.AuthorityBlocked" xml:space="preserve"><value>Regelinstanz für Erschaffungskontakte blockiert</value></data>
+  <data name="Contacts.AuthorityUnavailable" xml:space="preserve"><value>Regelinstanz für Erschaffungskontakte nicht verfügbar</value></data>
+  <data name="Contacts.Connection" xml:space="preserve"><value>Einfluss {0}</value></data>
+  <data name="Contacts.ContactPoints" xml:space="preserve"><value>Kontaktpunkte</value></data>
+  <data name="Contacts.Cost" xml:space="preserve"><value>Kosten {0}</value></data>
+  <data name="Contacts.Empty" xml:space="preserve"><value>Es wird kein vorhandener Kontakt bereitgestellt. Neue Kontakte können hier noch nicht hinzugefügt werden.</value></data>
+  <data name="Contacts.Existing" xml:space="preserve"><value>Vorhandene Kontakte</value></data>
+  <data name="Contacts.Free" xml:space="preserve"><value>Kostenlos</value></data>
+  <data name="Contacts.FriendsInHighPlaces" xml:space="preserve"><value>Freunde in hohen Positionen</value></data>
+  <data name="Contacts.Heading" xml:space="preserve"><value>Kontakte</value></data>
+  <data name="Contacts.Intro" xml:space="preserve"><value>Wähle einen vorhandenen Kontakt und prüfe eine regelautoritative Änderung. Haustiere, Feinde sowie das Hinzufügen und Löschen von Kontakten bleiben außerhalb dieser Ansicht.</value></data>
+  <data name="Contacts.Loyalty" xml:space="preserve"><value>Loyalität {0}</value></data>
+  <data name="Contacts.OpenLifestyles" xml:space="preserve"><value>Öffne den Core-Katalog, konfiguriere einen typisierten Lebensstil und prüfe die exakten Nuyen-/LP-Kosten.</value></data>
+  <data name="Contacts.PageTitle" xml:space="preserve"><value>Kontakte erschaffen</value></data>
+  <data name="Contacts.Unnamed" xml:space="preserve"><value>Unbenannter Kontakt</value></data>
+  <data name="Lifestyles.AddFromCatalog" xml:space="preserve"><value>Aus dem exakten Core-Katalog hinzufügen</value></data>
+  <data name="Lifestyles.AuthorityBlocked" xml:space="preserve"><value>Regelinstanz für Erschaffungslebensstile blockiert</value></data>
+  <data name="Lifestyles.AuthorityUnavailable" xml:space="preserve"><value>Regelinstanz für Erschaffungslebensstile nicht verfügbar</value></data>
+  <data name="Lifestyles.Budget" xml:space="preserve"><value>Start-Nuyen-Budget</value></data>
+  <data name="Lifestyles.BudgetSemantic" xml:space="preserve"><value>Start-Nuyen. Gesamt {0}. Verwendet {1}. Verbleibend {2}.</value></data>
+  <data name="Lifestyles.CatalogDetail" xml:space="preserve"><value>{0} pro {1} · {2} {3}</value></data>
+  <data name="Lifestyles.Current" xml:space="preserve"><value>Aktuelle Lebensstile</value></data>
+  <data name="Lifestyles.Empty" xml:space="preserve"><value>Noch kein Lebensstil ausgewählt.</value></data>
+  <data name="Lifestyles.ExistingDetail" xml:space="preserve"><value>{0} · {1} Nuyen · Instanz {2}</value></data>
+  <data name="Lifestyles.Eyebrow" xml:space="preserve"><value>Charaktererschaffung · Kontakte/Lebensstile</value></data>
+  <data name="Lifestyles.Heading" xml:space="preserve"><value>Lebensstile</value></data>
+  <data name="Lifestyles.Intro" xml:space="preserve"><value>Wähle einen Eintrag aus dem Core-Katalog, konfiguriere einen typisierten Entwurf, prüfe die exakten Kosten und den erhaltungsgebundenen atomaren Schreibplan und bestätige anschließend separat.</value></data>
+  <data name="Lifestyles.Options" xml:space="preserve"><value>Lebensstiloptionen</value></data>
+  <data name="Lifestyles.Overspend" xml:space="preserve"><value>Mehrausgaben</value></data>
+  <data name="Lifestyles.PageTitle" xml:space="preserve"><value>Lebensstile erschaffen</value></data>
+  <data name="Lifestyles.Profile" xml:space="preserve"><value>Profil</value></data>
+  <data name="Lifestyles.QualityOptions" xml:space="preserve"><value>Vor-/Nachteiloptionen</value></data>
+  <data name="Magic.Abandon.Message" xml:space="preserve"><value>Dies entfernt nur die dauerhafte Telefonprüfung. Der Core-Erschaffungszustand und das Charakterdokument bleiben unverändert.</value></data>
+  <data name="Magic.Abandon.Title" xml:space="preserve"><value>Geprüften Magie-/Resonanzentwurf verwerfen?</value></data>
+  <data name="Magic.AdeptPowers" xml:space="preserve"><value>Adeptenkräfte</value></data>
+  <data name="Magic.Binding" xml:space="preserve"><value>Revision {0} · Voraussetzung {1} · Attribute {2}</value></data>
+  <data name="Magic.BudgetSummary" xml:space="preserve"><value>{0} / {1} {2}</value></data>
+  <data name="Magic.Catalog.Empty" xml:space="preserve"><value>Core hat für diese Kategorie keine auswählbaren Identitäten bereitgestellt. Es gibt keine Beschriftungs- oder Custom-Ausweichlösung.</value></data>
+  <data name="Magic.Catalog.Eyebrow" xml:space="preserve"><value>SR5-Priorität · Entwurf · Katalog</value></data>
+  <data name="Magic.Catalog.OptionDetail" xml:space="preserve"><value>{0}{1} {2} · {3} {4}</value></data>
+  <data name="Magic.CatalogRouteDetail" xml:space="preserve"><value>{0} ausgewählt · {1} {2} verbleibend · {3} Core-Optionen</value></data>
+  <data name="Magic.DraftEyebrow" xml:space="preserve"><value>SR5-Priorität · Entwurf</value></data>
+  <data name="Magic.DraftIncomplete" xml:space="preserve"><value>Core hat diesen Entwurf geprüft, aber exakte Restbudgets oder Blockaden verhindern die Bestätigung.</value></data>
+  <data name="Magic.ExactBudgets" xml:space="preserve"><value>Exakte Core-Budgets</value></data>
+  <data name="Magic.FinalizationBoundary" xml:space="preserve"><value>Die Bestätigung speichert nur den Core-Hilfszustand der Erschaffung. CharacterDocumentChanged muss bis zur Gesamtfinalisierung false bleiben.</value></data>
+  <data name="Magic.Heading" xml:space="preserve"><value>Magie und Resonanz</value></data>
+  <data name="Magic.Intro" xml:space="preserve"><value>Das Talent gehört zur Prioritätsvoraussetzung. Dieser Schritt wählt nur von Core ausgegebene typisierte Identitäten; nicht unterstützte Custom-Semantik und das Künstliche-Intelligenz-Talent bleiben sicher gesperrt.</value></data>
+  <data name="Magic.Kind.Adept" xml:space="preserve"><value>Adept</value></data>
+  <data name="Magic.Kind.AdeptPower" xml:space="preserve"><value>Adeptenkraftpunkte</value></data>
+  <data name="Magic.Kind.AspectedMagician" xml:space="preserve"><value>Aspektmagier</value></data>
+  <data name="Magic.Kind.ComplexForms" xml:space="preserve"><value>Komplexe Formen</value></data>
+  <data name="Magic.Kind.Depth" xml:space="preserve"><value>Tiefe</value></data>
+  <data name="Magic.Kind.Magic" xml:space="preserve"><value>Magie</value></data>
+  <data name="Magic.Kind.Magician" xml:space="preserve"><value>Magier</value></data>
+  <data name="Magic.Kind.Mundane" xml:space="preserve"><value>Mundan</value></data>
+  <data name="Magic.Kind.MysticAdept" xml:space="preserve"><value>Mystischer Adept</value></data>
+  <data name="Magic.Kind.Resonance" xml:space="preserve"><value>Resonanz</value></data>
+  <data name="Magic.Kind.Spells" xml:space="preserve"><value>Zauber</value></data>
+  <data name="Magic.Kind.Stream" xml:space="preserve"><value>Wandlungspfad</value></data>
+  <data name="Magic.Kind.Technomancer" xml:space="preserve"><value>Technomancer</value></data>
+  <data name="Magic.Kind.Tradition" xml:space="preserve"><value>Tradition</value></data>
+  <data name="Magic.Left" xml:space="preserve"><value>{0} verbleibend</value></data>
+  <data name="Magic.NotAllowed" xml:space="preserve"><value>Vom exakten Prioritätstalent nicht erlaubt</value></data>
+  <data name="Magic.Option.Decrease" xml:space="preserve"><value>Stufe senken</value></data>
+  <data name="Magic.Option.Drain" xml:space="preserve"><value>Entzug</value></data>
+  <data name="Magic.Option.Eyebrow" xml:space="preserve"><value>SR5-Priorität · Entwurf · Auswahl</value></data>
+  <data name="Magic.Option.Increase" xml:space="preserve"><value>Stufe erhöhen</value></data>
+  <data name="Magic.Option.Levels" xml:space="preserve"><value>Stufen</value></data>
+  <data name="Magic.Option.MaximumLevels" xml:space="preserve"><value>Maximale Stufen</value></data>
+  <data name="Magic.Option.PageTitle" xml:space="preserve"><value>Auswahl konfigurieren</value></data>
+  <data name="Magic.Option.PointCost" xml:space="preserve"><value>Punktkosten</value></data>
+  <data name="Magic.Option.Select" xml:space="preserve"><value>Für Entwurf auswählen</value></data>
+  <data name="Magic.Option.SelectedLevels" xml:space="preserve"><value>Ausgewählte Stufen: {0}</value></data>
+  <data name="Magic.PageTitle" xml:space="preserve"><value>Magie / Resonanz</value></data>
+  <data name="Magic.Receipt.CurrentDraft" xml:space="preserve"><value>Aktueller Entwurf</value></data>
+  <data name="Magic.Receipt.Eyebrow" xml:space="preserve"><value>SR5-Priorität · Bestätigung</value></data>
+  <data name="Magic.Receipt.FormsRemaining" xml:space="preserve"><value>Verbleibende komplexe Formen</value></data>
+  <data name="Magic.Receipt.IdempotentReplay" xml:space="preserve"><value>Idempotente Wiederholung</value></data>
+  <data name="Magic.Receipt.PageTitle" xml:space="preserve"><value>Magie-/Resonanzbeleg</value></data>
+  <data name="Magic.Receipt.PowerRemaining" xml:space="preserve"><value>Verbleibende Kraftpunkte</value></data>
+  <data name="Magic.Receipt.Safe" xml:space="preserve"><value>Typisierte Auswahlen sind im Core-Hilfszustand dauerhaft gespeichert. Charaktereffekte warten auf die Gesamtfinalisierung.</value></data>
+  <data name="Magic.Receipt.SpellsRemaining" xml:space="preserve"><value>Verbleibende Zauber</value></data>
+  <data name="Magic.Receipt.TalentKind" xml:space="preserve"><value>Talentart</value></data>
+  <data name="Magic.Receipt.Unsafe" xml:space="preserve"><value>Unsicherer Beleg: Das Charakterdokument wurde vor der Finalisierung geändert.</value></data>
+  <data name="Magic.Recovery.Confirmed" xml:space="preserve"><value>Ein per Digest geprüfter Core-Beleg wartet auf Bestätigung.</value></data>
+  <data name="Magic.Recovery.Confirming" xml:space="preserve"><value>Eine unterbrochene Core-Speicherung ist an ihren exakten idempotenten Befehl gebunden und kann nur wiederholt werden.</value></data>
+  <data name="Magic.Recovery.Locked" xml:space="preserve"><value>Der Magie-/Resonanzbereich ist gesperrt.</value></data>
+  <data name="Magic.Recovery.Reviewed" xml:space="preserve"><value>Eine typisierte blockadenfreie Core-Prüfung kann ohne Rekonstruktion der Regeldaten fortgesetzt werden.</value></data>
+  <data name="Magic.Recovery.Stale" xml:space="preserve"><value>Dieser Checkpoint gehört zu einer anderen Revision oder Regelinstanz. Der Bereich bleibt sicher gesperrt; öffne den exakten Runner erneut oder nutze die Support-Wiederherstellung.</value></data>
+  <data name="Magic.Review.Binding" xml:space="preserve"><value>Revision {0} · {1}</value></data>
+  <data name="Magic.Review.Boundary" xml:space="preserve"><value>Core speichert atomar nur das Hilfsbuch der Erschaffung. Hier werden weder XML noch Charaktereffekte verändert.</value></data>
+  <data name="Magic.Review.Confirm" xml:space="preserve"><value>Magie-/Resonanzentwurf der Erschaffung bestätigen</value></data>
+  <data name="Magic.Review.Eyebrow" xml:space="preserve"><value>SR5-Priorität · Prüfung</value></data>
+  <data name="Magic.Review.Heading" xml:space="preserve"><value>Exakten typisierten Entwurf prüfen</value></data>
+  <data name="Magic.Review.NoIdentities" xml:space="preserve"><value>Für dieses exakte Talent sind keine Folgeidentitäten erforderlich.</value></data>
+  <data name="Magic.Review.PageTitle" xml:space="preserve"><value>Magie / Resonanz prüfen</value></data>
+  <data name="Magic.Review.TypedIdentities" xml:space="preserve"><value>Typisierte Identitäten</value></data>
+  <data name="Magic.ReviewChanged" xml:space="preserve"><value>Die Core-Vorschau, Quellen-/Custom-/SL-Instanz oder Workspace-Revision wurde geändert.</value></data>
+  <data name="Magic.ReviewExactDraft" xml:space="preserve"><value>Exakten Entwurf prüfen</value></data>
+  <data name="Magic.Talent.ForbiddenMetatypes" xml:space="preserve"><value>Verbotene Metatypen</value></data>
+  <data name="Magic.Talent.PriorityRank" xml:space="preserve"><value>Prioritätsrang</value></data>
+  <data name="Magic.Talent.PrioritySourceId" xml:space="preserve"><value>Prioritätsquellen-ID</value></data>
+  <data name="Magic.Talent.ReadOnly" xml:space="preserve"><value>Prioritätstalent · schreibgeschützt</value></data>
+  <data name="Magic.Talent.RequiredCategories" xml:space="preserve"><value>Erforderliche Metatypkategorien</value></data>
+  <data name="Magic.Talent.RequiredMetatypes" xml:space="preserve"><value>Erforderliche Metatypen</value></data>
+  <data name="Magic.Talent.SelectionId" xml:space="preserve"><value>Talentauswahl-ID</value></data>
+  <data name="Magic.TypedChoices" xml:space="preserve"><value>Typisierte Auswahlen</value></data>
+  <data name="Magic.Unit.Choices" xml:space="preserve"><value>Auswahlen</value></data>
+  <data name="Magic.Unit.PowerPoints" xml:space="preserve"><value>Kraftpunkte</value></data>
+  <data name="Qualities.Abandon.Message" xml:space="preserve"><value>Dies entfernt nur die dauerhafte Telefonprüfung. Der Erschaffungsentwurf und der Charakter bleiben unverändert.</value></data>
+  <data name="Qualities.Abandon.Title" xml:space="preserve"><value>Geprüfte Vor- und Nachteile verwerfen?</value></data>
+  <data name="Qualities.Binding" xml:space="preserve"><value>Revision {0} · Voraussetzung {1} · Attribute {2}</value></data>
+  <data name="Qualities.BudgetKarma" xml:space="preserve"><value>{0} / {1} Karma</value></data>
+  <data name="Qualities.Choose" xml:space="preserve"><value>Vor- und Nachteile auswählen</value></data>
+  <data name="Qualities.Configure.Add" xml:space="preserve"><value>Zum Entwurf hinzufügen</value></data>
+  <data name="Qualities.Configure.Back" xml:space="preserve"><value>Zurück zu Vor- und Nachteilen</value></data>
+  <data name="Qualities.Configure.PageTitle" xml:space="preserve"><value>Vor- oder Nachteil konfigurieren</value></data>
+  <data name="Qualities.Configure.Preview" xml:space="preserve"><value>Core-Vorschau: +{0} positiv · -{1} negativ · {2} Karma verbleibend</value></data>
+  <data name="Qualities.Configure.Remove" xml:space="preserve"><value>Aus Entwurf entfernen</value></data>
+  <data name="Qualities.CoreLedgers" xml:space="preserve"><value>Core-Konten</value></data>
+  <data name="Qualities.ExactFollowUp" xml:space="preserve"><value>Exakte Folgeauswahl</value></data>
+  <data name="Qualities.FinalLedgers" xml:space="preserve"><value>Endgültige Core-Konten</value></data>
+  <data name="Qualities.FinalizationBoundary" xml:space="preserve"><value>Die Bestätigung speichert nur einen typisierten Erschaffungsentwurf. Effekte von Vor- und Nachteilen werden später durch die Gesamtfinalisierung angewendet.</value></data>
+  <data name="Qualities.FollowUp" xml:space="preserve"><value>Folgeauswahl</value></data>
+  <data name="Qualities.FollowUpId" xml:space="preserve"><value>Folgeauswahl-ID</value></data>
+  <data name="Qualities.Granted" xml:space="preserve"><value>Durch frühere Auswahlen gewährt</value></data>
+  <data name="Qualities.GrantedDetail" xml:space="preserve"><value>{0} · Stufe {1} · Karma {2}</value></data>
+  <data name="Qualities.Intro" xml:space="preserve"><value>Jede Zeile ist eine Core-Option mit festen Kosten und Quellenanker. Nicht unterstützte Voraussetzungen, variable Kosten und nicht aufgelöste Custom-Overlays bleiben deaktiviert.</value></data>
+  <data name="Qualities.KarmaRemainingInline" xml:space="preserve"><value>{0} verbleibend</value></data>
+  <data name="Qualities.Left" xml:space="preserve"><value>{0} verbleibend</value></data>
+  <data name="Qualities.Metagenic" xml:space="preserve"><value>Metagenisch: +{0} / -{1}</value></data>
+  <data name="Qualities.MetagenicLabel" xml:space="preserve"><value>Metagenisch</value></data>
+  <data name="Qualities.Negative" xml:space="preserve"><value>Nachteile</value></data>
+  <data name="Qualities.NegativeKarma" xml:space="preserve"><value>Karma für Nachteile</value></data>
+  <data name="Qualities.NegativeKarmaUsed" xml:space="preserve"><value>Verwendetes negatives Karma</value></data>
+  <data name="Qualities.NoMutation" xml:space="preserve"><value>Die aktuelle Instanz hat bewiesen, dass keine Änderung erfolgte; der geprüfte Entwurf kann fortgesetzt werden.</value></data>
+  <data name="Qualities.OptionDetail" xml:space="preserve"><value>{0}Stufe {1} · Karma {2}{3}</value></data>
+  <data name="Qualities.OptionId" xml:space="preserve"><value>Options-ID</value></data>
+  <data name="Qualities.PageTitle" xml:space="preserve"><value>Vor- und Nachteile</value></data>
+  <data name="Qualities.Positive" xml:space="preserve"><value>Vorteile</value></data>
+  <data name="Qualities.PositiveKarma" xml:space="preserve"><value>Karma für Vorteile</value></data>
+  <data name="Qualities.PositiveKarmaUsed" xml:space="preserve"><value>Verwendetes positives Karma</value></data>
+  <data name="Qualities.Receipt.PageTitle" xml:space="preserve"><value>Beleg für Vor- und Nachteile</value></data>
+  <data name="Qualities.Receipt.Safe" xml:space="preserve"><value>Typisierte Auswahlen sind dauerhaft gespeichert. Charaktereffekte warten auf die Gesamtfinalisierung.</value></data>
+  <data name="Qualities.Receipt.Unsafe" xml:space="preserve"><value>Unsicherer Beleg: Das Charakterdokument wurde vor der Finalisierung geändert.</value></data>
+  <data name="Qualities.Recovery.Applied" xml:space="preserve"><value>Ein geprüfter Beleg des Vor-/Nachteilentwurfs wartet auf Bestätigung.</value></data>
+  <data name="Qualities.Recovery.Locked" xml:space="preserve"><value>Der Bereich für Vor- und Nachteile ist gesperrt.</value></data>
+  <data name="Qualities.Recovery.Resume" xml:space="preserve"><value>Geprüfte Vor- und Nachteile fortsetzen</value></data>
+  <data name="Qualities.Recovery.Reviewed" xml:space="preserve"><value>Ein geprüfter Vor-/Nachteilentwurf kann ohne Rekonstruktion der Regeldaten fortgesetzt werden.</value></data>
+  <data name="Qualities.Recovery.Stale" xml:space="preserve"><value>Der Checkpoint gehört zu einer anderen Revision oder seine Regelinstanz wurde geändert. Der Bereich bleibt sicher gesperrt; öffne den exakten Runner erneut oder nutze die Support-Wiederherstellung.</value></data>
+  <data name="Qualities.Review.Binding" xml:space="preserve"><value>Revision {0} · Transaktion {1}</value></data>
+  <data name="Qualities.Review.Boundary" xml:space="preserve"><value>Dies speichert nur den Hilfszustand der Erschaffung und seinen Beleg. CharacterDocumentChanged muss bis zur Finalisierung false bleiben.</value></data>
+  <data name="Qualities.Review.Confirm" xml:space="preserve"><value>Entwurf der Erschaffungs-Vor-/Nachteile bestätigen</value></data>
+  <data name="Qualities.Review.Heading" xml:space="preserve"><value>Exakten Vor-/Nachteilentwurf prüfen</value></data>
+  <data name="Qualities.Review.PageTitle" xml:space="preserve"><value>Vor- und Nachteile prüfen</value></data>
+  <data name="Qualities.ReviewChanged" xml:space="preserve"><value>Die Core-Vorschau, Quelleninstanz oder Workspace-Revision wurde geändert.</value></data>
+  <data name="Qualities.ReviewSelected" xml:space="preserve"><value>{0} ausgewählte Vor- und Nachteile prüfen</value></data>
+  <data name="Qualities.StableOption" xml:space="preserve"><value>Stabile Option</value></data>
+  <data name="Qualities.Step1" xml:space="preserve"><value>SR5-Priorität · 1 von 4</value></data>
+  <data name="Qualities.Step2" xml:space="preserve"><value>SR5-Priorität · 2 von 4</value></data>
+  <data name="Qualities.Step3" xml:space="preserve"><value>SR5-Priorität · 3 von 4</value></data>
+  <data name="Qualities.Step4" xml:space="preserve"><value>SR5-Priorität · 4 von 4</value></data>
+</root>

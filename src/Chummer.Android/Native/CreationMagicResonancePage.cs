@@ -31,7 +31,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         CharacterCreationMagicResonanceCheckpointStore store) : base(coordinator)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
-        Title = "Magic / Resonance";
+        Title = CreationFlowStrings.Get("Magic.PageTitle", "Magic / Resonance");
         AutomationId = "creation-magic-resonance-page";
         Content = new ScrollView { Content = _body };
     }
@@ -39,10 +39,12 @@ public sealed class CreationMagicResonancePage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("SR5 Priority · Draft"));
-        _body.Add(NativeTheme.Title("Magic and Resonance"));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.DraftEyebrow", "SR5 Priority · Draft")));
+        _body.Add(NativeTheme.Title(CreationFlowStrings.Get("Magic.Heading", "Magic and Resonance")));
         _body.Add(NativeTheme.Body(
-            "The Talent is owned by the Priority prerequisite. This phone step selects only Core-issued typed identities; unsupported custom semantics and artificial-intelligence Talent stay fail-closed.",
+            CreationFlowStrings.Get(
+                "Magic.Intro",
+                "The Talent is owned by the Priority prerequisite. This phone step selects only Core-issued typed identities; unsupported custom semantics and artificial-intelligence Talent stay fail-closed."),
             NativeTheme.Muted));
 
         CharacterCreationFoundationResult<CharacterCreationMagicResonanceState> load =
@@ -88,7 +90,12 @@ public sealed class CreationMagicResonancePage : NativePageBase
     {
         CharacterCreationMagicResonanceBinding binding = editor.Binding;
         Label revisions = NativeTheme.Body(
-            $"Revision {binding.ContentRevision.ToString(CultureInfo.InvariantCulture)} · prerequisite {binding.PrerequisiteDraftRevision.ToString(CultureInfo.InvariantCulture)} · attributes {binding.AttributesDraftRevision.ToString(CultureInfo.InvariantCulture)}",
+            CreationFlowStrings.Format(
+                "Magic.Binding",
+                "Revision {0} · prerequisite {1} · attributes {2}",
+                binding.ContentRevision.ToString(CultureInfo.InvariantCulture),
+                binding.PrerequisiteDraftRevision.ToString(CultureInfo.InvariantCulture),
+                binding.AttributesDraftRevision.ToString(CultureInfo.InvariantCulture)),
             NativeTheme.Muted);
         revisions.AutomationId = "creation-magic-resonance-binding";
         _body.Add(revisions);
@@ -102,18 +109,18 @@ public sealed class CreationMagicResonancePage : NativePageBase
     private void AddTalent(CharacterCreationMagicResonanceTalentProjection talent)
     {
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow("Priority Talent · read only"));
+        card.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.Talent.ReadOnly", "Priority Talent · read only")));
         card.Add(NativeTheme.Title(talent.Name, 22));
-        card.Add(NativeTheme.Metric("Kind", KindLabel(talent.Kind)));
-        card.Add(NativeTheme.Metric("Priority rank", talent.Rank));
-        card.Add(NativeTheme.Metric("Priority source id", talent.Identity.PrioritySourceId));
-        card.Add(NativeTheme.Metric("Talent selection id", talent.Identity.TalentSelectionId));
-        card.Add(NativeTheme.Metric("Magic", talent.Magic.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Resonance", talent.Resonance.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Depth", talent.Depth.ToString(CultureInfo.InvariantCulture)));
-        AddRequirement(card, "Required metatypes", talent.RequiredMetatypeNames);
-        AddRequirement(card, "Required metatype categories", talent.RequiredMetatypeCategories);
-        AddRequirement(card, "Forbidden metatypes", talent.ForbiddenMetatypeNames);
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Kind", "Kind"), KindLabel(talent.Kind)));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Talent.PriorityRank", "Priority rank"), talent.Rank));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Talent.PrioritySourceId", "Priority source id"), talent.Identity.PrioritySourceId));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Talent.SelectionId", "Talent selection id"), talent.Identity.TalentSelectionId));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Kind.Magic", "Magic"), talent.Magic.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Kind.Resonance", "Resonance"), talent.Resonance.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Kind.Depth", "Depth"), talent.Depth.ToString(CultureInfo.InvariantCulture)));
+        AddRequirement(card, CreationFlowStrings.Get("Magic.Talent.RequiredMetatypes", "Required metatypes"), talent.RequiredMetatypeNames);
+        AddRequirement(card, CreationFlowStrings.Get("Magic.Talent.RequiredCategories", "Required metatype categories"), talent.RequiredMetatypeCategories);
+        AddRequirement(card, CreationFlowStrings.Get("Magic.Talent.ForbiddenMetatypes", "Forbidden metatypes"), talent.ForbiddenMetatypeNames);
         AddSources(card, talent.SourceAnchorIds);
         foreach (string blocker in talent.Blockers)
             card.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
@@ -126,7 +133,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         CharacterCreationMagicResonancePreview? preview,
         IReadOnlyList<CharacterCreationMagicResonanceBudgetState> projected)
     {
-        _body.Add(NativeTheme.Eyebrow("Exact Core budgets"));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.ExactBudgets", "Exact Core budgets")));
         CharacterCreationMagicResonanceBudgetState[] budgets = preview is null
             ? projected.ToArray()
             :
@@ -151,10 +158,15 @@ public sealed class CreationMagicResonancePage : NativePageBase
             };
             card.Add(NativeTheme.Eyebrow(KindLabel(budget.Kind)));
             card.Add(NativeTheme.Title(
-                $"{Decimal(budget.Remaining)} left",
+                CreationFlowStrings.Format("Magic.Left", "{0} left", Decimal(budget.Remaining)),
                 20));
             card.Add(NativeTheme.Body(
-                $"{Decimal(budget.Used)} / {Decimal(budget.Total)} {BudgetUnit(budget.Kind)}",
+                CreationFlowStrings.Format(
+                    "Magic.BudgetSummary",
+                    "{0} / {1} {2}",
+                    Decimal(budget.Used),
+                    Decimal(budget.Total),
+                    BudgetUnit(budget.Kind)),
                 budget.Blockers.Count == 0 ? NativeTheme.Muted : NativeTheme.Danger));
             foreach (string blocker in budget.Blockers)
                 card.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
@@ -183,17 +195,23 @@ public sealed class CreationMagicResonancePage : NativePageBase
         }
 
         VerticalStackLayout recovery = new() { Spacing = 8 };
-        recovery.Add(NativeTheme.Eyebrow("Durable review recovery"));
+        recovery.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Common.DurableRecovery", "Durable review recovery")));
         recovery.Add(NativeTheme.Body(
             checkpoint.Phase switch
             {
                 CharacterCreationMagicResonanceCheckpointPhase.Reviewed =>
-                    "A typed blocker-free Core review can be resumed without reconstructing rules data.",
+                    CreationFlowStrings.Get(
+                        "Magic.Recovery.Reviewed",
+                        "A typed blocker-free Core review can be resumed without reconstructing rules data."),
                 CharacterCreationMagicResonanceCheckpointPhase.Confirming =>
-                    "An interrupted Core commit is locked to its exact idempotent command and can only be replayed.",
+                    CreationFlowStrings.Get(
+                        "Magic.Recovery.Confirming",
+                        "An interrupted Core commit is locked to its exact idempotent command and can only be replayed."),
                 CharacterCreationMagicResonanceCheckpointPhase.Confirmed =>
-                    "A digest-verified Core receipt is waiting for acknowledgement.",
-                _ => "The Magic/Resonance lane is locked."
+                    CreationFlowStrings.Get(
+                        "Magic.Recovery.Confirmed",
+                        "A digest-verified Core receipt is waiting for acknowledgement."),
+                _ => CreationFlowStrings.Get("Magic.Recovery.Locked", "The Magic/Resonance lane is locked.")
             },
             NativeTheme.Muted));
 
@@ -201,12 +219,16 @@ public sealed class CreationMagicResonancePage : NativePageBase
                 CharacterCreationMagicResonanceCheckpointPhase.Reviewed
             && checkpoint.OwnsExactReview(editor, Coordinator.State))
         {
-            Button resume = NativeTheme.PrimaryButton("Resume reviewed draft");
+            Button resume = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
+                "Common.ResumeReviewedDraft",
+                "Resume reviewed draft"));
             resume.AutomationId = "creation-magic-resonance-resume-reviewed";
             resume.Clicked += async (_, _) => await RunAsync(
                 () => ResumeReviewAsync(editor, checkpoint));
             recovery.Add(resume);
-            Button abandon = NativeTheme.SecondaryButton("Abandon reviewed draft");
+            Button abandon = NativeTheme.SecondaryButton(CreationFlowStrings.Get(
+                "Common.AbandonReviewedDraft",
+                "Abandon reviewed draft"));
             abandon.AutomationId = "creation-magic-resonance-abandon-reviewed";
             abandon.Clicked += async (_, _) => await RunAsync(
                 () => AbandonReviewedAsync(checkpoint));
@@ -216,7 +238,9 @@ public sealed class CreationMagicResonancePage : NativePageBase
                      CharacterCreationMagicResonanceCheckpointPhase.Confirming
                  && checkpoint.OwnsRecoveryRevision(Coordinator.State))
         {
-            Button resolve = NativeTheme.PrimaryButton("Resolve interrupted commit");
+            Button resolve = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
+                "Common.ResolveInterruptedCommit",
+                "Resolve interrupted commit"));
             resolve.AutomationId = "creation-magic-resonance-resolve-confirming";
             resolve.Clicked += async (_, _) => await RunAsync(
                 () => ResolveConfirmingAsync(checkpoint));
@@ -227,7 +251,9 @@ public sealed class CreationMagicResonancePage : NativePageBase
                  && checkpoint.OwnsRecoveryRevision(Coordinator.State)
                  && checkpoint.Confirmation is { } confirmation)
         {
-            Button receipt = NativeTheme.PrimaryButton("Open saved receipt");
+            Button receipt = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
+                "Common.OpenSavedReceipt",
+                "Open saved receipt"));
             receipt.AutomationId = "creation-magic-resonance-open-receipt";
             receipt.Clicked += async (_, _) => await Navigation.PushAsync(
                 new CreationMagicResonanceReceiptPage(
@@ -240,7 +266,9 @@ public sealed class CreationMagicResonancePage : NativePageBase
         else
         {
             Label stale = NativeTheme.Body(
-                "This checkpoint belongs to another revision or authority digest. The lane stays fail-closed; reopen the exact runner or use support recovery.",
+                CreationFlowStrings.Get(
+                    "Magic.Recovery.Stale",
+                    "This checkpoint belongs to another revision or authority digest. The lane stays fail-closed; reopen the exact runner or use support recovery."),
                 NativeTheme.Danger);
             stale.AutomationId = "creation-magic-resonance-stale-checkpoint";
             recovery.Add(stale);
@@ -259,39 +287,39 @@ public sealed class CreationMagicResonancePage : NativePageBase
         CharacterCreationMagicResonanceEditorState editor,
         bool laneLocked)
     {
-        _body.Add(NativeTheme.Eyebrow("Typed choices"));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.TypedChoices", "Typed choices")));
         AddCatalogRoute(
             editor,
             CharacterCreationMagicResonanceKinds.Tradition,
-            "Tradition",
+            KindLabel(CharacterCreationMagicResonanceKinds.Tradition),
             editor.Traditions,
             editor.Talent.RequiresTradition,
             laneLocked);
         AddCatalogRoute(
             editor,
             CharacterCreationMagicResonanceKinds.Stream,
-            "Stream",
+            KindLabel(CharacterCreationMagicResonanceKinds.Stream),
             editor.Streams,
             editor.Talent.RequiresStream,
             laneLocked);
         AddCatalogRoute(
             editor,
             CharacterCreationMagicResonanceKinds.AdeptPower,
-            "Adept powers",
+            CreationFlowStrings.Get("Magic.AdeptPowers", "Adept powers"),
             editor.AdeptPowers,
             editor.Talent.AllowsAdeptPowers,
             laneLocked);
         AddCatalogRoute(
             editor,
             CharacterCreationMagicResonanceKinds.Spell,
-            "Spells",
+            KindLabel(CharacterCreationMagicResonanceKinds.Spell),
             editor.Spells,
             editor.Talent.AllowsSpells,
             laneLocked);
         AddCatalogRoute(
             editor,
             CharacterCreationMagicResonanceKinds.ComplexForm,
-            "Complex forms",
+            KindLabel(CharacterCreationMagicResonanceKinds.ComplexForm),
             editor.ComplexForms,
             editor.Talent.AllowsComplexForms,
             laneLocked);
@@ -321,8 +349,16 @@ public sealed class CreationMagicResonancePage : NativePageBase
             _ => 0
         };
         string detail = allowed
-            ? $"{selected.ToString(CultureInfo.InvariantCulture)} selected · {Decimal(budget.Remaining)} {BudgetUnit(kind)} left · {options.Count.ToString(CultureInfo.InvariantCulture)} Core options"
-            : "Not allowed by the exact Priority Talent";
+            ? CreationFlowStrings.Format(
+                "Magic.CatalogRouteDetail",
+                "{0} selected · {1} {2} left · {3} Core options",
+                selected.ToString(CultureInfo.InvariantCulture),
+                Decimal(budget.Remaining),
+                BudgetUnit(kind),
+                options.Count.ToString(CultureInfo.InvariantCulture))
+            : CreationFlowStrings.Get(
+                "Magic.NotAllowed",
+                "Not allowed by the exact Priority Talent");
         _body.Add(NativeTheme.NavigationRow(
             label,
             detail,
@@ -361,7 +397,9 @@ public sealed class CreationMagicResonancePage : NativePageBase
         bool laneLocked)
     {
         CharacterCreationMagicResonanceReview? review = _draft.Review;
-        Button open = NativeTheme.PrimaryButton("Review exact draft");
+        Button open = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
+            "Magic.ReviewExactDraft",
+            "Review exact draft"));
         open.AutomationId = "creation-magic-resonance-open-review";
         open.IsEnabled = !laneLocked && editor.CanEdit;
         open.Clicked += async (_, _) => await RunAsync(() => OpenReviewAsync(editor));
@@ -369,13 +407,17 @@ public sealed class CreationMagicResonancePage : NativePageBase
         if (review is { Preview.CanConfirm: false })
         {
             Label incomplete = NativeTheme.Body(
-                "Core has previewed this draft, but exact remaining budgets or blockers prevent confirmation.",
+                CreationFlowStrings.Get(
+                    "Magic.DraftIncomplete",
+                    "Core has previewed this draft, but exact remaining budgets or blockers prevent confirmation."),
                 NativeTheme.Danger);
             incomplete.AutomationId = "creation-magic-resonance-draft-incomplete";
             _body.Add(incomplete);
         }
         Label boundary = NativeTheme.Body(
-            "Confirm commits only Core auxiliary Creation state. CharacterDocumentChanged must stay false until whole-build finalization.",
+            CreationFlowStrings.Get(
+                "Magic.FinalizationBoundary",
+                "Confirm commits only Core auxiliary Creation state. CharacterDocumentChanged must stay false until whole-build finalization."),
             NativeTheme.Muted);
         boundary.AutomationId = "creation-magic-resonance-finalization-boundary";
         _body.Add(boundary);
@@ -419,7 +461,10 @@ public sealed class CreationMagicResonancePage : NativePageBase
                 out CharacterCreationMagicResonanceCheckpoint stored,
                 out string blocker))
         {
-            await DisplayAlertAsync("Review not checkpointed", blocker, "OK");
+            await DisplayAlertAsync(
+                CreationFlowStrings.Get("Common.ReviewNotCheckpointed", "Review not checkpointed"),
+                blocker,
+                CreationFlowStrings.Get("Common.OK", "OK"));
             Refresh();
             return;
         }
@@ -445,7 +490,9 @@ public sealed class CreationMagicResonancePage : NativePageBase
                     refreshed))
             {
                 throw new InvalidOperationException(
-                    "The Core preview, source/custom/GM authority, or workspace revision changed.");
+                    CreationFlowStrings.Get(
+                        "Magic.ReviewChanged",
+                        "The Core preview, source/custom/GM authority, or workspace revision changed."));
             }
             await Navigation.PushAsync(new CreationMagicResonanceReviewPage(
                 Coordinator,
@@ -454,7 +501,10 @@ public sealed class CreationMagicResonancePage : NativePageBase
         }
         catch (InvalidOperationException exception)
         {
-            await DisplayAlertAsync("Review cannot resume", exception.Message, "OK");
+            await DisplayAlertAsync(
+                CreationFlowStrings.Get("Common.ReviewCannotResume", "Review cannot resume"),
+                exception.Message,
+                CreationFlowStrings.Get("Common.OK", "OK"));
         }
     }
 
@@ -462,17 +512,24 @@ public sealed class CreationMagicResonancePage : NativePageBase
         CharacterCreationMagicResonanceCheckpoint checkpoint)
     {
         bool confirmed = await DisplayAlertAsync(
-            "Abandon reviewed Magic/Resonance draft?",
-            "This removes only the durable phone review. It does not change Core Creation state or the character document.",
-            "Abandon",
-            "Keep");
+            CreationFlowStrings.Get(
+                "Magic.Abandon.Title",
+                "Abandon reviewed Magic/Resonance draft?"),
+            CreationFlowStrings.Get(
+                "Magic.Abandon.Message",
+                "This removes only the durable phone review. It does not change Core Creation state or the character document."),
+            CreationFlowStrings.Get("Common.Abandon", "Abandon"),
+            CreationFlowStrings.Get("Common.Keep", "Keep"));
         if (!confirmed)
             return;
         if (!_store.TryDeleteReviewed(
                 CharacterCreationMagicResonanceCheckpointCas.From(checkpoint),
                 out string blocker))
         {
-            await DisplayAlertAsync("Checkpoint not removed", blocker, "OK");
+            await DisplayAlertAsync(
+                CreationFlowStrings.Get("Common.CheckpointNotRemoved", "Checkpoint not removed"),
+                blocker,
+                CreationFlowStrings.Get("Common.OK", "OK"));
         }
         Refresh();
     }
@@ -502,7 +559,10 @@ public sealed class CreationMagicResonancePage : NativePageBase
                     _store));
                 return;
             }
-            await DisplayAlertAsync("Receipt remains locked", recordBlocker, "OK");
+            await DisplayAlertAsync(
+                CreationFlowStrings.Get("Common.ReceiptLocked", "Receipt remains locked"),
+                recordBlocker,
+                CreationFlowStrings.Get("Common.OK", "OK"));
         }
         else if (result.MutationOutcomeKnown
                  && string.Equals(
@@ -516,21 +576,24 @@ public sealed class CreationMagicResonancePage : NativePageBase
                     out string returnBlocker))
             {
                 await DisplayAlertAsync(
-                    "Commit was not saved",
+                    CreationFlowStrings.Get("Common.CommitNotSaved", "Commit was not saved"),
                     string.Join("\n", result.Blockers),
-                    "OK");
+                    CreationFlowStrings.Get("Common.OK", "OK"));
             }
             else
             {
-                await DisplayAlertAsync("Recovery remains locked", returnBlocker, "OK");
+                await DisplayAlertAsync(
+                    CreationFlowStrings.Get("Common.RecoveryLocked", "Recovery remains locked"),
+                    returnBlocker,
+                    CreationFlowStrings.Get("Common.OK", "OK"));
             }
         }
         else
         {
             await DisplayAlertAsync(
-                "Commit remains locked",
+                CreationFlowStrings.Get("Common.CommitLocked", "Commit remains locked"),
                 string.Join("\n", result.Blockers),
-                "OK");
+                CreationFlowStrings.Get("Common.OK", "OK"));
         }
         Refresh();
     }
@@ -545,7 +608,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         if (normalized.Length == 0)
             return;
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow("Core blockers"));
+        card.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Common.CoreBlockers", "Core blockers")));
         foreach (string blocker in normalized)
             card.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
         Border border = NativeTheme.Card(card);
@@ -565,7 +628,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         VerticalStackLayout layout,
         IReadOnlyList<string> sourceAnchorIds)
     {
-        layout.Add(NativeTheme.Eyebrow("Source anchors"));
+        layout.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Common.SourceAnchors", "Source anchors")));
         layout.Add(NativeTheme.Body(
             sourceAnchorIds.Count == 0
                 ? CharacterCreationMagicResonanceBlockers.SourceDrift
@@ -584,18 +647,18 @@ public sealed class CreationMagicResonancePage : NativePageBase
 
     internal static string KindLabel(string kind) => kind switch
     {
-        CharacterCreationMagicResonanceKinds.Mundane => "Mundane",
-        CharacterCreationMagicResonanceKinds.Adept => "Adept",
-        CharacterCreationMagicResonanceKinds.Magician => "Magician",
-        CharacterCreationMagicResonanceKinds.MysticAdept => "Mystic adept",
-        CharacterCreationMagicResonanceKinds.AspectedMagician => "Aspected magician",
-        CharacterCreationMagicResonanceKinds.Technomancer => "Technomancer",
-        CharacterCreationMagicResonanceKinds.Tradition => "Tradition",
-        CharacterCreationMagicResonanceKinds.Stream => "Stream",
-        CharacterCreationMagicResonanceKinds.AdeptPower => "Adept power points",
-        CharacterCreationMagicResonanceKinds.Spell => "Spells",
-        CharacterCreationMagicResonanceKinds.ComplexForm => "Complex forms",
-        _ => "Unsupported"
+        CharacterCreationMagicResonanceKinds.Mundane => CreationFlowStrings.Get("Magic.Kind.Mundane", "Mundane"),
+        CharacterCreationMagicResonanceKinds.Adept => CreationFlowStrings.Get("Magic.Kind.Adept", "Adept"),
+        CharacterCreationMagicResonanceKinds.Magician => CreationFlowStrings.Get("Magic.Kind.Magician", "Magician"),
+        CharacterCreationMagicResonanceKinds.MysticAdept => CreationFlowStrings.Get("Magic.Kind.MysticAdept", "Mystic adept"),
+        CharacterCreationMagicResonanceKinds.AspectedMagician => CreationFlowStrings.Get("Magic.Kind.AspectedMagician", "Aspected magician"),
+        CharacterCreationMagicResonanceKinds.Technomancer => CreationFlowStrings.Get("Magic.Kind.Technomancer", "Technomancer"),
+        CharacterCreationMagicResonanceKinds.Tradition => CreationFlowStrings.Get("Magic.Kind.Tradition", "Tradition"),
+        CharacterCreationMagicResonanceKinds.Stream => CreationFlowStrings.Get("Magic.Kind.Stream", "Stream"),
+        CharacterCreationMagicResonanceKinds.AdeptPower => CreationFlowStrings.Get("Magic.Kind.AdeptPower", "Adept power points"),
+        CharacterCreationMagicResonanceKinds.Spell => CreationFlowStrings.Get("Magic.Kind.Spells", "Spells"),
+        CharacterCreationMagicResonanceKinds.ComplexForm => CreationFlowStrings.Get("Magic.Kind.ComplexForms", "Complex forms"),
+        _ => CreationFlowStrings.Get("Common.Unsupported", "Unsupported")
     };
 
     internal static string BudgetUnit(string kind)
@@ -603,8 +666,8 @@ public sealed class CreationMagicResonancePage : NativePageBase
             kind,
             CharacterCreationMagicResonanceKinds.AdeptPower,
             StringComparison.Ordinal)
-            ? "power points"
-            : "choices";
+            ? CreationFlowStrings.Get("Magic.Unit.PowerPoints", "power points")
+            : CreationFlowStrings.Get("Magic.Unit.Choices", "choices");
 
     internal static string Decimal(decimal value)
         => value.ToString("0.##", CultureInfo.InvariantCulture);
@@ -649,7 +712,9 @@ public sealed class CreationMagicResonanceCatalogPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("SR5 Priority · Draft · Catalog"));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get(
+            "Magic.Catalog.Eyebrow",
+            "SR5 Priority · Draft · Catalog")));
         _body.Add(NativeTheme.Title(CreationMagicResonancePage.KindLabel(_kind)));
         if (!_draft.Matches(_editor, Coordinator.State))
         {
@@ -661,7 +726,9 @@ public sealed class CreationMagicResonanceCatalogPage : NativePageBase
         if (_options.Count == 0)
         {
             Label empty = NativeTheme.Body(
-                "Core projected no selectable identities for this category. No label-based or custom fallback is available.",
+                CreationFlowStrings.Get(
+                    "Magic.Catalog.Empty",
+                    "Core projected no selectable identities for this category. No label-based or custom fallback is available."),
                 NativeTheme.Danger);
             empty.AutomationId = "creation-magic-resonance-empty-catalog";
             _body.Add(NativeTheme.Card(empty));
@@ -670,7 +737,14 @@ public sealed class CreationMagicResonanceCatalogPage : NativePageBase
         foreach (CharacterCreationMagicResonanceOptionProjection option in _options)
         {
             bool selected = _draft.IsSelected(option.Identity);
-            string detail = $"{(selected ? "Selected · " : string.Empty)}{CreationMagicResonancePage.Decimal(option.PointCost)} {CreationMagicResonancePage.BudgetUnit(_kind)} · {option.SourceBook} {option.Page}";
+            string detail = CreationFlowStrings.Format(
+                "Magic.Catalog.OptionDetail",
+                "{0}{1} {2} · {3} {4}",
+                selected ? CreationFlowStrings.Get("Common.SelectedPrefix", "Selected · ") : string.Empty,
+                CreationMagicResonancePage.Decimal(option.PointCost),
+                CreationMagicResonancePage.BudgetUnit(_kind),
+                option.SourceBook,
+                option.Page);
             if (!option.IsEnabled || option.Blockers.Count > 0)
                 detail += $" · {option.Blockers.FirstOrDefault() ?? CharacterCreationMagicResonanceBlockers.OptionDisabled}";
             Border row = NativeTheme.NavigationRow(
@@ -709,7 +783,7 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
         _editor = editor ?? throw new ArgumentNullException(nameof(editor));
         _option = option ?? throw new ArgumentNullException(nameof(option));
         _draft = draft ?? throw new ArgumentNullException(nameof(draft));
-        Title = "Configure choice";
+        Title = CreationFlowStrings.Get("Magic.Option.PageTitle", "Configure choice");
         AutomationId = "creation-magic-resonance-option-page";
         Content = new ScrollView { Content = _body };
     }
@@ -717,23 +791,25 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("SR5 Priority · Draft · Choice"));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get(
+            "Magic.Option.Eyebrow",
+            "SR5 Priority · Draft · Choice")));
         _body.Add(NativeTheme.Title(_option.Name));
         VerticalStackLayout details = new() { Spacing = 6 };
-        details.Add(NativeTheme.Metric("Typed kind", _option.Identity.Kind));
-        details.Add(NativeTheme.Metric("Source identity", _option.Identity.SourceId));
-        details.Add(NativeTheme.Metric("Category", _option.Category));
+        details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.TypedKind", "Typed kind"), _option.Identity.Kind));
+        details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SourceIdentity", "Source identity"), _option.Identity.SourceId));
+        details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Category", "Category"), _option.Category));
         details.Add(NativeTheme.Metric(
-            "Point cost",
+            CreationFlowStrings.Get("Magic.Option.PointCost", "Point cost"),
             CreationMagicResonancePage.Decimal(_option.PointCost)));
         details.Add(NativeTheme.Metric(
-            "Maximum levels",
+            CreationFlowStrings.Get("Magic.Option.MaximumLevels", "Maximum levels"),
             _option.MaximumLevels.ToString(CultureInfo.InvariantCulture)));
-        details.Add(NativeTheme.Metric("Source book", _option.SourceBook));
-        details.Add(NativeTheme.Metric("Page", _option.Page));
+        details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SourceBook", "Source book"), _option.SourceBook));
+        details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Page", "Page"), _option.Page));
         if (!string.IsNullOrWhiteSpace(_option.DrainExpression))
-            details.Add(NativeTheme.Metric("Drain", _option.DrainExpression));
-        details.Add(NativeTheme.Metric("Source node digest", _option.SourceNodeDigest));
+            details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Option.Drain", "Drain"), _option.DrainExpression));
+        details.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SourceNodeDigest", "Source node digest"), _option.SourceNodeDigest));
         CreationMagicResonancePage.AddSources(details, _option.SourceAnchorIds);
         foreach (string blocker in _option.Blockers.Concat(_blockers)
                      .Distinct(StringComparer.Ordinal))
@@ -753,17 +829,24 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
         {
             int levels = _draft.PowerLevels(_option.Identity);
             Label selected = NativeTheme.Body(
-                $"Selected levels: {levels.ToString(CultureInfo.InvariantCulture)}",
+                CreationFlowStrings.Format(
+                    "Magic.Option.SelectedLevels",
+                    "Selected levels: {0}",
+                    levels.ToString(CultureInfo.InvariantCulture)),
                 NativeTheme.Muted);
             selected.AutomationId = "creation-magic-resonance-power-level";
             _body.Add(selected);
-            Button decrease = NativeTheme.SecondaryButton("Decrease level");
+            Button decrease = NativeTheme.SecondaryButton(CreationFlowStrings.Get(
+                "Magic.Option.Decrease",
+                "Decrease level"));
             decrease.AutomationId = "creation-magic-resonance-power-decrease";
             decrease.IsEnabled = exact && levels > 0;
             decrease.Clicked += async (_, _) => await RunAsync(
                 () => ChangePowerLevelAsync(levels - 1));
             _body.Add(decrease);
-            Button increase = NativeTheme.PrimaryButton("Increase level");
+            Button increase = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
+                "Magic.Option.Increase",
+                "Increase level"));
             increase.AutomationId = "creation-magic-resonance-power-increase";
             increase.IsEnabled = exact && levels < _option.MaximumLevels;
             increase.Clicked += async (_, _) => await RunAsync(
@@ -774,8 +857,8 @@ public sealed class CreationMagicResonanceOptionPage : NativePageBase
         {
             Button toggle = NativeTheme.PrimaryButton(
                 _draft.IsSelected(_option.Identity)
-                    ? "Remove from draft"
-                    : "Select for draft");
+                    ? CreationFlowStrings.Get("Common.RemoveFromDraft", "Remove from draft")
+                    : CreationFlowStrings.Get("Magic.Option.Select", "Select for draft"));
             toggle.AutomationId = "creation-magic-resonance-option-toggle";
             toggle.IsEnabled = exact;
             toggle.Clicked += async (_, _) => await RunAsync(ToggleAsync);
@@ -865,7 +948,7 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
             throw new InvalidOperationException(
                 "The review page requires one exact Reviewed checkpoint.");
         }
-        Title = "Review Magic / Resonance";
+        Title = CreationFlowStrings.Get("Magic.Review.PageTitle", "Review Magic / Resonance");
         AutomationId = "creation-magic-resonance-review-page";
         Content = new ScrollView { Content = _body };
     }
@@ -875,10 +958,16 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         _body.Clear();
         CharacterCreationMagicResonanceReview review = _checkpoint.Review;
         CharacterCreationMagicResonancePreview preview = review.Preview;
-        _body.Add(NativeTheme.Eyebrow("SR5 Priority · Review"));
-        _body.Add(NativeTheme.Title("Review exact typed draft"));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.Review.Eyebrow", "SR5 Priority · Review")));
+        _body.Add(NativeTheme.Title(CreationFlowStrings.Get(
+            "Magic.Review.Heading",
+            "Review exact typed draft")));
         _body.Add(NativeTheme.Body(
-            $"Revision {preview.Binding.ContentRevision.ToString(CultureInfo.InvariantCulture)} · {CreationMagicResonancePage.KindLabel(preview.Talent.Kind)}",
+            CreationFlowStrings.Format(
+                "Magic.Review.Binding",
+                "Revision {0} · {1}",
+                preview.Binding.ContentRevision.ToString(CultureInfo.InvariantCulture),
+                CreationMagicResonancePage.KindLabel(preview.Talent.Kind)),
             NativeTheme.Muted));
         AddDigest("creation-magic-resonance-review-preview-digest", preview.PreviewDigest);
         AddDigest("creation-magic-resonance-review-authority-digest", preview.Binding.AuthorityDigest);
@@ -898,7 +987,9 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         foreach (string blocker in preview.Blockers.Concat(_blockers)
                      .Distinct(StringComparer.Ordinal))
             _body.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
-        Button confirm = NativeTheme.PrimaryButton("Confirm Magic/Resonance Creation draft");
+        Button confirm = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
+            "Magic.Review.Confirm",
+            "Confirm Magic/Resonance Creation draft"));
         confirm.AutomationId = "creation-magic-resonance-confirm-draft";
         confirm.IsEnabled = _checkpoint.Phase ==
                                 CharacterCreationMagicResonanceCheckpointPhase.Reviewed
@@ -909,7 +1000,9 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         confirm.Clicked += async (_, _) => await RunAsync(ConfirmAsync);
         _body.Add(confirm);
         Label boundary = NativeTheme.Body(
-            "Core atomically commits only the auxiliary creation ledger. No XML or character effect is mutated here.",
+            CreationFlowStrings.Get(
+                "Magic.Review.Boundary",
+                "Core atomically commits only the auxiliary creation ledger. No XML or character effect is mutated here."),
             NativeTheme.Muted);
         boundary.AutomationId = "creation-magic-resonance-review-auxiliary-only";
         _body.Add(boundary);
@@ -1016,15 +1109,15 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
     {
         VerticalStackLayout card = new() { Spacing = 5 };
         card.Add(NativeTheme.Eyebrow(CreationMagicResonancePage.KindLabel(budget.Kind)));
-        card.Add(NativeTheme.Metric("Total", CreationMagicResonancePage.Decimal(budget.Total)));
-        card.Add(NativeTheme.Metric("Used", CreationMagicResonancePage.Decimal(budget.Used)));
-        card.Add(NativeTheme.Metric("Remaining", CreationMagicResonancePage.Decimal(budget.Remaining)));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Total", "Total"), CreationMagicResonancePage.Decimal(budget.Total)));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Used", "Used"), CreationMagicResonancePage.Decimal(budget.Used)));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Remaining", "Remaining"), CreationMagicResonancePage.Decimal(budget.Remaining)));
         _body.Add(NativeTheme.Card(card));
     }
 
     private void AddSelections(CharacterCreationMagicResonanceSelections selections)
     {
-        _body.Add(NativeTheme.Eyebrow("Typed identities"));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.Review.TypedIdentities", "Typed identities")));
         if (selections.Tradition is { } tradition)
             AddIdentity(tradition, levels: null);
         if (selections.Stream is { } stream)
@@ -1042,7 +1135,9 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
             && selections.ComplexForms.Count == 0)
         {
             _body.Add(NativeTheme.Body(
-                "No follow-up identities are required by this exact Talent.",
+                CreationFlowStrings.Get(
+                    "Magic.Review.NoIdentities",
+                    "No follow-up identities are required by this exact Talent."),
                 NativeTheme.Muted));
         }
     }
@@ -1052,10 +1147,10 @@ public sealed class CreationMagicResonanceReviewPage : NativePageBase
         int? levels)
     {
         VerticalStackLayout card = new() { Spacing = 5 };
-        card.Add(NativeTheme.Metric("Kind", identity.Kind));
-        card.Add(NativeTheme.Metric("Source identity", identity.SourceId));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.Kind", "Kind"), identity.Kind));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Common.SourceIdentity", "Source identity"), identity.SourceId));
         if (levels is not null)
-            card.Add(NativeTheme.Metric("Levels", levels.Value.ToString(CultureInfo.InvariantCulture)));
+            card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Option.Levels", "Levels"), levels.Value.ToString(CultureInfo.InvariantCulture)));
         _body.Add(NativeTheme.Card(card));
     }
 
@@ -1097,7 +1192,7 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
             throw new InvalidOperationException(
                 "The receipt page requires one exact durable Confirmed checkpoint.");
         }
-        Title = "Magic / Resonance receipt";
+        Title = CreationFlowStrings.Get("Magic.Receipt.PageTitle", "Magic / Resonance receipt");
         AutomationId = "creation-magic-resonance-receipt-page";
         Content = new ScrollView { Content = _body };
     }
@@ -1106,39 +1201,39 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
     {
         _body.Clear();
         CharacterCreationMagicResonanceReceipt receipt = _confirmation.Receipt;
-        _body.Add(NativeTheme.Eyebrow("SR5 Priority · Confirm"));
-        _body.Add(NativeTheme.Title("Creation draft saved"));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.Receipt.Eyebrow", "SR5 Priority · Confirm")));
+        _body.Add(NativeTheme.Title(CreationFlowStrings.Get("Common.DraftSaved", "Creation draft saved")));
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Metric(
-            "Previous revision",
+            CreationFlowStrings.Get("Common.PreviousRevision", "Previous revision"),
             receipt.PreviousContentRevision.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
-            "Content revision",
+            CreationFlowStrings.Get("Common.ContentRevision", "Content revision"),
             receipt.ContentRevision.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
-            "Saved revision",
+            CreationFlowStrings.Get("Common.SavedRevision", "Saved revision"),
             receipt.SavedRevision.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
-            "Draft revision",
+            CreationFlowStrings.Get("Common.DraftRevision", "Draft revision"),
             receipt.DraftRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Talent kind", receipt.TalentKind));
+        card.Add(NativeTheme.Metric(CreationFlowStrings.Get("Magic.Receipt.TalentKind", "Talent kind"), receipt.TalentKind));
         card.Add(NativeTheme.Metric(
-            "Power points remaining",
+            CreationFlowStrings.Get("Magic.Receipt.PowerRemaining", "Power points remaining"),
             CreationMagicResonancePage.Decimal(receipt.AdeptPowerPointsRemaining)));
         card.Add(NativeTheme.Metric(
-            "Spells remaining",
+            CreationFlowStrings.Get("Magic.Receipt.SpellsRemaining", "Spells remaining"),
             receipt.SpellsRemaining.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
-            "Complex forms remaining",
+            CreationFlowStrings.Get("Magic.Receipt.FormsRemaining", "Complex forms remaining"),
             receipt.ComplexFormsRemaining.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
-            "Idempotent replay",
+            CreationFlowStrings.Get("Magic.Receipt.IdempotentReplay", "Idempotent replay"),
             _confirmation.IsIdempotentReplay.ToString().ToLowerInvariant()));
         card.Add(NativeTheme.Metric(
-            "Current draft",
+            CreationFlowStrings.Get("Magic.Receipt.CurrentDraft", "Current draft"),
             _confirmation.IsCurrentDraft.ToString().ToLowerInvariant()));
         card.Add(NativeTheme.Metric(
-            "Character document changed",
+            CreationFlowStrings.Get("Common.DocumentChanged", "Character document changed"),
             receipt.CharacterDocumentChanged.ToString().ToLowerInvariant()));
         AddDigest(card, "creation-magic-resonance-receipt-digest", receipt.ReceiptDigest);
         AddDigest(card, "creation-magic-resonance-receipt-draft-digest", receipt.DraftDigest);
@@ -1150,12 +1245,18 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
         _body.Add(receiptCard);
         Label boundary = NativeTheme.Body(
             !receipt.CharacterDocumentChanged
-                ? "Typed choices are durable in Core auxiliary state. Character effects remain pending whole-build finalization."
-                : "Unsafe receipt: the character document changed before finalization.",
+                ? CreationFlowStrings.Get(
+                    "Magic.Receipt.Safe",
+                    "Typed choices are durable in Core auxiliary state. Character effects remain pending whole-build finalization.")
+                : CreationFlowStrings.Get(
+                    "Magic.Receipt.Unsafe",
+                    "Unsafe receipt: the character document changed before finalization."),
             !receipt.CharacterDocumentChanged ? NativeTheme.Muted : NativeTheme.Danger);
         boundary.AutomationId = "creation-magic-resonance-receipt-finalization-state";
         _body.Add(boundary);
-        Button acknowledge = NativeTheme.PrimaryButton("Acknowledge receipt");
+        Button acknowledge = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
+            "Common.AcknowledgeReceipt",
+            "Acknowledge receipt"));
         acknowledge.AutomationId = "creation-magic-resonance-receipt-acknowledge";
         acknowledge.IsEnabled = !receipt.CharacterDocumentChanged
                                 && _checkpoint.OwnsRecoveryRevision(Coordinator.State);
@@ -1169,7 +1270,10 @@ public sealed class CreationMagicResonanceReceiptPage : NativePageBase
                 CharacterCreationMagicResonanceCheckpointCas.From(_checkpoint),
                 out string blocker))
         {
-            await DisplayAlertAsync("Receipt not acknowledged", blocker, "OK");
+            await DisplayAlertAsync(
+                CreationFlowStrings.Get("Common.ReceiptNotAcknowledged", "Receipt not acknowledged"),
+                blocker,
+                CreationFlowStrings.Get("Common.OK", "OK"));
             return;
         }
         await Navigation.PopAsync(animated: false);
