@@ -257,28 +257,28 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
     def test_creation_karma_budget_cards_expose_readable_semantic_totals(self) -> None:
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
         preview = (NATIVE / "CreationPrerequisitePreviewPage.cs").read_text(encoding="utf-8")
-        expected = (
-            '$"Global Creation Karma. Total {total}. Used {used}. '
-            'Remaining {remaining}."'
-        )
         for source, automation_id in (
             (page, "creation-prerequisite-karma-budget"),
             (preview, "creation-prerequisite-preview-karma-budget"),
         ):
             self.assertIn(f'border.AutomationId = "{automation_id}"', source)
             self.assertIn("SemanticProperties.SetDescription(", source)
-            self.assertIn(expected, source)
+            self.assertIn('"Priority.Karma.Semantic"', source)
+            self.assertIn(
+                '"Global Creation Karma. Total {0}. Used {1}. Remaining {2}."',
+                source,
+            )
 
     def test_source_authority_labels_keep_full_width_beside_long_digests(self) -> None:
         page = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
 
-        for label, automation_id in (
-            ("Authority digest", "creation-prerequisite-authority-digest"),
-            ("Profile inputs", "creation-prerequisite-profile-inputs-digest"),
-            ("Priorities XML", "creation-prerequisite-priorities-xml-digest"),
+        for key, label, automation_id in (
+            ("Priority.Source.AuthorityDigest", "Authority digest", "creation-prerequisite-authority-digest"),
+            ("Priority.Source.ProfileInputs", "Profile inputs", "creation-prerequisite-profile-inputs-digest"),
+            ("Priority.Source.PrioritiesXml", "Priorities XML", "creation-prerequisite-priorities-xml-digest"),
         ):
             self.assertIn(
-                f'card.Add(SourceAuthorityMetric(\n            "{label}",',
+                f'WizardStrings.Get("{key}", "{label}"),',
                 page,
             )
             self.assertIn(f'"{automation_id}"));', page)
