@@ -9,6 +9,7 @@ PRESENTATION_ROOT = ROOT.parent / "chummer-presentation"
 PAGE = ROOT / "src/Chummer.Android/Native/CreationGearPage.cs"
 RESOURCES_PAGE = ROOT / "src/Chummer.Android/Native/CreationResourcesPage.cs"
 MAUI_PROGRAM = ROOT / "src/Chummer.Android/MauiProgram.cs"
+BUILD_PAGE = ROOT / "src/Chummer.Android/Native/BuildPage.cs"
 PRESENTER = PRESENTATION_ROOT / "Chummer.Presentation/Overview/CharacterCreationGearInteractionPresenter.cs"
 
 
@@ -119,6 +120,13 @@ class CreationGearSourceContractTests(unittest.TestCase):
         self.assertIn("AddSingleton<ICharacterCreationGearInteractionPresenter>", text)
         self.assertIn("provider.GetRequiredService<ICharacterCreationGearService>()", text)
         self.assertNotIn("UnavailableCharacterCreationGear", text)
+
+    def test_build_page_injects_gear_without_owning_another_navigation_stage(self) -> None:
+        text = source(BUILD_PAGE)
+        self.assertIn("ICharacterCreationGearInteractionPresenter? gearPresenter = null", text)
+        self.assertIn("_gearPresenter = gearPresenter", text)
+        self.assertIn("_overviewPresenter,\n                _gearPresenter", text)
+        self.assertNotIn("CreationDashboardAuthorityPhase.Gear", text)
 
 
 if __name__ == "__main__":

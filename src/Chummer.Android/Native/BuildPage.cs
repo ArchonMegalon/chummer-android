@@ -210,16 +210,19 @@ public sealed class BuildPage : NativePageBase
         CreationDashboardProjectionBinding,
         CharacterCreationResourcesInteractionLoadResult> _creationResourcesQueue = new();
     private readonly ICharacterCreationResourcesInteractionPresenter? _resourcesPresenter;
+    private readonly ICharacterCreationGearInteractionPresenter? _gearPresenter;
     private readonly ICharacterOverviewPresenter? _overviewPresenter;
     private CreationDashboardAuthorityProjection? _creationProjection;
 
     public BuildPage(
         RunnerSessionCoordinator coordinator,
         ICharacterCreationResourcesInteractionPresenter? resourcesPresenter = null,
-        ICharacterOverviewPresenter? overviewPresenter = null) : base(coordinator)
+        ICharacterOverviewPresenter? overviewPresenter = null,
+        ICharacterCreationGearInteractionPresenter? gearPresenter = null) : base(coordinator)
     {
         _resourcesPresenter = resourcesPresenter;
         _overviewPresenter = overviewPresenter;
+        _gearPresenter = gearPresenter;
         Title = "Runner";
         AutomationId = "phone-runner-page";
         _save = new ToolbarItem
@@ -1355,7 +1358,8 @@ public sealed class BuildPage : NativePageBase
             ? Navigation.PushAsync(new CreationResourcesPage(
                 Coordinator,
                 _resourcesPresenter,
-                _overviewPresenter))
+                _overviewPresenter,
+                _gearPresenter))
             : Task.CompletedTask;
 
     private static string CreationContactsStageDetail(
