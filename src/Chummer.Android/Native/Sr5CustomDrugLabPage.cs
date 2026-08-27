@@ -114,6 +114,8 @@ public sealed class Sr5CustomDrugLabPage : NativePageBase
                 Text("The exact preview is durable. Confirm it separately before anything is queued or saved."),
             Sr5CustomDrugLabNotices.QueuedForFinalization =>
                 Text("The typed recipe contribution is queued for the atomic whole-character finalizer."),
+            Sr5CustomDrugLabNotices.FinalizerContributionRecovered =>
+                Text("Core recovered the exact queued creation contribution after restart or an interrupted response."),
             Sr5CustomDrugLabNotices.CommitRecovered =>
                 Text("Receipt lookup proved the interrupted Career commit was already saved."),
             Sr5CustomDrugLabNotices.CommitApplied =>
@@ -321,15 +323,9 @@ public sealed class Sr5CustomDrugLabPage : NativePageBase
             NativeTheme.Muted));
         if (snapshot.Checkpoint?.CreationContribution is { } contribution)
             card.Add(NativeTheme.Metric(Text("Contribution"), ShortDigest(contribution.ContributionDigest)));
-        Button edit = NativeTheme.SecondaryButton(Text("Edit queued recipe"));
-        edit.AutomationId = "custom-drug-edit-queued";
-        edit.Clicked += async (_, _) => await RunAsync(() =>
-        {
-            Coordinator.StartEditingCustomDrug(_context);
-            _operationNotice = null;
-            return Task.CompletedTask;
-        });
-        card.Add(edit);
+        card.Add(NativeTheme.Body(
+            Text("This durable contribution is immutable until the whole-character finalizer consumes it."),
+            NativeTheme.Muted));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "custom-drug-queued-card";
         _body.Add(border);

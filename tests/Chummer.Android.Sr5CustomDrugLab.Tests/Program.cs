@@ -2,8 +2,10 @@ using Chummer.Android.Native;
 using Chummer.Application.Characters;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
+using System.Xml.Linq;
 
 CreationQueuesOnlyTypedFinalizerContribution();
+CreationRejectsMismatchedCoreRequestDigest();
 CareerUsesFullAuthorityRecipeAndAtomicReceipt();
 StaleReviewIsInvalidatedButSelectionSurvives();
 InterruptedCareerCommitRecoversOnlyByReceiptLookup();
@@ -18,7 +20,11 @@ static void CreationQueuesOnlyTypedFinalizerContribution()
     var authority = new FakeAuthority();
     var workspaces = new FakeWorkspaceStore(workspaceId, Fixture.CreationXml, 7);
     var checkpoints = new MemoryCheckpointStore();
-    var lab = new Sr5CustomDrugLabService(authority, workspaces, checkpoints);
+    var contributions = new FakeCreationContributionService(authority, workspaces)
+    {
+        ReturnUnavailableAfterPersist = true
+    };
+    var lab = new Sr5CustomDrugLabService(authority, contributions, workspaces, checkpoints);
 
     Sr5CustomDrugLabSnapshot edited = lab.UpdateSelection(
         workspaceId,
@@ -38,17 +44,74 @@ static void CreationQueuesOnlyTypedFinalizerContribution()
     Sr5CustomDrugLabSnapshot queued = lab.ConfirmCreation(workspaceId);
 
     Assert(queued.IsQueuedForFinalization, "creation must end in queued-finalizer state");
+    Assert(queued.Notice == Sr5CustomDrugLabNotices.FinalizerContributionRecovered,
+        "an unknown queue response must recover only through Core lookup");
+    Assert(contributions.QueueCalls == 1, "creation must use the typed Core queue exactly once");
     Assert(authority.CommitCalls == 0, "creation must never call direct authority Commit");
     Assert(authority.LookupCalls == 0, "creation must not perform Career receipt lookup");
     Assert(workspaces.WriteCalls == 0, "creation must never replace character XML");
     Assert(workspaces.Current.Document.Content == Fixture.CreationXml, "creation character bytes changed");
-    Sr5CreationCustomDrugFinalizationContribution contribution =
+    CharacterCreationCustomDrugFinalizationContribution contribution =
         lab.ReadCreationContribution(workspaceId)
         ?? throw new InvalidOperationException("typed creation contribution missing");
-    Assert(contribution.IsStructurallyValid(), "creation contribution digest is invalid");
+    Assert(CharacterCreationCustomDrugContributionRules.IsValid(
+            contribution,
+            workspaceId,
+            workspaces.Current.ContentRevision),
+        "Core creation contribution digest is invalid");
     Assert(contribution.Selection.Name == "Nova", "typed selection was not preserved");
     Assert(contribution.ToVerificationCommand().NewComponentInstanceIds.Count == 3,
         "finalizer component identities must match the exact selection count");
+
+    var restarted = new Sr5CustomDrugLabService(
+        authority,
+        contributions,
+        workspaces,
+        new MemoryCheckpointStore());
+    Sr5CustomDrugLabSnapshot reopened = restarted.Load(
+        workspaceId,
+        CharacterCustomDrugContext.Creation);
+    Assert(reopened.IsQueuedForFinalization,
+        "process restart must recover the contribution from Core auxiliary state");
+    Assert(reopened.Notice == Sr5CustomDrugLabNotices.FinalizerContributionRecovered,
+        "restart recovery needs an explicit finalizer receipt posture");
+}
+
+static void CreationRejectsMismatchedCoreRequestDigest()
+{
+    CharacterWorkspaceId workspaceId = new("digest-attack-runner");
+    var authority = new FakeAuthority();
+    var workspaces = new FakeWorkspaceStore(workspaceId, Fixture.CreationXml, 4);
+    var contributions = new FakeCreationContributionService(authority, workspaces)
+    {
+        ReturnMismatchedRequestDigest = true
+    };
+    var lab = new Sr5CustomDrugLabService(
+        authority,
+        contributions,
+        workspaces,
+        new MemoryCheckpointStore());
+    lab.UpdateSelection(
+        workspaceId,
+        CharacterCustomDrugContext.Creation,
+        authority.ValidSelection("Digest trap"));
+    lab.Review(workspaceId, CharacterCustomDrugContext.Creation);
+
+    bool rejected = false;
+    try
+    {
+        _ = lab.ConfirmCreation(workspaceId);
+    }
+    catch (InvalidOperationException)
+    {
+        rejected = true;
+    }
+
+    Assert(rejected, "Android must reject a structurally valid contribution for another request digest");
+    Assert(authority.CommitCalls == 0, "digest rejection must never fall back to Career Commit");
+    Assert(workspaces.WriteCalls == 0, "digest rejection must never use Android XML persistence");
+    Assert(string.Equals(workspaces.Current.Document.Content, Fixture.CreationXml, StringComparison.Ordinal),
+        "digest rejection changed raw creation XML");
 }
 
 static void CareerUsesFullAuthorityRecipeAndAtomicReceipt()
@@ -57,7 +120,11 @@ static void CareerUsesFullAuthorityRecipeAndAtomicReceipt()
     var authority = new FakeAuthority();
     var workspaces = new FakeWorkspaceStore(workspaceId, Fixture.CareerXml, 10);
     var checkpoints = new MemoryCheckpointStore();
-    var lab = new Sr5CustomDrugLabService(authority, workspaces, checkpoints);
+    var lab = new Sr5CustomDrugLabService(
+        authority,
+        new FakeCreationContributionService(authority, workspaces),
+        workspaces,
+        checkpoints);
 
     lab.UpdateSelection(
         workspaceId,
@@ -97,7 +164,11 @@ static void StaleReviewIsInvalidatedButSelectionSurvives()
     var authority = new FakeAuthority();
     var workspaces = new FakeWorkspaceStore(workspaceId, Fixture.CreationXml, 3);
     var checkpoints = new MemoryCheckpointStore();
-    var lab = new Sr5CustomDrugLabService(authority, workspaces, checkpoints);
+    var lab = new Sr5CustomDrugLabService(
+        authority,
+        new FakeCreationContributionService(authority, workspaces),
+        workspaces,
+        checkpoints);
     lab.UpdateSelection(
         workspaceId,
         CharacterCustomDrugContext.Creation,
@@ -120,7 +191,8 @@ static void InterruptedCareerCommitRecoversOnlyByReceiptLookup()
     var authority = new FakeAuthority();
     var workspaces = new FakeWorkspaceStore(workspaceId, Fixture.CareerXml, 20);
     var checkpoints = new MemoryCheckpointStore();
-    var lab = new Sr5CustomDrugLabService(authority, workspaces, checkpoints);
+    var contributions = new FakeCreationContributionService(authority, workspaces);
+    var lab = new Sr5CustomDrugLabService(authority, contributions, workspaces, checkpoints);
     lab.UpdateSelection(
         workspaceId,
         CharacterCustomDrugContext.Career,
@@ -136,7 +208,11 @@ static void InterruptedCareerCommitRecoversOnlyByReceiptLookup()
     workspaces.ApplyExternal(committed.CharacterXml);
     int commitsBeforeRecovery = authority.CommitCalls;
 
-    var resumed = new Sr5CustomDrugLabService(authority, workspaces, checkpoints);
+    var resumed = new Sr5CustomDrugLabService(
+        authority,
+        contributions,
+        workspaces,
+        checkpoints);
     Sr5CustomDrugLabSnapshot recovered = resumed.Load(
         workspaceId,
         CharacterCustomDrugContext.Career);
@@ -153,7 +229,11 @@ static void ExactFoundationBlockEnhancerConstraintsComeFromCoreQuote()
     var authority = new FakeAuthority();
     var workspaces = new FakeWorkspaceStore(workspaceId, Fixture.CreationXml, 1);
     var checkpoints = new MemoryCheckpointStore();
-    var lab = new Sr5CustomDrugLabService(authority, workspaces, checkpoints);
+    var lab = new Sr5CustomDrugLabService(
+        authority,
+        new FakeCreationContributionService(authority, workspaces),
+        workspaces,
+        checkpoints);
 
     CharacterCustomDrugSelection missing = authority.ValidSelection("Missing") with
     {
@@ -273,6 +353,179 @@ sealed class FakeWorkspaceStore : ISr5CustomDrugWorkspaceStore
     }
 }
 
+sealed class FakeCreationContributionService(
+    FakeAuthority authority,
+    FakeWorkspaceStore workspaces)
+    : ICharacterCreationCustomDrugContributionService
+{
+    private CharacterCreationCustomDrugFinalizationContribution? _contribution;
+
+    public int QueueCalls { get; private set; }
+    public bool ReturnUnavailableAfterPersist { get; init; }
+    public bool ReturnMismatchedRequestDigest { get; init; }
+
+    public CharacterCreationCustomDrugResult Load(CharacterCreationCustomDrugLoadRequest request)
+    {
+        if (_contribution is null || request.WorkspaceId != workspaces.Current.WorkspaceId)
+            return Result(CharacterCreationCustomDrugOutcomes.NotFound);
+        return CharacterCreationCustomDrugContributionRules.IsValid(
+            _contribution,
+            request.WorkspaceId,
+            workspaces.Current.ContentRevision)
+            ? new CharacterCreationCustomDrugResult(
+                CharacterCreationCustomDrugOutcomes.Available,
+                _contribution,
+                [])
+            : Result(
+                CharacterCreationCustomDrugOutcomes.Blocked,
+                CharacterCreationCustomDrugBlockers.ProjectionRejected);
+    }
+
+    public CharacterCreationCustomDrugResult Queue(CharacterCreationCustomDrugQueueRequest request)
+    {
+        QueueCalls++;
+        string idempotencyDigest = CharacterCreationCustomDrugContributionRules
+            .ComputeRequestIdempotencyKeyDigest(request.IdempotencyKey);
+        string commandDigest = CharacterCreationCustomDrugContributionRules
+            .ComputeRequestCommandDigest(request);
+        if (_contribution is not null
+            && _contribution.ExpectedContentRevision == workspaces.Current.ContentRevision
+            && CharacterCreationFinalizationDigest.EqualsFixedTime(
+                _contribution.RequestIdempotencyKeyDigest,
+                idempotencyDigest))
+        {
+            return CharacterCreationFinalizationDigest.EqualsFixedTime(
+                _contribution.RequestCommandDigest,
+                commandDigest)
+                ? new CharacterCreationCustomDrugResult(
+                    CharacterCreationCustomDrugOutcomes.Replayed,
+                    _contribution,
+                    [])
+                : Result(
+                    CharacterCreationCustomDrugOutcomes.Conflict,
+                    CharacterCreationCustomDrugBlockers.IdempotencyConflict);
+        }
+
+        Sr5CustomDrugWorkspaceSnapshot current = workspaces.Current;
+        CharacterCustomDrugCommitCommand requested = request.VerificationCommand;
+        if (!request.ExplicitlyConfirmed
+            || request.WorkspaceId != current.WorkspaceId
+            || request.ExpectedContentRevision != current.ContentRevision
+            || request.ExpectedSavedRevision != current.SavedRevision
+            || !string.Equals(
+                request.ExpectedAuxiliaryStateDigest,
+                current.Document.AuxiliaryStateDigest,
+                StringComparison.Ordinal)
+            || requested.ExpectedContentRevision != current.ContentRevision)
+        {
+            return Result(
+                CharacterCreationCustomDrugOutcomes.Conflict,
+                CharacterCreationCustomDrugBlockers.StaleWorkspaceRevision);
+        }
+
+        CharacterCustomDrugPreparation reviewedPreparation = authority.Prepare(
+            current.Document.Content,
+            current.ContentRevision,
+            CharacterCustomDrugContext.Creation);
+        CharacterCustomDrugQuote reviewedQuote = authority.Quote(
+            reviewedPreparation,
+            requested.Selection);
+        if (!reviewedQuote.Exact
+            || !string.Equals(
+                reviewedQuote.QuoteDigest,
+                requested.ExpectedQuoteDigest,
+                StringComparison.Ordinal))
+        {
+            return Result(
+                CharacterCreationCustomDrugOutcomes.Conflict,
+                CharacterCreationCustomDrugBlockers.StaleQuoteDigest);
+        }
+
+        long nextRevision = checked(current.ContentRevision + 1);
+        CharacterCustomDrugPreparation nextPreparation = reviewedPreparation with
+        {
+            ContentRevision = nextRevision
+        };
+        CharacterCustomDrugQuote nextQuote = authority.Quote(
+            nextPreparation,
+            requested.Selection);
+        var nextCommand = requested with
+        {
+            ExpectedContentRevision = nextRevision,
+            ExpectedQuoteDigest = nextQuote.QuoteDigest
+        };
+        CharacterCustomDrugCreationProjection projection = authority.ProjectCreation(
+            current.Document.Content,
+            nextRevision,
+            nextCommand);
+        if (!projection.Exact)
+            return Result(
+                CharacterCreationCustomDrugOutcomes.Blocked,
+                CharacterCreationCustomDrugBlockers.ProjectionRejected);
+
+        var unsigned = new CharacterCreationCustomDrugFinalizationContribution(
+            CharacterCreationCustomDrugSchemas.ContributionV1,
+            current.WorkspaceId,
+            nextRevision,
+            nextPreparation.CharacterDigest,
+            nextPreparation.CatalogDigest,
+            nextPreparation.RulesDigest,
+            requested.Selection,
+            nextQuote,
+            requested.NewDrugInstanceId,
+            requested.NewComponentInstanceIds.ToArray(),
+            projection.DrugXml,
+            projection.DrugXmlDigest,
+            idempotencyDigest,
+            commandDigest,
+            ContributionDigest: string.Empty);
+        _contribution = unsigned with
+        {
+            ContributionDigest = CharacterCreationCustomDrugContributionRules
+                .ComputeContributionDigest(unsigned)
+        };
+        if (ReturnMismatchedRequestDigest)
+        {
+            CharacterCreationCustomDrugFinalizationContribution mismatched = _contribution with
+            {
+                RequestCommandDigest = CharacterCreationFinalizationDigest.ComputeUtf8(
+                    "adversarial-mismatched-queue-request"),
+                ContributionDigest = string.Empty
+            };
+            _contribution = mismatched with
+            {
+                ContributionDigest = CharacterCreationCustomDrugContributionRules
+                    .ComputeContributionDigest(mismatched)
+            };
+        }
+        workspaces.AdvanceUnchanged();
+        if (!CharacterCreationCustomDrugContributionRules.IsValid(
+                _contribution,
+                current.WorkspaceId,
+                workspaces.Current.ContentRevision))
+        {
+            return Result(
+                CharacterCreationCustomDrugOutcomes.Blocked,
+                CharacterCreationCustomDrugBlockers.ProjectionRejected);
+        }
+        if (ReturnUnavailableAfterPersist)
+        {
+            return Result(
+                CharacterCreationCustomDrugOutcomes.Unavailable,
+                CharacterCreationCustomDrugBlockers.PersistenceAuthorityRequired);
+        }
+        return new CharacterCreationCustomDrugResult(
+            CharacterCreationCustomDrugOutcomes.Applied,
+            _contribution,
+            []);
+    }
+
+    private static CharacterCreationCustomDrugResult Result(
+        string outcome,
+        params string[] blockers)
+        => new(outcome, null, blockers);
+}
+
 sealed class FakeAuthority : ICharacterCustomDrugAuthority
 {
     public static CharacterCustomDrugComponentId FoundationId { get; } = new(
@@ -390,6 +643,63 @@ sealed class FakeAuthority : ICharacterCustomDrugAuthority
     {
         QuoteCalls++;
         return CharacterCustomDrugRules.Quote(preparation, selection);
+    }
+
+    public CharacterCustomDrugCreationProjection ProjectCreation(
+        string characterXml,
+        long currentContentRevision,
+        CharacterCustomDrugCommitCommand command)
+    {
+        CharacterCustomDrugPreparation preparation = Prepare(
+            characterXml,
+            currentContentRevision,
+            CharacterCustomDrugContext.Creation);
+        CharacterCustomDrugQuote quote = Quote(preparation, command.Selection);
+        if (!quote.Exact
+            || currentContentRevision != command.ExpectedContentRevision
+            || !string.Equals(
+                preparation.CharacterDigest,
+                command.ExpectedCharacterDigest,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                preparation.CatalogDigest,
+                command.ExpectedCatalogDigest,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                preparation.RulesDigest,
+                command.ExpectedRulesDigest,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                quote.QuoteDigest,
+                command.ExpectedQuoteDigest,
+                StringComparison.Ordinal)
+            || command.NewComponentInstanceIds.Count != command.Selection.Components.Count)
+        {
+            return new CharacterCustomDrugCreationProjection(
+                false,
+                CharacterCreationCustomDrugBlockers.ProjectionRejected,
+                string.Empty,
+                string.Empty,
+                quote.QuoteDigest);
+        }
+
+        XElement components = new(
+            "drugcomponents",
+            command.Selection.Components.Select((component, index) => new XElement(
+                "drugcomponent",
+                new XElement("guid", command.NewComponentInstanceIds[index].ToString("D")),
+                new XElement("sourceid", component.ComponentId.Value.ToString("D")))));
+        string drugXml = new XElement(
+                "drug",
+                new XElement("guid", command.NewDrugInstanceId.Value.ToString("D")),
+                components)
+            .ToString(SaveOptions.DisableFormatting);
+        return new CharacterCustomDrugCreationProjection(
+            true,
+            string.Empty,
+            drugXml,
+            CharacterCustomDrugRules.ComputeCharacterDigest(drugXml),
+            quote.QuoteDigest);
     }
 
     public CharacterCustomDrugCommitResult Commit(

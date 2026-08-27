@@ -13,6 +13,7 @@ namespace Chummer.Android.Native;
 /// </summary>
 public sealed class Sr5CustomDrugLabService(
     ICharacterCustomDrugAuthority authority,
+    ICharacterCreationCustomDrugContributionService creationContributions,
     ISr5CustomDrugWorkspaceStore workspaces,
     ISr5CustomDrugLabCheckpointStore checkpoints)
 {
@@ -73,6 +74,12 @@ public sealed class Sr5CustomDrugLabService(
         lock (_gate)
         {
             Sr5CustomDrugLabSnapshot live = RequireReady(LoadLocked(workspaceId, context));
+            if (context == CharacterCustomDrugContext.Creation
+                && live.IsQueuedForFinalization)
+            {
+                throw new InvalidOperationException(
+                    "The durable creation contribution is immutable until finalization.");
+            }
             CharacterCustomDrugSelection selection = live.Checkpoint?.Selection ?? live.Selection;
             Sr5CustomDrugLabCheckpoint checkpoint = EditingCheckpoint(
                 workspaceId,
@@ -108,10 +115,6 @@ public sealed class Sr5CustomDrugLabService(
                 live.Selection,
                 drugId,
                 componentIds);
-            Sr5CreationCustomDrugFinalizationContribution? contribution =
-                context == CharacterCustomDrugContext.Creation
-                    ? Sr5CreationCustomDrugFinalizationContribution.Create(workspaceId, command, quote)
-                    : null;
             var checkpoint = new Sr5CustomDrugLabCheckpoint(
                 Sr5CustomDrugLabSchemas.CheckpointV1,
                 workspaceId,
@@ -124,7 +127,7 @@ public sealed class Sr5CustomDrugLabService(
                 Sr5CustomDrugCheckpointPhase.Reviewed,
                 command,
                 Receipt: null,
-                contribution);
+                CreationContribution: null);
             checkpoints.Write(checkpoint);
             return Snapshot(preparation, checkpoint, Sr5CustomDrugLabNotices.ReviewReady);
         }
@@ -138,21 +141,78 @@ public sealed class Sr5CustomDrugLabService(
             Sr5CustomDrugLabSnapshot live = RequireReady(
                 LoadLocked(workspaceId, CharacterCustomDrugContext.Creation));
             if (!live.CanConfirm
-                || live.Checkpoint?.CreationContribution is not { } contribution
-                || !contribution.IsStructurallyValid())
+                || live.Checkpoint?.Command is not { } command)
             {
                 throw new InvalidOperationException(
-                    "The reviewed creation recipe is stale or not bound to the exact finalizer contribution.");
+                    "The reviewed creation recipe is stale or not bound to an exact Core command.");
+            }
+
+            Sr5CustomDrugWorkspaceSnapshot current = RequireCleanWorkspace(workspaceId);
+            if (current.ContentRevision != live.Preparation!.ContentRevision
+                || !live.Checkpoint.Matches(live.Preparation))
+            {
+                throw new InvalidOperationException(
+                    CharacterCreationCustomDrugBlockers.StaleWorkspaceRevision);
+            }
+            var request = new CharacterCreationCustomDrugQueueRequest(
+                workspaceId,
+                current.ContentRevision,
+                current.SavedRevision,
+                current.Document.AuxiliaryStateDigest,
+                command,
+                QueueIdempotencyKey(workspaceId, command.NewDrugInstanceId),
+                ExplicitlyConfirmed: true);
+            CharacterCreationCustomDrugResult result = creationContributions.Queue(request);
+            CharacterCreationCustomDrugFinalizationContribution? contribution =
+                MatchingContribution(result.Contribution, request);
+            bool recoveredByLookup = false;
+            if (contribution is null)
+            {
+                CharacterCreationCustomDrugResult lookup = creationContributions.Load(
+                    new CharacterCreationCustomDrugLoadRequest(workspaceId));
+                contribution = MatchingContribution(lookup.Contribution, request);
+                recoveredByLookup = contribution is not null;
+            }
+            if (contribution is null)
+            {
+                throw new InvalidOperationException(
+                    result.Blockers.FirstOrDefault()
+                    ?? CharacterCreationCustomDrugBlockers.PersistenceAuthorityRequired);
+            }
+
+            Sr5CustomDrugWorkspaceSnapshot persisted = RequireCleanWorkspace(workspaceId);
+            CharacterCustomDrugPreparation rebound = authority.Prepare(
+                persisted.Document.Content,
+                persisted.ContentRevision,
+                CharacterCustomDrugContext.Creation);
+            if (!rebound.Exact
+                || !CharacterCreationCustomDrugContributionRules.IsValid(
+                    contribution,
+                    workspaceId,
+                    persisted.ContentRevision)
+                || !ContributionMatchesPreparation(contribution, rebound))
+            {
+                throw new InvalidOperationException(
+                    CharacterCreationCustomDrugBlockers.ProjectionRejected);
             }
             Sr5CustomDrugLabCheckpoint queued = live.Checkpoint with
             {
-                Phase = Sr5CustomDrugCheckpointPhase.QueuedForFinalization
+                BoundContentRevision = rebound.ContentRevision,
+                BoundCharacterDigest = rebound.CharacterDigest,
+                BoundCatalogDigest = rebound.CatalogDigest,
+                BoundRulesDigest = rebound.RulesDigest,
+                Phase = Sr5CustomDrugCheckpointPhase.QueuedForFinalization,
+                Command = contribution.ToVerificationCommand(),
+                CreationContribution = contribution
             };
             checkpoints.Write(queued);
             return Snapshot(
-                live.Preparation!,
+                rebound,
                 queued,
-                Sr5CustomDrugLabNotices.QueuedForFinalization);
+                recoveredByLookup
+                || result.Outcome == CharacterCreationCustomDrugOutcomes.Replayed
+                    ? Sr5CustomDrugLabNotices.FinalizerContributionRecovered
+                    : Sr5CustomDrugLabNotices.QueuedForFinalization);
         }
     }
 
@@ -238,7 +298,7 @@ public sealed class Sr5CustomDrugLabService(
         }
     }
 
-    public Sr5CreationCustomDrugFinalizationContribution? ReadCreationContribution(
+    public CharacterCreationCustomDrugFinalizationContribution? ReadCreationContribution(
         CharacterWorkspaceId workspaceId)
     {
         lock (_gate)
@@ -248,7 +308,11 @@ public sealed class Sr5CustomDrugLabService(
                 CharacterCustomDrugContext.Creation);
             return live.IsQueuedForFinalization
                 && live.Checkpoint?.CreationContribution is { } contribution
-                && contribution.IsStructurallyValid()
+                && live.Preparation is { } preparation
+                && CharacterCreationCustomDrugContributionRules.IsValid(
+                    contribution,
+                    workspaceId,
+                    preparation.ContentRevision)
                     ? contribution
                     : null;
         }
@@ -288,6 +352,47 @@ public sealed class Sr5CustomDrugLabService(
         }
 
         Sr5CustomDrugLabCheckpoint? checkpoint = checkpoints.Read(workspaceId, context);
+        if (context == CharacterCustomDrugContext.Creation
+            && checkpoint?.Phase is null or Sr5CustomDrugCheckpointPhase.QueuedForFinalization)
+        {
+            CharacterCreationCustomDrugResult loaded = creationContributions.Load(
+                new CharacterCreationCustomDrugLoadRequest(workspaceId));
+            if (loaded.Success
+                && loaded.Contribution is { } contribution
+                && CharacterCreationCustomDrugContributionRules.IsValid(
+                    contribution,
+                    workspaceId,
+                    stored.ContentRevision)
+                && ContributionMatchesPreparation(contribution, preparation))
+            {
+                Sr5CustomDrugLabCheckpoint recovered = QueuedCreationCheckpoint(
+                    workspaceId,
+                    preparation,
+                    contribution);
+                checkpoints.Write(recovered);
+                return Snapshot(
+                    preparation,
+                    recovered,
+                    checkpoint is null
+                        ? Sr5CustomDrugLabNotices.FinalizerContributionRecovered
+                        : Sr5CustomDrugLabNotices.DraftRestored);
+            }
+            if (checkpoint?.Phase == Sr5CustomDrugCheckpointPhase.QueuedForFinalization)
+            {
+                Sr5CustomDrugLabCheckpoint rejected = EditingCheckpoint(
+                    workspaceId,
+                    context,
+                    preparation,
+                    checkpoint.Selection);
+                checkpoints.Write(rejected);
+                return Snapshot(
+                    preparation,
+                    rejected,
+                    Sr5CustomDrugLabNotices.ReviewStale,
+                    loaded.Blockers.FirstOrDefault()
+                    ?? CharacterCreationCustomDrugBlockers.ProjectionRejected);
+            }
+        }
         if (checkpoint is null)
         {
             CharacterCustomDrugSelection initial = EmptySelection with
@@ -542,4 +647,60 @@ public sealed class Sr5CustomDrugLabService(
             .ToLowerInvariant();
         return $"android-custom-drug:{context}:{workspaceDigest}:{drugId.Value:N}";
     }
+
+    private static string QueueIdempotencyKey(
+        CharacterWorkspaceId workspaceId,
+        CharacterCustomDrugInstanceId drugId)
+        => IdempotencyKey(workspaceId, CharacterCustomDrugContext.Creation, drugId)
+           + ":queue";
+
+    private static CharacterCreationCustomDrugFinalizationContribution? MatchingContribution(
+        CharacterCreationCustomDrugFinalizationContribution? contribution,
+        CharacterCreationCustomDrugQueueRequest request)
+    {
+        if (contribution is null
+            || contribution.WorkspaceId != request.WorkspaceId
+            || !CharacterCreationFinalizationDigest.EqualsFixedTime(
+                contribution.RequestIdempotencyKeyDigest,
+                CharacterCreationCustomDrugContributionRules
+                    .ComputeRequestIdempotencyKeyDigest(request.IdempotencyKey))
+            || !CharacterCreationFinalizationDigest.EqualsFixedTime(
+                contribution.RequestCommandDigest,
+                CharacterCreationCustomDrugContributionRules
+                    .ComputeRequestCommandDigest(request)))
+            return null;
+        return contribution;
+    }
+
+    private static bool ContributionMatchesPreparation(
+        CharacterCreationCustomDrugFinalizationContribution contribution,
+        CharacterCustomDrugPreparation preparation)
+        => contribution.ExpectedContentRevision == preparation.ContentRevision
+           && CharacterCreationFinalizationDigest.EqualsFixedTime(
+               contribution.ExpectedCharacterDigest,
+               preparation.CharacterDigest)
+           && CharacterCreationFinalizationDigest.EqualsFixedTime(
+               contribution.ExpectedCatalogDigest,
+               preparation.CatalogDigest)
+           && CharacterCreationFinalizationDigest.EqualsFixedTime(
+               contribution.ExpectedRulesDigest,
+               preparation.RulesDigest);
+
+    private static Sr5CustomDrugLabCheckpoint QueuedCreationCheckpoint(
+        CharacterWorkspaceId workspaceId,
+        CharacterCustomDrugPreparation preparation,
+        CharacterCreationCustomDrugFinalizationContribution contribution)
+        => new(
+            Sr5CustomDrugLabSchemas.CheckpointV1,
+            workspaceId,
+            CharacterCustomDrugContext.Creation,
+            preparation.ContentRevision,
+            preparation.CharacterDigest,
+            preparation.CatalogDigest,
+            preparation.RulesDigest,
+            contribution.Selection,
+            Sr5CustomDrugCheckpointPhase.QueuedForFinalization,
+            contribution.ToVerificationCommand(),
+            Receipt: null,
+            contribution);
 }

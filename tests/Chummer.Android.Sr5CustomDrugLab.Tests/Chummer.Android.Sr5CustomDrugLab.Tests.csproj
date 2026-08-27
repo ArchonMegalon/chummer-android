@@ -13,6 +13,8 @@
   <ItemGroup>
     <Compile Include="$(ChummerCoreRoot)/Chummer.Application/Characters/ICharacterCustomDrugAuthority.cs"
              Link="Core/ICharacterCustomDrugAuthority.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Application/Characters/ICharacterCreationCustomDrugContributionService.cs"
+             Link="Core/ICharacterCreationCustomDrugContributionService.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CustomDrugWorkspaceStore.cs"
              Link="Native/Sr5CustomDrugWorkspaceStore.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CustomDrugLabModel.cs"
