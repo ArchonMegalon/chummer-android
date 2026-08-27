@@ -270,6 +270,102 @@ class Api36AdbTransportHardeningTests(unittest.TestCase):
                     receipt["adbArgumentsSha256"],
                 )
 
+    def test_timed_out_swipe_is_reconciled_by_stable_read_only_hierarchy_without_replay(self) -> None:
+        xml = (
+            "<?xml version='1.0' encoding='UTF-8'?>"
+            "<hierarchy><node text='Current viewport' bounds='[0,0][100,100]' />"
+            "</hierarchy>UI hierarchy dumped to: /dev/tty"
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary)
+            device = self.make_device(evidence)
+            device._display_size = (1080, 2400)
+            timeout = subprocess.TimeoutExpired(("shell", "input", "swipe"), 15)
+            responses = [
+                timeout,
+                completed(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, xml),
+                completed(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, xml),
+                completed(("shell", "input", "keyevent", "4"), ""),
+            ]
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=responses) as run,
+                mock.patch.object(driver.time, "sleep"),
+            ):
+                device.swipe_up()
+                device.shell("input", "keyevent", "4")
+
+            self.assertEqual(4, run.call_count)
+            issued = [tuple(call.args[0][3:]) for call in run.call_args_list]
+            self.assertEqual(1, sum(arguments[:3] == ("shell", "input", "swipe") for arguments in issued))
+            self.assertEqual(
+                [driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS] * 2,
+                issued[1:3],
+            )
+            summary = device.transport_summary()
+            self.assertEqual(0, summary["terminalFailureCount"])
+            original, reconciliation = summary["events"]
+            self.assertEqual("fail", original["status"])
+            self.assertEqual("reconciled-unknown-swipe", reconciliation["status"])
+            self.assertEqual(
+                original["evidenceFile"],
+                reconciliation["reconcilesEvidenceFile"],
+            )
+            self.assertFalse(reconciliation["replay"]["performed"])
+            self.assertTrue(reconciliation["replay"]["suppressed"])
+            self.assertEqual(
+                "current-viewport-observed-no-replay",
+                reconciliation["outcomeMutationAuthority"],
+            )
+
+    def test_divergent_read_only_hierarchies_leave_swipe_outcome_blocked(self) -> None:
+        def hierarchy(label: str) -> str:
+            return f"<hierarchy><node text='{label}' /></hierarchy>"
+
+        with tempfile.TemporaryDirectory() as temporary:
+            device = self.make_device(Path(temporary))
+            device._display_size = (1080, 2400)
+            responses = [
+                subprocess.TimeoutExpired(("shell", "input", "swipe"), 15),
+                completed(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, hierarchy("one")),
+                completed(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, hierarchy("two")),
+                completed(driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS, hierarchy("three")),
+            ]
+            with (
+                mock.patch.object(driver.subprocess, "run", side_effect=responses) as run,
+                mock.patch.object(driver.time, "sleep"),
+            ):
+                with self.assertRaises(driver.AdbTransportError):
+                    device.swipe_down()
+                with self.assertRaises(driver.AdbTransportError) as blocked:
+                    device.shell("input", "keyevent", "4")
+
+            self.assertEqual(4, run.call_count)
+            self.assertEqual(
+                "prior-mutation-outcome-unknown",
+                blocked.exception.receipt["classification"],
+            )
+            self.assertEqual(2, device.transport_summary()["terminalFailureCount"])
+
+    def test_direct_hierarchy_observation_is_the_only_retryable_uiautomator_dump(self) -> None:
+        self.assertEqual(
+            "read-only-retryable",
+            driver.adb_command_retry_policy(
+                driver.ADB_READ_ONLY_HIERARCHY_ARGUMENTS
+            )[0],
+        )
+        self.assertEqual(
+            "non-replayable",
+            driver.adb_command_retry_policy(
+                (
+                    "shell",
+                    "uiautomator",
+                    "dump",
+                    "--compressed",
+                    "/sdcard/chummer-editing-window.xml",
+                )
+            )[0],
+        )
+
     def test_verified_install_and_push_never_replay_unknown_outcomes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

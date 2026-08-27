@@ -34,16 +34,19 @@ PHONE_SHELL_DESTINATION_IDS = (
     "phone-destination-archive",
     "phone-destination-more",
 )
-PHONE_SHELL_DESTINATION_LABELS = ("Runners", "Runner", "Stories", "More")
+PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE = {
+    "en": ("Runners", "Runner", "Stories", "More"),
+    "de": ("Runner", "Runner", "Geschichten", "Mehr"),
+    "es": ("Runners", "Runner", "Historias", "Más"),
+}
+# Backward-compatible conceptual labels for evidence and callers. Native tab binding below
+# accepts only one complete supported-language tuple and binds route identity by position.
+PHONE_SHELL_DESTINATION_LABELS = PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE["en"]
 PHONE_SHELL_DESTINATION_MAPPING = {
     "phone-destination-runners": "Runners",
     "phone-destination-runner": "Runner",
     "phone-destination-archive": "Stories",
     "phone-destination-more": "More",
-}
-PHONE_SHELL_DESTINATION_IDS_BY_LABEL = {
-    label: resource_id
-    for resource_id, label in PHONE_SHELL_DESTINATION_MAPPING.items()
 }
 PHONE_SHELL_FORBIDDEN_DESTINATION_LABELS = ("Play", "Table", "Campaign")
 PHONE_SHELL_FORBIDDEN_SUPPORT_LABELS = (
@@ -91,6 +94,16 @@ ADB_TRANSPORT_PREFLIGHT_SCHEMA = "chummer.android.adb-transport-preflight/v1"
 ADB_TRANSPORT_SUMMARY_SCHEMA = "chummer.android.adb-transport-summary/v1"
 ADB_READ_ONLY_MAX_ATTEMPTS = 3
 ADB_READ_ONLY_RETRY_DELAY_SECONDS = 1.0
+ADB_SWIPE_RECONCILIATION_REQUIRED_CONSECUTIVE = 2
+ADB_SWIPE_RECONCILIATION_MAX_OBSERVATIONS = 3
+ADB_SWIPE_RECONCILIATION_DELAY_SECONDS = 0.5
+ADB_READ_ONLY_HIERARCHY_ARGUMENTS = (
+    "exec-out",
+    "uiautomator",
+    "dump",
+    "--compressed",
+    "/dev/tty",
+)
 ADB_PREFLIGHT_REQUIRED_CONSECUTIVE = 3
 ADB_PREFLIGHT_MAX_OBSERVATIONS = 7
 ADB_PREFLIGHT_OBSERVATION_DELAY_SECONDS = 1.0
@@ -232,6 +245,11 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         return ("read-only-retryable", "exact adb transport-state observation")
     if arguments == ("exec-out", "screencap", "-p"):
         return ("read-only-retryable", "exact framebuffer observation")
+    if arguments == ADB_READ_ONLY_HIERARCHY_ARGUMENTS:
+        return (
+            "read-only-retryable",
+            "exact accessibility-hierarchy observation without app mutation",
+        )
     if (
         len(arguments) == 3
         and arguments[:2] == ("exec-out", "cat")
@@ -530,6 +548,56 @@ class Device:
         _write_new_json_receipt(self.evidence / filename, receipt)
         self._transport_events.append(receipt)
 
+    def _write_swipe_reconciliation_event(
+        self,
+        *,
+        failed: AdbTransportError,
+        arguments: tuple[str, ...],
+        observation_count: int,
+        hierarchy_sha256: str,
+    ) -> None:
+        if self._transport_event_index >= MAX_ADB_TRANSPORT_EVENTS:
+            raise RuntimeError(
+                "ADB transport event bound exhausted; refusing swipe reconciliation"
+            )
+        self._transport_event_index += 1
+        filename = f"adb-transport-event-{self._transport_event_index:04d}.json"
+        receipt: dict[str, object] = {
+            "schema": ADB_TRANSPORT_EVENT_SCHEMA,
+            "status": "reconciled-unknown-swipe",
+            "serial": self.serial,
+            "classification": "timeout-unknown-outcome",
+            "classificationAuthority": (
+                "bounded-consecutive-read-only-hierarchy-observations"
+            ),
+            "retryableTransportClassification": True,
+            "commandPolicy": "non-replayable",
+            "policyReason": "swipe was never replayed; current viewport became authority",
+            "adbArguments": _adb_arguments_evidence(arguments, "non-replayable"),
+            "adbArgumentsSha256": _adb_arguments_sha256(arguments),
+            "attempt": 1,
+            "maximumAttempts": 1,
+            "commandInvocationPerformed": False,
+            "outcomeMutationAuthority": "current-viewport-observed-no-replay",
+            "replay": {
+                "eligible": False,
+                "performed": False,
+                "scheduled": False,
+                "suppressed": True,
+            },
+            "failure": None,
+            "reconcilesEvidenceFile": failed.receipt["evidenceFile"],
+            "readOnlyObservation": {
+                "arguments": list(ADB_READ_ONLY_HIERARCHY_ARGUMENTS),
+                "consecutiveMatching": ADB_SWIPE_RECONCILIATION_REQUIRED_CONSECUTIVE,
+                "observationsPerformed": observation_count,
+                "hierarchySha256": hierarchy_sha256,
+            },
+            "evidenceFile": filename,
+        }
+        _write_new_json_receipt(self.evidence / filename, receipt)
+        self._transport_events.append(receipt)
+
     def run(
         self,
         *arguments: str,
@@ -768,8 +836,16 @@ class Device:
         raise failure from terminal_error
 
     def transport_summary(self) -> dict[str, object]:
+        reconciled = {
+            event["reconcilesEvidenceFile"]
+            for event in self._transport_events
+            if event["status"] == "reconciled-unknown-swipe"
+        }
         terminal_failures = [
-            event for event in self._transport_events if event["status"] == "fail"
+            event
+            for event in self._transport_events
+            if event["status"] == "fail"
+            and event["evidenceFile"] not in reconciled
         ]
         if terminal_failures or (
             self._transport_preflight is not None
@@ -908,22 +984,90 @@ class Device:
             )
             return []
 
+        return Device._parse_hierarchy(self, xml, "last-invalid-hierarchy.txt")
+
+    def read_only_hierarchy(self) -> list[UiNode]:
+        """Observe accessibility state without writing a device-side dump file."""
+        xml = self.run(*ADB_READ_ONLY_HIERARCHY_ARGUMENTS, timeout=30).stdout
+        return Device._parse_hierarchy(
+            self,
+            xml,
+            "last-read-only-invalid-hierarchy.txt",
+        )
+
+    def _parse_hierarchy(self, xml: str, diagnostic_name: str) -> list[UiNode]:
         hierarchy_start = xml.find("<hierarchy")
         if hierarchy_start < 0:
-            (self.evidence / "last-invalid-hierarchy.txt").write_text(
+            (self.evidence / diagnostic_name).write_text(
                 xml or "uiautomator returned an empty hierarchy",
                 encoding="utf-8",
             )
             return []
+        hierarchy_end = xml.rfind("</hierarchy>")
+        payload = (
+            xml[hierarchy_start:hierarchy_end + len("</hierarchy>")]
+            if hierarchy_end >= hierarchy_start
+            else xml[hierarchy_start:]
+        )
         try:
-            root = ET.fromstring(xml[hierarchy_start:])
+            root = ET.fromstring(payload)
         except ET.ParseError as error:
-            (self.evidence / "last-invalid-hierarchy.txt").write_text(
+            (self.evidence / diagnostic_name).write_text(
                 f"{error}\n{xml}",
                 encoding="utf-8",
             )
             return []
         return [UiNode(dict(node.attrib)) for node in root.iter("node")]
+
+    @staticmethod
+    def _hierarchy_sha256(nodes: list[UiNode]) -> str:
+        canonical = json.dumps(
+            [sorted(node.attributes.items()) for node in nodes],
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+        return hashlib.sha256(canonical).hexdigest()
+
+    def _reconcile_unknown_swipe(
+        self,
+        failed: AdbTransportError,
+        arguments: tuple[str, ...],
+    ) -> bool:
+        receipt = failed.receipt
+        blocker = self._mutation_blocker
+        if (
+            receipt.get("classification") != "timeout-unknown-outcome"
+            or receipt.get("commandPolicy") != "non-replayable"
+            or receipt.get("adbArgumentsSha256") != _adb_arguments_sha256(arguments)
+            or blocker is None
+            or blocker.get("evidenceFile") != receipt.get("evidenceFile")
+        ):
+            return False
+        previous_sha256: str | None = None
+        consecutive = 0
+        for observation in range(1, ADB_SWIPE_RECONCILIATION_MAX_OBSERVATIONS + 1):
+            try:
+                nodes = self.read_only_hierarchy()
+            except AdbTransportError:
+                return False
+            if not nodes:
+                return False
+            observed_sha256 = self._hierarchy_sha256(nodes)
+            consecutive = consecutive + 1 if observed_sha256 == previous_sha256 else 1
+            previous_sha256 = observed_sha256
+            if consecutive >= ADB_SWIPE_RECONCILIATION_REQUIRED_CONSECUTIVE:
+                self._write_swipe_reconciliation_event(
+                    failed=failed,
+                    arguments=arguments,
+                    observation_count=observation,
+                    hierarchy_sha256=observed_sha256,
+                )
+                self._mutation_blocker = None
+                return True
+            if observation < ADB_SWIPE_RECONCILIATION_MAX_OBSERVATIONS:
+                time.sleep(ADB_SWIPE_RECONCILIATION_DELAY_SECONDS)
+        return False
 
     @staticmethod
     def _matches(node: UiNode, selector: str) -> bool:
@@ -1686,7 +1830,7 @@ class Device:
         x = int(round(width * x_ratio))
         start_y = int(round(height * 0.82))
         end_y = int(round(height * max(0.10, 0.82 - distance_ratio)))
-        self.shell(
+        arguments = (
             "input",
             "swipe",
             str(x),
@@ -1694,8 +1838,15 @@ class Device:
             str(x),
             str(end_y),
             "300",
-            timeout=15,
         )
+        try:
+            self.shell(*arguments, timeout=15)
+        except AdbTransportError as error:
+            if not self._reconcile_unknown_swipe(
+                error,
+                ("shell", *arguments),
+            ):
+                raise
 
     def swipe_down(
         self,
@@ -1707,7 +1858,7 @@ class Device:
         x = int(round(width * x_ratio))
         start_y = int(round(height * 0.30))
         end_y = int(round(height * min(0.90, 0.30 + distance_ratio)))
-        self.shell(
+        arguments = (
             "input",
             "swipe",
             str(x),
@@ -1715,8 +1866,15 @@ class Device:
             str(x),
             str(end_y),
             "300",
-            timeout=15,
         )
+        try:
+            self.shell(*arguments, timeout=15)
+        except AdbTransportError as error:
+            if not self._reconcile_unknown_swipe(
+                error,
+                ("shell", *arguments),
+            ):
+                raise
 
     def open_navigation_drawer(self) -> None:
         for selector in ("Open navigation drawer", "Navigate up", "Show navigation menu"):
@@ -2137,19 +2295,24 @@ def bind_phone_shell_destinations(
             display_height=display_height,
         )
     ]
-    if len(candidates) != len(PHONE_SHELL_DESTINATION_LABELS):
+    if len(candidates) != len(PHONE_SHELL_DESTINATION_IDS):
         raise RuntimeError(
             "Native phone bottom bar has "
             f"{len(candidates)} recognized destinations; expected exactly "
-            f"{len(PHONE_SHELL_DESTINATION_LABELS)}"
+            f"{len(PHONE_SHELL_DESTINATION_IDS)}"
         )
 
     ordered = sorted(candidates, key=lambda node: node.bounds[0])
     labels = tuple(node.attributes.get("content-desc", "") for node in ordered)
-    if labels != PHONE_SHELL_DESTINATION_LABELS:
+    matching_languages = [
+        language
+        for language, expected_labels in PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE.items()
+        if labels == expected_labels
+    ]
+    if len(matching_languages) != 1:
         raise RuntimeError(
-            f"Native phone bottom bar order is {labels!r}; expected "
-            f"{PHONE_SHELL_DESTINATION_LABELS!r}"
+            f"Native phone bottom bar order is {labels!r}; expected exactly one "
+            f"supported DE/EN/ES tuple {PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE!r}"
         )
 
     bounds = [node.bounds for node in ordered]
@@ -2172,8 +2335,12 @@ def bind_phone_shell_destinations(
 
     selected_labels: list[str] = []
     result: list[tuple[str, UiNode]] = []
-    for label, node in zip(labels, ordered, strict=True):
-        expected_resource_id = PHONE_SHELL_DESTINATION_IDS_BY_LABEL[label]
+    for expected_resource_id, label, node in zip(
+        PHONE_SHELL_DESTINATION_IDS,
+        labels,
+        ordered,
+        strict=True,
+    ):
         actual_resource_id = node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
         selected = node.attributes.get("selected") == "true"
         clickable = node.attributes.get("clickable") == "true"
@@ -2192,7 +2359,7 @@ def bind_phone_shell_destinations(
                 "clickable/selected semantics"
             )
         if selected:
-            selected_labels.append(label)
+            selected_labels.append(PHONE_SHELL_DESTINATION_MAPPING[expected_resource_id])
         result.append((expected_resource_id, node))
     if len(selected_labels) != 1:
         raise RuntimeError(
@@ -2363,7 +2530,7 @@ def assert_phone_shell_surface(
             encoding="utf-8",
         )
         raise RuntimeError(
-            "Phone shell did not expose exactly Runners/Runner/More or exposed a "
+            "Phone shell did not expose the exact supported four-destination set or exposed a "
             f"postponed surface: {observation!r}"
         ) from error
     resource_ids = [
@@ -2430,6 +2597,19 @@ def assert_phone_shell_surface(
         "destinationResourceIds": observed_destination_ids,
         "destinationLabels": observed_destination_labels,
         "destinationMapping": observed_destination_mapping,
+        "nativeDestinationLabels": [
+            node.attributes.get("content-desc", "")
+            for _, node in destinations
+        ],
+        "nativeDestinationLanguage": next(
+            language
+            for language, labels in PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE.items()
+            if labels
+            == tuple(
+                node.attributes.get("content-desc", "")
+                for _, node in destinations
+            )
+        ),
         "selectedDestination": next(
             PHONE_SHELL_DESTINATION_MAPPING[resource_id]
             for resource_id, node in destinations
@@ -2468,7 +2648,8 @@ def assert_phone_shell_surface(
         )
         device.capture(f"{evidence_prefix}-invalid")
         raise RuntimeError(
-            "Phone shell did not expose exactly Runners/Runner/More or exposed a "
+            "Phone shell did not expose the exact supported DE/EN/ES four-destination set "
+            "or exposed a "
             f"postponed surface: {observation!r}"
         )
     (device.evidence / f"{evidence_prefix}-observation.json").write_text(

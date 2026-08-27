@@ -78,8 +78,10 @@ class RecordingDevice(DRIVER.Device):
                 node
                 for node in self.nodes
                 if node.attributes.get("class") == "android.widget.FrameLayout"
-                and node.attributes.get("content-desc")
-                in DRIVER.PHONE_SHELL_DESTINATION_LABELS
+                and any(
+                    node.attributes.get("content-desc") in labels
+                    for labels in DRIVER.PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE.values()
+                )
             ]
             tapped_tab = next(
                 (
@@ -134,6 +136,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
     def native_phone_tabs(
         *,
         selected_label: str = "Runner",
+        selected_index: int | None = None,
         labels: tuple[str, ...] = DRIVER.PHONE_SHELL_DESTINATION_LABELS,
         widths: tuple[tuple[int, int], ...] = (
             (0, 270),
@@ -151,12 +154,22 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                     "content-desc": label,
                     "enabled": "true",
                     "focusable": "true",
-                    "selected": str(label == selected_label).lower(),
-                    "clickable": str(label != selected_label).lower(),
+                    "selected": str(
+                        index == selected_index
+                        if selected_index is not None
+                        else label == selected_label
+                    ).lower(),
+                    "clickable": str(
+                        index != selected_index
+                        if selected_index is not None
+                        else label != selected_label
+                    ).lower(),
                     "bounds": f"[{left},2190][{right},2337]",
                 }
             )
-            for label, (left, right) in zip(labels, widths, strict=True)
+            for index, (label, (left, right)) in enumerate(
+                zip(labels, widths, strict=True)
+            )
         ]
 
     @staticmethod
@@ -660,6 +673,21 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             self.assertNotIn(("input", "tap", "440", "460"), device.commands)
             with self.assertRaisesRegex(ValueError, "Unknown phone shell destination"):
                 DRIVER.tap_phone_destination(device, "phone-destination-play")
+
+    def test_structural_phone_destination_binding_accepts_exact_de_en_es_tuples(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            device = RecordingDevice(Path(temporary), "Physical size: 1080x2400")
+            for language, labels in DRIVER.PHONE_SHELL_DESTINATION_LABELS_BY_LANGUAGE.items():
+                with self.subTest(language=language):
+                    nodes = self.native_phone_tabs(
+                        labels=labels,
+                        selected_index=1,
+                    )
+                    bound = DRIVER.bind_phone_shell_destinations(device, nodes)
+                    self.assertEqual(
+                        DRIVER.PHONE_SHELL_DESTINATION_IDS,
+                        tuple(resource_id for resource_id, _ in bound),
+                    )
 
     def test_structural_phone_destination_binding_fails_closed_on_adversarial_nodes(self) -> None:
         def altered(
