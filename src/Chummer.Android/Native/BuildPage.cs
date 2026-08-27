@@ -215,6 +215,7 @@ public sealed class BuildPage : NativePageBase
     private readonly ICharacterCreationResourcesInteractionPresenter? _resourcesPresenter;
     private readonly ICharacterCreationGearInteractionPresenter? _gearPresenter;
     private readonly ICharacterOverviewPresenter? _overviewPresenter;
+    private readonly RunnerSessionSr5VehicleWorkshopAuthority? _vehicleWorkshopAuthority;
     private CreationDashboardAuthorityProjection? _creationProjection;
     private CreationDashboardProjectionBinding? _creationFinalizationBinding;
     private CharacterCreationFinalizationResult<CharacterCreationFinalizationState>?
@@ -224,11 +225,13 @@ public sealed class BuildPage : NativePageBase
         RunnerSessionCoordinator coordinator,
         ICharacterCreationResourcesInteractionPresenter? resourcesPresenter = null,
         ICharacterOverviewPresenter? overviewPresenter = null,
-        ICharacterCreationGearInteractionPresenter? gearPresenter = null) : base(coordinator)
+        ICharacterCreationGearInteractionPresenter? gearPresenter = null,
+        RunnerSessionSr5VehicleWorkshopAuthority? vehicleWorkshopAuthority = null) : base(coordinator)
     {
         _resourcesPresenter = resourcesPresenter;
         _overviewPresenter = overviewPresenter;
         _gearPresenter = gearPresenter;
+        _vehicleWorkshopAuthority = vehicleWorkshopAuthority;
         Title = "Runner";
         AutomationId = "phone-runner-page";
         _save = new ToolbarItem
@@ -363,6 +366,16 @@ public sealed class BuildPage : NativePageBase
             "Advance · Before Run · Live · After Run · Downtime · Corrections",
             () => Navigation.PushAsync(new Sr5CareerWizardPage(Coordinator)),
             automationId: "build-sr5-career-wizard"));
+        if (_vehicleWorkshopAuthority is not null)
+        {
+            card.Add(NativeTheme.NavigationRow(
+                Sr5CareerFlowStrings.Text("Vehicle & Drone Workshop"),
+                Sr5CareerFlowStrings.Text("Stock vehicle or drone → modifications → four-part weapon mounts → exact quote and receipt"),
+                () => Navigation.PushAsync(new Sr5VehicleWorkshopPage(
+                    Coordinator,
+                    _vehicleWorkshopAuthority)),
+                automationId: "build-sr5-vehicle-workshop"));
+        }
         card.Add(NativeTheme.NavigationRow(
             "Change a quality",
             "Direct deep link · exact InternalId/SourceId → atomic review → receipt/correction",

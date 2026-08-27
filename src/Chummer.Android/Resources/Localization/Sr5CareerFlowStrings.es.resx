@@ -697,4 +697,78 @@ Vista previa: {3}…</value></data>
   <data name="{0} · {1} · {2} {3}" xml:space="preserve"><value>{0} · {1} · {2} {3}</value></data>
   <data name="{0} · Essence {1} · availability {2} · {3} {4}" xml:space="preserve"><value>{0} · Esencia {1} · disponibilidad {2} · {3} {4}</value></data>
   <data name="Cost × {0} · Essence × {1} · availability {2}" xml:space="preserve"><value>Coste × {0} · Esencia × {1} · disponibilidad {2}</value></data>
+  <data name="A workshop write has an unknown outcome. Recover it before doing anything else." xml:space="preserve"><value>Una escritura del taller tiene un resultado desconocido. Recupéralo antes de hacer cualquier otra cosa.</value></data>
+  <data name="Add modification" xml:space="preserve"><value>Añadir modificación</value></data>
+  <data name="Add weapon mount" xml:space="preserve"><value>Añadir montaje de arma</value></data>
+  <data name="Capacity" xml:space="preserve"><value>Capacidad</value></data>
+  <data name="Capacity used" xml:space="preserve"><value>Capacidad usada</value></data>
+  <data name="Choose an exact stock chassis, modifications, and complete weapon mounts. Core calculates every price and rule." xml:space="preserve"><value>Elige un chasis de serie exacto, modificaciones y montajes de arma completos. Core calcula cada precio y regla.</value></data>
+  <data name="Complete all four typed parts of every weapon mount before review." xml:space="preserve"><value>Completa las cuatro partes tipadas de cada montaje de arma antes de revisar.</value></data>
+  <data name="Compose weapon mount {0}" xml:space="preserve"><value>Componer montaje de arma {0}</value></data>
+  <data name="Confirm purchase" xml:space="preserve"><value>Confirmar compra</value></data>
+  <data name="Confirmation persists one new vehicle, its composed children, one expense, and the exact Nuyen delta atomically." xml:space="preserve"><value>La confirmación guarda atómicamente un vehículo nuevo, sus elementos compuestos, un gasto y el cambio exacto de nuyen.</value></data>
+  <data name="Content revision" xml:space="preserve"><value>Revisión de contenido</value></data>
+  <data name="Continue from the last durable phone step." xml:space="preserve"><value>Continuar desde el último paso guardado de forma duradera en el teléfono.</value></data>
+  <data name="Continue to weapon mounts" xml:space="preserve"><value>Continuar a montajes de arma</value></data>
+  <data name="Control" xml:space="preserve"><value>Control</value></data>
+  <data name="Custom chassis require an exact GM authorization and are unavailable in this stock lane." xml:space="preserve"><value>Los chasis personalizados requieren una autorización exacta del DJ y no están disponibles en esta vía de serie.</value></data>
+  <data name="Custom vehicle name (optional)" xml:space="preserve"><value>Nombre personalizado del vehículo (opcional)</value></data>
+  <data name="Durable receipt" xml:space="preserve"><value>Recibo duradero</value></data>
+  <data name="Every mount needs one exact Size, Visibility, Flexibility, and Control component." xml:space="preserve"><value>Cada montaje necesita exactamente un componente de Tamaño, Visibilidad, Flexibilidad y Control.</value></data>
+  <data name="Exact authority" xml:space="preserve"><value>Autoridad exacta</value></data>
+  <data name="Exact modifications" xml:space="preserve"><value>Modificaciones exactas</value></data>
+  <data name="Flexibility" xml:space="preserve"><value>Flexibilidad</value></data>
+  <data name="Keep the source name" xml:space="preserve"><value>Mantener el nombre de origen</value></data>
+  <data name="Kind" xml:space="preserve"><value>Tipo</value></data>
+  <data name="Loading exact vehicle authority…" xml:space="preserve"><value>Cargando la autoridad exacta de vehículos…</value></data>
+  <data name="No chassis selected" xml:space="preserve"><value>No hay chasis seleccionado</value></data>
+  <data name="No exact vehicle catalog rows are available." xml:space="preserve"><value>No hay entradas exactas disponibles en el catálogo de vehículos.</value></data>
+  <data name="Nuyen available" xml:space="preserve"><value>Nuyen disponibles</value></data>
+  <data name="Nuyen delta" xml:space="preserve"><value>Cambio de nuyen</value></data>
+  <data name="Outcome recovery" xml:space="preserve"><value>Recuperación del resultado</value></data>
+  <data name="Quote lines" xml:space="preserve"><value>Líneas del presupuesto</value></data>
+  <data name="Re-read the exact runner and use the saved idempotent command." xml:space="preserve"><value>Volver a leer al runner exacto y usar la orden idempotente guardada.</value></data>
+  <data name="Recover outcome" xml:space="preserve"><value>Recuperar resultado</value></data>
+  <data name="Recover workshop outcome" xml:space="preserve"><value>Recuperar resultado del taller</value></data>
+  <data name="Remove" xml:space="preserve"><value>Quitar</value></data>
+  <data name="Remove weapon mount" xml:space="preserve"><value>Quitar montaje de arma</value></data>
+  <data name="Reopen workshop receipt" xml:space="preserve"><value>Reabrir recibo del taller</value></data>
+  <data name="Resume saved workshop" xml:space="preserve"><value>Reanudar taller guardado</value></data>
+  <data name="Review workshop quote" xml:space="preserve"><value>Revisar presupuesto del taller</value></data>
+  <data name="SR5 Career" xml:space="preserve"><value>Carrera SR5</value></data>
+  <data name="Selected" xml:space="preserve"><value>Seleccionado</value></data>
+  <data name="Size" xml:space="preserve"><value>Tamaño</value></data>
+  <data name="Slots" xml:space="preserve"><value>Ranuras</value></data>
+  <data name="Slots used" xml:space="preserve"><value>Ranuras usadas</value></data>
+  <data name="Start another workshop purchase" xml:space="preserve"><value>Iniciar otra compra del taller</value></data>
+  <data name="Step 2 of 4" xml:space="preserve"><value>Paso 2 de 4</value></data>
+  <data name="Step 3 of 4" xml:space="preserve"><value>Paso 3 de 4</value></data>
+  <data name="Step 4 of 4" xml:space="preserve"><value>Paso 4 de 4</value></data>
+  <data name="Stock vehicle or drone → modifications → four-part weapon mounts → exact quote and receipt" xml:space="preserve"><value>Vehículo o dron de serie → modificaciones → montajes de arma de cuatro partes → presupuesto y recibo exactos</value></data>
+  <data name="Stock vehicles and drones" xml:space="preserve"><value>Vehículos y drones de serie</value></data>
+  <data name="The optional vehicle name is too long." xml:space="preserve"><value>El nombre opcional del vehículo es demasiado largo.</value></data>
+  <data name="The saved command is idempotent. Recovery first checks the exact current runner, then safely completes or reports why it cannot." xml:space="preserve"><value>La orden guardada es idempotente. La recuperación comprueba primero el runner actual exacto y después completa con seguridad o indica el motivo exacto.</value></data>
+  <data name="The saved workshop draft is stale and was not resumed." xml:space="preserve"><value>El borrador guardado del taller está obsoleto y no se reanudó.</value></data>
+  <data name="The workshop purchase was undone and its Nuyen restored." xml:space="preserve"><value>La compra del taller se deshizo y se restauraron sus nuyen.</value></data>
+  <data name="This modification is not legal for the selected chassis." xml:space="preserve"><value>Esta modificación no es válida para el chasis seleccionado.</value></data>
+  <data name="This mount component is not legal for the selected chassis." xml:space="preserve"><value>Este componente de montaje no es válido para el chasis seleccionado.</value></data>
+  <data name="Total cost" xml:space="preserve"><value>Coste total</value></data>
+  <data name="Undo is no longer safe because the runner changed after this receipt." xml:space="preserve"><value>Deshacer ya no es seguro porque el runner cambió después de este recibo.</value></data>
+  <data name="Undo workshop purchase" xml:space="preserve"><value>Deshacer compra del taller</value></data>
+  <data name="Unsupported source rows" xml:space="preserve"><value>Entradas de origen no compatibles</value></data>
+  <data name="Vehicle" xml:space="preserve"><value>Vehículo</value></data>
+  <data name="Vehicle &amp; Drone Workshop" xml:space="preserve"><value>Taller de vehículos y drones</value></data>
+  <data name="Vehicle modifications" xml:space="preserve"><value>Modificaciones de vehículo</value></data>
+  <data name="Verify and reopen receipt" xml:space="preserve"><value>Verificar y reabrir recibo</value></data>
+  <data name="Verify the committed transaction and check whether undo is still safe." xml:space="preserve"><value>Verificar la transacción confirmada y comprobar si deshacer sigue siendo seguro.</value></data>
+  <data name="Visibility" xml:space="preserve"><value>Visibilidad</value></data>
+  <data name="Weapon mount {0}" xml:space="preserve"><value>Montaje de arma {0}</value></data>
+  <data name="Weapon mounts" xml:space="preserve"><value>Montajes de arma</value></data>
+  <data name="Workshop receipt" xml:space="preserve"><value>Recibo del taller</value></data>
+  <data name="Workshop unavailable" xml:space="preserve"><value>Taller no disponible</value></data>
+  <data name="{0} of 4 components selected" xml:space="preserve"><value>{0} de 4 componentes seleccionados</value></data>
+  <data name="+" xml:space="preserve"><value>+</value></data>
+  <data name="−" xml:space="preserve"><value>−</value></data>
+  <data name="Drone" xml:space="preserve"><value>Dron</value></data>
+  <data name="A durable workshop checkpoint belongs to another runner. Reopen that runner before recovering or replacing it." xml:space="preserve"><value>Un punto de control duradero del taller pertenece a otro runner. Vuelve a abrir ese runner antes de recuperarlo o reemplazarlo.</value></data>
 </root>

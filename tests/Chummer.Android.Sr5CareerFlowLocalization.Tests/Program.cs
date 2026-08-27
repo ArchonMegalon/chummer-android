@@ -200,7 +200,8 @@ static string[] TargetPages()
         "Sr5DowntimeCalendarWizardPage.cs",
         "Sr5TableWizardPage.cs",
         "Sr5CustomDrugLabPage.cs",
-        "Sr5CareerCommercePages.cs"
+        "Sr5CareerCommercePages.cs",
+        "Sr5VehicleWorkshopPage.cs"
     ];
 
 static HashSet<string> ReadSourceKeys(string workspace)
@@ -286,7 +287,7 @@ static IEnumerable<InvocationExpressionSyntax> ParseInvocations(
                  .OfType<InvocationExpressionSyntax>())
     {
         if (invocation.Expression is IdentifierNameSyntax name
-            && name.Identifier.Text is "Text" or "Format")
+            && name.Identifier.Text is "Text" or "Format" or "T")
         {
             yield return invocation;
         }

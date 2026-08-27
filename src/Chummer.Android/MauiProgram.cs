@@ -85,6 +85,7 @@ public static class MauiProgram
             contentPath,
             contentPath,
             "android");
+        builder.Services.AddSingleton<RunnerSessionSr5VehicleWorkshopAuthority>();
         builder.Services.AddSingleton<ILifeModuleDecisionAuthority>(provider =>
             new CharacterCreationFoundationLifeModuleDecisionAuthority(
                 provider.GetRequiredService<IWorkspaceStore>(),

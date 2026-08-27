@@ -338,6 +338,19 @@ public sealed class RunnerSessionCoordinator : IDisposable
             cancellationToken,
             allowReadOnlyProductCapture: true);
 
+    /// <summary>
+    /// Refreshes the active runner after an independently CAS-bound Core authority has durably
+    /// replaced its document. The authority must already have proven and persisted exact bytes.
+    /// </summary>
+    internal async Task ReloadCurrentWorkspaceAsync(
+        CancellationToken cancellationToken = default)
+    {
+        if (State.WorkspaceId is not { } workspaceId)
+            throw new InvalidOperationException("No active runner can be reloaded.");
+        await _presenter.LoadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
+        await SyncShellAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     public ShellSurfaceState Surface => _surface;
 
     public AndroidAccountLinkSnapshot Account => _account.Snapshot;
