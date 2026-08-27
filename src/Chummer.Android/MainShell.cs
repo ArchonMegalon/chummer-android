@@ -37,10 +37,26 @@ public sealed class MainShell : Shell
     {
         FlyoutBehavior = FlyoutBehavior.Disabled;
         TabBar tabs = new();
-        tabs.Items.Add(CreatePhoneTab<RunnersPage>(services, "Runners", PhoneShellRoutes.Runners, "⌂"));
-        tabs.Items.Add(CreatePhoneTab<BuildPage>(services, "Runner", PhoneShellRoutes.Runner, "✎"));
-        tabs.Items.Add(CreatePhoneTab<ShadowArchivePage>(services, "Archive", PhoneShellRoutes.Archive, "▤"));
-        tabs.Items.Add(CreatePhoneTab<PhoneMorePage>(services, "More", PhoneShellRoutes.More, "•••"));
+        tabs.Items.Add(CreatePhoneTab<RunnersPage>(
+            services,
+            PhoneStrings.Get("ShellRunners", "Runners"),
+            PhoneShellRoutes.Runners,
+            "⌂"));
+        tabs.Items.Add(CreatePhoneTab<BuildPage>(
+            services,
+            PhoneStrings.Get("ShellRunner", "Runner"),
+            PhoneShellRoutes.Runner,
+            "✎"));
+        tabs.Items.Add(CreatePhoneTab<ShadowArchivePage>(
+            services,
+            PhoneStrings.Get("ShellStories", "Stories"),
+            PhoneShellRoutes.Archive,
+            "▤"));
+        tabs.Items.Add(CreatePhoneTab<PhoneMorePage>(
+            services,
+            PhoneStrings.Get("ShellMore", "More"),
+            PhoneShellRoutes.More,
+            "•••"));
         Items.Add(tabs);
 
         RunnerSessionCoordinator coordinator = services.GetRequiredService<RunnerSessionCoordinator>();

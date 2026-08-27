@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="ShellRunners" xml:space="preserve"><value>Runners</value></data>
+  <data name="ShellRunner" xml:space="preserve"><value>Runner</value></data>
+  <data name="ShellStories" xml:space="preserve"><value>Historias</value></data>
+  <data name="ShellMore" xml:space="preserve"><value>Más</value></data>
+  <data name="HomeYourRunners" xml:space="preserve"><value>Tus runners</value></data>
+  <data name="HomeNoRunner" xml:space="preserve"><value>No hay ningún runner abierto</value></data>
+  <data name="HomeStartDetail" xml:space="preserve"><value>Abre un archivo, vincula tu cuenta o crea un runner.</value></data>
+  <data name="HomeCurrent" xml:space="preserve"><value>Actual</value></data>
+  <data name="HomeContinue" xml:space="preserve"><value>Continuar creando</value></data>
+  <data name="OpenFile" xml:space="preserve"><value>Abrir archivo</value></data>
+  <data name="NewRunner" xml:space="preserve"><value>Nuevo runner</value></data>
+  <data name="ApplicationSettings" xml:space="preserve"><value>Ajustes de la aplicación</value></data>
+  <data name="RosterMetadata" xml:space="preserve"><value>Metadatos de la lista</value></data>
+  <data name="OpenNow" xml:space="preserve"><value>Abiertos ahora</value></data>
+  <data name="RunnerFallback" xml:space="preserve"><value>Runner</value></data>
+  <data name="HomeOnlineRunners" xml:space="preserve"><value>Runners en línea</value></data>
+  <data name="HomeLinkAccount" xml:space="preserve"><value>Vincula tu cuenta</value></data>
+  <data name="HomeOpenAccountRunners" xml:space="preserve"><value>Abre runners guardados en tu cuenta de Chummer.</value></data>
+  <data name="LinkAccount" xml:space="preserve"><value>Vincular cuenta</value></data>
+  <data name="LoadOnlineRunners" xml:space="preserve"><value>Cargar runners en línea</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Actualizar</value></data>
+  <data name="MoreRunnerFile" xml:space="preserve"><value>Archivo del runner</value></data>
+  <data name="Save" xml:space="preserve"><value>Guardar</value></data>
+  <data name="Export" xml:space="preserve"><value>Exportar</value></data>
+  <data name="Print" xml:space="preserve"><value>Imprimir</value></data>
+  <data name="AllActions" xml:space="preserve"><value>Todas las acciones</value></data>
+  <data name="Account" xml:space="preserve"><value>Cuenta</value></data>
+  <data name="RefreshAccount" xml:space="preserve"><value>Actualizar datos de la cuenta</value></data>
+  <data name="AccountPrivacy" xml:space="preserve"><value>Cuenta y privacidad</value></data>
+  <data name="LinkedDeviceDeletion" xml:space="preserve"><value>Dispositivo vinculado y eliminación</value></data>
+  <data name="LinkingDeletion" xml:space="preserve"><value>Vinculación y eliminación</value></data>
+  <data name="App" xml:space="preserve"><value>Aplicación</value></data>
+  <data name="Version" xml:space="preserve"><value>Versión</value></data>
+  <data name="CheckUpdates" xml:space="preserve"><value>Buscar actualizaciones</value></data>
+  <data name="Checking" xml:space="preserve"><value>Comprobando</value></data>
+  <data name="UpToDate" xml:space="preserve"><value>Actualizada</value></data>
+  <data name="UpdateStarted" xml:space="preserve"><value>Actualización iniciada</value></data>
+  <data name="ReadyInstall" xml:space="preserve"><value>Lista para instalar</value></data>
+  <data name="PlayUpdates" xml:space="preserve"><value>Las actualizaciones se reciben mediante Google Play</value></data>
+  <data name="UpdateUnavailable" xml:space="preserve"><value>La comprobación de actualizaciones no está disponible</value></data>
+  <data name="Ok" xml:space="preserve"><value>Aceptar</value></data>
+</root>

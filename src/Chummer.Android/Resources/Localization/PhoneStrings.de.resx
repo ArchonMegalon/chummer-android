@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="ShellRunners" xml:space="preserve"><value>Runner</value></data>
+  <data name="ShellRunner" xml:space="preserve"><value>Runner</value></data>
+  <data name="ShellStories" xml:space="preserve"><value>Geschichten</value></data>
+  <data name="ShellMore" xml:space="preserve"><value>Mehr</value></data>
+  <data name="HomeYourRunners" xml:space="preserve"><value>Deine Runner</value></data>
+  <data name="HomeNoRunner" xml:space="preserve"><value>Kein Runner geöffnet</value></data>
+  <data name="HomeStartDetail" xml:space="preserve"><value>Öffne eine Datei, verknüpfe dein Konto oder erstelle einen Runner.</value></data>
+  <data name="HomeCurrent" xml:space="preserve"><value>Aktuell</value></data>
+  <data name="HomeContinue" xml:space="preserve"><value>Weiterbauen</value></data>
+  <data name="OpenFile" xml:space="preserve"><value>Datei öffnen</value></data>
+  <data name="NewRunner" xml:space="preserve"><value>Neuer Runner</value></data>
+  <data name="ApplicationSettings" xml:space="preserve"><value>App-Einstellungen</value></data>
+  <data name="RosterMetadata" xml:space="preserve"><value>Listenmetadaten</value></data>
+  <data name="OpenNow" xml:space="preserve"><value>Jetzt geöffnet</value></data>
+  <data name="RunnerFallback" xml:space="preserve"><value>Runner</value></data>
+  <data name="HomeOnlineRunners" xml:space="preserve"><value>Online-Runner</value></data>
+  <data name="HomeLinkAccount" xml:space="preserve"><value>Konto verknüpfen</value></data>
+  <data name="HomeOpenAccountRunners" xml:space="preserve"><value>Öffne Runner, die in deinem Chummer-Konto gespeichert sind.</value></data>
+  <data name="LinkAccount" xml:space="preserve"><value>Konto verknüpfen</value></data>
+  <data name="LoadOnlineRunners" xml:space="preserve"><value>Online-Runner laden</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Aktualisieren</value></data>
+  <data name="MoreRunnerFile" xml:space="preserve"><value>Runner-Datei</value></data>
+  <data name="Save" xml:space="preserve"><value>Speichern</value></data>
+  <data name="Export" xml:space="preserve"><value>Exportieren</value></data>
+  <data name="Print" xml:space="preserve"><value>Drucken</value></data>
+  <data name="AllActions" xml:space="preserve"><value>Alle Aktionen</value></data>
+  <data name="Account" xml:space="preserve"><value>Konto</value></data>
+  <data name="RefreshAccount" xml:space="preserve"><value>Kontodaten aktualisieren</value></data>
+  <data name="AccountPrivacy" xml:space="preserve"><value>Konto und Datenschutz</value></data>
+  <data name="LinkedDeviceDeletion" xml:space="preserve"><value>Verknüpftes Gerät und Löschung</value></data>
+  <data name="LinkingDeletion" xml:space="preserve"><value>Verknüpfung und Löschung</value></data>
+  <data name="App" xml:space="preserve"><value>App</value></data>
+  <data name="Version" xml:space="preserve"><value>Version</value></data>
+  <data name="CheckUpdates" xml:space="preserve"><value>Nach Updates suchen</value></data>
+  <data name="Checking" xml:space="preserve"><value>Wird geprüft</value></data>
+  <data name="UpToDate" xml:space="preserve"><value>Aktuell</value></data>
+  <data name="UpdateStarted" xml:space="preserve"><value>Update gestartet</value></data>
+  <data name="ReadyInstall" xml:space="preserve"><value>Installationsbereit</value></data>
+  <data name="PlayUpdates" xml:space="preserve"><value>Updates werden über Google Play bereitgestellt</value></data>
+  <data name="UpdateUnavailable" xml:space="preserve"><value>Update-Prüfung nicht verfügbar</value></data>
+  <data name="Ok" xml:space="preserve"><value>OK</value></data>
+</root>

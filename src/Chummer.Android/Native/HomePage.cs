@@ -30,13 +30,15 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
     {
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow("Chummer"));
-        _body.Add(NativeTheme.Title("Your runners"));
+        _body.Add(NativeTheme.Title(PhoneStrings.Get("HomeYourRunners", "Your runners")));
 
         string runner = Coordinator.State.Profile?.Alias
             ?? Coordinator.State.Profile?.Name
-            ?? "No runner open";
+            ?? PhoneStrings.Get("HomeNoRunner", "No runner open");
         string detail = Coordinator.State.Profile is null
-            ? "Open a file, link your account, or start a runner."
+            ? PhoneStrings.Get(
+                "HomeStartDetail",
+                "Open a file, link your account, or start a runner.")
             : string.Join(" · ", new[]
             {
                 Coordinator.State.Profile.Metatype,
@@ -44,12 +46,13 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
             }.Where(static value => !string.IsNullOrWhiteSpace(value)));
 
         VerticalStackLayout current = new() { Spacing = 9 };
-        current.Add(NativeTheme.Eyebrow("Current"));
+        current.Add(NativeTheme.Eyebrow(PhoneStrings.Get("HomeCurrent", "Current")));
         current.Add(NativeTheme.Title(runner, 22));
         current.Add(NativeTheme.Body(detail, NativeTheme.Muted));
         if (Coordinator.State.Profile is not null)
         {
-            Button continueButton = NativeTheme.PrimaryButton("Continue building");
+            Button continueButton = NativeTheme.PrimaryButton(
+                PhoneStrings.Get("HomeContinue", "Continue building"));
             continueButton.Clicked += async (_, _) => await Shell.Current.GoToAsync(_runnerRoute);
             current.Add(continueButton);
         }
@@ -69,7 +72,7 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
             ColumnSpacing = 10,
             RowSpacing = 10
         };
-        Button open = NativeTheme.PrimaryButton("Open file");
+        Button open = NativeTheme.PrimaryButton(PhoneStrings.Get("OpenFile", "Open file"));
         open.AutomationId = "home-open-file";
         open.Clicked += async (_, _) => await RunAsync(async () =>
         {
@@ -81,14 +84,15 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
                 await Shell.Current.GoToAsync(_runnerRoute);
             }
         });
-        Button create = NativeTheme.SecondaryButton("New runner");
+        Button create = NativeTheme.SecondaryButton(PhoneStrings.Get("NewRunner", "New runner"));
         create.AutomationId = "home-new-runner";
         create.Clicked += async (_, _) => await RunAsync(() => Coordinator.CreateRunnerAsync());
         quick.Add(open);
         quick.Add(create, 1);
         _body.Add(quick);
 
-        Button applicationSettings = NativeTheme.SecondaryButton("Application settings");
+        Button applicationSettings = NativeTheme.SecondaryButton(
+            PhoneStrings.Get("ApplicationSettings", "Application settings"));
         applicationSettings.AutomationId = "home-application-settings";
         applicationSettings.Clicked += async (_, _) =>
             await Navigation.PushAsync(new ApplicationSettingsPage(Coordinator));
@@ -96,7 +100,8 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
 
         if (Coordinator.State.WorkspaceId is not null)
         {
-            Button favorites = NativeTheme.SecondaryButton("Roster metadata");
+            Button favorites = NativeTheme.SecondaryButton(
+                PhoneStrings.Get("RosterMetadata", "Roster metadata"));
             favorites.AutomationId = "home-roster-favorites";
             favorites.Clicked += async (_, _) => await Navigation.PushAsync(new RosterFavoritesPage(Coordinator));
             _body.Add(favorites);
@@ -104,11 +109,14 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
 
         if (Coordinator.State.OpenWorkspaces.Count > 1)
         {
-            _body.Add(NativeTheme.Eyebrow("Open now"));
+            _body.Add(NativeTheme.Eyebrow(PhoneStrings.Get("OpenNow", "Open now")));
             foreach (OpenWorkspaceState workspace in Coordinator.State.OpenWorkspaces.Take(5))
             {
                 string label = !string.IsNullOrWhiteSpace(workspace.Alias) ? workspace.Alias : workspace.Name;
-                Button button = NativeTheme.SecondaryButton(string.IsNullOrWhiteSpace(label) ? "Runner" : label);
+                Button button = NativeTheme.SecondaryButton(
+                    string.IsNullOrWhiteSpace(label)
+                        ? PhoneStrings.Get("RunnerFallback", "Runner")
+                        : label);
                 button.Clicked += async (_, _) => await RunAsync(async () =>
                 {
                     NativeWorkspaceActivationReceipt? activation =
@@ -174,26 +182,38 @@ public class HomePage : NativePageBase, IPlayReviewSafeSurface
     {
         VerticalStackLayout online = new() { Spacing = 10 };
         online.Add(NativeTheme.Eyebrow("Chummer.run"));
-        online.Add(NativeTheme.Title(Coordinator.Account.IsLinked ? "Online runners" : "Link your account", 21));
+        online.Add(NativeTheme.Title(
+            Coordinator.Account.IsLinked
+                ? PhoneStrings.Get("HomeOnlineRunners", "Online runners")
+                : PhoneStrings.Get("HomeLinkAccount", "Link your account"),
+            21));
 
         if (!Coordinator.Account.IsLinked)
         {
-            online.Add(NativeTheme.Body("Open runners saved to your Chummer account.", NativeTheme.Muted));
-            Button link = NativeTheme.PrimaryButton("Link account");
+            online.Add(NativeTheme.Body(
+                PhoneStrings.Get(
+                    "HomeOpenAccountRunners",
+                    "Open runners saved to your Chummer account."),
+                NativeTheme.Muted));
+            Button link = NativeTheme.PrimaryButton(PhoneStrings.Get("LinkAccount", "Link account"));
             link.Clicked += async (_, _) => await RunAsync(() => Coordinator.BeginAccountLinkAsync());
             online.Add(link);
         }
         else
         {
             Button refresh = NativeTheme.SecondaryButton(
-                Coordinator.OnlineCharacters.Count == 0 ? "Load online runners" : "Refresh");
+                Coordinator.OnlineCharacters.Count == 0
+                    ? PhoneStrings.Get("LoadOnlineRunners", "Load online runners")
+                    : PhoneStrings.Get("Refresh", "Refresh"));
             refresh.Clicked += async (_, _) => await RunAsync(() => Coordinator.RefreshLinkedDataAsync());
             online.Add(refresh);
             foreach (AndroidOnlineCharacter character in Coordinator.OnlineCharacters.Take(6))
             {
                 string name = !string.IsNullOrWhiteSpace(character.Alias)
                     ? character.Alias
-                    : !string.IsNullOrWhiteSpace(character.Name) ? character.Name : "Runner";
+                    : !string.IsNullOrWhiteSpace(character.Name)
+                        ? character.Name
+                        : PhoneStrings.Get("RunnerFallback", "Runner");
                 Button button = NativeTheme.SecondaryButton(name);
                 button.Clicked += async (_, _) => await RunAsync(async () =>
                 {

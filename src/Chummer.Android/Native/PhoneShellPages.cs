@@ -6,7 +6,10 @@ namespace Chummer.Android.Native;
 public sealed class RunnersPage : HomePage
 {
     public RunnersPage(RunnerSessionCoordinator coordinator)
-        : base(coordinator, PhoneShellRoutes.RunnerAbsolute, "Runners")
+        : base(
+            coordinator,
+            PhoneShellRoutes.RunnerAbsolute,
+            PhoneStrings.Get("ShellRunners", "Runners"))
     {
         AutomationId = "phone-runners";
     }

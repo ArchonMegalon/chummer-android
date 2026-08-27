@@ -11,9 +11,11 @@ class ShadowArchiveSourceContractTests(unittest.TestCase):
         shell = (PROJECT / "MainShell.cs").read_text(encoding="utf-8")
         routes = (PROJECT / "PhoneShellRoutes.cs").read_text(encoding="utf-8")
         phone = shell[shell.index("private void BuildPhoneShell"):shell.index("private async Task ResolveInitialPhoneRouteAsync")]
-        archive = 'CreatePhoneTab<ShadowArchivePage>(services, "Archive", PhoneShellRoutes.Archive'
-        runners = 'CreatePhoneTab<RunnersPage>(services, "Runners", PhoneShellRoutes.Runners'
+        archive = 'CreatePhoneTab<ShadowArchivePage>('
+        runners = 'CreatePhoneTab<RunnersPage>('
         self.assertIn(archive, phone)
+        self.assertIn('PhoneStrings.Get("ShellStories", "Stories")', phone)
+        self.assertIn('PhoneStrings.Get("ShellRunners", "Runners")', phone)
         self.assertLess(phone.index(runners), phone.index(archive))
         self.assertIn("GoToAsync(PhoneShellRoutes.RunnersAbsolute)", shell)
         self.assertIn('public const string Archive = "archive";', routes)

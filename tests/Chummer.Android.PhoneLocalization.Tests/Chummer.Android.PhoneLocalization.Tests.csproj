@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <RootNamespace>Chummer.Android</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/PhoneLocalePolicy.cs"
+             Link="PhoneLocalePolicy.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/PhoneStrings.cs"
+             Link="PhoneStrings.cs" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/PhoneStrings.resx"
+                      Link="Resources/Localization/PhoneStrings.resx" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/PhoneStrings.de.resx"
+                      Link="Resources/Localization/PhoneStrings.de.resx" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/PhoneStrings.es.resx"
+                      Link="Resources/Localization/PhoneStrings.es.resx" />
+  </ItemGroup>
+</Project>
