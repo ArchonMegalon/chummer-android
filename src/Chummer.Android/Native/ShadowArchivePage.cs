@@ -8,6 +8,7 @@ public sealed class ShadowArchivePage : ContentPage
     private readonly IShadowArchivePublicCatalogPort _catalog;
     private readonly ShadowArchivePresenter _presenter;
     private readonly IAndroidSystemService _system;
+    private readonly AndroidSurfaceCopy _copy;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -25,7 +26,8 @@ public sealed class ShadowArchivePage : ContentPage
         _catalog = catalog;
         _presenter = presenter;
         _system = system;
-        Title = "Stories";
+        _copy = AndroidSurfaceStrings.Resolve();
+        Title = _copy["Stories.Title"];
         AutomationId = "phone-archive";
         BackgroundColor = NativeTheme.Paper;
         Content = new ScrollView { Content = _body };
@@ -93,15 +95,15 @@ public sealed class ShadowArchivePage : ContentPage
     private void RenderLoading()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Stories"));
-        _body.Add(NativeTheme.Title("Loading public stories"));
+        _body.Add(NativeTheme.Eyebrow(_copy["Stories.Title"]));
+        _body.Add(NativeTheme.Title(_copy["Stories.LoadingCatalog"]));
         ActivityIndicator loading = new()
         {
             AutomationId = "archive-loading",
             IsRunning = true,
             Color = NativeTheme.Signal
         };
-        SemanticProperties.SetDescription(loading, "Loading public stories");
+        SemanticProperties.SetDescription(loading, _copy["Stories.LoadingCatalog"]);
         _body.Add(loading);
     }
 
@@ -118,7 +120,7 @@ public sealed class ShadowArchivePage : ContentPage
                 ShadowArchivePresentationState.InvalidContract,
                 new ShadowArchiveErrorViewModel(
                     "stories_catalog_metadata_invalid",
-                    "Stories returned invalid language or archetype metadata. No inferred filters were shown.",
+                    _copy["Stories.CatalogInvalid"],
                     null,
                     null,
                     null,
@@ -128,19 +130,15 @@ public sealed class ShadowArchivePage : ContentPage
         }
 
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Stories"));
-        _body.Add(NativeTheme.Title("Public runner stories"));
-        _body.Add(NativeTheme.Body(
-            "Read and download without an account. Signals are shown here, but voting appears only after the final chapter.",
-            NativeTheme.Muted));
+        _body.Add(NativeTheme.Eyebrow(_copy["Stories.Title"]));
+        _body.Add(NativeTheme.Title(_copy["Stories.Public"]));
+        _body.Add(NativeTheme.Body(_copy["Stories.Intro"], NativeTheme.Muted));
 
         if (catalog.Stories.Count == 0)
         {
             VerticalStackLayout empty = new() { Spacing = 8 };
-            empty.Add(NativeTheme.Title("No public stories yet", 21));
-            empty.Add(NativeTheme.Body(
-                "Published Origin Stories will appear here when Stories returns them.",
-                NativeTheme.Muted));
+            empty.Add(NativeTheme.Title(_copy["Stories.EmptyTitle"], 21));
+            empty.Add(NativeTheme.Body(_copy["Stories.EmptyDetail"], NativeTheme.Muted));
             Border card = NativeTheme.Card(empty);
             card.AutomationId = "archive-empty";
             _body.Add(card);
@@ -148,10 +146,10 @@ public sealed class ShadowArchivePage : ContentPage
         }
 
         _body.Add(BuildFilterPicker(
-            "Language edition",
-            "All languages",
+            _copy["Stories.LanguageEdition"],
+            _copy["Stories.AllLanguages"],
             "archive-filter-language",
-            "Filter Stories by authoritative publication language edition",
+            _copy["Stories.LanguageFilterSemantic"],
             filtered.LanguageEditions,
             filtered.Selection.LanguageEditionId,
             selected =>
@@ -160,10 +158,10 @@ public sealed class ShadowArchivePage : ContentPage
                 RenderCatalog(catalog);
             }));
         _body.Add(BuildFilterPicker(
-            "Archetype",
-            "All archetypes",
+            _copy["Stories.Archetype"],
+            _copy["Stories.AllArchetypes"],
             "archive-filter-archetype",
-            "Filter Stories by source-bound archetype for its rules edition",
+            _copy["Stories.ArchetypeFilterSemantic"],
             filtered.Archetypes,
             filtered.Selection.ArchetypeId,
             selected =>
@@ -175,13 +173,11 @@ public sealed class ShadowArchivePage : ContentPage
         if (filtered.Stories.Count == 0)
         {
             VerticalStackLayout empty = new() { Spacing = 8 };
-            empty.Add(NativeTheme.Title("No stories match these filters", 21));
-            empty.Add(NativeTheme.Body(
-                "Change one or both authoritative filters to see other public stories.",
-                NativeTheme.Muted));
+            empty.Add(NativeTheme.Title(_copy["Stories.FilterEmptyTitle"], 21));
+            empty.Add(NativeTheme.Body(_copy["Stories.FilterEmptyDetail"], NativeTheme.Muted));
             Border card = NativeTheme.Card(empty);
             card.AutomationId = "archive-filter-empty";
-            SemanticProperties.SetDescription(card, "No Stories match the selected language and archetype filters");
+            SemanticProperties.SetDescription(card, _copy["Stories.FilterEmptySemantic"]);
             _body.Add(card);
             return;
         }
@@ -233,7 +229,7 @@ public sealed class ShadowArchivePage : ContentPage
         ShadowArchivePublicStoryCardViewModel story)
     {
         VerticalStackLayout content = new() { Spacing = 8 };
-        content.Add(NativeTheme.Eyebrow("Runner"));
+        content.Add(NativeTheme.Eyebrow(_copy["Stories.Runner"]));
         content.Add(NativeTheme.Title(story.Identity.RunnerHeading, 23));
         if (!string.IsNullOrWhiteSpace(story.Identity.RunnerHandle))
         {
@@ -248,18 +244,18 @@ public sealed class ShadowArchivePage : ContentPage
         metadata.AutomationId = $"archive-story-metadata-{story.Binding.PublicationId}";
         SemanticProperties.SetDescription(
             metadata,
-            $"Publication language {story.Metadata.PublicationLanguage.DisplayName}; archetypes {archetypes}");
+            _copy.Format("Stories.MetadataSemantic", story.Metadata.PublicationLanguage.DisplayName, archetypes));
         content.Add(metadata);
-        content.Add(NativeTheme.Body($"Story owner: {story.Identity.StoryOwnerLabel}", NativeTheme.Muted));
-        Label signals = NativeTheme.Body($"Signals: {story.SignalCount:N0}", NativeTheme.Muted);
+        content.Add(NativeTheme.Body(_copy.Format("Stories.Owner", story.Identity.StoryOwnerLabel), NativeTheme.Muted));
+        Label signals = NativeTheme.Body(_copy.Format("Stories.Signals", story.SignalCount.ToString("N0", _copy.DisplayCulture)), NativeTheme.Muted);
         signals.AutomationId = $"archive-signal-count-{story.Binding.PublicationId}";
         signals.FontAttributes = FontAttributes.Bold;
         content.Add(signals);
 
-        Button read = NativeTheme.PrimaryButton("Read story");
+        Button read = NativeTheme.PrimaryButton(_copy["Stories.Read"]);
         read.AutomationId = $"archive-read-{story.Binding.PublicationId}";
         read.Clicked += async (_, _) => await Navigation.PushAsync(
-            new ShadowArchiveReaderPage(_presenter, _system, story, catalog.Viewer));
+            new ShadowArchiveReaderPage(_presenter, _system, story, catalog.Viewer, _copy));
         content.Add(read);
 
         Border card = NativeTheme.Card(content);
@@ -271,17 +267,18 @@ public sealed class ShadowArchivePage : ContentPage
         ShadowArchivePresentationState state,
         ShadowArchiveErrorViewModel? error)
     {
-        ShadowArchivePhoneStateCopy copy = ShadowArchivePhonePolicy.StateCopy(
+        ShadowArchivePhoneStateCopy copy = ShadowArchivePageLocalization.StateCopy(
+            _copy,
             state,
             ShadowArchivePhoneSurface.Catalog,
             error);
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Stories"));
+        _body.Add(NativeTheme.Eyebrow(_copy["Stories.Title"]));
         _body.Add(NativeTheme.Title(copy.Title));
         _body.Add(NativeTheme.Body(copy.Detail, NativeTheme.Muted));
         if (copy.CanRetry)
         {
-            Button retry = NativeTheme.SecondaryButton("Retry");
+            Button retry = NativeTheme.SecondaryButton(_copy["Common.Retry"]);
             retry.AutomationId = "archive-retry";
             retry.Clicked += async (_, _) =>
             {
@@ -312,6 +309,7 @@ internal sealed class ShadowArchiveReaderPage : ContentPage
     private readonly IAndroidSystemService _system;
     private readonly ShadowArchivePublicStoryCardViewModel _story;
     private readonly ShadowArchiveViewerContext _viewer;
+    private readonly AndroidSurfaceCopy _copy;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 48),
@@ -329,12 +327,14 @@ internal sealed class ShadowArchiveReaderPage : ContentPage
         ShadowArchivePresenter presenter,
         IAndroidSystemService system,
         ShadowArchivePublicStoryCardViewModel story,
-        ShadowArchiveViewerContext viewer)
+        ShadowArchiveViewerContext viewer,
+        AndroidSurfaceCopy copy)
     {
         _presenter = presenter;
         _system = system;
         _story = story;
         _viewer = viewer;
+        _copy = copy ?? throw new ArgumentNullException(nameof(copy));
         Title = story.Title;
         AutomationId = $"archive-reader-{story.Binding.PublicationId}";
         BackgroundColor = NativeTheme.Paper;
@@ -424,8 +424,8 @@ internal sealed class ShadowArchiveReaderPage : ContentPage
     private void RenderLoading()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Stories"));
-        _body.Add(NativeTheme.Title("Loading story"));
+        _body.Add(NativeTheme.Eyebrow(_copy["Stories.Title"]));
+        _body.Add(NativeTheme.Title(_copy["Stories.LoadingStory"]));
         ActivityIndicator loading = new()
         {
             AutomationId = "archive-reader-loading",
@@ -447,7 +447,7 @@ internal sealed class ShadowArchiveReaderPage : ContentPage
         bool isAtFinalChapter = _chapterIndex == reader.Chapters.Count - 1;
 
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Runner"));
+        _body.Add(NativeTheme.Eyebrow(_copy["Stories.Runner"]));
         _body.Add(NativeTheme.Title(reader.Identity.RunnerHeading));
         if (!string.IsNullOrWhiteSpace(reader.Identity.RunnerHandle))
         {
@@ -455,16 +455,16 @@ internal sealed class ShadowArchiveReaderPage : ContentPage
         }
         _body.Add(NativeTheme.Title(reader.Title, 22));
         _body.Add(NativeTheme.Body(reader.Summary, NativeTheme.Muted));
-        _body.Add(NativeTheme.Body($"Story owner: {reader.Identity.StoryOwnerLabel}", NativeTheme.Muted));
+        _body.Add(NativeTheme.Body(_copy.Format("Stories.Owner", reader.Identity.StoryOwnerLabel), NativeTheme.Muted));
         int signalCount = _community?.IsReady == true && _community.Value is not null
             ? _community.Value.Signal.VoteCount
             : _story.SignalCount;
-        Label signals = NativeTheme.Body($"Signals: {signalCount:N0}", NativeTheme.Muted);
+        Label signals = NativeTheme.Body(_copy.Format("Stories.Signals", signalCount.ToString("N0", _copy.DisplayCulture)), NativeTheme.Muted);
         signals.AutomationId = "archive-reader-signal-count";
         _body.Add(signals);
 
         VerticalStackLayout chapterCard = new() { Spacing = 12 };
-        chapterCard.Add(NativeTheme.Eyebrow($"Chapter {chapter.Sequence} of {reader.Chapters.Count}"));
+        chapterCard.Add(NativeTheme.Eyebrow(_copy.Format("Stories.Chapter", chapter.Sequence, reader.Chapters.Count)));
         chapterCard.Add(NativeTheme.Title(chapter.Title, 23));
         Label chapterBody = NativeTheme.Body(chapter.BodyMarkdown);
         chapterBody.AutomationId = $"archive-chapter-{chapter.ChapterId}";
@@ -481,7 +481,7 @@ internal sealed class ShadowArchiveReaderPage : ContentPage
             },
             ColumnSpacing = 10
         };
-        Button previous = NativeTheme.SecondaryButton("Previous");
+        Button previous = NativeTheme.SecondaryButton(_copy["Common.Previous"]);
         previous.AutomationId = "archive-reader-previous";
         previous.IsEnabled = _chapterIndex > 0;
         previous.Clicked += (_, _) =>
@@ -490,7 +490,9 @@ internal sealed class ShadowArchiveReaderPage : ContentPage
             RenderReader();
         };
         navigation.Add(previous);
-        Button next = NativeTheme.PrimaryButton(isAtFinalChapter ? "Last chapter" : "Next chapter");
+        Button next = NativeTheme.PrimaryButton(isAtFinalChapter
+            ? _copy["Stories.LastChapter"]
+            : _copy["Stories.NextChapter"]);
         next.AutomationId = "archive-reader-next";
         next.IsEnabled = !isAtFinalChapter;
         next.Clicked += (_, _) =>
@@ -508,10 +510,10 @@ internal sealed class ShadowArchiveReaderPage : ContentPage
     private void AddDownloads(ShadowArchivePublicReaderViewModel reader)
     {
         VerticalStackLayout downloads = new() { Spacing = 10 };
-        downloads.Add(NativeTheme.Eyebrow("Public downloads"));
+        downloads.Add(NativeTheme.Eyebrow(_copy["Stories.PublicDownloads"]));
         if (reader.Downloads.Count == 0)
         {
-            downloads.Add(NativeTheme.Body("No downloads are available for this revision.", NativeTheme.Muted));
+            downloads.Add(NativeTheme.Body(_copy["Stories.NoDownloads"], NativeTheme.Muted));
         }
         else
         {
@@ -523,13 +525,16 @@ internal sealed class ShadowArchiveReaderPage : ContentPage
                 {
                     if (!await _system.OpenUriAsync(download.DownloadUri))
                     {
-                        await DisplayAlertAsync("Download unavailable", "Android could not open this public download.", "OK");
+                        await DisplayAlertAsync(
+                            _copy["Stories.DownloadUnavailable"],
+                            _copy["Stories.DownloadOpenFailed"],
+                            _copy["Common.Ok"]);
                     }
                 };
                 downloads.Add(open);
             }
         }
-        downloads.Add(NativeTheme.Body("No account is required to read or download.", NativeTheme.Muted));
+        downloads.Add(NativeTheme.Body(_copy["Stories.NoAccount"], NativeTheme.Muted));
         _body.Add(NativeTheme.Card(downloads));
     }
 
@@ -546,16 +551,17 @@ internal sealed class ShadowArchiveReaderPage : ContentPage
         {
             if (_community is null)
             {
-                _body.Add(NativeTheme.Body("Loading Signal status…", NativeTheme.Muted));
+                _body.Add(NativeTheme.Body(_copy["Stories.LoadingSignal"], NativeTheme.Muted));
                 return;
             }
 
-            ShadowArchivePhoneStateCopy failure = ShadowArchivePhonePolicy.StateCopy(
+            ShadowArchivePhoneStateCopy failure = ShadowArchivePageLocalization.StateCopy(
+                _copy,
                 _community.State,
                 ShadowArchivePhoneSurface.Signal,
                 _community.Error);
             VerticalStackLayout unavailable = new() { Spacing = 7 };
-            unavailable.Add(NativeTheme.Eyebrow("Signal"));
+            unavailable.Add(NativeTheme.Eyebrow(_copy["Stories.Signal"]));
             unavailable.Add(NativeTheme.Title(failure.Title, 20));
             unavailable.Add(NativeTheme.Body(failure.Detail, NativeTheme.Muted));
             _body.Add(NativeTheme.Card(unavailable));
@@ -574,18 +580,19 @@ internal sealed class ShadowArchiveReaderPage : ContentPage
         }
 
         VerticalStackLayout section = new() { Spacing = 9 };
-        section.Add(NativeTheme.Eyebrow("Signal"));
-        section.Add(NativeTheme.Title("You reached the end", 21));
-        if (!string.IsNullOrWhiteSpace(signal.Detail))
+        section.Add(NativeTheme.Eyebrow(_copy["Stories.Signal"]));
+        section.Add(NativeTheme.Title(_copy["Stories.End"], 21));
+        string? signalDetail = ShadowArchivePageLocalization.SignalDetail(_copy, signal);
+        if (!string.IsNullOrWhiteSpace(signalDetail))
         {
-            section.Add(NativeTheme.Body(signal.Detail!, NativeTheme.Muted));
+            section.Add(NativeTheme.Body(signalDetail, NativeTheme.Muted));
         }
 
         if (signal.Kind is ShadowArchivePhoneSignalKind.Vote
             or ShadowArchivePhoneSignalKind.Retract
             or ShadowArchivePhoneSignalKind.SignInRequired)
         {
-            Button action = NativeTheme.PrimaryButton(signal.Label!);
+            Button action = NativeTheme.PrimaryButton(ShadowArchivePageLocalization.SignalLabel(_copy, signal.Kind));
             action.AutomationId = signal.Kind switch
             {
                 ShadowArchivePhoneSignalKind.Vote => "archive-signal-vote",
@@ -598,9 +605,9 @@ internal sealed class ShadowArchiveReaderPage : ContentPage
                 if (signal.Kind == ShadowArchivePhoneSignalKind.SignInRequired)
                 {
                     await DisplayAlertAsync(
-                        "Sign in to Signal",
-                        "Link your account from More. This story and its downloads remain public.",
-                        "OK");
+                        _copy["Stories.SignIn"],
+                        _copy["Stories.SignInDetail"],
+                        _copy["Common.Ok"]);
                     return;
                 }
 
@@ -665,17 +672,18 @@ internal sealed class ShadowArchiveReaderPage : ContentPage
         ShadowArchivePresentationState state,
         ShadowArchiveErrorViewModel? error)
     {
-        ShadowArchivePhoneStateCopy copy = ShadowArchivePhonePolicy.StateCopy(
+        ShadowArchivePhoneStateCopy copy = ShadowArchivePageLocalization.StateCopy(
+            _copy,
             state,
             ShadowArchivePhoneSurface.Reader,
             error);
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Stories"));
+        _body.Add(NativeTheme.Eyebrow(_copy["Stories.Title"]));
         _body.Add(NativeTheme.Title(copy.Title));
         _body.Add(NativeTheme.Body(copy.Detail, NativeTheme.Muted));
         if (copy.CanRetry)
         {
-            Button retry = NativeTheme.SecondaryButton("Retry story");
+            Button retry = NativeTheme.SecondaryButton(_copy["Stories.RetryStory"]);
             retry.AutomationId = "archive-reader-retry";
             retry.Clicked += async (_, _) => await LoadReaderAsync(
                 _appearanceLifetime?.Token ?? CancellationToken.None);
@@ -695,4 +703,112 @@ internal sealed class ShadowArchiveReaderPage : ContentPage
                 null,
                 null,
                 null));
+}
+
+internal static class ShadowArchivePageLocalization
+{
+    public static ShadowArchivePhoneStateCopy StateCopy(
+        AndroidSurfaceCopy copy,
+        ShadowArchivePresentationState state,
+        ShadowArchivePhoneSurface surface,
+        ShadowArchiveErrorViewModel? error)
+    {
+        ArgumentNullException.ThrowIfNull(copy);
+        bool canRetry = ShadowArchivePhonePolicy.StateCopy(state, surface, error).CanRetry;
+        string? englishDetail = copy.ResourceLanguage == "en" && !string.IsNullOrWhiteSpace(error?.Message)
+            ? error.Message
+            : null;
+
+        if (state == ShadowArchivePresentationState.AuthenticationRequired
+            && surface == ShadowArchivePhoneSurface.Signal)
+        {
+            return new(
+                copy["Stories.SignIn"],
+                copy["Stories.State.SignInDetail"],
+                canRetry);
+        }
+
+        return state switch
+        {
+            ShadowArchivePresentationState.Offline => new(
+                copy["Stories.State.OfflineTitle"],
+                englishDetail ?? copy["Stories.State.OfflineDetail"],
+                canRetry),
+            ShadowArchivePresentationState.Stale or ShadowArchivePresentationState.RevisionConflict => new(
+                copy["Stories.State.ChangedTitle"],
+                englishDetail ?? copy["Stories.State.ChangedDetail"],
+                canRetry),
+            ShadowArchivePresentationState.ModerationHeld => new(
+                copy["Stories.State.ModerationTitle"],
+                englishDetail ?? copy["Stories.State.ModerationDetail"],
+                canRetry),
+            ShadowArchivePresentationState.Removed or ShadowArchivePresentationState.NotFound => new(
+                copy["Stories.State.UnavailableTitle"],
+                englishDetail ?? copy["Stories.State.UnavailableDetail"],
+                canRetry),
+            ShadowArchivePresentationState.RateLimited => new(
+                copy["Stories.State.BusyTitle"],
+                RetryDetail(copy, englishDetail, error?.RetryAfter),
+                canRetry),
+            ShadowArchivePresentationState.AuthenticationRequired => new(
+                copy["Stories.State.PublicAccessTitle"],
+                copy["Stories.State.LoginUnexpected"],
+                canRetry),
+            ShadowArchivePresentationState.Forbidden => new(
+                copy[surface == ShadowArchivePhoneSurface.Signal
+                    ? "Stories.State.SignalNotAllowed"
+                    : "Stories.State.PublicAccessTitle"],
+                englishDetail ?? copy["Stories.State.ActionNotAllowed"],
+                canRetry),
+            _ => new(
+                copy[surface == ShadowArchivePhoneSurface.Signal
+                    ? "Stories.State.SignalUnavailable"
+                    : "Stories.State.StoriesUnavailable"],
+                englishDetail ?? DefaultUnavailableDetail(copy, surface),
+                canRetry)
+        };
+    }
+
+    public static string SignalLabel(AndroidSurfaceCopy copy, ShadowArchivePhoneSignalKind kind) => kind switch
+    {
+        ShadowArchivePhoneSignalKind.SignInRequired => copy["Stories.SignIn"],
+        ShadowArchivePhoneSignalKind.Retract => copy["Stories.Retract"],
+        ShadowArchivePhoneSignalKind.Vote => copy["Stories.SignalStory"],
+        _ => throw new InvalidOperationException("A non-actionable Signal state cannot render an action label.")
+    };
+
+    public static string? SignalDetail(
+        AndroidSurfaceCopy copy,
+        ShadowArchivePhoneSignalProjection signal) => signal.Kind switch
+    {
+        ShadowArchivePhoneSignalKind.Hidden => null,
+        ShadowArchivePhoneSignalKind.SignInRequired => copy["Stories.AccountToVote"],
+        ShadowArchivePhoneSignalKind.OwnerBlocked => copy["Stories.OwnerCannotSignal"],
+        ShadowArchivePhoneSignalKind.Retract => copy["Stories.RetractDetail"],
+        ShadowArchivePhoneSignalKind.Vote => copy["Stories.SignalStoryDetail"],
+        ShadowArchivePhoneSignalKind.Unavailable when copy.ResourceLanguage == "en"
+            && !string.IsNullOrWhiteSpace(signal.Detail) => signal.Detail,
+        ShadowArchivePhoneSignalKind.Unavailable => copy["Stories.SignalUnavailable"],
+        _ => copy["Stories.SignalUnavailable"]
+    };
+
+    private static string DefaultUnavailableDetail(
+        AndroidSurfaceCopy copy,
+        ShadowArchivePhoneSurface surface) => surface switch
+    {
+        ShadowArchivePhoneSurface.Catalog => copy["Stories.UnavailableCatalog"],
+        ShadowArchivePhoneSurface.Reader => copy["Stories.UnavailableReader"],
+        _ => copy["Stories.State.NoResponse"]
+    };
+
+    private static string RetryDetail(
+        AndroidSurfaceCopy copy,
+        string? englishDetail,
+        TimeSpan? retryAfter)
+    {
+        string detail = englishDetail ?? copy["Stories.State.BusyDetail"];
+        return retryAfter is { } delay && delay > TimeSpan.Zero
+            ? copy.Format("Stories.State.RetryAfter", detail, Math.Ceiling(delay.TotalSeconds))
+            : detail;
+    }
 }

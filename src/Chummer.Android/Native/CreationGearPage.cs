@@ -13,6 +13,7 @@ public sealed class CreationGearPage : NativePageBase
     private const int CatalogPageSize = 40;
     private readonly ICharacterCreationGearInteractionPresenter _gear;
     private readonly ICharacterOverviewPresenter _overview;
+    private readonly AndroidSurfaceCopy _copy;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -30,7 +31,8 @@ public sealed class CreationGearPage : NativePageBase
     {
         _gear = gear ?? throw new ArgumentNullException(nameof(gear));
         _overview = overview ?? throw new ArgumentNullException(nameof(overview));
-        Title = "Creation gear";
+        _copy = AndroidSurfaceStrings.Resolve();
+        Title = _copy["Gear.PageTitle"];
         AutomationId = "creation-gear-page";
         Content = new ScrollView { Content = _body };
     }
@@ -38,19 +40,16 @@ public sealed class CreationGearPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Character creation · SR5 Resources"));
-        _body.Add(NativeTheme.Title("Gear"));
-        _body.Add(NativeTheme.Body(
-            "Build a draft basket from the active-source Core catalog. Unsupported rows remain "
-            + "visible but disabled; exact costs and legality are never inferred by this screen.",
-            NativeTheme.Muted));
+        _body.Add(NativeTheme.Eyebrow(_copy["Gear.Eyebrow"]));
+        _body.Add(NativeTheme.Title(_copy["Gear.Title"]));
+        _body.Add(NativeTheme.Body(_copy["Gear.Intro"], NativeTheme.Muted));
 
         CharacterCreationGearInteractionLoadResult load = _gear.Load(Coordinator.State);
         if (!string.Equals(load.Outcome, CharacterCreationGearOutcomes.Available, StringComparison.Ordinal)
             || load.State is not { } state)
         {
             AddBlockers(
-                "Gear authority unavailable",
+                _copy["Gear.AuthorityUnavailable"],
                 load.Blockers.DefaultIfEmpty(load.Outcome).ToArray(),
                 "creation-gear-unavailable");
             return;
@@ -62,7 +61,7 @@ public sealed class CreationGearPage : NativePageBase
         if (!CreationGearPhoneAuthority.IsReady(state, Coordinator.State))
         {
             AddBlockers(
-                "Gear authority blocked",
+                _copy["Gear.AuthorityBlocked"],
                 state.Blockers.DefaultIfEmpty(CharacterCreationGearBlockers.AuthorityUnavailable).ToArray(),
                 "creation-gear-blockers");
             AddAuthority(state);
@@ -89,11 +88,12 @@ public sealed class CreationGearPage : NativePageBase
 
     private void AddBinding(CharacterCreationGearInteractionState state)
     {
-        Label binding = NativeTheme.Body(
-            $"Revision {state.Binding.ContentRevision.ToString(CultureInfo.InvariantCulture)} · "
-            + $"saved {state.Binding.SavedRevision.ToString(CultureInfo.InvariantCulture)} · "
-            + $"snapshot {ShortDigest(state.SnapshotDigest)} · source {ShortDigest(state.Binding.SourceDigest)}",
-            NativeTheme.Muted);
+        Label binding = NativeTheme.Body(_copy.Format(
+            "Gear.Binding",
+            state.Binding.ContentRevision,
+            state.Binding.SavedRevision,
+            ShortDigest(state.SnapshotDigest),
+            ShortDigest(state.Binding.SourceDigest)), NativeTheme.Muted);
         binding.AutomationId = "creation-gear-binding";
         _body.Add(binding);
         _body.Add(ExactValue("creation-gear-binding-workspace-revision", state.Binding.WorkspaceRevision));
@@ -109,15 +109,15 @@ public sealed class CreationGearPage : NativePageBase
     private void AddPersistedBudget(CharacterCreationGearInteractionState state)
     {
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow("Persisted exact Gear draft"));
-        card.Add(NativeTheme.Metric("Starting nuyen", Nuyen(state.Budget.TotalStartingNuyen)));
-        card.Add(NativeTheme.Metric("Basket cost", Nuyen(state.Budget.BasketCost)));
-        card.Add(NativeTheme.Metric("Remaining", Nuyen(state.Budget.RemainingNuyen)));
-        card.Add(NativeTheme.Metric("Lines", (state.PendingDraft?.Lines.Count ?? 0).ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Eyebrow(_copy["Gear.PersistedDraft"]));
+        card.Add(NativeTheme.Metric(_copy["Gear.StartingNuyen"], Nuyen(state.Budget.TotalStartingNuyen)));
+        card.Add(NativeTheme.Metric(_copy["Gear.BasketCost"], Nuyen(state.Budget.BasketCost)));
+        card.Add(NativeTheme.Metric(_copy["Common.Remaining"], Nuyen(state.Budget.RemainingNuyen)));
+        card.Add(NativeTheme.Metric(_copy["Common.Lines"], (state.PendingDraft?.Lines.Count ?? 0).ToString(_copy.DisplayCulture)));
         card.Add(NativeTheme.Body(
             state.PendingDraft is null
-                ? "No Gear basket has been confirmed yet."
-                : $"Draft {state.PendingDraft.DraftRevision.ToString(CultureInfo.InvariantCulture)} · {ShortDigest(state.PendingDraft.DraftDigest)}",
+                ? _copy["Gear.NoConfirmedBasket"]
+                : _copy.Format("Gear.Draft", state.PendingDraft.DraftRevision, ShortDigest(state.PendingDraft.DraftDigest)),
             NativeTheme.Muted));
         card.Add(ExactValue("creation-gear-saved-basket-cost", state.Budget.BasketCost));
         card.Add(ExactValue("creation-gear-saved-remaining-nuyen", state.Budget.RemainingNuyen));
@@ -133,10 +133,10 @@ public sealed class CreationGearPage : NativePageBase
 
     private void AddBasket(CharacterCreationGearInteractionState state)
     {
-        _body.Add(NativeTheme.Eyebrow("Draft basket"));
+        _body.Add(NativeTheme.Eyebrow(_copy["Gear.DraftBasket"]));
         if (_basket.Count == 0)
         {
-            Label empty = NativeTheme.Body("No catalog lines selected.", NativeTheme.Muted);
+            Label empty = NativeTheme.Body(_copy["Gear.NoCatalogLines"], NativeTheme.Muted);
             empty.AutomationId = "creation-gear-basket-empty";
             _body.Add(NativeTheme.Card(empty));
         }
@@ -151,7 +151,7 @@ public sealed class CreationGearPage : NativePageBase
                     || option.Blockers.Count != 0)
                 {
                     AddBlockers(
-                        "Basket authority changed",
+                        _copy["Gear.BasketAuthorityChanged"],
                         [CharacterCreationGearBlockers.InvalidOption],
                         $"creation-gear-basket-invalid-{Token(optionId)}");
                     continue;
@@ -161,15 +161,15 @@ public sealed class CreationGearPage : NativePageBase
         }
 
         bool differs = CreationGearPhoneBasket.DiffersFromPersisted(_basket, state.PendingDraft);
-        Button preview = NativeTheme.PrimaryButton("Review exact Gear basket");
+        Button preview = NativeTheme.PrimaryButton(_copy["Gear.ReviewBasket"]);
         preview.AutomationId = "creation-gear-preview";
         preview.IsEnabled = differs;
         preview.Clicked += async (_, _) => await RunAsync(() => OpenPreviewAsync(state));
         _body.Add(preview);
         Label previewAuthority = NativeTheme.Body(
             differs
-                ? "Core will calculate the exact basket and reject stale, illegal, unsupported, or unaffordable selections."
-                : "Change the basket before requesting another preview.",
+                ? _copy["Gear.CoreWillCalculate"]
+                : _copy["Gear.ChangeBasket"],
             differs ? NativeTheme.Muted : NativeTheme.Danger);
         previewAuthority.AutomationId = "creation-gear-preview-authority";
         _body.Add(previewAuthority);
@@ -182,11 +182,13 @@ public sealed class CreationGearPage : NativePageBase
     {
         VerticalStackLayout content = new() { Spacing = 7 };
         content.Add(NativeTheme.Title(option.Name, 18));
-        content.Add(NativeTheme.Body(
-            $"{option.Category} · {option.PackageCost.ToString(CultureInfo.InvariantCulture)} ¥ per "
-            + $"{option.PackageQuantity.ToString(CultureInfo.InvariantCulture)} · {option.Legality}",
-            NativeTheme.Muted));
-        content.Add(NativeTheme.Metric("Quantity", quantity.ToString(CultureInfo.InvariantCulture)));
+        content.Add(NativeTheme.Body(_copy.Format(
+            "Gear.PackageDetail",
+            option.Category,
+            option.PackageCost,
+            option.PackageQuantity,
+            option.Legality), NativeTheme.Muted));
+        content.Add(NativeTheme.Metric(_copy["Gear.Quantity"], quantity.ToString(_copy.DisplayCulture)));
         content.Add(ExactValue($"creation-gear-basket-{Token(option.OptionId)}-option-id", option.OptionId));
         content.Add(ExactValue($"creation-gear-basket-{Token(option.OptionId)}-quantity", quantity));
 
@@ -200,7 +202,7 @@ public sealed class CreationGearPage : NativePageBase
         increment.IsEnabled = quantity < state.Authority.MaximumQuantityPerLine;
         increment.Clicked += (_, _) => UpdateQuantity(state, option.OptionId, quantity + 1);
         actions.Add(increment);
-        Button remove = NativeTheme.SecondaryButton("Remove");
+        Button remove = NativeTheme.SecondaryButton(_copy["Gear.Remove"]);
         remove.AutomationId = $"creation-gear-basket-{Token(option.OptionId)}-remove";
         remove.Clicked += (_, _) => UpdateQuantity(state, option.OptionId, 0);
         actions.Add(remove);
@@ -212,11 +214,11 @@ public sealed class CreationGearPage : NativePageBase
 
     private void AddCatalog(CharacterCreationGearInteractionState state)
     {
-        _body.Add(NativeTheme.Eyebrow("Active-source catalog"));
+        _body.Add(NativeTheme.Eyebrow(_copy["Gear.ActiveCatalog"]));
         SearchBar search = new()
         {
             AutomationId = "creation-gear-search",
-            Placeholder = "Search name, category, source, or legality",
+            Placeholder = _copy["Gear.Search"],
             Text = _filter,
             BackgroundColor = NativeTheme.Surface,
             TextColor = NativeTheme.Text,
@@ -240,8 +242,8 @@ public sealed class CreationGearPage : NativePageBase
         int end = Math.Min(matches.Length, _catalogOffset + CatalogPageSize);
         Label range = NativeTheme.Body(
             matches.Length == 0
-                ? "No catalog rows match this search."
-                : $"Showing {_catalogOffset + 1}–{end} of {matches.Length.ToString(CultureInfo.InvariantCulture)} rows.",
+                ? _copy["Gear.NoMatches"]
+                : _copy.Format("Gear.Showing", _catalogOffset + 1, end, matches.Length),
             NativeTheme.Muted);
         range.AutomationId = "creation-gear-catalog-range";
         _body.Add(range);
@@ -258,11 +260,18 @@ public sealed class CreationGearPage : NativePageBase
                            && (!alreadySelected
                                || _basket[option.OptionId] < state.Authority.MaximumQuantityPerLine);
             string detail = option.IsSelectable && option.Blockers.Count == 0
-                ? $"{option.Category} · {option.PackageCost.ToString(CultureInfo.InvariantCulture)} ¥ / "
-                  + $"{option.PackageQuantity.ToString(CultureInfo.InvariantCulture)} · Avail "
-                  + $"{option.Availability.ToString(CultureInfo.InvariantCulture)} {option.Legality} · "
-                  + $"{option.SourceBook} {option.Page}"
-                : $"Unavailable · {option.Blockers.FirstOrDefault() ?? CharacterCreationGearBlockers.UnsupportedSemantics}";
+                ? _copy.Format(
+                    "Gear.CatalogDetail",
+                    option.Category,
+                    option.PackageCost,
+                    option.PackageQuantity,
+                    option.Availability,
+                    option.Legality,
+                    option.SourceBook,
+                    option.Page)
+                : _copy.Format(
+                    "Gear.CatalogUnavailable",
+                    option.Blockers.FirstOrDefault() ?? CharacterCreationGearBlockers.UnsupportedSemantics);
             _body.Add(NativeTheme.NavigationRow(
                 option.Name,
                 detail,
@@ -279,7 +288,7 @@ public sealed class CreationGearPage : NativePageBase
         }
 
         HorizontalStackLayout pager = new() { Spacing = 10 };
-        Button previous = NativeTheme.SecondaryButton("Previous");
+        Button previous = NativeTheme.SecondaryButton(_copy["Common.Previous"]);
         previous.AutomationId = "creation-gear-catalog-previous";
         previous.IsEnabled = _catalogOffset > 0;
         previous.Clicked += (_, _) =>
@@ -288,7 +297,7 @@ public sealed class CreationGearPage : NativePageBase
             Refresh();
         };
         pager.Add(previous);
-        Button next = NativeTheme.SecondaryButton("Next");
+        Button next = NativeTheme.SecondaryButton(_copy["Common.Next"]);
         next.AutomationId = "creation-gear-catalog-next";
         next.IsEnabled = end < matches.Length;
         next.Clicked += (_, _) =>
@@ -342,7 +351,10 @@ public sealed class CreationGearPage : NativePageBase
                 state.Authority.MaximumQuantityPerLine,
                 out CharacterCreationGearSelection[] basket))
         {
-            await DisplayAlertAsync("Gear preview unavailable", CharacterCreationGearBlockers.InvalidBasket, "OK");
+            await DisplayAlertAsync(
+                _copy["Gear.PreviewUnavailable"],
+                CharacterCreationGearBlockers.InvalidBasket,
+                _copy["Common.Ok"]);
             return;
         }
 
@@ -353,22 +365,22 @@ public sealed class CreationGearPage : NativePageBase
         {
             string blocker = result.Blockers.FirstOrDefault()
                              ?? CharacterCreationGearInteractionBlockers.PreparedPreviewMismatch;
-            await DisplayAlertAsync("Gear preview unavailable", blocker, "OK");
+            await DisplayAlertAsync(_copy["Gear.PreviewUnavailable"], blocker, _copy["Common.Ok"]);
             Refresh();
             return;
         }
-        await Navigation.PushAsync(new CreationGearPreviewPage(Coordinator, _gear, _overview, prepared));
+        await Navigation.PushAsync(new CreationGearPreviewPage(Coordinator, _gear, _overview, prepared, _copy));
     }
 
     private void AddAuthority(CharacterCreationGearInteractionState state)
     {
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow("Core authority"));
-        card.Add(NativeTheme.Metric("Profile", state.Authority.SettingsProfileId));
-        card.Add(NativeTheme.Metric("Catalog rows", state.Authority.Options.Count.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Maximum availability", state.Authority.MaximumAvailability.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Maximum basket lines", state.Authority.MaximumBasketLines.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Maximum quantity", state.Authority.MaximumQuantityPerLine.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Eyebrow(_copy["Gear.CoreAuthority"]));
+        card.Add(NativeTheme.Metric(_copy["Common.Profile"], state.Authority.SettingsProfileId));
+        card.Add(NativeTheme.Metric(_copy["Gear.CatalogRows"], state.Authority.Options.Count.ToString(_copy.DisplayCulture)));
+        card.Add(NativeTheme.Metric(_copy["Gear.MaximumAvailability"], state.Authority.MaximumAvailability.ToString(_copy.DisplayCulture)));
+        card.Add(NativeTheme.Metric(_copy["Gear.MaximumBasketLines"], state.Authority.MaximumBasketLines.ToString(_copy.DisplayCulture)));
+        card.Add(NativeTheme.Metric(_copy["Gear.MaximumQuantity"], state.Authority.MaximumQuantityPerLine.ToString(_copy.DisplayCulture)));
         card.Add(ExactValue("creation-gear-authority-digest", state.Binding.AuthorityDigest));
         card.Add(ExactValue("creation-gear-source-digest", state.Binding.SourceDigest));
         card.Add(ExactValue("creation-gear-rules-digest", state.Binding.RulesDigest));
@@ -389,9 +401,9 @@ public sealed class CreationGearPage : NativePageBase
         _body.Add(border);
     }
 
-    private static string Nuyen(decimal value) => value.ToString("N0", CultureInfo.InvariantCulture) + " ¥";
-    private static string ShortDigest(string value) =>
-        string.IsNullOrWhiteSpace(value) ? "unavailable" : value[..Math.Min(19, value.Length)];
+    private string Nuyen(decimal value) => value.ToString("N0", _copy.DisplayCulture) + " ¥";
+    private string ShortDigest(string value) =>
+        string.IsNullOrWhiteSpace(value) ? _copy["Common.Unavailable"] : value[..Math.Min(19, value.Length)];
     private static string Token(string value) => new string(value.Select(character => char.IsLetterOrDigit(character)
         ? char.ToLowerInvariant(character)
         : '-').ToArray());
@@ -408,6 +420,7 @@ public sealed class CreationGearPreviewPage : NativePageBase
     private readonly ICharacterCreationGearInteractionPresenter _gear;
     private readonly ICharacterOverviewPresenter _overview;
     private readonly CharacterCreationGearPreparedPreview _prepared;
+    private readonly AndroidSurfaceCopy _copy;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -420,12 +433,14 @@ public sealed class CreationGearPreviewPage : NativePageBase
         RunnerSessionCoordinator coordinator,
         ICharacterCreationGearInteractionPresenter gear,
         ICharacterOverviewPresenter overview,
-        CharacterCreationGearPreparedPreview prepared) : base(coordinator)
+        CharacterCreationGearPreparedPreview prepared,
+        AndroidSurfaceCopy copy) : base(coordinator)
     {
         _gear = gear ?? throw new ArgumentNullException(nameof(gear));
         _overview = overview ?? throw new ArgumentNullException(nameof(overview));
         _prepared = prepared ?? throw new ArgumentNullException(nameof(prepared));
-        Title = "Review Gear";
+        _copy = copy ?? throw new ArgumentNullException(nameof(copy));
+        Title = _copy["GearPreview.PageTitle"];
         AutomationId = "creation-gear-preview-page";
         Content = new ScrollView { Content = _body };
     }
@@ -433,16 +448,16 @@ public sealed class CreationGearPreviewPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Explicit review"));
-        _body.Add(NativeTheme.Title("Gear basket preview"));
+        _body.Add(NativeTheme.Eyebrow(_copy["GearPreview.Eyebrow"]));
+        _body.Add(NativeTheme.Title(_copy["GearPreview.Title"]));
         AddExactPreview();
 
         if (_receipt is { } receipt)
         {
             AddReceipt(receipt);
             _body.Add(NativeTheme.NavigationRow(
-                "Back to Gear",
-                "Reopen the persisted Core Gear draft",
+                _copy["GearPreview.Back"],
+                _copy["GearPreview.Reopen"],
                 () => Navigation.PopAsync(),
                 automationId: "creation-gear-reopen"));
             return;
@@ -458,15 +473,15 @@ public sealed class CreationGearPreviewPage : NativePageBase
         CharacterCreationGearInteractionLoadResult load = _gear.Load(Coordinator.State);
         bool exact = load.State is { } current
                      && CreationGearPhoneAuthority.PreparedMatches(_prepared, current, Coordinator.State);
-        Button confirm = NativeTheme.PrimaryButton("Confirm Gear draft");
+        Button confirm = NativeTheme.PrimaryButton(_copy["GearPreview.Confirm"]);
         confirm.AutomationId = "creation-gear-confirm";
         confirm.IsEnabled = exact;
         confirm.Clicked += async (_, _) => await RunAsync(ConfirmAsync);
         _body.Add(confirm);
         Label authority = NativeTheme.Body(
             exact
-                ? "This stores only the typed Gear draft; the raw character XML remains byte-identical."
-                : "The workspace, Resources draft, or Gear authority changed. Reopen Gear before confirming.",
+                ? _copy["GearPreview.ConfirmExact"]
+                : _copy["GearPreview.ConfirmStale"],
             exact ? NativeTheme.Muted : NativeTheme.Danger);
         authority.AutomationId = "creation-gear-confirm-authority";
         _body.Add(authority);
@@ -475,11 +490,11 @@ public sealed class CreationGearPreviewPage : NativePageBase
     private void AddExactPreview()
     {
         VerticalStackLayout budget = new() { Spacing = 6 };
-        budget.Add(NativeTheme.Eyebrow("Exact Core projection"));
-        budget.Add(NativeTheme.Metric("Basket before", Nuyen(_prepared.Preview.BudgetBefore.BasketCost)));
-        budget.Add(NativeTheme.Metric("Basket after", Nuyen(_prepared.Preview.BudgetAfter.BasketCost)));
-        budget.Add(NativeTheme.Metric("Remaining", Nuyen(_prepared.Preview.BudgetAfter.RemainingNuyen)));
-        budget.Add(NativeTheme.Metric("Lines", _prepared.Preview.After.Lines.Count.ToString(CultureInfo.InvariantCulture)));
+        budget.Add(NativeTheme.Eyebrow(_copy["GearPreview.ExactProjection"]));
+        budget.Add(NativeTheme.Metric(_copy["GearPreview.BasketBefore"], Nuyen(_prepared.Preview.BudgetBefore.BasketCost)));
+        budget.Add(NativeTheme.Metric(_copy["GearPreview.BasketAfter"], Nuyen(_prepared.Preview.BudgetAfter.BasketCost)));
+        budget.Add(NativeTheme.Metric(_copy["Common.Remaining"], Nuyen(_prepared.Preview.BudgetAfter.RemainingNuyen)));
+        budget.Add(NativeTheme.Metric(_copy["Common.Lines"], _prepared.Preview.After.Lines.Count.ToString(_copy.DisplayCulture)));
         budget.Add(ExactValue("creation-gear-preview-basket-cost", _prepared.Preview.BudgetAfter.BasketCost));
         budget.Add(ExactValue("creation-gear-preview-remaining-nuyen", _prepared.Preview.BudgetAfter.RemainingNuyen));
         budget.Add(ExactValue("creation-gear-preview-digest", _prepared.Preview.PreviewDigest));
@@ -492,11 +507,15 @@ public sealed class CreationGearPreviewPage : NativePageBase
         {
             VerticalStackLayout content = new() { Spacing = 5 };
             content.Add(NativeTheme.Title(line.Name, 18));
-            content.Add(NativeTheme.Body(
-                $"{line.Category} · quantity {line.Quantity.ToString(CultureInfo.InvariantCulture)} · "
-                + $"{Nuyen(line.TotalCost)} · Avail {line.Availability.ToString(CultureInfo.InvariantCulture)} "
-                + $"{line.Legality} · {line.SourceBook} {line.Page}",
-                NativeTheme.Muted));
+            content.Add(NativeTheme.Body(_copy.Format(
+                "GearPreview.LineDetail",
+                line.Category,
+                line.Quantity,
+                Nuyen(line.TotalCost),
+                line.Availability,
+                line.Legality,
+                line.SourceBook,
+                line.Page), NativeTheme.Muted));
             content.Add(ExactValue($"creation-gear-preview-line-{Token(line.OptionId)}-option-id", line.OptionId));
             content.Add(ExactValue($"creation-gear-preview-line-{Token(line.OptionId)}-quantity", line.Quantity));
             content.Add(ExactValue($"creation-gear-preview-line-{Token(line.OptionId)}-digest", line.LineDigest));
@@ -543,11 +562,11 @@ public sealed class CreationGearPreviewPage : NativePageBase
     private void AddReceipt(CharacterCreationGearReceipt receipt)
     {
         VerticalStackLayout content = new() { Spacing = 6 };
-        content.Add(NativeTheme.Eyebrow("Persisted and rebound"));
-        content.Add(NativeTheme.Metric("Receipt", receipt.ReceiptId));
-        content.Add(NativeTheme.Metric("Workspace revision", receipt.WorkspaceRevision.ToString(CultureInfo.InvariantCulture)));
-        content.Add(NativeTheme.Metric("Draft revision", receipt.DraftRevision.ToString(CultureInfo.InvariantCulture)));
-        content.Add(NativeTheme.Metric("Basket cost", Nuyen(receipt.BasketCost)));
+        content.Add(NativeTheme.Eyebrow(_copy["GearPreview.Persisted"]));
+        content.Add(NativeTheme.Metric(_copy["Common.Receipt"], receipt.ReceiptId));
+        content.Add(NativeTheme.Metric(_copy["Common.WorkspaceRevision"], receipt.WorkspaceRevision.ToString(_copy.DisplayCulture)));
+        content.Add(NativeTheme.Metric(_copy["Common.DraftRevision"], receipt.DraftRevision.ToString(_copy.DisplayCulture)));
+        content.Add(NativeTheme.Metric(_copy["Gear.BasketCost"], Nuyen(receipt.BasketCost)));
         content.Add(ExactValue("creation-gear-receipt-workspace-revision", receipt.WorkspaceRevision));
         content.Add(ExactValue("creation-gear-receipt-saved-revision", receipt.SavedRevision));
         content.Add(ExactValue("creation-gear-receipt-resources-draft-revision", receipt.ResourcesDraftRevision));
@@ -566,7 +585,7 @@ public sealed class CreationGearPreviewPage : NativePageBase
         _body.Add(card);
     }
 
-    private static string Nuyen(decimal value) => value.ToString("N0", CultureInfo.InvariantCulture) + " ¥";
+    private string Nuyen(decimal value) => value.ToString("N0", _copy.DisplayCulture) + " ¥";
     private static string Token(string value) => new string(value.Select(character => char.IsLetterOrDigit(character)
         ? char.ToLowerInvariant(character)
         : '-').ToArray());

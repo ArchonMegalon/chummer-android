@@ -11,6 +11,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
 {
     private readonly OriginDossierLifeModuleDecisionState _state;
     private readonly OriginDossierNarrativeLocaleBinding _locale;
+    private readonly AndroidSurfaceCopy _copy;
     private readonly Func<string, Task> _prepareChoice;
     private readonly Func<string, string, Task> _confirmChoice;
 
@@ -23,6 +24,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         _state = state ?? throw new ArgumentNullException(nameof(state));
         OriginDossierNarrativeLocaleBinding locale =
             OriginDossierNarrativeLocalePolicy.Resolve(activeAppLocale);
+        _copy = AndroidSurfaceStrings.Resolve(activeAppLocale);
         if (!locale.CanRenderNarrativeLocale(_state.Locale)
             || string.IsNullOrWhiteSpace(_state.BoundTurnSeedDigest))
         {
@@ -32,7 +34,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         _locale = locale;
         _prepareChoice = prepareChoice ?? throw new ArgumentNullException(nameof(prepareChoice));
         _confirmChoice = confirmChoice ?? throw new ArgumentNullException(nameof(confirmChoice));
-        Title = "Life Modules";
+        Title = _copy["Origin.PageTitle"];
         AutomationId = "origin-life-decision";
         Content = new ScrollView { Content = BuildBody() };
     }
@@ -44,24 +46,27 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             Padding = new Thickness(20, 18, 20, 40),
             Spacing = 14
         };
-        body.Add(NativeTheme.Eyebrow($"Stage {_state.StageOrder} · turn {_state.TurnSequence}"));
+        body.Add(NativeTheme.Eyebrow(_copy.Format("Origin.StageTurn", _state.StageOrder, _state.TurnSequence)));
         body.Add(NativeTheme.Title(_state.RunnerDisplayName));
         string localeCopy = _locale.UsesEnglishFallback
-            ? $"Story language · English fallback · formatting {_locale.FormattingLocale}"
-            : $"Story language · {_locale.ResourceLanguage.ToUpperInvariant()} · formatting {_locale.FormattingLocale}";
+            ? _copy.Format("Origin.LocaleFallback", _locale.FormattingLocale)
+            : _copy.Format("Origin.Locale", _locale.ResourceLanguage.ToUpperInvariant(), _locale.FormattingLocale);
         Label locale = NativeTheme.Body(localeCopy, NativeTheme.Muted);
         locale.AutomationId = "origin-life-locale";
         SemanticProperties.SetDescription(
             locale,
-            $"Origin story resource language {_locale.ResourceLanguage}; formatting locale {_locale.FormattingLocale}; "
-            + $"English fallback {_locale.UsesEnglishFallback}");
+            _copy.Format(
+                "Origin.LocaleSemantic",
+                _locale.ResourceLanguage,
+                _locale.FormattingLocale,
+                _copy[_locale.UsesEnglishFallback ? "Common.Yes" : "Common.No"]));
         body.Add(locale);
 
         Label story = NativeTheme.Body(_state.VisibleStoryMarkdown);
         story.AutomationId = "origin-life-story";
         SemanticProperties.SetDescription(
             story,
-            $"Origin story in {_state.Locale}, through the current decision point");
+            _copy.Format("Origin.StorySemantic", _state.Locale));
         body.Add(NativeTheme.Card(story));
         Label prompt = NativeTheme.Title(_state.DecisionPrompt, 21);
         prompt.AutomationId = "origin-life-prompt";
@@ -86,15 +91,17 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
                 NativeTheme.Muted);
             source.AutomationId = $"origin-life-choice-source-{choiceIndex}";
             card.Add(source);
-            card.Add(NativeTheme.Metric("Karma", choice.KarmaRaw));
+            card.Add(NativeTheme.Metric(_copy["Origin.Karma"], choice.KarmaRaw));
 
             for (int effectIndex = 0; effectIndex < choice.Effects.Count; effectIndex++)
             {
                 OriginDossierLifeModuleEffectState effect = choice.Effects[effectIndex];
-                Label effectLabel = NativeTheme.Body(
-                    $"{RunnerSessionCoordinator.HumanizeId(effect.Domain)} · "
-                    + $"{RunnerSessionCoordinator.HumanizeId(effect.TargetId)}: "
-                    + $"{effect.BeforeValue} → {effect.AfterValue}");
+                Label effectLabel = NativeTheme.Body(_copy.Format(
+                    "Origin.Effect",
+                    RunnerSessionCoordinator.HumanizeId(effect.Domain),
+                    RunnerSessionCoordinator.HumanizeId(effect.TargetId),
+                    effect.BeforeValue,
+                    effect.AfterValue));
                 effectLabel.AutomationId = $"origin-life-effect-{choiceIndex}-{effectIndex}";
                 card.Add(effectLabel);
             }
@@ -102,7 +109,7 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
         }
 
         Label provenance = NativeTheme.Body(
-            _state.LtdProviderDisplay + " · narrative only; mechanics unchanged",
+            _copy.Format("Origin.NarrativeOnly", _state.LtdProviderDisplay),
             NativeTheme.Muted);
         provenance.AutomationId = "origin-life-ltd-provenance";
         body.Add(provenance);
@@ -111,11 +118,11 @@ internal sealed class OriginDossierLifeModuleDecisionPage : ContentPage
             && _state.PendingPreviewDigest is { } previewDigest)
         {
             Label preview = NativeTheme.Body(
-                "Review the exact source and effects above before confirming.",
+                _copy["Origin.Review"],
                 NativeTheme.Ink);
             preview.AutomationId = "origin-life-preview";
             body.Add(preview);
-            Button confirm = NativeTheme.PrimaryButton("Confirm this decision");
+            Button confirm = NativeTheme.PrimaryButton(_copy["Origin.Confirm"]);
             confirm.AutomationId = "origin-life-confirm";
             confirm.IsEnabled = _state.CanConfirm;
             confirm.Clicked += async (_, _) =>

@@ -13,6 +13,7 @@ public sealed class CreationResourcesPage : NativePageBase
     private readonly ICharacterCreationResourcesInteractionPresenter _resources;
     private readonly ICharacterOverviewPresenter _overview;
     private readonly ICharacterCreationGearInteractionPresenter? _gear;
+    private readonly AndroidSurfaceCopy _copy;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -35,7 +36,8 @@ public sealed class CreationResourcesPage : NativePageBase
         _resources = resources ?? throw new ArgumentNullException(nameof(resources));
         _overview = overview ?? throw new ArgumentNullException(nameof(overview));
         _gear = gear;
-        Title = "Creation resources";
+        _copy = AndroidSurfaceStrings.Resolve();
+        Title = _copy["Resources.PageTitle"];
         AutomationId = "creation-resources-page";
         Content = new ScrollView { Content = _body };
     }
@@ -43,30 +45,27 @@ public sealed class CreationResourcesPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Character creation · SR5"));
-        _body.Add(NativeTheme.Title("Resources"));
-        _body.Add(NativeTheme.Body(
-            "Choose how much creation Karma to convert into nuyen. Core owns the exact priority grant, "
-            + "conversion, carryover, blockers, and persisted draft.",
-            NativeTheme.Muted));
+        _body.Add(NativeTheme.Eyebrow(_copy["Resources.Eyebrow"]));
+        _body.Add(NativeTheme.Title(_copy["Resources.Title"]));
+        _body.Add(NativeTheme.Body(_copy["Resources.Intro"], NativeTheme.Muted));
 
         CharacterCreationResourcesInteractionLoadResult load = _resources.Load(Coordinator.State);
         if (!string.Equals(load.Outcome, CharacterCreationResourcesOutcomes.Available, StringComparison.Ordinal)
             || load.State is not { } state)
         {
             AddBlockers(
-                "Resources authority unavailable",
+                _copy["Resources.AuthorityUnavailable"],
                 load.Blockers.DefaultIfEmpty(load.Outcome).ToArray(),
                 "creation-resources-unavailable");
             return;
         }
 
         AddBinding(state);
-        AddBudget(state.Budget, "Current exact budget", "creation-resources-budget");
+        AddBudget(state.Budget, _copy["Resources.CurrentBudget"], "creation-resources-budget");
         if (!CreationResourcesPhoneAuthority.IsReady(state, Coordinator.State))
         {
             AddBlockers(
-                "Resources authority blocked",
+                _copy["Resources.AuthorityBlocked"],
                 state.Blockers.DefaultIfEmpty(CharacterCreationResourcesBlockers.AuthorityUnavailable).ToArray(),
                 "creation-resources-blockers");
             return;
@@ -75,11 +74,11 @@ public sealed class CreationResourcesPage : NativePageBase
         if (state.PendingDraft is { } pending)
         {
             VerticalStackLayout saved = new() { Spacing = 6 };
-            saved.Add(NativeTheme.Eyebrow("Saved Resources draft"));
-            saved.Add(NativeTheme.Metric("Option", pending.SelectedOptionId));
-            saved.Add(NativeTheme.Metric("Karma invested", pending.KarmaInvestment.ToString(CultureInfo.InvariantCulture)));
-            saved.Add(NativeTheme.Metric("Draft revision", pending.DraftRevision.ToString(CultureInfo.InvariantCulture)));
-            saved.Add(NativeTheme.Body($"Draft {ShortDigest(pending.DraftDigest)}", NativeTheme.Muted));
+            saved.Add(NativeTheme.Eyebrow(_copy["Resources.SavedDraft"]));
+            saved.Add(NativeTheme.Metric(_copy["Resources.Option"], pending.SelectedOptionId));
+            saved.Add(NativeTheme.Metric(_copy["Resources.KarmaInvested"], pending.KarmaInvestment.ToString(_copy.DisplayCulture)));
+            saved.Add(NativeTheme.Metric(_copy["Common.DraftRevision"], pending.DraftRevision.ToString(_copy.DisplayCulture)));
+            saved.Add(NativeTheme.Body(_copy.Format("Resources.Draft", ShortDigest(pending.DraftDigest)), NativeTheme.Muted));
             saved.Add(ExactValue("creation-resources-saved-option-id", pending.SelectedOptionId));
             saved.Add(ExactValue(
                 "creation-resources-saved-draft-revision",
@@ -90,20 +89,22 @@ public sealed class CreationResourcesPage : NativePageBase
             _body.Add(savedCard);
         }
 
-        _body.Add(NativeTheme.Eyebrow("Karma conversion options"));
+        _body.Add(NativeTheme.Eyebrow(_copy["Resources.ConversionOptions"]));
         foreach (CharacterCreationResourceAllocationOption option in state.Options
                      .OrderBy(item => item.KarmaInvestment))
         {
             bool enabled = option.IsEnabled && option.Blockers.Count == 0;
             string detail = enabled
-                ? $"{option.KarmaInvestment.ToString(CultureInfo.InvariantCulture)} Karma → "
-                  + $"{option.NuyenFromKarma.ToString("N0", CultureInfo.InvariantCulture)} nuyen · "
-                  + $"{option.TotalStartingNuyen.ToString("N0", CultureInfo.InvariantCulture)} total"
+                ? _copy.Format(
+                    "Resources.OptionDetail",
+                    option.KarmaInvestment,
+                    option.NuyenFromKarma.ToString("N0", _copy.DisplayCulture),
+                    option.TotalStartingNuyen.ToString("N0", _copy.DisplayCulture))
                 : option.Blockers.FirstOrDefault() ?? CharacterCreationResourcesBlockers.InvalidOption;
             _body.Add(NativeTheme.NavigationRow(
                 option.KarmaInvestment == 0
-                    ? "Keep all creation Karma"
-                    : $"Convert {option.KarmaInvestment.ToString(CultureInfo.InvariantCulture)} Karma",
+                    ? _copy["Resources.KeepAllKarma"]
+                    : _copy.Format("Resources.ConvertKarma", option.KarmaInvestment),
                 detail,
                 () => OpenPreviewAsync(state, option.OptionId),
                 enabled,
@@ -116,15 +117,17 @@ public sealed class CreationResourcesPage : NativePageBase
 
     private void AddGearRoute(CharacterCreationResourcesInteractionState state)
     {
-        _body.Add(NativeTheme.Eyebrow("Creation purchases"));
+        _body.Add(NativeTheme.Eyebrow(_copy["Resources.Purchases"]));
         bool enabled = state.PendingDraft is not null && _gear is not null;
         string detail = state.PendingDraft is null
-            ? "Confirm an exact Resources draft before selecting Gear."
+            ? _copy["Resources.ConfirmBeforeGear"]
             : _gear is null
-                ? "The typed Gear presenter is unavailable."
-                : $"Open the active-source catalog with {state.Budget.RemainingNuyen.ToString("N0", CultureInfo.InvariantCulture)} nuyen remaining.";
+                ? _copy["Resources.GearUnavailable"]
+                : _copy.Format(
+                    "Resources.OpenGearDetail",
+                    state.Budget.RemainingNuyen.ToString("N0", _copy.DisplayCulture));
         _body.Add(NativeTheme.NavigationRow(
-            "Choose Gear",
+            _copy["Resources.ChooseGear"],
             detail,
             () => enabled
                 ? Navigation.PushAsync(new CreationGearPage(Coordinator, _gear!, _overview))
@@ -146,7 +149,10 @@ public sealed class CreationResourcesPage : NativePageBase
         {
             string blocker = result.Blockers.FirstOrDefault()
                              ?? CharacterCreationResourcesInteractionBlockers.PreparedPreviewMismatch;
-            await DisplayAlertAsync("Resources preview unavailable", blocker, "OK");
+            await DisplayAlertAsync(
+                _copy["Resources.PreviewUnavailable"],
+                blocker,
+                _copy["Common.Ok"]);
             Refresh();
             return;
         }
@@ -155,16 +161,18 @@ public sealed class CreationResourcesPage : NativePageBase
             Coordinator,
             _resources,
             _overview,
-            prepared));
+            prepared,
+            _copy));
     }
 
     private void AddBinding(CharacterCreationResourcesInteractionState state)
     {
-        Label binding = NativeTheme.Body(
-            $"Revision {state.Binding.ContentRevision.ToString(CultureInfo.InvariantCulture)} · "
-            + $"saved {state.Binding.SavedRevision.ToString(CultureInfo.InvariantCulture)} · "
-            + $"snapshot {ShortDigest(state.SnapshotDigest)} · source {ShortDigest(state.Binding.SourceDigest)}",
-            NativeTheme.Muted);
+        Label binding = NativeTheme.Body(_copy.Format(
+            "Resources.Binding",
+            state.Binding.ContentRevision,
+            state.Binding.SavedRevision,
+            ShortDigest(state.SnapshotDigest),
+            ShortDigest(state.Binding.SourceDigest)), NativeTheme.Muted);
         binding.AutomationId = "creation-resources-binding";
         _body.Add(binding);
         _body.Add(ExactValue(
@@ -192,14 +200,14 @@ public sealed class CreationResourcesPage : NativePageBase
     {
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Eyebrow(title));
-        card.Add(NativeTheme.Metric("Priority nuyen", Nuyen(budget.PriorityNuyen)));
-        card.Add(NativeTheme.Metric("Karma invested", budget.KarmaInvestment.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Starting nuyen", Nuyen(budget.TotalStartingNuyen)));
-        card.Add(NativeTheme.Metric("Known purchases", Nuyen(budget.KnownPurchaseCost)));
-        card.Add(NativeTheme.Metric("Remaining", Nuyen(budget.RemainingNuyen)));
-        card.Add(NativeTheme.Metric("Carryover limit", Nuyen(budget.CarryoverLimit)));
+        card.Add(NativeTheme.Metric(_copy["Resources.PriorityNuyen"], Nuyen(budget.PriorityNuyen)));
+        card.Add(NativeTheme.Metric(_copy["Resources.KarmaInvested"], budget.KarmaInvestment.ToString(_copy.DisplayCulture)));
+        card.Add(NativeTheme.Metric(_copy["Resources.StartingNuyen"], Nuyen(budget.TotalStartingNuyen)));
+        card.Add(NativeTheme.Metric(_copy["Resources.KnownPurchases"], Nuyen(budget.KnownPurchaseCost)));
+        card.Add(NativeTheme.Metric(_copy["Common.Remaining"], Nuyen(budget.RemainingNuyen)));
+        card.Add(NativeTheme.Metric(_copy["Resources.CarryoverLimit"], Nuyen(budget.CarryoverLimit)));
         card.Add(NativeTheme.Body(
-            budget.IsExact ? "Exact Core budget" : "Purchase-cost authority is incomplete",
+            budget.IsExact ? _copy["Resources.ExactBudget"] : _copy["Resources.IncompleteBudget"],
             budget.IsExact ? NativeTheme.Muted : NativeTheme.Danger));
         card.Add(ExactValue(
             $"{automationId}-priority-nuyen",
@@ -216,25 +224,25 @@ public sealed class CreationResourcesPage : NativePageBase
         border.AutomationId = automationId;
         SemanticProperties.SetDescription(
             border,
-            $"Starting nuyen {budget.TotalStartingNuyen}. Remaining {budget.RemainingNuyen}.");
+            _copy.Format("Resources.BudgetSemantic", budget.TotalStartingNuyen, budget.RemainingNuyen));
         _body.Add(border);
     }
 
     private void AddAuthority(CharacterCreationResourcesInteractionState state)
     {
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow("Core authority"));
-        card.Add(NativeTheme.Metric("Build method", state.Authority.BuildMethod));
-        card.Add(NativeTheme.Metric("Resource rank", state.PendingDraft?.FinalizationContribution.PriorityRank
+        card.Add(NativeTheme.Eyebrow(_copy["Resources.CoreAuthority"]));
+        card.Add(NativeTheme.Metric(_copy["Resources.BuildMethod"], state.Authority.BuildMethod));
+        card.Add(NativeTheme.Metric(_copy["Resources.ResourceRank"], state.PendingDraft?.FinalizationContribution.PriorityRank
             ?? state.PrerequisiteDraft?.Assignments.SingleOrDefault(assignment => string.Equals(
                 assignment.CategoryId,
                 CharacterCreationPriorityCategoryIds.Resources,
                 StringComparison.Ordinal))?.Rank
-            ?? "unavailable"));
-        card.Add(NativeTheme.Metric("Maximum conversion", state.Authority.MaximumKarmaInvestment.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Maximum availability", state.Authority.MaximumAvailability.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Rules", state.Binding.RulesDigest));
-        card.Add(NativeTheme.Metric("Runtime", state.Binding.RuntimeDigest));
+            ?? _copy["Common.Unavailable"]));
+        card.Add(NativeTheme.Metric(_copy["Resources.MaximumConversion"], state.Authority.MaximumKarmaInvestment.ToString(_copy.DisplayCulture)));
+        card.Add(NativeTheme.Metric(_copy["Resources.MaximumAvailability"], state.Authority.MaximumAvailability.ToString(_copy.DisplayCulture)));
+        card.Add(NativeTheme.Metric(_copy["Common.Rules"], state.Binding.RulesDigest));
+        card.Add(NativeTheme.Metric(_copy["Common.Runtime"], state.Binding.RuntimeDigest));
         card.Add(ExactValue("creation-resources-authority-digest", state.Binding.AuthorityDigest));
         card.Add(ExactValue("creation-resources-source-digest", state.Binding.SourceDigest));
         card.Add(ExactValue("creation-resources-rules-digest", state.Binding.RulesDigest));
@@ -255,16 +263,16 @@ public sealed class CreationResourcesPage : NativePageBase
         _body.Add(border);
     }
 
-    private static string Nuyen(decimal value)
-        => value.ToString("N0", CultureInfo.InvariantCulture) + " ¥";
+    private string Nuyen(decimal value)
+        => value.ToString("N0", _copy.DisplayCulture) + " ¥";
 
     private static string Token(string value)
         => new string(value.Select(character => char.IsLetterOrDigit(character)
             ? char.ToLowerInvariant(character)
             : '-').ToArray()).Trim('-');
 
-    private static string ShortDigest(string value)
-        => string.IsNullOrWhiteSpace(value) ? "unavailable" : value[..Math.Min(19, value.Length)];
+    private string ShortDigest(string value)
+        => string.IsNullOrWhiteSpace(value) ? _copy["Common.Unavailable"] : value[..Math.Min(19, value.Length)];
 
     private static Label ExactValue(string automationId, string value)
     {
@@ -279,6 +287,7 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
     private readonly ICharacterCreationResourcesInteractionPresenter _resources;
     private readonly ICharacterOverviewPresenter _overview;
     private readonly CharacterCreationResourcesPreparedPreview _prepared;
+    private readonly AndroidSurfaceCopy _copy;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -291,12 +300,14 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
         RunnerSessionCoordinator coordinator,
         ICharacterCreationResourcesInteractionPresenter resources,
         ICharacterOverviewPresenter overview,
-        CharacterCreationResourcesPreparedPreview prepared) : base(coordinator)
+        CharacterCreationResourcesPreparedPreview prepared,
+        AndroidSurfaceCopy copy) : base(coordinator)
     {
         _resources = resources ?? throw new ArgumentNullException(nameof(resources));
         _overview = overview ?? throw new ArgumentNullException(nameof(overview));
         _prepared = prepared ?? throw new ArgumentNullException(nameof(prepared));
-        Title = "Review resources";
+        _copy = copy ?? throw new ArgumentNullException(nameof(copy));
+        Title = _copy["ResourcesPreview.PageTitle"];
         AutomationId = "creation-resources-preview-page";
         Content = new ScrollView { Content = _body };
     }
@@ -304,19 +315,19 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Explicit review"));
-        _body.Add(NativeTheme.Title("Resources preview"));
+        _body.Add(NativeTheme.Eyebrow(_copy["ResourcesPreview.Eyebrow"]));
+        _body.Add(NativeTheme.Title(_copy["ResourcesPreview.Title"]));
         AddBudgetComparison();
         AddContribution();
 
         if (_receipt is { } receipt)
         {
             VerticalStackLayout applied = new() { Spacing = 6 };
-            applied.Add(NativeTheme.Eyebrow("Saved"));
-            applied.Add(NativeTheme.Metric("Receipt", receipt.ReceiptId));
-            applied.Add(NativeTheme.Metric("Workspace revision", receipt.WorkspaceRevision.ToString(CultureInfo.InvariantCulture)));
-            applied.Add(NativeTheme.Metric("Draft revision", receipt.DraftRevision.ToString(CultureInfo.InvariantCulture)));
-            applied.Add(NativeTheme.Body($"Receipt {ShortDigest(receipt.ReceiptDigest)}", NativeTheme.Muted));
+            applied.Add(NativeTheme.Eyebrow(_copy["ResourcesPreview.Saved"]));
+            applied.Add(NativeTheme.Metric(_copy["Common.Receipt"], receipt.ReceiptId));
+            applied.Add(NativeTheme.Metric(_copy["Common.WorkspaceRevision"], receipt.WorkspaceRevision.ToString(_copy.DisplayCulture)));
+            applied.Add(NativeTheme.Metric(_copy["Common.DraftRevision"], receipt.DraftRevision.ToString(_copy.DisplayCulture)));
+            applied.Add(NativeTheme.Body(_copy.Format("ResourcesPreview.ReceiptDigest", ShortDigest(receipt.ReceiptDigest)), NativeTheme.Muted));
             applied.Add(ExactValue("creation-resources-receipt-option-id", receipt.OptionId));
             applied.Add(ExactValue(
                 "creation-resources-receipt-workspace-revision",
@@ -337,8 +348,8 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
             receiptCard.AutomationId = "creation-resources-confirm-receipt";
             _body.Add(receiptCard);
             _body.Add(NativeTheme.NavigationRow(
-                "Back to Resources",
-                "Reopen the persisted Core draft",
+                _copy["ResourcesPreview.Back"],
+                _copy["ResourcesPreview.Reopen"],
                 () => Navigation.PopAsync(),
                 automationId: "creation-resources-reopen"));
             return;
@@ -357,15 +368,15 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
                          _prepared,
                          current,
                          Coordinator.State);
-        Button confirm = NativeTheme.PrimaryButton("Confirm Resources draft");
+        Button confirm = NativeTheme.PrimaryButton(_copy["ResourcesPreview.Confirm"]);
         confirm.AutomationId = "creation-resources-confirm";
         confirm.IsEnabled = exact;
         confirm.Clicked += async (_, _) => await RunAsync(ConfirmAsync);
         _body.Add(confirm);
         Label warning = NativeTheme.Body(
             exact
-                ? "This explicit confirmation persists only the typed Resources draft. It does not write character XML."
-                : "The workspace or authority changed. This preview cannot be confirmed.",
+                ? _copy["ResourcesPreview.ConfirmExact"]
+                : _copy["ResourcesPreview.ConfirmStale"],
             exact ? NativeTheme.Muted : NativeTheme.Danger);
         warning.AutomationId = "creation-resources-confirm-authority";
         _body.Add(warning);
@@ -413,13 +424,13 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
     private void AddBudgetComparison()
     {
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow("Exact delta"));
-        card.Add(NativeTheme.Metric("Karma before", _prepared.BudgetBefore.KarmaInvestment.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Karma after", _prepared.BudgetAfter.KarmaInvestment.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Starting nuyen before", Nuyen(_prepared.BudgetBefore.TotalStartingNuyen)));
-        card.Add(NativeTheme.Metric("Starting nuyen after", Nuyen(_prepared.BudgetAfter.TotalStartingNuyen)));
-        card.Add(NativeTheme.Metric("Remaining after purchases", Nuyen(_prepared.BudgetAfter.RemainingNuyen)));
-        card.Add(NativeTheme.Metric("Carryover excess", Nuyen(_prepared.BudgetAfter.CarryoverExcess)));
+        card.Add(NativeTheme.Eyebrow(_copy["ResourcesPreview.ExactDelta"]));
+        card.Add(NativeTheme.Metric(_copy["ResourcesPreview.KarmaBefore"], _prepared.BudgetBefore.KarmaInvestment.ToString(_copy.DisplayCulture)));
+        card.Add(NativeTheme.Metric(_copy["ResourcesPreview.KarmaAfter"], _prepared.BudgetAfter.KarmaInvestment.ToString(_copy.DisplayCulture)));
+        card.Add(NativeTheme.Metric(_copy["ResourcesPreview.StartingBefore"], Nuyen(_prepared.BudgetBefore.TotalStartingNuyen)));
+        card.Add(NativeTheme.Metric(_copy["ResourcesPreview.StartingAfter"], Nuyen(_prepared.BudgetAfter.TotalStartingNuyen)));
+        card.Add(NativeTheme.Metric(_copy["ResourcesPreview.RemainingAfter"], Nuyen(_prepared.BudgetAfter.RemainingNuyen)));
+        card.Add(NativeTheme.Metric(_copy["ResourcesPreview.CarryoverExcess"], Nuyen(_prepared.BudgetAfter.CarryoverExcess)));
         card.Add(ExactValue(
             "creation-resources-preview-total-starting-nuyen",
             _prepared.BudgetAfter.TotalStartingNuyen.ToString(CultureInfo.InvariantCulture)));
@@ -431,11 +442,11 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
     private void AddContribution()
     {
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow("Finalization contribution"));
-        card.Add(NativeTheme.Metric("Priority rank", _prepared.FinalizationContribution.PriorityRank));
-        card.Add(NativeTheme.Metric("Priority grant", Nuyen(_prepared.FinalizationContribution.StartingNuyen)));
-        card.Add(NativeTheme.Metric("Karma converted", _prepared.FinalizationContribution.NuyenKarma.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Body($"Preview {ShortDigest(_prepared.PreviewDigest)}", NativeTheme.Muted));
+        card.Add(NativeTheme.Eyebrow(_copy["ResourcesPreview.Finalization"]));
+        card.Add(NativeTheme.Metric(_copy["ResourcesPreview.PriorityRank"], _prepared.FinalizationContribution.PriorityRank));
+        card.Add(NativeTheme.Metric(_copy["ResourcesPreview.PriorityGrant"], Nuyen(_prepared.FinalizationContribution.StartingNuyen)));
+        card.Add(NativeTheme.Metric(_copy["ResourcesPreview.KarmaConverted"], _prepared.FinalizationContribution.NuyenKarma.ToString(_copy.DisplayCulture)));
+        card.Add(NativeTheme.Body(_copy.Format("ResourcesPreview.Preview", ShortDigest(_prepared.PreviewDigest)), NativeTheme.Muted));
         card.Add(ExactValue("creation-resources-preview-option-id", _prepared.SelectedOption.OptionId));
         card.Add(ExactValue(
             "creation-resources-preview-priority-grant",
@@ -446,11 +457,11 @@ public sealed class CreationResourcesPreviewPage : NativePageBase
         _body.Add(border);
     }
 
-    private static string Nuyen(decimal value)
-        => value.ToString("N0", CultureInfo.InvariantCulture) + " ¥";
+    private string Nuyen(decimal value)
+        => value.ToString("N0", _copy.DisplayCulture) + " ¥";
 
-    private static string ShortDigest(string value)
-        => string.IsNullOrWhiteSpace(value) ? "unavailable" : value[..Math.Min(19, value.Length)];
+    private string ShortDigest(string value)
+        => string.IsNullOrWhiteSpace(value) ? _copy["Common.Unavailable"] : value[..Math.Min(19, value.Length)];
 
     private static Label ExactValue(string automationId, string value)
     {
