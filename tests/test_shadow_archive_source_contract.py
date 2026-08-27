@@ -21,6 +21,17 @@ class ShadowArchiveSourceContractTests(unittest.TestCase):
         self.assertIn('public const string Archive = "archive";', routes)
         self.assertIn('AutomationId = $"phone-destination-{route}"', shell)
 
+    def test_public_product_is_named_stories_while_technical_ids_remain_stable(self) -> None:
+        shell = (PROJECT / "MainShell.cs").read_text(encoding="utf-8")
+        page = (PROJECT / "Native" / "ShadowArchivePage.cs").read_text(encoding="utf-8")
+        self.assertIn('PhoneStrings.Get("ShellStories", "Stories")', shell)
+        self.assertIn('Title = "Stories"', page)
+        self.assertIn('NativeTheme.Eyebrow("Stories")', page)
+        self.assertNotIn('Title = "Archive"', page)
+        self.assertNotIn('NativeTheme.Eyebrow("Shadow Archive")', page)
+        self.assertIn('AutomationId = "phone-archive"', page)
+        self.assertIn('AutomationId = $"archive-story-{story.Binding.PublicationId}"', page)
+
     def test_port_uses_presentation_contracts_and_default_composition_fails_closed(self) -> None:
         port = (PROJECT / "Native" / "ShadowArchivePublicCatalogPort.cs").read_text(encoding="utf-8")
         program = (PROJECT / "MauiProgram.cs").read_text(encoding="utf-8")
@@ -52,6 +63,25 @@ class ShadowArchiveSourceContractTests(unittest.TestCase):
         self.assertIn('NativeTheme.PrimaryButton("Read story")', card)
         self.assertNotIn("archive-signal-vote", card)
         self.assertNotIn("CreateSignalCommand", card)
+
+    def test_catalog_filters_are_combined_source_bound_and_accessible(self) -> None:
+        page = (PROJECT / "Native" / "ShadowArchivePage.cs").read_text(encoding="utf-8")
+        port = (PROJECT / "Native" / "ShadowArchivePublicCatalogPort.cs").read_text(encoding="utf-8")
+        for selector in (
+            "archive-filter-language",
+            "archive-filter-archetype",
+            "archive-filter-empty",
+            "archive-story-metadata-",
+        ):
+            self.assertIn(selector, page)
+        self.assertIn("SemanticProperties.SetDescription(picker", page)
+        self.assertIn("ShadowArchiveCatalogFilterPolicy.Project", page)
+        self.assertIn("story.Metadata.PublicationLanguage.LanguageEditionId", port)
+        self.assertIn("story.Metadata.Archetypes.Any", port)
+        self.assertIn("archetype.RulesetId, language.RulesetId", port)
+        self.assertIn("archetype.SourceDigest", port)
+        self.assertNotIn("InferArchetype", port)
+        self.assertNotIn("InferLanguage", port)
 
     def test_reader_keeps_downloads_public_and_signal_after_final_chapter(self) -> None:
         page = (PROJECT / "Native" / "ShadowArchivePage.cs").read_text(encoding="utf-8")

@@ -58,6 +58,8 @@ public static class MauiProgram
                 statePath,
                 typeof(MauiProgram).Assembly.GetName().Version ?? new Version(0, 0)));
         builder.Services.AddSingleton<ApplicationDeleteConfirmationPresenter>();
+        builder.Services.AddSingleton<IOriginDossierDraftTimelineStore>(
+            new FileOriginDossierDraftTimelineStore(statePath));
         builder.Services.AddSingleton<ISr5AfterRunManualProposalBackend>(
             new FileSr5AfterRunManualProposalBackend(statePath));
         builder.Services.AddSingleton<IAndroidAfterRunWorkspaceSnapshotSource>(provider =>

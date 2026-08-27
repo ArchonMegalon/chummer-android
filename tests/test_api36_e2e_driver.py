@@ -682,7 +682,7 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
             "missing": self.native_phone_tabs()[:3],
             "wrong-class": altered(0, **{"class": "android.widget.Button"}),
             "wrong-order": self.native_phone_tabs(
-                labels=("Runner", "Runners", "Archive", "More")
+                labels=("Runner", "Runners", "Stories", "More")
             ),
             "wrong-geometry": altered(3, bounds="[800,2190][1080,2337]"),
             "one-pixel-gap": altered(1, bounds="[271,2190][540,2337]"),

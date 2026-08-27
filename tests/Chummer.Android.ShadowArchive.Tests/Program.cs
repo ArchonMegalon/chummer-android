@@ -10,8 +10,10 @@ internal static class Program
         OwnerCanNeverVoteForOwnStory();
         VoteAndRetractFollowPresentationCapability();
         PublicSurfaceStatesStayHonest();
+        CatalogFiltersUseAuthoritativeLanguageAndEditionArchetypes();
+        CatalogFiltersFailClosedOnCrossEditionMetadata();
         await MissingCompositionFailsClosedAsync();
-        Console.WriteLine("Shadow Archive phone policy tests passed: 6");
+        Console.WriteLine("Stories phone policy tests passed: 8");
     }
 
     private static void SignalIsHiddenBeforeTheFinalChapter()
@@ -98,6 +100,80 @@ internal static class Program
         Require(result.Error?.Code == "shadow_archive_android_composition_unavailable");
     }
 
+    private static void CatalogFiltersUseAuthoritativeLanguageAndEditionArchetypes()
+    {
+        ShadowArchivePublicCatalogViewModel catalog = new(
+            new[]
+            {
+                Story("pub-de-face", "de-at", "Deutsch (Österreich)", "face", "Face"),
+                Story("pub-en-face", "en", "English", "face", "Face"),
+                Story("pub-es-face", "es-mx", "Español (México)", "face", "Face"),
+                Story("pub-de-street", "de-at", "Deutsch (Österreich)", "street-samurai", "Street Samurai")
+            },
+            new ShadowArchiveViewerContext(false, null, null));
+        ShadowArchiveFilteredCatalogViewModel filtered = ShadowArchiveCatalogFilterPolicy.Project(
+            catalog,
+            new ShadowArchiveCatalogFilterSelection("de-at", "face"));
+        Require(filtered.Stories.Count == 1);
+        Require(filtered.Stories[0].Binding.PublicationId == "pub-de-face");
+        Require(filtered.LanguageEditions.Count == 3);
+        Require(filtered.Archetypes.Count == 2);
+    }
+
+    private static void CatalogFiltersFailClosedOnCrossEditionMetadata()
+    {
+        ShadowArchivePublicStoryCardViewModel invalid = Story(
+            "pub-invalid",
+            "de-at",
+            "Deutsch (Österreich)",
+            "face",
+            "Face") with
+        {
+            Metadata = new ShadowArchiveCatalogMetadataViewModel(
+                new("de-at", "de-AT", "Deutsch (Österreich)", "sr5", "catalog:locale:de-at", Digest('a')),
+                new[] { new ShadowArchiveEditionArchetypeViewModel(
+                    "face", "Face", "sr6", "catalog:archetype:face", Digest('b')) })
+        };
+        bool rejected = false;
+        try
+        {
+            ShadowArchiveCatalogFilterPolicy.Project(
+                new ShadowArchivePublicCatalogViewModel(
+                    new[] { invalid },
+                    new ShadowArchiveViewerContext(false, null, null)),
+                new ShadowArchiveCatalogFilterSelection(null, null));
+        }
+        catch (InvalidOperationException)
+        {
+            rejected = true;
+        }
+        Require(rejected);
+    }
+
+    private static ShadowArchivePublicStoryCardViewModel Story(
+        string publicationId,
+        string languageEditionId,
+        string languageDisplay,
+        string archetypeId,
+        string archetypeDisplay)
+        => new(
+            "A runner story",
+            "Summary",
+            new ShadowArchiveStoryIdentityViewModel("Nightshade", null, "Tibor", null, "Chummer.run"),
+            12,
+            false,
+            new ShadowArchiveCatalogMetadataViewModel(
+                new(languageEditionId, languageEditionId, languageDisplay, "sr5", $"catalog:locale:{languageEditionId}", Digest('a')),
+                new[] { new ShadowArchiveEditionArchetypeViewModel(
+                    archetypeId,
+                    archetypeDisplay,
+                    "sr5",
+                    $"catalog:archetype:{archetypeId}",
+                    Digest('b')) }),
+            new ShadowArchiveBindingViewModel(publicationId, 1, Digest('c')));
+
+    private static string Digest(char value) => new(value, 64);
+
     private static ShadowArchiveSignalViewModel Signal(
         bool viewerHasVoted = false,
         bool canVote = false,
@@ -115,7 +191,7 @@ internal static class Program
     {
         if (!condition)
         {
-            throw new InvalidOperationException("Shadow Archive phone policy assertion failed.");
+            throw new InvalidOperationException("Stories phone policy assertion failed.");
         }
     }
 }

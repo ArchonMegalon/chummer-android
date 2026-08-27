@@ -14,6 +14,7 @@ public sealed class ShadowArchivePage : ContentPage
         Spacing = 16
     };
     private CancellationTokenSource? _appearanceLifetime;
+    private ShadowArchiveCatalogFilterSelection _filterSelection = new(null, null);
     private bool _loaded;
 
     public ShadowArchivePage(
@@ -24,7 +25,7 @@ public sealed class ShadowArchivePage : ContentPage
         _catalog = catalog;
         _presenter = presenter;
         _system = system;
-        Title = "Archive";
+        Title = "Stories";
         AutomationId = "phone-archive";
         BackgroundColor = NativeTheme.Paper;
         Content = new ScrollView { Content = _body };
@@ -92,7 +93,7 @@ public sealed class ShadowArchivePage : ContentPage
     private void RenderLoading()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Shadow Archive"));
+        _body.Add(NativeTheme.Eyebrow("Stories"));
         _body.Add(NativeTheme.Title("Loading public stories"));
         ActivityIndicator loading = new()
         {
@@ -106,8 +107,28 @@ public sealed class ShadowArchivePage : ContentPage
 
     private void RenderCatalog(ShadowArchivePublicCatalogViewModel catalog)
     {
+        ShadowArchiveFilteredCatalogViewModel filtered;
+        try
+        {
+            filtered = ShadowArchiveCatalogFilterPolicy.Project(catalog, _filterSelection);
+        }
+        catch
+        {
+            RenderFailure(
+                ShadowArchivePresentationState.InvalidContract,
+                new ShadowArchiveErrorViewModel(
+                    "stories_catalog_metadata_invalid",
+                    "Stories returned invalid language or archetype metadata. No inferred filters were shown.",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null));
+            return;
+        }
+
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Shadow Archive"));
+        _body.Add(NativeTheme.Eyebrow("Stories"));
         _body.Add(NativeTheme.Title("Public runner stories"));
         _body.Add(NativeTheme.Body(
             "Read and download without an account. Signals are shown here, but voting appears only after the final chapter.",
@@ -118,7 +139,7 @@ public sealed class ShadowArchivePage : ContentPage
             VerticalStackLayout empty = new() { Spacing = 8 };
             empty.Add(NativeTheme.Title("No public stories yet", 21));
             empty.Add(NativeTheme.Body(
-                "Published Origin Stories will appear here when the Archive returns them.",
+                "Published Origin Stories will appear here when Stories returns them.",
                 NativeTheme.Muted));
             Border card = NativeTheme.Card(empty);
             card.AutomationId = "archive-empty";
@@ -126,10 +147,85 @@ public sealed class ShadowArchivePage : ContentPage
             return;
         }
 
-        foreach (ShadowArchivePublicStoryCardViewModel story in catalog.Stories)
+        _body.Add(BuildFilterPicker(
+            "Language edition",
+            "All languages",
+            "archive-filter-language",
+            "Filter Stories by authoritative publication language edition",
+            filtered.LanguageEditions,
+            filtered.Selection.LanguageEditionId,
+            selected =>
+            {
+                _filterSelection = _filterSelection with { LanguageEditionId = selected };
+                RenderCatalog(catalog);
+            }));
+        _body.Add(BuildFilterPicker(
+            "Archetype",
+            "All archetypes",
+            "archive-filter-archetype",
+            "Filter Stories by source-bound archetype for its rules edition",
+            filtered.Archetypes,
+            filtered.Selection.ArchetypeId,
+            selected =>
+            {
+                _filterSelection = _filterSelection with { ArchetypeId = selected };
+                RenderCatalog(catalog);
+            }));
+
+        if (filtered.Stories.Count == 0)
+        {
+            VerticalStackLayout empty = new() { Spacing = 8 };
+            empty.Add(NativeTheme.Title("No stories match these filters", 21));
+            empty.Add(NativeTheme.Body(
+                "Change one or both authoritative filters to see other public stories.",
+                NativeTheme.Muted));
+            Border card = NativeTheme.Card(empty);
+            card.AutomationId = "archive-filter-empty";
+            SemanticProperties.SetDescription(card, "No Stories match the selected language and archetype filters");
+            _body.Add(card);
+            return;
+        }
+
+        foreach (ShadowArchivePublicStoryCardViewModel story in filtered.Stories)
         {
             _body.Add(BuildStoryCard(catalog, story));
         }
+    }
+
+    private static View BuildFilterPicker(
+        string title,
+        string allLabel,
+        string automationId,
+        string accessibilityDescription,
+        IReadOnlyList<ShadowArchiveCatalogFilterOption> options,
+        string? selectedId,
+        Action<string?> onSelected)
+    {
+        string[] labels = new[] { allLabel }
+            .Concat(options.Select(static option => option.DisplayName))
+            .ToArray();
+        int selectedIndex = selectedId is null
+            ? 0
+            : 1 + options.ToList().FindIndex(option => string.Equals(
+                option.Id,
+                selectedId,
+                StringComparison.Ordinal));
+        Picker picker = new()
+        {
+            Title = title,
+            AutomationId = automationId,
+            ItemsSource = labels,
+            SelectedIndex = selectedIndex,
+            TextColor = NativeTheme.Ink,
+            TitleColor = NativeTheme.Muted
+        };
+        SemanticProperties.SetDescription(picker, accessibilityDescription);
+        picker.SelectedIndexChanged += (_, _) =>
+        {
+            int index = picker.SelectedIndex;
+            onSelected(index <= 0 ? null : options[index - 1].Id);
+        };
+        return NativeTheme.Card(picker);
     }
 
     private Border BuildStoryCard(
@@ -145,6 +241,15 @@ public sealed class ShadowArchivePage : ContentPage
         }
         content.Add(NativeTheme.Title(story.Title, 20));
         content.Add(NativeTheme.Body(story.Summary));
+        string archetypes = string.Join(", ", story.Metadata.Archetypes.Select(static value => value.DisplayName));
+        Label metadata = NativeTheme.Body(
+            $"{story.Metadata.PublicationLanguage.DisplayName} · {archetypes}",
+            NativeTheme.Muted);
+        metadata.AutomationId = $"archive-story-metadata-{story.Binding.PublicationId}";
+        SemanticProperties.SetDescription(
+            metadata,
+            $"Publication language {story.Metadata.PublicationLanguage.DisplayName}; archetypes {archetypes}");
+        content.Add(metadata);
         content.Add(NativeTheme.Body($"Story owner: {story.Identity.StoryOwnerLabel}", NativeTheme.Muted));
         Label signals = NativeTheme.Body($"Signals: {story.SignalCount:N0}", NativeTheme.Muted);
         signals.AutomationId = $"archive-signal-count-{story.Binding.PublicationId}";
@@ -171,7 +276,7 @@ public sealed class ShadowArchivePage : ContentPage
             ShadowArchivePhoneSurface.Catalog,
             error);
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Shadow Archive"));
+        _body.Add(NativeTheme.Eyebrow("Stories"));
         _body.Add(NativeTheme.Title(copy.Title));
         _body.Add(NativeTheme.Body(copy.Detail, NativeTheme.Muted));
         if (copy.CanRetry)
@@ -193,7 +298,7 @@ public sealed class ShadowArchivePage : ContentPage
             default,
             new ShadowArchiveErrorViewModel(
                 "shadow_archive_android_client_failure",
-                "Shadow Archive is unavailable. No public response was assumed.",
+                "Stories is unavailable. No public response was assumed.",
                 null,
                 null,
                 null,
@@ -319,7 +424,7 @@ internal sealed class ShadowArchiveReaderPage : ContentPage
     private void RenderLoading()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Shadow Archive"));
+        _body.Add(NativeTheme.Eyebrow("Stories"));
         _body.Add(NativeTheme.Title("Loading story"));
         ActivityIndicator loading = new()
         {
@@ -565,7 +670,7 @@ internal sealed class ShadowArchiveReaderPage : ContentPage
             ShadowArchivePhoneSurface.Reader,
             error);
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Shadow Archive"));
+        _body.Add(NativeTheme.Eyebrow("Stories"));
         _body.Add(NativeTheme.Title(copy.Title));
         _body.Add(NativeTheme.Body(copy.Detail, NativeTheme.Muted));
         if (copy.CanRetry)
@@ -584,7 +689,7 @@ internal sealed class ShadowArchiveReaderPage : ContentPage
             default,
             new ShadowArchiveErrorViewModel(
                 "shadow_archive_android_client_failure",
-                "Shadow Archive is unavailable. No public response or Signal change was assumed.",
+                "Stories is unavailable. No public response or Signal change was assumed.",
                 null,
                 null,
                 null,

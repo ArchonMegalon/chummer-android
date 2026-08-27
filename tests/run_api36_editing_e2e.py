@@ -34,11 +34,11 @@ PHONE_SHELL_DESTINATION_IDS = (
     "phone-destination-archive",
     "phone-destination-more",
 )
-PHONE_SHELL_DESTINATION_LABELS = ("Runners", "Runner", "Archive", "More")
+PHONE_SHELL_DESTINATION_LABELS = ("Runners", "Runner", "Stories", "More")
 PHONE_SHELL_DESTINATION_MAPPING = {
     "phone-destination-runners": "Runners",
     "phone-destination-runner": "Runner",
-    "phone-destination-archive": "Archive",
+    "phone-destination-archive": "Stories",
     "phone-destination-more": "More",
 }
 PHONE_SHELL_DESTINATION_IDS_BY_LABEL = {

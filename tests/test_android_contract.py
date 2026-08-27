@@ -249,7 +249,7 @@ class AndroidContractTests(unittest.TestCase):
         tablet_shell = shell[shell.index("private void BuildTabletShell"):]
         self.assertEqual(4, phone_shell.count("tabs.Items.Add(CreatePhoneTab<"))
         for page_type, label, route in (
-            ("ShadowArchivePage", "Archive", "Archive"),
+            ("ShadowArchivePage", "Stories", "Stories"),
             ("RunnersPage", "Runners", "Runners"),
             ("BuildPage", "Runner", "Runner"),
             ("PhoneMorePage", "More", "More"),

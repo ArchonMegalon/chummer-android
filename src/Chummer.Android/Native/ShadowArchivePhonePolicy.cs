@@ -113,7 +113,7 @@ public static class ShadowArchivePhonePolicy
         {
             ShadowArchivePresentationState.Offline => new(
                 "You're offline",
-                safeDetail ?? "Reconnect to load the public Archive. No cached response was assumed.",
+                safeDetail ?? "Reconnect to load Stories. No cached response was assumed.",
                 true),
             ShadowArchivePresentationState.Stale or ShadowArchivePresentationState.RevisionConflict => new(
                 "Story changed",
@@ -128,19 +128,19 @@ public static class ShadowArchivePhonePolicy
                 safeDetail ?? "This public story revision could not be found.",
                 false),
             ShadowArchivePresentationState.RateLimited => new(
-                "Archive is busy",
+                "Stories is busy",
                 RetryDetail(safeDetail, error?.RetryAfter),
                 true),
             ShadowArchivePresentationState.AuthenticationRequired when surface is not ShadowArchivePhoneSurface.Signal => new(
                 "Public access unavailable",
-                "The public Archive unexpectedly requested a login, so no story was loaded.",
+                "Stories unexpectedly requested a login, so no story was loaded.",
                 true),
             ShadowArchivePresentationState.Forbidden => new(
                 surface == ShadowArchivePhoneSurface.Signal ? "Signal not allowed" : "Public access unavailable",
                 safeDetail ?? "This action is not allowed for the current account.",
                 false),
             _ => new(
-                surface == ShadowArchivePhoneSurface.Signal ? "Signal unavailable" : "Archive unavailable",
+                surface == ShadowArchivePhoneSurface.Signal ? "Signal unavailable" : "Stories unavailable",
                 safeDetail ?? "No public story or Signal response was assumed.",
                 true)
         };
@@ -148,7 +148,7 @@ public static class ShadowArchivePhonePolicy
 
     private static string RetryDetail(string? safeDetail, TimeSpan? retryAfter)
     {
-        string detail = safeDetail ?? "Too many requests reached the Archive. Try again later.";
+        string detail = safeDetail ?? "Too many requests reached Stories. Try again later.";
         return retryAfter is { } delay && delay > TimeSpan.Zero
             ? $"{detail} Retry in about {Math.Ceiling(delay.TotalSeconds):0} seconds."
             : detail;
