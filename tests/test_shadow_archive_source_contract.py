@@ -24,9 +24,11 @@ class ShadowArchiveSourceContractTests(unittest.TestCase):
     def test_public_product_is_named_stories_while_technical_ids_remain_stable(self) -> None:
         shell = (PROJECT / "MainShell.cs").read_text(encoding="utf-8")
         page = (PROJECT / "Native" / "ShadowArchivePage.cs").read_text(encoding="utf-8")
+        copy = (PROJECT / "Native" / "AndroidSurfaceStrings.cs").read_text(encoding="utf-8")
         self.assertIn('PhoneStrings.Get("ShellStories", "Stories")', shell)
-        self.assertIn('Title = "Stories"', page)
-        self.assertIn('NativeTheme.Eyebrow("Stories")', page)
+        self.assertIn('Title = _copy["Stories.Title"]', page)
+        self.assertIn('NativeTheme.Eyebrow(_copy["Stories.Title"])', page)
+        self.assertIn('("Stories.Title", "Stories")', copy)
         self.assertNotIn('Title = "Archive"', page)
         self.assertNotIn('NativeTheme.Eyebrow("Shadow Archive")', page)
         self.assertIn('AutomationId = "phone-archive"', page)
@@ -59,8 +61,8 @@ class ShadowArchiveSourceContractTests(unittest.TestCase):
     def test_cards_show_counts_without_a_vote_action(self) -> None:
         page = (PROJECT / "Native" / "ShadowArchivePage.cs").read_text(encoding="utf-8")
         card = page[page.index("private Border BuildStoryCard"):page.index("private void RenderFailure")]
-        self.assertIn('Signals: {story.SignalCount:N0}', card)
-        self.assertIn('NativeTheme.PrimaryButton("Read story")', card)
+        self.assertIn('_copy.Format("Stories.Signals", story.SignalCount.ToString("N0", _copy.DisplayCulture))', card)
+        self.assertIn('NativeTheme.PrimaryButton(_copy["Stories.Read"])', card)
         self.assertNotIn("archive-signal-vote", card)
         self.assertNotIn("CreateSignalCommand", card)
 
@@ -86,6 +88,7 @@ class ShadowArchiveSourceContractTests(unittest.TestCase):
     def test_reader_keeps_downloads_public_and_signal_after_final_chapter(self) -> None:
         page = (PROJECT / "Native" / "ShadowArchivePage.cs").read_text(encoding="utf-8")
         policy = (PROJECT / "Native" / "ShadowArchivePhonePolicy.cs").read_text(encoding="utf-8")
+        copy = (PROJECT / "Native" / "AndroidSurfaceStrings.cs").read_text(encoding="utf-8")
         self.assertIn("bool isAtFinalChapter = _chapterIndex == reader.Chapters.Count - 1", page)
         self.assertIn("if (!isAtFinalChapter)", page)
         self.assertIn("archive-signal-vote", page)
@@ -94,7 +97,8 @@ class ShadowArchiveSourceContractTests(unittest.TestCase):
         self.assertIn("viewerIsOwner", policy)
         self.assertIn("ShadowArchivePhoneSignalKind.OwnerBlocked", policy)
         self.assertIn("_system.OpenUriAsync(download.DownloadUri)", page)
-        self.assertIn("No account is required to read or download.", page)
+        self.assertIn('_copy["Stories.NoAccount"]', page)
+        self.assertIn('("Stories.NoAccount", "No account is required to read or download.")', copy)
 
     def test_truthful_states_are_explicit_and_unrelated_products_are_absent(self) -> None:
         sources = "\n".join(
@@ -105,9 +109,8 @@ class ShadowArchiveSourceContractTests(unittest.TestCase):
                 "ShadowArchivePage.cs",
             )
         )
+        copy = (PROJECT / "Native" / "AndroidSurfaceStrings.cs").read_text(encoding="utf-8")
         for state in (
-            "Loading",
-            "No public stories yet",
             "Offline",
             "Unavailable",
             "AuthenticationRequired",
@@ -116,6 +119,16 @@ class ShadowArchiveSourceContractTests(unittest.TestCase):
             "RateLimited",
         ):
             self.assertIn(state, sources)
+        for key in (
+            "Stories.LoadingCatalog",
+            "Stories.EmptyTitle",
+            "Stories.State.OfflineTitle",
+            "Stories.State.UnavailableTitle",
+            "Stories.State.ModerationTitle",
+            "Stories.State.BusyTitle",
+        ):
+            self.assertIn(key, copy)
+            self.assertIn(key, sources)
         for forbidden in ("Rook", "Tough Tongue", "LTD", "character mechanics"):
             self.assertNotIn(forbidden, sources)
 
