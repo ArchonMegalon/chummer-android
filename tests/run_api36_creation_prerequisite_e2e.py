@@ -1777,6 +1777,7 @@ PREREQUISITE_AUTHORITY_SELECTORS = (
 class PrerequisiteAuthorityScanProof(NamedTuple):
     values: dict[str, str]
     swipes: int
+    category_viewports: dict[str, int]
 
 
 def scan_prerequisite_authority(
@@ -1801,7 +1802,11 @@ def scan_prerequisite_authority(
     observed: dict[str, set[str]] = {
         selector: set() for selector in PREREQUISITE_AUTHORITY_SELECTORS
     }
-    for nodes in scan.screens:
+    category_viewports: dict[str, set[int]] = {
+        category: set() for category in CATEGORIES
+    }
+    category_semantics: dict[str, tuple[str, ...]] = {}
+    for viewport_index, nodes in enumerate(scan.screens):
         for selector in PREREQUISITE_AUTHORITY_SELECTORS:
             matches = [
                 node
@@ -1823,6 +1828,51 @@ def scan_prerequisite_authority(
                 ).strip()
                 if value:
                     observed[selector].add(value)
+        for category in CATEGORIES:
+            selector = f"creation-prerequisite-category-{category}"
+            matches = [
+                node
+                for node in nodes
+                if _exact_resource_id(node) == selector
+            ]
+            if len(matches) > 1:
+                device.capture(f"creation-prerequisite-{category}-inventory-cardinality-invalid")
+                raise RuntimeError(
+                    f"Creation prerequisite category inventory {selector!r} has "
+                    f"cardinality {len(matches)} in one viewport"
+                )
+            if len(matches) != 1:
+                continue
+            node = matches[0]
+            signature = tuple(
+                node.attributes.get(key, "")
+                for key in (
+                    "resource-id",
+                    "class",
+                    "content-desc",
+                    "text",
+                    "enabled",
+                    "clickable",
+                    "focusable",
+                )
+            )
+            prior = category_semantics.setdefault(category, signature)
+            if signature != prior:
+                device.capture(f"creation-prerequisite-{category}-inventory-drift")
+                raise RuntimeError(
+                    f"Creation prerequisite category {category!r} changed semantics "
+                    "during the digest-bound authority scan"
+                )
+            if (
+                node.attributes.get("enabled") != "true"
+                or node.attributes.get("clickable") != "true"
+            ):
+                device.capture(f"creation-prerequisite-{category}-inventory-disabled")
+                raise RuntimeError(
+                    f"Creation prerequisite category {category!r} was not enabled and clickable"
+                )
+            if device.node_has_tappable_bounds(node):
+                category_viewports[category].add(min(viewport_index, scan.swipes))
     invalid = {
         selector: sorted(values)
         for selector, values in observed.items()
@@ -1861,7 +1911,120 @@ def scan_prerequisite_authority(
         raise RuntimeError(
             "Creation prerequisite source authority did not expose three distinct digests"
         )
-    return PrerequisiteAuthorityScanProof(values=values, swipes=scan.swipes)
+    invalid_categories = {
+        category: sorted(viewports)
+        for category, viewports in category_viewports.items()
+        if not viewports
+    }
+    if invalid_categories:
+        device.capture("creation-prerequisite-category-inventory-incomplete")
+        raise RuntimeError(
+            "Digest-bound prerequisite authority scan omitted an exact tappable "
+            f"priority category: {invalid_categories!r}"
+        )
+    measured_categories = {
+        category: max(category_viewports[category])
+        for category in CATEGORIES
+    }
+    ordered_viewports = [measured_categories[category] for category in CATEGORIES]
+    if ordered_viewports != sorted(ordered_viewports):
+        device.capture("creation-prerequisite-category-inventory-order-invalid")
+        raise RuntimeError(
+            "Digest-bound prerequisite category inventory changed canonical row order: "
+            f"{measured_categories!r}"
+        )
+    return PrerequisiteAuthorityScanProof(
+        values=values,
+        swipes=scan.swipes,
+        category_viewports=measured_categories,
+    )
+
+
+def acquire_measured_priority_category_row(
+    device: shared.Device,
+    category: str,
+    navigation: dict[str, object],
+) -> shared.UiNode:
+    """Reacquire one exact category from the digest-bound ordered inventory.
+
+    The first category restores only the already measured viewport delta from
+    the authority scan's stable end.  Later categories are below the freshly
+    verified prior row, so they use bounded forward-only snapshots.  A rank
+    selection can change row height; no pre-navigation node or blind absolute
+    viewport is reused after that state transition.
+    """
+    viewports = navigation.get("viewportByCategory")
+    current_viewport = navigation.get("currentViewport")
+    last_category = navigation.get("lastCategory")
+    if (
+        not isinstance(viewports, dict)
+        or set(viewports) != set(CATEGORIES)
+        or type(current_viewport) is not int
+        or current_viewport < 0
+        or last_category is not None and last_category not in CATEGORIES
+    ):
+        raise RuntimeError("Priority category navigation has no complete measured authority")
+    target_viewport = viewports.get(category)
+    if type(target_viewport) is not int or target_viewport < 0:
+        raise RuntimeError(f"Priority category {category!r} has no measured viewport")
+
+    if last_category is None:
+        if category != CATEGORIES[0] or target_viewport > current_viewport:
+            raise RuntimeError(
+                "Priority category navigation did not start with the first ordered row"
+            )
+        move_between_measured_viewports(
+            device,
+            current_viewport,
+            target_viewport,
+        )
+        max_forward_swipes = 0
+    else:
+        last_index = CATEGORIES.index(last_category)
+        if last_index + 1 >= len(CATEGORIES) or CATEGORIES[last_index + 1] != category:
+            raise RuntimeError(
+                f"Priority category navigation skipped canonical row order after {last_category!r}"
+            )
+        prior_viewport = viewports[last_category]
+        if type(prior_viewport) is not int or target_viewport < prior_viewport:
+            raise RuntimeError("Priority category inventory order changed after navigation")
+        # Initial 0.68 scans can place adjacent rows in the same viewport.
+        # After a selection mutates row height, use overlapping 0.22 gestures
+        # with a small bound derived from the measured initial separation.
+        max_forward_swipes = max(4, (target_viewport - prior_viewport + 2) * 4)
+
+    selector = f"creation-prerequisite-category-{category}"
+    for forward_swipes in range(max_forward_swipes + 1):
+        nodes = fresh_hierarchy_timed(device, [])
+        matches = [node for node in nodes if _exact_resource_id(node) == selector]
+        if len(matches) > 1:
+            device.capture(f"creation-prerequisite-{category}-category-row-cardinality-invalid")
+            raise RuntimeError(
+                f"Measured {category} priority category row {selector!r} has "
+                f"cardinality {len(matches)}"
+            )
+        if len(matches) == 1:
+            node = matches[0]
+            if (
+                node.attributes.get("enabled") != "true"
+                or node.attributes.get("clickable") != "true"
+            ):
+                device.capture(f"creation-prerequisite-{category}-category-row-disabled")
+                raise RuntimeError(
+                    f"Measured {category} priority category row was not enabled and clickable"
+                )
+            if device.node_has_tappable_bounds(node):
+                navigation["currentViewport"] = target_viewport
+                return node
+        if forward_swipes >= max_forward_swipes:
+            break
+        device.swipe_up(distance_ratio=0.22)
+        time.sleep(0.2)
+    device.capture(f"creation-prerequisite-{category}-category-row-unavailable")
+    raise RuntimeError(
+        f"Timed out acquiring exact ordered {category} priority category row "
+        f"{selector!r} within {max_forward_swipes} forward swipes"
+    )
 
 
 def tap_prescribed_exact_enabled_priority_rank(
@@ -1977,29 +2140,26 @@ def select_priority_rank(
     device: shared.Device,
     category: str,
     *,
+    category_navigation: dict[str, object],
     expected_rank: str | None = None,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
 ) -> str:
     """Select one exact projected rank and prove that the parent draft refreshed.
 
-    Source-authority collection intentionally finishes at the bottom of the long
-    prerequisite page.  The generic tap helper only scrolls forwards, so every
-    category transition must start from a deterministic origin.  A bare wait for
-    the parent page is insufficient because navigation can briefly expose the
-    parent's accessibility marker before its refreshed category row is ready.
+    The first row is restored from the digest-bound authority inventory; every
+    later row is reacquired forward from the freshly verified prior row.  A bare
+    wait for the parent page is insufficient because navigation can briefly
+    expose the parent's accessibility marker before its refreshed category row
+    is ready.
     """
     if category not in CATEGORIES:
         raise RuntimeError(f"Unsupported prerequisite category {category!r}")
 
     category_selector = f"creation-prerequisite-category-{category}"
-    category_row, _ = rewind_to_exact_resource_id(
+    category_row = acquire_measured_priority_category_row(
         device,
-        category_selector,
-        max_swipes=22,
-        distance_ratio=0.68,
-        evidence_prefix=f"creation-prerequisite-{category}-category-row",
-        surface_name=f"{category} priority category row",
-        require_tappable=True,
+        category,
+        category_navigation,
     )
     device.shell("input", "tap", *(str(value) for value in category_row.center))
     device.wait_for_single_exact_resource_id(
@@ -2099,6 +2259,7 @@ def select_priority_rank(
             f"Selected {category} rank {expected_rank!r} was not projected by the "
             f"refreshed phone draft row: {detail!r}"
         )
+    category_navigation["lastCategory"] = category
     return selected_resource_id
 
 
@@ -3613,10 +3774,16 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     selected: dict[str, str] = {}
     if tuple(PRIORITY_PROOF_RANKS) != CATEGORIES:
         raise RuntimeError("Priority proof rank allocation does not cover the ordered categories")
+    priority_category_navigation: dict[str, object] = {
+        "viewportByCategory": prerequisite_scan.category_viewports,
+        "currentViewport": prerequisite_scan.swipes,
+        "lastCategory": None,
+    }
     for category, expected_rank in PRIORITY_PROOF_RANKS.items():
         selected[category] = select_priority_rank(
             device,
             category,
+            category_navigation=priority_category_navigation,
             expected_rank=expected_rank,
             scan_observer=progress.record_scan,
         )

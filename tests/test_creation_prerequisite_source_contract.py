@@ -1423,13 +1423,24 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             device.viewport = "top"
             return "creation-prerequisite-rank-heritage-a"
 
+        category_navigation = {
+            "viewportByCategory": {
+                category: index for index, category in enumerate(driver.CATEGORIES)
+            },
+            "currentViewport": 1,
+            "lastCategory": None,
+        }
         with mock.patch.object(
                  driver,
                  "tap_prescribed_exact_enabled_priority_rank",
                  side_effect=select_rank,
              ), \
              mock.patch.object(driver.time, "sleep"):
-            selected = driver.select_priority_rank(device, "heritage")
+            selected = driver.select_priority_rank(
+                device,
+                "heritage",
+                category_navigation=category_navigation,
+            )
 
         self.assertEqual("creation-prerequisite-rank-heritage-a", selected)
         self.assertEqual(0, sum(call[0] == "wait_bidirectional" for call in calls))
@@ -1450,6 +1461,70 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             calls,
         )
         self.assertEqual(1, sum(call[0] == "select" for call in calls))
+        self.assertEqual("heritage", category_navigation["lastCategory"])
+
+    def test_measured_priority_category_navigation_moves_forward_after_mutation(self) -> None:
+        heritage = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-category-heritage",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[10,100][900,300]",
+            }
+        )
+        talent = driver.shared.UiNode(
+            {
+                "resource-id": "creation-prerequisite-category-talent",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[10,400][900,600]",
+            }
+        )
+
+        class ForwardDevice:
+            viewport = "heritage"
+            up = 0
+            down = 0
+
+            def hierarchy(self):
+                return [heritage] if self.viewport == "heritage" else [talent]
+
+            def swipe_up(self, **_options: object) -> None:
+                self.up += 1
+                self.viewport = "talent"
+
+            def swipe_down(self, **_options: object) -> None:
+                self.down += 1
+
+            @staticmethod
+            def node_has_tappable_bounds(node) -> bool:
+                return bool(node.attributes.get("bounds"))
+
+            def capture(self, name: str) -> None:
+                raise AssertionError(f"unexpected capture: {name}")
+
+        device = ForwardDevice()
+        navigation = {
+            "viewportByCategory": {
+                "heritage": 2,
+                "talent": 3,
+                "attributes": 4,
+                "skills": 5,
+                "resources": 6,
+            },
+            "currentViewport": 2,
+            "lastCategory": "heritage",
+        }
+        with mock.patch.object(driver.time, "sleep"):
+            row = driver.acquire_measured_priority_category_row(
+                device,
+                "talent",
+                navigation,
+            )
+
+        self.assertIs(talent, row)
+        self.assertEqual(1, device.up)
+        self.assertEqual(0, device.down)
 
     def test_exact_rank_scan_cardinality_checks_then_taps_one_exact_enabled_option(self) -> None:
         enabled = driver.shared.UiNode(
@@ -1740,19 +1815,26 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             ("creation-prerequisite-rank-heritage-z", "invalid SR5 rank"),
             ("creation-prerequisite-rank-heritage-a", "was not projected"),
         ):
+            category_navigation = {
+                "viewportByCategory": {
+                    category: index
+                    for index, category in enumerate(driver.CATEGORIES)
+                },
+                "currentViewport": 0,
+                "lastCategory": None,
+            }
             with self.subTest(selected_id=selected_id), \
-                 mock.patch.object(
-                     driver,
-                     "rewind_to_exact_resource_id",
-                     return_value=(initial_row, 0),
-                 ), \
                  mock.patch.object(
                      driver,
                      "tap_prescribed_exact_enabled_priority_rank",
                      return_value=selected_id,
                  ), \
                  self.assertRaisesRegex(RuntimeError, expected_error):
-                driver.select_priority_rank(device, "heritage")
+                driver.select_priority_rank(
+                    device,
+                    "heritage",
+                    category_navigation=category_navigation,
+                )
 
     def test_direct_priority_bootstrap_skips_legacy_continuation_and_public_save_detour(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
@@ -1828,6 +1910,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn("distance_ratio=0.68", prerequisite_source)
         self.assertNotIn("reset_scroll_to_top", prerequisite_source)
 
+        selection_source = inspect.getsource(driver.select_priority_rank)
+        self.assertIn("acquire_measured_priority_category_row", selection_source)
+        self.assertNotIn("rewind_to_exact_resource_id", selection_source)
+
         rank_source = inspect.getsource(driver.tap_prescribed_exact_enabled_priority_rank)
         self.assertIn("reverse_swipes = max(0, scan.swipes - selected_viewport)", rank_source)
         self.assertNotIn("reset_scroll_to_top", rank_source)
@@ -1892,7 +1978,20 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver.shared.UiNode({"resource-id": selector, "content-desc": value})
             for selector, value in values.items()
         ]
+        nodes.extend(
+            driver.shared.UiNode(
+                {
+                    "resource-id": f"creation-prerequisite-category-{category}",
+                    "content-desc": category,
+                    "enabled": "true",
+                    "clickable": "true",
+                    "bounds": "[10,100][900,300]",
+                }
+            )
+            for category in driver.CATEGORIES
+        )
         device = mock.Mock()
+        device.node_has_tappable_bounds.return_value = True
         with mock.patch.object(
             driver,
             "scan_forward_with_receipt",
@@ -1901,6 +2000,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             proof = driver.scan_prerequisite_authority(device)
         self.assertEqual(values, proof.values)
         self.assertEqual(6, proof.swipes)
+        self.assertEqual(
+            {category: 0 for category in driver.CATEGORIES},
+            proof.category_viewports,
+        )
 
         changed = driver.shared.UiNode(
             {

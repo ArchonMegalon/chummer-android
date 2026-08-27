@@ -3235,6 +3235,41 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         return_to_root.assert_not_called()
         device.tap_exact_resource_id_bidirectional.assert_not_called()
 
+    def test_phone_build_section_invalidates_missing_measured_viewport_before_fresh_reacquire(self) -> None:
+        target = DRIVER.UiNode(
+            {
+                "resource-id": "build-section-tab-attributes",
+                "enabled": "true",
+                "clickable": "true",
+                "bounds": "[98,420][984,640]",
+            }
+        )
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.side_effect = [[], [target]]
+        device.node_has_tappable_bounds.return_value = True
+
+        with (
+            patch.object(DRIVER, "return_to_phone_runner_root"),
+            patch.object(
+                DRIVER,
+                "scan_phone_build_section_inventory",
+                return_value=DRIVER.PhoneBuildSectionInventory(
+                    viewport_by_section={"attributes": 2},
+                    bottom_movement_swipes=4,
+                ),
+            ),
+            patch.object(DRIVER, "rewind_surface_to_stable_start") as rewind,
+            patch.object(DRIVER.time, "sleep"),
+        ):
+            DRIVER.tap_phone_build_section(device, "attributes")
+
+        rewind.assert_called_once_with(
+            device,
+            evidence_prefix="attributes-section-route-reacquire",
+        )
+        self.assertEqual(2, device.hierarchy.call_count)
+        device.shell.assert_called_once_with("input", "tap", "541", "530")
+
     def test_phone_build_section_inventory_proves_every_route_and_stable_end(self) -> None:
         def route(section: str, top: int) -> DRIVER.UiNode:
             return DRIVER.UiNode(

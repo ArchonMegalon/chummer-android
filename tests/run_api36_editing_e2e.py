@@ -3460,6 +3460,7 @@ PHONE_BUILD_SECTIONS = frozenset(PHONE_BUILD_SECTION_ORDER)
 PHONE_BUILD_SECTION_SCAN_MAX_SCROLLS = 32
 PHONE_BUILD_SECTION_SCAN_DISTANCE_RATIO = 0.52
 PHONE_BUILD_SECTION_SCAN_STABLE_REPEATS = 2
+PHONE_BUILD_SECTION_REACQUIRE_DISTANCE_RATIO = 0.22
 
 
 @dataclass(frozen=True)
@@ -3611,32 +3612,91 @@ def tap_phone_build_section(device: Device, section: str) -> None:
         time.sleep(0.75)
 
     selector = f"build-section-tab-{section}"
-    nodes = device.hierarchy()
-    matches = [
-        node
-        for node in nodes
-        if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
-        == selector
-    ]
-    if len(matches) != 1:
-        device.capture(f"{section}-section-route-fresh-cardinality-invalid")
-        raise RuntimeError(
-            f"Measured {section.title()} section viewport exposed cardinality "
-            f"{len(matches)} for exact route {selector!r}; expected one"
-        )
-    node = matches[0]
-    if (
-        node.attributes.get("enabled") != "true"
-        or node.attributes.get("clickable") != "true"
-        or not device.node_has_tappable_bounds(node)
-    ):
-        device.capture(f"{section}-section-route-fresh-not-tappable")
-        raise RuntimeError(
-            f"Measured {section.title()} section route was not freshly enabled, "
-            "clickable, and tappable"
-        )
+    node = acquire_fresh_phone_build_section_route(
+        device,
+        section=section,
+        selector=selector,
+        measured_target_viewport=target_viewport,
+    )
     x, y = node.center
     device.shell("input", "tap", str(x), str(y))
+
+
+def acquire_fresh_phone_build_section_route(
+    device: Device,
+    *,
+    section: str,
+    selector: str,
+    measured_target_viewport: int,
+) -> UiNode:
+    """Bind an exact section node after every gesture/state transition.
+
+    The measured reverse delta remains the fast path, but it is never accepted
+    without a fresh hierarchy.  If that viewport no longer contains the exact
+    route (MAUI can preserve a different offset after navigation), invalidate
+    the measurement, prove the current root's stable start, then use bounded
+    overlapping forward snapshots.  Text, stale nodes, and blind extra taps are
+    never fallbacks.
+    """
+    if measured_target_viewport < 0:
+        raise RuntimeError("Measured phone Build section viewport is invalid")
+
+    def exact_from(nodes: list[UiNode]) -> UiNode | None:
+        matches = [
+            node
+            for node in nodes
+            if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+            == selector
+        ]
+        if len(matches) > 1:
+            device.capture(f"{section}-section-route-fresh-cardinality-invalid")
+            raise RuntimeError(
+                f"Measured {section.title()} section viewport exposed cardinality "
+                f"{len(matches)} for exact route {selector!r}; expected at most one"
+            )
+        if len(matches) != 1:
+            return None
+        node = matches[0]
+        if (
+            node.attributes.get("enabled") != "true"
+            or node.attributes.get("clickable") != "true"
+        ):
+            device.capture(f"{section}-section-route-fresh-not-enabled")
+            raise RuntimeError(
+                f"Measured {section.title()} section route was not freshly enabled and clickable"
+            )
+        return node if device.node_has_tappable_bounds(node) else None
+
+    measured = exact_from(device.hierarchy())
+    if measured is not None:
+        return measured
+
+    # A zero-cardinality or clipped measured viewport invalidates that
+    # observation.  Rebind the exact root scroll origin before any new search.
+    rewind_surface_to_stable_start(
+        device,
+        evidence_prefix=f"{section}-section-route-reacquire",
+    )
+    max_forward_swipes = min(
+        PHONE_BUILD_SECTION_SCAN_MAX_SCROLLS * 3,
+        max(8, (measured_target_viewport + 2) * 3),
+    )
+    for forward_swipes in range(max_forward_swipes + 1):
+        node = exact_from(device.hierarchy())
+        if node is not None:
+            return node
+        if forward_swipes >= max_forward_swipes:
+            break
+        device.swipe_up(
+            x_ratio=0.5,
+            distance_ratio=PHONE_BUILD_SECTION_REACQUIRE_DISTANCE_RATIO,
+        )
+        time.sleep(0.2)
+    device.capture(f"{section}-section-route-fresh-cardinality-invalid")
+    raise RuntimeError(
+        f"Measured {section.title()} section viewport exposed cardinality 0 for "
+        f"exact route {selector!r} after bounded fresh reacquisition"
+    )
 
 
 def open_attribute_section(
