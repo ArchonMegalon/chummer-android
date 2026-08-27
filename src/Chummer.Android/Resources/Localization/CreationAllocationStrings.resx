@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Attribute.AGI" xml:space="preserve"><value>Agility</value></data>
+  <data name="Attribute.BOD" xml:space="preserve"><value>Body</value></data>
+  <data name="Attribute.CHA" xml:space="preserve"><value>Charisma</value></data>
+  <data name="Attribute.DEP" xml:space="preserve"><value>Depth</value></data>
+  <data name="Attribute.EDG" xml:space="preserve"><value>Edge</value></data>
+  <data name="Attribute.ESS" xml:space="preserve"><value>Essence</value></data>
+  <data name="Attribute.INT" xml:space="preserve"><value>Intuition</value></data>
+  <data name="Attribute.LOG" xml:space="preserve"><value>Logic</value></data>
+  <data name="Attribute.MAG" xml:space="preserve"><value>Magic</value></data>
+  <data name="Attribute.REA" xml:space="preserve"><value>Reaction</value></data>
+  <data name="Attribute.RES" xml:space="preserve"><value>Resonance</value></data>
+  <data name="Attribute.STR" xml:space="preserve"><value>Strength</value></data>
+  <data name="Attribute.WIL" xml:space="preserve"><value>Willpower</value></data>
+  <data name="AttributeAllocation.AugmentedMaximum" xml:space="preserve"><value>Augmented maximum</value></data>
+  <data name="AttributeAllocation.CreationKarmaLeft" xml:space="preserve"><value>Creation Karma left</value></data>
+  <data name="AttributeAllocation.Current" xml:space="preserve"><value>Current</value></data>
+  <data name="AttributeAllocation.Eyebrow" xml:space="preserve"><value>Attribute allocation</value></data>
+  <data name="AttributeAllocation.KarmaDecrease" xml:space="preserve"><value>Karma level −</value></data>
+  <data name="AttributeAllocation.KarmaIncrease" xml:space="preserve"><value>Karma level +</value></data>
+  <data name="AttributeAllocation.NaturalRange" xml:space="preserve"><value>Natural range</value></data>
+  <data name="AttributeAllocation.NormalPointsLeft" xml:space="preserve"><value>Normal points left</value></data>
+  <data name="AttributeAllocation.PriorityDecrease" xml:space="preserve"><value>Priority point −</value></data>
+  <data name="AttributeAllocation.PriorityIncrease" xml:space="preserve"><value>Priority point +</value></data>
+  <data name="AttributeAllocation.SpecialPointsLeft" xml:space="preserve"><value>Special points left</value></data>
+  <data name="Attributes.AttributeDetail" xml:space="preserve"><value>{0} · range {1}–{2} · Priority {3} · Karma levels {4} ({5} karma)</value></data>
+  <data name="Attributes.Binding" xml:space="preserve"><value>Revision {0} · saved {1} · prerequisite draft {2}</value></data>
+  <data name="Attributes.CreationLimits" xml:space="preserve"><value>Creation limits</value></data>
+  <data name="Attributes.ExactLedgers" xml:space="preserve"><value>Exact ledgers</value></data>
+  <data name="Attributes.Heading" xml:space="preserve"><value>Allocate Attributes</value></data>
+  <data name="Attributes.Intro" xml:space="preserve"><value>Every value, limit, and cost below is projected by Core for this exact Priority draft.</value></data>
+  <data name="Attributes.KarmaMultiplier" xml:space="preserve"><value>Karma multiplier per raised level</value></data>
+  <data name="Attributes.MaxAtMetatypeMaximum" xml:space="preserve"><value>Attributes allowed at metatype maximum</value></data>
+  <data name="Attributes.Normal" xml:space="preserve"><value>Normal Attributes</value></data>
+  <data name="Attributes.NotEnabledByTalent" xml:space="preserve"><value>Not enabled by this Talent</value></data>
+  <data name="Attributes.PageTitle" xml:space="preserve"><value>Attributes</value></data>
+  <data name="Attributes.ResumedDraft" xml:space="preserve"><value>Resumed persisted draft</value></data>
+  <data name="Attributes.ResumedDraftDetail" xml:space="preserve"><value>The typed allocation IDs resumed from Core auxiliary state. Character effects are still pending finalization.</value></data>
+  <data name="Attributes.ReviewBoundary" xml:space="preserve"><value>Review creates no character write. Confirmation stores only a typed auxiliary draft for the final composed creation transaction.</value></data>
+  <data name="Attributes.ReviewExact" xml:space="preserve"><value>Review exact allocation</value></data>
+  <data name="Attributes.Special" xml:space="preserve"><value>Special Attributes</value></data>
+  <data name="Attributes.UnexpectedAppliedEffects" xml:space="preserve"><value>Unexpected applied character effects; editing remains fail-closed.</value></data>
+  <data name="AttributesPreview.Confirm" xml:space="preserve"><value>Confirm Attributes draft</value></data>
+  <data name="AttributesPreview.ConfirmationBoundary" xml:space="preserve"><value>Confirmation is bound to this exact preview digest and stores no character effects before finalization.</value></data>
+  <data name="AttributesPreview.Confirmed" xml:space="preserve"><value>Attributes draft confirmed and authoritative state reloaded.</value></data>
+  <data name="AttributesPreview.CreationKarmaRemaining" xml:space="preserve"><value>Creation Karma remaining</value></data>
+  <data name="AttributesPreview.DurablePendingFinalization" xml:space="preserve"><value>Typed Attributes are durable; character effects remain pending the final composed creation transaction.</value></data>
+  <data name="AttributesPreview.FinalDraftLedgers" xml:space="preserve"><value>Final draft ledgers</value></data>
+  <data name="AttributesPreview.NormalPointsRemaining" xml:space="preserve"><value>Normal points remaining</value></data>
+  <data name="AttributesPreview.PageTitle" xml:space="preserve"><value>Review Attributes</value></data>
+  <data name="AttributesPreview.SpecialPointsRemaining" xml:space="preserve"><value>Special points remaining</value></data>
+  <data name="AttributesPreview.TypedAllocations" xml:space="preserve"><value>Typed allocations</value></data>
+  <data name="Common.ActionBlocker" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Common.After" xml:space="preserve"><value>After</value></data>
+  <data name="Common.Anchors" xml:space="preserve"><value>Anchors {0}</value></data>
+  <data name="Common.AtomicDraftReceipt" xml:space="preserve"><value>Atomic draft receipt</value></data>
+  <data name="Common.AuthorityBlockers" xml:space="preserve"><value>Authority blockers</value></data>
+  <data name="Common.BackToBuild" xml:space="preserve"><value>Back to Build</value></data>
+  <data name="Common.Before" xml:space="preserve"><value>Before</value></data>
+  <data name="Common.Blockers" xml:space="preserve"><value>Blockers</value></data>
+  <data name="Common.Budget" xml:space="preserve"><value>Budget</value></data>
+  <data name="Common.BudgetId" xml:space="preserve"><value>Budget ID</value></data>
+  <data name="Common.BudgetNotExact" xml:space="preserve"><value>Budget is not exact</value></data>
+  <data name="Common.BudgetSemanticDescription" xml:space="preserve"><value>{0}. Total {1}. Used {2}. Remaining {3}.</value></data>
+  <data name="Common.Category" xml:space="preserve"><value>Category</value></data>
+  <data name="Common.CharacterCreation" xml:space="preserve"><value>Character creation</value></data>
+  <data name="Common.CharacterDocumentChanged" xml:space="preserve"><value>Character document changed</value></data>
+  <data name="Common.CharacterEffectStateUnsafe" xml:space="preserve"><value>Character-effect state is not safe to continue.</value></data>
+  <data name="Common.ContentRevision" xml:space="preserve"><value>Content revision</value></data>
+  <data name="Common.CoreBlockers" xml:space="preserve"><value>Core blockers</value></data>
+  <data name="Common.CurrentAuthoritativeBudget" xml:space="preserve"><value>Current authoritative budget</value></data>
+  <data name="Common.Decrease" xml:space="preserve"><value>−</value></data>
+  <data name="Common.Disabled" xml:space="preserve"><value>disabled</value></data>
+  <data name="Common.DraftRevision" xml:space="preserve"><value>Draft revision</value></data>
+  <data name="Common.Enabled" xml:space="preserve"><value>enabled</value></data>
+  <data name="Common.Exact" xml:space="preserve"><value>Exact</value></data>
+  <data name="Common.ExactCoreBudget" xml:space="preserve"><value>Exact Core budget</value></data>
+  <data name="Common.ExplicitReview" xml:space="preserve"><value>Explicit review</value></data>
+  <data name="Common.Id" xml:space="preserve"><value>ID {0}</value></data>
+  <data name="Common.Increase" xml:space="preserve"><value>+</value></data>
+  <data name="Common.KarmaCost" xml:space="preserve"><value>Karma cost</value></data>
+  <data name="Common.KarmaLevels" xml:space="preserve"><value>Karma levels</value></data>
+  <data name="Common.NoSourceAnchors" xml:space="preserve"><value>No source anchors were projected.</value></data>
+  <data name="Common.None" xml:space="preserve"><value>none</value></data>
+  <data name="Common.NotExact" xml:space="preserve"><value>Not exact</value></data>
+  <data name="Common.PreviewBinding" xml:space="preserve"><value>Revision {0} · saved {1} · preview {2}</value></data>
+  <data name="Common.PreviousRevision" xml:space="preserve"><value>Previous revision</value></data>
+  <data name="Common.PriorityPoints" xml:space="preserve"><value>Priority points</value></data>
+  <data name="Common.ReasonArguments" xml:space="preserve"><value>{0} ({1})</value></data>
+  <data name="Common.Remaining" xml:space="preserve"><value>Remaining</value></data>
+  <data name="Common.SavedRevision" xml:space="preserve"><value>Saved revision</value></data>
+  <data name="Common.SnapshotBinding" xml:space="preserve"><value>Revision {0} · saved {1} · snapshot {2}</value></data>
+  <data name="Common.Source" xml:space="preserve"><value>Source</value></data>
+  <data name="Common.SourceAnchor" xml:space="preserve"><value>Source anchor · {0}</value></data>
+  <data name="Common.SourceAuthority" xml:space="preserve"><value>Source authority</value></data>
+  <data name="Common.SourcePage" xml:space="preserve"><value>{0} p. {1}</value></data>
+  <data name="Common.Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Common.TypedId" xml:space="preserve"><value>Typed ID</value></data>
+  <data name="Common.Unavailable" xml:space="preserve"><value>unavailable</value></data>
+  <data name="Common.Used" xml:space="preserve"><value>Used</value></data>
+  <data name="Common.Value" xml:space="preserve"><value>Value</value></data>
+  <data name="Metatype.AuthoritativeOptions" xml:space="preserve"><value>Authoritative options</value></data>
+  <data name="Metatype.AuthorityUnavailable" xml:space="preserve"><value>Metatype authority unavailable</value></data>
+  <data name="Metatype.Cost" xml:space="preserve"><value>{0}: {1} {2}</value></data>
+  <data name="Metatype.CurrentSelection" xml:space="preserve"><value>Current selection</value></data>
+  <data name="Metatype.DuplicateOptionId" xml:space="preserve"><value>Duplicate option ID</value></data>
+  <data name="Metatype.Foundation" xml:space="preserve"><value>Foundation</value></data>
+  <data name="Metatype.Heading" xml:space="preserve"><value>Choose a metatype</value></data>
+  <data name="Metatype.NoLegalOptions" xml:space="preserve"><value>No legal options</value></data>
+  <data name="Metatype.NoProjectedCost" xml:space="preserve"><value>No projected cost</value></data>
+  <data name="Metatype.NoProjectedOptions" xml:space="preserve"><value>No metatype options were projected by the authority.</value></data>
+  <data name="Metatype.PageTitle" xml:space="preserve"><value>Metatype</value></data>
+  <data name="Metatype.SelectionStale" xml:space="preserve"><value>Metatype selection is stale</value></data>
+  <data name="Metatype.SelectionStaleDetail" xml:space="preserve"><value>The Foundation workspace, revision, or digest changed. Return and reload before selecting.</value></data>
+  <data name="MetatypePreview.Confirm" xml:space="preserve"><value>Use this metatype</value></data>
+  <data name="MetatypePreview.ConfirmationFailed" xml:space="preserve"><value>The exact metatype selection could not be confirmed.</value></data>
+  <data name="MetatypePreview.ConfirmationScope" xml:space="preserve"><value>This confirms only the typed metatype selection for the phone wizard. No character data is written here; the Foundation preview remains the rules authority.</value></data>
+  <data name="MetatypePreview.ConsequenceId" xml:space="preserve"><value>Consequence ID</value></data>
+  <data name="MetatypePreview.CostBudget" xml:space="preserve"><value>Cost · {0}</value></data>
+  <data name="MetatypePreview.CurrentBudgetNotExact" xml:space="preserve"><value>The current budget is not exact.</value></data>
+  <data name="MetatypePreview.Domain" xml:space="preserve"><value>Domain</value></data>
+  <data name="MetatypePreview.ExactOption" xml:space="preserve"><value>Exact option</value></data>
+  <data name="MetatypePreview.Eyebrow" xml:space="preserve"><value>Explicit selection review</value></data>
+  <data name="MetatypePreview.Heading" xml:space="preserve"><value>Review metatype</value></data>
+  <data name="MetatypePreview.OptionId" xml:space="preserve"><value>Option ID</value></data>
+  <data name="MetatypePreview.OptionMissing" xml:space="preserve"><value>The typed metatype option is missing or no longer uniquely identified.</value></data>
+  <data name="MetatypePreview.PageTitle" xml:space="preserve"><value>Review Metatype</value></data>
+  <data name="MetatypePreview.ProjectedConsequences" xml:space="preserve"><value>Projected consequences</value></data>
+  <data name="MetatypePreview.ProjectedCost" xml:space="preserve"><value>Projected cost</value></data>
+  <data name="MetatypePreview.Stale" xml:space="preserve"><value>The Foundation workspace, revision, or digest changed. Return and reload before confirming.</value></data>
+  <data name="MetatypePreview.Status" xml:space="preserve"><value>Status</value></data>
+  <data name="MetatypePreview.Target" xml:space="preserve"><value>Target</value></data>
+  <data name="Skills.ActiveSkills" xml:space="preserve"><value>Active skills</value></data>
+  <data name="Skills.Binding" xml:space="preserve"><value>Revision {0} · prerequisite {1} · attributes {2}</value></data>
+  <data name="Skills.BudgetLeft" xml:space="preserve"><value>{0} left</value></data>
+  <data name="Skills.BudgetUsed" xml:space="preserve"><value>{0} / {1} points</value></data>
+  <data name="Skills.GroupDetail" xml:space="preserve"><value>Rating {0} · {1} skills</value></data>
+  <data name="Skills.Heading" xml:space="preserve"><value>Choose Skills</value></data>
+  <data name="Skills.Intro" xml:space="preserve"><value>Ratings, groups, specializations, native languages, and all three ledgers come from Core.</value></data>
+  <data name="Skills.KnowledgeLanguages" xml:space="preserve"><value>Knowledge &amp; languages</value></data>
+  <data name="Skills.NativeAction" xml:space="preserve"><value>Native</value></data>
+  <data name="Skills.NativeValue" xml:space="preserve"><value>native</value></data>
+  <data name="Skills.PageTitle" xml:space="preserve"><value>Skills</value></data>
+  <data name="Skills.RemoveNative" xml:space="preserve"><value>Remove native</value></data>
+  <data name="Skills.ReviewDraft" xml:space="preserve"><value>Review Skills draft</value></data>
+  <data name="Skills.SkillDetail" xml:space="preserve"><value>{0} · {1} · rating {2}</value></data>
+  <data name="Skills.SkillGroups" xml:space="preserve"><value>Skill groups</value></data>
+  <data name="SkillsPreview.ActivePointsRemaining" xml:space="preserve"><value>Active points remaining</value></data>
+  <data name="SkillsPreview.AtomicReceipt" xml:space="preserve"><value>Atomic Skills draft receipt</value></data>
+  <data name="SkillsPreview.Confirm" xml:space="preserve"><value>Confirm Skills draft</value></data>
+  <data name="SkillsPreview.ConfirmationBoundary" xml:space="preserve"><value>Confirmation is bound to this exact Core preview and uses a deterministic retry key after restart.</value></data>
+  <data name="SkillsPreview.Confirmed" xml:space="preserve"><value>Skills draft confirmed and authoritative state reloaded.</value></data>
+  <data name="SkillsPreview.ConfirmedRefreshRequired" xml:space="preserve"><value>Skills draft is durably confirmed. Reopen the character to refresh this phone view.</value></data>
+  <data name="SkillsPreview.DurablePendingFinalization" xml:space="preserve"><value>Typed Skills are durable; character effects remain pending finalization.</value></data>
+  <data name="SkillsPreview.FinalCoreLedgers" xml:space="preserve"><value>Final Core ledgers</value></data>
+  <data name="SkillsPreview.GroupPointsRemaining" xml:space="preserve"><value>Group points remaining</value></data>
+  <data name="SkillsPreview.GroupRating" xml:space="preserve"><value>Group rating</value></data>
+  <data name="SkillsPreview.Heading" xml:space="preserve"><value>Skills allocation</value></data>
+  <data name="SkillsPreview.Kind" xml:space="preserve"><value>Kind</value></data>
+  <data name="SkillsPreview.KnowledgePointsRemaining" xml:space="preserve"><value>Knowledge points remaining</value></data>
+  <data name="SkillsPreview.PageTitle" xml:space="preserve"><value>Review Skills</value></data>
+  <data name="SkillsPreview.PointCost" xml:space="preserve"><value>Point cost</value></data>
+  <data name="SkillsPreview.Rating" xml:space="preserve"><value>Rating</value></data>
+  <data name="SkillsPreview.Specialization" xml:space="preserve"><value>Specialization</value></data>
+  <data name="SkillsPreview.TypedSelections" xml:space="preserve"><value>Typed selections</value></data>
+</root>

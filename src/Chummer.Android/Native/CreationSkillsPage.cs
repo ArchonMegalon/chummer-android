@@ -16,7 +16,7 @@ public sealed class CreationSkillsPage : NativePageBase
 
     public CreationSkillsPage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
-        Title = "Skills";
+        Title = CreationAllocationStrings.Get("Skills.PageTitle", "Skills");
         AutomationId = "creation-skills-page";
         Content = new ScrollView { Content = _body };
     }
@@ -24,10 +24,16 @@ public sealed class CreationSkillsPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Character creation"));
-        _body.Add(NativeTheme.Title("Choose Skills"));
+        _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "Common.CharacterCreation",
+            "Character creation")));
+        _body.Add(NativeTheme.Title(CreationAllocationStrings.Get(
+            "Skills.Heading",
+            "Choose Skills")));
         _body.Add(NativeTheme.Body(
-            "Ratings, groups, specializations, native languages, and all three ledgers come from Core.",
+            CreationAllocationStrings.Get(
+                "Skills.Intro",
+                "Ratings, groups, specializations, native languages, and all three ledgers come from Core."),
             NativeTheme.Muted));
         CharacterCreationFoundationResult<CharacterCreationSkillsState> load = Coordinator.LoadCreationSkills();
         if (load.Value is not { } state)
@@ -46,9 +52,15 @@ public sealed class CreationSkillsPage : NativePageBase
             AddBlockers(state.Blockers);
             return;
         }
-        AddCatalog(state, state.Authority.ActiveSkills, "Active skills");
+        AddCatalog(
+            state,
+            state.Authority.ActiveSkills,
+            CreationAllocationStrings.Get("Skills.ActiveSkills", "Active skills"));
         AddGroups(state);
-        AddCatalog(state, state.Authority.KnowledgeSkills, "Knowledge & languages");
+        AddCatalog(
+            state,
+            state.Authority.KnowledgeSkills,
+            CreationAllocationStrings.Get("Skills.KnowledgeLanguages", "Knowledge & languages"));
         if (_blockers.Count > 0) AddBlockers(_blockers);
         AddReview(state);
     }
@@ -56,8 +68,13 @@ public sealed class CreationSkillsPage : NativePageBase
     private void AddBinding(CharacterCreationSkillsState state)
     {
         Label binding = NativeTheme.Body(
-            $"Revision {state.Binding.ContentRevision} · prerequisite {state.Binding.PrerequisiteDraftRevision} · "
-            + $"attributes {state.Binding.AttributesDraftRevision}", NativeTheme.Muted);
+            CreationAllocationStrings.Format(
+                "Skills.Binding",
+                "Revision {0} · prerequisite {1} · attributes {2}",
+                state.Binding.ContentRevision,
+                state.Binding.PrerequisiteDraftRevision,
+                state.Binding.AttributesDraftRevision),
+            NativeTheme.Muted);
         binding.AutomationId = "creation-skills-binding";
         _body.Add(binding);
     }
@@ -66,9 +83,16 @@ public sealed class CreationSkillsPage : NativePageBase
     {
         VerticalStackLayout card = new() { Spacing = 5 };
         card.Add(NativeTheme.Eyebrow(budget.Label));
-        card.Add(NativeTheme.Title($"{budget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)} left", 20));
+        card.Add(NativeTheme.Title(CreationAllocationStrings.Format(
+            "Skills.BudgetLeft",
+            "{0} left",
+            budget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)), 20));
         card.Add(NativeTheme.Body(
-            $"{budget.Used.ToString("0.##", CultureInfo.InvariantCulture)} / {budget.Total.ToString("0.##", CultureInfo.InvariantCulture)} points",
+            CreationAllocationStrings.Format(
+                "Skills.BudgetUsed",
+                "{0} / {1} points",
+                budget.Used.ToString("0.##", CultureInfo.InvariantCulture),
+                budget.Total.ToString("0.##", CultureInfo.InvariantCulture)),
             NativeTheme.Muted));
         Border border = NativeTheme.Card(card);
         border.AutomationId = $"creation-skills-budget-{token}";
@@ -85,19 +109,31 @@ public sealed class CreationSkillsPage : NativePageBase
                 item.Kind == source.Kind && item.SourceSkillId == source.SourceSkillId);
             VerticalStackLayout card = new() { Spacing = 7 };
             card.Add(NativeTheme.Title(source.Name, 18));
-            card.Add(NativeTheme.Body(
-                $"{source.Category} · {source.DefaultAttribute} · rating {(selected?.IsNativeLanguage == true ? "native" : (selected?.Rating ?? 0).ToString(CultureInfo.InvariantCulture))}",
+            card.Add(NativeTheme.Body(CreationAllocationStrings.Format(
+                    "Skills.SkillDetail",
+                    "{0} · {1} · rating {2}",
+                    source.Category,
+                    source.DefaultAttribute,
+                    selected?.IsNativeLanguage == true
+                        ? CreationAllocationStrings.Get("Skills.NativeValue", "native")
+                        : (selected?.Rating ?? 0).ToString(CultureInfo.InvariantCulture)),
                 NativeTheme.Muted));
             HorizontalStackLayout controls = new() { Spacing = 8 };
-            Button minus = NativeTheme.SecondaryButton("−");
+            Button minus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
+                "Common.Decrease",
+                "−"));
             minus.IsEnabled = selected is { IsNativeLanguage: false, Rating: > 0 };
             minus.Clicked += (_, _) => Preview(state, _draft.WithSkill(source, -1), _draft.Groups);
-            Button plus = NativeTheme.SecondaryButton("+");
+            Button plus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
+                "Common.Increase",
+                "+"));
             plus.Clicked += (_, _) => Preview(state, _draft.WithSkill(source, 1), _draft.Groups);
             controls.Add(minus); controls.Add(plus);
             if (source.CanBeNativeLanguage)
             {
-                Button native = NativeTheme.SecondaryButton(selected?.IsNativeLanguage == true ? "Remove native" : "Native");
+                Button native = NativeTheme.SecondaryButton(selected?.IsNativeLanguage == true
+                    ? CreationAllocationStrings.Get("Skills.RemoveNative", "Remove native")
+                    : CreationAllocationStrings.Get("Skills.NativeAction", "Native"));
                 native.Clicked += (_, _) => Preview(state,
                     selected?.IsNativeLanguage == true
                         ? _draft.Skills.Where(item => item.SourceSkillId != source.SourceSkillId).ToArray()
@@ -125,17 +161,28 @@ public sealed class CreationSkillsPage : NativePageBase
 
     private void AddGroups(CharacterCreationSkillsState state)
     {
-        _body.Add(NativeTheme.Eyebrow("Skill groups"));
+        _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "Skills.SkillGroups",
+            "Skill groups")));
         foreach (CharacterCreationSkillGroupCatalogEntry source in state.Authority.SkillGroups)
         {
             CharacterCreationSkillGroupAllocation? selected = _draft.Groups.SingleOrDefault(item => item.GroupId == source.GroupId);
             VerticalStackLayout card = new() { Spacing = 6 };
             card.Add(NativeTheme.Title(source.Name, 18));
-            card.Add(NativeTheme.Body($"Rating {selected?.Rating ?? 0} · {source.MemberSkillSourceIds.Count} skills", NativeTheme.Muted));
+            card.Add(NativeTheme.Body(CreationAllocationStrings.Format(
+                "Skills.GroupDetail",
+                "Rating {0} · {1} skills",
+                selected?.Rating ?? 0,
+                source.MemberSkillSourceIds.Count), NativeTheme.Muted));
             HorizontalStackLayout controls = new() { Spacing = 8 };
-            Button minus = NativeTheme.SecondaryButton("−"); minus.IsEnabled = selected?.Rating > 0;
+            Button minus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
+                "Common.Decrease",
+                "−"));
+            minus.IsEnabled = selected?.Rating > 0;
             minus.Clicked += (_, _) => Preview(state, _draft.Skills, _draft.WithGroup(source, -1));
-            Button plus = NativeTheme.SecondaryButton("+");
+            Button plus = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
+                "Common.Increase",
+                "+"));
             plus.Clicked += (_, _) => Preview(state, _draft.Skills, _draft.WithGroup(source, 1));
             controls.Add(minus); controls.Add(plus); card.Add(controls);
             _body.Add(NativeTheme.Card(card));
@@ -155,7 +202,9 @@ public sealed class CreationSkillsPage : NativePageBase
 
     private void AddReview(CharacterCreationSkillsState state)
     {
-        Button review = NativeTheme.PrimaryButton("Review Skills draft");
+        Button review = NativeTheme.PrimaryButton(CreationAllocationStrings.Get(
+            "Skills.ReviewDraft",
+            "Review Skills draft"));
         review.AutomationId = "creation-skills-review";
         review.Clicked += async (_, _) => await RunAsync(async () =>
         {
@@ -180,7 +229,9 @@ public sealed class CreationSkillsPage : NativePageBase
     private void AddBlockers(IReadOnlyList<string> blockers)
     {
         VerticalStackLayout card = new() { Spacing = 5 };
-        card.Add(NativeTheme.Eyebrow("Core blockers"));
+        card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "Common.CoreBlockers",
+            "Core blockers")));
         foreach (string blocker in blockers) card.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
         _body.Add(NativeTheme.Card(card));
     }
@@ -219,7 +270,7 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
             _preview,
             _allocations,
             _groups);
-        Title = "Review Skills";
+        Title = CreationAllocationStrings.Get("SkillsPreview.PageTitle", "Review Skills");
         AutomationId = "creation-skills-preview-page";
         Content = new ScrollView { Content = _body };
     }
@@ -227,11 +278,19 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Explicit review"));
-        _body.Add(NativeTheme.Title("Skills allocation"));
+        _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "Common.ExplicitReview",
+            "Explicit review")));
+        _body.Add(NativeTheme.Title(CreationAllocationStrings.Get(
+            "SkillsPreview.Heading",
+            "Skills allocation")));
         Label binding = NativeTheme.Body(
-            $"Revision {_preview.Binding.ContentRevision} · saved {_preview.Binding.SavedRevision} · "
-            + $"preview {CreationPrerequisiteDigestText.CanonicalPrefix(_preview.PreviewDigest)}",
+            CreationAllocationStrings.Format(
+                "Common.PreviewBinding",
+                "Revision {0} · saved {1} · preview {2}",
+                _preview.Binding.ContentRevision,
+                _preview.Binding.SavedRevision,
+                CreationPrerequisiteDigestText.CanonicalPrefix(_preview.PreviewDigest)),
             NativeTheme.Muted);
         binding.AutomationId = "creation-skills-preview-binding";
         _body.Add(binding);
@@ -247,7 +306,9 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
 
     private void AddBudgets()
     {
-        _body.Add(NativeTheme.Eyebrow("Final Core ledgers"));
+        _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "SkillsPreview.FinalCoreLedgers",
+            "Final Core ledgers")));
         foreach (CharacterCreationBudgetState budget in new[]
                  {
                      _preview.ActiveSkillPointBudget,
@@ -257,9 +318,15 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         {
             VerticalStackLayout card = new() { Spacing = 6 };
             card.Add(NativeTheme.Title(budget.Label, 18));
-            card.Add(NativeTheme.Metric("Total", budget.Total.ToString("0.##", CultureInfo.InvariantCulture)));
-            card.Add(NativeTheme.Metric("Used", budget.Used.ToString("0.##", CultureInfo.InvariantCulture)));
-            card.Add(NativeTheme.Metric("Remaining", budget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)));
+            card.Add(NativeTheme.Metric(
+                CreationAllocationStrings.Get("Common.Total", "Total"),
+                budget.Total.ToString("0.##", CultureInfo.InvariantCulture)));
+            card.Add(NativeTheme.Metric(
+                CreationAllocationStrings.Get("Common.Used", "Used"),
+                budget.Used.ToString("0.##", CultureInfo.InvariantCulture)));
+            card.Add(NativeTheme.Metric(
+                CreationAllocationStrings.Get("Common.Remaining", "Remaining"),
+                budget.Remaining.ToString("0.##", CultureInfo.InvariantCulture)));
             Border border = NativeTheme.Card(card);
             border.AutomationId = $"creation-skills-preview-budget-{Token(budget.BudgetId)}";
             _body.Add(border);
@@ -268,26 +335,38 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
 
     private void AddSelections()
     {
-        _body.Add(NativeTheme.Eyebrow("Typed selections"));
+        _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "SkillsPreview.TypedSelections",
+            "Typed selections")));
         foreach (CharacterCreationSkillProjection skill in _preview.Skills)
         {
             VerticalStackLayout card = new() { Spacing = 5 };
             card.Add(NativeTheme.Title(skill.Name, 18));
-            card.Add(NativeTheme.Metric("Kind", skill.Kind));
-            card.Add(NativeTheme.Metric("Rating", skill.IsNativeLanguage
-                ? "native"
+            card.Add(NativeTheme.Metric(
+                CreationAllocationStrings.Get("SkillsPreview.Kind", "Kind"),
+                skill.Kind));
+            card.Add(NativeTheme.Metric(CreationAllocationStrings.Get("SkillsPreview.Rating", "Rating"), skill.IsNativeLanguage
+                ? CreationAllocationStrings.Get("Skills.NativeValue", "native")
                 : skill.Rating.GetValueOrDefault().ToString(CultureInfo.InvariantCulture)));
-            card.Add(NativeTheme.Metric("Point cost", skill.PointCost.ToString(CultureInfo.InvariantCulture)));
+            card.Add(NativeTheme.Metric(
+                CreationAllocationStrings.Get("SkillsPreview.PointCost", "Point cost"),
+                skill.PointCost.ToString(CultureInfo.InvariantCulture)));
             if (!string.IsNullOrWhiteSpace(skill.SpecializationName))
-                card.Add(NativeTheme.Metric("Specialization", skill.SpecializationName));
+                card.Add(NativeTheme.Metric(
+                    CreationAllocationStrings.Get("SkillsPreview.Specialization", "Specialization"),
+                    skill.SpecializationName));
             _body.Add(NativeTheme.Card(card));
         }
         foreach (CharacterCreationSkillGroupProjection group in _preview.SkillGroups)
         {
             VerticalStackLayout card = new() { Spacing = 5 };
             card.Add(NativeTheme.Title(group.Name, 18));
-            card.Add(NativeTheme.Metric("Group rating", group.Rating.ToString(CultureInfo.InvariantCulture)));
-            card.Add(NativeTheme.Metric("Point cost", group.PointCost.ToString(CultureInfo.InvariantCulture)));
+            card.Add(NativeTheme.Metric(
+                CreationAllocationStrings.Get("SkillsPreview.GroupRating", "Group rating"),
+                group.Rating.ToString(CultureInfo.InvariantCulture)));
+            card.Add(NativeTheme.Metric(
+                CreationAllocationStrings.Get("SkillsPreview.PointCost", "Point cost"),
+                group.PointCost.ToString(CultureInfo.InvariantCulture)));
             _body.Add(NativeTheme.Card(card));
         }
     }
@@ -299,7 +378,9 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         if (blockers.Length == 0)
             return;
         VerticalStackLayout card = new() { Spacing = 5 };
-        card.Add(NativeTheme.Eyebrow("Core blockers"));
+        card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "Common.CoreBlockers",
+            "Core blockers")));
         foreach (string blocker in blockers)
             card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
         _body.Add(NativeTheme.Card(card));
@@ -318,8 +399,12 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
                 CharacterCreationSkillsBlockers.PostCommitRefreshRequired,
                 StringComparer.Ordinal);
             Label complete = NativeTheme.Body(refreshRequired
-                ? "Skills draft is durably confirmed. Reopen the character to refresh this phone view."
-                : "Skills draft confirmed and authoritative state reloaded.",
+                ? CreationAllocationStrings.Get(
+                    "SkillsPreview.ConfirmedRefreshRequired",
+                    "Skills draft is durably confirmed. Reopen the character to refresh this phone view.")
+                : CreationAllocationStrings.Get(
+                    "SkillsPreview.Confirmed",
+                    "Skills draft confirmed and authoritative state reloaded."),
                 refreshRequired ? NativeTheme.Danger : NativeTheme.Text);
             complete.AutomationId = "creation-skills-confirmed";
             _body.Add(NativeTheme.Card(complete));
@@ -330,7 +415,9 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         bool canConfirm = live.Value is { } state
                           && CreationSkillsPhoneAuthority.CanConfirmPreview(
                               state, Coordinator.State, _preview, _allocations, _groups);
-        Button confirm = NativeTheme.PrimaryButton("Confirm Skills draft");
+        Button confirm = NativeTheme.PrimaryButton(CreationAllocationStrings.Get(
+            "SkillsPreview.Confirm",
+            "Confirm Skills draft"));
         confirm.AutomationId = "creation-skills-confirm";
         confirm.IsEnabled = canConfirm;
         confirm.Clicked += async (_, _) => await RunAsync(async () =>
@@ -343,7 +430,9 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
         });
         _body.Add(confirm);
         Label explicitAction = NativeTheme.Body(
-            "Confirmation is bound to this exact Core preview and uses a deterministic retry key after restart.",
+            CreationAllocationStrings.Get(
+                "SkillsPreview.ConfirmationBoundary",
+                "Confirmation is bound to this exact Core preview and uses a deterministic retry key after restart."),
             NativeTheme.Muted);
         explicitAction.AutomationId = "creation-skills-explicit-confirmation";
         _body.Add(explicitAction);
@@ -361,28 +450,52 @@ public sealed class CreationSkillsPreviewPage : NativePageBase
             return;
         }
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow("Atomic Skills draft receipt"));
-        card.Add(NativeTheme.Metric("Previous revision", receipt.PreviousContentRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Content revision", receipt.ContentRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Saved revision", receipt.SavedRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Draft revision", receipt.DraftRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Active points remaining", receipt.ActivePointsRemaining.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Group points remaining", receipt.SkillGroupPointsRemaining.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Knowledge points remaining", receipt.KnowledgePointsRemaining.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Character document changed", receipt.CharacterDocumentChanged.ToString().ToLowerInvariant()));
+        card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "SkillsPreview.AtomicReceipt",
+            "Atomic Skills draft receipt")));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.PreviousRevision", "Previous revision"),
+            receipt.PreviousContentRevision.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.ContentRevision", "Content revision"),
+            receipt.ContentRevision.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.SavedRevision", "Saved revision"),
+            receipt.SavedRevision.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.DraftRevision", "Draft revision"),
+            receipt.DraftRevision.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("SkillsPreview.ActivePointsRemaining", "Active points remaining"),
+            receipt.ActivePointsRemaining.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("SkillsPreview.GroupPointsRemaining", "Group points remaining"),
+            receipt.SkillGroupPointsRemaining.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("SkillsPreview.KnowledgePointsRemaining", "Knowledge points remaining"),
+            receipt.KnowledgePointsRemaining.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.CharacterDocumentChanged", "Character document changed"),
+            receipt.CharacterDocumentChanged.ToString().ToLowerInvariant()));
         AddReceiptDigest(card, "creation-skills-receipt-digest", receipt.ReceiptDigest);
         AddReceiptDigest(card, "creation-skills-receipt-draft-digest", receipt.DraftDigest);
         AddReceiptDigest(card, "creation-skills-receipt-raw-character-xml-digest", refreshed.Binding.RawCharacterXmlDigest);
         card.Add(NativeTheme.Body(
             refreshed.PendingDraft?.CharacterEffectsApplied == false
-                ? "Typed Skills are durable; character effects remain pending finalization."
-                : "Character-effect state is not safe to continue.",
+                ? CreationAllocationStrings.Get(
+                    "SkillsPreview.DurablePendingFinalization",
+                    "Typed Skills are durable; character effects remain pending finalization.")
+                : CreationAllocationStrings.Get(
+                    "Common.CharacterEffectStateUnsafe",
+                    "Character-effect state is not safe to continue."),
             refreshed.PendingDraft?.CharacterEffectsApplied == false ? NativeTheme.Muted : NativeTheme.Danger));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-skills-confirm-receipt";
         _body.Add(border);
 
-        Button back = NativeTheme.SecondaryButton("Back to Build");
+        Button back = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
+            "Common.BackToBuild",
+            "Back to Build"));
         back.AutomationId = "creation-skills-back-to-build";
         back.Clicked += async (_, _) => await BackToBuildAsync();
         _body.Add(back);

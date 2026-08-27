@@ -18,7 +18,7 @@ public sealed class CreationAttributesPage : NativePageBase
 
     public CreationAttributesPage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
-        Title = "Attributes";
+        Title = CreationAllocationStrings.Get("Attributes.PageTitle", "Attributes");
         AutomationId = "creation-attributes-page";
         Content = new ScrollView { Content = _body };
     }
@@ -26,10 +26,16 @@ public sealed class CreationAttributesPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Character creation"));
-        _body.Add(NativeTheme.Title("Allocate Attributes"));
+        _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "Common.CharacterCreation",
+            "Character creation")));
+        _body.Add(NativeTheme.Title(CreationAllocationStrings.Get(
+            "Attributes.Heading",
+            "Allocate Attributes")));
         _body.Add(NativeTheme.Body(
-            "Every value, limit, and cost below is projected by Core for this exact Priority draft.",
+            CreationAllocationStrings.Get(
+                "Attributes.Intro",
+                "Every value, limit, and cost below is projected by Core for this exact Priority draft."),
             NativeTheme.Muted));
 
         CharacterCreationFoundationResult<CharacterCreationAttributesState> load =
@@ -64,8 +70,14 @@ public sealed class CreationAttributesPage : NativePageBase
             return;
         }
 
-        AddAttributeGroup(state, CharacterCreationAttributeCategories.Normal, "Normal Attributes");
-        AddAttributeGroup(state, CharacterCreationAttributeCategories.Special, "Special Attributes");
+        AddAttributeGroup(
+            state,
+            CharacterCreationAttributeCategories.Normal,
+            CreationAllocationStrings.Get("Attributes.Normal", "Normal Attributes"));
+        AddAttributeGroup(
+            state,
+            CharacterCreationAttributeCategories.Special,
+            CreationAllocationStrings.Get("Attributes.Special", "Special Attributes"));
         if (_previewBlockers.Count > 0)
             AddBlockers(_previewBlockers, "creation-attributes-preview-blockers");
         AddReviewAction(state);
@@ -74,8 +86,12 @@ public sealed class CreationAttributesPage : NativePageBase
     private void AddBinding(CharacterCreationAttributesState state)
     {
         Label binding = NativeTheme.Body(
-            $"Revision {state.Binding.ContentRevision} · saved {state.Binding.SavedRevision} · "
-            + $"prerequisite draft {state.Binding.PrerequisiteDraftRevision}",
+            CreationAllocationStrings.Format(
+                "Attributes.Binding",
+                "Revision {0} · saved {1} · prerequisite draft {2}",
+                state.Binding.ContentRevision,
+                state.Binding.SavedRevision,
+                state.Binding.PrerequisiteDraftRevision),
             NativeTheme.Muted);
         binding.AutomationId = "creation-attributes-binding";
         _body.Add(binding);
@@ -88,7 +104,9 @@ public sealed class CreationAttributesPage : NativePageBase
 
     private void AddBudgets(CharacterCreationAttributesState state)
     {
-        _body.Add(NativeTheme.Eyebrow("Exact ledgers"));
+        _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "Attributes.ExactLedgers",
+            "Exact ledgers")));
         AddBudgetCard(
             _draft.NormalBudget(state),
             "creation-attributes-budget-normal");
@@ -103,12 +121,18 @@ public sealed class CreationAttributesPage : NativePageBase
     private void AddLimits(CharacterCreationAttributesState state)
     {
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow("Creation limits"));
+        card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "Attributes.CreationLimits",
+            "Creation limits")));
         card.Add(NativeTheme.Metric(
-            "Attributes allowed at metatype maximum",
+            CreationAllocationStrings.Get(
+                "Attributes.MaxAtMetatypeMaximum",
+                "Attributes allowed at metatype maximum"),
             state.MaxNumberMaxAttributesCreate.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
-            "Karma multiplier per raised level",
+            CreationAllocationStrings.Get(
+                "Attributes.KarmaMultiplier",
+                "Karma multiplier per raised level"),
             state.KarmaAttribute.ToString(CultureInfo.InvariantCulture)));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-attributes-limits";
@@ -120,17 +144,23 @@ public sealed class CreationAttributesPage : NativePageBase
         if (pending is null)
             return;
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow("Resumed persisted draft"));
+        card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "Attributes.ResumedDraft",
+            "Resumed persisted draft")));
         card.Add(NativeTheme.Metric(
-            "Draft revision",
+            CreationAllocationStrings.Get("Common.DraftRevision", "Draft revision"),
             pending.DraftRevision.ToString(CultureInfo.InvariantCulture)));
         Label digest = NativeTheme.Body(pending.DraftDigest, NativeTheme.Muted);
         digest.AutomationId = "creation-attributes-pending-draft-digest";
         card.Add(digest);
         card.Add(NativeTheme.Body(
             pending.CharacterEffectsApplied
-                ? "Unexpected applied character effects; editing remains fail-closed."
-                : "The typed allocation IDs resumed from Core auxiliary state. Character effects are still pending finalization.",
+                ? CreationAllocationStrings.Get(
+                    "Attributes.UnexpectedAppliedEffects",
+                    "Unexpected applied character effects; editing remains fail-closed.")
+                : CreationAllocationStrings.Get(
+                    "Attributes.ResumedDraftDetail",
+                    "The typed allocation IDs resumed from Core auxiliary state. Character effects are still pending finalization."),
             pending.CharacterEffectsApplied ? NativeTheme.Danger : NativeTheme.Muted));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-attributes-pending-draft";
@@ -150,10 +180,20 @@ public sealed class CreationAttributesPage : NativePageBase
                          StringComparison.Ordinal)))
         {
             string detail = attribute.IsEnabled
-                ? $"{attribute.Current} · range {attribute.Minimum}–{attribute.Maximum} · "
-                  + $"Priority {attribute.PriorityPointsSpent} · Karma levels {attribute.KarmaLevels} "
-                  + $"({attribute.KarmaCost} karma)"
-                : string.Join(" · ", attribute.DisableReasons.DefaultIfEmpty("Not enabled by this Talent"));
+                ? CreationAllocationStrings.Format(
+                    "Attributes.AttributeDetail",
+                    "{0} · range {1}–{2} · Priority {3} · Karma levels {4} ({5} karma)",
+                    attribute.Current,
+                    attribute.Minimum,
+                    attribute.Maximum,
+                    attribute.PriorityPointsSpent,
+                    attribute.KarmaLevels,
+                    attribute.KarmaCost)
+                : string.Join(
+                    " · ",
+                    attribute.DisableReasons.DefaultIfEmpty(CreationAllocationStrings.Get(
+                        "Attributes.NotEnabledByTalent",
+                        "Not enabled by this Talent")));
             _body.Add(NativeTheme.NavigationRow(
                 AttributeLabel(attribute.AttributeId),
                 detail,
@@ -168,7 +208,9 @@ public sealed class CreationAttributesPage : NativePageBase
 
     private void AddReviewAction(CharacterCreationAttributesState state)
     {
-        Button review = NativeTheme.PrimaryButton("Review exact allocation");
+        Button review = NativeTheme.PrimaryButton(CreationAllocationStrings.Get(
+            "Attributes.ReviewExact",
+            "Review exact allocation"));
         review.AutomationId = "creation-attributes-prepare-preview";
         review.IsEnabled = _draft.Matches(state, Coordinator.State);
         review.Clicked += async (_, _) => await RunAsync(async () =>
@@ -200,7 +242,9 @@ public sealed class CreationAttributesPage : NativePageBase
         _body.Add(review);
 
         Label note = NativeTheme.Body(
-            "Review creates no character write. Confirmation stores only a typed auxiliary draft for the final composed creation transaction.",
+            CreationAllocationStrings.Get(
+                "Attributes.ReviewBoundary",
+                "Review creates no character write. Confirmation stores only a typed auxiliary draft for the final composed creation transaction."),
             NativeTheme.Muted);
         note.AutomationId = "creation-attributes-draft-only-notice";
         _body.Add(note);
@@ -210,26 +254,38 @@ public sealed class CreationAttributesPage : NativePageBase
     {
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Title(budget.Label, 18));
-        card.Add(NativeTheme.Metric("Total", FormatBudget(budget.Total, budget.Unit)));
-        card.Add(NativeTheme.Metric("Used", FormatBudget(budget.Used, budget.Unit)));
-        card.Add(NativeTheme.Metric("Remaining", FormatBudget(budget.Remaining, budget.Unit)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.Total", "Total"),
+            FormatBudget(budget.Total, budget.Unit)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.Used", "Used"),
+            FormatBudget(budget.Used, budget.Unit)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.Remaining", "Remaining"),
+            FormatBudget(budget.Remaining, budget.Unit)));
         card.Add(NativeTheme.Body(
-            budget.IsExact ? "Exact Core budget" : "Budget is not exact",
+            budget.IsExact
+                ? CreationAllocationStrings.Get("Common.ExactCoreBudget", "Exact Core budget")
+                : CreationAllocationStrings.Get("Common.BudgetNotExact", "Budget is not exact"),
             budget.IsExact ? NativeTheme.Muted : NativeTheme.Danger));
         Border border = NativeTheme.Card(card);
         border.AutomationId = automationId;
         SemanticProperties.SetDescription(
             border,
-            $"{budget.Label}. Total {FormatBudget(budget.Total, budget.Unit)}. "
-            + $"Used {FormatBudget(budget.Used, budget.Unit)}. "
-            + $"Remaining {FormatBudget(budget.Remaining, budget.Unit)}.");
+            CreationAllocationStrings.Format(
+                "Common.BudgetSemanticDescription",
+                "{0}. Total {1}. Used {2}. Remaining {3}.",
+                budget.Label,
+                FormatBudget(budget.Total, budget.Unit),
+                FormatBudget(budget.Used, budget.Unit),
+                FormatBudget(budget.Remaining, budget.Unit)));
         _body.Add(border);
     }
 
     private void AddBlockers(IReadOnlyList<string> blockers, string automationId)
     {
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow("Blockers"));
+        card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get("Common.Blockers", "Blockers")));
         foreach (string blocker in blockers
                      .Where(blocker => !string.IsNullOrWhiteSpace(blocker))
                      .Distinct(StringComparer.Ordinal))
@@ -248,23 +304,7 @@ public sealed class CreationAttributesPage : NativePageBase
     }
 
     internal static string AttributeLabel(string attributeId)
-        => attributeId switch
-        {
-            "BOD" => "Body",
-            "AGI" => "Agility",
-            "REA" => "Reaction",
-            "STR" => "Strength",
-            "CHA" => "Charisma",
-            "INT" => "Intuition",
-            "LOG" => "Logic",
-            "WIL" => "Willpower",
-            "EDG" => "Edge",
-            "MAG" => "Magic",
-            "RES" => "Resonance",
-            "ESS" => "Essence",
-            "DEP" => "Depth",
-            _ => attributeId
-        };
+        => CreationAllocationStrings.AttributeName(attributeId);
 
     internal static string FormatBudget(decimal value, string unit)
         => $"{value.ToString("0.##", CultureInfo.InvariantCulture)} {unit}".TrimEnd();
@@ -305,7 +345,9 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Attribute allocation"));
+        _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "AttributeAllocation.Eyebrow",
+            "Attribute allocation")));
         _body.Add(NativeTheme.Title(CreationAttributesPage.AttributeLabel(_attributeId)));
 
         CharacterCreationFoundationResult<CharacterCreationAttributesState> load =
@@ -325,33 +367,59 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
 
         AddProjection(attribute);
         AddBudgetSummary(state);
-        AddAdjustment(state, "Priority point −", -1, 0, "priority-decrease");
-        AddAdjustment(state, "Priority point +", 1, 0, "priority-increase");
-        AddAdjustment(state, "Karma level −", 0, -1, "karma-decrease");
-        AddAdjustment(state, "Karma level +", 0, 1, "karma-increase");
+        AddAdjustment(
+            state,
+            CreationAllocationStrings.Get("AttributeAllocation.PriorityDecrease", "Priority point −"),
+            -1,
+            0,
+            "priority-decrease");
+        AddAdjustment(
+            state,
+            CreationAllocationStrings.Get("AttributeAllocation.PriorityIncrease", "Priority point +"),
+            1,
+            0,
+            "priority-increase");
+        AddAdjustment(
+            state,
+            CreationAllocationStrings.Get("AttributeAllocation.KarmaDecrease", "Karma level −"),
+            0,
+            -1,
+            "karma-decrease");
+        AddAdjustment(
+            state,
+            CreationAllocationStrings.Get("AttributeAllocation.KarmaIncrease", "Karma level +"),
+            0,
+            1,
+            "karma-increase");
         AddSources(attribute);
     }
 
     private void AddProjection(CharacterCreationAttributeProjection attribute)
     {
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Metric("Typed ID", attribute.AttributeId));
-        card.Add(NativeTheme.Metric("Category", attribute.Category));
-        card.Add(NativeTheme.Metric("Current", attribute.Current.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
-            "Natural range",
+            CreationAllocationStrings.Get("Common.TypedId", "Typed ID"),
+            attribute.AttributeId));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.Category", "Category"),
+            attribute.Category));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("AttributeAllocation.Current", "Current"),
+            attribute.Current.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("AttributeAllocation.NaturalRange", "Natural range"),
             $"{attribute.Minimum.ToString(CultureInfo.InvariantCulture)}–{attribute.Maximum.ToString(CultureInfo.InvariantCulture)}"));
         card.Add(NativeTheme.Metric(
-            "Augmented maximum",
+            CreationAllocationStrings.Get("AttributeAllocation.AugmentedMaximum", "Augmented maximum"),
             attribute.AugmentedMaximum.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
-            "Priority points",
+            CreationAllocationStrings.Get("Common.PriorityPoints", "Priority points"),
             attribute.PriorityPointsSpent.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
-            "Karma levels",
+            CreationAllocationStrings.Get("Common.KarmaLevels", "Karma levels"),
             attribute.KarmaLevels.ToString(CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
-            "Karma cost",
+            CreationAllocationStrings.Get("Common.KarmaCost", "Karma cost"),
             attribute.KarmaCost.ToString(CultureInfo.InvariantCulture)));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-attribute-allocation-projection";
@@ -362,13 +430,13 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
     {
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Metric(
-            "Normal points left",
+            CreationAllocationStrings.Get("AttributeAllocation.NormalPointsLeft", "Normal points left"),
             _draft.NormalBudget(state).Remaining.ToString("0.##", CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
-            "Special points left",
+            CreationAllocationStrings.Get("AttributeAllocation.SpecialPointsLeft", "Special points left"),
             _draft.SpecialBudget(state).Remaining.ToString("0.##", CultureInfo.InvariantCulture)));
         card.Add(NativeTheme.Metric(
-            "Creation Karma left",
+            CreationAllocationStrings.Get("AttributeAllocation.CreationKarmaLeft", "Creation Karma left"),
             _draft.KarmaBudget(state).Remaining.ToString("0.##", CultureInfo.InvariantCulture)));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-attribute-allocation-budgets";
@@ -414,7 +482,11 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
                               ?? result?.Blockers.FirstOrDefault();
             if (!string.IsNullOrWhiteSpace(blocker))
             {
-                Label reason = NativeTheme.Body($"{label}: {blocker}", NativeTheme.Muted);
+                Label reason = NativeTheme.Body(CreationAllocationStrings.Format(
+                    "Common.ActionBlocker",
+                    "{0}: {1}",
+                    label,
+                    blocker), NativeTheme.Muted);
                 reason.AutomationId = $"{button.AutomationId}-reason";
                 _body.Add(reason);
             }
@@ -423,7 +495,9 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
 
     private void AddSources(CharacterCreationAttributeProjection attribute)
     {
-        _body.Add(NativeTheme.Eyebrow("Source authority"));
+        _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "Common.SourceAuthority",
+            "Source authority")));
         foreach (string anchor in attribute.SourceAnchorIds)
             _body.Add(NativeTheme.Body(anchor, NativeTheme.Muted));
     }
@@ -451,7 +525,7 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         _preview = preview ?? throw new ArgumentNullException(nameof(preview));
         _allocations = allocations?.ToArray()
             ?? throw new ArgumentNullException(nameof(allocations));
-        Title = "Review Attributes";
+        Title = CreationAllocationStrings.Get("AttributesPreview.PageTitle", "Review Attributes");
         AutomationId = "creation-attributes-preview-page";
         Content = new ScrollView { Content = _body };
     }
@@ -459,11 +533,19 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Explicit review"));
-        _body.Add(NativeTheme.Title("Attribute allocation"));
+        _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "Common.ExplicitReview",
+            "Explicit review")));
+        _body.Add(NativeTheme.Title(CreationAllocationStrings.Get(
+            "AttributeAllocation.Eyebrow",
+            "Attribute allocation")));
         Label binding = NativeTheme.Body(
-            $"Revision {_preview.Binding.ContentRevision} · saved {_preview.Binding.SavedRevision} · "
-            + $"preview {CreationPrerequisiteDigestText.CanonicalPrefix(_preview.PreviewDigest)}",
+            CreationAllocationStrings.Format(
+                "Common.PreviewBinding",
+                "Revision {0} · saved {1} · preview {2}",
+                _preview.Binding.ContentRevision,
+                _preview.Binding.SavedRevision,
+                CreationPrerequisiteDigestText.CanonicalPrefix(_preview.PreviewDigest)),
             NativeTheme.Muted);
         binding.AutomationId = "creation-attributes-preview-binding";
         _body.Add(binding);
@@ -479,7 +561,9 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
 
     private void AddBudgets()
     {
-        _body.Add(NativeTheme.Eyebrow("Final draft ledgers"));
+        _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "AttributesPreview.FinalDraftLedgers",
+            "Final draft ledgers")));
         foreach (CharacterCreationBudgetState budget in new[]
                  {
                      _preview.NormalPointBudget,
@@ -489,9 +573,15 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         {
             VerticalStackLayout card = new() { Spacing = 6 };
             card.Add(NativeTheme.Title(budget.Label, 18));
-            card.Add(NativeTheme.Metric("Total", CreationAttributesPage.FormatBudget(budget.Total, budget.Unit)));
-            card.Add(NativeTheme.Metric("Used", CreationAttributesPage.FormatBudget(budget.Used, budget.Unit)));
-            card.Add(NativeTheme.Metric("Remaining", CreationAttributesPage.FormatBudget(budget.Remaining, budget.Unit)));
+            card.Add(NativeTheme.Metric(
+                CreationAllocationStrings.Get("Common.Total", "Total"),
+                CreationAttributesPage.FormatBudget(budget.Total, budget.Unit)));
+            card.Add(NativeTheme.Metric(
+                CreationAllocationStrings.Get("Common.Used", "Used"),
+                CreationAttributesPage.FormatBudget(budget.Used, budget.Unit)));
+            card.Add(NativeTheme.Metric(
+                CreationAllocationStrings.Get("Common.Remaining", "Remaining"),
+                CreationAttributesPage.FormatBudget(budget.Remaining, budget.Unit)));
             Border border = NativeTheme.Card(card);
             border.AutomationId = $"creation-attributes-preview-budget-{CreationAttributesPage.Token(budget.BudgetId)}";
             _body.Add(border);
@@ -500,16 +590,28 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
 
     private void AddAttributes()
     {
-        _body.Add(NativeTheme.Eyebrow("Typed allocations"));
+        _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "AttributesPreview.TypedAllocations",
+            "Typed allocations")));
         foreach (CharacterCreationAttributeProjection attribute in _preview.Attributes)
         {
             VerticalStackLayout card = new() { Spacing = 5 };
             card.Add(NativeTheme.Title(CreationAttributesPage.AttributeLabel(attribute.AttributeId), 18));
-            card.Add(NativeTheme.Metric("Typed ID", attribute.AttributeId));
-            card.Add(NativeTheme.Metric("Value", attribute.Current.ToString(CultureInfo.InvariantCulture)));
-            card.Add(NativeTheme.Metric("Priority points", attribute.PriorityPointsSpent.ToString(CultureInfo.InvariantCulture)));
-            card.Add(NativeTheme.Metric("Karma levels", attribute.KarmaLevels.ToString(CultureInfo.InvariantCulture)));
-            card.Add(NativeTheme.Metric("Karma cost", attribute.KarmaCost.ToString(CultureInfo.InvariantCulture)));
+            card.Add(NativeTheme.Metric(
+                CreationAllocationStrings.Get("Common.TypedId", "Typed ID"),
+                attribute.AttributeId));
+            card.Add(NativeTheme.Metric(
+                CreationAllocationStrings.Get("Common.Value", "Value"),
+                attribute.Current.ToString(CultureInfo.InvariantCulture)));
+            card.Add(NativeTheme.Metric(
+                CreationAllocationStrings.Get("Common.PriorityPoints", "Priority points"),
+                attribute.PriorityPointsSpent.ToString(CultureInfo.InvariantCulture)));
+            card.Add(NativeTheme.Metric(
+                CreationAllocationStrings.Get("Common.KarmaLevels", "Karma levels"),
+                attribute.KarmaLevels.ToString(CultureInfo.InvariantCulture)));
+            card.Add(NativeTheme.Metric(
+                CreationAllocationStrings.Get("Common.KarmaCost", "Karma cost"),
+                attribute.KarmaCost.ToString(CultureInfo.InvariantCulture)));
             Border border = NativeTheme.Card(card);
             border.AutomationId = $"creation-attributes-preview-attribute-{CreationAttributesPage.Token(attribute.AttributeId)}";
             _body.Add(border);
@@ -525,7 +627,7 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         if (blockers.Length == 0)
             return;
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow("Blockers"));
+        card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get("Common.Blockers", "Blockers")));
         foreach (string blocker in blockers)
             card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
         Border border = NativeTheme.Card(card);
@@ -542,8 +644,9 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
                 RefreshedState: not null
             })
         {
-            Label complete = NativeTheme.Body(
-                "Attributes draft confirmed and authoritative state reloaded.");
+            Label complete = NativeTheme.Body(CreationAllocationStrings.Get(
+                "AttributesPreview.Confirmed",
+                "Attributes draft confirmed and authoritative state reloaded."));
             complete.AutomationId = "creation-attributes-confirmed";
             _body.Add(NativeTheme.Card(complete));
             return;
@@ -557,7 +660,9 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
                               Coordinator.State,
                               _preview,
                               _allocations);
-        Button confirm = NativeTheme.PrimaryButton("Confirm Attributes draft");
+        Button confirm = NativeTheme.PrimaryButton(CreationAllocationStrings.Get(
+            "AttributesPreview.Confirm",
+            "Confirm Attributes draft"));
         confirm.AutomationId = "creation-attributes-confirm";
         confirm.IsEnabled = canConfirm;
         confirm.Clicked += async (_, _) => await RunAsync(async () =>
@@ -569,7 +674,9 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         _body.Add(confirm);
 
         Label explicitAction = NativeTheme.Body(
-            "Confirmation is bound to this exact preview digest and stores no character effects before finalization.",
+            CreationAllocationStrings.Get(
+                "AttributesPreview.ConfirmationBoundary",
+                "Confirmation is bound to this exact preview digest and stores no character effects before finalization."),
             NativeTheme.Muted);
         explicitAction.AutomationId = "creation-attributes-explicit-confirmation";
         _body.Add(explicitAction);
@@ -588,28 +695,52 @@ public sealed class CreationAttributesPreviewPage : NativePageBase
         }
 
         VerticalStackLayout card = new() { Spacing = 6 };
-        card.Add(NativeTheme.Eyebrow("Atomic draft receipt"));
-        card.Add(NativeTheme.Metric("Previous revision", receipt.PreviousContentRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Content revision", receipt.ContentRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Saved revision", receipt.SavedRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Draft revision", receipt.DraftRevision.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Normal points remaining", receipt.NormalPointsRemaining.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Special points remaining", receipt.SpecialPointsRemaining.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Creation Karma remaining", receipt.CreationKarmaRemaining.ToString(CultureInfo.InvariantCulture)));
-        card.Add(NativeTheme.Metric("Character document changed", receipt.CharacterDocumentChanged.ToString().ToLowerInvariant()));
+        card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "Common.AtomicDraftReceipt",
+            "Atomic draft receipt")));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.PreviousRevision", "Previous revision"),
+            receipt.PreviousContentRevision.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.ContentRevision", "Content revision"),
+            receipt.ContentRevision.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.SavedRevision", "Saved revision"),
+            receipt.SavedRevision.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.DraftRevision", "Draft revision"),
+            receipt.DraftRevision.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("AttributesPreview.NormalPointsRemaining", "Normal points remaining"),
+            receipt.NormalPointsRemaining.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("AttributesPreview.SpecialPointsRemaining", "Special points remaining"),
+            receipt.SpecialPointsRemaining.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("AttributesPreview.CreationKarmaRemaining", "Creation Karma remaining"),
+            receipt.CreationKarmaRemaining.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.CharacterDocumentChanged", "Character document changed"),
+            receipt.CharacterDocumentChanged.ToString().ToLowerInvariant()));
         AddReceiptDigest(card, "creation-attributes-receipt-draft-digest", receipt.DraftDigest);
         AddReceiptDigest(card, "creation-attributes-receipt-raw-character-xml-digest", refreshed.Binding.RawCharacterXmlDigest);
         AddReceiptDigest(card, "creation-attributes-receipt-auxiliary-state-digest", refreshed.Binding.AuxiliaryStateDigest);
         card.Add(NativeTheme.Body(
             refreshed.PendingDraft?.CharacterEffectsApplied == false
-                ? "Typed Attributes are durable; character effects remain pending the final composed creation transaction."
-                : "Character-effect state is not safe to continue.",
+                ? CreationAllocationStrings.Get(
+                    "AttributesPreview.DurablePendingFinalization",
+                    "Typed Attributes are durable; character effects remain pending the final composed creation transaction.")
+                : CreationAllocationStrings.Get(
+                    "Common.CharacterEffectStateUnsafe",
+                    "Character-effect state is not safe to continue."),
             refreshed.PendingDraft?.CharacterEffectsApplied == false ? NativeTheme.Muted : NativeTheme.Danger));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-attributes-confirm-receipt";
         _body.Add(border);
 
-        Button back = NativeTheme.SecondaryButton("Back to Build");
+        Button back = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
+            "Common.BackToBuild",
+            "Back to Build"));
         back.AutomationId = "creation-attributes-back-to-build";
         back.Clicked += async (_, _) => await BackToBuildAsync();
         _body.Add(back);

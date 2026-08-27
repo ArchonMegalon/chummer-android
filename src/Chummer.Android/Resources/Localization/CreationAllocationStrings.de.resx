@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Attribute.AGI" xml:space="preserve"><value>Geschicklichkeit</value></data>
+  <data name="Attribute.BOD" xml:space="preserve"><value>Konstitution</value></data>
+  <data name="Attribute.CHA" xml:space="preserve"><value>Charisma</value></data>
+  <data name="Attribute.DEP" xml:space="preserve"><value>Tiefe</value></data>
+  <data name="Attribute.EDG" xml:space="preserve"><value>Edge</value></data>
+  <data name="Attribute.ESS" xml:space="preserve"><value>Essenz</value></data>
+  <data name="Attribute.INT" xml:space="preserve"><value>Intuition</value></data>
+  <data name="Attribute.LOG" xml:space="preserve"><value>Logik</value></data>
+  <data name="Attribute.MAG" xml:space="preserve"><value>Magie</value></data>
+  <data name="Attribute.REA" xml:space="preserve"><value>Reaktion</value></data>
+  <data name="Attribute.RES" xml:space="preserve"><value>Resonanz</value></data>
+  <data name="Attribute.STR" xml:space="preserve"><value>Stärke</value></data>
+  <data name="Attribute.WIL" xml:space="preserve"><value>Willenskraft</value></data>
+  <data name="AttributeAllocation.AugmentedMaximum" xml:space="preserve"><value>Modifiziertes Maximum</value></data>
+  <data name="AttributeAllocation.CreationKarmaLeft" xml:space="preserve"><value>Verbleibendes Erschaffungs-Karma</value></data>
+  <data name="AttributeAllocation.Current" xml:space="preserve"><value>Aktuell</value></data>
+  <data name="AttributeAllocation.Eyebrow" xml:space="preserve"><value>Attributsverteilung</value></data>
+  <data name="AttributeAllocation.KarmaDecrease" xml:space="preserve"><value>Karma-Stufe −</value></data>
+  <data name="AttributeAllocation.KarmaIncrease" xml:space="preserve"><value>Karma-Stufe +</value></data>
+  <data name="AttributeAllocation.NaturalRange" xml:space="preserve"><value>Natürlicher Bereich</value></data>
+  <data name="AttributeAllocation.NormalPointsLeft" xml:space="preserve"><value>Verbleibende normale Punkte</value></data>
+  <data name="AttributeAllocation.PriorityDecrease" xml:space="preserve"><value>Prioritätspunkt −</value></data>
+  <data name="AttributeAllocation.PriorityIncrease" xml:space="preserve"><value>Prioritätspunkt +</value></data>
+  <data name="AttributeAllocation.SpecialPointsLeft" xml:space="preserve"><value>Verbleibende Spezialpunkte</value></data>
+  <data name="Attributes.AttributeDetail" xml:space="preserve"><value>{0} · Bereich {1}–{2} · Priorität {3} · Karma-Stufen {4} ({5} Karma)</value></data>
+  <data name="Attributes.Binding" xml:space="preserve"><value>Revision {0} · gespeichert {1} · Voraussetzung-Entwurf {2}</value></data>
+  <data name="Attributes.CreationLimits" xml:space="preserve"><value>Erschaffungsgrenzen</value></data>
+  <data name="Attributes.ExactLedgers" xml:space="preserve"><value>Exakte Konten</value></data>
+  <data name="Attributes.Heading" xml:space="preserve"><value>Attribute verteilen</value></data>
+  <data name="Attributes.Intro" xml:space="preserve"><value>Jeder Wert, jede Grenze und alle Kosten unten werden vom Core für genau diesen Prioritätsentwurf projiziert.</value></data>
+  <data name="Attributes.KarmaMultiplier" xml:space="preserve"><value>Karma-Multiplikator je gesteigerter Stufe</value></data>
+  <data name="Attributes.MaxAtMetatypeMaximum" xml:space="preserve"><value>Am Metatyp-Maximum erlaubte Attribute</value></data>
+  <data name="Attributes.Normal" xml:space="preserve"><value>Normale Attribute</value></data>
+  <data name="Attributes.NotEnabledByTalent" xml:space="preserve"><value>Durch dieses Talent nicht aktiviert</value></data>
+  <data name="Attributes.PageTitle" xml:space="preserve"><value>Attribute</value></data>
+  <data name="Attributes.ResumedDraft" xml:space="preserve"><value>Gespeicherten Entwurf fortgesetzt</value></data>
+  <data name="Attributes.ResumedDraftDetail" xml:space="preserve"><value>Die typisierten Verteilungs-IDs wurden aus dem Core-Hilfszustand fortgesetzt. Charakterauswirkungen warten weiterhin auf die Finalisierung.</value></data>
+  <data name="Attributes.ReviewBoundary" xml:space="preserve"><value>Die Prüfung schreibt keine Charakterdaten. Die Bestätigung speichert nur einen typisierten Hilfsentwurf für die abschließende, zusammengesetzte Erschaffungstransaktion.</value></data>
+  <data name="Attributes.ReviewExact" xml:space="preserve"><value>Exakte Verteilung prüfen</value></data>
+  <data name="Attributes.Special" xml:space="preserve"><value>Spezialattribute</value></data>
+  <data name="Attributes.UnexpectedAppliedEffects" xml:space="preserve"><value>Unerwartet angewendete Charakterauswirkungen; die Bearbeitung bleibt sicher gesperrt.</value></data>
+  <data name="AttributesPreview.Confirm" xml:space="preserve"><value>Attributsentwurf bestätigen</value></data>
+  <data name="AttributesPreview.ConfirmationBoundary" xml:space="preserve"><value>Die Bestätigung ist an genau diesen Vorschau-Digest gebunden und speichert vor der Finalisierung keine Charakterauswirkungen.</value></data>
+  <data name="AttributesPreview.Confirmed" xml:space="preserve"><value>Attributsentwurf bestätigt und verbindlichen Zustand neu geladen.</value></data>
+  <data name="AttributesPreview.CreationKarmaRemaining" xml:space="preserve"><value>Verbleibendes Erschaffungs-Karma</value></data>
+  <data name="AttributesPreview.DurablePendingFinalization" xml:space="preserve"><value>Typisierte Attribute sind dauerhaft gespeichert; Charakterauswirkungen warten auf die abschließende, zusammengesetzte Erschaffungstransaktion.</value></data>
+  <data name="AttributesPreview.FinalDraftLedgers" xml:space="preserve"><value>Endgültige Entwurfskonten</value></data>
+  <data name="AttributesPreview.NormalPointsRemaining" xml:space="preserve"><value>Verbleibende normale Punkte</value></data>
+  <data name="AttributesPreview.PageTitle" xml:space="preserve"><value>Attribute prüfen</value></data>
+  <data name="AttributesPreview.SpecialPointsRemaining" xml:space="preserve"><value>Verbleibende Spezialpunkte</value></data>
+  <data name="AttributesPreview.TypedAllocations" xml:space="preserve"><value>Typisierte Verteilungen</value></data>
+  <data name="Common.ActionBlocker" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Common.After" xml:space="preserve"><value>Nachher</value></data>
+  <data name="Common.Anchors" xml:space="preserve"><value>Anker {0}</value></data>
+  <data name="Common.AtomicDraftReceipt" xml:space="preserve"><value>Atomarer Entwurfsbeleg</value></data>
+  <data name="Common.AuthorityBlockers" xml:space="preserve"><value>Regelinstanz-Sperrgründe</value></data>
+  <data name="Common.BackToBuild" xml:space="preserve"><value>Zurück zum Build</value></data>
+  <data name="Common.Before" xml:space="preserve"><value>Vorher</value></data>
+  <data name="Common.Blockers" xml:space="preserve"><value>Sperrgründe</value></data>
+  <data name="Common.Budget" xml:space="preserve"><value>Budget</value></data>
+  <data name="Common.BudgetId" xml:space="preserve"><value>Budget-ID</value></data>
+  <data name="Common.BudgetNotExact" xml:space="preserve"><value>Budget ist nicht exakt</value></data>
+  <data name="Common.BudgetSemanticDescription" xml:space="preserve"><value>{0}. Gesamt {1}. Verwendet {2}. Verbleibend {3}.</value></data>
+  <data name="Common.Category" xml:space="preserve"><value>Kategorie</value></data>
+  <data name="Common.CharacterCreation" xml:space="preserve"><value>Charaktererschaffung</value></data>
+  <data name="Common.CharacterDocumentChanged" xml:space="preserve"><value>Charakterdokument geändert</value></data>
+  <data name="Common.CharacterEffectStateUnsafe" xml:space="preserve"><value>Der Zustand der Charakterauswirkungen kann nicht sicher fortgesetzt werden.</value></data>
+  <data name="Common.ContentRevision" xml:space="preserve"><value>Inhaltsrevision</value></data>
+  <data name="Common.CoreBlockers" xml:space="preserve"><value>Core-Sperrgründe</value></data>
+  <data name="Common.CurrentAuthoritativeBudget" xml:space="preserve"><value>Aktuelles verbindliches Budget</value></data>
+  <data name="Common.Decrease" xml:space="preserve"><value>−</value></data>
+  <data name="Common.Disabled" xml:space="preserve"><value>deaktiviert</value></data>
+  <data name="Common.DraftRevision" xml:space="preserve"><value>Entwurfsrevision</value></data>
+  <data name="Common.Enabled" xml:space="preserve"><value>aktiviert</value></data>
+  <data name="Common.Exact" xml:space="preserve"><value>Exakt</value></data>
+  <data name="Common.ExactCoreBudget" xml:space="preserve"><value>Exaktes Core-Budget</value></data>
+  <data name="Common.ExplicitReview" xml:space="preserve"><value>Ausdrückliche Prüfung</value></data>
+  <data name="Common.Id" xml:space="preserve"><value>ID {0}</value></data>
+  <data name="Common.Increase" xml:space="preserve"><value>+</value></data>
+  <data name="Common.KarmaCost" xml:space="preserve"><value>Karma-Kosten</value></data>
+  <data name="Common.KarmaLevels" xml:space="preserve"><value>Karma-Stufen</value></data>
+  <data name="Common.NoSourceAnchors" xml:space="preserve"><value>Es wurden keine Quellenanker projiziert.</value></data>
+  <data name="Common.None" xml:space="preserve"><value>keine</value></data>
+  <data name="Common.NotExact" xml:space="preserve"><value>Nicht exakt</value></data>
+  <data name="Common.PreviewBinding" xml:space="preserve"><value>Revision {0} · gespeichert {1} · Vorschau {2}</value></data>
+  <data name="Common.PreviousRevision" xml:space="preserve"><value>Vorherige Revision</value></data>
+  <data name="Common.PriorityPoints" xml:space="preserve"><value>Prioritätspunkte</value></data>
+  <data name="Common.ReasonArguments" xml:space="preserve"><value>{0} ({1})</value></data>
+  <data name="Common.Remaining" xml:space="preserve"><value>Verbleibend</value></data>
+  <data name="Common.SavedRevision" xml:space="preserve"><value>Gespeicherte Revision</value></data>
+  <data name="Common.SnapshotBinding" xml:space="preserve"><value>Revision {0} · gespeichert {1} · Snapshot {2}</value></data>
+  <data name="Common.Source" xml:space="preserve"><value>Quelle</value></data>
+  <data name="Common.SourceAnchor" xml:space="preserve"><value>Quellenanker · {0}</value></data>
+  <data name="Common.SourceAuthority" xml:space="preserve"><value>Quellenautorität</value></data>
+  <data name="Common.SourcePage" xml:space="preserve"><value>{0} S. {1}</value></data>
+  <data name="Common.Total" xml:space="preserve"><value>Gesamt</value></data>
+  <data name="Common.TypedId" xml:space="preserve"><value>Typisierte ID</value></data>
+  <data name="Common.Unavailable" xml:space="preserve"><value>nicht verfügbar</value></data>
+  <data name="Common.Used" xml:space="preserve"><value>Verwendet</value></data>
+  <data name="Common.Value" xml:space="preserve"><value>Wert</value></data>
+  <data name="Metatype.AuthoritativeOptions" xml:space="preserve"><value>Verbindliche Optionen</value></data>
+  <data name="Metatype.AuthorityUnavailable" xml:space="preserve"><value>Metatyp-Regelinstanz nicht verfügbar</value></data>
+  <data name="Metatype.Cost" xml:space="preserve"><value>{0}: {1} {2}</value></data>
+  <data name="Metatype.CurrentSelection" xml:space="preserve"><value>Aktuelle Auswahl</value></data>
+  <data name="Metatype.DuplicateOptionId" xml:space="preserve"><value>Doppelte Options-ID</value></data>
+  <data name="Metatype.Foundation" xml:space="preserve"><value>Grundlage</value></data>
+  <data name="Metatype.Heading" xml:space="preserve"><value>Metatyp wählen</value></data>
+  <data name="Metatype.NoLegalOptions" xml:space="preserve"><value>Keine zulässigen Optionen</value></data>
+  <data name="Metatype.NoProjectedCost" xml:space="preserve"><value>Keine projizierten Kosten</value></data>
+  <data name="Metatype.NoProjectedOptions" xml:space="preserve"><value>Die Regelinstanz hat keine Metatyp-Optionen projiziert.</value></data>
+  <data name="Metatype.PageTitle" xml:space="preserve"><value>Metatyp</value></data>
+  <data name="Metatype.SelectionStale" xml:space="preserve"><value>Metatyp-Auswahl ist veraltet</value></data>
+  <data name="Metatype.SelectionStaleDetail" xml:space="preserve"><value>Foundation-Workspace, Revision oder Digest haben sich geändert. Kehre zurück und lade neu, bevor du auswählst.</value></data>
+  <data name="MetatypePreview.Confirm" xml:space="preserve"><value>Diesen Metatyp verwenden</value></data>
+  <data name="MetatypePreview.ConfirmationFailed" xml:space="preserve"><value>Die exakte Metatyp-Auswahl konnte nicht bestätigt werden.</value></data>
+  <data name="MetatypePreview.ConfirmationScope" xml:space="preserve"><value>Dies bestätigt nur die typisierte Metatyp-Auswahl für den Telefon-Wizard. Hier werden keine Charakterdaten geschrieben; die Foundation-Vorschau bleibt die Regelinstanz.</value></data>
+  <data name="MetatypePreview.ConsequenceId" xml:space="preserve"><value>Auswirkungs-ID</value></data>
+  <data name="MetatypePreview.CostBudget" xml:space="preserve"><value>Kosten · {0}</value></data>
+  <data name="MetatypePreview.CurrentBudgetNotExact" xml:space="preserve"><value>Das aktuelle Budget ist nicht exakt.</value></data>
+  <data name="MetatypePreview.Domain" xml:space="preserve"><value>Domäne</value></data>
+  <data name="MetatypePreview.ExactOption" xml:space="preserve"><value>Exakte Option</value></data>
+  <data name="MetatypePreview.Eyebrow" xml:space="preserve"><value>Ausdrückliche Auswahlprüfung</value></data>
+  <data name="MetatypePreview.Heading" xml:space="preserve"><value>Metatyp prüfen</value></data>
+  <data name="MetatypePreview.OptionId" xml:space="preserve"><value>Options-ID</value></data>
+  <data name="MetatypePreview.OptionMissing" xml:space="preserve"><value>Die typisierte Metatyp-Option fehlt oder ist nicht mehr eindeutig identifiziert.</value></data>
+  <data name="MetatypePreview.PageTitle" xml:space="preserve"><value>Metatyp prüfen</value></data>
+  <data name="MetatypePreview.ProjectedConsequences" xml:space="preserve"><value>Projizierte Auswirkungen</value></data>
+  <data name="MetatypePreview.ProjectedCost" xml:space="preserve"><value>Projizierte Kosten</value></data>
+  <data name="MetatypePreview.Stale" xml:space="preserve"><value>Foundation-Workspace, Revision oder Digest haben sich geändert. Kehre zurück und lade neu, bevor du bestätigst.</value></data>
+  <data name="MetatypePreview.Status" xml:space="preserve"><value>Status</value></data>
+  <data name="MetatypePreview.Target" xml:space="preserve"><value>Ziel</value></data>
+  <data name="Skills.ActiveSkills" xml:space="preserve"><value>Aktive Fertigkeiten</value></data>
+  <data name="Skills.Binding" xml:space="preserve"><value>Revision {0} · Voraussetzung {1} · Attribute {2}</value></data>
+  <data name="Skills.BudgetLeft" xml:space="preserve"><value>{0} verbleibend</value></data>
+  <data name="Skills.BudgetUsed" xml:space="preserve"><value>{0} / {1} Punkte</value></data>
+  <data name="Skills.GroupDetail" xml:space="preserve"><value>Stufe {0} · {1} Fertigkeiten</value></data>
+  <data name="Skills.Heading" xml:space="preserve"><value>Fertigkeiten wählen</value></data>
+  <data name="Skills.Intro" xml:space="preserve"><value>Stufen, Gruppen, Spezialisierungen, Muttersprachen und alle drei Konten stammen aus dem Core.</value></data>
+  <data name="Skills.KnowledgeLanguages" xml:space="preserve"><value>Wissensfertigkeiten &amp; Sprachen</value></data>
+  <data name="Skills.NativeAction" xml:space="preserve"><value>Muttersprache</value></data>
+  <data name="Skills.NativeValue" xml:space="preserve"><value>Muttersprache</value></data>
+  <data name="Skills.PageTitle" xml:space="preserve"><value>Fertigkeiten</value></data>
+  <data name="Skills.RemoveNative" xml:space="preserve"><value>Muttersprache entfernen</value></data>
+  <data name="Skills.ReviewDraft" xml:space="preserve"><value>Fertigkeitsentwurf prüfen</value></data>
+  <data name="Skills.SkillDetail" xml:space="preserve"><value>{0} · {1} · Stufe {2}</value></data>
+  <data name="Skills.SkillGroups" xml:space="preserve"><value>Fertigkeitsgruppen</value></data>
+  <data name="SkillsPreview.ActivePointsRemaining" xml:space="preserve"><value>Verbleibende Aktivpunkte</value></data>
+  <data name="SkillsPreview.AtomicReceipt" xml:space="preserve"><value>Atomarer Fertigkeitsentwurfsbeleg</value></data>
+  <data name="SkillsPreview.Confirm" xml:space="preserve"><value>Fertigkeitsentwurf bestätigen</value></data>
+  <data name="SkillsPreview.ConfirmationBoundary" xml:space="preserve"><value>Die Bestätigung ist an genau diese Core-Vorschau gebunden und verwendet nach einem Neustart einen deterministischen Wiederholungsschlüssel.</value></data>
+  <data name="SkillsPreview.Confirmed" xml:space="preserve"><value>Fertigkeitsentwurf bestätigt und verbindlichen Zustand neu geladen.</value></data>
+  <data name="SkillsPreview.ConfirmedRefreshRequired" xml:space="preserve"><value>Der Fertigkeitsentwurf wurde dauerhaft bestätigt. Öffne den Charakter erneut, um diese Telefonansicht zu aktualisieren.</value></data>
+  <data name="SkillsPreview.DurablePendingFinalization" xml:space="preserve"><value>Typisierte Fertigkeiten sind dauerhaft gespeichert; Charakterauswirkungen warten auf die Finalisierung.</value></data>
+  <data name="SkillsPreview.FinalCoreLedgers" xml:space="preserve"><value>Endgültige Core-Konten</value></data>
+  <data name="SkillsPreview.GroupPointsRemaining" xml:space="preserve"><value>Verbleibende Gruppenpunkte</value></data>
+  <data name="SkillsPreview.GroupRating" xml:space="preserve"><value>Gruppenstufe</value></data>
+  <data name="SkillsPreview.Heading" xml:space="preserve"><value>Fertigkeitsverteilung</value></data>
+  <data name="SkillsPreview.Kind" xml:space="preserve"><value>Art</value></data>
+  <data name="SkillsPreview.KnowledgePointsRemaining" xml:space="preserve"><value>Verbleibende Wissenspunkte</value></data>
+  <data name="SkillsPreview.PageTitle" xml:space="preserve"><value>Fertigkeiten prüfen</value></data>
+  <data name="SkillsPreview.PointCost" xml:space="preserve"><value>Punktkosten</value></data>
+  <data name="SkillsPreview.Rating" xml:space="preserve"><value>Stufe</value></data>
+  <data name="SkillsPreview.Specialization" xml:space="preserve"><value>Spezialisierung</value></data>
+  <data name="SkillsPreview.TypedSelections" xml:space="preserve"><value>Typisierte Auswahlen</value></data>
+</root>

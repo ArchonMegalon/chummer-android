@@ -22,7 +22,7 @@ public sealed class CreationMetatypePage : NativePageBase
         CreationFoundationPhoneDraft draft) : base(coordinator)
     {
         _draft = draft ?? throw new ArgumentNullException(nameof(draft));
-        Title = "Metatype";
+        Title = CreationAllocationStrings.Get("Metatype.PageTitle", "Metatype");
         AutomationId = "creation-metatype-page";
         Content = new ScrollView { Content = _body };
     }
@@ -30,8 +30,12 @@ public sealed class CreationMetatypePage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Foundation"));
-        _body.Add(NativeTheme.Title("Choose a metatype"));
+        _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "Metatype.Foundation",
+            "Foundation")));
+        _body.Add(NativeTheme.Title(CreationAllocationStrings.Get(
+            "Metatype.Heading",
+            "Choose a metatype")));
 
         CharacterCreationFoundationInteractionLoadResult load = Coordinator.LoadCreationFoundation();
         if (Coordinator.State.Profile?.Created != false
@@ -39,7 +43,9 @@ public sealed class CreationMetatypePage : NativePageBase
             || load.State is not { } state)
         {
             AddBlockers(
-                "Metatype authority unavailable",
+                CreationAllocationStrings.Get(
+                    "Metatype.AuthorityUnavailable",
+                    "Metatype authority unavailable"),
                 load.Blockers.Count > 0 ? load.Blockers : [load.Outcome]);
             return;
         }
@@ -47,29 +53,45 @@ public sealed class CreationMetatypePage : NativePageBase
         if (!_draft.Matches(state))
         {
             AddBlockers(
-                "Metatype selection is stale",
-                ["The Foundation workspace, revision, or digest changed. Return and reload before selecting."]);
+                CreationAllocationStrings.Get(
+                    "Metatype.SelectionStale",
+                    "Metatype selection is stale"),
+                [CreationAllocationStrings.Get(
+                    "Metatype.SelectionStaleDetail",
+                    "The Foundation workspace, revision, or digest changed. Return and reload before selecting.")]);
             return;
         }
 
         Label binding = NativeTheme.Body(
-            $"Revision {state.Binding.ContentRevision} · saved {state.Binding.SavedRevision} · "
-            + $"snapshot {ShortDigest(state.FoundationSnapshotDigest)}",
+            CreationAllocationStrings.Format(
+                "Common.SnapshotBinding",
+                "Revision {0} · saved {1} · snapshot {2}",
+                state.Binding.ContentRevision,
+                state.Binding.SavedRevision,
+                ShortDigest(state.FoundationSnapshotDigest)),
             NativeTheme.Muted);
         binding.AutomationId = "creation-metatype-binding";
         _body.Add(binding);
 
         AddBudget(state.LifeModuleBudget);
         if (state.AuthorityBlockers.Count > 0)
-            AddBlockers("Authority blockers", state.AuthorityBlockers);
+            AddBlockers(
+                CreationAllocationStrings.Get("Common.AuthorityBlockers", "Authority blockers"),
+                state.AuthorityBlockers);
 
         if (state.MetatypeOptions.Count == 0)
         {
-            AddBlockers("No legal options", ["No metatype options were projected by the authority."]);
+            AddBlockers(
+                CreationAllocationStrings.Get("Metatype.NoLegalOptions", "No legal options"),
+                [CreationAllocationStrings.Get(
+                    "Metatype.NoProjectedOptions",
+                    "No metatype options were projected by the authority.")]);
             return;
         }
 
-        _body.Add(NativeTheme.Eyebrow("Authoritative options"));
+        _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "Metatype.AuthoritativeOptions",
+            "Authoritative options")));
         foreach (CharacterCreationLegalOption option in state.MetatypeOptions)
         {
             bool uniquelyIdentified = state.MetatypeOptions.Count(candidate =>
@@ -79,15 +101,21 @@ public sealed class CreationMetatypePage : NativePageBase
                 option.OptionId,
                 StringComparison.Ordinal);
             string detail = JoinDetails(
-                selected ? "Current selection" : null,
-                $"ID {option.OptionId}",
+                selected
+                    ? CreationAllocationStrings.Get("Metatype.CurrentSelection", "Current selection")
+                    : null,
+                CreationAllocationStrings.Format("Common.Id", "ID {0}", option.OptionId),
                 FormatCosts(option.Costs),
                 FormatSource(option.SourceId, option.SourcePage),
                 FormatAnchors(option.SourceAnchorIds),
                 option.IsEnabled
                     ? null
                     : FormatDisableReason(option.DisableReasonKey, option.DisableReasonArguments),
-                uniquelyIdentified ? null : "duplicate-option-id");
+                uniquelyIdentified
+                    ? null
+                    : CreationAllocationStrings.Get(
+                        "Metatype.DuplicateOptionId",
+                        "Duplicate option ID"));
             _body.Add(NativeTheme.NavigationRow(
                 option.Label,
                 detail,
@@ -106,14 +134,28 @@ public sealed class CreationMetatypePage : NativePageBase
     private void AddBudget(CharacterCreationBudgetState budget)
     {
         VerticalStackLayout card = new() { Spacing = 7 };
-        card.Add(NativeTheme.Eyebrow("Current authoritative budget"));
-        card.Add(NativeTheme.Metric("Budget", budget.Label));
-        card.Add(NativeTheme.Metric("Budget ID", budget.BudgetId));
-        card.Add(NativeTheme.Metric("Total", FormatBudget(budget.Total, budget.Unit)));
-        card.Add(NativeTheme.Metric("Used", FormatBudget(budget.Used, budget.Unit)));
-        card.Add(NativeTheme.Metric("Remaining", FormatBudget(budget.Remaining, budget.Unit)));
+        card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
+            "Common.CurrentAuthoritativeBudget",
+            "Current authoritative budget")));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.Budget", "Budget"),
+            budget.Label));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.BudgetId", "Budget ID"),
+            budget.BudgetId));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.Total", "Total"),
+            FormatBudget(budget.Total, budget.Unit)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.Used", "Used"),
+            FormatBudget(budget.Used, budget.Unit)));
+        card.Add(NativeTheme.Metric(
+            CreationAllocationStrings.Get("Common.Remaining", "Remaining"),
+            FormatBudget(budget.Remaining, budget.Unit)));
         card.Add(NativeTheme.Body(
-            budget.IsExact ? "Exact" : "Not exact",
+            budget.IsExact
+                ? CreationAllocationStrings.Get("Common.Exact", "Exact")
+                : CreationAllocationStrings.Get("Common.NotExact", "Not exact"),
             budget.IsExact ? NativeTheme.Muted : NativeTheme.Danger));
         foreach (string blocker in budget.Blockers)
             card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
@@ -135,11 +177,16 @@ public sealed class CreationMetatypePage : NativePageBase
 
     private static string FormatCosts(IReadOnlyList<CharacterCreationChoiceCost> costs)
         => costs.Count == 0
-            ? "No projected cost"
+            ? CreationAllocationStrings.Get("Metatype.NoProjectedCost", "No projected cost")
             : string.Join(
                 " · ",
                 costs.Select(cost =>
-                    $"{cost.BudgetId}: {cost.Delta.ToString("0.##", CultureInfo.InvariantCulture)} {cost.Unit}".TrimEnd()));
+                    CreationAllocationStrings.Format(
+                        "Metatype.Cost",
+                        "{0}: {1} {2}",
+                        cost.BudgetId,
+                        cost.Delta.ToString("0.##", CultureInfo.InvariantCulture),
+                        cost.Unit).TrimEnd()));
 
     private static string FormatBudget(decimal value, string unit)
         => $"{value.ToString("0.##", CultureInfo.InvariantCulture)} {unit}".TrimEnd();
@@ -148,20 +195,38 @@ public sealed class CreationMetatypePage : NativePageBase
     {
         if (string.IsNullOrWhiteSpace(source))
             return null;
-        return page is null ? source : $"{source} p. {page.Value.ToString(CultureInfo.InvariantCulture)}";
+        return page is null
+            ? source
+            : CreationAllocationStrings.Format(
+                "Common.SourcePage",
+                "{0} p. {1}",
+                source,
+                page.Value.ToString(CultureInfo.InvariantCulture));
     }
 
     private static string? FormatAnchors(IReadOnlyList<string> anchors)
-        => anchors.Count == 0 ? null : $"Anchors {string.Join(" · ", anchors)}";
+        => anchors.Count == 0
+            ? null
+            : CreationAllocationStrings.Format(
+                "Common.Anchors",
+                "Anchors {0}",
+                string.Join(" · ", anchors));
 
     private static string FormatDisableReason(
         string? key,
         IReadOnlyDictionary<string, string> arguments)
     {
-        string reason = string.IsNullOrWhiteSpace(key) ? "disabled" : key;
+        string reason = string.IsNullOrWhiteSpace(key)
+            ? CreationAllocationStrings.Get("Common.Disabled", "disabled")
+            : key;
         return arguments.Count == 0
             ? reason
-            : $"{reason} ({string.Join(", ", arguments.OrderBy(item => item.Key, StringComparer.Ordinal).Select(item => $"{item.Key}={item.Value}"))})";
+            : CreationAllocationStrings.Format(
+                "Common.ReasonArguments",
+                "{0} ({1})",
+                reason,
+                string.Join(", ", arguments.OrderBy(item => item.Key, StringComparer.Ordinal)
+                    .Select(item => $"{item.Key}={item.Value}")));
     }
 
     private static string JoinDetails(params string?[] parts)
@@ -170,7 +235,9 @@ public sealed class CreationMetatypePage : NativePageBase
             parts.Where(static part => !string.IsNullOrWhiteSpace(part)).Select(static part => part!));
 
     private static string ShortDigest(string digest)
-        => string.IsNullOrWhiteSpace(digest) ? "unavailable" : digest[..Math.Min(12, digest.Length)];
+        => string.IsNullOrWhiteSpace(digest)
+            ? CreationAllocationStrings.Get("Common.Unavailable", "unavailable")
+            : digest[..Math.Min(12, digest.Length)];
 
     private static string Token(string value)
         => new(value.Trim().ToLowerInvariant().Select(character => char.IsLetterOrDigit(character) ? character : '-').ToArray());
