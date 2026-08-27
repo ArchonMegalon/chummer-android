@@ -1830,11 +1830,7 @@ public sealed class BuildPage : NativePageBase
                 "Add the next ISO week, edit its notes and color, or delete it by stable identity",
                 async () =>
                 {
-                    CareerCalendarEditorState? editor = await Coordinator.PrepareCareerCalendarEditAsync();
-                    if (editor is not null)
-                    {
-                        await Navigation.PushAsync(new CareerCalendarPage(Coordinator, editor));
-                    }
+                    await Navigation.PushAsync(new Sr5DowntimeCalendarWizardPage(Coordinator));
                 },
                 automationId: "build-career-calendar"));
             _body.Add(NativeTheme.NavigationRow(

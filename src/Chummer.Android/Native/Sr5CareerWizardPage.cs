@@ -523,9 +523,7 @@ public sealed class Sr5CareerActionFamilyPage : NativePageBase
 
     private async Task OpenCalendarAsync()
     {
-        CareerCalendarEditorState? editor = await Coordinator.PrepareCareerCalendarEditAsync();
-        if (editor is not null)
-            await Navigation.PushAsync(new CareerCalendarPage(Coordinator, editor));
+        await Navigation.PushAsync(new Sr5DowntimeCalendarWizardPage(Coordinator));
     }
 
     private async Task OpenKarmaExpensesAsync()

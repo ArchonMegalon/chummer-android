@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ChummerPresentationRoot Condition="'$(ChummerPresentationRoot)' == ''">../../../chummer-presentation</ChummerPresentationRoot>
+    <ChummerCoreEngineRoot Condition="'$(ChummerCoreEngineRoot)' == ''">$(ChummerPresentationRoot)/../chummer-core-engine</ChummerCoreEngineRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="NativeCompileStubs.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5DowntimeCalendarPhoneModel.cs" Link="Native/Sr5DowntimeCalendarPhoneModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerMutationOwnerStore.cs" Link="Native/Sr5CareerMutationOwnerStore.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/RunnerSessionSr5DowntimeCalendarAuthority.cs" Link="Native/RunnerSessionSr5DowntimeCalendarAuthority.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5DowntimeCalendarWizardPage.cs" Link="Native/Sr5DowntimeCalendarWizardPage.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/PhoneShellPages.cs" Link="Native/PhoneShellPages.cs" />
+    <Compile Include="$(ChummerPresentationRoot)/Chummer.Presentation/Overview/CareerCalendarEditRequest.cs" Link="Presentation/CareerCalendarEditRequest.cs" />
+    <Compile Include="$(ChummerPresentationRoot)/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs" Link="Presentation/Sr5CareerWizardDesktopSession.cs" />
+    <Compile Include="$(ChummerPresentationRoot)/Chummer.Presentation/Overview/Sr5DowntimeCalendarDesktopSession.cs" Link="Presentation/Sr5DowntimeCalendarDesktopSession.cs" />
+    <ProjectReference Include="$(ChummerCoreEngineRoot)/Chummer.Contracts/Chummer.Contracts.csproj" />
+  </ItemGroup>
+</Project>

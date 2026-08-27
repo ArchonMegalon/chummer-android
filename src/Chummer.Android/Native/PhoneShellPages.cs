@@ -44,8 +44,9 @@ public sealed class PhonePlayPage : NativePageBase
 }
 
 /// <summary>
-/// The current phone candidate has no proven Before/Live/After/Downtime lifecycle. Existing
-/// tablet Campaign tooling remains available only in the postponed tablet composition.
+/// Phone table-use-case chooser. It exposes only currently typed SR5 authorities: the existing
+/// atomic After Run flow and the governed Downtime Calendar flow. Missing authorities stay
+/// explicit and disabled rather than falling back to generic edits.
 /// </summary>
 public sealed class PhoneTablePage : NativePageBase
 {
@@ -58,19 +59,69 @@ public sealed class PhoneTablePage : NativePageBase
     public PhoneTablePage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
         Title = "Table";
-        AutomationId = "phone-table-unavailable";
+        AutomationId = "phone-table";
         Content = new ScrollView { Content = _body };
     }
 
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("Phone beta"));
-        _body.Add(NativeTheme.Title("Table is not enabled"));
+        _body.Add(NativeTheme.Eyebrow("SR5 Table"));
+        _body.Add(NativeTheme.Title("Choose a governed table flow"));
         _body.Add(NativeTheme.Body(
-            "Before Run, Live, After Run, and Downtime need exact role-bound session authority. "
-            + "This candidate does not expose campaign or Chronicle tools as a substitute.",
+            "Each enabled route is backed by a typed Core/Presentation authority and exact saved-runner revision.",
             NativeTheme.Muted));
+        bool hasExactSr5CareerAuthority = Coordinator.State.Profile?.Created == true
+            && Sr5CareerWizardCatalog.IsSr5CareerRunner(
+                characterCreated: true,
+                Coordinator.State.Rules?.GameEdition)
+            && Coordinator.State.WorkspaceId is not null
+            && Coordinator.State.ContentRevision > 0
+            && Coordinator.State.SavedRevision == Coordinator.State.ContentRevision
+            && !Coordinator.State.IsDirty
+            && Coordinator.State.Error is null;
+
+        Button beforeRun = NativeTheme.SecondaryButton("Before Run (unavailable)");
+        beforeRun.AutomationId = "phone-table-before-run-unavailable";
+        beforeRun.IsEnabled = false;
+        _body.Add(beforeRun);
+        View afterRun = NativeTheme.NavigationRow(
+            "After Run",
+            "Settle governed rewards, Heat/reputation, contacts, approvals and the atomic Core receipt",
+            async () =>
+            {
+                Sr5AfterRunSettlementCoordinator authority = new(
+                    new RunnerSessionSr5AfterRunSettlementPresenter(Coordinator),
+                    new PreferencesSr5CareerCheckpointOwnerAuthority());
+                Sr5AfterRunSettlementEditorState editor = await authority.PrepareAsync();
+                Page destination = editor.Status == Sr5AfterRunCatalogStatus.Missing
+                    && Coordinator.SupportsManualAfterRunProposalEntry
+                        ? new Sr5AfterRunManualProposalPage(
+                            Coordinator,
+                            editor.WorkspaceId,
+                            editor.WorkspaceRevision)
+                        : new Sr5AfterRunSettlementWizardPage(Coordinator, editor);
+                await Navigation.PushAsync(destination);
+            },
+            automationId: "phone-table-after-run");
+        afterRun.IsEnabled = hasExactSr5CareerAuthority;
+        _body.Add(afterRun);
+        View downtime = NativeTheme.NavigationRow(
+            "Downtime calendar",
+            "Review, confirm and persist one exact SR5 Calendar add, edit or delete with restart recovery",
+            () => Navigation.PushAsync(new Sr5DowntimeCalendarWizardPage(Coordinator)),
+            automationId: "phone-table-downtime");
+        downtime.IsEnabled = hasExactSr5CareerAuthority;
+        _body.Add(downtime);
+        Button playtime = NativeTheme.SecondaryButton("Playtime (unavailable)");
+        playtime.AutomationId = "phone-table-playtime-unavailable";
+        playtime.IsEnabled = false;
+        _body.Add(playtime);
+        Label blocker = NativeTheme.Body(
+            "Before Run and Playtime remain unavailable until Core exposes replayable typed authorities. No generic mutation fallback is used.",
+            NativeTheme.Danger);
+        blocker.AutomationId = "phone-table-unavailable-authorities";
+        _body.Add(NativeTheme.Card(blocker));
     }
 }
 

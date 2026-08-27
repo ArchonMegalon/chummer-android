@@ -12,6 +12,7 @@ internal static class Sr5CareerMutationDomains
     public const string QualityChange = "quality-change";
     public const string SkillSpecializationAdd = "skill-specialization-add";
     public const string AfterRunSettlement = "after-run-settlement";
+    public const string DowntimeCalendar = "downtime-calendar";
 }
 
 /// <summary>
