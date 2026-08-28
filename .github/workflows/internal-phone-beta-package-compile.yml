@@ -1,7 +1,11 @@
 name: Internal phone beta package compile (inactive)
 
 # Source-only W5 contract. Activation awaits the full MAUI/content/API36 gate.
-on: []
+# GitHub rejects `on: []`; excluding every branch keeps this workflow inactive.
+on:
+  push:
+    branches-ignore:
+      - "**"
 
 permissions:
   contents: read
