@@ -518,6 +518,7 @@ Vorschau: {3}…</value></data>
   <data name="Retry" xml:space="preserve"><value>Erneut versuchen</value></data>
   <data name="Return to Career and load the current runner revision." xml:space="preserve"><value>Zur Karriere zurückkehren und die aktuelle Runner-Revision laden.</value></data>
   <data name="Review draft unavailable" xml:space="preserve"><value>Prüfentwurf nicht verfügbar</value></data>
+  <data name="Review one exact point of Edge use before the run. Loadout, healing, contacts, and acquisitions remain unavailable until they have typed authority." xml:space="preserve"><value>Vor dem Run einen exakten Punkt Edge-Verwendung prüfen. Ausrüstung, Heilung, Kontakte und Anschaffungen bleiben ohne typisierte Instanz nicht verfügbar.</value></data>
   <data name="Review table action" xml:space="preserve"><value>Spieltischaktion prüfen</value></data>
   <data name="SR5 Career · table-safe actions" xml:space="preserve"><value>SR5-Karriere · spieltischsichere Aktionen</value></data>
   <data name="Save not verified" xml:space="preserve"><value>Speichern nicht bestätigt</value></data>
@@ -529,8 +530,6 @@ Vorschau: {3}…</value></data>
   <data name="Suppressive Fire" xml:space="preserve"><value>Unterdrückungsfeuer</value></data>
   <data name="Table action saved" xml:space="preserve"><value>Spieltischaktion gespeichert</value></data>
   <data name="Table authority changed" xml:space="preserve"><value>Spieltischinstanz geändert</value></data>
-  <data name="The action was not opened because its durable review draft could not be saved and verified." xml:space="preserve"><value>Die Aktion wurde nicht geöffnet, weil ihr dauerhafter Prüfentwurf nicht gespeichert und bestätigt werden konnte.</value></data>
-  <data name="The exact post-save revision was not observed. The review remains locked for recovery." xml:space="preserve"><value>Die exakte Revision nach dem Speichern wurde nicht beobachtet. Die Prüfung bleibt zur Wiederherstellung gesperrt.</value></data>
   <data name="The exact reviewed action was restored. Confirm it again before saving." xml:space="preserve"><value>Die exakte geprüfte Aktion wurde wiederhergestellt. Vor dem Speichern erneut bestätigen.</value></data>
   <data name="The reviewed table action is no longer available and was discarded." xml:space="preserve"><value>Die geprüfte Spieltischaktion ist nicht mehr verfügbar und wurde verworfen.</value></data>
   <data name="The runner changed after review. This action cannot be saved." xml:space="preserve"><value>Der Runner wurde nach der Prüfung geändert. Diese Aktion kann nicht gespeichert werden.</value></data>
@@ -539,7 +538,6 @@ Vorschau: {3}…</value></data>
   <data name="The saved review belonged to another table lane and was discarded." xml:space="preserve"><value>Die gespeicherte Prüfung gehörte zu einem anderen Spieltischbereich und wurde verworfen.</value></data>
   <data name="The saved runner changed. Return to Career and reopen this table wizard." xml:space="preserve"><value>Der gespeicherte Runner wurde geändert. Zur Karriere zurückkehren und diesen Spieltischassistenten erneut öffnen.</value></data>
   <data name="Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing." xml:space="preserve"><value>Exakte Edge- und direkte Waffenfeuer-Aktionen verwenden, ohne die uneingeschränkte Runner-Bearbeitung zu öffnen.</value></data>
-  <data name="Verified runner revision {0} after {1}." xml:space="preserve"><value>Runner-Revision {0} nach {1} bestätigt.</value></data>
   <data name="Workspace {0} · revision {1} · snapshot {2}" xml:space="preserve"><value>Workspace {0} · Revision {1} · Snapshot {2}</value></data>
   <data name="{0} rounds · ammo {1} → {2}{3}" xml:space="preserve"><value>{0} Schuss · Munition {1} → {2}{3}</value></data>
   <data name="-99.00 through 1000.00" xml:space="preserve"><value>-99,00 bis 1000,00</value></data>
@@ -658,4 +656,37 @@ Vorschau: {3}…</value></data>
   <data name="no typed Core/Presentation mutation authority in this build" xml:space="preserve"><value>keine typisierte Core-/Presentation-Mutationsautorität in diesem Build</value></data>
   <data name="typed Career Edge request with revision-bound review and receipt" xml:space="preserve"><value>typisierte Karriere-Edge-Anfrage mit revisionsgebundener Prüfung und Beleg</value></data>
   <data name="typed atomic After Run settlement" xml:space="preserve"><value>typisierte atomare Nach-dem-Run-Abrechnung</value></data>
+  <data name="Configure → quote" xml:space="preserve"><value>Konfigurieren → Angebot</value></data>
+  <data name="Confirmation already claimed" xml:space="preserve"><value>Bestätigung bereits beansprucht</value></data>
+  <data name="Elapsed in-game time: not supplied by this typed table leaf; no duration is invented." xml:space="preserve"><value>Vergangene Spielzeit: Dieses typisierte Tischblatt liefert keine Dauer; es wird keine Dauer erfunden.</value></data>
+  <data name="Exact authority facts" xml:space="preserve"><value>Exakte Instanzdaten</value></data>
+  <data name="Exact table quote" xml:space="preserve"><value>Exaktes Tischangebot</value></data>
+  <data name="Prerequisites: the exact saved runner revision and this listed typed action must remain available." xml:space="preserve"><value>Voraussetzungen: Die exakte gespeicherte Runner-Revision und diese aufgeführte typisierte Aktion müssen verfügbar bleiben.</value></data>
+  <data name="Receipt {0}" xml:space="preserve"><value>Beleg {0}</value></data>
+  <data name="Reopen Playtime and request a current quote." xml:space="preserve"><value>Spielzeit erneut öffnen und ein aktuelles Angebot anfordern.</value></data>
+  <data name="Resource change: restore 1 used Edge. Karma: 0. Nuyen: 0." xml:space="preserve"><value>Ressourcenänderung: 1 verbrauchten Edge-Punkt wiederherstellen. Karma: 0. Nuyen: 0.</value></data>
+  <data name="Resource cost: 1 point of current Edge use. Karma: 0. Nuyen: 0." xml:space="preserve"><value>Ressourcenkosten: 1 Punkt des aktuellen Edge-Verbrauchs. Karma: 0. Nuyen: 0.</value></data>
+  <data name="Resource cost: {0} rounds from the bound active clip. Karma: 0. Nuyen: 0." xml:space="preserve"><value>Ressourcenkosten: {0} Schuss aus dem gebundenen aktiven Magazin. Karma: 0. Nuyen: 0.</value></data>
+  <data name="Review unavailable" xml:space="preserve"><value>Prüfung nicht verfügbar</value></data>
+  <data name="The exact next-revision postcondition was not observed. The Applying journal remains locked for restart recovery." xml:space="preserve"><value>Die exakte Nachbedingung der nächsten Revision wurde nicht beobachtet. Das Applying-Journal bleibt für die Neustartwiederherstellung gesperrt.</value></data>
+  <data name="The exact quote was not opened because its durable review could not be saved and verified." xml:space="preserve"><value>Das exakte Angebot wurde nicht geöffnet, weil seine dauerhafte Prüfung nicht gespeichert und verifiziert werden konnte.</value></data>
+  <data name="The previous confirmation did not change the runner. Its exact quote returned to review." xml:space="preserve"><value>Die vorherige Bestätigung hat den Runner nicht geändert. Ihr exaktes Angebot wurde zur Prüfung zurückgesetzt.</value></data>
+  <data name="The previous confirmation was observed after restart and its exact receipt was recovered." xml:space="preserve"><value>Die vorherige Bestätigung wurde nach dem Neustart beobachtet und ihr exakter Beleg wiederhergestellt.</value></data>
+  <data name="The prior confirmation is locked because its exact postcondition could not be classified. Reload the current runner before retrying." xml:space="preserve"><value>Die vorherige Bestätigung ist gesperrt, weil ihre exakte Nachbedingung nicht klassifiziert werden konnte. Den aktuellen Runner vor einem neuen Versuch erneut laden.</value></data>
+  <data name="This exact review is stale, already applying, or already has a receipt. Reopen Playtime to recover it." xml:space="preserve"><value>Diese exakte Prüfung ist veraltet, wird bereits angewendet oder besitzt bereits einen Beleg. Spielzeit zur Wiederherstellung erneut öffnen.</value></data>
+  <data name="Verified receipt" xml:space="preserve"><value>Verifizierter Beleg</value></data>
+  <data name="Verified runner revision {0}. Receipt {1}." xml:space="preserve"><value>Runner-Revision {0} verifiziert. Beleg {1}.</value></data>
+  <data name="{0} · revision {1} → {2}" xml:space="preserve"><value>{0} · Revision {1} → {2}</value></data>
+  <data name="Table" xml:space="preserve"><value>Spieltisch</value></data>
+  <data name="SR5 Table" xml:space="preserve"><value>SR5-Spieltisch</value></data>
+  <data name="Choose a governed table flow" xml:space="preserve"><value>Geregelten Spieltischablauf wählen</value></data>
+  <data name="Each enabled route is backed by a typed Core/Presentation authority and exact saved-runner revision." xml:space="preserve"><value>Jede aktivierte Route wird durch eine typisierte Core-/Presentation-Instanz und eine exakte gespeicherte Runner-Revision abgesichert.</value></data>
+  <data name="Before Run (unavailable)" xml:space="preserve"><value>Vor dem Run (nicht verfügbar)</value></data>
+  <data name="After Run" xml:space="preserve"><value>Nach dem Run</value></data>
+  <data name="Settle governed rewards, Heat/reputation, contacts, approvals and the atomic Core receipt" xml:space="preserve"><value>Geregelte Belohnungen, Heat/Ruf, Kontakte, Genehmigungen und den atomaren Core-Beleg abrechnen</value></data>
+  <data name="Review, confirm and persist one exact SR5 Calendar add, edit or delete with restart recovery" xml:space="preserve"><value>Ein exaktes Hinzufügen, Bearbeiten oder Löschen im SR5-Kalender prüfen, bestätigen und mit Neustartwiederherstellung dauerhaft speichern</value></data>
+  <data name="Playtime" xml:space="preserve"><value>Spielzeit</value></data>
+  <data name="Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt" xml:space="preserve"><value>Exakte Edge- oder direkte Waffenmunitionsänderungen mit einem neustartsicheren Beleg anbieten, prüfen und bestätigen</value></data>
+  <data name="Before Run remains unavailable here. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used." xml:space="preserve"><value>Vor dem Run bleibt hier nicht verfügbar. Auszeit-Heilung, Training, Beschaffung/Installation/Reparatur/Herstellung, Lebensstil-/Kontakt-/Projektplanung sowie Spielzeit-Schaden/Zustände, temporäre Modifikatoren, Initiative und Run-Status bleiben gesperrt, bis zusammengesetzte typisierte Angebots-/Zeit-/Beleginstanzen vorhanden sind. Es wird kein generischer Mutationsersatz verwendet.</value></data>
+  <data name="Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used." xml:space="preserve"><value>Vor dem Run ist nur typisiertes Edge verfügbar, und während der Spielzeit sind nur typisiertes Edge und Munition für direkte Waffen verfügbar. Auszeit-Heilung, Training, Beschaffung/Installation/Reparatur/Herstellung, Lebensstil-/Kontakt-/Projektplanung sowie Spielzeit-Schaden/Zustände, temporäre Modifikatoren, Initiative und Run-Status bleiben gesperrt, bis zusammengesetzte typisierte Angebots-/Zeit-/Beleginstanzen vorhanden sind. Es wird kein generischer Mutationsersatz verwendet.</value></data>
 </root>

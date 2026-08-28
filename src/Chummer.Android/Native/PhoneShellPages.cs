@@ -1,4 +1,5 @@
 using Chummer.Presentation.Overview;
+using static Chummer.Android.Native.Sr5CareerFlowStrings;
 
 namespace Chummer.Android.Native;
 
@@ -64,7 +65,7 @@ public sealed class PhoneTablePage : NativePageBase
 
     public PhoneTablePage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
-        Title = "Table";
+        Title = Text("Table");
         AutomationId = "phone-table";
         Content = new ScrollView { Content = _body };
     }
@@ -72,10 +73,10 @@ public sealed class PhoneTablePage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow("SR5 Table"));
-        _body.Add(NativeTheme.Title("Choose a governed table flow"));
+        _body.Add(NativeTheme.Eyebrow(Text("SR5 Table")));
+        _body.Add(NativeTheme.Title(Text("Choose a governed table flow")));
         _body.Add(NativeTheme.Body(
-            "Each enabled route is backed by a typed Core/Presentation authority and exact saved-runner revision.",
+            Text("Each enabled route is backed by a typed Core/Presentation authority and exact saved-runner revision."),
             NativeTheme.Muted));
         bool hasExactSr5CareerAuthority = Coordinator.State.Profile?.Created == true
             && Sr5CareerWizardCatalog.IsSr5CareerRunner(
@@ -88,8 +89,8 @@ public sealed class PhoneTablePage : NativePageBase
             && Coordinator.State.Error is null;
 
         View beforeRun = NativeTheme.NavigationRow(
-            "Before Run",
-            "Choose one revision-bound Edge preparation action; other preparation remains explicitly blocked",
+            Text("Before Run"),
+            Text("Review one exact point of Edge use before the run. Loadout, preparation, contacts, and commitments remain unavailable until they have typed authority."),
             () => Navigation.PushAsync(new Sr5TableWizardPage(
                 Coordinator,
                 Sr5TableWizardLane.BeforeRun)),
@@ -97,8 +98,8 @@ public sealed class PhoneTablePage : NativePageBase
         beforeRun.IsEnabled = hasExactSr5CareerAuthority;
         _body.Add(beforeRun);
         View afterRun = NativeTheme.NavigationRow(
-            "After Run",
-            "Settle governed rewards, Heat/reputation, contacts, approvals and the atomic Core receipt",
+            Text("After Run"),
+            Text("Settle governed rewards, Heat/reputation, contacts, approvals and the atomic Core receipt"),
             async () =>
             {
                 Sr5AfterRunSettlementCoordinator authority = new(
@@ -119,15 +120,15 @@ public sealed class PhoneTablePage : NativePageBase
         _body.Add(afterRun);
         AddCapabilityScope("After Run authority", Sr5CareerRunCapabilityCatalog.AfterRun);
         View downtime = NativeTheme.NavigationRow(
-            "Downtime calendar",
-            "Review, confirm and persist one exact SR5 Calendar add, edit or delete with restart recovery",
+            Text("Downtime calendar"),
+            Text("Review, confirm and persist one exact SR5 Calendar add, edit or delete with restart recovery"),
             () => Navigation.PushAsync(new Sr5DowntimeCalendarWizardPage(Coordinator)),
             automationId: "phone-table-downtime");
         downtime.IsEnabled = hasExactSr5CareerAuthority;
         _body.Add(downtime);
         View playtime = NativeTheme.NavigationRow(
-            "Playtime",
-            "Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt",
+            Text("Playtime"),
+            Text("Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt"),
             () => Navigation.PushAsync(new Sr5TableWizardPage(
                 Coordinator,
                 Sr5TableWizardLane.Playtime)),
@@ -135,7 +136,7 @@ public sealed class PhoneTablePage : NativePageBase
         playtime.IsEnabled = hasExactSr5CareerAuthority;
         _body.Add(playtime);
         Label blocker = NativeTheme.Body(
-            "Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used.",
+            Text("Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used."),
             NativeTheme.Danger);
         blocker.AutomationId = "phone-table-unavailable-authorities";
         _body.Add(NativeTheme.Card(blocker));

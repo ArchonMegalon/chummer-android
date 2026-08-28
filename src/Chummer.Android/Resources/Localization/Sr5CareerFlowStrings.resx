@@ -518,6 +518,7 @@ Preview: {3}…</value></data>
   <data name="Retry" xml:space="preserve"><value>Retry</value></data>
   <data name="Return to Career and load the current runner revision." xml:space="preserve"><value>Return to Career and load the current runner revision.</value></data>
   <data name="Review draft unavailable" xml:space="preserve"><value>Review draft unavailable</value></data>
+  <data name="Review one exact point of Edge use before the run. Loadout, healing, contacts, and acquisitions remain unavailable until they have typed authority." xml:space="preserve"><value>Review one exact point of Edge use before the run. Loadout, healing, contacts, and acquisitions remain unavailable until they have typed authority.</value></data>
   <data name="Review table action" xml:space="preserve"><value>Review table action</value></data>
   <data name="SR5 Career · table-safe actions" xml:space="preserve"><value>SR5 Career · table-safe actions</value></data>
   <data name="Save not verified" xml:space="preserve"><value>Save not verified</value></data>
@@ -529,8 +530,6 @@ Preview: {3}…</value></data>
   <data name="Suppressive Fire" xml:space="preserve"><value>Suppressive Fire</value></data>
   <data name="Table action saved" xml:space="preserve"><value>Table action saved</value></data>
   <data name="Table authority changed" xml:space="preserve"><value>Table authority changed</value></data>
-  <data name="The action was not opened because its durable review draft could not be saved and verified." xml:space="preserve"><value>The action was not opened because its durable review draft could not be saved and verified.</value></data>
-  <data name="The exact post-save revision was not observed. The review remains locked for recovery." xml:space="preserve"><value>The exact post-save revision was not observed. The review remains locked for recovery.</value></data>
   <data name="The exact reviewed action was restored. Confirm it again before saving." xml:space="preserve"><value>The exact reviewed action was restored. Confirm it again before saving.</value></data>
   <data name="The reviewed table action is no longer available and was discarded." xml:space="preserve"><value>The reviewed table action is no longer available and was discarded.</value></data>
   <data name="The runner changed after review. This action cannot be saved." xml:space="preserve"><value>The runner changed after review. This action cannot be saved.</value></data>
@@ -539,7 +538,6 @@ Preview: {3}…</value></data>
   <data name="The saved review belonged to another table lane and was discarded." xml:space="preserve"><value>The saved review belonged to another table lane and was discarded.</value></data>
   <data name="The saved runner changed. Return to Career and reopen this table wizard." xml:space="preserve"><value>The saved runner changed. Return to Career and reopen this table wizard.</value></data>
   <data name="Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing." xml:space="preserve"><value>Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing.</value></data>
-  <data name="Verified runner revision {0} after {1}." xml:space="preserve"><value>Verified runner revision {0} after {1}.</value></data>
   <data name="Workspace {0} · revision {1} · snapshot {2}" xml:space="preserve"><value>Workspace {0} · revision {1} · snapshot {2}</value></data>
   <data name="{0} rounds · ammo {1} → {2}{3}" xml:space="preserve"><value>{0} rounds · ammo {1} → {2}{3}</value></data>
   <data name="-99.00 through 1000.00" xml:space="preserve"><value>-99.00 through 1000.00</value></data>
@@ -658,4 +656,37 @@ Preview: {3}…</value></data>
   <data name="no typed Core/Presentation mutation authority in this build" xml:space="preserve"><value>no typed Core/Presentation mutation authority in this build</value></data>
   <data name="typed Career Edge request with revision-bound review and receipt" xml:space="preserve"><value>typed Career Edge request with revision-bound review and receipt</value></data>
   <data name="typed atomic After Run settlement" xml:space="preserve"><value>typed atomic After Run settlement</value></data>
+  <data name="Configure → quote" xml:space="preserve"><value>Configure → quote</value></data>
+  <data name="Confirmation already claimed" xml:space="preserve"><value>Confirmation already claimed</value></data>
+  <data name="Elapsed in-game time: not supplied by this typed table leaf; no duration is invented." xml:space="preserve"><value>Elapsed in-game time: not supplied by this typed table leaf; no duration is invented.</value></data>
+  <data name="Exact authority facts" xml:space="preserve"><value>Exact authority facts</value></data>
+  <data name="Exact table quote" xml:space="preserve"><value>Exact table quote</value></data>
+  <data name="Prerequisites: the exact saved runner revision and this listed typed action must remain available." xml:space="preserve"><value>Prerequisites: the exact saved runner revision and this listed typed action must remain available.</value></data>
+  <data name="Receipt {0}" xml:space="preserve"><value>Receipt {0}</value></data>
+  <data name="Reopen Playtime and request a current quote." xml:space="preserve"><value>Reopen Playtime and request a current quote.</value></data>
+  <data name="Resource change: restore 1 used Edge. Karma: 0. Nuyen: 0." xml:space="preserve"><value>Resource change: restore 1 used Edge. Karma: 0. Nuyen: 0.</value></data>
+  <data name="Resource cost: 1 point of current Edge use. Karma: 0. Nuyen: 0." xml:space="preserve"><value>Resource cost: 1 point of current Edge use. Karma: 0. Nuyen: 0.</value></data>
+  <data name="Resource cost: {0} rounds from the bound active clip. Karma: 0. Nuyen: 0." xml:space="preserve"><value>Resource cost: {0} rounds from the bound active clip. Karma: 0. Nuyen: 0.</value></data>
+  <data name="Review unavailable" xml:space="preserve"><value>Review unavailable</value></data>
+  <data name="The exact next-revision postcondition was not observed. The Applying journal remains locked for restart recovery." xml:space="preserve"><value>The exact next-revision postcondition was not observed. The Applying journal remains locked for restart recovery.</value></data>
+  <data name="The exact quote was not opened because its durable review could not be saved and verified." xml:space="preserve"><value>The exact quote was not opened because its durable review could not be saved and verified.</value></data>
+  <data name="The previous confirmation did not change the runner. Its exact quote returned to review." xml:space="preserve"><value>The previous confirmation did not change the runner. Its exact quote returned to review.</value></data>
+  <data name="The previous confirmation was observed after restart and its exact receipt was recovered." xml:space="preserve"><value>The previous confirmation was observed after restart and its exact receipt was recovered.</value></data>
+  <data name="The prior confirmation is locked because its exact postcondition could not be classified. Reload the current runner before retrying." xml:space="preserve"><value>The prior confirmation is locked because its exact postcondition could not be classified. Reload the current runner before retrying.</value></data>
+  <data name="This exact review is stale, already applying, or already has a receipt. Reopen Playtime to recover it." xml:space="preserve"><value>This exact review is stale, already applying, or already has a receipt. Reopen Playtime to recover it.</value></data>
+  <data name="Verified receipt" xml:space="preserve"><value>Verified receipt</value></data>
+  <data name="Verified runner revision {0}. Receipt {1}." xml:space="preserve"><value>Verified runner revision {0}. Receipt {1}.</value></data>
+  <data name="{0} · revision {1} → {2}" xml:space="preserve"><value>{0} · revision {1} → {2}</value></data>
+  <data name="Table" xml:space="preserve"><value>Table</value></data>
+  <data name="SR5 Table" xml:space="preserve"><value>SR5 Table</value></data>
+  <data name="Choose a governed table flow" xml:space="preserve"><value>Choose a governed table flow</value></data>
+  <data name="Each enabled route is backed by a typed Core/Presentation authority and exact saved-runner revision." xml:space="preserve"><value>Each enabled route is backed by a typed Core/Presentation authority and exact saved-runner revision.</value></data>
+  <data name="Before Run (unavailable)" xml:space="preserve"><value>Before Run (unavailable)</value></data>
+  <data name="After Run" xml:space="preserve"><value>After Run</value></data>
+  <data name="Settle governed rewards, Heat/reputation, contacts, approvals and the atomic Core receipt" xml:space="preserve"><value>Settle governed rewards, Heat/reputation, contacts, approvals and the atomic Core receipt</value></data>
+  <data name="Review, confirm and persist one exact SR5 Calendar add, edit or delete with restart recovery" xml:space="preserve"><value>Review, confirm and persist one exact SR5 Calendar add, edit or delete with restart recovery</value></data>
+  <data name="Playtime" xml:space="preserve"><value>Playtime</value></data>
+  <data name="Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt" xml:space="preserve"><value>Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt</value></data>
+  <data name="Before Run remains unavailable here. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used." xml:space="preserve"><value>Before Run remains unavailable here. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used.</value></data>
+  <data name="Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used." xml:space="preserve"><value>Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used.</value></data>
 </root>

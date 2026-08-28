@@ -199,7 +199,8 @@ static string[] TargetPages()
         "Sr5AfterRunSettlementWizardPage.cs",
         "Sr5DowntimeCalendarWizardPage.cs",
         "Sr5TableWizardPage.cs",
-        "Sr5CareerCommercePages.cs"
+        "Sr5CareerCommercePages.cs",
+        "PhoneShellPages.cs"
     ];
 
 static HashSet<string> ReadSourceKeys(string workspace)
@@ -231,18 +232,32 @@ static void AssertSourceBoundary(string workspace)
     foreach (string file in TargetPages())
     {
         string source = File.ReadAllText(Path.Combine(NativeRoot(workspace), file));
+        string boundarySource = source;
+        if (file == "PhoneShellPages.cs")
+        {
+            ClassDeclarationSyntax[] tablePages = ParseTree(source).GetRoot()
+                .DescendantNodes()
+                .OfType<ClassDeclarationSyntax>()
+                .Where(static declaration =>
+                    declaration.Identifier.Text == "PhoneTablePage")
+                .ToArray();
+            Assert(
+                tablePages.Length == 1,
+                "PhoneShellPages.cs must contain exactly one PhoneTablePage localization boundary");
+            boundarySource = tablePages[0].ToFullString();
+        }
         Assert(
             source.Contains(
                 "using static Chummer.Android.Native.Sr5CareerFlowStrings;",
                 StringComparison.Ordinal),
             $"{file} must use Sr5CareerFlowStrings");
         Assert(
-            !otherHelpers.IsMatch(source),
+            !otherHelpers.IsMatch(boundarySource),
             $"{file} must not call other localization helpers");
         Assert(
-            !rawChrome.IsMatch(source),
+            !rawChrome.IsMatch(boundarySource),
             $"{file} contains direct visible copy outside Sr5CareerFlowStrings");
-        foreach (Match match in interpolatedChrome.Matches(source))
+        foreach (Match match in interpolatedChrome.Matches(boundarySource))
         {
             string leftover = Regex.Replace(match.Groups["template"].Value, @"\{[^{}]+\}", "");
             Assert(
@@ -250,7 +265,10 @@ static void AssertSourceBoundary(string workspace)
                 $"{file} interpolates chrome copy outside Sr5CareerFlowStrings: {match.Value}");
         }
 
-        foreach (InvocationExpressionSyntax invocation in ParseInvocations(workspace, file, source))
+        foreach (InvocationExpressionSyntax invocation in ParseInvocations(
+                     workspace,
+                     file,
+                     boundarySource))
         {
             ExpressionSyntax template = TemplateExpression(invocation);
             Assert(

@@ -604,7 +604,7 @@
       {
         "path": "src/Chummer.Android/Native/PhoneShellPages.cs",
         "exists": true,
-        "sha256": "77706e001bb90b83fb67a5b4d65e35e89103fba90004a515d63683edf0dd242c"
+        "sha256": "e0c5ceda53de0696b40d12d6d23d581746a43dc36bffe6aabd881f034ec1e6f5"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
@@ -669,17 +669,17 @@
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx",
         "exists": true,
-        "sha256": "67917d103eeff391213b86776da7387c84b57af13420109e8059d32e0c863ef4"
+        "sha256": "631b66481c2d15474b60bc9a87581438c614747579b820f2e9dc053bd7a99844"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.de.resx",
         "exists": true,
-        "sha256": "660eb172bb31426b91b41d8280626b4ec21ed797f372932eea51c21be48ee905"
+        "sha256": "63599da16f138f622978c195971e8f3fbcc4c0b37223fe650dde03b32ddcdb23"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.es.resx",
         "exists": true,
-        "sha256": "0944dc10be3804cdbdbf27ba771093eaa11eecf7a3e52776afea74b233a07bdd"
+        "sha256": "56cc0bda8cce66ba488fb105274b5331589faf723a9090d6ae8497f33b75e6d0"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.resx",
@@ -714,7 +714,7 @@
       {
         "path": "tests/Chummer.Android.Sr5CareerFlowLocalization.Tests/Program.cs",
         "exists": true,
-        "sha256": "cd8263008e3bd1a52ffa604e19c67cbe4d268c0b396a2a1cee0474420ba4c6f6"
+        "sha256": "00e1a0722b4c22e617c810f2f77395a4db1b62fdd908573bb129dda8ecf05f53"
       },
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests.csproj",
