@@ -6315,14 +6315,32 @@ public sealed class Demo
             for row in payload["generationInputs"]["androidAndPresenterSources"]
         }
         self.assertTrue(expected.issubset(bound))
-        presenter = inventory.SR5_TABLE_WIZARD_PRESENTER_INPUTS[0]
-        self.assertFalse(bound[presenter]["exists"])
-        self.assertIsNone(bound[presenter]["sha256"])
-        self.assertIn(f"source-missing:{presenter}", recognition["blockers"])
-        for path in expected - {presenter}:
+        presenters = inventory.SR5_TABLE_WIZARD_PRESENTER_INPUTS
+        self.assertEqual(
+            (
+                "chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
+                "chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs",
+            ),
+            presenters,
+        )
+        for presenter in presenters:
+            with self.subTest(presenter=presenter):
+                self.assertFalse(bound[presenter]["exists"])
+                self.assertIsNone(bound[presenter]["sha256"])
+                self.assertIn(f"source-missing:{presenter}", recognition["blockers"])
+        for path in expected - set(presenters):
             with self.subTest(path=path):
                 self.assertTrue(bound[path]["exists"])
                 self.assertRegex(bound[path]["sha256"], r"^[0-9a-f]{64}$")
+
+        desktop_presenter = presenters[0]
+        self.assertEqual(
+            {
+                "projectPath": inventory.SR5_CAREER_CHOOSER_TEST_PROJECT,
+                "presenterSourcePaths": [desktop_presenter],
+            },
+            recognition["careerChooserCompileClosure"],
+        )
 
         authority_paths = inventory._sr5_table_wizard_authority_paths(PRESENTATION_ROOT)
         omitted = inventory._sr5_table_wizard_api36_recognition(
@@ -6335,6 +6353,24 @@ public sealed class Demo
             omitted["blockers"],
         )
         self.assertEqual("blocked", omitted["sourceAuthorityStatus"])
+
+        omitted_desktop = inventory._sr5_table_wizard_api36_recognition(
+            [
+                path
+                for path, canonical in zip(
+                    authority_paths,
+                    inventory.SR5_TABLE_WIZARD_AUTHORITY_INPUTS,
+                    strict=True,
+                )
+                if canonical != desktop_presenter
+            ],
+            PRESENTATION_ROOT,
+        )
+        self.assertIn(
+            f"generation-input-missing:{desktop_presenter}",
+            omitted_desktop["blockers"],
+        )
+        self.assertEqual("blocked", omitted_desktop["sourceAuthorityStatus"])
 
         original_contains = inventory._contains
 
@@ -6353,6 +6389,92 @@ public sealed class Demo
             drifted["blockers"],
         )
         self.assertEqual("blocked", drifted["sourceAuthorityStatus"])
+
+        with tempfile.TemporaryDirectory() as temporary:
+            synthetic_presentation = Path(temporary)
+            for presenter in presenters:
+                synthetic = synthetic_presentation / presenter.removeprefix(
+                    "chummer-presentation/"
+                )
+                synthetic.parent.mkdir(parents=True, exist_ok=True)
+                synthetic.write_text(
+                    "\n".join(inventory.SR5_TABLE_WIZARD_AUTHORITY_MARKERS[presenter]),
+                    encoding="utf-8",
+                )
+            synthetic_paths = inventory._sr5_table_wizard_authority_paths(
+                synthetic_presentation
+            )
+
+            def drift_desktop_session(path: Path, *needles: str) -> bool:
+                if path.name == "Sr5CareerWizardDesktopSession.cs":
+                    return False
+                return original_contains(path, *needles)
+
+            with patch.object(inventory, "_contains", side_effect=drift_desktop_session):
+                drifted_desktop = inventory._sr5_table_wizard_api36_recognition(
+                    synthetic_paths,
+                    synthetic_presentation,
+                )
+            self.assertIn(
+                f"source-contract-drift:{desktop_presenter}",
+                drifted_desktop["blockers"],
+            )
+            self.assertEqual("blocked", drifted_desktop["sourceAuthorityStatus"])
+
+    def test_sr5_career_chooser_compile_closure_rejects_hidden_or_missing_presenters(self) -> None:
+        project = REPO / inventory.SR5_CAREER_CHOOSER_TEST_PROJECT
+        members, blockers = inventory._sr5_career_chooser_presentation_compile_closure(project)
+        self.assertEqual(
+            list(inventory.SR5_CAREER_CHOOSER_REQUIRED_PRESENTATION_COMPILE_INPUTS),
+            members,
+        )
+        self.assertEqual([], blockers)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            hidden_project = Path(temporary) / "Hidden.csproj"
+            hidden_project.write_text(
+                project.read_text(encoding="utf-8").replace(
+                    "  </ItemGroup>",
+                    "    <Compile Include=\"$(ChummerPresentationRoot)/Chummer.Presentation/Overview/HiddenSession.cs\" />\n"
+                    "  </ItemGroup>",
+                    1,
+                ),
+                encoding="utf-8",
+            )
+            hidden_members, hidden_blockers = (
+                inventory._sr5_career_chooser_presentation_compile_closure(hidden_project)
+            )
+            hidden = (
+                "chummer-presentation/Chummer.Presentation/Overview/HiddenSession.cs"
+            )
+            self.assertIn(hidden, hidden_members)
+            self.assertIn(
+                "compile-closure-member-unbound:"
+                + inventory.SR5_CAREER_CHOOSER_TEST_PROJECT
+                + ":"
+                + hidden,
+                hidden_blockers,
+            )
+
+            missing_project = Path(temporary) / "Missing.csproj"
+            missing_project.write_text(
+                "<Project Sdk=\"Microsoft.NET.Sdk\"><ItemGroup>"
+                "<Compile Include=\"Program.cs\" />"
+                "</ItemGroup></Project>",
+                encoding="utf-8",
+            )
+            missing_members, missing_blockers = (
+                inventory._sr5_career_chooser_presentation_compile_closure(missing_project)
+            )
+            required = inventory.SR5_CAREER_CHOOSER_REQUIRED_PRESENTATION_COMPILE_INPUTS[0]
+            self.assertEqual([], missing_members)
+            self.assertIn(
+                "compile-closure-required-member-missing:"
+                + inventory.SR5_CAREER_CHOOSER_TEST_PROJECT
+                + ":"
+                + required,
+                missing_blockers,
+            )
 
 
 if __name__ == "__main__":

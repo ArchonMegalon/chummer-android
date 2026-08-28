@@ -647,6 +647,11 @@
         "sha256": "99965319a2cdce47e39cbb32c7eb1d8ac78a382fa646290ae6de2a9874bd4b80"
       },
       {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
+        "exists": false,
+        "sha256": null
+      },
+      {
         "path": "chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs",
         "exists": false,
         "sha256": null
@@ -749,7 +754,7 @@
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "5d81b2d130c355155b95ad801709d88cfe99ab9bbc5010f9efc7019dd0923c12"
+        "sha256": "5fd223bf201df257a3268360e6148d14794437933251fa9c2a4798b31515d1f2"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -2557,6 +2562,7 @@
         "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs"
       ],
       "presenterSourcePaths": [
+        "chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
         "chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs"
       ],
       "localizationPaths": [
@@ -2585,13 +2591,20 @@
         "tests/test_api36_e2e_workflow.py",
         "tests/test_chummer5_editability_inventory.py"
       ],
+      "careerChooserCompileClosure": {
+        "projectPath": "tests/Chummer.Android.Sr5CareerChooser.Tests/Chummer.Android.Sr5CareerChooser.Tests.csproj",
+        "presenterSourcePaths": [
+          "chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs"
+        ]
+      },
       "blockers": [
+        "source-missing:chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
         "source-missing:chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs"
       ]
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "cd6061518a86f31e2d8d7d27a92665dc329c9c8b8389d19e15650c8e2d5285e4"
+      "sha256": "3ed8b26bffdd639495662fbbd68cdeae2134cdb59fede1cfa91aacdbea98e93e"
     }
   },
   "coverageByFamily": {

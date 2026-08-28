@@ -15,8 +15,10 @@ import os
 import re
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any, Iterable
 
 
@@ -64,7 +66,14 @@ SR5_TABLE_WIZARD_ANDROID_SOURCE_INPUTS = (
     "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
 )
 SR5_TABLE_WIZARD_PRESENTER_INPUTS = (
+    "chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
     "chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs",
+)
+SR5_CAREER_CHOOSER_TEST_PROJECT = (
+    "tests/Chummer.Android.Sr5CareerChooser.Tests/Chummer.Android.Sr5CareerChooser.Tests.csproj"
+)
+SR5_CAREER_CHOOSER_REQUIRED_PRESENTATION_COMPILE_INPUTS = (
+    "chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
 )
 SR5_TABLE_WIZARD_LOCALIZATION_INPUTS = (
     "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx",
@@ -141,6 +150,15 @@ SR5_TABLE_WIZARD_AUTHORITY_MARKERS = {
         "Sr5TableWizardLane",
         "Sr5TableWizardSession",
         "TryDeserializeCheckpoint(",
+    ),
+    "chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs": (
+        "Sr5CareerWizardDesktopSession",
+        "CreateCheckpoint()",
+        "TryDeserializeCheckpoint(",
+    ),
+    "tests/Chummer.Android.Sr5CareerChooser.Tests/Chummer.Android.Sr5CareerChooser.Tests.csproj": (
+        "$(ChummerPresentationRoot)/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
+        'Link="Presentation/Sr5CareerWizardDesktopSession.cs"',
     ),
     "tests/Chummer.Android.Sr5TableWizard.Tests/Program.cs": (
         "Sr5TableWizardLane.BeforeRun",
@@ -23348,6 +23366,55 @@ def _sr5_table_wizard_authority_paths(presentation_root: Path) -> list[Path]:
     ]
 
 
+def _sr5_career_chooser_presentation_compile_closure(
+    project_path: Path | None = None,
+    declared_presenter_inputs: Iterable[str] = SR5_TABLE_WIZARD_PRESENTER_INPUTS,
+) -> tuple[list[str], list[str]]:
+    canonical_project = SR5_CAREER_CHOOSER_TEST_PROJECT
+    project_path = project_path or REPO_ROOT / canonical_project
+    try:
+        root = ET.parse(project_path).getroot()
+    except (OSError, ET.ParseError):
+        return [], [f"compile-closure-unreadable:{canonical_project}"]
+
+    presentation_prefix = "$(ChummerPresentationRoot)/"
+    canonical_prefix = "chummer-presentation/"
+    members: list[str] = []
+    blockers: list[str] = []
+    for element in root.iter():
+        if element.tag.rsplit("}", 1)[-1] != "Compile":
+            continue
+        include = element.attrib.get("Include", "").replace("\\", "/")
+        if not include.startswith("$(ChummerPresentationRoot)"):
+            continue
+        if not include.startswith(presentation_prefix):
+            blockers.append(f"compile-closure-invalid:{canonical_project}:{include}")
+            continue
+        relative = include.removeprefix(presentation_prefix)
+        relative_path = PurePosixPath(relative)
+        if (
+            not relative
+            or relative_path.is_absolute()
+            or any(part in {"", ".", ".."} for part in relative_path.parts)
+        ):
+            blockers.append(f"compile-closure-invalid:{canonical_project}:{include}")
+            continue
+        member = canonical_prefix + relative_path.as_posix()
+        if member in members:
+            blockers.append(f"compile-closure-duplicate:{canonical_project}:{member}")
+            continue
+        members.append(member)
+
+    declared = set(declared_presenter_inputs)
+    for required in SR5_CAREER_CHOOSER_REQUIRED_PRESENTATION_COMPILE_INPUTS:
+        if required not in members:
+            blockers.append(f"compile-closure-required-member-missing:{canonical_project}:{required}")
+    for member in members:
+        if member not in declared:
+            blockers.append(f"compile-closure-member-unbound:{canonical_project}:{member}")
+    return members, blockers
+
+
 def _sr5_table_wizard_api36_recognition(
     android_inputs: Iterable[Path],
     presentation_root: Path,
@@ -23358,7 +23425,8 @@ def _sr5_table_wizard_api36_recognition(
         strict=True,
     ))
     input_set = {path.resolve() for path in android_inputs}
-    blockers: list[str] = []
+    compile_members, compile_blockers = _sr5_career_chooser_presentation_compile_closure()
+    blockers: list[str] = list(compile_blockers)
     for path, relative in canonical_by_path.items():
         if path.resolve() not in input_set:
             blockers.append(f"generation-input-missing:{relative}")
@@ -23388,6 +23456,10 @@ def _sr5_table_wizard_api36_recognition(
         "localizationPaths": list(SR5_TABLE_WIZARD_LOCALIZATION_INPUTS),
         "testPaths": list(SR5_TABLE_WIZARD_TEST_INPUTS),
         "gatePaths": list(SR5_TABLE_WIZARD_GATE_INPUTS),
+        "careerChooserCompileClosure": {
+            "projectPath": SR5_CAREER_CHOOSER_TEST_PROJECT,
+            "presenterSourcePaths": compile_members,
+        },
         "blockers": blockers,
     }
 
