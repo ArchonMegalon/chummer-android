@@ -103,6 +103,7 @@ workspace_root="$(realpath -e -- "$workspace_root")"
 
 require_exact_directory AndroidSdkDirectory
 require_exact_directory JavaSdkDirectory
+require_private_regular_file CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY
 [[ -f "$AndroidSdkDirectory/platforms/android-36/android.jar" ]] \
   || fail "android-api36-platform-missing"
 [[ -x "$AndroidSdkDirectory/build-tools/36.0.0/aapt2" ]] \
@@ -170,6 +171,7 @@ mkdir -m 0700 -- "$staged_publish_dir"
 python3 "$repo_dir/scripts/verify_release_source_graph.py" \
   --android-root "$repo_dir" \
   --workspace-root "$workspace_root" \
+  --package-authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
   --output "$staged_graph"
 python3 "$repo_dir/scripts/verify_release_publish_output.py" \
   --publish-dir "$staged_publish_dir" \
@@ -228,6 +230,7 @@ source_aab="$(python3 "$repo_dir/scripts/verify_release_publish_output.py" \
 python3 "$repo_dir/scripts/verify_release_source_graph.py" \
   --android-root "$repo_dir" \
   --workspace-root "$workspace_root" \
+  --package-authority "$CHUMMER_ANDROID_RELEASE_PACKAGE_AUTHORITY" \
   --verify-existing "$staged_graph"
 
 source_sha256="$(sha256sum "$source_aab" | cut -d' ' -f1)"

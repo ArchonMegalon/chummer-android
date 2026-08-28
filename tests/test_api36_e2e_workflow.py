@@ -141,6 +141,27 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("Chummer.Tests", presentation_checkout)
         self.assertIn("\n            Chummer\n", presentation_checkout)
 
+    def test_preview_source_compatibility_checkout_includes_run_hub_closure(self) -> None:
+        for path in (
+            "Chummer.Run.Hub.Contracts",
+            "Chummer.Run.Hub",
+            "eng/shared/ConfinedAtomicFile.cs",
+        ):
+            with self.subTest(path=path):
+                self.assertIn(path, self.preview_text)
+        self.assertIn(
+            "-p:ChummerCompatibilityRoot=${{ github.workspace }}/",
+            self.preview_text,
+        )
+        self.assertIn(
+            "-p:ChummerLocalRunHubContractsProject=${{ github.workspace }}/chummer.run-services/Chummer.Run.Hub.Contracts/Chummer.Run.Hub.Contracts.csproj",
+            self.preview_text,
+        )
+        self.assertIn(
+            "-p:ChummerLocalRunHubProject=${{ github.workspace }}/chummer.run-services/Chummer.Run.Hub/Chummer.Run.Hub.csproj",
+            self.preview_text,
+        )
+
     def test_phone_path_fails_closed_on_stale_inventory(self) -> None:
         for repository, commit in INVENTORY_AUTHORITIES.items():
             with self.subTest(repository=repository):

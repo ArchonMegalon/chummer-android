@@ -58,6 +58,9 @@ jobs:
             Chummer.Campaign.Contracts
             Chummer.Play.Contracts
             Chummer.Run.Contracts
+            Chummer.Run.Hub.Contracts
+            Chummer.Run.Hub
+            eng/shared/ConfinedAtomicFile.cs
 
       - name: Check out the exact registry contract dependency
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -119,6 +122,9 @@ jobs:
           -p:ChummerDesktopRuntimeIdentifiers=
           -p:BuildInParallel=false
           -p:ChummerUseLocalCompatibilityTree=true
+          -p:ChummerCompatibilityRoot=${{ github.workspace }}/
+          -p:ChummerLocalRunHubContractsProject=${{ github.workspace }}/chummer.run-services/Chummer.Run.Hub.Contracts/Chummer.Run.Hub.Contracts.csproj
+          -p:ChummerLocalRunHubProject=${{ github.workspace }}/chummer.run-services/Chummer.Run.Hub/Chummer.Run.Hub.csproj
           -p:AndroidPackageFormats=aab
 
       - name: Seal the unique unsigned AAB
