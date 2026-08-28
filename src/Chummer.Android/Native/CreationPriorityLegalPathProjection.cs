@@ -1,4 +1,5 @@
 using Chummer.Contracts.Characters;
+using Chummer.Contracts.Workspaces;
 
 namespace Chummer.Android.Native;
 
@@ -115,6 +116,7 @@ public sealed record CreationPriorityLegalPathProjection(
     {
         if (contentRevision <= 0
             || savedRevision <= 0
+            || savedRevision != contentRevision
             || result is null
             || !string.Equals(
                 result.Outcome,
@@ -126,18 +128,38 @@ public sealed record CreationPriorityLegalPathProjection(
                 StringComparison.Ordinal))
             || result.Value is not
                {
+                   Schema: CharacterCreationFinalizationSchemas.StateV1,
                    CharacterCreated: true,
                    CanReview: false,
                    LastReceipt: { } receipt
                } state
+            || !string.Equals(
+                receipt.Schema,
+                CharacterCreationFinalizationSchemas.ReceiptV1,
+                StringComparison.Ordinal)
             || state.Binding.WorkspaceId != workspaceId
             || state.Binding.ContentRevision != contentRevision
             || state.Binding.SavedRevision != savedRevision
             || receipt.WorkspaceId != workspaceId
             || receipt.ContentRevision != contentRevision
             || receipt.SavedRevision != savedRevision
+            || receipt.SavedRevision != receipt.ContentRevision
             || receipt.PreviousContentRevision + 1 != receipt.ContentRevision
             || !receipt.CharacterCreated
+            || !CharacterCreationFinalizationDigest.IsCanonical(state.SnapshotDigest)
+            || !CharacterCreationFinalizationDigest.EqualsFixedTime(
+                state.SnapshotDigest,
+                CharacterCreationFinalizationDigest.Compute(
+                    state with { SnapshotDigest = string.Empty }))
+            || !CharacterCreationFinalizationDigest.IsCanonical(
+                state.Binding.RawCharacterXmlDigest)
+            || !CharacterCreationFinalizationDigest.IsCanonical(receipt.RawCharacterXmlDigest)
+            || !CharacterCreationFinalizationDigest.EqualsFixedTime(
+                state.Binding.RawCharacterXmlDigest,
+                receipt.RawCharacterXmlDigest)
+            || !CharacterCreationFinalizationDigest.IsCanonical(
+                state.Binding.AuthorityDigest)
+            || !CharacterCreationFinalizationDigest.IsCanonical(receipt.AuthorityDigest)
             || !CharacterCreationFinalizationDigest.EqualsFixedTime(
                 state.Binding.AuthorityDigest,
                 receipt.AuthorityDigest)
@@ -149,6 +171,8 @@ public sealed record CreationPriorityLegalPathProjection(
                 receipt.BuildMethod,
                 CharacterCreationBuildMethods.Priority,
                 StringComparison.Ordinal)
+            || !CharacterCreationFinalizationDigest.IsCanonical(receipt.PlanDigest)
+            || !CharacterCreationFinalizationDigest.IsCanonical(receipt.PreviewDigest)
             || !CharacterCreationFinalizationDigest.IsCanonical(receipt.ReceiptDigest)
             || !CharacterCreationFinalizationDigest.EqualsFixedTime(
                 receipt.ReceiptDigest,

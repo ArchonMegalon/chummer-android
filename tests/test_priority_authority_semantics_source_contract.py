@@ -109,12 +109,19 @@ class PriorityAuthoritySemanticsSourceContractTests(unittest.TestCase):
         build = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
 
         for marker in (
+            "using Chummer.Contracts.Workspaces;",
             "State.Profile?.Created != true",
             "_creationFinalizationService.Load(new(workspaceId))",
             "ResolvePersistedPriorityReceipt(",
             "LastReceipt: { } receipt",
             "CharacterCreationFinalizationOutcomes.Blocked",
             "CharacterCreationFinalizationBlockers.CharacterAlreadyCreated",
+            "state with { SnapshotDigest = string.Empty }",
+            "state.Binding.RawCharacterXmlDigest",
+            "receipt.RawCharacterXmlDigest",
+            "state.Binding.AuthorityDigest",
+            "receipt.AuthorityDigest",
+            "receipt.SavedRevision != receipt.ContentRevision",
             "CharacterCreationFinalizationDigest.ComputeReceiptDigest(receipt)",
             "receipt.ContentRevision != contentRevision",
             "receipt.SavedRevision != savedRevision",
@@ -158,6 +165,41 @@ class PriorityAuthoritySemanticsSourceContractTests(unittest.TestCase):
             'new("phone-runner-sheet", "Career runner")',
         ):
             self.assertIn(marker, prerequisite + finalization + build)
+
+    def test_product_tests_cover_every_persisted_authority_drift_axis(self) -> None:
+        product_tests = (
+            ROOT
+            / "tests"
+            / "Chummer.Android.Sr5PriorityLegalPath.Tests"
+            / "Program.cs"
+        ).read_text(encoding="utf-8")
+        for scenario in (
+            "overview content revision drift",
+            "overview saved revision drift",
+            "overview workspace drift",
+            "missing typed state",
+            "missing LastReceipt",
+            "state snapshot digest drift",
+            "state/raw receipt digest drift",
+            "state workspace binding drift",
+            "state content revision drift",
+            "state saved revision drift",
+            "state/receipt authority drift",
+            "noncanonical state authority digest",
+            "state schema drift",
+            "noncanonical raw digest type",
+            "receipt saved/current revision drift",
+            "receipt current revision drift",
+            "receipt/state authority drift",
+            "receipt/state raw digest drift",
+            "non-Priority build method",
+            "receipt schema drift",
+            "noncanonical receipt plan digest",
+            "noncanonical receipt preview digest",
+            "tampered receipt digest",
+        ):
+            self.assertIn(f'"{scenario}"', product_tests)
+        self.assertIn("SR5 Priority legal-path projection tests passed: 6", product_tests)
 
 
 if __name__ == "__main__":

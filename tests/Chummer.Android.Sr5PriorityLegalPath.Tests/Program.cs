@@ -144,33 +144,192 @@ internal static class Program
             state,
             [CharacterCreationFinalizationBlockers.CharacterAlreadyCreated]);
 
-        Require(CreationPriorityLegalPathProjection.ResolvePersistedPriorityReceipt(
-                    result, receipt.WorkspaceId, receipt.ContentRevision + 1, receipt.SavedRevision) is null,
-            "A stale overview revision exposed a persisted receipt authority.");
-        Require(CreationPriorityLegalPathProjection.ResolvePersistedPriorityReceipt(
-                    result with { Value = state with { LastReceipt = receipt with { ReceiptDigest = Digest('f') } } },
-                    receipt.WorkspaceId, receipt.ContentRevision, receipt.SavedRevision) is null,
-            "A tampered receipt digest was exposed as authority.");
-        Require(CreationPriorityLegalPathProjection.ResolvePersistedPriorityReceipt(
-                    result with
+        Rejects(result, receipt, "overview content revision drift",
+            contentRevision: receipt.ContentRevision + 1);
+        Rejects(result, receipt, "overview saved revision drift",
+            savedRevision: receipt.SavedRevision - 1);
+        Rejects(result, receipt, "overview workspace drift",
+            workspaceId: new CharacterWorkspaceId("different-workspace"));
+        Rejects(result with { Value = null }, receipt, "missing typed state");
+        Rejects(result with { Outcome = CharacterCreationFinalizationOutcomes.Available },
+            receipt, "non-Career lifecycle outcome");
+        Rejects(result with
+        {
+            Blockers = [CharacterCreationFinalizationBlockers.WorkspaceUnavailable]
+        }, receipt, "missing CharacterAlreadyCreated lifecycle blocker");
+
+        Rejects(result with
+        {
+            Value = Resnapshot(state with { LastReceipt = null })
+        }, receipt, "missing LastReceipt");
+        Rejects(result with
+        {
+            Value = state with { SnapshotDigest = Digest('f') }
+        }, receipt, "state snapshot digest drift");
+        Rejects(result with
+        {
+            Value = Resnapshot(state with
+            {
+                Binding = state.Binding with { RawCharacterXmlDigest = Digest('a') }
+            })
+        }, receipt, "state/raw receipt digest drift");
+        Rejects(result with
+        {
+            Value = Resnapshot(state with
+            {
+                Binding = state.Binding with
+                {
+                    WorkspaceId = new CharacterWorkspaceId("different-workspace")
+                }
+            })
+        }, receipt, "state workspace binding drift");
+        Rejects(result with
+        {
+            Value = Resnapshot(state with
+            {
+                Binding = state.Binding with { ContentRevision = receipt.ContentRevision + 1 }
+            })
+        }, receipt, "state content revision drift");
+        Rejects(result with
+        {
+            Value = Resnapshot(state with
+            {
+                Binding = state.Binding with { SavedRevision = receipt.SavedRevision - 1 }
+            })
+        }, receipt, "state saved revision drift");
+        Rejects(result with
+        {
+            Value = Resnapshot(state with
+            {
+                Binding = state.Binding with { AuthorityDigest = Digest('a') }
+            })
+        }, receipt, "state/receipt authority drift");
+        Rejects(result with
+        {
+            Value = Resnapshot(state with
+            {
+                Binding = state.Binding with
+                {
+                    AuthorityDigest = "sha256:" + new string('A', 64)
+                }
+            })
+        }, receipt, "noncanonical state authority digest");
+        Rejects(result with
+        {
+            Value = Resnapshot(state with { Schema = "wrong-state-schema" })
+        }, receipt, "state schema drift");
+        Rejects(result with
+        {
+            Value = Resnapshot(state with
+            {
+                Binding = state.Binding with
+                {
+                    RawCharacterXmlDigest = "sha256:" + new string('A', 64)
+                }
+            })
+        }, receipt, "noncanonical raw digest type");
+
+        CharacterCreationFinalizationReceipt savedDrift = Reseal(
+            receipt with { SavedRevision = receipt.SavedRevision - 1 });
+        Rejects(result with
+        {
+            Value = WithReceipt(state, savedDrift)
+        }, receipt, "receipt saved/current revision drift");
+        CharacterCreationFinalizationReceipt currentDrift = Reseal(
+            receipt with { ContentRevision = receipt.ContentRevision + 1 });
+        Rejects(result with
+        {
+            Value = WithReceipt(state, currentDrift)
+        }, receipt, "receipt current revision drift");
+        CharacterCreationFinalizationReceipt authorityDrift = Reseal(
+            receipt with { AuthorityDigest = Digest('a') });
+        Rejects(result with
+        {
+            Value = WithReceipt(state, authorityDrift)
+        }, receipt, "receipt/state authority drift");
+        CharacterCreationFinalizationReceipt rawDrift = Reseal(
+            receipt with { RawCharacterXmlDigest = Digest('a') });
+        Rejects(result with
+        {
+            Value = WithReceipt(state, rawDrift)
+        }, receipt, "receipt/state raw digest drift");
+        CharacterCreationFinalizationReceipt nonPriority = Reseal(
+            receipt with { BuildMethod = CharacterCreationBuildMethods.SumToTen });
+        Rejects(result with
+        {
+            Value = WithReceipt(
+                Resnapshot(state with
+                {
+                    Binding = state.Binding with
                     {
-                        Value = state with
-                        {
-                            Binding = state.Binding with { BuildMethod = CharacterCreationBuildMethods.SumToTen },
-                            LastReceipt = receipt with { BuildMethod = CharacterCreationBuildMethods.SumToTen }
-                        }
-                    },
-                    receipt.WorkspaceId, receipt.ContentRevision, receipt.SavedRevision) is null,
-            "A non-Priority finalization receipt was exposed on the Priority authority surface.");
-        Require(CreationPriorityLegalPathProjection.ResolvePersistedPriorityReceipt(
-                    result with { Value = null }, receipt.WorkspaceId,
-                    receipt.ContentRevision, receipt.SavedRevision) is null,
-            "Missing persisted typed state did not fail closed.");
-        Require(CreationPriorityLegalPathProjection.ResolvePersistedPriorityReceipt(
-                    result with { Outcome = CharacterCreationFinalizationOutcomes.Available },
-                    receipt.WorkspaceId, receipt.ContentRevision, receipt.SavedRevision) is null,
-            "A non-Career finalization lifecycle outcome exposed persisted receipt authority.");
+                        BuildMethod = CharacterCreationBuildMethods.SumToTen
+                    }
+                }),
+                nonPriority)
+        }, receipt, "non-Priority build method");
+        CharacterCreationFinalizationReceipt wrongSchema = Reseal(
+            receipt with { Schema = "wrong-receipt-schema" });
+        Rejects(result with
+        {
+            Value = WithReceipt(state, wrongSchema)
+        }, receipt, "receipt schema drift");
+        CharacterCreationFinalizationReceipt badPlan = Reseal(
+            receipt with { PlanDigest = "sha256:" + new string('A', 64) });
+        Rejects(result with
+        {
+            Value = WithReceipt(state, badPlan)
+        }, receipt, "noncanonical receipt plan digest");
+        CharacterCreationFinalizationReceipt badPreview = Reseal(
+            receipt with { PreviewDigest = "sha256:" + new string('A', 64) });
+        Rejects(result with
+        {
+            Value = WithReceipt(state, badPreview)
+        }, receipt, "noncanonical receipt preview digest");
+        Rejects(result with
+        {
+            Value = Resnapshot(state with
+            {
+                LastReceipt = receipt with { ReceiptDigest = Digest('f') }
+            })
+        }, receipt, "tampered receipt digest");
     }
+
+    private static void Rejects(
+        CharacterCreationFinalizationResult<CharacterCreationFinalizationState> result,
+        CharacterCreationFinalizationReceipt receipt,
+        string scenario,
+        CharacterWorkspaceId? workspaceId = null,
+        long? contentRevision = null,
+        long? savedRevision = null)
+    {
+        Require(CreationPriorityLegalPathProjection.ResolvePersistedPriorityReceipt(
+                    result,
+                    workspaceId ?? receipt.WorkspaceId,
+                    contentRevision ?? receipt.ContentRevision,
+                    savedRevision ?? receipt.SavedRevision) is null,
+            $"Invalid persisted authority was exposed for {scenario}.");
+    }
+
+    private static CharacterCreationFinalizationState WithReceipt(
+        CharacterCreationFinalizationState state,
+        CharacterCreationFinalizationReceipt receipt)
+        => Resnapshot(state with { LastReceipt = receipt });
+
+    private static CharacterCreationFinalizationState Resnapshot(
+        CharacterCreationFinalizationState state)
+        => state with
+        {
+            SnapshotDigest = CharacterCreationFinalizationDigest.Compute(
+                state with { SnapshotDigest = string.Empty })
+        };
+
+    private static CharacterCreationFinalizationReceipt Reseal(
+        CharacterCreationFinalizationReceipt receipt)
+        => receipt with
+        {
+            ReceiptDigest = CharacterCreationFinalizationDigest.ComputeReceiptDigest(
+                receipt with { ReceiptDigest = string.Empty })
+        };
 
     private static CharacterCreationFinalizationState CreatedState(
         CharacterCreationFinalizationReceipt receipt)
@@ -192,11 +351,7 @@ internal static class Program
             CanReview: false,
             LastReceipt: receipt,
             SnapshotDigest: string.Empty);
-        return state with
-        {
-            SnapshotDigest = CharacterCreationFinalizationDigest.Compute(
-                state with { SnapshotDigest = string.Empty })
-        };
+        return Resnapshot(state);
     }
 
     private static CharacterCreationFinalizationReceipt Receipt()
@@ -222,10 +377,7 @@ internal static class Program
             RequiresFreshCareerReopen: true,
             PreviousReceiptDigest: CharacterCreationFinalizationDigest.ReceiptLedgerRootDigest,
             ReceiptDigest: string.Empty);
-        return receipt with
-        {
-            ReceiptDigest = CharacterCreationFinalizationDigest.ComputeReceiptDigest(receipt)
-        };
+        return Reseal(receipt);
     }
 
     private static CharacterCreationFinalizationState State(
