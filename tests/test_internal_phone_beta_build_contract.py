@@ -378,6 +378,24 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
         root: Path,
     ) -> tuple[Path, Path, dict[str, object]]:
         receipt, evidence, payload = self.seed_compile_receipt(root)
+        (evidence / "build.log").write_text(
+            "Build FAILED.\n    0 Warning(s)\n    1 Error(s)\n", encoding="utf-8"
+        )
+        self.refresh_evidence_binding(
+            receipt, evidence, payload, "build.log", "serialized-native-compile"
+        )
+        journal = evidence / "command-journal.jsonl"
+        journal_rows = [
+            json.loads(line) for line in journal.read_text(encoding="utf-8").splitlines()
+        ]
+        journal_rows[-1]["exitCode"] = 1
+        journal.write_text(
+            "".join(json.dumps(row, sort_keys=True) + "\n" for row in journal_rows),
+            encoding="utf-8",
+        )
+        self.refresh_evidence_binding(
+            receipt, evidence, payload, "command-journal.jsonl"
+        )
         payload.update({
             "status": "blocked",
             "failureStage": "serialized-native-compile",
@@ -441,6 +459,24 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
                 encoding="utf-8",
             )
             bind("command-journal.jsonl")
+        receipt.write_text(json.dumps(payload), encoding="utf-8")
+
+    def refresh_blocked_journal_binding(
+        self,
+        receipt: Path,
+        evidence: Path,
+        payload: dict[str, object],
+    ) -> None:
+        journal = evidence / "command-journal.jsonl"
+        digest = hashlib.sha256(journal.read_bytes()).hexdigest()
+        size = journal.stat().st_size
+        row = next(
+            row for row in payload["evidence"]
+            if row["path"] == "command-journal.jsonl"
+        )
+        row.update({"sha256": digest, "sizeBytes": size})
+        payload["journalSha256"] = digest
+        payload["journalSizeBytes"] = size
         receipt.write_text(json.dumps(payload), encoding="utf-8")
 
     def test_compile_receipt_verifies_persisted_evidence_bytes(self) -> None:
@@ -594,7 +630,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
                 encoding="utf-8",
             )
             self.refresh_evidence_binding(receipt, evidence, payload, "command-journal.jsonl")
-            with self.assertRaisesRegex(ValueError, "phase facts mismatch"):
+            with self.assertRaisesRegex(ValueError, "timeout bound mismatch"):
                 self.receipt.verify_receipt(receipt)
 
     def test_real_blocked_receipt_shape_cross_binds_all_available_evidence(self) -> None:
@@ -605,6 +641,155 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             result = self.receipt.verify_receipt(receipt)
             self.assertEqual("blocked", result["verifiedReceiptStatus"])
             self.assertEqual(7, len(result["evidence"]))
+
+    def test_blocked_failure_stage_is_derived_from_the_first_failing_phase(self) -> None:
+        for forged_stage in (
+            "google-play-upload",
+            "api36-device-execution",
+            "full-maui-build",
+            "locked-restore",
+            "post-compile-seal",
+        ):
+            with self.subTest(stage=forged_stage), tempfile.TemporaryDirectory() as temporary:
+                receipt, _evidence, payload = self.seed_blocked_compile_receipt(
+                    Path(temporary)
+                )
+                payload["failureStage"] = forged_stage
+                receipt.write_text(json.dumps(payload), encoding="utf-8")
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "outside compile-only scope|does not match authenticated journal",
+                ):
+                    self.receipt.verify_receipt(receipt)
+
+    def test_blocked_journal_rejects_zero_exit_multiple_failure_and_phase_mismatch(self) -> None:
+        mutations = (
+            "zero-exit", "multiple-failure", "phase-mismatch", "sigkill-string",
+        )
+        for mutation in mutations:
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
+                receipt, evidence, payload = self.seed_blocked_compile_receipt(
+                    Path(temporary)
+                )
+                journal = evidence / "command-journal.jsonl"
+                rows = [
+                    json.loads(line) for line in journal.read_text(encoding="utf-8").splitlines()
+                ]
+                if mutation == "zero-exit":
+                    rows[-1]["exitCode"] = 0
+                elif mutation == "multiple-failure":
+                    rows[3]["exitCode"] = 2
+                elif mutation == "sigkill-string":
+                    rows[-1]["termination"]["sigkillSent"] = "false"
+                else:
+                    rows[-1]["phase"] = "package-compile-graph"
+                journal.write_text(
+                    "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows),
+                    encoding="utf-8",
+                )
+                self.refresh_blocked_journal_binding(receipt, evidence, payload)
+                with self.assertRaises(ValueError):
+                    self.receipt.verify_receipt(receipt)
+
+    def test_blocked_timeout_requires_exit_124_boolean_timeout_and_legal_termination(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, evidence, payload = self.seed_blocked_compile_receipt(Path(temporary))
+            journal = evidence / "command-journal.jsonl"
+            rows = [json.loads(line) for line in journal.read_text(encoding="utf-8").splitlines()]
+            rows[-1].update({
+                "exitCode": 124,
+                "timedOut": True,
+                "termination": {
+                    "groupAbsent": True, "sigtermSent": True, "sigkillSent": True,
+                },
+            })
+            journal.write_text(
+                "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows),
+                encoding="utf-8",
+            )
+            self.refresh_blocked_journal_binding(receipt, evidence, payload)
+            self.assertEqual(
+                "blocked", self.receipt.verify_receipt(receipt)["verifiedReceiptStatus"]
+            )
+
+        for field, value in (
+            ("exitCode", 0),
+            ("timedOut", "true"),
+            ("sigkillSent", "true"),
+        ):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary:
+                receipt, evidence, payload = self.seed_blocked_compile_receipt(
+                    Path(temporary)
+                )
+                journal = evidence / "command-journal.jsonl"
+                rows = [
+                    json.loads(line) for line in journal.read_text(encoding="utf-8").splitlines()
+                ]
+                rows[-1].update({
+                    "exitCode": 124,
+                    "timedOut": True,
+                    "termination": {
+                        "groupAbsent": True, "sigtermSent": True, "sigkillSent": True,
+                    },
+                })
+                if field == "sigkillSent":
+                    rows[-1]["termination"][field] = value
+                else:
+                    rows[-1][field] = value
+                journal.write_text(
+                    "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows),
+                    encoding="utf-8",
+                )
+                self.refresh_blocked_journal_binding(receipt, evidence, payload)
+                with self.assertRaises(ValueError):
+                    self.receipt.verify_receipt(receipt)
+
+    def test_total_deadline_block_binds_phase_without_later_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, evidence, payload = self.seed_blocked_compile_receipt(Path(temporary))
+            journal = evidence / "command-journal.jsonl"
+            rows = [json.loads(line) for line in journal.read_text(encoding="utf-8").splitlines()]
+            rows[-2:] = [{
+                "contractName": "chummer.android.internal-phone-beta-command-journal/v1",
+                "phase": "serialized-native-compile",
+                "event": "blocked",
+                "reason": "total-deadline-expired",
+                "publicationAuthorized": False,
+            }]
+            journal.write_text(
+                "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows),
+                encoding="utf-8",
+            )
+            (evidence / "build.log").unlink()
+            payload["evidence"] = [
+                row for row in payload["evidence"] if row["path"] != "build.log"
+            ]
+            self.refresh_blocked_journal_binding(receipt, evidence, payload)
+            self.assertEqual(
+                "blocked", self.receipt.verify_receipt(receipt)["verifiedReceiptStatus"]
+            )
+
+    def test_post_compile_seal_failure_requires_all_five_passes_and_full_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, _evidence, payload = self.seed_compile_receipt(Path(temporary))
+            payload.update({
+                "status": "blocked",
+                "failureStage": "post-compile-seal",
+                "retryPerformed": False,
+                "doesNotAssert": list(self.receipt.BLOCKED_DOES_NOT_ASSERT),
+            })
+            for field in self.receipt.PASS_ONLY_FIELDS:
+                payload.pop(field, None)
+            journal = next(
+                row for row in payload["evidence"]
+                if row["path"] == "command-journal.jsonl"
+            )
+            payload["journalSha256"] = journal["sha256"]
+            payload["journalSizeBytes"] = journal["sizeBytes"]
+            receipt.write_text(json.dumps(payload), encoding="utf-8")
+            self.assertEqual(
+                "blocked", self.receipt.verify_receipt(receipt)["verifiedReceiptStatus"]
+            )
 
     def test_mutated_f17c_blocked_shape_rejects_tamper_missing_and_forged_pass(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -700,7 +885,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             self.assertEqual(2, completed.returncode, completed.stderr)
             payload = json.loads(build_receipt.read_text(encoding="utf-8"))
             self.assertEqual("blocked", payload["status"])
-            self.assertEqual("dotnet-sdk-not-10.0.111", payload["failureStage"])
+            self.assertEqual("preflight", payload["failureStage"])
             result = self.receipt.verify_receipt(build_receipt)
             self.assertEqual("blocked", result["verifiedReceiptStatus"])
             self.assertTrue(Path(f"{build_receipt}.evidence").is_dir())

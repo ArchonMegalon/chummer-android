@@ -154,6 +154,9 @@ JOURNAL_FINISHED_KEYS = frozenset({
     "phase", "processGroupTermination", "publicationAuthorized", "termination",
     "timedOut",
 })
+JOURNAL_BLOCKED_KEYS = frozenset({
+    "contractName", "phase", "event", "reason", "publicationAuthorized",
+})
 PHASES = (
     ("authority-intake", "authority-intake.log"),
     ("locked-restore", "restore.log"),
@@ -161,6 +164,8 @@ PHASES = (
     ("package-compile-graph", "compile-graph.json"),
     ("serialized-native-compile", "build.log"),
 )
+PREFLIGHT_STAGE = "preflight"
+POST_COMPILE_STAGE = "post-compile-seal"
 
 
 def sha256(path: Path) -> str:
@@ -463,22 +468,53 @@ def validate_journal(
     path: Path,
     status: str,
     evidence_rows: dict[str, dict[str, object]],
-) -> None:
+) -> str | None:
     lines = path.read_bytes().splitlines()
     rows = [
         require_object(parse_json_bytes(line, f"journal row {index}"), f"journal row {index}")
         for index, line in enumerate(lines, start=1)
     ]
-    if len(rows) % 2 != 0 or len(rows) > len(PHASES) * 2:
-        raise ValueError("command journal must contain complete bounded phase pairs")
-    if status == "pass" and len(rows) != len(PHASES) * 2:
-        raise ValueError("passing command journal must contain all five phases")
-    for index in range(0, len(rows), 2):
-        phase_index = index // 2
+    if not rows or len(rows) > len(PHASES) * 2:
+        raise ValueError("command journal row count is invalid")
+    row_index = 0
+    phase_index = 0
+    failure_stage: str | None = None
+    while row_index < len(rows):
+        if phase_index >= len(PHASES):
+            raise ValueError("command journal contains a later phase/result after completion")
         phase, evidence_name = PHASES[phase_index]
-        started, finished = rows[index], rows[index + 1]
+        started = rows[row_index]
+        if started.get("event") == "blocked":
+            require_exact_keys(started, JOURNAL_BLOCKED_KEYS, f"journal {phase} blocked row")
+            if started != {
+                "contractName": "chummer.android.internal-phone-beta-command-journal/v1",
+                "phase": phase,
+                "event": "blocked",
+                "reason": "total-deadline-expired",
+                "publicationAuthorized": False,
+            }:
+                raise ValueError(f"command journal deadline block mismatch: {phase}")
+            if evidence_name in evidence_rows:
+                raise ValueError(f"deadline-blocked phase cannot claim output evidence: {phase}")
+            failure_stage = phase
+            row_index += 1
+            if row_index != len(rows):
+                raise ValueError("command journal contains a later phase/result after failure")
+            break
         require_exact_keys(started, JOURNAL_STARTED_KEYS, f"journal {phase} started row")
+        if row_index + 1 >= len(rows):
+            raise ValueError(f"command journal has an incomplete started phase: {phase}")
+        finished = rows[row_index + 1]
         require_exact_keys(finished, JOURNAL_FINISHED_KEYS, f"journal {phase} finished row")
+        timeout_seconds = started.get("timeoutSeconds")
+        if (
+            not isinstance(timeout_seconds, (int, float))
+            or isinstance(timeout_seconds, bool)
+            or not 0 < float(timeout_seconds) <= 900
+        ):
+            raise ValueError(f"command journal timeout bound mismatch: {phase}")
+        if evidence_name not in evidence_rows:
+            raise ValueError(f"command journal output evidence is missing: {phase}")
         common = (
             started.get("contractName") == "chummer.android.internal-phone-beta-command-journal/v1",
             finished.get("contractName") == "chummer.android.internal-phone-beta-command-journal/v1",
@@ -490,7 +526,6 @@ def validate_journal(
             finished.get("processGroupTermination") is True,
             started.get("publicationAuthorized") is False,
             finished.get("publicationAuthorized") is False,
-            started.get("timeoutSeconds") == 900.0,
             isinstance(started.get("command"), list) and bool(started.get("command")),
             isinstance(finished.get("elapsedSeconds"), (int, float))
             and not isinstance(finished.get("elapsedSeconds"), bool)
@@ -503,6 +538,14 @@ def validate_journal(
             frozenset({"groupAbsent", "sigkillSent", "sigtermSent"}),
             "journal termination",
         )
+        if not all(isinstance(termination.get(field), bool) for field in termination):
+            raise ValueError(f"command journal termination fields must be booleans: {phase}")
+        exit_code = finished.get("exitCode")
+        timed_out = finished.get("timedOut")
+        if not isinstance(exit_code, int) or isinstance(exit_code, bool):
+            raise ValueError(f"command journal exitCode must be an integer: {phase}")
+        if not isinstance(timed_out, bool):
+            raise ValueError(f"command journal timedOut must be a boolean: {phase}")
         if not all(common) or termination.get("groupAbsent") is not True:
             raise ValueError(f"command journal phase facts mismatch: {phase}")
         command = [str(value) for value in started["command"]]
@@ -541,16 +584,43 @@ def validate_journal(
             )
         ):
             raise ValueError(f"command journal contains source fallback: {phase}")
-        is_last = index == len(rows) - 2
-        if status == "pass" or not is_last:
+        clean_termination = {
+            "groupAbsent": True, "sigkillSent": False, "sigtermSent": False,
+        }
+        if timed_out:
             if not (
-                finished.get("exitCode") == 0
-                and finished.get("timedOut") is False
-                and termination == {
-                    "groupAbsent": True, "sigkillSent": False, "sigtermSent": False,
-                }
+                exit_code == 124
+                and termination.get("sigtermSent") is True
+                and termination.get("groupAbsent") is True
             ):
-                raise ValueError(f"command journal phase did not pass: {phase}")
+                raise ValueError(f"command journal timeout termination mismatch: {phase}")
+            failure_stage = phase
+        elif exit_code == 0:
+            if termination != clean_termination:
+                raise ValueError(f"passing phase forged process termination: {phase}")
+        else:
+            if exit_code == 124 or termination != clean_termination:
+                raise ValueError(f"non-timeout failure termination mismatch: {phase}")
+            failure_stage = phase
+
+        row_index += 2
+        phase_index += 1
+        if failure_stage is not None:
+            if row_index != len(rows):
+                raise ValueError("command journal contains a later phase/result after failure")
+            break
+
+    if status == "pass":
+        if failure_stage is not None or phase_index != len(PHASES) or row_index != len(rows):
+            raise ValueError("passing command journal must contain five passing phases")
+        return None
+    if failure_stage is not None:
+        return failure_stage
+    if phase_index == len(PHASES) and row_index == len(rows):
+        if tuple(evidence_rows) != EXPECTED_EVIDENCE:
+            raise ValueError("post-compile failure requires complete evidence")
+        return POST_COMPILE_STAGE
+    raise ValueError("blocked journal has no authenticated failing phase")
 
 
 def validate_pass_text_evidence(paths: dict[str, Path]) -> None:
@@ -645,8 +715,11 @@ def verify_receipt(
     validate_authority_evidence(evidence_paths)
     validate_graph_evidence(evidence_paths)
     evidence_by_name = {str(row["path"]): row for row in actual_rows}
+    derived_failure_stage: str | None = None
     if "command-journal.jsonl" in evidence_paths:
-        validate_journal(evidence_paths["command-journal.jsonl"], status, evidence_by_name)
+        derived_failure_stage = validate_journal(
+            evidence_paths["command-journal.jsonl"], status, evidence_by_name
+        )
     if status == "pass":
         expected_bindings = {
             str(row["path"]): {
@@ -666,6 +739,24 @@ def verify_receipt(
             raise ValueError("blocked receipt journal digest binding mismatch")
         if payload.get("journalSizeBytes") != expected_size:
             raise ValueError("blocked receipt journal size binding mismatch")
+        failure_stage = payload.get("failureStage")
+        allowed_stages = {PREFLIGHT_STAGE, POST_COMPILE_STAGE, *(phase for phase, _ in PHASES)}
+        if failure_stage not in allowed_stages:
+            raise ValueError("blocked receipt failureStage is outside compile-only scope")
+        if journal is None:
+            if failure_stage != PREFLIGHT_STAGE or actual_rows:
+                raise ValueError("journal-free blocked receipt must be an empty preflight failure")
+        else:
+            if failure_stage != derived_failure_stage:
+                raise ValueError("blocked receipt failureStage does not match authenticated journal")
+            if failure_stage in {phase for phase, _ in PHASES}:
+                failed_index = next(
+                    index for index, (phase, _name) in enumerate(PHASES)
+                    if phase == failure_stage
+                )
+                later_outputs = {name for _phase, name in PHASES[failed_index + 1:]}
+                if later_outputs.intersection(evidence_by_name):
+                    raise ValueError("blocked receipt claims evidence after the failing phase")
 
     return {
         "contractName": CONTRACT,

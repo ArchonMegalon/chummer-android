@@ -11,7 +11,7 @@ evidence_output=""
 output_ready="false"
 proof_complete="false"
 evidence_persisted="false"
-current_stage="initialization"
+current_stage="preflight"
 evidence_names=(
   authority-intake.log
   authority-binding.json
@@ -23,7 +23,6 @@ evidence_names=(
 )
 
 fail() {
-  current_stage="$1"
   printf 'internal_phone_beta_native_compile=blocked stage=%s publication_authorized=false\n' "$1" >&2
   exit 2
 }
@@ -263,6 +262,7 @@ run_bounded serialized-native-compile "$build_log" \
   -p:BuildInParallel=false \
   "${package_args[@]}"
 
+current_stage="post-compile-seal"
 artifact="$repo_dir/tests/Chummer.Android.Native.CompileCheck/bin/Release/net10.0/Chummer.Android.Native.CompileCheck.dll"
 [[ -f "$artifact" && ! -L "$artifact" ]] || fail "native-compile-artifact-missing"
 [[ -z "$(git -C "$repo_dir" status --porcelain --untracked-files=all)" ]] \
