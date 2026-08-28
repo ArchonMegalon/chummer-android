@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Development-only API-36 completion proof for one typed SR5 Priority runner.
+"""Development-only API-36 observation of one typed SR5 Priority runner.
 
 This driver starts from a runner whose individual typed drafts were prepared by
 the dedicated phone pages.  It does not invent allocations, seed auxiliary
-state, or bypass a disabled stage.  A pass proves exact route/page identity,
+state, or bypass a disabled stage.  A pass observes exact route/page identity,
 persisted draft readback, whole-build Core readiness, explicit finalization,
 and a fresh Career reopen.  It is intentionally not wired into a workflow,
-release matrix, finalizer, or completion claim.
+release matrix, finalizer, device-proof claim, or completion claim.  It does
+not install or bind an APK, so its receipt cannot identify installed bytes.
 """
 
 from __future__ import annotations
@@ -23,16 +24,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_api36_editing_e2e as shared
 
 
-SCHEMA = "chummer.android.sr5-priority-legal-path-development-proof/v1"
+SCHEMA = "chummer.android.sr5-priority-legal-path-development-observation/v1"
+IDENTITY_CONTRACT_BLOCKER = "creation-identity-draft-contract-unavailable"
 
 
 @dataclass(frozen=True)
 class LegalPathStage:
     step_id: str
     route_id: str
-    page_id: str
-    authority_id: str
+    page_id: str | None
+    authority_id: str | None
     required_by_finalizer: bool
+    expected_clickable: bool = True
 
 
 LEGAL_PATH_STAGES = (
@@ -45,7 +48,7 @@ LEGAL_PATH_STAGES = (
     LegalPathStage("magic-resonance", "creation-stage-magic-resonance", "creation-magic-resonance-page", "creation-magic-resonance-binding", True),
     LegalPathStage("resources", "creation-stage-resources", "creation-resources-page", "creation-resources-saved-draft", True),
     LegalPathStage("contacts-lifestyles", "creation-stage-contacts-lifestyles", "creation-contacts-page", "creation-contacts-binding", False),
-    LegalPathStage("identity-story", "creation-stage-identity-story", "origin-dossier", "origin-dossier-identity", False),
+    LegalPathStage("identity-story", "creation-stage-identity-story", None, None, False, False),
 )
 
 
@@ -65,10 +68,16 @@ def validate_stage_catalog(stages: tuple[LegalPathStage, ...] = LEGAL_PATH_STAGE
     actual = tuple(stage.step_id for stage in stages)
     if actual != expected:
         raise RuntimeError(f"SR5 Priority legal-path order changed: expected={expected!r}, actual={actual!r}")
-    for field in ("route_id", "page_id", "authority_id"):
-        values = tuple(getattr(stage, field) for stage in stages)
+    route_ids = tuple(stage.route_id for stage in stages)
+    if any(not value for value in route_ids) or len(route_ids) != len(set(route_ids)):
+        raise RuntimeError("SR5 Priority legal-path route identities are empty or duplicated")
+    clickable = tuple(stage for stage in stages if stage.expected_clickable)
+    for field in ("page_id", "authority_id"):
+        values = tuple(getattr(stage, field) for stage in clickable)
         if any(not value for value in values) or len(values) != len(set(values)):
             raise RuntimeError(f"SR5 Priority legal-path {field} identities are empty or duplicated")
+    if any(stage.page_id is not None or stage.authority_id is not None for stage in stages if not stage.expected_clickable):
+        raise RuntimeError("A blocked SR5 Priority stage must not name a fallback page or authority")
 
 
 def open_exact_stage(device: shared.Device, stage: LegalPathStage) -> dict[str, str | bool]:
@@ -81,12 +90,34 @@ def open_exact_stage(device: shared.Device, stage: LegalPathStage) -> dict[str, 
         evidence_prefix=f"sr5-priority-{stage.step_id}-route",
         surface_name=f"SR5 Priority {stage.step_id} stage",
     )
-    if row.attributes.get("enabled") != "true" or row.attributes.get("clickable") != "true":
+    enabled = row.attributes.get("enabled") == "true"
+    clickable = row.attributes.get("clickable") == "true"
+    if not stage.expected_clickable:
+        reason = row.attributes.get("content-desc") or row.attributes.get("text") or ""
+        if enabled or clickable:
+            raise RuntimeError(
+                f"Typed SR5 Priority stage {stage.step_id!r} exposed an unsupported mutation route"
+            )
+        if IDENTITY_CONTRACT_BLOCKER not in reason:
+            raise RuntimeError(
+                f"Typed SR5 Priority stage {stage.step_id!r} did not expose its exact contract blocker"
+            )
+        device.capture(f"sr5-priority-{stage.step_id}-blocked")
+        return {
+            "stepId": stage.step_id,
+            "routeId": stage.route_id,
+            "requiredByCurrentFinalizer": stage.required_by_finalizer,
+            "routeStatus": "typed-contract-unavailable",
+            "authorityVisible": False,
+        }
+    if not enabled or not clickable:
         reason = row.attributes.get("content-desc") or row.attributes.get("text") or "no disable reason"
         device.capture(f"sr5-priority-{stage.step_id}-blocked")
         raise RuntimeError(
             f"Typed SR5 Priority stage {stage.step_id!r} is blocked; no fallback is allowed: {reason}"
         )
+    if stage.page_id is None or stage.authority_id is None:
+        raise RuntimeError(f"Clickable SR5 Priority stage {stage.step_id!r} has no typed page authority")
     device.shell("input", "tap", *(str(value) for value in row.center))
     device.wait_for_single_exact_resource_id(
         stage.page_id,
@@ -299,7 +330,7 @@ def execute(args: argparse.Namespace) -> int:
     device = shared.Device(args.adb.resolve(), args.serial, args.evidence.resolve())
     api = device.shell("getprop", "ro.build.version.sdk")
     if api != "36":
-        raise RuntimeError(f"SR5 Priority legal-path proof requires API 36, got {api!r}")
+        raise RuntimeError(f"SR5 Priority legal-path observation requires API 36, got {api!r}")
     shared.launch_app(device)
     shared.wait_for_phone_runner_route(device, timeout=90)
     device.wait_for_single_exact_resource_id(
@@ -312,15 +343,15 @@ def execute(args: argparse.Namespace) -> int:
     finalization = finalize_exact_build(device)
     receipt = {
         "schema": SCHEMA,
-        "status": "development-proof",
+        "status": "development-observation",
         "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
         "serial": args.serial,
         "apiLevel": int(api),
-        "apk": str(args.apk.resolve()),
-        "apkSha256": shared.sha256(args.apk.resolve()),
         "driverSha256": shared.sha256(Path(__file__).resolve()),
         "stages": stages,
         "finalization": finalization,
+        "deviceProof": False,
+        "installedArtifactBound": False,
         "releaseAuthority": False,
     }
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
@@ -334,7 +365,6 @@ def execute(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--adb", type=Path, required=True)
-    parser.add_argument("--apk", type=Path, required=True)
     parser.add_argument("--serial", required=True)
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
@@ -345,5 +375,5 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except (RuntimeError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
-        print(f"SR5 Priority legal-path development proof failed: {error}", flush=True)
+        print(f"SR5 Priority legal-path development observation failed: {error}", flush=True)
         raise SystemExit(1) from error

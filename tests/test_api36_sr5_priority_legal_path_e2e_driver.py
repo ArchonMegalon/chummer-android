@@ -41,8 +41,8 @@ class Api36Sr5PriorityLegalPathDriverTests(unittest.TestCase):
     def test_disabled_stage_fails_closed_without_fallback_or_generic_edit(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         for marker in (
-            'row.attributes.get("enabled") != "true"',
-            'row.attributes.get("clickable") != "true"',
+            'enabled = row.attributes.get("enabled") == "true"',
+            'clickable = row.attributes.get("clickable") == "true"',
             "no fallback is allowed",
             "creation-finalization-authority-ready",
             "creation-finalization-open-review",
@@ -52,6 +52,9 @@ class Api36Sr5PriorityLegalPathDriverTests(unittest.TestCase):
             "creation-gear-saved-draft-revision",
             "creation-lifestyles-authority",
             "creation-basics-sourcebooks-contract-unavailable",
+            "creation-identity-draft-contract-unavailable",
+            '"deviceProof": False',
+            '"installedArtifactBound": False',
             '"releaseAuthority": False',
         ):
             self.assertIn(marker, source)
@@ -61,6 +64,8 @@ class Api36Sr5PriorityLegalPathDriverTests(unittest.TestCase):
             "settings.xml#",
             "character:write",
             "status\": \"pass",
+            "args.apk",
+            '"apkSha256"',
         ):
             self.assertNotIn(forbidden, source)
 
@@ -77,6 +82,40 @@ class Api36Sr5PriorityLegalPathDriverTests(unittest.TestCase):
         self.assertNotIn("contacts-lifestyles", required)
         self.assertNotIn("identity-story", required)
         self.assertNotIn("basics", required)
+        identity = next(stage for stage in driver.LEGAL_PATH_STAGES if stage.step_id == "identity-story")
+        self.assertFalse(identity.expected_clickable)
+        self.assertIsNone(identity.page_id)
+        self.assertIsNone(identity.authority_id)
+
+    def test_identity_gap_is_observed_without_tap_or_fallback_page(self) -> None:
+        class Row:
+            attributes = {
+                "enabled": "false",
+                "clickable": "false",
+                "content-desc": driver.IDENTITY_CONTRACT_BLOCKER,
+            }
+            center = (10, 10)
+
+        class Device:
+            def __init__(self) -> None:
+                self.captures: list[str] = []
+
+            def wait_exact_resource_id_bidirectional(self, *_args: object, **_kwargs: object) -> Row:
+                return Row()
+
+            def capture(self, name: str) -> None:
+                self.captures.append(name)
+
+            def shell(self, *_args: object) -> str:
+                raise AssertionError("The blocked Identity gap must not be tapped")
+
+        identity = next(stage for stage in driver.LEGAL_PATH_STAGES if stage.step_id == "identity-story")
+        device = Device()
+        result = driver.open_exact_stage(device, identity)
+
+        self.assertEqual("typed-contract-unavailable", result["routeStatus"])
+        self.assertFalse(result["authorityVisible"])
+        self.assertEqual(["sr5-priority-identity-story-blocked"], device.captures)
 
     def test_driver_is_not_activated_as_release_or_workflow_authority(self) -> None:
         relative = DRIVER.relative_to(ROOT).as_posix()

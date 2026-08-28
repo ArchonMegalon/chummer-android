@@ -33,21 +33,33 @@ class Sr5PriorityLegalPathSourceContractTests(unittest.TestCase):
             "new CreationContactsPage(Coordinator)",
             "OpenCreationResourcesAsync",
             "new CreationResourcesPage(",
-            "OpenCreationIdentityAsync",
-            "new OriginDossierPage(Coordinator)",
         ):
             self.assertIn(marker, source)
         for forbidden in (
             "new CharacterEditorPage",
             "new GenericEditPage",
             "new AttributeEditRequest",
+            "OpenCreationIdentityAsync",
+            "ApplyOriginDossierEditAsync",
         ):
             self.assertNotIn(forbidden, source)
 
     def test_identity_and_resources_routes_fail_closed(self) -> None:
         source = BUILD_PAGE.read_text(encoding="utf-8")
-        self.assertIn("bool canOpenIdentity = identityStage", source)
-        self.assertIn("&& stage.IsAvailable", source)
+        for marker in (
+            "CreationIdentityDraftContractUnavailable",
+            '"creation-identity-draft-contract-unavailable"',
+            "CreationIdentityRoute(stage.Blockers)",
+            "IsEnabled: false",
+            "identityRoute!.Blocker",
+        ):
+            self.assertIn(marker, source)
+        for forbidden in (
+            "OpenCreationIdentityAsync",
+            "ApplyOriginDossierEditAsync",
+            "Complete the dedicated identity and dossier fields",
+        ):
+            self.assertNotIn(forbidden, source)
         self.assertIn("The typed Resources/overview presenters are unavailable", source)
         self.assertNotIn(": Task.CompletedTask;\n\n    private static string CreationContactsStageDetail", source)
 
@@ -101,7 +113,9 @@ class Sr5PriorityLegalPathSourceContractTests(unittest.TestCase):
         source = DRIVER.read_text(encoding="utf-8")
         for marker in (
             "Development-only",
-            '"status": "development-proof"',
+            '"status": "development-observation"',
+            '"deviceProof": False',
+            '"installedArtifactBound": False',
             '"releaseAuthority": False',
             "no fallback is allowed",
         ):
@@ -112,6 +126,8 @@ class Sr5PriorityLegalPathSourceContractTests(unittest.TestCase):
             "AuxiliaryState",
             "CharacterCreationFinalizationService",
             "settings.xml",
+            "args.apk",
+            '"apkSha256"',
         ):
             self.assertNotIn(forbidden, source)
 

@@ -8,6 +8,8 @@ namespace Chummer.Android.Native;
 
 public sealed record BuildPageRouteMarker(string AutomationId, string Label);
 
+public sealed record CreationIdentityRouteState(bool IsEnabled, string Blocker);
+
 public sealed record CreationDashboardProjectionBinding(
     string WorkspaceId,
     long ContentRevision,
@@ -162,6 +164,9 @@ public sealed record CreationDashboardAuthorityProjection(
 
 public static class BuildPageUiProjection
 {
+    public const string CreationIdentityDraftContractUnavailable =
+        "creation-identity-draft-contract-unavailable";
+
     public static BuildPageRouteMarker RouteMarker(CharacterProfileSection? profile)
         => profile switch
         {
@@ -172,6 +177,13 @@ public static class BuildPageUiProjection
 
     public static string SaveToolbarText(bool hasDurableSaveNotice)
         => hasDurableSaveNotice ? "Saved." : "Save";
+
+    public static CreationIdentityRouteState CreationIdentityRoute(
+        IReadOnlyList<string> coreBlockers)
+        => new(
+            IsEnabled: false,
+            Blocker: coreBlockers.FirstOrDefault(static blocker => !string.IsNullOrWhiteSpace(blocker))
+                     ?? CreationIdentityDraftContractUnavailable);
 
     /// <summary>
     /// Consumes a terminal outcome that can no longer be applied to the page's
@@ -1131,12 +1143,12 @@ public sealed class BuildPage : NativePageBase
                 stage.StepId,
                 CharacterCreationWizardStepIds.IdentityStory,
                 StringComparison.Ordinal);
-            bool canOpenIdentity = identityStage
-                                   && stage.IsAvailable
-                                   && Coordinator.State.Profile?.Created == false;
+            CreationIdentityRouteState? identityRoute = identityStage
+                ? BuildPageUiProjection.CreationIdentityRoute(stage.Blockers)
+                : null;
             bool canOpen = canOpenBasics || lifeModuleOrigin || canOpenFoundation || canOpenPrerequisite || canOpenAttributes
                            || canOpenSkills || canOpenQualities || canOpenMagicResonance
-                           || canOpenContacts || canOpenResources || canOpenIdentity;
+                           || canOpenContacts || canOpenResources || identityRoute?.IsEnabled == true;
             bool projectionBoundStage =
                 priorityPrerequisite || attributeStage || skillStage || contactsStage || resourcesStage;
             string? projectionBlocker = ProjectionStageBlocker(
@@ -1148,8 +1160,6 @@ public sealed class BuildPage : NativePageBase
                 resourcesStage);
             Func<Task> selected = canOpenBasics
                 ? OpenCreationBasicsAsync
-                : canOpenIdentity
-                ? OpenCreationIdentityAsync
                 : lifeModuleOrigin
                 ? OpenSr5LifeModuleOriginAsync
                 : canOpenResources
@@ -1171,8 +1181,8 @@ public sealed class BuildPage : NativePageBase
                     : () => Task.CompletedTask;
             string detail = canOpenBasics
                 ? "Inspect the frozen SR5 settings profile; sourcebook changes stay fail-closed without a typed contract"
-                : canOpenIdentity
-                ? "Complete the dedicated identity and dossier fields on this exact workspace revision"
+                : identityStage
+                ? identityRoute!.Blocker
                 : lifeModuleOrigin
                 ? "Read the source-bound Origin scene, preview exact effects, then confirm"
                 : canOpenResources
@@ -1335,18 +1345,16 @@ public sealed class BuildPage : NativePageBase
                 stepId,
                 CharacterCreationWizardStepIds.IdentityStory,
                 StringComparison.Ordinal);
-            bool canOpenIdentity = identityStep
-                                   && stage.IsAvailable
-                                   && Coordinator.State.Profile?.Created == false;
+            CreationIdentityRouteState? identityRoute = identityStep
+                ? BuildPageUiProjection.CreationIdentityRoute(stage.Blockers)
+                : null;
             // The post-create AttributeEditRequest path must never serve as a wizard fallback.
             // Core's dedicated creation authority is the only Attributes route here.
             bool canOpen = canOpenBasics || lifeModuleOrigin || canOpenFoundation || canOpenAttributes || canOpenSkills
                            || canOpenQualities || canOpenMagicResonance || canOpenContacts
-                           || canOpenResources || canOpenIdentity;
+                           || canOpenResources || identityRoute?.IsEnabled == true;
             Func<Task> selected = canOpenBasics
                 ? OpenCreationBasicsAsync
-                : canOpenIdentity
-                ? OpenCreationIdentityAsync
                 : lifeModuleOrigin
                 ? OpenSr5LifeModuleOriginAsync
                 : canOpenResources
@@ -1366,8 +1374,8 @@ public sealed class BuildPage : NativePageBase
                 : () => Task.CompletedTask;
             string detail = canOpenBasics
                 ? "Inspect the frozen SR5 settings profile; sourcebook changes stay fail-closed without a typed contract"
-                : canOpenIdentity
-                ? "Complete the dedicated identity and dossier fields on this exact workspace revision"
+                : identityStep
+                ? identityRoute!.Blocker
                 : lifeModuleOrigin
                 ? "Read the source-bound Origin scene, preview exact effects, then confirm"
                 : canOpenResources
@@ -1583,9 +1591,6 @@ public sealed class BuildPage : NativePageBase
 
     private Task OpenCreationBasicsAsync()
         => Navigation.PushAsync(new CreationBasicsPage(Coordinator));
-
-    private Task OpenCreationIdentityAsync()
-        => Navigation.PushAsync(new OriginDossierPage(Coordinator));
 
     private async Task OpenSr5LifeModuleOriginAsync()
     {

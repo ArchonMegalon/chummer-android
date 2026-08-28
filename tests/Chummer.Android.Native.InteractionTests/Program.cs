@@ -25,6 +25,7 @@ internal static class Program
             (nameof(TalentGrantSelectionsRemainExactAndExoticChoicesFailClosedAsync), TalentGrantSelectionsRemainExactAndExoticChoicesFailClosedAsync),
             (nameof(PreAuthorityCreationSnapshotCanScheduleBootstrapAsync), PreAuthorityCreationSnapshotCanScheduleBootstrapAsync),
             (nameof(BuildPageProjectsExactlyOneLifecycleRouteAsync), BuildPageProjectsExactlyOneLifecycleRouteAsync),
+            (nameof(CreationIdentityGapFailsClosedAsync), CreationIdentityGapFailsClosedAsync),
             (nameof(DurableSaveNoticeFailsClosedAcrossStateChangesAsync), DurableSaveNoticeFailsClosedAcrossStateChangesAsync),
             (nameof(PlayReviewPolicyEnforcesUsageVersionAndCooldownAsync), PlayReviewPolicyEnforcesUsageVersionAndCooldownAsync),
             (nameof(PlayReviewSafetyRejectsEveryMutationBoundaryAsync), PlayReviewSafetyRejectsEveryMutationBoundaryAsync),
@@ -80,6 +81,23 @@ internal static class Program
         Require(
             projected.Select(marker => marker.AutomationId).Distinct(StringComparer.Ordinal).Count() == 3,
             "Empty, creation, and career route identities must remain disjoint.");
+        return Task.CompletedTask;
+    }
+
+    private static Task CreationIdentityGapFailsClosedAsync()
+    {
+        CreationIdentityRouteState projected = BuildPageUiProjection.CreationIdentityRoute(
+            ["core-identity-draft-blocked"]);
+        Require(!projected.IsEnabled, "A missing typed Creation Identity draft contract enabled a route.");
+        Require(
+            projected.Blocker == "core-identity-draft-blocked",
+            "The exact Core Identity blocker was replaced by presentation text.");
+
+        CreationIdentityRouteState missing = BuildPageUiProjection.CreationIdentityRoute([]);
+        Require(!missing.IsEnabled, "An Identity stage without a Core blocker enabled a fallback route.");
+        Require(
+            missing.Blocker == BuildPageUiProjection.CreationIdentityDraftContractUnavailable,
+            "The missing Creation Identity contract was not exposed explicitly.");
         return Task.CompletedTask;
     }
 
