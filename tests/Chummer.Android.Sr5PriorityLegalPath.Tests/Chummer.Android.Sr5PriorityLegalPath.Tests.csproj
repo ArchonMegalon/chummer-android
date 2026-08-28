@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ChummerCoreEngineRoot Condition="'$(ChummerCoreEngineRoot)' == ''">../../../chummer-core-engine</ChummerCoreEngineRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/CreationPriorityLegalPathProjection.cs"
+             Link="CreationPriorityLegalPathProjection.cs" />
+    <ProjectReference Include="$(ChummerCoreEngineRoot)/Chummer.Contracts/Chummer.Contracts.csproj" />
+  </ItemGroup>
+</Project>

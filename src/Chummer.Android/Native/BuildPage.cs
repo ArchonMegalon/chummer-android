@@ -219,6 +219,7 @@ public sealed class BuildPage : NativePageBase
     private CreationDashboardProjectionBinding? _creationFinalizationBinding;
     private CharacterCreationFinalizationResult<CharacterCreationFinalizationState>?
         _creationFinalizationAuthority;
+    private string? _creationFinalizationFailureReason;
 
     public BuildPage(
         RunnerSessionCoordinator coordinator,
@@ -570,6 +571,7 @@ public sealed class BuildPage : NativePageBase
             _creationFinalizationQueue.Cancel();
             _creationFinalizationBinding = binding;
             _creationFinalizationAuthority = null;
+            _creationFinalizationFailureReason = null;
         }
         if (_creationFinalizationAuthority is null)
         {
@@ -587,18 +589,26 @@ public sealed class BuildPage : NativePageBase
             if (_creationFinalizationQueue.TryTake(
                     request,
                     out CharacterCreationFinalizationResult<CharacterCreationFinalizationState> completed,
-                    out Exception? error)
-                && error is null)
-                _creationFinalizationAuthority = completed;
+                    out Exception? error))
+            {
+                _creationFinalizationAuthority = error is null ? completed : null;
+                _creationFinalizationFailureReason = error is null
+                    ? null
+                    : "creation-finalization-authority-load-failed";
+            }
         }
 
         CharacterCreationFinalizationResult<CharacterCreationFinalizationState>? authority =
             _creationFinalizationAuthority;
-        if (authority is not
-            {
-                Outcome: CharacterCreationFinalizationOutcomes.Available,
-                Value.CanReview: true
-            })
+        CreationPriorityLegalPathProjection legalPath =
+            CreationPriorityLegalPathProjection.From(authority);
+        AddCreationFinalizationStatus(legalPath);
+        if (!legalPath.CanOpenReview
+            || authority is not
+               {
+                   Outcome: CharacterCreationFinalizationOutcomes.Available,
+                   Value.CanReview: true
+               })
         {
             return;
         }
@@ -624,6 +634,69 @@ public sealed class BuildPage : NativePageBase
         _body.Add(review);
     }
 
+    private void AddCreationFinalizationStatus(CreationPriorityLegalPathProjection projection)
+    {
+        VerticalStackLayout card = new() { Spacing = 6 };
+        card.Add(NativeTheme.Eyebrow("Legal build readiness"));
+        if (projection.Outcome == "loading")
+        {
+            Label loading = NativeTheme.Body(
+                string.IsNullOrWhiteSpace(_creationFinalizationFailureReason)
+                    ? "Loading Core's sealed whole-build readiness. Finalization remains disabled."
+                    : _creationFinalizationFailureReason,
+                string.IsNullOrWhiteSpace(_creationFinalizationFailureReason)
+                    ? NativeTheme.Muted
+                    : NativeTheme.Danger);
+            loading.AutomationId = string.IsNullOrWhiteSpace(_creationFinalizationFailureReason)
+                ? "creation-finalization-authority-loading"
+                : "creation-finalization-authority-failed";
+            card.Add(loading);
+        }
+        else
+        {
+            card.Add(NativeTheme.Metric("Authority", projection.Outcome));
+            if (projection.ContentRevision is { } contentRevision)
+                card.Add(NativeTheme.Metric("Revision", contentRevision.ToString(CultureInfo.InvariantCulture)));
+            if (!string.IsNullOrWhiteSpace(projection.SnapshotDigest))
+                card.Add(NativeTheme.Metric("Snapshot", ShortDigest(projection.SnapshotDigest)));
+
+            foreach (CreationPriorityLegalPathStep step in projection.Steps)
+            {
+                string status = step.IsComplete
+                    ? "complete"
+                    : step.IsRequired ? "required" : "optional";
+                string detail = step.Blockers.FirstOrDefault()
+                                ?? (step.SourceAnchorIds.Count > 0
+                                    ? $"{step.SourceAnchorIds.Count.ToString(CultureInfo.InvariantCulture)} source anchor(s)"
+                                    : "No source anchor in the current Core step");
+                Label row = NativeTheme.Body($"{RunnerSessionCoordinator.HumanizeId(step.StepId)} · {status} · {detail}",
+                    step.IsRequired && !step.IsComplete ? NativeTheme.Danger : NativeTheme.Muted);
+                row.AutomationId = $"creation-finalization-step-{Token(step.StepId)}";
+                card.Add(row);
+            }
+
+            IReadOnlyList<string> blockers = projection.Blockers.Count > 0
+                ? projection.Blockers
+                : string.IsNullOrWhiteSpace(_creationFinalizationFailureReason)
+                    ? []
+                    : [_creationFinalizationFailureReason];
+            foreach (string blocker in blockers)
+                card.Add(NativeTheme.Body(blocker, NativeTheme.Danger));
+            Label readiness = NativeTheme.Body(
+                projection.CanOpenReview
+                    ? "Core has sealed a reviewable whole-build plan."
+                    : "Review stays disabled until every Core-required typed draft is complete.",
+                projection.CanOpenReview ? NativeTheme.Success : NativeTheme.Danger);
+            readiness.AutomationId = projection.CanOpenReview
+                ? "creation-finalization-authority-ready"
+                : "creation-finalization-authority-blocked";
+            card.Add(readiness);
+        }
+        Border border = NativeTheme.Card(card);
+        border.AutomationId = "creation-finalization-readiness";
+        _body.Add(border);
+    }
+
     private void ScheduleCreationFinalizationAcceptance(
         BackgroundProjectionRequest<CreationDashboardProjectionBinding> request)
     {
@@ -642,6 +715,9 @@ public sealed class BuildPage : NativePageBase
                     out Exception? error))
                 return;
             _creationFinalizationAuthority = error is null ? completed : null;
+            _creationFinalizationFailureReason = error is null
+                ? null
+                : "creation-finalization-authority-load-failed";
             Refresh();
         });
     }
@@ -910,6 +986,7 @@ public sealed class BuildPage : NativePageBase
         _creationFinalizationQueue.Cancel();
         _creationFinalizationBinding = null;
         _creationFinalizationAuthority = null;
+        _creationFinalizationFailureReason = null;
     }
 
     private void RetryCreationProjection()
@@ -999,6 +1076,13 @@ public sealed class BuildPage : NativePageBase
         foreach (CharacterCreationWizardStageState stage in snapshot.Steps)
         {
             bool foundation = IsFoundationStage(stage.StepId);
+            bool basicsStage = string.Equals(
+                stage.StepId,
+                CharacterCreationWizardStepIds.Basics,
+                StringComparison.Ordinal);
+            bool canOpenBasics = basicsStage
+                                 && stage.IsAvailable
+                                 && Coordinator.State.Profile?.Created == false;
             bool lifeModuleStep = string.Equals(
                 stage.StepId,
                 CharacterCreationWizardStepIds.LifeModules,
@@ -1043,9 +1127,16 @@ public sealed class BuildPage : NativePageBase
             bool canOpenResources = resourcesStage
                                     && stage.IsAvailable
                                     && HasAuthoritativeResources(creationResources);
-            bool canOpen = lifeModuleOrigin || canOpenFoundation || canOpenPrerequisite || canOpenAttributes
+            bool identityStage = string.Equals(
+                stage.StepId,
+                CharacterCreationWizardStepIds.IdentityStory,
+                StringComparison.Ordinal);
+            bool canOpenIdentity = identityStage
+                                   && stage.IsAvailable
+                                   && Coordinator.State.Profile?.Created == false;
+            bool canOpen = canOpenBasics || lifeModuleOrigin || canOpenFoundation || canOpenPrerequisite || canOpenAttributes
                            || canOpenSkills || canOpenQualities || canOpenMagicResonance
-                           || canOpenContacts || canOpenResources;
+                           || canOpenContacts || canOpenResources || canOpenIdentity;
             bool projectionBoundStage =
                 priorityPrerequisite || attributeStage || skillStage || contactsStage || resourcesStage;
             string? projectionBlocker = ProjectionStageBlocker(
@@ -1055,7 +1146,11 @@ public sealed class BuildPage : NativePageBase
                 skillStage,
                 contactsStage,
                 resourcesStage);
-            Func<Task> selected = lifeModuleOrigin
+            Func<Task> selected = canOpenBasics
+                ? OpenCreationBasicsAsync
+                : canOpenIdentity
+                ? OpenCreationIdentityAsync
+                : lifeModuleOrigin
                 ? OpenSr5LifeModuleOriginAsync
                 : canOpenResources
                 ? OpenCreationResourcesAsync
@@ -1074,7 +1169,11 @@ public sealed class BuildPage : NativePageBase
                 : canOpenFoundation
                     ? OpenCreationFoundationAsync
                     : () => Task.CompletedTask;
-            string detail = lifeModuleOrigin
+            string detail = canOpenBasics
+                ? "Inspect the frozen SR5 settings profile; sourcebook changes stay fail-closed without a typed contract"
+                : canOpenIdentity
+                ? "Complete the dedicated identity and dossier fields on this exact workspace revision"
+                : lifeModuleOrigin
                 ? "Read the source-bound Origin scene, preview exact effects, then confirm"
                 : canOpenResources
                 ? CreationResourcesStageDetail(creationResources!.State!)
@@ -1192,6 +1291,13 @@ public sealed class BuildPage : NativePageBase
                 CharacterCreationWizardStepIds.Attributes,
                 StringComparison.Ordinal);
             bool foundation = IsFoundationStage(stepId);
+            bool basicsStep = string.Equals(
+                stepId,
+                CharacterCreationWizardStepIds.Basics,
+                StringComparison.Ordinal);
+            bool canOpenBasics = basicsStep
+                                 && stage.IsAvailable
+                                 && Coordinator.State.Profile?.Created == false;
             bool lifeModuleStep = string.Equals(
                 stepId,
                 CharacterCreationWizardStepIds.LifeModules,
@@ -1225,12 +1331,23 @@ public sealed class BuildPage : NativePageBase
             bool canOpenResources = resourcesStep
                                     && stage.IsAvailable
                                     && HasAuthoritativeResources(creationResources);
+            bool identityStep = string.Equals(
+                stepId,
+                CharacterCreationWizardStepIds.IdentityStory,
+                StringComparison.Ordinal);
+            bool canOpenIdentity = identityStep
+                                   && stage.IsAvailable
+                                   && Coordinator.State.Profile?.Created == false;
             // The post-create AttributeEditRequest path must never serve as a wizard fallback.
             // Core's dedicated creation authority is the only Attributes route here.
-            bool canOpen = lifeModuleOrigin || canOpenFoundation || canOpenAttributes || canOpenSkills
+            bool canOpen = canOpenBasics || lifeModuleOrigin || canOpenFoundation || canOpenAttributes || canOpenSkills
                            || canOpenQualities || canOpenMagicResonance || canOpenContacts
-                           || canOpenResources;
-            Func<Task> selected = lifeModuleOrigin
+                           || canOpenResources || canOpenIdentity;
+            Func<Task> selected = canOpenBasics
+                ? OpenCreationBasicsAsync
+                : canOpenIdentity
+                ? OpenCreationIdentityAsync
+                : lifeModuleOrigin
                 ? OpenSr5LifeModuleOriginAsync
                 : canOpenResources
                 ? OpenCreationResourcesAsync
@@ -1247,7 +1364,11 @@ public sealed class BuildPage : NativePageBase
                 : canOpenContacts
                     ? OpenCreationContactsAsync
                 : () => Task.CompletedTask;
-            string detail = lifeModuleOrigin
+            string detail = canOpenBasics
+                ? "Inspect the frozen SR5 settings profile; sourcebook changes stay fail-closed without a typed contract"
+                : canOpenIdentity
+                ? "Complete the dedicated identity and dossier fields on this exact workspace revision"
+                : lifeModuleOrigin
                 ? "Read the source-bound Origin scene, preview exact effects, then confirm"
                 : canOpenResources
                 ? CreationResourcesStageDetail(creationResources!.State!)
@@ -1460,6 +1581,12 @@ public sealed class BuildPage : NativePageBase
     private Task OpenCreationFoundationAsync()
         => Navigation.PushAsync(new CreationFoundationPage(Coordinator));
 
+    private Task OpenCreationBasicsAsync()
+        => Navigation.PushAsync(new CreationBasicsPage(Coordinator));
+
+    private Task OpenCreationIdentityAsync()
+        => Navigation.PushAsync(new OriginDossierPage(Coordinator));
+
     private async Task OpenSr5LifeModuleOriginAsync()
     {
         AndroidSurfaceCopy copy = AndroidSurfaceStrings.Resolve();
@@ -1523,14 +1650,22 @@ public sealed class BuildPage : NativePageBase
     private Task OpenCreationContactsAsync()
         => Navigation.PushAsync(new CreationContactsPage(Coordinator));
 
-    private Task OpenCreationResourcesAsync()
-        => _resourcesPresenter is not null && _overviewPresenter is not null
-            ? Navigation.PushAsync(new CreationResourcesPage(
-                Coordinator,
-                _resourcesPresenter,
-                _overviewPresenter,
-                _gearPresenter))
-            : Task.CompletedTask;
+    private async Task OpenCreationResourcesAsync()
+    {
+        if (_resourcesPresenter is null || _overviewPresenter is null)
+        {
+            await DisplayAlertAsync(
+                "Resources authority unavailable",
+                "The typed Resources/overview presenters are unavailable. No fallback budget or purchase mutation is allowed.",
+                "OK");
+            return;
+        }
+        await Navigation.PushAsync(new CreationResourcesPage(
+            Coordinator,
+            _resourcesPresenter,
+            _overviewPresenter,
+            _gearPresenter));
+    }
 
     private static string CreationContactsStageDetail(
         CharacterCreationContactsInteractionState state)
@@ -1561,7 +1696,7 @@ public sealed class BuildPage : NativePageBase
             ? $"Core prerequisite complete · effective normal Attribute grant "
               + (state.EffectiveNormalAttributePoints?.ToString(CultureInfo.InvariantCulture)
                  ?? "unavailable")
-              + " · dedicated Creation Attributes phone page not wired yet"
+              + " · Creation Attributes phone authority is ready"
             : $"Raw normal Attribute grant "
               + (state.BaseNormalAttributePoints?.ToString(CultureInfo.InvariantCulture) ?? "not selected")
               + " · Heritage/metatype halveattributepoints adjustment required · Attributes remain disabled";
