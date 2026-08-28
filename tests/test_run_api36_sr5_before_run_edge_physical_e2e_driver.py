@@ -91,6 +91,14 @@ def applied_transaction() -> dict[str, object]:
     return transaction
 
 
+def successor_state() -> dict[str, object]:
+    root = ET.parse(FIXTURE).getroot()
+    before = driver.assert_before_state(root)
+    saved = copy.deepcopy(root)
+    saved.find("edgeused").text = "1"  # type: ignore[union-attr]
+    return driver.assert_after_state(saved, before)
+
+
 class BeforeRunPhysicalDriverContractTests(unittest.TestCase):
     def test_driver_is_separate_physical_api36_arm64_and_build_provenance_bound(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
@@ -230,19 +238,61 @@ class BeforeRunPhysicalDriverContractTests(unittest.TestCase):
         self.assertEqual(driver.expected_journal_digest(transaction), transaction["JournalDigest"])
 
     def test_successor_reopen_observes_both_edge_actions_without_tapping(self) -> None:
+        state = successor_state()
+        authority = driver.expected_successor_action_contracts(driver.SPEC, state)
+        expected = driver.expected_successor_action_ids(driver.SPEC, state)
+        self.assertEqual(
+            {"before-run.edge.spend", "before-run.edge.regain"},
+            set(authority),
+        )
+        for contract in authority.values():
+            self.assertEqual(
+                "sr5-table-action-" + contract["actionDigest"][7:19],
+                contract["automationId"],
+            )
         actions = [
-            driver.shared.UiNode({"resource-id": f"sr5-table-action-{suffix}"})
-            for suffix in ("spend", "regain")
+            driver.shared.UiNode({"resource-id": automation_id})
+            for automation_id in expected
         ]
         device = mock.Mock(spec=driver.shared.Device)
         device.hierarchy.return_value = actions
-        with mock.patch.object(driver.physical.shared, "reset_scroll_to_top"):
-            observed = driver.observe_successor_actions(device, driver.SPEC)
-        self.assertEqual(
-            ["sr5-table-action-regain", "sr5-table-action-spend"],
-            observed,
-        )
+        with (
+            mock.patch.object(driver.physical.shared, "reset_scroll_to_top"),
+            mock.patch.object(driver.time, "sleep"),
+        ):
+            observed = driver.observe_successor_actions(device, driver.SPEC, state)
+        self.assertEqual(sorted(expected), observed)
         device.shell.assert_not_called()
+
+    def test_successor_edge_catalog_rejects_arbitrary_mixed_missing_extra_duplicate_and_type_confusion(self) -> None:
+        state = successor_state()
+        expected = sorted(driver.expected_successor_action_ids(driver.SPEC, state))
+        foreign_one = "sr5-table-action-aaaaaaaaaaaa"
+        foreign_two = "sr5-table-action-bbbbbbbbbbbb"
+        self.assertNotIn(foreign_one, expected)
+        self.assertNotIn(foreign_two, expected)
+        hostile_catalogs: tuple[tuple[str, list[object]], ...] = (
+            ("arbitrary same count", [foreign_one, foreign_two]),
+            ("mixed expected and foreign", [expected[0], foreign_one]),
+            ("missing", [expected[0]]),
+            ("extra", [*expected, foreign_one]),
+            ("duplicate", [expected[0], expected[0], expected[1]]),
+            ("type confusion", [expected[0], 123]),
+        )
+        for label, resource_ids in hostile_catalogs:
+            with self.subTest(label=label):
+                device = mock.Mock(spec=driver.shared.Device)
+                device.hierarchy.return_value = [
+                    driver.shared.UiNode({"resource-id": resource_id})
+                    for resource_id in resource_ids
+                ]
+                with (
+                    mock.patch.object(driver.physical.shared, "reset_scroll_to_top"),
+                    mock.patch.object(driver.time, "sleep"),
+                    self.assertRaises(RuntimeError),
+                ):
+                    driver.observe_successor_actions(device, driver.SPEC, state)
+                device.shell.assert_not_called()
 
     def test_missing_disposable_device_authority_fails_before_manifest_or_adb(self) -> None:
         args = SimpleNamespace(

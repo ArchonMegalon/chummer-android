@@ -6,6 +6,7 @@ import importlib.util
 from pathlib import Path
 import sys
 import unittest
+from unittest import mock
 import xml.etree.ElementTree as ET
 
 
@@ -59,6 +60,15 @@ def reviewed_playtime_transaction() -> dict[str, object]:
     )
     transaction["JournalDigest"] = driver.lane.expected_journal_digest(transaction)
     return transaction
+
+
+def successor_state() -> dict[str, object]:
+    root = ET.parse(FIXTURE).getroot()
+    preserved = driver.assert_before_state(root)
+    saved = copy.deepcopy(root)
+    driver.weapon.active_clip(saved).find("count").text = "8"  # type: ignore[union-attr]
+    driver.weapon.linked_ammo(saved).find("qty").text = "8"  # type: ignore[union-attr]
+    return driver.assert_after_state(saved, preserved)
 
 
 class PlaytimePhysicalDriverContractTests(unittest.TestCase):
@@ -205,12 +215,70 @@ class PlaytimePhysicalDriverContractTests(unittest.TestCase):
             '"sr5-table-wizard-confirm"',
             'if saved.content_revision != imported.content_revision + 1:',
             '"sr5-table-wizard-receipt-acknowledge"',
-            "observe_successor_actions(device, spec)",
+            "observe_successor_actions(device, spec, final_successor_state)",
             'device.capture(f"sr5-{spec.lane}-saved-successor-reopened")',
         ):
             with self.subTest(marker=marker):
                 self.assertIn(marker, shared_source)
         self.assertNotIn("successor_action = tap_unique_typed_action", shared_source)
+
+    def test_successor_reopen_observes_exact_next_short_burst_without_tapping(self) -> None:
+        state = successor_state()
+        authority = driver.lane.expected_successor_action_contracts(driver.SPEC, state)
+        self.assertEqual({"playtime.weapon.fire"}, set(authority))
+        contract = authority["playtime.weapon.fire"]
+        self.assertEqual(8, contract["ammoBefore"])
+        self.assertEqual(5, contract["ammoAfter"])
+        self.assertEqual(3, contract["roundsConsumed"])
+        self.assertEqual(
+            driver.lane.expected_weapon_target_revision(8),
+            contract["targetRevision"],
+        )
+        self.assertEqual(
+            "sr5-table-action-" + contract["actionDigest"][7:19],
+            contract["automationId"],
+        )
+        expected = driver.lane.expected_successor_action_ids(driver.SPEC, state)
+        device = mock.Mock(spec=driver.lane.shared.Device)
+        device.hierarchy.return_value = [
+            driver.lane.shared.UiNode({"resource-id": automation_id})
+            for automation_id in expected
+        ]
+        with (
+            mock.patch.object(driver.lane.shared, "reset_scroll_to_top"),
+            mock.patch.object(driver.lane.time, "sleep"),
+        ):
+            observed = driver.lane.observe_successor_actions(device, driver.SPEC, state)
+        self.assertEqual(sorted(expected), observed)
+        device.shell.assert_not_called()
+
+    def test_successor_playtime_catalog_rejects_arbitrary_mixed_missing_extra_duplicate_and_type_confusion(self) -> None:
+        state = successor_state()
+        expected = next(iter(driver.lane.expected_successor_action_ids(driver.SPEC, state)))
+        foreign = "sr5-table-action-cccccccccccc"
+        self.assertNotEqual(foreign, expected)
+        hostile_catalogs: tuple[tuple[str, list[object]], ...] = (
+            ("arbitrary same count", [foreign]),
+            ("mixed expected and foreign", [expected, foreign]),
+            ("missing", []),
+            ("extra", [expected, foreign]),
+            ("duplicate", [expected, expected]),
+            ("type confusion", [123]),
+        )
+        for label, resource_ids in hostile_catalogs:
+            with self.subTest(label=label):
+                device = mock.Mock(spec=driver.lane.shared.Device)
+                device.hierarchy.return_value = [
+                    driver.lane.shared.UiNode({"resource-id": resource_id})
+                    for resource_id in resource_ids
+                ]
+                with (
+                    mock.patch.object(driver.lane.shared, "reset_scroll_to_top"),
+                    mock.patch.object(driver.lane.time, "sleep"),
+                    self.assertRaises(RuntimeError),
+                ):
+                    driver.lane.observe_successor_actions(device, driver.SPEC, state)
+                device.shell.assert_not_called()
 
     def test_playtime_source_graph_binds_typed_weapon_request_rules_and_helper(self) -> None:
         paths = driver.playtime_source_paths(

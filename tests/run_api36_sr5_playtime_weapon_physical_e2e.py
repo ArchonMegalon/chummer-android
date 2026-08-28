@@ -108,7 +108,10 @@ def assert_before_state(root: ET.Element) -> ET.Element:
     return copy.deepcopy(root)
 
 
-def assert_after_state(root: ET.Element, preserved: object) -> None:
+def assert_after_state(
+    root: ET.Element,
+    preserved: object,
+) -> dict[str, object]:
     if not isinstance(preserved, ET.Element):
         raise RuntimeError("Playtime before-state authority was not captured")
     weapon.assert_after(root, weapon.unrelated_xml_authority(preserved))
@@ -121,6 +124,17 @@ def assert_after_state(root: ET.Element, preserved: object) -> None:
         raise RuntimeError(
             "Playtime changed XML outside the exact clip/ammo 11 -> 8 delta"
         )
+    return {
+        "lane": "playtime",
+        "weaponId": weapon.WEAPON_ID,
+        "ammoSlot": weapon.AMMO_SLOT,
+        "ammoGearId": weapon.AMMO_GEAR_ID,
+        "displayName": lane.PLAYTIME_WEAPON_DISPLAY_NAME,
+        "fireMode": "ShortBurst",
+        "roundsConsumed": 3,
+        "ammoRemaining": 8,
+        "ammoGearQuantity": 8,
+    }
 
 
 def playtime_source_paths(core_root: Path, presentation_root: Path) -> dict[str, Path]:

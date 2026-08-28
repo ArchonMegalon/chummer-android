@@ -323,6 +323,149 @@ def expected_weapon_target_revision(ammo: int) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def action_automation_id(action_digest: str) -> str:
+    """Reproduce Sr5TableWizardPage's digest-derived resource identity."""
+    canonical = typed_digest(action_digest, "Successor action digest")
+    return "sr5-table-action-" + canonical[7:19]
+
+
+def expected_successor_action_contracts(
+    spec: LaneSpec,
+    successor_state: dict[str, object],
+) -> dict[str, dict[str, object]]:
+    """Derive the exact catalog authority from the saved successor state."""
+    if spec.lane == "before-run":
+        expected_fields = {"lane", "edgeUsed", "totalEdge"}
+        if set(successor_state) != expected_fields:
+            raise RuntimeError("Before Run successor state authority fields are not exact")
+        if successor_state["lane"] != "before-run":
+            raise RuntimeError("Before Run successor state authority has the wrong lane")
+        edge_used = successor_state["edgeUsed"]
+        total_edge = successor_state["totalEdge"]
+        if type(edge_used) is not int or type(total_edge) is not int:
+            raise RuntimeError("Before Run successor Edge state is not typed")
+        if edge_used != 1 or total_edge != 4:
+            raise RuntimeError("Before Run successor Edge state is not the exact saved delta")
+        can_spend = edge_used < total_edge
+        can_regain = edge_used > 0
+        target_revision = length_prefixed_hash(
+            "chummer.sr5_table_wizard.edge_target.v1",
+            edge_used,
+            total_edge,
+            int(can_spend),
+            int(can_regain),
+        )
+        result: dict[str, dict[str, object]] = {}
+        successor_actions: list[tuple[str, str, int]] = []
+        if can_spend:
+            successor_actions.append(
+                ("before-run.edge.spend", "SpendEdge", edge_used + 1)
+            )
+        if can_regain:
+            successor_actions.append(
+                ("before-run.edge.regain", "RegainEdge", edge_used - 1)
+            )
+        for action_id, kind, after in successor_actions:
+            action_digest = length_prefixed_hash(
+                "chummer.sr5_table_wizard.edge_action.v1",
+                "BeforeRun",
+                kind,
+                action_id,
+                target_revision,
+                after,
+            )
+            result[action_id] = {
+                "actionId": action_id,
+                "kind": kind,
+                "edgeUsedBefore": edge_used,
+                "edgeUsedAfter": after,
+                "totalEdge": total_edge,
+                "targetRevision": target_revision,
+                "actionDigest": action_digest,
+                "automationId": action_automation_id(action_digest),
+            }
+        return result
+
+    if spec.lane != "playtime":
+        raise RuntimeError(f"Unsupported successor lane authority: {spec.lane}")
+    expected_fields = {
+        "lane",
+        "weaponId",
+        "ammoSlot",
+        "ammoGearId",
+        "displayName",
+        "fireMode",
+        "roundsConsumed",
+        "ammoRemaining",
+        "ammoGearQuantity",
+    }
+    if set(successor_state) != expected_fields:
+        raise RuntimeError("Playtime successor state authority fields are not exact")
+    expected_values = {
+        "lane": "playtime",
+        "weaponId": PLAYTIME_WEAPON_ID,
+        "ammoSlot": 1,
+        "ammoGearId": PLAYTIME_AMMO_GEAR_ID,
+        "displayName": PLAYTIME_WEAPON_DISPLAY_NAME,
+        "fireMode": "ShortBurst",
+        "roundsConsumed": 3,
+        "ammoRemaining": 8,
+        "ammoGearQuantity": 8,
+    }
+    if not exact_typed_equal(successor_state, expected_values):
+        raise RuntimeError("Playtime successor state is not the exact saved weapon authority")
+    ammo_before = int(successor_state["ammoRemaining"])
+    ammo_after = 5
+    target_revision = expected_weapon_target_revision(ammo_before)
+    action_digest = length_prefixed_hash(
+        "chummer.sr5_table_wizard.weapon_action.v1",
+        "Playtime",
+        "playtime.weapon.fire",
+        PLAYTIME_WEAPON_ID,
+        1,
+        PLAYTIME_AMMO_GEAR_ID,
+        target_revision,
+        PLAYTIME_WEAPON_DISPLAY_NAME,
+        "ShortBurst",
+        3,
+        ammo_after,
+        ammo_after,
+        0,
+        0,
+    )
+    return {
+        "playtime.weapon.fire": {
+            "actionId": "playtime.weapon.fire",
+            "kind": "FireWeapon",
+            "weaponId": PLAYTIME_WEAPON_ID,
+            "ammoSlot": 1,
+            "ammoGearId": PLAYTIME_AMMO_GEAR_ID,
+            "fireMode": "ShortBurst",
+            "roundsConsumed": 3,
+            "ammoBefore": ammo_before,
+            "ammoAfter": ammo_after,
+            "targetRevision": target_revision,
+            "actionDigest": action_digest,
+            "automationId": action_automation_id(action_digest),
+        }
+    }
+
+
+def expected_successor_action_ids(
+    spec: LaneSpec,
+    successor_state: dict[str, object],
+) -> frozenset[str]:
+    contracts = expected_successor_action_contracts(spec, successor_state)
+    identities = frozenset(
+        str(contract["automationId"]) for contract in contracts.values()
+    )
+    if len(identities) != len(contracts):
+        raise RuntimeError("Successor action digests collide at the UI automation boundary")
+    if len(identities) != spec.successor_action_count:
+        raise RuntimeError("Lane successor cardinality disagrees with derived action authority")
+    return identities
+
+
 def expected_action_contract(
     spec: LaneSpec,
     workspace_id: str,
@@ -732,7 +875,10 @@ def assert_before_state(root: ET.Element) -> ET.Element:
     return copy.deepcopy(root)
 
 
-def assert_after_state(root: ET.Element, before_authority: object) -> None:
+def assert_after_state(
+    root: ET.Element,
+    before_authority: object,
+) -> dict[str, object]:
     if not isinstance(before_authority, ET.Element):
         raise RuntimeError("Before Run exact pre-mutation XML authority is missing")
     if root.findtext("edgeused") != "1":
@@ -753,6 +899,11 @@ def assert_after_state(root: ET.Element, before_authority: object) -> None:
     edge_used[0].text = "1"
     if ET.tostring(root, encoding="utf-8") != ET.tostring(expected, encoding="utf-8"):
         raise RuntimeError("Before Run changed XML outside the exact EdgeUsed 0 -> 1 delta")
+    return {
+        "lane": "before-run",
+        "edgeUsed": 1,
+        "totalEdge": 4,
+    }
 
 
 def prepare_runner(
@@ -814,28 +965,46 @@ def tap_unique_typed_action(device: shared.Device, spec: LaneSpec) -> str:
     raise RuntimeError(f"No representative typed {spec.lane} action was rendered")
 
 
-def observe_successor_actions(device: shared.Device, spec: LaneSpec) -> list[str]:
-    """Read the successor catalog without selecting or mutating either action."""
+def observe_successor_actions(
+    device: shared.Device,
+    spec: LaneSpec,
+    successor_state: dict[str, object],
+) -> list[str]:
+    """Read and exactly validate the successor catalog without selecting an action."""
     prefix = "sr5-table-action-"
+    expected = expected_successor_action_ids(spec, successor_state)
     observed: set[str] = set()
     shared.reset_scroll_to_top(device, swipes=20)
-    unchanged = 0
-    for _ in range(31):
-        before = len(observed)
+    for attempt in range(31):
+        visible: list[str] = []
         for node in device.hierarchy():
-            resource_id = node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+            raw_resource_id = node.attributes.get("resource-id", "")
+            if not isinstance(raw_resource_id, str):
+                raise RuntimeError("Successor action resource identity is not a string")
+            resource_id = raw_resource_id.rsplit("/", 1)[-1]
             if resource_id.startswith(prefix):
-                observed.add(resource_id)
-        unchanged = unchanged + 1 if len(observed) == before else 0
-        if len(observed) >= spec.successor_action_count and unchanged >= 2:
-            break
-        device.swipe_up(distance_ratio=0.18)
-        time.sleep(0.35)
-    if len(observed) != spec.successor_action_count:
-        device.capture(f"sr5-{spec.lane}-successor-action-cardinality")
+                visible.append(resource_id)
+        if len(visible) != len(set(visible)):
+            device.capture(f"sr5-{spec.lane}-successor-action-duplicate")
+            raise RuntimeError("Saved successor exposed a duplicate typed action identity")
+        foreign = set(visible) - expected
+        if foreign:
+            device.capture(f"sr5-{spec.lane}-successor-action-foreign")
+            raise RuntimeError(
+                "Saved successor exposed foreign digest-derived action identities: "
+                + ", ".join(sorted(foreign))
+            )
+        observed.update(visible)
+        if attempt < 30:
+            device.swipe_up(distance_ratio=0.18)
+            time.sleep(0.35)
+    if observed != expected:
+        device.capture(f"sr5-{spec.lane}-successor-action-identity")
+        missing = expected - observed
+        extra = observed - expected
         raise RuntimeError(
-            f"Saved {spec.lane} successor exposed {len(observed)} typed actions; "
-            f"expected {spec.successor_action_count}"
+            f"Saved {spec.lane} successor action identities are not exact; "
+            f"missing={sorted(missing)}, extra={sorted(extra)}"
         )
     return sorted(observed)
 
@@ -980,14 +1149,16 @@ def prove_lane(
     shared.wait_for_phone_runners(device, timeout=120)
     final_saved = shared.read_phone_workspace_authority(device)
     shared.require_restored_authority(saved, final_saved)
-    assert_after(
+    final_successor_state = assert_after(
         root_for_authority(device, final_saved, spec.fixture_alias),
         before_authority,
     )
+    if not isinstance(final_successor_state, dict):
+        raise RuntimeError("Saved successor did not emit typed action state authority")
     if read_transaction(device, spec.checkpoint_key, required=False) is not None:
         raise RuntimeError("Acknowledged receipt deletion did not survive restart")
     open_lane(device, spec)
-    successor_actions = observe_successor_actions(device, spec)
+    successor_actions = observe_successor_actions(device, spec, final_successor_state)
     device.capture(f"sr5-{spec.lane}-saved-successor-reopened")
     return {
         "scope": {
@@ -1001,6 +1172,10 @@ def prove_lane(
         "finalRestoredSuccessor": shared.workspace_authority_json(final_saved),
         "actionAutomationId": action_automation_id,
         "successorActionAutomationIds": successor_actions,
+        "successorActionAuthority": expected_successor_action_contracts(
+            spec,
+            final_successor_state,
+        ),
         "reviewedTransactionSha256": reviewed.serialized_sha256,
         "appliedTransactionSha256": applied.serialized_sha256,
         "receipt": receipt,
