@@ -79,7 +79,7 @@
       {
         "path": "src/Chummer.Android/Native/BuildPage.cs",
         "exists": true,
-        "sha256": "4df5562ca40bf9ff0d5200f3b9f3eb72832efc1ce3c2631638eec7cc579c00fc"
+        "sha256": "4bb87a5273386cbe6e7345c476926712e556a365c1c2e239a6122f1cc1236d07"
       },
       {
         "path": "src/Chummer.Android/Native/MorePage.cs",
@@ -124,7 +124,7 @@
       {
         "path": "src/Chummer.Android/MauiProgram.cs",
         "exists": true,
-        "sha256": "46b263aacf8d09b546ba69ad1d395a9ed4f4ae961e2e3da1e0c72918b9db69da"
+        "sha256": "e813bc48eb4ff5f15980a864a8c1adb0aa1c1788239a039ad4ecea5ba14ae142"
       },
       {
         "path": "src/Chummer.Android/Native/ApplicationSettingsPage.cs",
@@ -574,7 +574,7 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
         "exists": true,
-        "sha256": "fca88aa01360da4c081d8c76151731cce33bb48aa9ca62fe914ffdcd75ebc6c3"
+        "sha256": "f13ed02b2f517ac5c85988da51d28e6abeb0015dc0940a811b8580b51accd653"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
@@ -604,12 +604,12 @@
       {
         "path": "src/Chummer.Android/Native/PhoneShellPages.cs",
         "exists": true,
-        "sha256": "e0c5ceda53de0696b40d12d6d23d581746a43dc36bffe6aabd881f034ec1e6f5"
+        "sha256": "9ade36dc0f677b0c8a3888450f05cb4271eeb4391fd9ce9fb081637a472e02ad"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "10948278f0215fe8eadfdfe3aa8d27624d7b1e1e519ddac851033555268c94c1"
+        "sha256": "8c492bc78ce7728a34cb28d71152ee874f568056b49bbe2bb782c577d68b30f9"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -634,7 +634,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
         "exists": true,
-        "sha256": "8bcfc5b7ea60ccbf875f503f10a42b2e52fd6b3b329214c5359f1dadba037272"
+        "sha256": "04c55020cd68e2fa8a0644f03712e1b2cea13b3735e0426c41844212ef48e65c"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
@@ -644,7 +644,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
         "exists": true,
-        "sha256": "5751d9eebf6f3dc6908cda36abaa4b15441587887751c42241ca57f3b13194a9"
+        "sha256": "615fe344384d218b600b6e322ef9c66152a8718cac22f3da2699eb862e78a806"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
@@ -654,7 +654,7 @@
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardTypedTransaction.cs",
         "exists": true,
-        "sha256": "dfc8ba627ce754065bcb5e66f597dbbe7b7e39272cb2ce6f0fc1ad4de1acd1bc"
+        "sha256": "8d7213bffa9fc64937006815c3063c7245f09647659fd24afeca3a5942d1ed6e"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
@@ -669,17 +669,17 @@
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx",
         "exists": true,
-        "sha256": "631b66481c2d15474b60bc9a87581438c614747579b820f2e9dc053bd7a99844"
+        "sha256": "e5b2a794ee70dcafaf48b82426856588c28d860f150965448ac907fc80293562"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.de.resx",
         "exists": true,
-        "sha256": "63599da16f138f622978c195971e8f3fbcc4c0b37223fe650dde03b32ddcdb23"
+        "sha256": "e3549a92b0587327eaed543dd85ae1f7fb41684d3e080793a34f34d4c2b5b936"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.es.resx",
         "exists": true,
-        "sha256": "56cc0bda8cce66ba488fb105274b5331589faf723a9090d6ae8497f33b75e6d0"
+        "sha256": "9bf8ebe43af47b493d155f1eb66bbe6aec9e1c8b0394ae62498af85f4bfc18eb"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/WizardStrings.resx",
@@ -709,17 +709,17 @@
       {
         "path": "tests/Chummer.Android.Sr5CareerFlowLocalization.Tests/Chummer.Android.Sr5CareerFlowLocalization.Tests.csproj",
         "exists": true,
-        "sha256": "1c3264b7fd4741a1a064c2d5af91703bdf67c0f1c5aca9d232f11729b047dafa"
+        "sha256": "355540a6694ff9c07f28d8b542a45880b77bb675f5602c5705b067c25db5a95f"
       },
       {
         "path": "tests/Chummer.Android.Sr5CareerFlowLocalization.Tests/Program.cs",
         "exists": true,
-        "sha256": "00e1a0722b4c22e617c810f2f77395a4db1b62fdd908573bb129dda8ecf05f53"
+        "sha256": "5f4be9b7e40361f622375bc0a09ab2b09eaff0b095f4892173e104d4b2127b8f"
       },
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests.csproj",
         "exists": true,
-        "sha256": "b2cd3162b37bcf752f05bfc97a148c9c8e4290e0f926781de0d439c24e9fbe5f"
+        "sha256": "815c8717e04a4ca4cefd86b3e2190bd65abbaf291033dc3d3fe792c35d22c3c2"
       },
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/NativeCompileStubs.cs",
@@ -729,12 +729,12 @@
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.Tests/Chummer.Android.Sr5TableWizard.Tests.csproj",
         "exists": true,
-        "sha256": "89a7dda4a536a8bcaefc3b6e045871155357fe27477d1f4ba552de1b1292689c"
+        "sha256": "f5a331295eb53564789dc8507faeaf81fe6ae4d5d6181a59c24c441070bfd47f"
       },
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.Tests/Program.cs",
         "exists": true,
-        "sha256": "51534c4edc67005f4c5e0f986948d586c8579a9e6702af0217d29a0cc390bd53"
+        "sha256": "1f27667891bc2d0c59d629b6b0de7c787b5a45dc405d85c1895d57e6fc209c3d"
       },
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
@@ -759,7 +759,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "f8c71d61b1a02a996bbba61e9ff5c7ad8f44f298623028acb0ab7d720a0a49cb"
+        "sha256": "9171e3859d46bda9ce0d30351373528c9b568dbffa02322330974078ed3ecc1e"
       },
       {
         "path": "tests/test_chummer5_editability_inventory.py",
@@ -769,7 +769,7 @@
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
         "exists": true,
-        "sha256": "ab072a8b66eab8ff795ddfdbd6685a6df5c9ec992b810d69e03b08478210459d"
+        "sha256": "2359891da282993af06c9c2a1babc50ef55463eeab3a2d97c11b10f8cbb8a47b"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
