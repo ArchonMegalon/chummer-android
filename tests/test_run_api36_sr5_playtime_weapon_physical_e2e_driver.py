@@ -20,6 +20,47 @@ sys.modules[SPEC.name] = driver
 SPEC.loader.exec_module(driver)
 
 
+def reviewed_playtime_transaction() -> dict[str, object]:
+    contract = driver.lane.expected_action_contract(
+        driver.SPEC,
+        "workspace-playtime",
+        41,
+    )
+    identity = copy.deepcopy(contract["identity"])
+    transaction: dict[str, object] = {
+        "SchemaVersion": 1,
+        "Version": 1,
+        "Phase": 0,
+        "OwnerId": "11111111-1111-1111-1111-111111111111",
+        "TransactionId": "22222222-2222-2222-2222-222222222222",
+        "IdempotencyKey": "",
+        "Review": {
+            "Schema": "chummer.sr5_table_wizard.checkpoint.v1",
+            "Lane": 1,
+            "WorkspaceId": "workspace-playtime",
+            "WorkspaceRevision": 41,
+            "SnapshotDigest": contract["snapshotDigest"],
+            "SelectedAction": identity,
+        },
+        "Quote": copy.deepcopy(contract["quote"]),
+        "ExpectedPostconditionDigest": contract["postcondition"],
+        "Receipt": None,
+        "JournalDigest": "",
+    }
+    transaction["IdempotencyKey"] = driver.lane.length_prefixed_hash(
+        "chummer.android.sr5-table-transaction-idempotency/v1",
+        transaction["OwnerId"],
+        transaction["TransactionId"],
+        "workspace-playtime",
+        41,
+        contract["snapshotDigest"],
+        identity["ActionDigest"],
+        contract["postcondition"],
+    )
+    transaction["JournalDigest"] = driver.lane.expected_journal_digest(transaction)
+    return transaction
+
+
 class PlaytimePhysicalDriverContractTests(unittest.TestCase):
     def test_driver_is_a_separate_nonrelease_physical_journey(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
@@ -61,6 +102,8 @@ class PlaytimePhysicalDriverContractTests(unittest.TestCase):
             self.assertEqual("False", target.findtext(field))
         self.assertEqual("11", driver.weapon.active_clip(root).findtext("count"))
         self.assertEqual("11", driver.weapon.linked_ammo(root).findtext("qty"))
+        self.assertEqual("0", root.findtext("edgeused"))
+        self.assertEqual("0", root.findtext("./attributes/attribute/totalvalue"))
 
     def test_after_state_accepts_only_exact_three_round_delta_and_preserved_xml(self) -> None:
         root = ET.parse(FIXTURE).getroot()
@@ -74,19 +117,100 @@ class PlaytimePhysicalDriverContractTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "three-round"):
             driver.assert_after_state(hostile, preserved)
 
+        mixed = copy.deepcopy(saved)
+        mixed.find("karma").text = "18"  # type: ignore[union-attr]
+        with self.assertRaisesRegex(RuntimeError, "outside the exact"):
+            driver.assert_after_state(mixed, preserved)
+
+        extraneous = copy.deepcopy(saved)
+        ET.SubElement(extraneous, "pass-shaped-extra").text = "unexpected"
+        with self.assertRaisesRegex(RuntimeError, "outside the exact"):
+            driver.assert_after_state(extraneous, preserved)
+
+    def test_review_binds_exact_weapon_identity_mode_plan_delta_and_journal(self) -> None:
+        transaction = reviewed_playtime_transaction()
+        self.assertIsNone(
+            driver.lane.validate_transaction(
+                transaction,
+                spec=driver.SPEC,
+                workspace_id="workspace-playtime",
+                expected_revision=41,
+                phase=0,
+                version=1,
+                require_receipt=False,
+            )
+        )
+        identity = transaction["Quote"]["Identity"]
+        plan = transaction["Quote"]["WeaponPlan"]
+        self.assertEqual("playtime.weapon.fire", identity["ActionId"])
+        self.assertEqual(driver.weapon.WEAPON_ID, identity["WeaponId"])
+        self.assertEqual(driver.weapon.AMMO_SLOT, identity["AmmoSlot"])
+        self.assertEqual(1, identity["FireMode"])
+        self.assertEqual(
+            {
+                "Mode": 1,
+                "RoundsConsumed": 3,
+                "NewAmmoRemaining": 8,
+                "NewAmmoGearQuantity": 8,
+                "DeleteAmmoGear": False,
+                "RequiresPartialConfirmation": False,
+            },
+            plan,
+        )
+
+    def test_weapon_identity_and_every_plan_delta_field_fail_closed(self) -> None:
+        hostile_paths = (
+            (("Quote", "Identity", "ActionId"), "playtime.edge.spend"),
+            (("Quote", "Identity", "Kind"), 0),
+            (("Quote", "Identity", "WeaponId"), "f3333333-3333-4333-8333-333333333333"),
+            (("Quote", "Identity", "AmmoSlot"), 2),
+            (("Quote", "Identity", "AmmoGearId"), driver.lane.EMPTY_GUID),
+            (("Quote", "Identity", "FireMode"), 0),
+            (("Review", "SelectedAction", "FireMode"), 0),
+            (("Quote", "WeaponPlan", "Mode"), 0),
+            (("Quote", "WeaponPlan", "Mode"), True),
+            (("Quote", "WeaponPlan", "RoundsConsumed"), 2),
+            (("Quote", "WeaponPlan", "NewAmmoRemaining"), 9),
+            (("Quote", "WeaponPlan", "NewAmmoGearQuantity"), 9),
+            (("Quote", "WeaponPlan", "DeleteAmmoGear"), True),
+            (("Quote", "WeaponPlan", "RequiresPartialConfirmation"), True),
+            (("Quote", "WeaponPlan"), None),
+        )
+        for path, value in hostile_paths:
+            with self.subTest(path=path):
+                hostile = reviewed_playtime_transaction()
+                target: object = hostile
+                for field in path[:-1]:
+                    assert isinstance(target, dict)
+                    target = target[field]
+                assert isinstance(target, dict)
+                target[path[-1]] = value
+                with self.assertRaises(RuntimeError):
+                    driver.lane.validate_transaction(
+                        hostile,
+                        spec=driver.SPEC,
+                        workspace_id="workspace-playtime",
+                        expected_revision=41,
+                        phase=0,
+                        version=1,
+                        require_receipt=False,
+                    )
+
     def test_shared_driver_contract_covers_review_restart_apply_receipt_ack_successor(self) -> None:
         shared_source = Path(driver.lane.__file__).read_text(encoding="utf-8")
         for marker in (
             "read_transaction(device, spec.checkpoint_key)",
-            'phase=0,\n        require_receipt=False',
+            'phase=0,\n        version=1,\n        require_receipt=False',
             '"sr5-table-wizard-resume-review"',
             '"sr5-table-wizard-confirm"',
             'if saved.content_revision != imported.content_revision + 1:',
             '"sr5-table-wizard-receipt-acknowledge"',
+            "observe_successor_actions(device, spec)",
             'device.capture(f"sr5-{spec.lane}-saved-successor-reopened")',
         ):
             with self.subTest(marker=marker):
                 self.assertIn(marker, shared_source)
+        self.assertNotIn("successor_action = tap_unique_typed_action", shared_source)
 
     def test_playtime_source_graph_binds_typed_weapon_request_rules_and_helper(self) -> None:
         paths = driver.playtime_source_paths(

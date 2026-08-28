@@ -9,6 +9,7 @@ weapons, tablet, or unrestricted editing parity.
 
 from __future__ import annotations
 
+import copy
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -54,6 +55,8 @@ SPEC = lane.LaneSpec(
         "indirect or vehicle weapon fire",
         "tablet",
     ),
+    expected_action_id="playtime.weapon.fire",
+    successor_action_count=1,
     source_paths={},
 )
 
@@ -67,6 +70,7 @@ def require_playtime_fixture(root: ET.Element) -> None:
         "gameedition": "SR5",
         "karma": "19",
         "nuyen": "8765",
+        "edgeused": "0",
     }
     for field, value in expected.items():
         if root.findtext(field) != value:
@@ -90,19 +94,33 @@ def require_playtime_fixture(root: ET.Element) -> None:
         raise RuntimeError("Playtime fixture linked ammo is not exactly 11 rounds")
     if root.findtext("./customstate") != "playtime-unrelated-root-must-survive":
         raise RuntimeError("Playtime fixture unrelated sentinel is missing")
+    edge = [
+        value
+        for value in root.findall("./attributes/attribute")
+        if value.findtext("name") == "EDG"
+    ]
+    if len(edge) != 1 or edge[0].findtext("totalvalue") != "0":
+        raise RuntimeError("Playtime fixture must bind an exact zero-action Edge state")
 
 
-def assert_before_state(root: ET.Element) -> dict[str, str]:
+def assert_before_state(root: ET.Element) -> ET.Element:
     require_playtime_fixture(root)
-    return weapon.unrelated_xml_authority(root)
+    return copy.deepcopy(root)
 
 
 def assert_after_state(root: ET.Element, preserved: object) -> None:
-    if not isinstance(preserved, dict):
+    if not isinstance(preserved, ET.Element):
         raise RuntimeError("Playtime before-state authority was not captured")
-    weapon.assert_after(root, preserved)
+    weapon.assert_after(root, weapon.unrelated_xml_authority(preserved))
     if root.findtext("./customstate") != "playtime-unrelated-root-must-survive":
         raise RuntimeError("Playtime changed unrelated root XML")
+    expected = copy.deepcopy(preserved)
+    weapon.active_clip(expected).find("count").text = "8"  # type: ignore[union-attr]
+    weapon.linked_ammo(expected).find("qty").text = "8"  # type: ignore[union-attr]
+    if ET.tostring(root, encoding="utf-8") != ET.tostring(expected, encoding="utf-8"):
+        raise RuntimeError(
+            "Playtime changed XML outside the exact clip/ammo 11 -> 8 delta"
+        )
 
 
 def playtime_source_paths(core_root: Path, presentation_root: Path) -> dict[str, Path]:

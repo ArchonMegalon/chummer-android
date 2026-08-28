@@ -23,37 +23,44 @@ SPEC.loader.exec_module(driver)
 
 
 def reviewed_transaction() -> dict[str, object]:
-    identity = {
-        "Kind": driver.ACTION_KIND,
-        "ActionId": "edge:spend",
-        "TargetRevision": "sha256:" + "1" * 64,
-        "ActionDigest": "sha256:" + "2" * 64,
-    }
-    return {
+    contract = driver.expected_action_contract(
+        driver.SPEC,
+        "workspace-before-run",
+        7,
+    )
+    identity = copy.deepcopy(contract["identity"])
+    transaction: dict[str, object] = {
         "SchemaVersion": 1,
         "Version": 1,
         "Phase": 0,
         "OwnerId": "11111111-1111-1111-1111-111111111111",
         "TransactionId": "22222222-2222-2222-2222-222222222222",
-        "IdempotencyKey": "sha256:" + "3" * 64,
+        "IdempotencyKey": "",
         "Review": {
+            "Schema": "chummer.sr5_table_wizard.checkpoint.v1",
+            "Lane": driver.LANE_VALUE,
             "WorkspaceId": "workspace-before-run",
             "WorkspaceRevision": 7,
-            "Lane": driver.LANE_VALUE,
-            "SnapshotDigest": "sha256:" + "4" * 64,
+            "SnapshotDigest": contract["snapshotDigest"],
             "SelectedAction": identity,
         },
-        "Quote": {
-            "Identity": copy.deepcopy(identity),
-            "DisplayName": "Edge",
-            "EdgeUsedBefore": 0,
-            "EdgeUsedAfter": 1,
-            "WeaponPlan": None,
-        },
-        "ExpectedPostconditionDigest": "sha256:" + "5" * 64,
+        "Quote": copy.deepcopy(contract["quote"]),
+        "ExpectedPostconditionDigest": contract["postcondition"],
         "Receipt": None,
-        "JournalDigest": "sha256:" + "6" * 64,
+        "JournalDigest": "",
     }
+    transaction["IdempotencyKey"] = driver.length_prefixed_hash(
+        "chummer.android.sr5-table-transaction-idempotency/v1",
+        transaction["OwnerId"],
+        transaction["TransactionId"],
+        "workspace-before-run",
+        7,
+        contract["snapshotDigest"],
+        identity["ActionDigest"],
+        contract["postcondition"],
+    )
+    transaction["JournalDigest"] = driver.expected_journal_digest(transaction)
+    return transaction
 
 
 def applied_transaction() -> dict[str, object]:
@@ -80,7 +87,7 @@ def applied_transaction() -> dict[str, object]:
     }
     receipt["ReceiptDigest"] = driver.expected_receipt_digest(receipt)
     transaction["Receipt"] = receipt
-    transaction["JournalDigest"] = "sha256:" + "7" * 64
+    transaction["JournalDigest"] = driver.expected_journal_digest(transaction)
     return transaction
 
 
@@ -128,10 +135,23 @@ class BeforeRunPhysicalDriverContractTests(unittest.TestCase):
 
         saved = ET.fromstring(ET.tostring(root, encoding="unicode"))
         saved.find("edgeused").text = "1"  # type: ignore[union-attr]
-        driver.assert_after_state(saved, None)
+        before = driver.assert_before_state(root)
+        driver.assert_after_state(saved, before)
         saved.find("./customstate/sentinel").text = "tampered"  # type: ignore[union-attr]
         with self.assertRaisesRegex(RuntimeError, "unrelated"):
-            driver.assert_after_state(saved, None)
+            driver.assert_after_state(saved, before)
+
+        mixed = ET.fromstring(ET.tostring(root, encoding="unicode"))
+        mixed.find("edgeused").text = "1"  # type: ignore[union-attr]
+        mixed.find("./attributes/attribute/totalvalue").text = "5"  # type: ignore[union-attr]
+        with self.assertRaisesRegex(RuntimeError, "total Edge"):
+            driver.assert_after_state(mixed, before)
+
+        extraneous = ET.fromstring(ET.tostring(root, encoding="unicode"))
+        extraneous.find("edgeused").text = "1"  # type: ignore[union-attr]
+        ET.SubElement(extraneous, "pass-shaped-extra").text = "unexpected"
+        with self.assertRaisesRegex(RuntimeError, "outside the exact"):
+            driver.assert_after_state(extraneous, before)
 
     def test_review_and_applied_receipt_bind_lane_action_workspace_and_revision_plus_one(self) -> None:
         reviewed = reviewed_transaction()
@@ -142,6 +162,7 @@ class BeforeRunPhysicalDriverContractTests(unittest.TestCase):
                 workspace_id="workspace-before-run",
                 expected_revision=7,
                 phase=0,
+                version=1,
                 require_receipt=False,
             )
         )
@@ -152,6 +173,7 @@ class BeforeRunPhysicalDriverContractTests(unittest.TestCase):
             workspace_id="workspace-before-run",
             expected_revision=7,
             phase=2,
+            version=3,
             require_receipt=True,
         )
         self.assertIsNotNone(receipt)
@@ -163,6 +185,10 @@ class BeforeRunPhysicalDriverContractTests(unittest.TestCase):
             ("lane", ("Review", "Lane"), 1),
             ("workspace", ("Review", "WorkspaceId"), "other"),
             ("action", ("Quote", "Identity", "Kind"), 2),
+            ("quote delta", ("Quote", "EdgeUsedAfter"), 2),
+            ("bool-shaped enum", ("Quote", "Identity", "Kind"), False),
+            ("arbitrary CAS", ("Version",), 999),
+            ("journal digest", ("JournalDigest",), "sha256:" + "9" * 64),
             ("revision", ("Receipt", "AppliedWorkspaceRevision"), 9),
             ("receipt digest", ("Receipt", "ReceiptDigest"), "sha256:" + "0" * 64),
         )
@@ -182,8 +208,41 @@ class BeforeRunPhysicalDriverContractTests(unittest.TestCase):
                         workspace_id="workspace-before-run",
                         expected_revision=7,
                         phase=2,
+                        version=3,
                         require_receipt=True,
                     )
+
+    def test_before_run_identity_quote_snapshot_postcondition_and_journal_are_computed(self) -> None:
+        transaction = reviewed_transaction()
+        contract = driver.expected_action_contract(
+            driver.SPEC,
+            "workspace-before-run",
+            7,
+        )
+        self.assertEqual(contract["identity"], transaction["Quote"]["Identity"])
+        self.assertEqual("before-run.edge.spend", transaction["Quote"]["Identity"]["ActionId"])
+        self.assertEqual((0, 1), (
+            transaction["Quote"]["EdgeUsedBefore"],
+            transaction["Quote"]["EdgeUsedAfter"],
+        ))
+        self.assertEqual(contract["snapshotDigest"], transaction["Review"]["SnapshotDigest"])
+        self.assertEqual(contract["postcondition"], transaction["ExpectedPostconditionDigest"])
+        self.assertEqual(driver.expected_journal_digest(transaction), transaction["JournalDigest"])
+
+    def test_successor_reopen_observes_both_edge_actions_without_tapping(self) -> None:
+        actions = [
+            driver.shared.UiNode({"resource-id": f"sr5-table-action-{suffix}"})
+            for suffix in ("spend", "regain")
+        ]
+        device = mock.Mock(spec=driver.shared.Device)
+        device.hierarchy.return_value = actions
+        with mock.patch.object(driver.physical.shared, "reset_scroll_to_top"):
+            observed = driver.observe_successor_actions(device, driver.SPEC)
+        self.assertEqual(
+            ["sr5-table-action-regain", "sr5-table-action-spend"],
+            observed,
+        )
+        device.shell.assert_not_called()
 
     def test_missing_disposable_device_authority_fails_before_manifest_or_adb(self) -> None:
         args = SimpleNamespace(

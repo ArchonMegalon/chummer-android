@@ -13,6 +13,10 @@
   <gameedition>SR5</gameedition>
   <karma>19</karma>
   <nuyen>8765</nuyen>
+  <edgeused>0</edgeused>
+  <attributes>
+    <attribute><name>EDG</name><base>0</base><karma>0</karma><totalvalue>0</totalvalue></attribute>
+  </attributes>
   <weapons>
     <weapon>
       <guid>f1111111-1111-4111-8111-111111111111</guid>

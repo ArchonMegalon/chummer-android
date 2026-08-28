@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import copy
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
@@ -92,6 +93,8 @@ class LaneSpec:
     fixture: Path
     representative_action: str
     excluded_scope: tuple[str, ...]
+    expected_action_id: str
+    successor_action_count: int
     source_paths: dict[str, Path]
 
 
@@ -117,8 +120,49 @@ SPEC = LaneSpec(
         "commitments",
         "tablet",
     ),
+    expected_action_id="before-run.edge.spend",
+    successor_action_count=2,
     source_paths={},
 )
+
+CHECKPOINT_FIELDS = {
+    "Schema",
+    "Lane",
+    "WorkspaceId",
+    "WorkspaceRevision",
+    "SnapshotDigest",
+    "SelectedAction",
+}
+IDENTITY_FIELDS = {
+    "ActionId",
+    "Lane",
+    "Kind",
+    "WeaponId",
+    "AmmoSlot",
+    "AmmoGearId",
+    "TargetRevision",
+    "FireMode",
+    "ActionDigest",
+}
+QUOTE_FIELDS = {
+    "Identity",
+    "DisplayName",
+    "EdgeUsedBefore",
+    "EdgeUsedAfter",
+    "WeaponPlan",
+}
+WEAPON_PLAN_FIELDS = {
+    "Mode",
+    "RoundsConsumed",
+    "NewAmmoRemaining",
+    "NewAmmoGearQuantity",
+    "DeleteAmmoGear",
+    "RequiresPartialConfirmation",
+}
+EMPTY_GUID = "00000000-0000-0000-0000-000000000000"
+PLAYTIME_WEAPON_ID = "f1111111-1111-4111-8111-111111111111"
+PLAYTIME_AMMO_GEAR_ID = "f2222222-2222-4222-8222-222222222222"
+PLAYTIME_WEAPON_DISPLAY_NAME = "Playtime Short Burst Alpha"
 
 
 def object_without_duplicates(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -154,9 +198,271 @@ def require_object(value: object, label: str) -> dict[str, object]:
     return value
 
 
+def exact_typed_equal(actual: object, expected: object) -> bool:
+    if type(actual) is not type(expected):
+        return False
+    if isinstance(expected, dict):
+        return set(actual) == set(expected) and all(  # type: ignore[arg-type]
+            exact_typed_equal(actual[key], value)  # type: ignore[index]
+            for key, value in expected.items()
+        )
+    if isinstance(expected, list):
+        return len(actual) == len(expected) and all(  # type: ignore[arg-type]
+            exact_typed_equal(left, right)
+            for left, right in zip(actual, expected, strict=True)  # type: ignore[arg-type]
+        )
+    return actual == expected
+
+
 def length_prefixed_hash(*values: object) -> str:
     canonical = "".join(f"{len(str(value))}:{value};" for value in values)
     return "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def json_bytes(value: object) -> bytes:
+    """Match System.Text.Json's compact declared-property serialization for these ASCII DTOs."""
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
+def bytes_digest(value: bytes) -> str:
+    return "sha256:" + hashlib.sha256(value).hexdigest()
+
+
+def phase_name(phase: int) -> str:
+    try:
+        return ("Reviewed", "Applying", "Applied")[phase]
+    except (IndexError, TypeError) as error:
+        raise RuntimeError("Durable transaction phase is outside the typed enum") from error
+
+
+def canonical_identity_json(identity_value: object) -> dict[str, object]:
+    identity = require_object(identity_value, "Journal action identity")
+    return {
+        "ActionId": identity["ActionId"],
+        "Lane": identity["Lane"],
+        "Kind": identity["Kind"],
+        "WeaponId": identity["WeaponId"],
+        "AmmoSlot": identity["AmmoSlot"],
+        "AmmoGearId": identity["AmmoGearId"],
+        "TargetRevision": identity["TargetRevision"],
+        "FireMode": identity["FireMode"],
+        "ActionDigest": identity["ActionDigest"],
+    }
+
+
+def canonical_review_json(review_value: object) -> dict[str, object]:
+    review = require_object(review_value, "Journal review")
+    return {
+        "Schema": review["Schema"],
+        "Lane": review["Lane"],
+        "WorkspaceId": review["WorkspaceId"],
+        "WorkspaceRevision": review["WorkspaceRevision"],
+        "SnapshotDigest": review["SnapshotDigest"],
+        "SelectedAction": canonical_identity_json(review["SelectedAction"]),
+    }
+
+
+def canonical_quote_json(quote_value: object) -> dict[str, object]:
+    quote = require_object(quote_value, "Journal quote")
+    plan_value = quote["WeaponPlan"]
+    plan = None
+    if plan_value is not None:
+        source = require_object(plan_value, "Journal Weapon plan")
+        plan = {
+            "Mode": source["Mode"],
+            "RoundsConsumed": source["RoundsConsumed"],
+            "NewAmmoRemaining": source["NewAmmoRemaining"],
+            "NewAmmoGearQuantity": source["NewAmmoGearQuantity"],
+            "DeleteAmmoGear": source["DeleteAmmoGear"],
+            "RequiresPartialConfirmation": source["RequiresPartialConfirmation"],
+        }
+    return {
+        "Identity": canonical_identity_json(quote["Identity"]),
+        "DisplayName": quote["DisplayName"],
+        "EdgeUsedBefore": quote["EdgeUsedBefore"],
+        "EdgeUsedAfter": quote["EdgeUsedAfter"],
+        "WeaponPlan": plan,
+    }
+
+
+def expected_journal_digest(transaction: dict[str, object]) -> str:
+    receipt = transaction.get("Receipt")
+    receipt_digest = receipt.get("ReceiptDigest", "") if isinstance(receipt, dict) else ""
+    return length_prefixed_hash(
+        "chummer.android.sr5-table-transaction-journal/v1",
+        transaction["SchemaVersion"],
+        transaction["Version"],
+        phase_name(int(transaction["Phase"])),
+        transaction["OwnerId"],
+        transaction["TransactionId"],
+        transaction["IdempotencyKey"],
+        bytes_digest(json_bytes(canonical_review_json(transaction["Review"]))),
+        bytes_digest(json_bytes(canonical_quote_json(transaction["Quote"]))),
+        transaction["ExpectedPostconditionDigest"],
+        receipt_digest,
+    )
+
+
+def expected_weapon_target_revision(ammo: int) -> str:
+    payload = "\0".join(
+        (
+            "career-weapon-fire/v1",
+            PLAYTIME_WEAPON_ID,
+            "1",
+            PLAYTIME_AMMO_GEAR_ID,
+            str(ammo),
+            str(ammo),
+            "ShortBurst",
+            "ShortBurst:3",
+        )
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def expected_action_contract(
+    spec: LaneSpec,
+    workspace_id: str,
+    workspace_revision: int,
+) -> dict[str, object]:
+    if spec.lane == "before-run":
+        target_revision = length_prefixed_hash(
+            "chummer.sr5_table_wizard.edge_target.v1",
+            0,
+            4,
+            1,
+            0,
+        )
+        action_digest = length_prefixed_hash(
+            "chummer.sr5_table_wizard.edge_action.v1",
+            "BeforeRun",
+            "SpendEdge",
+            spec.expected_action_id,
+            target_revision,
+            1,
+        )
+        identity = {
+            "ActionId": spec.expected_action_id,
+            "Lane": 0,
+            "Kind": 0,
+            "WeaponId": EMPTY_GUID,
+            "AmmoSlot": 0,
+            "AmmoGearId": EMPTY_GUID,
+            "TargetRevision": target_revision,
+            "FireMode": None,
+            "ActionDigest": action_digest,
+        }
+        quote = {
+            "Identity": identity,
+            "DisplayName": "Spend 1 Edge",
+            "EdgeUsedBefore": 0,
+            "EdgeUsedAfter": 1,
+            "WeaponPlan": None,
+        }
+        snapshot_digest = length_prefixed_hash(
+            "chummer.sr5_table_wizard.snapshot.v1",
+            "BeforeRun",
+            workspace_id,
+            workspace_revision,
+            0,
+            4,
+            1,
+            0,
+            action_digest,
+        )
+        postcondition = length_prefixed_hash(
+            "chummer.android.sr5-table-transaction-postcondition/v1",
+            workspace_id,
+            workspace_revision + 1,
+            "SpendEdge",
+            1,
+        )
+        return {
+            "identity": identity,
+            "quote": quote,
+            "snapshotDigest": snapshot_digest,
+            "postcondition": postcondition,
+        }
+
+    target_revision = expected_weapon_target_revision(11)
+    weapon_plan = {
+        "Mode": 1,
+        "RoundsConsumed": 3,
+        "NewAmmoRemaining": 8,
+        "NewAmmoGearQuantity": 8,
+        "DeleteAmmoGear": False,
+        "RequiresPartialConfirmation": False,
+    }
+    action_digest = length_prefixed_hash(
+        "chummer.sr5_table_wizard.weapon_action.v1",
+        "Playtime",
+        spec.expected_action_id,
+        PLAYTIME_WEAPON_ID,
+        1,
+        PLAYTIME_AMMO_GEAR_ID,
+        target_revision,
+        PLAYTIME_WEAPON_DISPLAY_NAME,
+        "ShortBurst",
+        3,
+        8,
+        8,
+        0,
+        0,
+    )
+    identity = {
+        "ActionId": spec.expected_action_id,
+        "Lane": 1,
+        "Kind": 2,
+        "WeaponId": PLAYTIME_WEAPON_ID,
+        "AmmoSlot": 1,
+        "AmmoGearId": PLAYTIME_AMMO_GEAR_ID,
+        "TargetRevision": target_revision,
+        "FireMode": 1,
+        "ActionDigest": action_digest,
+    }
+    quote = {
+        "Identity": identity,
+        "DisplayName": PLAYTIME_WEAPON_DISPLAY_NAME,
+        "EdgeUsedBefore": 0,
+        "EdgeUsedAfter": 0,
+        "WeaponPlan": weapon_plan,
+    }
+    snapshot_digest = length_prefixed_hash(
+        "chummer.sr5_table_wizard.snapshot.v1",
+        "Playtime",
+        workspace_id,
+        workspace_revision,
+        0,
+        0,
+        0,
+        0,
+        PLAYTIME_WEAPON_ID,
+        1,
+        PLAYTIME_AMMO_GEAR_ID,
+        PLAYTIME_WEAPON_DISPLAY_NAME,
+        target_revision,
+        action_digest,
+    )
+    postcondition = length_prefixed_hash(
+        "chummer.android.sr5-table-transaction-postcondition/v1",
+        workspace_id,
+        workspace_revision + 1,
+        "FireWeapon",
+        PLAYTIME_WEAPON_ID,
+        1,
+        PLAYTIME_AMMO_GEAR_ID,
+        8,
+        8,
+    )
+    return {
+        "identity": identity,
+        "quote": quote,
+        "snapshotDigest": snapshot_digest,
+        "postcondition": postcondition,
+    }
 
 
 def expected_receipt_digest(receipt: dict[str, object]) -> str:
@@ -239,6 +545,7 @@ def validate_transaction(
     workspace_id: str,
     expected_revision: int,
     phase: int,
+    version: int,
     require_receipt: bool,
 ) -> dict[str, object] | None:
     if set(transaction) != JOURNAL_FIELDS:
@@ -247,41 +554,78 @@ def validate_transaction(
         raise RuntimeError("Durable table transaction schema is not exact")
     if transaction["Phase"] != phase or type(transaction["Phase"]) is not int:
         raise RuntimeError("Durable table transaction phase is not exact")
-    if not isinstance(transaction["Version"], int) or transaction["Version"] <= 0:
-        raise RuntimeError("Durable table transaction CAS version is invalid")
+    if transaction["Version"] != version or type(transaction["Version"]) is not int:
+        raise RuntimeError("Durable table transaction CAS version is not exact")
     canonical_guid(transaction["OwnerId"], "Transaction owner")
     canonical_guid(transaction["TransactionId"], "Transaction identity")
     idempotency = typed_digest(transaction["IdempotencyKey"], "Idempotency key")
-    expected_postcondition = typed_digest(
-        transaction["ExpectedPostconditionDigest"], "Expected postcondition"
-    )
-    typed_digest(transaction["JournalDigest"], "Journal digest")
 
     review = require_object(transaction["Review"], "Typed table review")
     quote = require_object(transaction["Quote"], "Typed table quote")
+    if set(review) != CHECKPOINT_FIELDS:
+        raise RuntimeError("Typed table review fields are not exact")
+    if set(quote) != QUOTE_FIELDS:
+        raise RuntimeError("Typed table quote fields are not exact")
     identity = require_object(quote.get("Identity"), "Typed action identity")
     selected = require_object(review.get("SelectedAction"), "Reviewed action identity")
-    if identity != selected:
+    if set(identity) != IDENTITY_FIELDS or set(selected) != IDENTITY_FIELDS:
+        raise RuntimeError("Typed action identity fields are not exact")
+    if not exact_typed_equal(identity, selected):
         raise RuntimeError("Durable review and quote do not bind the same typed action")
+    if review.get("Schema") != "chummer.sr5_table_wizard.checkpoint.v1":
+        raise RuntimeError("Typed table review schema is not exact")
     if review.get("WorkspaceId") != workspace_id:
         raise RuntimeError("Durable review workspace identity is not exact")
-    if review.get("WorkspaceRevision") != expected_revision:
+    if (
+        review.get("WorkspaceRevision") != expected_revision
+        or type(review.get("WorkspaceRevision")) is not int
+    ):
         raise RuntimeError("Durable review workspace revision is not exact")
-    if review.get("Lane") != spec.lane_value:
+    if review.get("Lane") != spec.lane_value or type(review.get("Lane")) is not int:
         raise RuntimeError("Durable review lane is not exact")
-    typed_digest(review.get("SnapshotDigest"), "Reviewed snapshot digest")
     if identity.get("Kind") != spec.action_kind:
         raise RuntimeError("Durable review action kind exceeds this journey scope")
-    action_id = identity.get("ActionId")
-    if not isinstance(action_id, str) or not action_id:
-        raise RuntimeError("Durable action identity is empty")
-    action_digest = typed_digest(identity.get("ActionDigest"), "Action digest")
-    typed_digest(identity.get("TargetRevision"), "Action target revision")
+    contract = expected_action_contract(spec, workspace_id, expected_revision)
+    expected_identity = require_object(contract["identity"], "Expected action identity")
+    expected_quote = require_object(contract["quote"], "Expected typed quote")
+    if not exact_typed_equal(identity, expected_identity):
+        raise RuntimeError("Durable action identity is not the exact representative action")
+    if not exact_typed_equal(selected, expected_identity):
+        raise RuntimeError("Reviewed selected action is not the exact representative action")
+    if spec.lane == "playtime":
+        weapon_plan = require_object(quote.get("WeaponPlan"), "Typed Weapon plan")
+        if set(weapon_plan) != WEAPON_PLAN_FIELDS:
+            raise RuntimeError("Typed Weapon plan fields are not exact")
+    if not exact_typed_equal(quote, expected_quote):
+        raise RuntimeError("Durable typed quote or mutation delta is not exact")
+    expected_snapshot = str(contract["snapshotDigest"])
+    if review.get("SnapshotDigest") != expected_snapshot:
+        raise RuntimeError("Reviewed snapshot digest is not exact")
+    expected_postcondition = str(contract["postcondition"])
+    if transaction["ExpectedPostconditionDigest"] != expected_postcondition:
+        raise RuntimeError("Expected postcondition digest is not the exact reviewed delta")
+    expected_idempotency = length_prefixed_hash(
+        "chummer.android.sr5-table-transaction-idempotency/v1",
+        transaction["OwnerId"],
+        transaction["TransactionId"],
+        workspace_id,
+        expected_revision,
+        expected_snapshot,
+        expected_identity["ActionDigest"],
+        expected_postcondition,
+    )
+    if idempotency != expected_idempotency:
+        raise RuntimeError("Transaction idempotency digest is not cross-bound")
+    action_id = str(expected_identity["ActionId"])
+    action_digest = str(expected_identity["ActionDigest"])
 
     receipt_value = transaction["Receipt"]
     if not require_receipt:
         if receipt_value is not None:
             raise RuntimeError("Reviewed transaction unexpectedly contains a receipt")
+        journal_digest = typed_digest(transaction["JournalDigest"], "Journal digest")
+        if journal_digest != expected_journal_digest(transaction):
+            raise RuntimeError("Reviewed journal digest is not computed from its exact bytes")
         return None
     if not isinstance(receipt_value, dict) or set(receipt_value) != RECEIPT_FIELDS:
         raise RuntimeError("Applied transaction receipt fields are not exact")
@@ -300,11 +644,14 @@ def validate_transaction(
         "ObservedPostconditionDigest": expected_postcondition,
     }
     for field, expected in expected_values.items():
-        if receipt.get(field) != expected:
+        if not exact_typed_equal(receipt.get(field), expected):
             raise RuntimeError(f"Applied receipt {field} is not exact")
     actual_digest = typed_digest(receipt.get("ReceiptDigest"), "Receipt digest")
     if actual_digest != expected_receipt_digest(receipt):
         raise RuntimeError("Applied receipt digest is not canonical")
+    journal_digest = typed_digest(transaction["JournalDigest"], "Journal digest")
+    if journal_digest != expected_journal_digest(transaction):
+        raise RuntimeError("Applied journal digest is not computed from its exact bytes")
     return receipt
 
 
@@ -380,11 +727,14 @@ def require_before_run_fixture(root: ET.Element) -> None:
         raise RuntimeError("Before Run fixture sentinel is missing")
 
 
-def assert_before_state(root: ET.Element) -> None:
+def assert_before_state(root: ET.Element) -> ET.Element:
     require_before_run_fixture(root)
+    return copy.deepcopy(root)
 
 
-def assert_after_state(root: ET.Element, _before_authority: object) -> None:
+def assert_after_state(root: ET.Element, before_authority: object) -> None:
+    if not isinstance(before_authority, ET.Element):
+        raise RuntimeError("Before Run exact pre-mutation XML authority is missing")
     if root.findtext("edgeused") != "1":
         raise RuntimeError("Before Run did not persist exactly one point of Edge use")
     edge = [
@@ -396,6 +746,13 @@ def assert_after_state(root: ET.Element, _before_authority: object) -> None:
         raise RuntimeError("Before Run changed total Edge authority")
     if root.findtext("./customstate/sentinel") != "before-run-unrelated-must-survive":
         raise RuntimeError("Before Run changed unrelated fixture XML")
+    expected = copy.deepcopy(before_authority)
+    edge_used = expected.findall("./edgeused")
+    if len(edge_used) != 1:
+        raise RuntimeError("Before Run pre-mutation XML has ambiguous Edge use")
+    edge_used[0].text = "1"
+    if ET.tostring(root, encoding="utf-8") != ET.tostring(expected, encoding="utf-8"):
+        raise RuntimeError("Before Run changed XML outside the exact EdgeUsed 0 -> 1 delta")
 
 
 def prepare_runner(
@@ -457,6 +814,32 @@ def tap_unique_typed_action(device: shared.Device, spec: LaneSpec) -> str:
     raise RuntimeError(f"No representative typed {spec.lane} action was rendered")
 
 
+def observe_successor_actions(device: shared.Device, spec: LaneSpec) -> list[str]:
+    """Read the successor catalog without selecting or mutating either action."""
+    prefix = "sr5-table-action-"
+    observed: set[str] = set()
+    shared.reset_scroll_to_top(device, swipes=20)
+    unchanged = 0
+    for _ in range(31):
+        before = len(observed)
+        for node in device.hierarchy():
+            resource_id = node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+            if resource_id.startswith(prefix):
+                observed.add(resource_id)
+        unchanged = unchanged + 1 if len(observed) == before else 0
+        if len(observed) >= spec.successor_action_count and unchanged >= 2:
+            break
+        device.swipe_up(distance_ratio=0.18)
+        time.sleep(0.35)
+    if len(observed) != spec.successor_action_count:
+        device.capture(f"sr5-{spec.lane}-successor-action-cardinality")
+        raise RuntimeError(
+            f"Saved {spec.lane} successor exposed {len(observed)} typed actions; "
+            f"expected {spec.successor_action_count}"
+        )
+    return sorted(observed)
+
+
 def acknowledge_alert(device: shared.Device) -> None:
     device.tap("OK", timeout=180)
 
@@ -497,6 +880,7 @@ def prove_lane(
         workspace_id=imported.workspace_id,
         expected_revision=imported.content_revision,
         phase=0,
+        version=1,
         require_receipt=False,
     )
     device.capture(f"sr5-{spec.lane}-durable-review")
@@ -536,6 +920,7 @@ def prove_lane(
         workspace_id=imported.workspace_id,
         expected_revision=imported.content_revision,
         phase=2,
+        version=3,
         require_receipt=True,
     )
     if receipt is None:
@@ -572,6 +957,7 @@ def prove_lane(
         workspace_id=imported.workspace_id,
         expected_revision=imported.content_revision,
         phase=2,
+        version=3,
         require_receipt=True,
     )
     if recovered_receipt != receipt:
@@ -601,8 +987,7 @@ def prove_lane(
     if read_transaction(device, spec.checkpoint_key, required=False) is not None:
         raise RuntimeError("Acknowledged receipt deletion did not survive restart")
     open_lane(device, spec)
-    successor_action = tap_unique_typed_action(device, spec)
-    device.wait("sr5-table-wizard-quote", timeout=90)
+    successor_actions = observe_successor_actions(device, spec)
     device.capture(f"sr5-{spec.lane}-saved-successor-reopened")
     return {
         "scope": {
@@ -615,7 +1000,7 @@ def prove_lane(
         "savedSuccessor": shared.workspace_authority_json(saved),
         "finalRestoredSuccessor": shared.workspace_authority_json(final_saved),
         "actionAutomationId": action_automation_id,
-        "successorActionAutomationId": successor_action,
+        "successorActionAutomationIds": successor_actions,
         "reviewedTransactionSha256": reviewed.serialized_sha256,
         "appliedTransactionSha256": applied.serialized_sha256,
         "receipt": receipt,
