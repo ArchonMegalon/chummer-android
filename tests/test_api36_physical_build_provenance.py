@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import importlib.util
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -634,6 +636,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
                 "--w5-receipt", str(self.w5_receipt), "--w5-evidence-directory", str(self.w5_evidence),
                 "--source-graph", str(self.source_graph), "--package-authority", str(self.package_authority),
                 "--release-package-authority-v2", str(self.release_authority_v2),
+                "--release-workspace-root", str(self.release_workspace),
                 "--content-source-receipt", str(self.content_source), "--full-project-lock", str(self.lock),
             ],
             "locked-full-restore": [
@@ -671,6 +674,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "DOTNET_CLI_HOME": str(self.root), "DOTNET_ROOT": str(self.dotnet.parent),
             "HOME": str(self.root), "JAVA_HOME": str(self.jdk_root),
             "NUGET_PACKAGES": str(self.nuget_packages),
+            "CHUMMER_RELEASE_WORKSPACE_ROOT": str(self.release_workspace),
             "DOTNET_CLI_TELEMETRY_OPTOUT": "1", "DOTNET_CLI_USE_MSBUILD_SERVER": "0",
             "MSBUILDDISABLENODEREUSE": "1", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8",
             "PATH": f"{self.bin}:{self.dotnet.parent}:/usr/bin:/bin", "TMPDIR": "/tmp",
@@ -804,6 +808,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "dotnet_version": provenance.DOTNET_SDK_VERSION,
             "w5_verifier": self.verified_w5,
             "content_verifier": self.verified_content,
+            "release_workspace_verifier": lambda *_: {},
         }
 
     def test_full_v2_provenance_round_trip_binds_inputs_without_device_claims(self) -> None:
@@ -944,7 +949,17 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             (lambda rows: rows[0].__setitem__("timeoutSeconds", "100"), "timeout/deadline"),
             (lambda rows: rows[0].__setitem__("workingDirectory", str(self.root)), "context is not exact"),
             (lambda rows: rows[0]["environment"].__setitem__("SECRET", "x"), "environment allowlist"),
+            (
+                lambda rows: rows[0]["environment"].__setitem__(
+                    "CHUMMER_RELEASE_WORKSPACE_ROOT", str(self.root),
+                ),
+                "environment values",
+            ),
             (lambda rows: rows[0]["argv"].append("--forged"), "argv is not exact"),
+            (
+                lambda rows: rows[6]["argv"].remove("--release-workspace-root"),
+                "argv is not exact",
+            ),
             (lambda rows: rows[9].__setitem__("exitCode", True), "failed or terminated"),
             (lambda rows: rows[9]["termination"].__setitem__("sigkillSent", "false"), "failed or terminated"),
             (lambda rows: rows.__setitem__(slice(0, 2), [rows[2], rows[3]]), "phase order/context"),
@@ -1339,6 +1354,142 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         self.assertNotIn('"$dotnet_command" restore', pre_restore)
         self.assertNotIn('"$dotnet_command" build', pre_restore)
 
+        direct_workspace = self.root / "direct-release-workspace"
+        repository_rows = []
+        repository_roots = []
+        for name, role, remote, relative_parts in zip(
+            provenance.REPOSITORY_NAMES, provenance.REPOSITORY_ROLES,
+            provenance.REPOSITORY_URLS, provenance.RELEASE_WORKSPACE_PATHS,
+            strict=True,
+        ):
+            repository_root = direct_workspace.joinpath(*relative_parts)
+            repository_root.mkdir(parents=True)
+            subprocess.run(["git", "init", "-q"], cwd=repository_root, check=True)
+            subprocess.run(
+                ["git", "config", "user.email", "proof@example.invalid"],
+                cwd=repository_root, check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Proof Test"],
+                cwd=repository_root, check=True,
+            )
+            (repository_root / "authority.txt").write_text(
+                f"{name} release authority\n", encoding="utf-8",
+            )
+            subprocess.run(["git", "add", "."], cwd=repository_root, check=True)
+            subprocess.run(
+                ["git", "commit", "-qm", "release authority"],
+                cwd=repository_root, check=True,
+            )
+            subprocess.run(
+                ["git", "remote", "add", "origin", remote],
+                cwd=repository_root, check=True,
+            )
+            commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"], cwd=repository_root, check=True,
+                capture_output=True, text=True,
+            ).stdout.strip()
+            tree = subprocess.run(
+                ["git", "rev-parse", "HEAD^{tree}"], cwd=repository_root, check=True,
+                capture_output=True, text=True,
+            ).stdout.strip()
+            tree_listing = subprocess.run(
+                ["git", "ls-tree", "-r", "-z", "--full-tree", "HEAD"],
+                cwd=repository_root, check=True, capture_output=True,
+            ).stdout
+            repository_rows.append({
+                "name": name, "role": role, "commit": commit, "tree": tree,
+                "tree_sha256": hashlib.sha256(tree_listing).hexdigest(), "repository": remote,
+            })
+            repository_roots.append(repository_root)
+        direct_graph = self.root / "direct-release-source-graph.json"
+        write_json(direct_graph, {"repositories": repository_rows})
+
+        materializer_path = REPO_ROOT / "scripts/materialize-api36-physical-build-provenance.py"
+        spec = importlib.util.spec_from_file_location("wp1_direct_check_inputs", materializer_path)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        materializer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(materializer)
+        authorized_calls: list[dict[str, object]] = []
+
+        def authenticate_direct(**arguments: object) -> dict[str, object]:
+            graph = provenance.load_strict_json(
+                Path(arguments["source_graph_path"]), "direct release source graph",
+            )
+            provenance.validate_release_workspace_authority(
+                Path(arguments["release_workspace_root"]),
+                Path(arguments["android_root"]), graph,
+            )
+            authorized_calls.append(arguments)
+            return {}
+
+        def direct_argv(
+            *, workspace: str | Path | None, android: Path | None = None,
+        ) -> list[str]:
+            result = [
+                os.fspath(materializer_path), "check-inputs",
+                "--android-root", os.fspath(android or repository_roots[0]),
+                "--presentation-root", os.fspath(self.presentation),
+                "--core-content-root", os.fspath(self.core),
+                "--w5-receipt", os.fspath(self.w5_receipt),
+                "--w5-evidence-directory", os.fspath(self.w5_evidence),
+                "--source-graph", os.fspath(direct_graph),
+                "--package-authority", os.fspath(self.package_authority),
+                "--release-package-authority-v2", os.fspath(self.release_authority_v2),
+            ]
+            if workspace is not None:
+                result.extend(("--release-workspace-root", os.fspath(workspace)))
+            result.extend((
+                "--content-source-receipt", os.fspath(self.content_source),
+                "--full-project-lock", os.fspath(self.lock),
+            ))
+            return result
+
+        with mock.patch.object(materializer, "authenticate_inputs", side_effect=authenticate_direct):
+            with mock.patch.object(sys, "argv", direct_argv(workspace=direct_workspace)):
+                self.assertEqual(0, materializer.main())
+            self.assertEqual(direct_workspace, authorized_calls[-1]["release_workspace_root"])
+
+            authorized_calls.clear()
+            with mock.patch.object(sys, "argv", direct_argv(workspace=None)):
+                with self.assertRaises(SystemExit):
+                    materializer.main()
+            self.assertEqual([], authorized_calls)
+
+            foreign = self.root / "foreign-release-workspace"
+            foreign.mkdir()
+            workspace_link = self.root / "release-workspace-link"
+            workspace_link.symlink_to(direct_workspace, target_is_directory=True)
+            hostile = (
+                (Path("direct-release-workspace"), repository_roots[0], "absolute"),
+                (workspace_link, repository_roots[0], "non-symlink"),
+                (foreign, repository_roots[0], "exact release workspace"),
+                (direct_workspace, repository_roots[1], "exact release workspace"),
+            )
+            for workspace, android, error in hostile:
+                with self.subTest(workspace=workspace, android=android):
+                    authorized_calls.clear()
+                    with mock.patch.object(
+                        sys, "argv", direct_argv(workspace=workspace, android=android),
+                    ):
+                        with self.assertRaisesRegex(ValueError, error):
+                            materializer.main()
+                    self.assertEqual([], authorized_calls)
+
+            dirty_marker = repository_roots[-1] / "untracked-authority"
+            dirty_marker.write_text("dirty\n", encoding="utf-8")
+            try:
+                authorized_calls.clear()
+                with mock.patch.object(
+                    sys, "argv", direct_argv(workspace=direct_workspace),
+                ):
+                    with self.assertRaisesRegex(ValueError, "dirty"):
+                        materializer.main()
+                self.assertEqual([], authorized_calls)
+            finally:
+                dirty_marker.unlink()
+
     def test_manifest_tamper_unknown_and_duplicate_keys_fail_closed(self) -> None:
         manifest = provenance.create_manifest(**self.create_arguments())
         provenance.write_manifest(self.manifest, manifest)
@@ -1373,6 +1524,8 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "verify-apk-signing", "--delegate-journal",
             "--timeout-seconds 1800", "+ 7200",
             "AndroidSdkBuildToolsVersion=$android_build_tools_version",
+            '--release-workspace-root "$CHUMMER_RELEASE_WORKSPACE_ROOT"',
+            '"CHUMMER_RELEASE_WORKSPACE_ROOT=$CHUMMER_RELEASE_WORKSPACE_ROOT"',
         )
         for fragment in required:
             with self.subTest(fragment=fragment):

@@ -130,6 +130,7 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest="command", required=True)
     check = subparsers.add_parser("check-inputs")
     add_common(check)
+    check.add_argument("--release-workspace-root", type=Path, required=True)
     bounded = subparsers.add_parser("run-bounded")
     bounded.add_argument("--journal", type=Path, required=True)
     bounded.add_argument("--raw-journal", type=Path, required=True)
@@ -446,7 +447,7 @@ def main() -> int:
         "full_project_lock_path": args.full_project_lock,
     }
     if args.command == "check-inputs":
-        authenticate_inputs(**common)
+        authenticate_inputs(**common, release_workspace_root=args.release_workspace_root)
         print("api36_physical_build_inputs=pass publication_authorized=false")
         return 0
     manifest = create_manifest(

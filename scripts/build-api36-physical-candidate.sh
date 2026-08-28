@@ -209,6 +209,7 @@ bounded_environment=(
   "LC_ALL=C.UTF-8"
   "MSBUILDDISABLENODEREUSE=1"
   "NUGET_PACKAGES=$CHUMMER_API36_NUGET_PACKAGES"
+  "CHUMMER_RELEASE_WORKSPACE_ROOT=$CHUMMER_RELEASE_WORKSPACE_ROOT"
   "PATH=$java_home/bin:/usr/lib/dotnet:/usr/bin:/bin"
   "TMPDIR=/tmp"
 )
@@ -256,6 +257,7 @@ run_bounded w5-build-input-intake "$evidence_dir/build-inputs.log" \
   --source-graph "$CHUMMER_RELEASE_SOURCE_GRAPH" \
   --package-authority "$repo_dir/eng/internal-phone-beta-package-authority.json" \
   --release-package-authority-v2 "$CHUMMER_RELEASE_PACKAGE_AUTHORITY_V2" \
+  --release-workspace-root "$CHUMMER_RELEASE_WORKSPACE_ROOT" \
   --content-source-receipt "$evidence_dir/content-source-receipt.json" \
   --full-project-lock "$lock"
 

@@ -102,6 +102,16 @@ REPOSITORY_URLS = (
     "https://github.com/ArchonMegalon/chummer6-media-factory.git",
     "https://github.com/ArchonMegalon/chummer6-design.git",
 )
+RELEASE_WORKSPACE_PATHS = (
+    ("chummer-android",),
+    ("chummer-presentation",),
+    ("chummer-core-engine",),
+    ("chummer-ui-kit",),
+    ("chummer.run-services",),
+    ("chummer-hub-registry",),
+    ("fleet", "repos", "chummer-media-factory"),
+    ("chummer-design",),
+)
 SOURCE_GRAPH_DOES_NOT_ASSERT = (
     "google_play_upload", "google_play_processing", "tester_installation",
     "production_rollout", "presentation_package_authority",
@@ -156,6 +166,7 @@ ENVIRONMENT_ALLOWLIST = frozenset({
     "ANDROID_HOME", "ANDROID_SDK_ROOT", "DOTNET_CLI_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT",
     "DOTNET_CLI_USE_MSBUILD_SERVER", "HOME", "JAVA_HOME", "LANG", "LC_ALL",
     "MSBUILDDISABLENODEREUSE", "NUGET_PACKAGES", "PATH", "TMPDIR", "DOTNET_ROOT",
+    "CHUMMER_RELEASE_WORKSPACE_ROOT",
 })
 
 
@@ -375,6 +386,53 @@ def repository_identity(
         "commit": require_sha(_git(root, "rev-parse", "HEAD"), "Android commit", length=40),
         "tree": require_sha(_git(root, "rev-parse", "HEAD^{tree}"), "Android tree", length=40),
     }
+
+
+def validate_release_workspace_authority(
+    release_workspace_root: Path, android_root: Path, graph: Mapping[str, object],
+) -> dict[str, dict[str, str]]:
+    require_directory(release_workspace_root, "release workspace authority root")
+    repository_rows = graph.get("repositories")
+    if not isinstance(repository_rows, list) or len(repository_rows) != len(REPOSITORY_NAMES):
+        raise ValueError("release workspace authority requires the exact eight-repository graph")
+    expected_android_root = release_workspace_root.joinpath(*RELEASE_WORKSPACE_PATHS[0])
+    if android_root != expected_android_root:
+        raise ValueError("Android root is not the exact release workspace chummer-android checkout")
+    identities: dict[str, dict[str, str]] = {}
+    row_keys = {"name", "role", "commit", "tree", "tree_sha256", "repository"}
+    for index, (expected_name, expected_role, expected_url, relative_parts, row) in enumerate(
+        zip(
+            REPOSITORY_NAMES, REPOSITORY_ROLES, REPOSITORY_URLS,
+            RELEASE_WORKSPACE_PATHS, repository_rows, strict=True,
+        )
+    ):
+        row = require_exact_keys(row, row_keys, f"release workspace repository row {index}")
+        if (
+            row.get("name") != expected_name or row.get("role") != expected_role
+            or row.get("repository") != expected_url
+        ):
+            raise ValueError("release workspace repository order/role/remote authority is not exact")
+        require_sha(row.get("commit"), f"release workspace {expected_name} commit", length=40)
+        require_sha(row.get("tree"), f"release workspace {expected_name} tree", length=40)
+        require_sha(row.get("tree_sha256"), f"release workspace {expected_name} tree inventory")
+        root = release_workspace_root.joinpath(*relative_parts)
+        identity = repository_identity(root, label=f"release workspace {expected_name}")
+        if identity != {"commit": row.get("commit"), "tree": row.get("tree")}:
+            raise ValueError(f"release workspace repository identity drifted: {expected_name}")
+        tree_listing = subprocess.run(
+            ["git", "-C", os.fspath(root), "ls-tree", "-r", "-z", "--full-tree", "HEAD"],
+            check=True, capture_output=True, timeout=30,
+        ).stdout
+        if hashlib.sha256(tree_listing).hexdigest() != row["tree_sha256"]:
+            raise ValueError(f"release workspace tree inventory drifted: {expected_name}")
+        try:
+            remote = _git(root, "remote", "get-url", "origin")
+        except subprocess.CalledProcessError as error:
+            raise ValueError(f"release workspace repository remote is missing: {expected_name}") from error
+        if remote != expected_url:
+            raise ValueError(f"release workspace repository remote drifted: {expected_name}")
+        identities[expected_name] = {**identity, "repository": remote}
+    return identities
 
 
 def _verify_w5_external(receipt: Path, evidence_directory: Path) -> Mapping[str, object]:
@@ -1309,6 +1367,7 @@ def validate_phase_argv(
             "--w5-receipt", os.fspath(w5_receipt_path), "--w5-evidence-directory", os.fspath(w5_evidence_directory),
             "--source-graph", os.fspath(source_graph_path), "--package-authority", os.fspath(package_authority_path),
             "--release-package-authority-v2", os.fspath(release_package_authority_v2_path),
+            "--release-workspace-root", os.fspath(release_workspace_root),
             "--content-source-receipt", os.fspath(content_source_receipt_path),
             "--full-project-lock", os.fspath(full_project_lock_path),
         ]
@@ -1470,6 +1529,7 @@ def validate_execution_evidence(
             "HOME": os.fspath(DOTNET_CLI_HOME_AUTHORITY),
             "JAVA_HOME": os.fspath(java_path.parent.parent),
             "NUGET_PACKAGES": os.fspath(nuget_packages_path),
+            "CHUMMER_RELEASE_WORKSPACE_ROOT": os.fspath(release_workspace_root),
             "DOTNET_CLI_TELEMETRY_OPTOUT": "1", "DOTNET_CLI_USE_MSBUILD_SERVER": "0",
             "MSBUILDDISABLENODEREUSE": "1", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8",
             "PATH": f"{java_path.parent}:{dotnet_path.parent}:/usr/bin:/bin",
@@ -1658,6 +1718,9 @@ def authenticate_inputs(
     content_source_receipt_path: Path, full_project_lock_path: Path,
     w5_verifier: Callable[[Path, Path], Mapping[str, object]] = _verify_w5_external,
     content_verifier: Callable[[Path, Path], list[str]] = _verify_core_content_external,
+    release_workspace_verifier: Callable[
+        [Path, Path, Mapping[str, object]], Mapping[str, object]
+    ] = validate_release_workspace_authority,
     snapshots: SnapshotRegistry | None = None,
 ) -> dict[str, object]:
     snapshots = snapshots or SnapshotRegistry()
@@ -1700,6 +1763,9 @@ def authenticate_inputs(
         snapshots=snapshots,
     )
     graph = validate_source_graph(source_graph_path, android_identity, snapshots)
+    release_workspace_authority = release_workspace_verifier(
+        release_workspace_root, android_root, graph,
+    )
     release_authority_v2_payload = validate_release_package_authority_v2(
         release_package_authority_v2_path, graph=graph,
         release_workspace_root=release_workspace_root, snapshots=snapshots,
@@ -1777,6 +1843,7 @@ def authenticate_inputs(
         "desktopLock": desktop_lock.binding(),
         "releasePackageAuthorityV2": release_authority_v2.binding(),
         "releasePackageAuthorityV2Payload": release_authority_v2_payload,
+        "releaseWorkspaceAuthority": release_workspace_authority,
         "snapshots": snapshots,
     }
 
@@ -1806,6 +1873,9 @@ def create_manifest(
     generated_at_utc: str | None = None,
     w5_verifier: Callable[[Path, Path], Mapping[str, object]] = _verify_w5_external,
     content_verifier: Callable[[Path, Path], list[str]] = _verify_core_content_external,
+    release_workspace_verifier: Callable[
+        [Path, Path, Mapping[str, object]], Mapping[str, object]
+    ] = validate_release_workspace_authority,
     before_final_recheck: Callable[[], None] | None = None,
 ) -> dict[str, object]:
     snapshots = SnapshotRegistry()
@@ -1827,7 +1897,8 @@ def create_manifest(
         release_workspace_root=release_workspace_root,
         content_source_receipt_path=content_source_receipt_path,
         full_project_lock_path=full_project_lock_path, w5_verifier=w5_verifier,
-        content_verifier=content_verifier, snapshots=snapshots,
+        content_verifier=content_verifier,
+        release_workspace_verifier=release_workspace_verifier, snapshots=snapshots,
     )
     validate_apk_output_directory(apk, snapshots)
     abis = apk_abis(apk, snapshots)
@@ -1980,6 +2051,11 @@ def create_manifest(
         raise ValueError("W5 Presentation source identity changed before provenance seal")
     if final_core != facts["coreContentIdentity"]:
         raise ValueError("Core content source identity changed before provenance seal")
+    final_release_workspace = release_workspace_verifier(
+        release_workspace_root, android_root, facts["sourceGraph"],
+    )
+    if final_release_workspace != facts["releaseWorkspaceAuthority"]:
+        raise ValueError("release workspace authority changed before provenance seal")
     return {
         **authority_payload,
         "authoritySha256": canonical_sha256(authority_payload),
