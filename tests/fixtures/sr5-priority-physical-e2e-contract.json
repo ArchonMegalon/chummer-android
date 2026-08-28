@@ -1,0 +1,41 @@
+{
+  "schema": "chummer.android.sr5-priority-physical-e2e-contract/v1",
+  "buildMethod": "Priority",
+  "containsDraftState": false,
+  "draftAuthority": "typed-phone-pages-only",
+  "stageIds": [
+    "basics",
+    "method",
+    "foundation",
+    "attributes",
+    "qualities",
+    "skills",
+    "magic-resonance",
+    "resources",
+    "contacts-lifestyles",
+    "identity-story"
+  ],
+  "requiredByCurrentFinalizer": [
+    "method",
+    "attributes",
+    "qualities",
+    "skills",
+    "magic-resonance",
+    "resources"
+  ],
+  "identityGap": {
+    "status": "typed-contract-unavailable",
+    "blocker": "creation-identity-draft-contract-unavailable",
+    "requiredByCurrentFinalizer": false,
+    "fallbackAllowed": false
+  },
+  "successRequires": [
+    "sealed-core-whole-build-plan",
+    "explicit-atomic-confirmation",
+    "durable-creation-receipt",
+    "career-reopen",
+    "force-stop-new-pid",
+    "same-saved-workspace-and-document-digest"
+  ],
+  "releaseAuthority": false
+}

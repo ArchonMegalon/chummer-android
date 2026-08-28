@@ -109,25 +109,29 @@ class Sr5PriorityLegalPathSourceContractTests(unittest.TestCase):
         self.assertIn("explicit, atomic confirmation", finalization)
         self.assertNotIn("CharacterCreationWizardSnapshot snapshot", projection)
 
-    def test_driver_is_development_only_and_does_not_seed_rule_state(self) -> None:
+    def test_driver_is_physical_source_bound_and_does_not_seed_rule_state(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         for marker in (
-            "Development-only",
-            '"status": "development-observation"',
-            '"deviceProof": False',
-            '"installedArtifactBound": False',
-            '"releaseAuthority": False',
+            '"status": "device-pass-source-bound"',
+            '"physicalDeviceProof": True',
+            '"installedArtifactBound": True',
+            '"releaseAttested": False',
+            '"publicationAuthorized": False',
+            "load_and_verify_manifest",
+            "force_stop_and_launch_new_process",
+            "require_restored_authority",
+            "creation-finalization-open-career",
             "no fallback is allowed",
         ):
             self.assertIn(marker, source)
         for forbidden in (
-            "pm clear",
+            'device.shell("pm", "clear"',
             "run-as",
             "AuxiliaryState",
             "CharacterCreationFinalizationService",
             "settings.xml",
-            "args.apk",
-            '"apkSha256"',
+            "--acknowledge-unverified-build-provenance",
+            '"draftStateFabricated": True',
         ):
             self.assertNotIn(forbidden, source)
 
