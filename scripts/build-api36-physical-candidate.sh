@@ -65,6 +65,12 @@ require_directory() {
     || fail "input-$variable-not-canonical"
 }
 
+require_revision() {
+  local variable="$1" value="${!1:-}"
+  [[ "$value" =~ ^[0-9a-f]{40}$ ]] \
+    || fail "input-$variable-not-lowercase-sha40"
+}
+
 require_absent_output() {
   local variable="$1" value="${!1:-}" parent
   [[ -n "$value" && "$value" == /* && ! -e "$value" && ! -L "$value" ]] \
@@ -153,6 +159,18 @@ require_file CHUMMER_W5_COMPILE_RECEIPT
 require_file CHUMMER_ANDROID_SDK_PACKAGES_XML
 require_absent_output CHUMMER_API36_BUILD_PROVENANCE
 
+for revision_variable in \
+  CHUMMER_ANDROID_REVISION \
+  CHUMMER_PRESENTATION_REVISION \
+  CHUMMER_CORE_ENGINE_REVISION \
+  CHUMMER_UI_KIT_REVISION \
+  CHUMMER_RUN_SERVICES_REVISION \
+  CHUMMER_HUB_REGISTRY_REVISION \
+  CHUMMER_MEDIA_FACTORY_REVISION \
+  CHUMMER_DESIGN_REVISION; do
+  require_revision "$revision_variable"
+done
+
 for forbidden in \
   CHUMMER_CORE_ENGINE_ROOT \
   CHUMMER_RUN_SERVICES_ROOT \
@@ -209,6 +227,14 @@ bounded_environment=(
   "LC_ALL=C.UTF-8"
   "MSBUILDDISABLENODEREUSE=1"
   "NUGET_PACKAGES=$CHUMMER_API36_NUGET_PACKAGES"
+  "CHUMMER_ANDROID_REVISION=$CHUMMER_ANDROID_REVISION"
+  "CHUMMER_PRESENTATION_REVISION=$CHUMMER_PRESENTATION_REVISION"
+  "CHUMMER_CORE_ENGINE_REVISION=$CHUMMER_CORE_ENGINE_REVISION"
+  "CHUMMER_UI_KIT_REVISION=$CHUMMER_UI_KIT_REVISION"
+  "CHUMMER_RUN_SERVICES_REVISION=$CHUMMER_RUN_SERVICES_REVISION"
+  "CHUMMER_HUB_REGISTRY_REVISION=$CHUMMER_HUB_REGISTRY_REVISION"
+  "CHUMMER_MEDIA_FACTORY_REVISION=$CHUMMER_MEDIA_FACTORY_REVISION"
+  "CHUMMER_DESIGN_REVISION=$CHUMMER_DESIGN_REVISION"
   "CHUMMER_RELEASE_WORKSPACE_ROOT=$CHUMMER_RELEASE_WORKSPACE_ROOT"
   "PATH=$java_home/bin:/usr/lib/dotnet:/usr/bin:/bin"
   "TMPDIR=/tmp"

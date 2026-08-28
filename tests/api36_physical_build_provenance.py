@@ -102,6 +102,16 @@ REPOSITORY_URLS = (
     "https://github.com/ArchonMegalon/chummer6-media-factory.git",
     "https://github.com/ArchonMegalon/chummer6-design.git",
 )
+REVISION_ENVIRONMENT_VARIABLES = (
+    "CHUMMER_ANDROID_REVISION",
+    "CHUMMER_PRESENTATION_REVISION",
+    "CHUMMER_CORE_ENGINE_REVISION",
+    "CHUMMER_UI_KIT_REVISION",
+    "CHUMMER_RUN_SERVICES_REVISION",
+    "CHUMMER_HUB_REGISTRY_REVISION",
+    "CHUMMER_MEDIA_FACTORY_REVISION",
+    "CHUMMER_DESIGN_REVISION",
+)
 RELEASE_WORKSPACE_PATHS = (
     ("chummer-android",),
     ("chummer-presentation",),
@@ -167,7 +177,7 @@ ENVIRONMENT_ALLOWLIST = frozenset({
     "DOTNET_CLI_USE_MSBUILD_SERVER", "HOME", "JAVA_HOME", "LANG", "LC_ALL",
     "MSBUILDDISABLENODEREUSE", "NUGET_PACKAGES", "PATH", "TMPDIR", "DOTNET_ROOT",
     "CHUMMER_RELEASE_WORKSPACE_ROOT",
-})
+}) | frozenset(REVISION_ENVIRONMENT_VARIABLES)
 
 
 @dataclass(frozen=True)
@@ -1419,6 +1429,7 @@ def validate_execution_evidence(
     source_graph_seal_log: Path, command_journal: Path, raw_command_journal: Path,
     delegate_command_journal: Path,
     *, android_root: Path, apk: Path, source_graph_path: Path,
+    source_graph: Mapping[str, object],
     content_source_receipt_path: Path, content_apk_receipt_path: Path,
     android_build_tools_version: str, snapshots: SnapshotRegistry,
     python_path: Path, dotnet_path: Path, java_path: Path,
@@ -1492,6 +1503,23 @@ def validate_execution_evidence(
     )
     if len(rows) != len(expected) * 2:
         raise ValueError("bounded command journal row count is not exact")
+    source_repositories = source_graph.get("repositories")
+    if not isinstance(source_repositories, list) or len(source_repositories) != len(
+        REVISION_ENVIRONMENT_VARIABLES
+    ):
+        raise ValueError("authenticated source graph revision environment is not exact")
+    expected_revisions: dict[str, str] = {}
+    for expected_name, variable, repository in zip(
+        REPOSITORY_NAMES,
+        REVISION_ENVIRONMENT_VARIABLES,
+        source_repositories,
+        strict=True,
+    ):
+        if not isinstance(repository, dict) or repository.get("name") != expected_name:
+            raise ValueError("authenticated source graph revision environment is not exact")
+        expected_revisions[variable] = require_sha(
+            repository.get("commit"), f"{expected_name} bounded revision", length=40,
+        )
     common_invocation_epoch: float | int | None = None
     common_deadline_epoch: float | int | None = None
     for index, (phase, output) in enumerate(expected):
@@ -1530,6 +1558,7 @@ def validate_execution_evidence(
             "JAVA_HOME": os.fspath(java_path.parent.parent),
             "NUGET_PACKAGES": os.fspath(nuget_packages_path),
             "CHUMMER_RELEASE_WORKSPACE_ROOT": os.fspath(release_workspace_root),
+            **expected_revisions,
             "DOTNET_CLI_TELEMETRY_OPTOUT": "1", "DOTNET_CLI_USE_MSBUILD_SERVER": "0",
             "MSBUILDDISABLENODEREUSE": "1", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8",
             "PATH": f"{java_path.parent}:{dotnet_path.parent}:/usr/bin:/bin",
@@ -1932,6 +1961,7 @@ def create_manifest(
         source_graph_seal_log_path, command_journal_path, raw_command_journal_path,
         delegate_command_journal_path,
         android_root=android_root, apk=apk, source_graph_path=source_graph_path,
+        source_graph=facts["sourceGraph"],
         content_source_receipt_path=content_source_receipt_path,
         content_apk_receipt_path=content_apk_receipt_path,
         android_build_tools_version=android_build_tools_version,

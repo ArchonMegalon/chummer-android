@@ -679,6 +679,15 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "MSBUILDDISABLENODEREUSE": "1", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8",
             "PATH": f"{self.bin}:{self.dotnet.parent}:/usr/bin:/bin", "TMPDIR": "/tmp",
         }
+        source_repositories = self.source_graph_payload()["repositories"]
+        environment.update({
+            variable: repository["commit"]
+            for variable, repository in zip(
+                provenance.REVISION_ENVIRONMENT_VARIABLES,
+                source_repositories,
+                strict=True,
+            )
+        })
         rows = []
         raw_rows = []
         delegate_rows = []
@@ -949,6 +958,28 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             (lambda rows: rows[0].__setitem__("timeoutSeconds", "100"), "timeout/deadline"),
             (lambda rows: rows[0].__setitem__("workingDirectory", str(self.root)), "context is not exact"),
             (lambda rows: rows[0]["environment"].__setitem__("SECRET", "x"), "environment allowlist"),
+            (
+                lambda rows: rows[0]["environment"].pop("CHUMMER_ANDROID_REVISION"),
+                "environment allowlist",
+            ),
+            (
+                lambda rows: rows[0]["environment"].__setitem__(
+                    "CHUMMER_PRESENTATION_REVISION", "not-a-revision",
+                ),
+                "environment values",
+            ),
+            (
+                lambda rows: rows[0]["environment"].__setitem__(
+                    "CHUMMER_CORE_ENGINE_REVISION", "0" * 40,
+                ),
+                "environment values",
+            ),
+            (
+                lambda rows: rows[0]["environment"].__setitem__(
+                    "CHUMMER_HOSTILE_REVISION", "f" * 40,
+                ),
+                "environment allowlist",
+            ),
             (
                 lambda rows: rows[0]["environment"].__setitem__(
                     "CHUMMER_RELEASE_WORKSPACE_ROOT", str(self.root),
@@ -1504,6 +1535,18 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
 
     def test_build_contract_is_locked_offline_bounded_and_has_no_device_or_publish_step(self) -> None:
         script = (REPO_ROOT / "scripts/build-api36-physical-candidate.sh").read_text(encoding="utf-8")
+        verifier_spec = importlib.util.spec_from_file_location(
+            "wp1_release_source_graph_contract",
+            REPO_ROOT / "scripts/verify_release_source_graph.py",
+        )
+        self.assertIsNotNone(verifier_spec)
+        self.assertIsNotNone(verifier_spec.loader)
+        verifier = importlib.util.module_from_spec(verifier_spec)
+        verifier_spec.loader.exec_module(verifier)
+        self.assertEqual(
+            tuple(row[3] for row in verifier.REPOSITORY_SPECS),
+            provenance.REVISION_ENVIRONMENT_VARIABLES,
+        )
         required = (
             "--locked-mode", "--disable-parallel", "--no-http-cache",
             "ChummerUseLocalCompatibilityTree=false",
@@ -1537,6 +1580,16 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         self.assertNotIn("ChummerUseLockedOwnerContractPackages=false", script)
         self.assertNotIn("CHUMMER_JAVA", script)
         self.assertNotIn("CHUMMER_DOTNET", script)
+        bounded_environment = script[
+            script.index("bounded_environment=("):script.index("bounded_environment_arguments=()")
+        ]
+        for variable in provenance.REVISION_ENVIRONMENT_VARIABLES:
+            with self.subTest(revision_variable=variable):
+                self.assertIn(variable, script[:script.index("for forbidden in")])
+                self.assertEqual(
+                    1,
+                    bounded_environment.count(f'"{variable}=${variable}"'),
+                )
         materializer = (REPO_ROOT / "scripts/materialize-api36-physical-build-provenance.py").read_text(encoding="utf-8")
         self.assertIn('"--verbose", "--print-certs", "--Werr"', materializer)
 
