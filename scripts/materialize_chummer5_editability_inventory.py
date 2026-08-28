@@ -7775,6 +7775,7 @@ def _known_phone_mapping(
         )
         category_page = prerequisite_page.with_name("CreationPriorityCategoryPage.cs")
         detail_page = prerequisite_page.with_name("CreationPriorityDetailPage.cs")
+        talent_grant_page = prerequisite_page.with_name("CreationTalentSkillGrantPage.cs")
         preview_page = prerequisite_page.with_name("CreationPrerequisitePreviewPage.cs")
         phone_draft = prerequisite_page.with_name("CreationPrerequisitePhoneDraft.cs")
         coordinator = prerequisite_page.with_name("RunnerSessionCoordinator.cs")
@@ -7821,8 +7822,24 @@ def _known_phone_mapping(
             detail_page,
             "_draft.TalentOptions(state, Coordinator.State)",
             "_draft.TrySelectTalent(state, Coordinator.State, selectionId)",
-            "Skill-grant prompts are not yet available on phone",
+            "selected?.ActiveSkillGrant is not null || selected?.SkillGroupGrant is not null",
+            "new CreationTalentSkillGrantPage(",
             '$"creation-prerequisite-talent-option-',
+        ) and _contains(
+            phone_draft,
+            "TalentActiveSkillSelectionIds(",
+            "TalentSkillGroupSelectionIds(",
+            "TryToggleTalentActiveSkill(",
+            "TryToggleTalentSkillGroup(",
+        ) and _contains(
+            talent_grant_page,
+            "CharacterCreationTalentActiveSkillGrantProjection",
+            "CharacterCreationTalentSkillGroupGrantProjection",
+            "_draft.TryToggleTalentActiveSkill(state, Coordinator.State, selectionId)",
+            "_draft.TryToggleTalentSkillGroup(state, Coordinator.State, selectionId)",
+            '$"creation-prerequisite-talent-active-skill-option-',
+            '$"creation-prerequisite-talent-skill-group-option-',
+            'done.AutomationId = "creation-prerequisite-talent-grant-complete"',
         )
         confirm_authority = shared_authority and _contains(
             preview_page,
@@ -7893,6 +7910,11 @@ def _known_phone_mapping(
                 "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
                 "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
                 "src/Chummer.Android/Native/CreationPriorityDetailPage.cs",
+                *(
+                    ["src/Chummer.Android/Native/CreationTalentSkillGrantPage.cs"]
+                    if control == "cboTalents"
+                    else []
+                ),
                 "src/Chummer.Android/Native/CreationPrerequisitePreviewPage.cs",
                 "src/Chummer.Android/Native/CreationPrerequisitePhoneDraft.cs",
                 "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
@@ -23300,6 +23322,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPrerequisitePage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPriorityCategoryPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPriorityDetailPage.cs",
+        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationTalentSkillGrantPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPrerequisitePreviewPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPrerequisitePhoneDraft.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",

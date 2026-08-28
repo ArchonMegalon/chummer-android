@@ -6233,6 +6233,10 @@ public sealed class Demo
             self.assertFalse(row["completionProven"])
         for control in unsupported:
             self.assertEqual("missing", rows[control]["phone"]["status"])
+        self.assertIn(
+            "src/Chummer.Android/Native/CreationTalentSkillGrantPage.cs",
+            rows["cboTalents"]["phone"]["sourceRefs"],
+        )
 
         parameters = list(inspect.signature(inventory._known_phone_mapping).parameters)
         receipt_arguments = {
@@ -6249,6 +6253,21 @@ public sealed class Demo
         with patch.object(inventory, "_contains", side_effect=drift_category_authority):
             drifted = inventory._known_phone_mapping(
                 rows["cboHeritage"],
+                inventory.DEFAULT_CHUMMER5_ROOT,
+                PRESENTATION_ROOT,
+                CORE_ROOT,
+                **receipt_arguments,
+            )
+        self.assertEqual("missing", drifted["status"])
+
+        def drift_talent_grant_authority(path: Path, *needles: str) -> bool:
+            if path.name == "CreationTalentSkillGrantPage.cs":
+                return False
+            return original_contains(path, *needles)
+
+        with patch.object(inventory, "_contains", side_effect=drift_talent_grant_authority):
+            drifted = inventory._known_phone_mapping(
+                rows["cboTalents"],
                 inventory.DEFAULT_CHUMMER5_ROOT,
                 PRESENTATION_ROOT,
                 CORE_ROOT,
