@@ -64,6 +64,57 @@ CHECKPOINT_FIELDS = {
     "SchemaVersion", "Version", "RouteId", "Phase", "Draft", "Receipt",
     "IdempotencyKey",
 }
+IDENTITY_JSON_FIELDS = {"ProposalId", "RunId", "CharacterId"}
+REWARD_CONTEXT_FIELDS = {
+    "ContractName", "Identity", "RunTitle", "CompletedAt", "KarmaAward",
+    "NuyenAward", "RewardReceiptDigest", "ContextDigest",
+}
+CANDIDATE_FIELDS = {"RewardContext", "Binding"}
+BINDING_FIELDS = {
+    "ContractName", "WorkspaceId", "WorkspaceRevision", "Identity", "Quote",
+    "BindingDigest",
+}
+QUOTE_FIELDS = {
+    "Identity", "HeatBefore", "HeatDelta", "HeatAfter", "StreetCredBefore",
+    "StreetCredDelta", "StreetCredAfter", "NotorietyBefore", "NotorietyDelta",
+    "NotorietyAfter", "PublicAwarenessBefore", "RequestedPublicAwarenessDelta",
+    "PublicAwarenessAfter", "KarmaBefore", "ContactKarmaCost", "KarmaAfter",
+    "Contacts", "GmReviewDigest", "OwnerReviewDigest", "Prerequisites",
+    "CanSettle", "Blocker", "SourceDigest", "CustomDataDigest", "GmPolicyDigest",
+    "RuntimeDigest", "LogicalDigest",
+}
+SETTLED_CONTACT_FIELDS = {
+    "ContactId", "Name", "Role", "Location", "Connection", "Loyalty", "Kind",
+    "KarmaCost",
+}
+PREREQUISITE_FIELDS = {"Prerequisite", "Satisfied", "Authority"}
+PLAN_FIELDS = {
+    "Identity", "TransactionId", "TargetHeat", "TargetStreetCred",
+    "TargetNotoriety", "TargetPublicAwareness", "TargetKarma", "ContactKarmaCost",
+    "ContactsToAdd", "ExpenseId", "ExpenseAmount", "ExpenseReason",
+    "GmReviewDigest", "OwnerReviewDigest", "ExpectedSourceDigest",
+    "ExpectedCustomDataDigest", "ExpectedGmPolicyDigest", "ExpectedRuntimeDigest",
+    "ExpectedLogicalDigest", "PlanDigest",
+}
+DRAFT_FIELDS = {"OwnerId", "Candidate", "Plan", "Acknowledgements"}
+ACKNOWLEDGEMENT_FIELDS = {
+    "RunContextReviewed", "RewardsReviewed", "ConsequencesReviewed",
+    "ContactsReviewed", "GmApprovalReviewed", "OwnerApprovalReviewed",
+}
+RECEIPT_FIELDS = {
+    "TransactionId", "Identity", "HeatBefore", "HeatAfter", "StreetCredBefore",
+    "StreetCredAfter", "NotorietyBefore", "NotorietyAfter",
+    "PublicAwarenessBefore", "PublicAwarenessAfter", "KarmaBefore", "KarmaAfter",
+    "ContactKarmaCost", "AddedContacts", "ExpenseId", "ExpenseAmount",
+    "ExpenseReason", "GmReviewDigest", "OwnerReviewDigest", "SourceDigest",
+    "CustomDataDigest", "GmPolicyDigest", "RuntimeDigest", "LogicalDigestBefore",
+    "LogicalDigestAfter", "ReceiptDigest",
+}
+AFTER_RUN_CORE_CONTRACT = "chummer.core.sr5-after-run-settlement/v1"
+AFTER_RUN_QUOTE_CONTRACT = "chummer.core.sr5-after-run-settlement-quote/v1"
+AFTER_RUN_REWARD_CONTRACT = "chummer.android.sr5-after-run-reward-context/v1"
+AFTER_RUN_MANUAL_CONTRACT = "chummer.android.sr5-manual-after-run-proposal/v1"
+AFTER_RUN_ACTION_CONTRACT = "chummer.android.sr5-after-run-settlement-action/v1"
 ASCII_TEXT = re.compile(r"^[A-Za-z0-9 .:#_-]{1,128}$")
 
 
@@ -97,6 +148,327 @@ def _sha256(value: object, label: str) -> str:
     if not isinstance(value, str) or physical.LOWER_SHA256.fullmatch(value) is None:
         raise RuntimeError(f"{label} is not canonical lowercase SHA-256")
     return value
+
+
+def _canonical(*values: object) -> str:
+    rendered = [str(value) for value in values]
+    return "\0".join(f"{len(value)}:{value}" for value in rendered)
+
+
+def _canonical_sha256(*values: object) -> str:
+    return hashlib.sha256(_canonical(*values).encode("utf-8")).hexdigest()
+
+
+def _manual_add(values: list[str]) -> str:
+    return "".join(f"{len(value)}:{value}\n" for value in values)
+
+
+def _dotnet_roundtrip_utc(value: str) -> str:
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+    return parsed.strftime("%Y-%m-%dT%H:%M:%S") + ".0000000+00:00"
+
+
+def _dotnet_json_utc(value: str) -> str:
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+    return parsed.strftime("%Y-%m-%dT%H:%M:%S") + "+00:00"
+
+
+def _identity_json(fixture: dict[str, object]) -> dict[str, str]:
+    identity = _mapping(fixture["identity"], "fixture identity")
+    return {
+        "ProposalId": str(identity["proposalId"]),
+        "RunId": str(identity["runId"]),
+        "CharacterId": str(identity["characterId"]),
+    }
+
+
+def _identity_text(fixture: dict[str, object]) -> str:
+    identity = _mapping(fixture["identity"], "fixture identity")
+    return _canonical(
+        identity["proposalId"], identity["runId"], identity["characterId"]
+    )
+
+
+def _settled_contacts(fixture: dict[str, object]) -> list[dict[str, object]]:
+    policy = _mapping(fixture["policy"], "fixture policy")
+    result: list[dict[str, object]] = []
+    for contact in sorted(fixture["contacts"], key=lambda item: item["contactId"]):
+        purchased = contact["kind"] == "Karma purchase"
+        result.append({
+            "ContactId": contact["contactId"],
+            "Name": contact["name"],
+            "Role": contact["role"],
+            "Location": contact["location"],
+            "Connection": contact["connection"],
+            "Loyalty": contact["loyalty"],
+            "Kind": 1 if purchased else 0,
+            "KarmaCost": (
+                (contact["connection"] + contact["loyalty"])
+                * policy["karmaPerContactPoint"] if purchased else 0
+            ),
+        })
+    return result
+
+
+def _contacts_text(contacts: list[dict[str, object]]) -> str:
+    return _canonical(*[
+        _canonical(
+            contact["ContactId"], contact["Name"], contact["Role"],
+            contact["Location"], contact["Connection"], contact["Loyalty"],
+            "RunReward" if contact["Kind"] == 0 else "KarmaPurchase",
+            contact["KarmaCost"],
+        )
+        for contact in contacts
+    ])
+
+
+def _review_digest(fixture: dict[str, object], role: str) -> str:
+    review = _mapping(_mapping(fixture["reviews"], "fixture reviews")[role], role)
+    expected_role = "GameMaster" if role == "gm" else "CharacterOwner"
+    return _canonical_sha256(
+        AFTER_RUN_CORE_CONTRACT, "review", expected_role, review["actorId"],
+        review["reviewId"], expected_role, review["actorId"], "Approved",
+        review["reason"],
+    )
+
+
+def _manual_proposal_digest(
+    fixture: dict[str, object], workspace_id: str, workspace_revision: int,
+    character_projection_digest: str,
+) -> str:
+    identity = _mapping(fixture["identity"], "fixture identity")
+    reward = _mapping(fixture["reward"], "fixture reward")
+    consequences = _mapping(fixture["consequences"], "fixture consequences")
+    policy = _mapping(fixture["policy"], "fixture policy")
+    values = [
+        AFTER_RUN_MANUAL_CONTRACT, workspace_id, str(workspace_revision),
+        character_projection_digest, str(identity["proposalId"]), str(identity["runId"]),
+        str(identity["characterId"]), str(reward["runTitle"]),
+        _dotnet_roundtrip_utc(str(reward["completedAtUtc"])),
+        str(reward["karmaAward"]), str(reward["nuyenAward"]),
+        str(reward["receiptSha256"]), str(consequences["currentHeat"]),
+        str(consequences["heatDelta"]), str(consequences["streetCredDelta"]),
+        str(consequences["notorietyDelta"]), str(consequences["publicAwarenessDelta"]),
+        str(policy["maximumHeat"]), str(policy["maximumReputation"]),
+        str(policy["maximumConnection"]), str(policy["maximumLoyalty"]),
+        str(policy["karmaPerContactPoint"]),
+        str(policy["allowRunRewardContacts"]).lower(),
+        str(policy["allowKarmaPurchasedContacts"]).lower(),
+        str(policy["calculatePublicAwareness"]).lower(),
+    ]
+    for contact in sorted(fixture["contacts"], key=lambda item: item["contactId"]):
+        values.extend([
+            str(contact["contactId"]), str(contact["name"]), str(contact["role"]),
+            str(contact["location"]), str(contact["connection"]),
+            str(contact["loyalty"]),
+            "RunReward" if contact["kind"] == "Run reward" else "KarmaPurchase",
+        ])
+    for role, enum_name in (("gm", "GameMaster"), ("owner", "CharacterOwner")):
+        review = fixture["reviews"][role]
+        values.extend([
+            str(review["reviewId"]), enum_name, str(review["actorId"]), "Approved",
+            str(review["reason"]),
+        ])
+    return hashlib.sha256(_manual_add(values).encode("utf-8")).hexdigest()
+
+
+def _expected_after_run_authority(
+    fixture: dict[str, object], *, workspace_id: str, workspace_revision: int,
+    character_projection_digest: str, owner_id: str, transaction_id: str,
+    phase: int, version: int,
+) -> dict[str, object]:
+    identity = _identity_json(fixture)
+    identity_text = _identity_text(fixture)
+    runner = fixture["runner"]
+    reward = fixture["reward"]
+    consequences = fixture["consequences"]
+    policy = fixture["policy"]
+    expected = fixture["expected"]
+    contacts = _settled_contacts(fixture)
+    contacts_text = _contacts_text(contacts)
+    proposal_digest = _manual_proposal_digest(
+        fixture, workspace_id, workspace_revision, character_projection_digest
+    )
+    raw_source = f"{AFTER_RUN_MANUAL_CONTRACT}/source/{proposal_digest}"
+    raw_custom = f"{AFTER_RUN_MANUAL_CONTRACT}/custom-data/{proposal_digest}"
+    raw_policy = f"{AFTER_RUN_MANUAL_CONTRACT}/gm-policy/{proposal_digest}"
+    raw_runtime = f"{AFTER_RUN_MANUAL_CONTRACT}/runtime/{proposal_digest}"
+    source_digest = hashlib.sha256(raw_source.encode()).hexdigest()
+    custom_digest = hashlib.sha256(raw_custom.encode()).hexdigest()
+    runtime_digest = hashlib.sha256(raw_runtime.encode()).hexdigest()
+    policy_digest = _canonical_sha256(
+        AFTER_RUN_CORE_CONTRACT, "gm-policy", policy["maximumHeat"],
+        policy["maximumReputation"], policy["maximumConnection"],
+        policy["maximumLoyalty"], policy["karmaPerContactPoint"],
+        str(policy["allowRunRewardContacts"]),
+        str(policy["allowKarmaPurchasedContacts"]),
+        str(policy["calculatePublicAwareness"]), raw_policy,
+    )
+    gm_digest = _review_digest(fixture, "gm")
+    owner_digest = _review_digest(fixture, "owner")
+    prerequisite_names = [
+        "CareerCharacter", "Sr5Ruleset", "ExactTarget", "ExactProjection",
+        "RunCompleted", "ProposalUnsettled", "GmApproved", "OwnerApproved",
+        "HeatWithinPolicy", "ReputationWithinPolicy", "ContactsWithinPolicy",
+        "SufficientKarma",
+    ]
+    authorities = [
+        "character.created", "ruleset.sr5",
+        f"character.internal-id:{identity['CharacterId']}",
+        "after-run.projection:exact", f"run.internal-id:{identity['RunId']}",
+        f"after-run.proposal-id:{identity['ProposalId']}", "review.game-master",
+        "review.character-owner", "gm-policy.maximum-heat",
+        "gm-policy.maximum-reputation", "gm-policy.contact-acquisition",
+        "character.karma",
+    ]
+    prerequisites = [
+        {"Prerequisite": index, "Satisfied": True, "Authority": authority}
+        for index, authority in enumerate(authorities)
+    ]
+    prerequisites_text = _canonical(*[
+        _canonical(name, "True", authority)
+        for name, authority in zip(prerequisite_names, authorities, strict=True)
+    ])
+    logical_digest = _canonical_sha256(
+        AFTER_RUN_CORE_CONTRACT, "quote", identity_text,
+        consequences["currentHeat"], consequences["heatDelta"], expected["heatAfter"],
+        runner["streetCred"], consequences["streetCredDelta"],
+        expected["streetCredAfter"], runner["notoriety"],
+        consequences["notorietyDelta"], expected["notorietyAfter"],
+        runner["publicAwareness"], consequences["publicAwarenessDelta"],
+        expected["publicAwarenessAfter"], runner["karma"],
+        expected["contactKarmaCost"], expected["karmaAfter"], contacts_text,
+        gm_digest, owner_digest, prerequisites_text, "True", "None",
+        source_digest, custom_digest, policy_digest, runtime_digest,
+    )
+    quote = {
+        "Identity": identity, "HeatBefore": consequences["currentHeat"],
+        "HeatDelta": consequences["heatDelta"], "HeatAfter": expected["heatAfter"],
+        "StreetCredBefore": runner["streetCred"],
+        "StreetCredDelta": consequences["streetCredDelta"],
+        "StreetCredAfter": expected["streetCredAfter"],
+        "NotorietyBefore": runner["notoriety"],
+        "NotorietyDelta": consequences["notorietyDelta"],
+        "NotorietyAfter": expected["notorietyAfter"],
+        "PublicAwarenessBefore": runner["publicAwareness"],
+        "RequestedPublicAwarenessDelta": consequences["publicAwarenessDelta"],
+        "PublicAwarenessAfter": expected["publicAwarenessAfter"],
+        "KarmaBefore": runner["karma"], "ContactKarmaCost": expected["contactKarmaCost"],
+        "KarmaAfter": expected["karmaAfter"], "Contacts": contacts,
+        "GmReviewDigest": gm_digest, "OwnerReviewDigest": owner_digest,
+        "Prerequisites": prerequisites, "CanSettle": True, "Blocker": 0,
+        "SourceDigest": source_digest, "CustomDataDigest": custom_digest,
+        "GmPolicyDigest": policy_digest, "RuntimeDigest": runtime_digest,
+        "LogicalDigest": logical_digest,
+    }
+    binding_digest = _canonical_sha256(
+        AFTER_RUN_QUOTE_CONTRACT, workspace_id, workspace_revision, identity_text,
+        source_digest, custom_digest, policy_digest, runtime_digest, logical_digest,
+    )
+    context_digest = hashlib.sha256("\0".join([
+        AFTER_RUN_REWARD_CONTRACT, identity["ProposalId"], identity["RunId"],
+        identity["CharacterId"], str(reward["runTitle"]),
+        _dotnet_roundtrip_utc(str(reward["completedAtUtc"])),
+        str(reward["karmaAward"]), str(reward["nuyenAward"]),
+        str(reward["receiptSha256"]),
+    ]).encode()).hexdigest()
+    reward_context = {
+        "ContractName": AFTER_RUN_REWARD_CONTRACT, "Identity": identity,
+        "RunTitle": reward["runTitle"],
+        "CompletedAt": _dotnet_json_utc(str(reward["completedAtUtc"])),
+        "KarmaAward": reward["karmaAward"], "NuyenAward": reward["nuyenAward"],
+        "RewardReceiptDigest": reward["receiptSha256"], "ContextDigest": context_digest,
+    }
+    expense_reason = f"After Run contacts ({len(contacts)})"
+    plan_digest = _canonical_sha256(
+        AFTER_RUN_CORE_CONTRACT, "plan", identity_text, transaction_id,
+        expected["heatAfter"], expected["streetCredAfter"],
+        expected["notorietyAfter"], expected["publicAwarenessAfter"],
+        expected["karmaAfter"], expected["contactKarmaCost"], contacts_text,
+        transaction_id, -expected["contactKarmaCost"], expense_reason,
+        gm_digest, owner_digest, source_digest, custom_digest, policy_digest,
+        runtime_digest, logical_digest,
+    )
+    plan = {
+        "Identity": identity, "TransactionId": transaction_id,
+        "TargetHeat": expected["heatAfter"],
+        "TargetStreetCred": expected["streetCredAfter"],
+        "TargetNotoriety": expected["notorietyAfter"],
+        "TargetPublicAwareness": expected["publicAwarenessAfter"],
+        "TargetKarma": expected["karmaAfter"],
+        "ContactKarmaCost": expected["contactKarmaCost"],
+        "ContactsToAdd": contacts, "ExpenseId": transaction_id,
+        "ExpenseAmount": -expected["contactKarmaCost"],
+        "ExpenseReason": expense_reason, "GmReviewDigest": gm_digest,
+        "OwnerReviewDigest": owner_digest, "ExpectedSourceDigest": source_digest,
+        "ExpectedCustomDataDigest": custom_digest,
+        "ExpectedGmPolicyDigest": policy_digest,
+        "ExpectedRuntimeDigest": runtime_digest,
+        "ExpectedLogicalDigest": logical_digest, "PlanDigest": plan_digest,
+    }
+    idempotency = _canonical_sha256(
+        AFTER_RUN_ACTION_CONTRACT, owner_id, workspace_id, workspace_revision,
+        transaction_id,
+        f"{identity['ProposalId']}:{identity['RunId']}:{identity['CharacterId']}",
+        AFTER_RUN_QUOTE_CONTRACT, binding_digest, source_digest, custom_digest,
+        policy_digest, runtime_digest, logical_digest, gm_digest, owner_digest,
+        context_digest, plan_digest,
+    )
+    draft = {
+        "OwnerId": owner_id,
+        "Candidate": {"RewardContext": reward_context, "Binding": {
+            "ContractName": AFTER_RUN_QUOTE_CONTRACT,
+            "WorkspaceId": {"Value": workspace_id},
+            "WorkspaceRevision": workspace_revision, "Identity": identity,
+            "Quote": quote, "BindingDigest": binding_digest,
+        }},
+        "Plan": plan,
+        "Acknowledgements": {field: True for field in ACKNOWLEDGEMENT_FIELDS},
+    }
+    receipt: dict[str, object] | None = None
+    if phase == 2:
+        post_logical = _canonical_sha256(
+            AFTER_RUN_CORE_CONTRACT, "settled", identity_text, transaction_id,
+            expected["heatAfter"], expected["streetCredAfter"],
+            expected["notorietyAfter"], expected["publicAwarenessAfter"],
+            expected["karmaAfter"], contacts_text, source_digest, custom_digest,
+            policy_digest, runtime_digest,
+        )
+        receipt = {
+            "TransactionId": transaction_id, "Identity": identity,
+            "HeatBefore": consequences["currentHeat"], "HeatAfter": expected["heatAfter"],
+            "StreetCredBefore": runner["streetCred"],
+            "StreetCredAfter": expected["streetCredAfter"],
+            "NotorietyBefore": runner["notoriety"],
+            "NotorietyAfter": expected["notorietyAfter"],
+            "PublicAwarenessBefore": runner["publicAwareness"],
+            "PublicAwarenessAfter": expected["publicAwarenessAfter"],
+            "KarmaBefore": runner["karma"], "KarmaAfter": expected["karmaAfter"],
+            "ContactKarmaCost": expected["contactKarmaCost"],
+            "AddedContacts": contacts, "ExpenseId": transaction_id,
+            "ExpenseAmount": -expected["contactKarmaCost"],
+            "ExpenseReason": expense_reason, "GmReviewDigest": gm_digest,
+            "OwnerReviewDigest": owner_digest, "SourceDigest": source_digest,
+            "CustomDataDigest": custom_digest, "GmPolicyDigest": policy_digest,
+            "RuntimeDigest": runtime_digest, "LogicalDigestBefore": logical_digest,
+            "LogicalDigestAfter": post_logical, "ReceiptDigest": "",
+        }
+        receipt["ReceiptDigest"] = _canonical_sha256(
+            AFTER_RUN_CORE_CONTRACT, "receipt", transaction_id, identity_text,
+            receipt["HeatBefore"], receipt["HeatAfter"], receipt["StreetCredBefore"],
+            receipt["StreetCredAfter"], receipt["NotorietyBefore"],
+            receipt["NotorietyAfter"], receipt["PublicAwarenessBefore"],
+            receipt["PublicAwarenessAfter"], receipt["KarmaBefore"],
+            receipt["KarmaAfter"], receipt["ContactKarmaCost"], contacts_text,
+            receipt["ExpenseId"], receipt["ExpenseAmount"], receipt["ExpenseReason"],
+            gm_digest, owner_digest, source_digest, custom_digest, policy_digest,
+            runtime_digest, logical_digest, post_logical,
+        )
+    return {
+        "SchemaVersion": 1, "Version": version, "RouteId": REVIEW_ROUTE,
+        "Phase": phase, "Draft": draft, "Receipt": receipt,
+        "IdempotencyKey": idempotency,
+    }
 
 
 def _strict_json(path: Path) -> dict[str, object]:
@@ -360,45 +732,21 @@ def _workspace_value(value: object, label: str) -> str:
     raise RuntimeError(f"{label} is not an exact workspace identity")
 
 
-def _identity_matches(value: object, fixture: dict[str, object], label: str) -> None:
-    identity = _mapping(value, label)
-    expected = _mapping(fixture["identity"], "fixture identity")
-    for checkpoint_field, fixture_field in (
-        ("ProposalId", "proposalId"), ("RunId", "runId"),
-        ("CharacterId", "characterId"),
-    ):
-        actual = physical.canonical_guid(
-            identity.get(checkpoint_field), f"{label}.{checkpoint_field}"
-        )
-        if actual != expected[fixture_field]:
-            raise RuntimeError(f"{label}.{checkpoint_field} differs from governed fixture")
-
-
-def _validate_contacts(value: object, fixture: dict[str, object], label: str) -> None:
-    if not isinstance(value, list):
-        raise RuntimeError(f"{label} is not a contact list")
-    expected_contacts = fixture["contacts"]
-    if len(value) != len(expected_contacts):
-        raise RuntimeError(f"{label} contact cardinality differs")
-    by_id = {
-        physical.canonical_guid(
-            _mapping(item, label).get("ContactId"), f"{label}.ContactId"
-        ): _mapping(item, label)
-        for item in value
-    }
-    for expected in expected_contacts:
-        actual = by_id.get(expected["contactId"])
-        if actual is None:
-            raise RuntimeError(f"{label} omitted contact {expected['contactId']}")
-        for actual_field, expected_field in (
-            ("Name", "name"), ("Role", "role"), ("Location", "location"),
-            ("Connection", "connection"), ("Loyalty", "loyalty"),
-        ):
-            if actual.get(actual_field) != expected[expected_field]:
-                raise RuntimeError(f"{label}.{actual_field} differs for {expected['contactId']}")
-        expected_kind = 0 if expected["kind"] == "Run reward" else 1
-        if actual.get("Kind") != expected_kind:
-            raise RuntimeError(f"{label}.Kind differs for {expected['contactId']}")
+def _require_exact(actual: object, expected: object, label: str) -> None:
+    if isinstance(expected, dict):
+        mapped = _mapping(actual, label)
+        _exact_fields(mapped, set(expected), label)
+        for field, value in expected.items():
+            _require_exact(mapped[field], value, f"{label}.{field}")
+        return
+    if isinstance(expected, list):
+        if not isinstance(actual, list) or len(actual) != len(expected):
+            raise RuntimeError(f"{label} list shape differs")
+        for index, (actual_item, expected_item) in enumerate(zip(actual, expected, strict=True)):
+            _require_exact(actual_item, expected_item, f"{label}[{index}]")
+        return
+    if type(actual) is not type(expected) or actual != expected:
+        raise RuntimeError(f"{label} differs from exact product authority")
 
 
 def validate_checkpoint(
@@ -407,109 +755,35 @@ def validate_checkpoint(
     *,
     workspace_id: str,
     workspace_revision: int,
+    character_projection_digest: str,
     version: int,
     phase: int,
 ) -> dict[str, str]:
     _exact_fields(payload, CHECKPOINT_FIELDS, "After Run checkpoint")
-    expected_top = {
-        "SchemaVersion": 1, "Version": version, "RouteId": REVIEW_ROUTE, "Phase": phase,
-    }
-    for field, expected_value in expected_top.items():
-        if payload[field] != expected_value or type(payload[field]) is not type(expected_value):
-            raise RuntimeError(f"After Run checkpoint {field} differs")
-    idempotency = _sha256(payload["IdempotencyKey"], "checkpoint idempotency key")
     draft = _mapping(payload["Draft"], "checkpoint.Draft")
-    candidate = _mapping(draft.get("Candidate"), "checkpoint candidate")
-    reward_context = _mapping(candidate.get("RewardContext"), "reward context")
-    binding = _mapping(candidate.get("Binding"), "quote binding")
-    quote = _mapping(binding.get("Quote"), "quote")
-    plan = _mapping(draft.get("Plan"), "plan")
-    acknowledgements = _mapping(draft.get("Acknowledgements"), "acknowledgements")
-    if set(acknowledgements) != {
-        "RunContextReviewed", "RewardsReviewed", "ConsequencesReviewed",
-        "ContactsReviewed", "GmApprovalReviewed", "OwnerApprovalReviewed",
-    } or any(value is not True for value in acknowledgements.values()):
-        raise RuntimeError("After Run acknowledgements are not all exact and explicit")
-    physical.canonical_guid(draft.get("OwnerId"), "draft owner")
-    if _workspace_value(binding.get("WorkspaceId"), "binding workspace") != workspace_id:
-        raise RuntimeError("After Run binding workspace differs")
-    if binding.get("WorkspaceRevision") != workspace_revision:
-        raise RuntimeError("After Run binding revision differs")
-    _identity_matches(reward_context.get("Identity"), fixture, "reward identity")
-    _identity_matches(binding.get("Identity"), fixture, "binding identity")
-    _identity_matches(quote.get("Identity"), fixture, "quote identity")
-    reward = _mapping(fixture["reward"], "fixture reward")
-    if reward_context.get("RunTitle") != reward["runTitle"]:
-        raise RuntimeError("Reward title differs")
-    rendered_completed = reward_context.get("CompletedAt")
-    if not isinstance(rendered_completed, str) or datetime.fromisoformat(
-        rendered_completed.replace("Z", "+00:00")
-    ).astimezone(timezone.utc) != datetime.fromisoformat(
-        str(reward["completedAtUtc"]).replace("Z", "+00:00")
-    ):
-        raise RuntimeError("Reward completion time differs")
-    for checkpoint_field, fixture_field in (
-        ("KarmaAward", "karmaAward"), ("NuyenAward", "nuyenAward"),
-        ("RewardReceiptDigest", "receiptSha256"),
-    ):
-        if reward_context.get(checkpoint_field) != reward[fixture_field]:
-            raise RuntimeError(f"Reward {checkpoint_field} differs")
-    _sha256(reward_context.get("ContextDigest"), "reward context digest")
-    runner = _mapping(fixture["runner"], "fixture runner")
-    consequences = _mapping(fixture["consequences"], "fixture consequences")
-    expected = _mapping(fixture["expected"], "fixture expected")
-    quote_values = {
-        "HeatBefore": consequences["currentHeat"], "HeatDelta": consequences["heatDelta"],
-        "HeatAfter": expected["heatAfter"], "StreetCredBefore": runner["streetCred"],
-        "StreetCredDelta": consequences["streetCredDelta"],
-        "StreetCredAfter": expected["streetCredAfter"],
-        "NotorietyBefore": runner["notoriety"],
-        "NotorietyDelta": consequences["notorietyDelta"],
-        "NotorietyAfter": expected["notorietyAfter"],
-        "PublicAwarenessBefore": runner["publicAwareness"],
-        "PublicAwarenessAfter": expected["publicAwarenessAfter"],
-        "KarmaBefore": runner["karma"], "KarmaAfter": expected["karmaAfter"],
-        "ContactKarmaCost": expected["contactKarmaCost"],
-    }
-    for field, expected_value in quote_values.items():
-        if quote.get(field) != expected_value:
-            raise RuntimeError(f"After Run quote {field} differs")
-    _validate_contacts(quote.get("Contacts"), fixture, "quote contacts")
-    gm_digest = _sha256(quote.get("GmReviewDigest"), "GM review digest")
-    owner_digest = _sha256(quote.get("OwnerReviewDigest"), "owner review digest")
-    if gm_digest == owner_digest:
-        raise RuntimeError("GM and owner review digests unexpectedly match")
-    for field in (
-        "SourceDigest", "CustomDataDigest", "GmPolicyDigest", "RuntimeDigest",
-        "LogicalDigest",
-    ):
-        _sha256(quote.get(field), f"quote {field}")
-    if plan.get("GmReviewDigest") != gm_digest or plan.get("OwnerReviewDigest") != owner_digest:
-        raise RuntimeError("Settlement plan lost one exact review digest")
-    transaction_id = physical.canonical_guid(plan.get("TransactionId"), "settlement transaction")
-    if _sha256(plan.get("PlanDigest"), "settlement plan digest") == idempotency:
-        raise RuntimeError("Plan digest and action idempotency digest are not distinct authorities")
-    if phase == 2:
-        receipt = _mapping(payload["Receipt"], "settlement receipt")
-        if physical.canonical_guid(
-            receipt.get("TransactionId"), "receipt transaction"
-        ) != transaction_id:
-            raise RuntimeError("Core receipt transaction differs from reviewed plan")
-        for field in (
-            "HeatBefore", "HeatAfter", "StreetCredBefore", "StreetCredAfter",
-            "NotorietyBefore", "NotorietyAfter", "PublicAwarenessBefore",
-            "PublicAwarenessAfter", "KarmaBefore", "KarmaAfter",
-        ):
-            if receipt.get(field) != quote_values[field]:
-                raise RuntimeError(f"Core receipt {field} differs from reviewed quote")
-        _validate_contacts(receipt.get("AddedContacts"), fixture, "receipt contacts")
-        _sha256(receipt.get("ReceiptDigest"), "Core receipt digest")
-    elif payload["Receipt"] is not None:
-        raise RuntimeError("Reviewed checkpoint unexpectedly contains a receipt")
+    _exact_fields(draft, DRAFT_FIELDS, "checkpoint.Draft")
+    owner_id = physical.canonical_guid(draft["OwnerId"], "draft owner")
+    plan = _mapping(draft["Plan"], "checkpoint plan")
+    _exact_fields(plan, PLAN_FIELDS, "checkpoint plan")
+    transaction_id = physical.canonical_guid(
+        plan["TransactionId"], "settlement transaction"
+    )
+    _sha256(character_projection_digest, "character projection digest")
+    if character_projection_digest != fixture["runner"]["expectedSha256"]:
+        raise RuntimeError("After Run projection is not the governed runner document")
+    expected_payload = _expected_after_run_authority(
+        fixture, workspace_id=workspace_id, workspace_revision=workspace_revision,
+        character_projection_digest=character_projection_digest, owner_id=owner_id,
+        transaction_id=transaction_id, phase=phase, version=version,
+    )
+    _require_exact(payload, expected_payload, "After Run checkpoint")
+    quote = expected_payload["Draft"]["Candidate"]["Binding"]["Quote"]
+    receipt = expected_payload["Receipt"]
     return {
         "transactionId": transaction_id,
-        "gmReviewDigest": gm_digest,
-        "ownerReviewDigest": owner_digest,
+        "gmReviewDigest": str(quote["GmReviewDigest"]),
+        "ownerReviewDigest": str(quote["OwnerReviewDigest"]),
+        "receiptDigest": "" if receipt is None else str(receipt["ReceiptDigest"]),
     }
 
 
@@ -623,25 +897,95 @@ def _assert_initial_runner(root: ET.Element, fixture: dict[str, object]) -> None
     for field, value in expected.items():
         if root.findtext(field) != value:
             raise RuntimeError(f"Initial After Run runner field {field} differs")
+    if not _same_xml(root, ET.fromstring(render_runner_xml(fixture))):
+        raise RuntimeError("Imported After Run runner differs from governed XML authority")
 
 
-def _assert_successor_runner(root: ET.Element, fixture: dict[str, object]) -> None:
-    runner = fixture["runner"]
-    expected = fixture["expected"]
-    values = {
-        "streetcred": expected["streetCredAfter"], "notoriety": expected["notorietyAfter"],
-        "publicawareness": expected["publicAwarenessAfter"], "karma": expected["karmaAfter"],
-        "nuyen": runner["nuyen"], "heat": expected["heatAfter"],
-    }
-    for field, value in values.items():
-        if root.findtext(field) != str(value):
-            raise RuntimeError(f"Saved After Run successor field {field} differs")
-    serialized = ET.tostring(root, encoding="unicode")
-    for contact in fixture["contacts"]:
-        if serialized.count(contact["contactId"]) != 1:
-            raise RuntimeError(f"Saved successor did not add contact {contact['contactId']} exactly once")
-    if root.findtext("./customstate/sentinel") != runner["customSentinel"]:
-        raise RuntimeError("After Run settlement changed unrelated XML")
+def _same_xml(actual: ET.Element, expected: ET.Element) -> bool:
+    if actual.tag != expected.tag or actual.attrib != expected.attrib:
+        return False
+    if (actual.text or "") != (expected.text or ""):
+        return False
+    actual_children = list(actual)
+    expected_children = list(expected)
+    return len(actual_children) == len(expected_children) and all(
+        _same_xml(left, right)
+        for left, right in zip(actual_children, expected_children, strict=True)
+    )
+
+
+def _expected_successor_runner(
+    fixture: dict[str, object], transaction_id: str, expense_date: str
+) -> ET.Element:
+    expected = ET.fromstring(render_runner_xml(fixture))
+    projection = fixture["expected"]
+    for name, value in (
+        ("streetcred", projection["streetCredAfter"]),
+        ("notoriety", projection["notorietyAfter"]),
+        ("publicawareness", projection["publicAwarenessAfter"]),
+        ("karma", projection["karmaAfter"]),
+    ):
+        target = expected.find(name)
+        if target is None:
+            raise RuntimeError(f"Governed runner omitted {name}")
+        target.text = str(value)
+    contacts = expected.find("contacts")
+    expenses = expected.find("expenses")
+    if contacts is None or expenses is None or list(contacts) or list(expenses):
+        raise RuntimeError("Governed runner contact/expense base is not exact")
+    for contact in _settled_contacts(fixture):
+        ET.SubElement(contacts, "contact")
+        created = contacts[-1]
+        fields = [
+            ("name", contact["Name"]), ("role", contact["Role"]),
+            ("location", contact["Location"]), ("connection", contact["Connection"]),
+            ("loyalty", contact["Loyalty"]), ("metatype", ""), ("gender", ""),
+            ("age", ""), ("contacttype", ""), ("preferredpayment", ""),
+            ("hobbiesvice", ""), ("personallife", ""), ("type", "Contact"),
+            ("file", ""), ("relative", ""), ("notes", ""),
+            ("notesColor", "#000000"), ("groupname", ""), ("colour", "-16777216"),
+            ("group", "False"), ("family", "False"), ("blackmail", "False"),
+            ("free", "True" if contact["Kind"] == 0 else "False"),
+            ("groupenabled", "False"), ("guid", contact["ContactId"]),
+        ]
+        for name, value in fields:
+            ET.SubElement(created, name).text = str(value) if value != "" else None
+    expense = ET.SubElement(expenses, "expense")
+    for name, value in (
+        ("guid", transaction_id), ("date", expense_date),
+        ("amount", -projection["contactKarmaCost"]),
+        ("reason", f"After Run contacts ({projection['contactsAdded']})"),
+        ("type", "Karma"), ("refund", "False"),
+        ("forcecareervisible", "True"),
+    ):
+        ET.SubElement(expense, name).text = str(value)
+    undo = ET.SubElement(expense, "undo")
+    for name, value in (
+        ("karmatype", "ManualSubtract"), ("nuyentype", "AddCyberware"),
+        ("objectid", ""), ("qty", "0"), ("extra", ""),
+    ):
+        ET.SubElement(undo, name).text = value or None
+    return expected
+
+
+def _assert_successor_runner(
+    root: ET.Element, fixture: dict[str, object], transaction_id: str
+) -> None:
+    actual_expenses = root.findall("./expenses/expense")
+    if len(actual_expenses) != 1:
+        raise RuntimeError("After Run successor expense cardinality differs")
+    date = actual_expenses[0].findtext("date")
+    if not isinstance(date, str):
+        raise RuntimeError("After Run expense date is missing")
+    try:
+        datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
+    except ValueError as error:
+        raise RuntimeError("After Run expense date is not product-canonical") from error
+    expected = _expected_successor_runner(fixture, transaction_id, date)
+    if not _same_xml(root, expected):
+        raise RuntimeError(
+            "After Run successor contains a non-permitted XML delta or changed record"
+        )
 
 
 def prove_after_run(
@@ -682,7 +1026,8 @@ def prove_after_run(
         raise RuntimeError("Reviewed After Run checkpoint disappeared")
     review_projection = validate_checkpoint(
         reviewed.payload, fixture, workspace_id=imported.workspace_id,
-        workspace_revision=imported.content_revision, version=1, phase=0,
+        workspace_revision=imported.content_revision,
+        character_projection_digest=imported.payload_sha256, version=1, phase=0,
     )
     device.capture("sr5-after-run-durable-review")
     reviewed_restart = physical.shared.force_stop_and_launch_new_process(device, initial_launch)
@@ -703,10 +1048,14 @@ def prove_after_run(
         raise RuntimeError("Applied After Run checkpoint disappeared")
     receipt_projection = validate_checkpoint(
         applied.payload, fixture, workspace_id=imported.workspace_id,
-        workspace_revision=imported.content_revision, version=3, phase=2,
+        workspace_revision=imported.content_revision,
+        character_projection_digest=imported.payload_sha256, version=3, phase=2,
     )
     require_same_draft(reviewed.payload, applied.payload)
-    if receipt_projection != review_projection:
+    if any(
+        receipt_projection[field] != review_projection[field]
+        for field in ("transactionId", "gmReviewDigest", "ownerReviewDigest")
+    ):
         raise RuntimeError("Applied receipt changed transaction or review-digest authority")
     device.capture("sr5-after-run-atomic-core-receipt")
     applied_restart = physical.shared.force_stop_and_launch_new_process(
@@ -732,7 +1081,9 @@ def prove_after_run(
         raise RuntimeError("After Run settlement did not save one exact successor revision")
     if saved.payload_sha256 == imported.payload_sha256:
         raise RuntimeError("After Run successor did not change the workspace payload digest")
-    _assert_successor_runner(root_for_authority(device, saved), fixture)
+    _assert_successor_runner(
+        root_for_authority(device, saved), fixture, review_projection["transactionId"]
+    )
     final_restart = physical.shared.force_stop_and_launch_new_process(
         device, applied_restart.restarted
     )
@@ -741,7 +1092,10 @@ def prove_after_run(
     physical.shared.wait_for_phone_runners(device, timeout=120)
     final_saved = physical.shared.read_phone_workspace_authority(device)
     physical.shared.require_restored_authority(saved, final_saved)
-    _assert_successor_runner(root_for_authority(device, final_saved), fixture)
+    _assert_successor_runner(
+        root_for_authority(device, final_saved), fixture,
+        review_projection["transactionId"],
+    )
     if read_checkpoint(device, required=False) is not None:
         raise RuntimeError("After Run acknowledgement did not survive final restart")
     return {

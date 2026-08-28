@@ -16,75 +16,21 @@ DRIVER = ROOT / "tests/run_api36_sr5_after_run_settlement_e2e.py"
 
 
 def checkpoint(fixture: dict[str, object], *, applied: bool) -> dict[str, object]:
-    identity = {
-        "ProposalId": fixture["identity"]["proposalId"],
-        "RunId": fixture["identity"]["runId"],
-        "CharacterId": fixture["identity"]["characterId"],
-    }
-    contacts = [
-        {
-            "ContactId": item["contactId"], "Name": item["name"],
-            "Role": item["role"], "Location": item["location"],
-            "Connection": item["connection"], "Loyalty": item["loyalty"],
-            "Kind": 0 if item["kind"] == "Run reward" else 1,
-        }
-        for item in fixture["contacts"]
-    ]
-    quote = {
-        "Identity": identity,
-        "HeatBefore": 1, "HeatDelta": 2, "HeatAfter": 3,
-        "StreetCredBefore": 10, "StreetCredDelta": 2, "StreetCredAfter": 12,
-        "NotorietyBefore": 4, "NotorietyDelta": 1, "NotorietyAfter": 5,
-        "PublicAwarenessBefore": 6, "PublicAwarenessAfter": 7,
-        "KarmaBefore": 30, "KarmaAfter": 19, "ContactKarmaCost": 11,
-        "Contacts": contacts,
-        "GmReviewDigest": "b" * 64, "OwnerReviewDigest": "c" * 64,
-        "SourceDigest": "1" * 64, "CustomDataDigest": "2" * 64,
-        "GmPolicyDigest": "3" * 64, "RuntimeDigest": "4" * 64,
-        "LogicalDigest": "5" * 64,
-    }
-    transaction = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
-    draft = {
-        "OwnerId": "ffffffff-ffff-ffff-ffff-ffffffffffff",
-        "Candidate": {
-            "RewardContext": {
-                "Identity": identity,
-                "RunTitle": fixture["reward"]["runTitle"],
-                "CompletedAt": "2026-08-26T20:00:00+00:00",
-                "KarmaAward": 8, "NuyenAward": 12500,
-                "RewardReceiptDigest": "a" * 64, "ContextDigest": "6" * 64,
-            },
-            "Binding": {
-                "WorkspaceId": {"Value": "workspace-test"},
-                "WorkspaceRevision": 41, "Identity": identity, "Quote": quote,
-            },
-        },
-        "Plan": {
-            "TransactionId": transaction, "PlanDigest": "d" * 64,
-            "GmReviewDigest": "b" * 64, "OwnerReviewDigest": "c" * 64,
-        },
-        "Acknowledgements": {
-            "RunContextReviewed": True, "RewardsReviewed": True,
-            "ConsequencesReviewed": True, "ContactsReviewed": True,
-            "GmApprovalReviewed": True, "OwnerApprovalReviewed": True,
-        },
-    }
-    receipt = None
-    if applied:
-        receipt = {
-            "TransactionId": transaction,
-            "HeatBefore": 1, "HeatAfter": 3,
-            "StreetCredBefore": 10, "StreetCredAfter": 12,
-            "NotorietyBefore": 4, "NotorietyAfter": 5,
-            "PublicAwarenessBefore": 6, "PublicAwarenessAfter": 7,
-            "KarmaBefore": 30, "KarmaAfter": 19,
-            "AddedContacts": contacts, "ReceiptDigest": "f" * 64,
-        }
-    return {
-        "SchemaVersion": 1, "Version": 3 if applied else 1,
-        "RouteId": driver.REVIEW_ROUTE, "Phase": 2 if applied else 0,
-        "Draft": draft, "Receipt": receipt, "IdempotencyKey": "e" * 64,
-    }
+    return driver._expected_after_run_authority(
+        fixture, workspace_id="workspace-test", workspace_revision=41,
+        character_projection_digest=fixture["runner"]["expectedSha256"],
+        owner_id="ffffffff-ffff-ffff-ffff-ffffffffffff",
+        transaction_id="eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+        version=3 if applied else 1, phase=2 if applied else 0,
+    )
+
+
+def validate(value: dict[str, object], fixture: dict[str, object], *, applied: bool) -> dict[str, str]:
+    return driver.validate_checkpoint(
+        value, fixture, workspace_id="workspace-test", workspace_revision=41,
+        character_projection_digest=fixture["runner"]["expectedSha256"],
+        version=3 if applied else 1, phase=2 if applied else 0,
+    )
 
 
 class Api36Sr5AfterRunSettlementContractTests(unittest.TestCase):
@@ -118,27 +64,101 @@ class Api36Sr5AfterRunSettlementContractTests(unittest.TestCase):
     def test_review_and_applied_checkpoint_bind_exact_ids_deltas_and_digests(self) -> None:
         fixture = driver.load_fixture()
         reviewed = checkpoint(fixture, applied=False)
-        authority = driver.validate_checkpoint(
-            reviewed, fixture, workspace_id="workspace-test",
-            workspace_revision=41, version=1, phase=0,
-        )
+        authority = validate(reviewed, fixture, applied=False)
         self.assertEqual("e" * 8 + "-" + "e" * 4 + "-" + "e" * 4 + "-" + "e" * 4 + "-" + "e" * 12, authority["transactionId"])
         self.assertNotEqual(authority["gmReviewDigest"], authority["ownerReviewDigest"])
         applied = checkpoint(fixture, applied=True)
-        self.assertEqual(
-            authority,
-            driver.validate_checkpoint(
-                applied, fixture, workspace_id="workspace-test",
-                workspace_revision=41, version=3, phase=2,
-            ),
-        )
+        applied_authority = validate(applied, fixture, applied=True)
+        for field in ("transactionId", "gmReviewDigest", "ownerReviewDigest"):
+            self.assertEqual(authority[field], applied_authority[field])
+        self.assertRegex(applied_authority["receiptDigest"], r"^[0-9a-f]{64}$")
         driver.require_same_draft(reviewed, applied)
         tampered = copy.deepcopy(applied)
         tampered["Receipt"]["HeatAfter"] = 4
         with self.assertRaises(RuntimeError):
+            validate(tampered, fixture, applied=True)
+
+    def test_hostile_self_consistent_foreign_review_authority_is_rejected(self) -> None:
+        fixture = driver.load_fixture()
+        foreign = copy.deepcopy(fixture)
+        foreign["reviews"]["gm"]["actorId"] = "gm-18"
+        payload = driver._expected_after_run_authority(
+            foreign, workspace_id="workspace-test", workspace_revision=41,
+            character_projection_digest=fixture["runner"]["expectedSha256"],
+            owner_id="ffffffff-ffff-ffff-ffff-ffffffffffff",
+            transaction_id="eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee", version=3, phase=2,
+        )
+        with self.assertRaises(RuntimeError):
+            validate(payload, fixture, applied=True)
+
+    def test_hostile_arbitrary_receipt_and_logical_digests_are_rejected(self) -> None:
+        fixture = driver.load_fixture()
+        for path in (
+            ("Receipt", "ReceiptDigest"),
+            ("Draft", "Candidate", "Binding", "Quote", "LogicalDigest"),
+            ("Draft", "Plan", "PlanDigest"),
+        ):
+            payload = checkpoint(fixture, applied=True)
+            target = payload
+            for part in path[:-1]:
+                target = target[part]
+            target[path[-1]] = "0" * 64
+            with self.subTest(path=path), self.assertRaises(RuntimeError):
+                validate(payload, fixture, applied=True)
+
+    def test_hostile_source_runtime_rewards_and_contact_costs_are_rejected(self) -> None:
+        fixture = driver.load_fixture()
+        mutations = (
+            lambda value: value["Draft"]["Candidate"]["Binding"]["Quote"].__setitem__("RuntimeDigest", "0" * 64),
+            lambda value: value["Draft"]["Candidate"]["RewardContext"].__setitem__("NuyenAward", 12501),
+            lambda value: value["Draft"]["Plan"]["ContactsToAdd"][1].__setitem__("KarmaCost", 10),
+            lambda value: value["Receipt"].__setitem__("ExpenseAmount", -10),
+        )
+        for mutate in mutations:
+            payload = checkpoint(fixture, applied=True)
+            mutate(payload)
+            with self.subTest(mutate=mutate), self.assertRaises(RuntimeError):
+                validate(payload, fixture, applied=True)
+
+    def test_hostile_unrelated_name_contact_identity_and_nonpermitted_xml_fail(self) -> None:
+        fixture = driver.load_fixture()
+        transaction = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
+        valid = driver._expected_successor_runner(
+            fixture, transaction, "2026-08-28T12:34:56"
+        )
+        driver._assert_successor_runner(valid, fixture, transaction)
+        for mutate in (
+            lambda root: setattr(root.find("name"), "text", "Foreign Runner"),
+            lambda root: setattr(root.find("./contacts/contact/guid"), "text", "99999999-9999-9999-9999-999999999999"),
+            lambda root: ET.SubElement(root, "foreign"),
+        ):
+            changed = ET.fromstring(ET.tostring(valid))
+            mutate(changed)
+            with self.subTest(mutate=mutate), self.assertRaises(RuntimeError):
+                driver._assert_successor_runner(changed, fixture, transaction)
+
+    def test_unknown_fields_wrong_types_duplicate_contacts_and_foreign_projection_fail(self) -> None:
+        fixture = driver.load_fixture()
+        cases = []
+        unknown = checkpoint(fixture, applied=True)
+        unknown["Receipt"]["Foreign"] = True
+        cases.append(unknown)
+        wrong_type = checkpoint(fixture, applied=True)
+        wrong_type["Receipt"]["KarmaAfter"] = "19"
+        cases.append(wrong_type)
+        duplicate = checkpoint(fixture, applied=True)
+        duplicate["Receipt"]["AddedContacts"][1] = copy.deepcopy(
+            duplicate["Receipt"]["AddedContacts"][0]
+        )
+        cases.append(duplicate)
+        for payload in cases:
+            with self.subTest(payload=payload), self.assertRaises(RuntimeError):
+                validate(payload, fixture, applied=True)
+        with self.assertRaises(RuntimeError):
             driver.validate_checkpoint(
-                tampered, fixture, workspace_id="workspace-test",
-                workspace_revision=41, version=3, phase=2,
+                checkpoint(fixture, applied=False), fixture,
+                workspace_id="workspace-test", workspace_revision=41,
+                character_projection_digest="0" * 64, version=1, phase=0,
             )
 
     def test_driver_is_apk_source_arm64_restart_and_receipt_bound(self) -> None:

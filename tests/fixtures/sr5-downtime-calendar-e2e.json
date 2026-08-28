@@ -16,7 +16,10 @@
   },
   "preserve": {
     "weekId": "22222222-2222-2222-2222-222222222222",
+    "year": 2081,
+    "isoWeek": 11,
     "notes": "Legwork",
+    "notesColor": "Chocolate",
     "sentinel": "keep-nested-structure"
   }
 }

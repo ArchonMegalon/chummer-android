@@ -32,11 +32,31 @@ TARGET_FIELDS = {
     "weekId", "year", "isoWeek", "notesBefore", "notesColorBefore",
 }
 EDIT_FIELDS = {"notes", "notesColor"}
-PRESERVE_FIELDS = {"weekId", "notes", "sentinel"}
+PRESERVE_FIELDS = {"weekId", "year", "isoWeek", "notes", "notesColor", "sentinel"}
 JOURNAL_FIELDS = {
     "SchemaVersion", "Version", "Phase", "OwnerId", "ActionId", "Review",
     "ExpectedPostconditionDigest", "Receipt", "JournalDigest",
 }
+REVIEW_FIELDS = {"Schema", "WorkspaceId", "WorkspaceRevision", "SnapshotDigest", "Preview"}
+PREVIEW_FIELDS = {
+    "Schema", "Operation", "WeekId", "Year", "Week", "Notes", "NotesColor",
+    "ExpectedCalendarRevision", "ExpectedLogicalRevision", "ExpectedSourceRevision",
+    "Summary", "PreviewDigest",
+}
+RECEIPT_FIELDS = {
+    "ContractName", "WorkspaceId", "ExpectedWorkspaceRevision",
+    "AppliedWorkspaceRevision", "ActionId", "Operation", "PreviewDigest",
+    "ExpectedPostconditionDigest", "ObservedPostconditionDigest",
+    "CalendarRevisionAfter", "SourceDigestAfter", "ContentDigestAfter", "ReceiptDigest",
+}
+CHECKPOINT_SCHEMA = "chummer.sr5-downtime-calendar.checkpoint.v1"
+PREVIEW_SCHEMA = "chummer.sr5-downtime-calendar.preview.v1"
+RUNTIME_SCHEMA = "chummer.sr5-downtime-calendar.runtime.v1"
+JOURNAL_SCHEMA = "chummer.android.sr5-downtime-calendar.journal.v1"
+RECEIPT_SCHEMA = "chummer.android.sr5-downtime-calendar.persistence-receipt/v1"
+CONTENT_SCHEMA = "chummer.android.sr5-downtime-calendar.content.v1"
+SOURCE_AUTHORITY_DIGEST = "bbd5d2f9cf33eedbb7c2dc76c65717fe52f96653fd22b35a0daaee8c7f993338"
+RUNTIME_FINGERPRINT = "sha256:8a8b74cc030e83ea266e18de58aef0918c054f74a7c7b3fa959ab730bfbe3e93"
 
 
 def _mapping(value: object, label: str) -> dict[str, object]:
@@ -70,6 +90,219 @@ def _digest(value: object, label: str, *, prefixed: bool | None = None) -> str:
         raise RuntimeError(f"{label} prefix posture differs")
     _raw_digest(value.removeprefix("sha256:"), label)
     return value
+
+
+def _append(material: str, value: object) -> str:
+    rendered = str(value)
+    return material + f"{len(rendered)}:{rendered};"
+
+
+def _hash(material: str) -> str:
+    return "sha256:" + hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
+def _raw_hash(material: str) -> str:
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
+def _require_exact(actual: object, expected: object, label: str) -> None:
+    if isinstance(expected, dict):
+        mapped = _mapping(actual, label)
+        _exact_fields(mapped, set(expected), label)
+        for field, value in expected.items():
+            _require_exact(mapped[field], value, f"{label}.{field}")
+        return
+    if isinstance(expected, list):
+        if not isinstance(actual, list) or len(actual) != len(expected):
+            raise RuntimeError(f"{label} list shape differs")
+        for index, (left, right) in enumerate(zip(actual, expected, strict=True)):
+            _require_exact(left, right, f"{label}[{index}]")
+        return
+    if type(actual) is not type(expected) or actual != expected:
+        raise RuntimeError(f"{label} differs from exact product authority")
+
+
+def _week_source(week: dict[str, object]) -> str:
+    root = ET.Element("week")
+    for name, value in (
+        ("guid", week["weekId"]), ("year", week["year"]),
+        ("week", week["isoWeek"]), ("notes", week["notes"]),
+        ("notesColor", week["notesColor"]),
+    ):
+        ET.SubElement(root, name).text = str(value)
+    return ET.tostring(root, encoding="unicode", short_empty_elements=True)
+
+
+def _calendar_weeks(fixture: dict[str, object], *, edited: bool) -> list[dict[str, object]]:
+    target = fixture["target"]
+    edit = fixture["edit"]
+    preserve = fixture["preserve"]
+    raw = [
+        {
+            "weekId": target["weekId"], "year": target["year"],
+            "isoWeek": target["isoWeek"],
+            "notes": edit["notes"] if edited else target["notesBefore"],
+            "notesColor": edit["notesColor"] if edited else target["notesColorBefore"],
+        },
+        {
+            "weekId": preserve["weekId"], "year": preserve["year"],
+            "isoWeek": preserve["isoWeek"], "notes": preserve["notes"],
+            "notesColor": preserve["notesColor"],
+        },
+    ]
+    result: list[dict[str, object]] = []
+    for week in raw:
+        source_revision = _raw_hash(_week_source(week))
+        logical_revision = _raw_hash("\0".join([
+            str(week["weekId"]), str(week["year"]), str(week["isoWeek"]),
+            str(week["notes"]), str(week["notesColor"]), source_revision,
+            SOURCE_AUTHORITY_DIGEST,
+        ]))
+        result.append({
+            **week, "sourceRevision": source_revision,
+            "logicalRevision": logical_revision,
+        })
+    return result
+
+
+def _calendar_revision(weeks: list[dict[str, object]]) -> str:
+    material = SOURCE_AUTHORITY_DIGEST + "\0" + str(len(weeks)) + "\0"
+    for week in weeks:
+        material += "\0".join([
+            str(week["weekId"]), str(week["year"]), str(week["isoWeek"]),
+            str(week["notes"]), str(week["notesColor"]),
+            str(week["logicalRevision"]), str(week["sourceRevision"]), "",
+        ])
+    return _raw_hash(material)
+
+
+def _content_digest(payload_sha256: str, document_sha256: str) -> str:
+    material = CONTENT_SCHEMA
+    material = _append(material, payload_sha256)
+    material = _append(material, document_sha256)
+    return _hash(material)
+
+
+def _semantic_digest(weeks: list[dict[str, object]]) -> str:
+    material = _append(
+        "chummer.sr5-downtime-calendar.semantic-postcondition.v1",
+        SOURCE_AUTHORITY_DIGEST,
+    )
+    for week in sorted(weeks, key=lambda item: item["weekId"]):
+        for value in (
+            week["weekId"], week["year"], week["isoWeek"], week["notes"],
+            week["notesColor"],
+        ):
+            material = _append(material, value)
+    return _hash(material)
+
+
+def _expected_downtime_journal(
+    fixture: dict[str, object], *, workspace_id: str, workspace_revision: int,
+    payload_sha256: str, document_sha256: str, owner_id: str, version: int,
+    phase: int, successor_payload_sha256: str | None = None,
+    successor_document_sha256: str | None = None,
+) -> dict[str, object]:
+    _raw_digest(payload_sha256, "workspace payload digest")
+    _raw_digest(document_sha256, "workspace document digest")
+    before = _calendar_weeks(fixture, edited=False)
+    after = _calendar_weeks(fixture, edited=True)
+    before_revision = _calendar_revision(before)
+    after_revision = _calendar_revision(after)
+    content_digest = _content_digest(payload_sha256, document_sha256)
+    source_digest = "sha256:" + SOURCE_AUTHORITY_DIGEST
+    snapshot = "chummer.sr5-downtime-calendar.snapshot.v1"
+    for value in (
+        workspace_id, workspace_revision, workspace_revision, "sr5",
+        RUNTIME_FINGERPRINT, source_digest, content_digest, before_revision,
+        SOURCE_AUTHORITY_DIGEST,
+    ):
+        snapshot = _append(snapshot, value)
+    for week in before:
+        for value in (
+            week["weekId"], week["year"], week["isoWeek"], week["notes"],
+            week["notesColor"], week["logicalRevision"], week["sourceRevision"],
+            SOURCE_AUTHORITY_DIGEST,
+        ):
+            snapshot = _append(snapshot, value)
+    snapshot_digest = _hash(snapshot)
+    target = before[0]
+    summary = f"Edit notes for {target['year']} W{target['isoWeek']:02d}."
+    preview_unsigned = {
+        "Schema": PREVIEW_SCHEMA, "Operation": 1, "WeekId": target["weekId"],
+        "Year": target["year"], "Week": target["isoWeek"],
+        "Notes": fixture["edit"]["notes"],
+        "NotesColor": fixture["edit"]["notesColor"],
+        "ExpectedCalendarRevision": before_revision,
+        "ExpectedLogicalRevision": target["logicalRevision"],
+        "ExpectedSourceRevision": target["sourceRevision"], "Summary": summary,
+    }
+    preview_material = PREVIEW_SCHEMA
+    for value in (
+        snapshot_digest, "Edit", target["weekId"], target["year"],
+        target["isoWeek"], fixture["edit"]["notes"], fixture["edit"]["notesColor"],
+        before_revision, target["logicalRevision"], target["sourceRevision"], summary,
+    ):
+        preview_material = _append(preview_material, value)
+    preview = {**preview_unsigned, "PreviewDigest": _hash(preview_material)}
+    review = {
+        "Schema": CHECKPOINT_SCHEMA, "WorkspaceId": workspace_id,
+        "WorkspaceRevision": workspace_revision, "SnapshotDigest": snapshot_digest,
+        "Preview": preview,
+    }
+    expected_postcondition = _semantic_digest(after)
+    receipt: dict[str, object] | None = None
+    if phase == 2:
+        if successor_payload_sha256 is None or successor_document_sha256 is None:
+            raise RuntimeError("Applied Downtime validation requires exact successor hashes")
+        _raw_digest(successor_payload_sha256, "successor payload digest")
+        _raw_digest(successor_document_sha256, "successor document digest")
+        receipt = {
+            "ContractName": RECEIPT_SCHEMA, "WorkspaceId": workspace_id,
+            "ExpectedWorkspaceRevision": workspace_revision,
+            "AppliedWorkspaceRevision": workspace_revision + 1,
+            "ActionId": target["weekId"], "Operation": 1,
+            "PreviewDigest": preview["PreviewDigest"],
+            "ExpectedPostconditionDigest": expected_postcondition,
+            "ObservedPostconditionDigest": expected_postcondition,
+            "CalendarRevisionAfter": after_revision,
+            "SourceDigestAfter": source_digest,
+            "ContentDigestAfter": _content_digest(
+                successor_payload_sha256, successor_document_sha256
+            ),
+            "ReceiptDigest": "",
+        }
+        receipt_material = RECEIPT_SCHEMA
+        for value in (
+            workspace_id, workspace_revision, workspace_revision + 1,
+            target["weekId"], "Edit", preview["PreviewDigest"],
+            expected_postcondition, expected_postcondition, after_revision,
+            source_digest, receipt["ContentDigestAfter"],
+        ):
+            receipt_material = _append(receipt_material, value)
+        receipt["ReceiptDigest"] = _hash(receipt_material)
+    journal = {
+        "SchemaVersion": 1, "Version": version, "Phase": phase,
+        "OwnerId": owner_id, "ActionId": target["weekId"], "Review": review,
+        "ExpectedPostconditionDigest": expected_postcondition, "Receipt": receipt,
+        "JournalDigest": "",
+    }
+    journal_material = JOURNAL_SCHEMA
+    phase_name = {0: "Review", 1: "Applying", 2: "Applied"}.get(phase)
+    if phase_name is None:
+        raise RuntimeError("Downtime journal phase is unsupported")
+    for value in (
+        1, version, phase_name, owner_id, target["weekId"], workspace_id,
+        workspace_revision, snapshot_digest, CHECKPOINT_SCHEMA,
+        preview["PreviewDigest"], PREVIEW_SCHEMA, "Edit", target["weekId"],
+        target["year"], target["isoWeek"], fixture["edit"]["notes"],
+        fixture["edit"]["notesColor"], before_revision, target["logicalRevision"],
+        target["sourceRevision"], summary, expected_postcondition,
+        "" if receipt is None else receipt["ReceiptDigest"],
+    ):
+        journal_material = _append(journal_material, value)
+    journal["JournalDigest"] = _hash(journal_material)
+    return journal
 
 
 def _strict_json(path: Path) -> dict[str, object]:
@@ -106,10 +339,12 @@ def validate_fixture(value: dict[str, object]) -> dict[str, object]:
         raise RuntimeError("Target and preserved week identities match")
     _integer(target["year"], "target year", 1900)
     _integer(target["isoWeek"], "target ISO week", 1)
+    _integer(preserve["year"], "preserved year", 1900)
+    _integer(preserve["isoWeek"], "preserved ISO week", 1)
     for owner, field in (
         (target, "notesBefore"), (target, "notesColorBefore"),
         (edit, "notes"), (edit, "notesColor"), (preserve, "notes"),
-        (preserve, "sentinel"),
+        (preserve, "notesColor"), (preserve, "sentinel"),
     ):
         if not isinstance(owner[field], str) or not owner[field] or len(owner[field]) > 128:
             raise RuntimeError(f"Downtime fixture text {field} is invalid")
@@ -119,7 +354,40 @@ def validate_fixture(value: dict[str, object]) -> dict[str, object]:
 
 
 def load_fixture(path: Path = DEFAULT_FIXTURE) -> dict[str, object]:
-    return validate_fixture(_strict_json(path.resolve()))
+    fixture = validate_fixture(_strict_json(path.resolve()))
+    runner = path.resolve().parent / str(fixture["runnerFixture"])
+    if runner.is_symlink() or not runner.is_file():
+        raise RuntimeError("Governed Downtime runner is missing or not regular")
+    if physical.shared.sha256(runner) != fixture["runnerFixtureSha256"]:
+        raise RuntimeError("Governed Downtime runner bytes differ")
+    root = ET.parse(runner).getroot()
+    weeks = root.findall("./calendar/week")
+    if len(weeks) != 2:
+        raise RuntimeError("Governed Downtime runner week cardinality differs")
+    by_id = {week.findtext("guid"): week for week in weeks}
+    if set(by_id) != {fixture["target"]["weekId"], fixture["preserve"]["weekId"]}:
+        raise RuntimeError("Downtime fixture identities differ from the governed runner")
+    target = by_id[fixture["target"]["weekId"]]
+    preserved = by_id[fixture["preserve"]["weekId"]]
+    for actual, expected, label in (
+        (target.findtext("year"), str(fixture["target"]["year"]), "target year"),
+        (target.findtext("week"), str(fixture["target"]["isoWeek"]), "target week"),
+        (target.findtext("notes"), fixture["target"]["notesBefore"], "target notes"),
+        (target.findtext("notesColor"), fixture["target"]["notesColorBefore"], "target color"),
+        (preserved.findtext("year"), str(fixture["preserve"]["year"]), "preserved year"),
+        (preserved.findtext("week"), str(fixture["preserve"]["isoWeek"]), "preserved week"),
+        (preserved.findtext("notes"), fixture["preserve"]["notes"], "preserved notes"),
+    ):
+        if actual != expected:
+            raise RuntimeError(f"Downtime fixture {label} differs from governed runner")
+    preserved_color = preserved.findtext("notesColor") or "Chocolate"
+    if preserved_color != fixture["preserve"]["notesColor"]:
+        raise RuntimeError("Downtime preserved color differs from product default")
+    sentinel = root.find("./customstate/sentinel")
+    if sentinel is None or sentinel.text != fixture["preserve"]["sentinel"]:
+        raise RuntimeError("Downtime preserved sentinel differs from governed runner")
+    assert_calendar(root, fixture, edited=False)
+    return fixture
 
 
 def read_journal(
@@ -165,82 +433,29 @@ def validate_journal(
     *,
     workspace_id: str,
     workspace_revision: int,
+    payload_sha256: str,
+    document_sha256: str,
     version: int,
     phase: int,
+    successor_payload_sha256: str | None = None,
+    successor_document_sha256: str | None = None,
 ) -> dict[str, str]:
     _exact_fields(payload, JOURNAL_FIELDS, "Downtime journal")
-    for field, expected in (
-        ("SchemaVersion", 1), ("Version", version), ("Phase", phase),
-    ):
-        if payload[field] != expected or type(payload[field]) is not int:
-            raise RuntimeError(f"Downtime journal {field} differs")
-    physical.canonical_guid(payload["OwnerId"], "Downtime owner")
-    target = fixture["target"]
-    action_id = physical.canonical_guid(payload["ActionId"], "Downtime action")
-    if action_id != target["weekId"]:
-        raise RuntimeError("Downtime action is not the exact target week")
-    expected_postcondition = _digest(
-        payload["ExpectedPostconditionDigest"], "expected postcondition", prefixed=True
+    owner_id = physical.canonical_guid(payload["OwnerId"], "Downtime owner")
+    expected = _expected_downtime_journal(
+        fixture, workspace_id=workspace_id, workspace_revision=workspace_revision,
+        payload_sha256=payload_sha256, document_sha256=document_sha256,
+        owner_id=owner_id, version=version, phase=phase,
+        successor_payload_sha256=successor_payload_sha256,
+        successor_document_sha256=successor_document_sha256,
     )
-    _digest(payload["JournalDigest"], "journal digest", prefixed=True)
-    review = _mapping(payload["Review"], "Downtime review")
-    if review.get("WorkspaceId") != workspace_id or review.get("WorkspaceRevision") != workspace_revision:
-        raise RuntimeError("Downtime review workspace authority differs")
-    _digest(review.get("SnapshotDigest"), "review snapshot digest", prefixed=True)
-    if not isinstance(review.get("Schema"), str) or not review["Schema"]:
-        raise RuntimeError("Downtime review schema is missing")
-    preview = _mapping(review.get("Preview"), "Downtime preview")
-    exact_preview = {
-        "Operation": 1, "WeekId": target["weekId"], "Year": target["year"],
-        "Week": target["isoWeek"], "Notes": fixture["edit"]["notes"],
-        "NotesColor": fixture["edit"]["notesColor"],
-    }
-    for field, expected in exact_preview.items():
-        actual = preview.get(field)
-        if field == "WeekId":
-            actual = physical.canonical_guid(actual, "preview week")
-        if actual != expected:
-            raise RuntimeError(f"Downtime preview {field} differs")
-    preview_digest = _digest(preview.get("PreviewDigest"), "preview digest", prefixed=True)
-    for field in (
-        "ExpectedCalendarRevision", "ExpectedLogicalRevision", "ExpectedSourceRevision",
-    ):
-        _digest(preview.get(field), f"preview {field}")
-    if not isinstance(preview.get("Schema"), str) or not preview["Schema"]:
-        raise RuntimeError("Downtime preview schema is missing")
-    if not isinstance(preview.get("Summary"), str) or not preview["Summary"]:
-        raise RuntimeError("Downtime preview summary is missing")
-    receipt_digest = ""
-    if phase == 2:
-        receipt = _mapping(payload["Receipt"], "Downtime receipt")
-        exact_receipt = {
-            "ContractName": "chummer.android.sr5-downtime-calendar.persistence-receipt/v1",
-            "WorkspaceId": workspace_id,
-            "ExpectedWorkspaceRevision": workspace_revision,
-            "AppliedWorkspaceRevision": workspace_revision + 1,
-            "ActionId": action_id,
-            "Operation": 1,
-            "PreviewDigest": preview_digest,
-            "ExpectedPostconditionDigest": expected_postcondition,
-            "ObservedPostconditionDigest": expected_postcondition,
-        }
-        for field, expected in exact_receipt.items():
-            actual = receipt.get(field)
-            if field == "ActionId":
-                actual = physical.canonical_guid(actual, "receipt action")
-            if actual != expected:
-                raise RuntimeError(f"Downtime receipt {field} differs")
-        _raw_digest(receipt.get("CalendarRevisionAfter"), "calendar revision after")
-        _digest(receipt.get("SourceDigestAfter"), "source digest after", prefixed=True)
-        _digest(receipt.get("ContentDigestAfter"), "content digest after", prefixed=True)
-        receipt_digest = _digest(receipt.get("ReceiptDigest"), "receipt digest", prefixed=True)
-    elif payload["Receipt"] is not None:
-        raise RuntimeError("Reviewed Downtime journal unexpectedly contains a receipt")
+    _require_exact(payload, expected, "Downtime journal")
+    receipt = expected["Receipt"]
     return {
-        "actionId": action_id,
-        "previewDigest": preview_digest,
-        "expectedPostconditionDigest": expected_postcondition,
-        "receiptDigest": receipt_digest,
+        "actionId": str(expected["ActionId"]),
+        "previewDigest": str(expected["Review"]["Preview"]["PreviewDigest"]),
+        "expectedPostconditionDigest": str(expected["ExpectedPostconditionDigest"]),
+        "receiptDigest": "" if receipt is None else str(receipt["ReceiptDigest"]),
     }
 
 
@@ -281,27 +496,39 @@ def open_downtime(device: physical.shared.Device) -> None:
     physical.wait_exact_route(device, ROUTE, timeout=180)
 
 
+def _same_xml(actual: ET.Element, expected: ET.Element) -> bool:
+    if actual.tag != expected.tag or actual.attrib != expected.attrib:
+        return False
+    if (actual.text or "") != (expected.text or ""):
+        return False
+    left = list(actual)
+    right = list(expected)
+    return len(left) == len(right) and all(
+        _same_xml(a, b) for a, b in zip(left, right, strict=True)
+    )
+
+
 def assert_calendar(root: ET.Element, fixture: dict[str, object], *, edited: bool) -> None:
-    target = fixture["target"]
-    edit = fixture["edit"]
-    preserve = fixture["preserve"]
-    weeks = root.findall("./calendar/week")
-    by_id = {week.findtext("guid"): week for week in weeks}
-    if set(by_id) != {target["weekId"], preserve["weekId"]}:
-        raise RuntimeError("Downtime Calendar week identities changed")
-    target_week = by_id[target["weekId"]]
-    if target_week.findtext("year") != str(target["year"]) or target_week.findtext("week") != str(target["isoWeek"]):
-        raise RuntimeError("Downtime target coordinate changed")
-    expected_notes = edit["notes"] if edited else target["notesBefore"]
-    expected_color = edit["notesColor"] if edited else target["notesColorBefore"]
-    if target_week.findtext("notes") != expected_notes or target_week.findtext("notesColor") != expected_color:
-        raise RuntimeError("Downtime target notes/color differ")
-    preserved_week = by_id[preserve["weekId"]]
-    if preserved_week.findtext("notes") != preserve["notes"]:
-        raise RuntimeError("Downtime edit changed the non-target week")
-    sentinel = root.find("./customstate/sentinel")
-    if sentinel is None or sentinel.text != preserve["sentinel"] or sentinel.get("guid") != "nested-sentinel":
-        raise RuntimeError("Downtime edit changed unrelated XML")
+    runner = DEFAULT_FIXTURE.parent / str(fixture["runnerFixture"])
+    expected = ET.parse(runner).getroot()
+    if edited:
+        target_id = str(fixture["target"]["weekId"])
+        targets = [
+            week for week in expected.findall("./calendar/week")
+            if week.findtext("guid") == target_id
+        ]
+        if len(targets) != 1:
+            raise RuntimeError("Governed Downtime target is not unique")
+        notes = targets[0].find("notes")
+        color = targets[0].find("notesColor")
+        if notes is None or color is None:
+            raise RuntimeError("Governed Downtime target edit fields are missing")
+        notes.text = str(fixture["edit"]["notes"])
+        color.text = str(fixture["edit"]["notesColor"])
+    if not _same_xml(root, expected):
+        raise RuntimeError(
+            "Downtime successor changed target identity/coordinate, preserved XML, or a non-permitted field"
+        )
 
 
 def prove_downtime(
@@ -345,7 +572,9 @@ def prove_downtime(
         raise RuntimeError("Reviewed Downtime journal disappeared")
     review_projection = validate_journal(
         reviewed.payload, fixture, workspace_id=imported.workspace_id,
-        workspace_revision=imported.content_revision, version=1, phase=0,
+        workspace_revision=imported.content_revision,
+        payload_sha256=imported.payload_sha256,
+        document_sha256=imported.document_sha256, version=1, phase=0,
     )
     device.capture("sr5-downtime-durable-review")
 
@@ -373,9 +602,21 @@ def prove_downtime(
     applied = read_journal(device)
     if applied is None:
         raise RuntimeError("Applied Downtime journal disappeared")
+    device.capture("sr5-downtime-applied-receipt")
+    saved = physical.shared.read_phone_workspace_authority(device)
+    physical.shared.require_saved_authority(saved)
+    if saved.workspace_id != imported.workspace_id or saved.content_revision != imported.content_revision + 1:
+        raise RuntimeError("Downtime apply did not save one exact successor revision")
+    if saved.payload_sha256 == imported.payload_sha256:
+        raise RuntimeError("Downtime successor payload digest did not change")
+    assert_calendar(calendar_leaf.root_for_authority(device, saved), fixture, edited=True)
     applied_projection = validate_journal(
         applied.payload, fixture, workspace_id=imported.workspace_id,
-        workspace_revision=imported.content_revision, version=3, phase=2,
+        workspace_revision=imported.content_revision,
+        payload_sha256=imported.payload_sha256,
+        document_sha256=imported.document_sha256, version=3, phase=2,
+        successor_payload_sha256=saved.payload_sha256,
+        successor_document_sha256=saved.document_sha256,
     )
     if {
         key: applied_projection[key]
@@ -385,16 +626,8 @@ def prove_downtime(
         for key in ("actionId", "previewDigest", "expectedPostconditionDigest")
     }:
         raise RuntimeError("Downtime receipt changed the exact reviewed edit")
-    device.capture("sr5-downtime-applied-receipt")
-    physical.shared.tap_phone_destination(device, "phone-destination-runners")
-    physical.shared.wait_for_phone_runners(device, timeout=120)
-    saved = physical.shared.read_phone_workspace_authority(device)
-    physical.shared.require_saved_authority(saved)
-    if saved.workspace_id != imported.workspace_id or saved.content_revision != imported.content_revision + 1:
-        raise RuntimeError("Downtime apply did not save one exact successor revision")
-    if saved.payload_sha256 == imported.payload_sha256:
-        raise RuntimeError("Downtime successor payload digest did not change")
-    assert_calendar(calendar_leaf.root_for_authority(device, saved), fixture, edited=True)
+    if physical.shared.read_phone_workspace_authority(device) != saved:
+        raise RuntimeError("Downtime saved authority changed after receipt navigation")
 
     applied_restart = physical.shared.force_stop_and_launch_new_process(
         device, reviewed_restart.restarted
