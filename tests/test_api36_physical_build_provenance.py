@@ -4,6 +4,7 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -117,10 +118,6 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             for path in sorted(self.w5_evidence.iterdir())
         ]
         write_json(self.w5_receipt, w5_payload)
-        self.source_graph = self.root / "source-graph.json"
-        write_json(self.source_graph, self.source_graph_payload())
-        self.release_authority_v2 = self.root / "release-package-authority-v2.json"
-        write_json(self.release_authority_v2, {"contractName": "fixture-v2-package-authority"})
         self.release_workspace = self.root / "release-workspace"
         self.package_feed = self.root / "w5-feed"
         self.offline_feed = self.root / "offline-feed"
@@ -129,6 +126,19 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             self.release_workspace, self.package_feed, self.offline_feed, self.nuget_packages,
         ):
             directory.mkdir()
+        self.owner_roots = {
+            "chummer6-hub": self.release_workspace / "chummer.run-services",
+            "chummer6-hub-registry": self.release_workspace / "chummer-hub-registry",
+            "chummer6-ui-kit": self.release_workspace / "chummer-ui-kit",
+        }
+        for owner, directory in self.owner_roots.items():
+            directory.mkdir()
+            for kind in ("authority-receipt", "package-inventory", "package-plane-lock"):
+                (directory / f"{kind}.json").write_text(f"{owner}:{kind}\n", encoding="utf-8")
+        self.source_graph = self.root / "source-graph.json"
+        write_json(self.source_graph, self.source_graph_payload())
+        self.release_authority_v2 = self.root / "release-package-authority-v2.json"
+        write_json(self.release_authority_v2, self.release_authority_v2_payload())
         self.content_source = self.root / "content-source.json"
         write_json(self.content_source, self.content_payload(apk=False))
         self.apk = self.root / "com.myexternalbrain.chummer-Signed.apk"
@@ -139,28 +149,73 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         write_json(self.content_apk, self.content_payload(apk=True))
         self.assets = self.root / "project.assets.json"
         write_json(self.assets, self.assets_payload())
-        self.sdk_packages = self.root / "packages.xml"
-        self.sdk_packages.write_text(
-            '<sdk:sdk-repository xmlns:sdk="urn:android">'
-            '<localPackage path="platforms;android-36" />'
-            '<localPackage path="build-tools;36.0.0" />'
-            '<localPackage path="platform-tools" />'
-            '</sdk:sdk-repository>\n', encoding="utf-8",
+        self.sdk_root = self.root / "android-sdk"
+        self.platform_root = self.sdk_root / "platforms/android-36"
+        self.build_tools_root = self.sdk_root / "build-tools/36.0.0"
+        self.platform_tools_root = self.sdk_root / "platform-tools"
+        for directory in (self.platform_root, self.build_tools_root / "lib", self.platform_tools_root):
+            directory.mkdir(parents=True)
+        self.sdk_packages = self.root / "selected-packages.xml"
+        self.sdk_packages.write_text(self.sdk_inventory_xml(), encoding="utf-8")
+        (self.platform_root / "package.xml").write_text(
+            self.sdk_package_xml("platforms;android-36", 2, 0, 0), encoding="utf-8",
         )
+        (self.build_tools_root / "package.xml").write_text(
+            self.sdk_package_xml("build-tools;36.0.0", 36, 0, 0), encoding="utf-8",
+        )
+        (self.platform_tools_root / "package.xml").write_text(
+            self.sdk_package_xml("platform-tools", 36, 0, 0), encoding="utf-8",
+        )
+        (self.platform_root / "android.jar").write_bytes(b"fixture-android-36")
+        (self.build_tools_root / "lib/apksigner.jar").write_bytes(b"fixture-apksigner-jar")
         self.workloads = self.root / "dotnet-workloads.json"
-        write_json(self.workloads, {"installed": ["maui-android"], "updateAvailable": []})
-        self.bin = self.root / "bin"
-        self.bin.mkdir()
+        write_json(self.workloads, {
+            "installed": ["maui-android"], "updateAvailable": [],
+            "workloadSetVersion": provenance.WORKLOAD_SET_VERSION,
+            "manifestVersions": {
+                "maui-android": provenance.MAUI_ANDROID_MANIFEST_VERSION,
+                "microsoft.net.sdk.android": provenance.ANDROID_WORKLOAD_MANIFEST_VERSION,
+            },
+            "runtimeVersion": provenance.DOTNET_RUNTIME_VERSION,
+        })
+        self.manifest_root = self.root / "sdk-manifests/10.0.100"
+        self.android_workload_manifest = (
+            self.manifest_root / "microsoft.net.sdk.android/36.1.69/WorkloadManifest.json"
+        )
+        self.maui_workload_manifest = (
+            self.manifest_root / "microsoft.net.sdk.maui/10.0.20/WorkloadManifest.json"
+        )
+        for path, version in (
+            (self.android_workload_manifest, "36.1.69"),
+            (self.maui_workload_manifest, "10.0.20"),
+        ):
+            path.parent.mkdir(parents=True)
+            write_json(path, {"version": version, "packs": {}})
+        self.jdk_root = self.root / "microsoft-jdk"
+        self.bin = self.jdk_root / "bin"
+        self.bin.mkdir(parents=True)
         self.java = self.bin / "java"
         self.javac = self.bin / "javac"
-        self.dotnet = self.bin / "dotnet"
+        self.jarsigner = self.bin / "jarsigner"
+        self.keytool = self.bin / "keytool"
+        self.dotnet_root = self.root / "dotnet"
+        self.dotnet_root.mkdir()
+        self.dotnet = self.dotnet_root / "dotnet"
         self.python = self.bin / "python3"
-        self.java.write_text('#!/bin/sh\nprintf \'openjdk version "21.0.8" fixture\\n\' >&2\n', encoding="utf-8")
-        self.javac.write_text("#!/bin/sh\nprintf 'javac 21.0.8\\n'\n", encoding="utf-8")
-        self.dotnet.write_text("#!/bin/sh\nprintf '10.0.111\\n'\n", encoding="utf-8")
-        self.python.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-        for executable in (self.java, self.javac, self.dotnet, self.python):
+        native_fixture = Path("/usr/bin/true")
+        for executable in (
+            self.java, self.javac, self.jarsigner, self.keytool, self.dotnet, self.python,
+            self.build_tools_root / "aapt2", self.build_tools_root / "zipalign",
+            self.platform_tools_root / "adb",
+        ):
+            shutil.copyfile(native_fixture, executable)
             executable.chmod(0o755)
+        self.apksigner = self.build_tools_root / "apksigner"
+        self.apksigner.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        self.apksigner.chmod(0o755)
+        (self.jdk_root / "release").write_text(
+            'JAVA_VERSION="17.0.14"\nIMPLEMENTOR="Microsoft"\n', encoding="utf-8",
+        )
         self.toolchain_log = self.root / "toolchain.log"
         self.toolchain_log.write_text("dotnet_workload_inventory=pass\n", encoding="utf-8")
         self.restore_log = self.root / "restore.log"
@@ -169,6 +224,19 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         self.build_log.write_text(
             "Build succeeded.\n    0 Warning(s)\n    0 Error(s)\n", encoding="utf-8",
         )
+        self.signing_phase_log = self.root / "signing-phase.log"
+        self.signing_phase_log.write_text("apk_signing_verification=pass\n", encoding="utf-8")
+        self.apksigner_log = self.root / "apksigner.log"
+        self.certificate_sha256 = "d" * 64
+        self.apksigner_log.write_text(
+            "Verified using v2 scheme (APK Signature Scheme v2): true\n"
+            f"Signer #1 certificate SHA-256 digest: {self.certificate_sha256}\n",
+            encoding="utf-8",
+        )
+        self.jarsigner_log = self.root / "jarsigner.log"
+        self.jarsigner_log.write_text("jar verified.\n", encoding="utf-8")
+        self.signing_receipt = self.root / "signing-receipt.json"
+        write_json(self.signing_receipt, self.signing_receipt_payload())
         self.source_graph_log = self.root / "source-graph.log"
         self.source_graph_log.write_text("source graph exact\n", encoding="utf-8")
         self.content_source_log = self.root / "content-source.log"
@@ -181,6 +249,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         self.source_graph_seal_log.write_text("source graph remained exact\n", encoding="utf-8")
         self.journal = self.root / "journal.jsonl"
         self.raw_journal = self.root / "raw-journal.jsonl"
+        self.delegate_journal = self.root / "delegate-journal.jsonl"
         self.write_journal()
         self.manifest = self.root / "provenance.json"
 
@@ -196,6 +265,42 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             mock.patch.object(provenance, "FULL_PROJECT_LOCK_SHA256", provenance.file_sha256(self.lock)),
             mock.patch.object(provenance, "FULL_PROJECT_LOCK_SIZE", self.lock.stat().st_size),
             mock.patch.object(provenance, "CORE_CONTENT_REVISION", self.core_commit),
+            mock.patch.object(provenance, "ANDROID_SDK_ROOT_AUTHORITY", self.sdk_root),
+            mock.patch.object(provenance, "JDK_ROOT_AUTHORITY", self.jdk_root),
+            mock.patch.object(provenance, "DOTNET_HOST_AUTHORITY", self.dotnet),
+            mock.patch.object(provenance, "DOTNET_CLI_HOME_AUTHORITY", self.root),
+            mock.patch.object(
+                provenance, "ANDROID_WORKLOAD_MANIFEST_AUTHORITY", self.android_workload_manifest,
+            ),
+            mock.patch.object(
+                provenance, "MAUI_WORKLOAD_MANIFEST_AUTHORITY", self.maui_workload_manifest,
+            ),
+            mock.patch.object(provenance, "TOOLCHAIN_SHA256_AUTHORITY", {
+                "dotnet": provenance.file_sha256(self.dotnet),
+                "jdk_release": provenance.file_sha256(self.jdk_root / "release"),
+                "java": provenance.file_sha256(self.java),
+                "javac": provenance.file_sha256(self.javac),
+                "jarsigner": provenance.file_sha256(self.jarsigner),
+                "keytool": provenance.file_sha256(self.keytool),
+                "platform_package": provenance.file_sha256(self.platform_root / "package.xml"),
+                "android_jar": provenance.file_sha256(self.platform_root / "android.jar"),
+                "build_tools_package": provenance.file_sha256(self.build_tools_root / "package.xml"),
+                "apksigner": provenance.file_sha256(self.apksigner),
+                "apksigner_jar": provenance.file_sha256(self.build_tools_root / "lib/apksigner.jar"),
+                "aapt2": provenance.file_sha256(self.build_tools_root / "aapt2"),
+                "zipalign": provenance.file_sha256(self.build_tools_root / "zipalign"),
+                "platform_tools_package": provenance.file_sha256(self.platform_tools_root / "package.xml"),
+                "adb": provenance.file_sha256(self.platform_tools_root / "adb"),
+                "android_workload_manifest": provenance.file_sha256(self.android_workload_manifest),
+                "maui_workload_manifest": provenance.file_sha256(self.maui_workload_manifest),
+            }),
+            mock.patch.object(
+                provenance, "_probe_version",
+                lambda path, _label: (
+                    'openjdk version "17.0.14" 2025-01-21 LTS'
+                    if Path(path).name == "java" else "javac 17.0.14"
+                ),
+            ),
         ]
         for patcher in self.patches:
             patcher.start()
@@ -218,6 +323,64 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
     @staticmethod
     def verified_content(_android: Path, _core: Path) -> list[str]:
         return []
+
+    @staticmethod
+    def sdk_package_xml(package_id: str, major: int, minor: int, micro: int) -> str:
+        return (
+            '<repository><localPackage path="' + package_id + '"><revision>'
+            f"<major>{major}</major><minor>{minor}</minor><micro>{micro}</micro>"
+            "</revision></localPackage></repository>\n"
+        )
+
+    def sdk_inventory_xml(self) -> str:
+        return (
+            "<repository>"
+            '<localPackage path="platforms;android-36"><revision><major>2</major><minor>0</minor><micro>0</micro></revision></localPackage>'
+            '<localPackage path="build-tools;36.0.0"><revision><major>36</major><minor>0</minor><micro>0</micro></revision></localPackage>'
+            '<localPackage path="platform-tools"><revision><major>36</major><minor>0</minor><micro>0</micro></revision></localPackage>'
+            "</repository>\n"
+        )
+
+    def release_authority_v2_payload(self) -> dict[str, object]:
+        graph = self.source_graph_payload()
+        owner_rows = []
+        for row in graph["ownerPackagePins"]:
+            owner_root = self.owner_roots[row["owner_repository"]]
+            owner_rows.append({
+                **{key: row[key] for key in (
+                    "package_id", "version", "sha256", "size_bytes", "owner_repository",
+                    "source_commit", "source_tree", "dependency_mode",
+                )},
+                "authority_receipt": {
+                    "path": "authority-receipt.json",
+                    "sha256": provenance.file_sha256(owner_root / "authority-receipt.json"),
+                },
+                "package_inventory": {
+                    "path": "package-inventory.json",
+                    "sha256": provenance.file_sha256(owner_root / "package-inventory.json"),
+                },
+                "package_plane_lock": {
+                    "path": "package-plane-lock.json",
+                    "sha256": provenance.file_sha256(owner_root / "package-plane-lock.json"),
+                },
+            })
+        return {
+            "contractName": "chummer.android.release-package-authority/v2",
+            "packagePins": graph["packagePins"], "ownerPackagePins": owner_rows,
+            "dependencyClosure": graph["dependencyClosure"],
+        }
+
+    def signing_receipt_payload(self) -> dict[str, object]:
+        return {
+            "contractName": "chummer.android.apk-signing-verification/v1",
+            "status": "pass", "apkSha256": provenance.file_sha256(self.apk),
+            "certificateSha256": self.certificate_sha256, "verifiedSchemes": [2],
+            "apksignerSha256": provenance.file_sha256(self.apksigner),
+            "jarsignerSha256": provenance.file_sha256(self.jarsigner),
+            "apksignerOutputSha256": provenance.file_sha256(self.apksigner_log),
+            "jarsignerOutputSha256": provenance.file_sha256(self.jarsigner_log),
+            "warningsAsErrors": True, "publicationAuthorized": False,
+        }
 
     def package_authority_payload(self) -> dict[str, object]:
         package_pins = [
@@ -304,6 +467,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         owner_pins = []
         for index, (package_id, owner) in enumerate(provenance.OWNER_PACKAGE_SPECS, start=7):
             source = by_name[owner]
+            owner_root = self.owner_roots[owner]
             owner_pins.append({
                 "package_id": package_id,
                 "version": authority["ownerPackagePins"][index - 7]["version"],
@@ -311,9 +475,9 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
                 "size_bytes": authority["ownerPackagePins"][index - 7]["size_bytes"],
                 "owner_repository": owner,
                 "source_commit": source["commit"], "source_tree": source["tree"],
-                "authority_receipt_sha256": f"{index:x}" * 64,
-                "package_inventory_sha256": f"{index + 1:x}" * 64,
-                "package_plane_lock_sha256": f"{index + 2:x}" * 64,
+                "authority_receipt_sha256": provenance.file_sha256(owner_root / "authority-receipt.json"),
+                "package_inventory_sha256": provenance.file_sha256(owner_root / "package-inventory.json"),
+                "package_plane_lock_sha256": provenance.file_sha256(owner_root / "package-plane-lock.json"),
                 "dependency_mode": "locked_package",
             })
         closure = [
@@ -416,6 +580,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             ("w5-build-input-intake", self.build_inputs_log),
             ("locked-full-restore", self.restore_log),
             ("serialized-full-maui-build", self.build_log),
+            ("apk-signature-verification", self.signing_phase_log),
             ("apk-content-verification", self.content_apk_log),
             ("post-build-source-graph-seal", self.source_graph_seal_log),
         )
@@ -431,7 +596,9 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "-p:ChummerUseLocalCompatibilityTree=false",
             "-p:ChummerUseLockedOwnerContractPackages=true",
             "-p:RestoreLockedMode=true", "-p:RestorePackagesWithLockFile=true",
-            "-p:NuGetAudit=false", "-p:AndroidSdkBuildToolsVersion=36.0.0",
+            "-p:NuGetAudit=false", f"-p:AndroidSdkDirectory={self.sdk_root}",
+            "-p:AndroidSdkBuildToolsVersion=36.0.0",
+            f"-p:JavaSdkDirectory={self.jdk_root}",
             "-p:ChummerContractsPackageVersion=0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
             "-p:ChummerCoreRuntimePackageVersion=0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
             "-p:ChummerCampaignContractsPackageVersion=0.1.0-packageplane.android.sh1215f9389779e",
@@ -444,11 +611,15 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         commands = {
             "toolchain-intake": [
                 str(self.python), materializer, "capture-workloads", "--dotnet",
-                str(self.dotnet), "--output", str(self.workloads),
+                str(self.dotnet), "--android-workload-manifest",
+                str(self.android_workload_manifest), "--maui-workload-manifest",
+                str(self.maui_workload_manifest), "--android-sdk-packages", str(self.sdk_packages),
+                "--android-sdk-root", str(self.sdk_root), "--java", str(self.java),
+                "--javac", str(self.javac), "--jarsigner", str(self.jarsigner),
+                "--apksigner", str(self.apksigner), "--output", str(self.workloads),
             ],
             "source-graph-intake": [
                 str(self.python), graph_verifier, "--android-root", str(self.android),
-                "--presentation-root", str(self.presentation), "--core-content-root", str(self.core),
                 "--workspace-root", str(self.release_workspace), "--package-authority",
                 str(self.release_authority_v2), "--verify-existing", str(self.source_graph),
             ],
@@ -478,6 +649,12 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
                 "-p:UseSharedCompilation=false", "-p:BuildInParallel=false",
                 "-p:AndroidPackageFormats=apk", *package_args,
             ],
+            "apk-signature-verification": [
+                str(self.python), materializer, "verify-apk-signing", "--apk", str(self.apk),
+                "--apksigner", str(self.apksigner), "--jarsigner", str(self.jarsigner),
+                "--receipt", str(self.signing_receipt), "--apksigner-log",
+                str(self.apksigner_log), "--jarsigner-log", str(self.jarsigner_log),
+            ],
             "apk-content-verification": [
                 str(self.python), content_verifier, "--repo-root", str(self.android),
                 "--core-root", str(self.core), "--manifest", content_manifest,
@@ -489,22 +666,30 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
                 str(self.release_authority_v2), "--verify-existing", str(self.source_graph),
             ],
         }
-        environment = {key: str(self.root) for key in provenance.ENVIRONMENT_ALLOWLIST}
-        environment.update({
-            "ANDROID_HOME": str(self.sdk_packages.parent),
-            "JAVA_HOME": str(self.java.parent.parent), "NUGET_PACKAGES": str(self.nuget_packages),
+        environment = {
+            "ANDROID_HOME": str(self.sdk_root), "ANDROID_SDK_ROOT": str(self.sdk_root),
+            "DOTNET_CLI_HOME": str(self.root), "DOTNET_ROOT": str(self.dotnet.parent),
+            "HOME": str(self.root), "JAVA_HOME": str(self.jdk_root),
+            "NUGET_PACKAGES": str(self.nuget_packages),
             "DOTNET_CLI_TELEMETRY_OPTOUT": "1", "DOTNET_CLI_USE_MSBUILD_SERVER": "0",
             "MSBUILDDISABLENODEREUSE": "1", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8",
-        })
+            "PATH": f"{self.bin}:{self.dotnet.parent}:/usr/bin:/bin", "TMPDIR": "/tmp",
+        }
         rows = []
         raw_rows = []
+        delegate_rows = []
+        invocation_epoch = 1000.0
+        deadline_epoch = invocation_epoch + provenance.TOTAL_DEADLINE_SECONDS
         for phase, output in phases:
             common = {
                 "contractName": provenance.COMMAND_JOURNAL_CONTRACT,
                 "phase": phase, "argv": commands[phase],
                 "workingDirectory": str(self.android), "environment": environment,
-                "timeoutSeconds": 100.0, "deadlineEpoch": 2000.0,
-                "startedEpoch": 1000.0, "outputPath": str(output),
+                "timeoutSeconds": provenance.PER_PHASE_TIMEOUT_SECONDS,
+                "deadlineEpoch": deadline_epoch, "startedEpoch": 1001.0,
+                "invocationStartedEpoch": invocation_epoch,
+                "totalDeadlineSeconds": provenance.TOTAL_DEADLINE_SECONDS,
+                "outputPath": str(output),
                 "processGroupTermination": True, "publicationAuthorized": False,
             }
             rows.extend([
@@ -522,11 +707,38 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
                 {
                     "contractName": provenance.RAW_COMMAND_JOURNAL_CONTRACT,
                     "phase": phase, "event": "started", "command": commands[phase],
-                    "timeoutSeconds": 100.0, "processGroupTermination": True,
+                    "timeoutSeconds": provenance.PER_PHASE_TIMEOUT_SECONDS,
+                    "deadlineEpoch": deadline_epoch,
+                    "invocationStartedEpoch": invocation_epoch,
+                    "totalDeadlineSeconds": provenance.TOTAL_DEADLINE_SECONDS,
+                    "processGroupTermination": True,
                     "publicationAuthorized": False,
                 },
                 {
                     "contractName": provenance.RAW_COMMAND_JOURNAL_CONTRACT,
+                    "phase": phase, "event": "finished", "command": commands[phase],
+                    "exitCode": 0,
+                    "timedOut": False, "elapsedSeconds": 1.0,
+                    "timeoutSeconds": provenance.PER_PHASE_TIMEOUT_SECONDS,
+                    "deadlineEpoch": deadline_epoch,
+                    "invocationStartedEpoch": invocation_epoch,
+                    "totalDeadlineSeconds": provenance.TOTAL_DEADLINE_SECONDS,
+                    "outputSha256": provenance.file_sha256(output),
+                    "termination": {
+                        "groupAbsent": True, "sigtermSent": False, "sigkillSent": False,
+                    },
+                    "processGroupTermination": True, "publicationAuthorized": False,
+                },
+            ])
+            delegate_rows.extend([
+                {
+                    "contractName": provenance.DELEGATE_COMMAND_JOURNAL_CONTRACT,
+                    "phase": phase, "event": "started", "command": commands[phase],
+                    "timeoutSeconds": provenance.PER_PHASE_TIMEOUT_SECONDS,
+                    "processGroupTermination": True, "publicationAuthorized": False,
+                },
+                {
+                    "contractName": provenance.DELEGATE_COMMAND_JOURNAL_CONTRACT,
                     "phase": phase, "event": "finished", "exitCode": 0,
                     "timedOut": False, "elapsedSeconds": 1.0,
                     "outputSha256": provenance.file_sha256(output),
@@ -541,6 +753,9 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         )
         self.raw_journal.write_text(
             "".join(json.dumps(row) + "\n" for row in raw_rows), encoding="utf-8",
+        )
+        self.delegate_journal.write_text(
+            "".join(json.dumps(row) + "\n" for row in delegate_rows), encoding="utf-8",
         )
 
     def create_arguments(self) -> dict[str, object]:
@@ -564,13 +779,22 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "build_inputs_log_path": self.build_inputs_log,
             "restore_log_path": self.restore_log,
             "build_log_path": self.build_log,
+            "signing_phase_log_path": self.signing_phase_log,
+            "apksigner_log_path": self.apksigner_log,
+            "jarsigner_log_path": self.jarsigner_log,
+            "signing_receipt_path": self.signing_receipt,
             "content_apk_log_path": self.content_apk_log,
             "source_graph_seal_log_path": self.source_graph_seal_log,
             "command_journal_path": self.journal,
             "raw_command_journal_path": self.raw_journal,
+            "delegate_command_journal_path": self.delegate_journal,
             "android_sdk_packages_path": self.sdk_packages,
+            "android_sdk_root": self.sdk_root,
+            "android_workload_manifest_path": self.android_workload_manifest,
+            "maui_workload_manifest_path": self.maui_workload_manifest,
             "dotnet_workloads_path": self.workloads,
             "java_path": self.java, "javac_path": self.javac,
+            "jarsigner_path": self.jarsigner, "apksigner_path": self.apksigner,
             "dotnet_path": self.dotnet, "python_path": self.python,
             "release_workspace_root": self.release_workspace,
             "package_feed_path": self.package_feed,
@@ -647,7 +871,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         graph = self.source_graph_payload()
         graph["ownerPackagePins"][0]["sha256"] = "3" * 64
         write_json(self.source_graph, graph)
-        with self.assertRaisesRegex(ValueError, "owner package authority cross-binding"):
+        with self.assertRaisesRegex(ValueError, "v2 release authority owner package graph"):
             provenance.create_manifest(**self.create_arguments())
         graph = self.source_graph_payload()
         graph["generator"]["sha256"] = "f" * 64
@@ -749,6 +973,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
     def test_bounded_wrapper_executes_real_command_and_seals_exact_raw_and_canonical_rows(self) -> None:
         canonical = self.root / "wrapper-journal.jsonl"
         raw = self.root / "wrapper-raw-journal.jsonl"
+        delegate = self.root / "wrapper-delegate-journal.jsonl"
         output = self.root / "wrapper-output.log"
         environment = {key: str(self.root) for key in provenance.ENVIRONMENT_ALLOWLIST}
         environment.update({
@@ -757,11 +982,14 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "DOTNET_CLI_TELEMETRY_OPTOUT": "1", "DOTNET_CLI_USE_MSBUILD_SERVER": "0",
             "MSBUILDDISABLENODEREUSE": "1", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8",
         })
+        invocation = time.time()
         command = [
             sys.executable, str(REPO_ROOT / "scripts/materialize-api36-physical-build-provenance.py"),
             "run-bounded", "--journal", str(canonical), "--raw-journal", str(raw),
+            "--delegate-journal", str(delegate),
             "--output", str(output), "--phase", "toolchain-intake",
-            "--timeout-seconds", "20", "--deadline-epoch", str(time.time() + 60),
+            "--timeout-seconds", "1800", "--deadline-epoch", str(invocation + 7200),
+            "--invocation-started-epoch", str(invocation),
             "--working-directory", str(self.android),
         ]
         for key in sorted(environment):
@@ -772,12 +1000,14 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         self.assertEqual("bounded-wrapper-pass\n", output.read_text(encoding="utf-8"))
         canonical_rows = [json.loads(line) for line in canonical.read_text(encoding="utf-8").splitlines()]
         raw_rows = [json.loads(line) for line in raw.read_text(encoding="utf-8").splitlines()]
+        delegate_rows = [json.loads(line) for line in delegate.read_text(encoding="utf-8").splitlines()]
         self.assertEqual(["started", "finished"], [row["event"] for row in canonical_rows])
         self.assertEqual(["started", "finished"], [row["event"] for row in raw_rows])
         self.assertEqual(canonical_rows[0]["argv"], raw_rows[0]["command"])
         self.assertEqual(provenance.file_sha256(output), canonical_rows[1]["outputSha256"])
         self.assertEqual(provenance.COMMAND_JOURNAL_CONTRACT, canonical_rows[0]["contractName"])
         self.assertEqual(provenance.RAW_COMMAND_JOURNAL_CONTRACT, raw_rows[0]["contractName"])
+        self.assertEqual(provenance.DELEGATE_COMMAND_JOURNAL_CONTRACT, delegate_rows[0]["contractName"])
 
     def test_six_descriptor_snapshot_swap_races_are_rejected(self) -> None:
         targets = (
@@ -859,15 +1089,15 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         original_javac = self.javac.read_bytes()
         original_workloads = self.workloads.read_bytes()
         cases = (
-            (self.sdk_packages, b"not xml", "well-formed XML"),
+            (self.sdk_packages, b"not xml", "not XML"),
             (
                 self.sdk_packages,
                 b'<sdk:sdk-repository xmlns:sdk="urn:android"><localPackage path="platform-tools" /></sdk:sdk-repository>',
-                "selected API36 toolchain",
+                "exactly three",
             ),
-            (self.java, b"#!/bin/sh\nprintf 'arbitrary java\\n'\n", "not canonical"),
-            (self.javac, b"#!/bin/sh\nprintf 'javac 22.0.1\\n'\n", "do not match"),
-            (self.workloads, b'{"installed":[],"updateAvailable":[]}\n', "maui-android"),
+            (self.java, b"#!/bin/sh\nprintf 'arbitrary java\\n'\n", "native binary"),
+            (self.javac, b"#!/bin/sh\nprintf 'javac 22.0.1\\n'\n", "native binary"),
+            (self.workloads, b'{"installed":[],"updateAvailable":[]}\n', "keys are not exact"),
         )
         for path, replacement, error in cases:
             with self.subTest(error=error):
@@ -910,6 +1140,205 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         finally:
             sibling.unlink()
 
+    def test_final_seal_reenumerates_apk_directory_after_authenticated_inputs(self) -> None:
+        sibling = self.root / "late-sibling.apk"
+        arguments = self.create_arguments()
+        arguments["before_final_recheck"] = lambda: sibling.write_bytes(self.apk.read_bytes())
+        try:
+            with self.assertRaisesRegex(ValueError, "exactly one"):
+                provenance.create_manifest(**arguments)
+        finally:
+            sibling.unlink(missing_ok=True)
+        symlink = self.root / "late-alias.apk"
+        arguments = self.create_arguments()
+        arguments["before_final_recheck"] = lambda: symlink.symlink_to(self.apk)
+        try:
+            with self.assertRaisesRegex(ValueError, "symlink"):
+                provenance.create_manifest(**arguments)
+        finally:
+            symlink.unlink(missing_ok=True)
+
+    def test_release_v2_authority_schema_graph_paths_and_bytes_fail_closed(self) -> None:
+        original = self.release_authority_v2.read_bytes()
+        payload = self.release_authority_v2_payload()
+        cases = []
+        extra = copy.deepcopy(payload)
+        extra["publicationAuthorized"] = True
+        cases.append((extra, "keys are not exact"))
+        missing = copy.deepcopy(payload)
+        missing["ownerPackagePins"].pop()
+        cases.append((missing, "owner package graph is not exact"))
+        escape = copy.deepcopy(payload)
+        escape["ownerPackagePins"][0]["authority_receipt"]["path"] = "../escape.json"
+        cases.append((escape, "escapes owner repository"))
+        forged = copy.deepcopy(payload)
+        forged["ownerPackagePins"][0]["sha256"] = "f" * 64
+        cases.append((forged, "differs from source graph"))
+        for candidate, error in cases:
+            with self.subTest(error=error):
+                write_json(self.release_authority_v2, candidate)
+                with self.assertRaisesRegex(ValueError, error):
+                    provenance.create_manifest(**self.create_arguments())
+        self.release_authority_v2.write_bytes(original)
+        bound_file = self.owner_roots["chummer6-hub"] / "authority-receipt.json"
+        bound_original = bound_file.read_bytes()
+        bound_file.write_bytes(b"swapped authority bytes\n")
+        try:
+            with self.assertRaisesRegex(ValueError, "digest differs"):
+                provenance.create_manifest(**self.create_arguments())
+        finally:
+            bound_file.write_bytes(bound_original)
+
+    def test_signature_receipt_logs_tools_and_certificate_are_exact(self) -> None:
+        original_receipt = self.signing_receipt.read_bytes()
+        payload = self.signing_receipt_payload()
+        cases = (
+            ("publicationAuthorized", True),
+            ("warningsAsErrors", False),
+            ("certificateSha256", "e" * 64),
+            ("verifiedSchemes", [1]),
+            ("apksignerSha256", "0" * 64),
+        )
+        for key, value in cases:
+            with self.subTest(key=key):
+                candidate = copy.deepcopy(payload)
+                candidate[key] = value
+                write_json(self.signing_receipt, candidate)
+                with self.assertRaisesRegex(ValueError, "structural modern signature|logs do not bind"):
+                    provenance.create_manifest(**self.create_arguments())
+        unknown = copy.deepcopy(payload)
+        unknown["googlePlayUploadAuthorized"] = True
+        write_json(self.signing_receipt, unknown)
+        with self.assertRaisesRegex(ValueError, "keys are not exact"):
+            provenance.create_manifest(**self.create_arguments())
+        self.signing_receipt.write_bytes(original_receipt)
+        original_log = self.apksigner_log.read_bytes()
+        self.apksigner_log.write_text("arbitrary success string\n", encoding="utf-8")
+        try:
+            with self.assertRaisesRegex(ValueError, "structural modern signature|logs do not bind"):
+                provenance.create_manifest(**self.create_arguments())
+        finally:
+            self.apksigner_log.write_bytes(original_log)
+
+    def test_script_owned_timeout_and_deadline_reject_consistent_multi_journal_rewrites(self) -> None:
+        originals = {
+            self.journal: self.journal.read_bytes(), self.raw_journal: self.raw_journal.read_bytes(),
+            self.delegate_journal: self.delegate_journal.read_bytes(),
+        }
+        for target in originals:
+            rows = [json.loads(line) for line in target.read_text(encoding="utf-8").splitlines()]
+            for row in rows:
+                if "timeoutSeconds" in row:
+                    row["timeoutSeconds"] = 1799.0
+            target.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+        try:
+            with self.assertRaisesRegex(ValueError, "timeout/deadline"):
+                provenance.create_manifest(**self.create_arguments())
+        finally:
+            for target, data in originals.items():
+                target.write_bytes(data)
+        for target in (self.journal, self.raw_journal):
+            rows = [json.loads(line) for line in target.read_text(encoding="utf-8").splitlines()]
+            for row in rows:
+                row["totalDeadlineSeconds"] = 7201.0
+                row["deadlineEpoch"] = row["invocationStartedEpoch"] + 7201.0
+            target.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+        try:
+            with self.assertRaisesRegex(ValueError, "timeout/deadline"):
+                provenance.create_manifest(**self.create_arguments())
+        finally:
+            self.journal.write_bytes(originals[self.journal])
+            self.raw_journal.write_bytes(originals[self.raw_journal])
+
+    def test_raw_and_delegate_journal_unknown_duplicate_and_type_confusion_are_rejected(self) -> None:
+        raw_original = self.raw_journal.read_bytes()
+        delegate_original = self.delegate_journal.read_bytes()
+        raw_rows = [json.loads(line) for line in self.raw_journal.read_text(encoding="utf-8").splitlines()]
+        raw_rows[0]["unknownClaim"] = True
+        self.raw_journal.write_text("".join(json.dumps(row) + "\n" for row in raw_rows), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "keys are not exact"):
+            provenance.create_manifest(**self.create_arguments())
+        self.raw_journal.write_bytes(raw_original)
+        delegate_lines = self.delegate_journal.read_text(encoding="utf-8").splitlines()
+        delegate_lines[0] = delegate_lines[0].replace(
+            '"phase": "toolchain-intake"',
+            '"phase": "toolchain-intake", "phase": "forged"',
+        )
+        self.delegate_journal.write_text("\n".join(delegate_lines) + "\n", encoding="utf-8")
+        try:
+            with self.assertRaisesRegex(ValueError, "duplicate JSON key"):
+                provenance.create_manifest(**self.create_arguments())
+        finally:
+            self.delegate_journal.write_bytes(delegate_original)
+
+    def test_installed_sdk_package_jdk_and_command_path_drift_are_rejected(self) -> None:
+        package_xml = self.platform_root / "package.xml"
+        original_package = package_xml.read_bytes()
+        package_xml.write_text(
+            self.sdk_package_xml("platforms;android-36", 1, 0, 0), encoding="utf-8",
+        )
+        try:
+            with self.assertRaisesRegex(ValueError, "package identity drifted"):
+                provenance.create_manifest(**self.create_arguments())
+        finally:
+            package_xml.write_bytes(original_package)
+        release = self.jdk_root / "release"
+        original_release = release.read_bytes()
+        release.write_text('JAVA_VERSION="17.0.14"\nIMPLEMENTOR="Unknown"\n', encoding="utf-8")
+        try:
+            with self.assertRaisesRegex(ValueError, "release-authorized: jdk_release"):
+                provenance.create_manifest(**self.create_arguments())
+        finally:
+            release.write_bytes(original_release)
+        wrong = self.root / "apksigner"
+        shutil.copyfile(self.apksigner, wrong)
+        wrong.chmod(0o755)
+        arguments = self.create_arguments()
+        arguments["apksigner_path"] = wrong
+        with self.assertRaisesRegex(ValueError, "exact selected Android build-tools"):
+            provenance.create_manifest(**arguments)
+
+    def test_bounded_wrapper_rejects_non_script_owned_timeout_before_command(self) -> None:
+        marker = self.root / "must-not-run"
+        invocation = time.time()
+        environment = {key: str(self.root) for key in provenance.ENVIRONMENT_ALLOWLIST}
+        command = [
+            sys.executable, str(REPO_ROOT / "scripts/materialize-api36-physical-build-provenance.py"),
+            "run-bounded", "--journal", str(self.root / "bad-canonical.jsonl"),
+            "--raw-journal", str(self.root / "bad-raw.jsonl"), "--delegate-journal",
+            str(self.root / "bad-delegate.jsonl"), "--output", str(self.root / "bad.log"),
+            "--phase", "toolchain-intake", "--timeout-seconds", "1799",
+            "--deadline-epoch", str(invocation + 7200), "--invocation-started-epoch",
+            str(invocation), "--working-directory", str(self.android),
+        ]
+        for key in sorted(environment):
+            command.extend(("--environment", f"{key}={environment[key]}"))
+        command.extend(("--", sys.executable, "-c", f"open({str(marker)!r}, 'w').write('ran')"))
+        completed = subprocess.run(command, check=False, capture_output=True, text=True, timeout=30)
+        self.assertNotEqual(0, completed.returncode)
+        self.assertFalse(marker.exists())
+
+    def test_bad_toolchain_is_blocked_before_any_restore_or_build_command(self) -> None:
+        script = (REPO_ROOT / "scripts/build-api36-physical-candidate.sh").read_text(encoding="utf-8")
+        hash_gate = script.index(
+            'require_sha256 "$dotnet_command" "1c13be7f10008294dfd25f0fc0cd7c88e26d3dbaf8e16019af6c5bb53dd0259d"'
+        )
+        toolchain_phase = script.index("run_bounded toolchain-intake")
+        authority_phase = script.index("run_bounded w5-build-input-intake")
+        restore_phase = script.index("run_bounded locked-full-restore")
+        build_phase = script.index("run_bounded serialized-full-maui-build")
+        self.assertLess(hash_gate, toolchain_phase)
+        self.assertLess(toolchain_phase, authority_phase)
+        self.assertLess(authority_phase, restore_phase)
+        self.assertLess(restore_phase, build_phase)
+        pre_restore = script[:restore_phase]
+        self.assertIn("capture-workloads", pre_restore)
+        self.assertIn("--android-sdk-packages", pre_restore)
+        self.assertIn("check-inputs", pre_restore)
+        self.assertIn("verify_release_source_graph.py", pre_restore)
+        self.assertNotIn('"$dotnet_command" restore', pre_restore)
+        self.assertNotIn('"$dotnet_command" build', pre_restore)
+
     def test_manifest_tamper_unknown_and_duplicate_keys_fail_closed(self) -> None:
         manifest = provenance.create_manifest(**self.create_arguments())
         provenance.write_manifest(self.manifest, manifest)
@@ -938,8 +1367,11 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "9037d4afc11dd8661dfbcccbc67a9f814d110fb17cf985cf215268e12ae3583e",
             "568fd2c602494329d19fbe8d9a2c83a4c2e82754b50e31141b192c1af7ccf964",
             "202a29a35b4768c3306349ee40a34d8f23ada97c0b0ef11e104763b5ff9cc60e",
-            'java_command="${CHUMMER_JAVA:-java}"',
-            'javac_command="${CHUMMER_JAVAC:-javac}"',
+            'dotnet_command="/usr/lib/dotnet/dotnet"',
+            'android_sdk_root="/home/tibor/.cache/chummer-android-toolchain/android-sdk"',
+            'java_home="/home/tibor/.cache/chummer-android-toolchain/microsoft-jdk"',
+            "verify-apk-signing", "--delegate-journal",
+            "--timeout-seconds 1800", "+ 7200",
             "AndroidSdkBuildToolsVersion=$android_build_tools_version",
         )
         for fragment in required:
@@ -950,6 +1382,10 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         self.assertNotIn(" adb ", script)
         self.assertNotIn("ChummerUseLocalCompatibilityTree=true", script)
         self.assertNotIn("ChummerUseLockedOwnerContractPackages=false", script)
+        self.assertNotIn("CHUMMER_JAVA", script)
+        self.assertNotIn("CHUMMER_DOTNET", script)
+        materializer = (REPO_ROOT / "scripts/materialize-api36-physical-build-provenance.py").read_text(encoding="utf-8")
+        self.assertIn('"--verbose", "--print-certs", "--Werr"', materializer)
 
     def test_committed_full_project_lock_is_exact_arm64_w5_closure(self) -> None:
         lock_path = REPO_ROOT / "src/Chummer.Android/packages.lock.json"
