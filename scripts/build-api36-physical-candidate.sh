@@ -6,9 +6,12 @@ project="$repo_dir/src/Chummer.Android/Chummer.Android.csproj"
 lock="$repo_dir/src/Chummer.Android/packages.lock.json"
 dotnet_command="${CHUMMER_DOTNET:-dotnet}"
 java_command="${CHUMMER_JAVA:-java}"
+javac_command="${CHUMMER_JAVAC:-javac}"
+android_build_tools_version="${CHUMMER_ANDROID_BUILD_TOOLS_VERSION:-36.0.0}"
 current_stage="preflight"
 evidence_dir=""
 journal=""
+raw_journal=""
 
 fail() {
   printf 'api36_physical_candidate=blocked stage=%s retry_performed=false publication_authorized=false\n' "$1" >&2
@@ -58,12 +61,15 @@ run_bounded() {
   local phase="$1" output="$2"
   shift 2
   current_stage="$phase"
-  python3 "$repo_dir/scripts/run_internal_phone_beta_bounded.py" \
+  "$python_command" "$repo_dir/scripts/materialize-api36-physical-build-provenance.py" run-bounded \
     --journal "$journal" \
+    --raw-journal "$raw_journal" \
     --output "$output" \
     --phase "$phase" \
     --timeout-seconds 1800 \
     --deadline-epoch "$deadline_epoch" \
+    --working-directory "$repo_dir" \
+    "${bounded_environment_arguments[@]}" \
     -- "$@"
 }
 
@@ -72,11 +78,18 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-for command in cut date dirname git jq mkdir python3 realpath sha256sum; do
+for command in cut date dirname find git jq mkdir python3 realpath sha256sum; do
   command -v "$command" >/dev/null 2>&1 || fail "missing-command-$command"
 done
 command -v "$dotnet_command" >/dev/null 2>&1 || fail "missing-dotnet"
 command -v "$java_command" >/dev/null 2>&1 || fail "missing-java"
+command -v "$javac_command" >/dev/null 2>&1 || fail "missing-javac"
+python_command="$(realpath -e -- "$(command -v python3)")"
+dotnet_command="$(realpath -e -- "$(command -v "$dotnet_command")")"
+java_command="$(realpath -e -- "$(command -v "$java_command")")"
+javac_command="$(realpath -e -- "$(command -v "$javac_command")")"
+[[ "$(dirname -- "$java_command")" == "$(dirname -- "$javac_command")" ]] \
+  || fail "java-javac-not-one-jdk"
 
 require_directory CHUMMER_RELEASE_WORKSPACE_ROOT
 require_directory CHUMMER_PRESENTATION_ROOT
@@ -129,14 +142,36 @@ evidence_dir="$CHUMMER_API36_BUILD_PROVENANCE.evidence"
 [[ ! -e "$evidence_dir" && ! -L "$evidence_dir" ]] || fail "evidence-output-collision"
 mkdir -m 0700 -- "$evidence_dir"
 journal="$evidence_dir/command-journal.jsonl"
+raw_journal="$evidence_dir/raw-command-journal.jsonl"
 deadline_epoch="$(( $(date +%s) + 7200 ))"
 
-current_stage="toolchain-intake"
-java_version="$("$java_command" -version 2>&1 | { IFS= read -r line; printf '%s' "$line"; })"
-[[ -n "$java_version" ]] || fail "java-version-unavailable"
+sdk_root="$(dirname -- "$CHUMMER_ANDROID_SDK_PACKAGES_XML")"
+java_home="$(dirname -- "$(dirname -- "$java_command")")"
+bounded_environment=(
+  "ANDROID_HOME=$sdk_root"
+  "DOTNET_CLI_HOME=${DOTNET_CLI_HOME:-$HOME}"
+  "DOTNET_CLI_TELEMETRY_OPTOUT=1"
+  "DOTNET_CLI_USE_MSBUILD_SERVER=0"
+  "HOME=$HOME"
+  "JAVA_HOME=$java_home"
+  "LANG=C.UTF-8"
+  "LC_ALL=C.UTF-8"
+  "MSBUILDDISABLENODEREUSE=1"
+  "NUGET_PACKAGES=$CHUMMER_API36_NUGET_PACKAGES"
+  "PATH=$PATH"
+  "TMPDIR=${TMPDIR:-/tmp}"
+)
+bounded_environment_arguments=()
+for environment_entry in "${bounded_environment[@]}"; do
+  bounded_environment_arguments+=(--environment "$environment_entry")
+done
+
+run_bounded toolchain-intake "$evidence_dir/toolchain.log" \
+  "$python_command" "$repo_dir/scripts/materialize-api36-physical-build-provenance.py" \
+  capture-workloads --dotnet "$dotnet_command" --output "$evidence_dir/dotnet-workloads.json"
 
 run_bounded source-graph-intake "$evidence_dir/source-graph.log" \
-  python3 "$repo_dir/scripts/verify_release_source_graph.py" \
+  "$python_command" "$repo_dir/scripts/verify_release_source_graph.py" \
   --android-root "$repo_dir" \
   --presentation-root "$CHUMMER_PRESENTATION_ROOT" \
   --core-content-root "$CHUMMER_CORE_CONTENT_ROOT" \
@@ -145,7 +180,7 @@ run_bounded source-graph-intake "$evidence_dir/source-graph.log" \
   --verify-existing "$CHUMMER_RELEASE_SOURCE_GRAPH"
 
 run_bounded core-content-intake "$evidence_dir/content-source.log" \
-  python3 "$repo_dir/scripts/verify_android_content_bundle.py" \
+  "$python_command" "$repo_dir/scripts/verify_android_content_bundle.py" \
   --repo-root "$repo_dir" \
   --core-root "$CHUMMER_CORE_CONTENT_ROOT" \
   --manifest "$repo_dir/src/Chummer.Android/Content/chummer-content-manifest.json" \
@@ -153,7 +188,7 @@ run_bounded core-content-intake "$evidence_dir/content-source.log" \
   --check
 
 run_bounded w5-build-input-intake "$evidence_dir/build-inputs.log" \
-  python3 "$repo_dir/scripts/materialize-api36-physical-build-provenance.py" \
+  "$python_command" "$repo_dir/scripts/materialize-api36-physical-build-provenance.py" \
   check-inputs \
   --android-root "$repo_dir" \
   --presentation-root "$CHUMMER_PRESENTATION_ROOT" \
@@ -162,6 +197,7 @@ run_bounded w5-build-input-intake "$evidence_dir/build-inputs.log" \
   --w5-evidence-directory "$CHUMMER_W5_COMPILE_EVIDENCE" \
   --source-graph "$CHUMMER_RELEASE_SOURCE_GRAPH" \
   --package-authority "$repo_dir/eng/internal-phone-beta-package-authority.json" \
+  --release-package-authority-v2 "$CHUMMER_RELEASE_PACKAGE_AUTHORITY_V2" \
   --content-source-receipt "$evidence_dir/content-source-receipt.json" \
   --full-project-lock "$lock"
 
@@ -174,6 +210,7 @@ package_args=(
   "-p:RestoreLockedMode=true"
   "-p:RestorePackagesWithLockFile=true"
   "-p:NuGetAudit=false"
+  "-p:AndroidSdkBuildToolsVersion=$android_build_tools_version"
   "-p:ChummerContractsPackageVersion=0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819"
   "-p:ChummerCoreRuntimePackageVersion=0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819"
   "-p:ChummerCampaignContractsPackageVersion=0.1.0-packageplane.android.sh1215f9389779e"
@@ -217,8 +254,13 @@ run_bounded serialized-full-maui-build "$evidence_dir/build.log" \
   "${package_args[@]}"
 
 [[ -f "$apk" && ! -L "$apk" ]] || fail "full-maui-arm64-apk-missing"
+mapfile -d '' apk_outputs < <(find "$(dirname -- "$apk")" -maxdepth 1 -type f -name '*.apk' -print0)
+[[ "${#apk_outputs[@]}" -eq 1 && "${apk_outputs[0]}" == "$apk" ]] \
+  || fail "apk-output-inventory-not-exact"
+[[ -z "$(find "$(dirname -- "$apk")" -maxdepth 1 -type l -print -quit)" ]] \
+  || fail "apk-output-symlink-present"
 run_bounded apk-content-verification "$evidence_dir/content-apk.log" \
-  python3 "$repo_dir/scripts/verify_android_content_bundle.py" \
+  "$python_command" "$repo_dir/scripts/verify_android_content_bundle.py" \
   --repo-root "$repo_dir" \
   --core-root "$CHUMMER_CORE_CONTENT_ROOT" \
   --manifest "$repo_dir/src/Chummer.Android/Content/chummer-content-manifest.json" \
@@ -227,24 +269,26 @@ run_bounded apk-content-verification "$evidence_dir/content-apk.log" \
   --check
 
 run_bounded post-build-source-graph-seal "$evidence_dir/source-graph-seal.log" \
-  python3 "$repo_dir/scripts/verify_release_source_graph.py" \
+  "$python_command" "$repo_dir/scripts/verify_release_source_graph.py" \
   --android-root "$repo_dir" \
   --workspace-root "$CHUMMER_RELEASE_WORKSPACE_ROOT" \
   --package-authority "$CHUMMER_RELEASE_PACKAGE_AUTHORITY_V2" \
   --verify-existing "$CHUMMER_RELEASE_SOURCE_GRAPH"
 
 current_stage="provenance-seal"
-python3 "$repo_dir/scripts/materialize-api36-physical-build-provenance.py" \
+"$python_command" "$repo_dir/scripts/materialize-api36-physical-build-provenance.py" \
   materialize \
   --android-root "$repo_dir" \
   --w5-receipt "$CHUMMER_W5_COMPILE_RECEIPT" \
   --w5-evidence-directory "$CHUMMER_W5_COMPILE_EVIDENCE" \
   --source-graph "$CHUMMER_RELEASE_SOURCE_GRAPH" \
   --package-authority "$repo_dir/eng/internal-phone-beta-package-authority.json" \
+  --release-package-authority-v2 "$CHUMMER_RELEASE_PACKAGE_AUTHORITY_V2" \
   --content-source-receipt "$evidence_dir/content-source-receipt.json" \
   --content-apk-receipt "$evidence_dir/content-apk-receipt.json" \
   --full-project-lock "$lock" \
   --assets "$repo_dir/src/Chummer.Android/obj/project.assets.json" \
+  --toolchain-log "$evidence_dir/toolchain.log" \
   --source-graph-log "$evidence_dir/source-graph.log" \
   --content-source-log "$evidence_dir/content-source.log" \
   --build-inputs-log "$evidence_dir/build-inputs.log" \
@@ -253,8 +297,18 @@ python3 "$repo_dir/scripts/materialize-api36-physical-build-provenance.py" \
   --content-apk-log "$evidence_dir/content-apk.log" \
   --source-graph-seal-log "$evidence_dir/source-graph-seal.log" \
   --command-journal "$journal" \
+  --raw-command-journal "$raw_journal" \
   --android-sdk-packages "$CHUMMER_ANDROID_SDK_PACKAGES_XML" \
-  --java-version "$java_version" \
+  --dotnet-workloads "$evidence_dir/dotnet-workloads.json" \
+  --java-path "$java_command" \
+  --javac-path "$javac_command" \
+  --dotnet-path "$dotnet_command" \
+  --python-path "$python_command" \
+  --release-workspace-root "$CHUMMER_RELEASE_WORKSPACE_ROOT" \
+  --package-feed "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
+  --offline-feed "$CHUMMER_API36_OFFLINE_NUGET_FEED" \
+  --nuget-packages "$CHUMMER_API36_NUGET_PACKAGES" \
+  --android-build-tools-version "$android_build_tools_version" \
   --dotnet-version "$($dotnet_command --version)" \
   --apk "$apk" \
   --output "$CHUMMER_API36_BUILD_PROVENANCE"

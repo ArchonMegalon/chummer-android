@@ -5,7 +5,9 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 import zipfile
@@ -84,6 +86,12 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         subprocess.run(["git", "config", "user.email", "proof@example.invalid"], cwd=self.presentation, check=True)
         subprocess.run(["git", "config", "user.name", "Proof Test"], cwd=self.presentation, check=True)
         (self.presentation / "source.txt").write_text("W4.1 source\n", encoding="utf-8")
+        (self.presentation / "Chummer.Presentation").mkdir()
+        (self.presentation / "Chummer.Desktop.Runtime").mkdir()
+        self.presentation_lock = self.presentation / "Chummer.Presentation/packages.lock.json"
+        self.desktop_lock = self.presentation / "Chummer.Desktop.Runtime/packages.lock.json"
+        self.presentation_lock.write_text('{"version":1}\n', encoding="utf-8")
+        self.desktop_lock.write_text('{"version":1}\n', encoding="utf-8")
         subprocess.run(["git", "add", "."], cwd=self.presentation, check=True)
         subprocess.run(["git", "commit", "-qm", "W4.1 source"], cwd=self.presentation, check=True)
         self.presentation_commit = subprocess.run(
@@ -96,11 +104,31 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         ).stdout.strip()
 
         self.w5_receipt = self.root / "w5.json"
-        write_json(self.w5_receipt, self.w5_payload())
         self.w5_evidence = self.root / "w5.json.evidence"
         self.w5_evidence.mkdir()
+        (self.w5_evidence / "authority-binding.json").write_text("authority\n", encoding="utf-8")
+        (self.w5_evidence / "command-journal.jsonl").write_text("journal\n", encoding="utf-8")
+        w5_payload = self.w5_payload()
+        w5_payload["evidence"] = [
+            {
+                "path": path.name, "sha256": provenance.file_sha256(path),
+                "sizeBytes": path.stat().st_size,
+            }
+            for path in sorted(self.w5_evidence.iterdir())
+        ]
+        write_json(self.w5_receipt, w5_payload)
         self.source_graph = self.root / "source-graph.json"
         write_json(self.source_graph, self.source_graph_payload())
+        self.release_authority_v2 = self.root / "release-package-authority-v2.json"
+        write_json(self.release_authority_v2, {"contractName": "fixture-v2-package-authority"})
+        self.release_workspace = self.root / "release-workspace"
+        self.package_feed = self.root / "w5-feed"
+        self.offline_feed = self.root / "offline-feed"
+        self.nuget_packages = self.root / "nuget-packages"
+        for directory in (
+            self.release_workspace, self.package_feed, self.offline_feed, self.nuget_packages,
+        ):
+            directory.mkdir()
         self.content_source = self.root / "content-source.json"
         write_json(self.content_source, self.content_payload(apk=False))
         self.apk = self.root / "com.myexternalbrain.chummer-Signed.apk"
@@ -112,7 +140,29 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         self.assets = self.root / "project.assets.json"
         write_json(self.assets, self.assets_payload())
         self.sdk_packages = self.root / "packages.xml"
-        self.sdk_packages.write_text("<sdk:repository />\n", encoding="utf-8")
+        self.sdk_packages.write_text(
+            '<sdk:sdk-repository xmlns:sdk="urn:android">'
+            '<localPackage path="platforms;android-36" />'
+            '<localPackage path="build-tools;36.0.0" />'
+            '<localPackage path="platform-tools" />'
+            '</sdk:sdk-repository>\n', encoding="utf-8",
+        )
+        self.workloads = self.root / "dotnet-workloads.json"
+        write_json(self.workloads, {"installed": ["maui-android"], "updateAvailable": []})
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        self.java = self.bin / "java"
+        self.javac = self.bin / "javac"
+        self.dotnet = self.bin / "dotnet"
+        self.python = self.bin / "python3"
+        self.java.write_text('#!/bin/sh\nprintf \'openjdk version "21.0.8" fixture\\n\' >&2\n', encoding="utf-8")
+        self.javac.write_text("#!/bin/sh\nprintf 'javac 21.0.8\\n'\n", encoding="utf-8")
+        self.dotnet.write_text("#!/bin/sh\nprintf '10.0.111\\n'\n", encoding="utf-8")
+        self.python.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        for executable in (self.java, self.javac, self.dotnet, self.python):
+            executable.chmod(0o755)
+        self.toolchain_log = self.root / "toolchain.log"
+        self.toolchain_log.write_text("dotnet_workload_inventory=pass\n", encoding="utf-8")
         self.restore_log = self.root / "restore.log"
         self.restore_log.write_text("All projects are up-to-date for restore.\n", encoding="utf-8")
         self.build_log = self.root / "build.log"
@@ -130,6 +180,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         self.source_graph_seal_log = self.root / "source-graph-seal.log"
         self.source_graph_seal_log.write_text("source graph remained exact\n", encoding="utf-8")
         self.journal = self.root / "journal.jsonl"
+        self.raw_journal = self.root / "raw-journal.jsonl"
         self.write_journal()
         self.manifest = self.root / "provenance.json"
 
@@ -140,6 +191,8 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             mock.patch.object(provenance, "W5_AUTHORITY_BINDING_SHA256", provenance.file_sha256(self.package_authority)),
             mock.patch.object(provenance, "W5_PRESENTATION_COMMIT", self.presentation_commit),
             mock.patch.object(provenance, "W5_PRESENTATION_TREE", self.presentation_tree),
+            mock.patch.object(provenance, "W41_PRESENTATION_LOCK_SHA256", provenance.file_sha256(self.presentation_lock)),
+            mock.patch.object(provenance, "W41_DESKTOP_LOCK_SHA256", provenance.file_sha256(self.desktop_lock)),
             mock.patch.object(provenance, "FULL_PROJECT_LOCK_SHA256", provenance.file_sha256(self.lock)),
             mock.patch.object(provenance, "FULL_PROJECT_LOCK_SIZE", self.lock.stat().st_size),
             mock.patch.object(provenance, "CORE_CONTENT_REVISION", self.core_commit),
@@ -357,6 +410,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
 
     def write_journal(self) -> None:
         phases = (
+            ("toolchain-intake", self.toolchain_log),
             ("source-graph-intake", self.source_graph_log),
             ("core-content-intake", self.content_source_log),
             ("w5-build-input-intake", self.build_inputs_log),
@@ -365,25 +419,128 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             ("apk-content-verification", self.content_apk_log),
             ("post-build-source-graph-seal", self.source_graph_seal_log),
         )
+        project = str(self.android / "src/Chummer.Android/Chummer.Android.csproj")
+        materializer = str(self.android / "scripts/materialize-api36-physical-build-provenance.py")
+        graph_verifier = str(self.android / "scripts/verify_release_source_graph.py")
+        content_verifier = str(self.android / "scripts/verify_android_content_bundle.py")
+        content_manifest = str(self.content_manifest)
+        package_args = [
+            f"-p:ChummerPresentationRoot={self.presentation}",
+            f"-p:ChummerCoreEngineRoot={self.core}",
+            "-p:ChummerDesktopRuntimeIdentifiers=",
+            "-p:ChummerUseLocalCompatibilityTree=false",
+            "-p:ChummerUseLockedOwnerContractPackages=true",
+            "-p:RestoreLockedMode=true", "-p:RestorePackagesWithLockFile=true",
+            "-p:NuGetAudit=false", "-p:AndroidSdkBuildToolsVersion=36.0.0",
+            "-p:ChummerContractsPackageVersion=0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+            "-p:ChummerCoreRuntimePackageVersion=0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+            "-p:ChummerCampaignContractsPackageVersion=0.1.0-packageplane.android.sh1215f9389779e",
+            "-p:ChummerRunContractsPackageVersion=0.1.0-packageplane.android.sh1215f9389779e",
+            "-p:ChummerRunHubContractsPackageVersion=0.1.0-packageplane.android.sh1215f9389779e",
+            "-p:ChummerRunHubPackageVersion=0.1.0-packageplane.android.sh1215f9389779e",
+            "-p:ChummerHubRegistryContractsPackageVersion=0.1.0-packageplane.candidate.sh66c418a5004f",
+            "-p:ChummerUiKitPackageVersion=0.1.0-packageplane.android.shd51ecd99cf720",
+        ]
+        commands = {
+            "toolchain-intake": [
+                str(self.python), materializer, "capture-workloads", "--dotnet",
+                str(self.dotnet), "--output", str(self.workloads),
+            ],
+            "source-graph-intake": [
+                str(self.python), graph_verifier, "--android-root", str(self.android),
+                "--presentation-root", str(self.presentation), "--core-content-root", str(self.core),
+                "--workspace-root", str(self.release_workspace), "--package-authority",
+                str(self.release_authority_v2), "--verify-existing", str(self.source_graph),
+            ],
+            "core-content-intake": [
+                str(self.python), content_verifier, "--repo-root", str(self.android),
+                "--core-root", str(self.core), "--manifest", content_manifest,
+                "--receipt", str(self.content_source), "--check",
+            ],
+            "w5-build-input-intake": [
+                str(self.python), materializer, "check-inputs", "--android-root", str(self.android),
+                "--presentation-root", str(self.presentation), "--core-content-root", str(self.core),
+                "--w5-receipt", str(self.w5_receipt), "--w5-evidence-directory", str(self.w5_evidence),
+                "--source-graph", str(self.source_graph), "--package-authority", str(self.package_authority),
+                "--release-package-authority-v2", str(self.release_authority_v2),
+                "--content-source-receipt", str(self.content_source), "--full-project-lock", str(self.lock),
+            ],
+            "locked-full-restore": [
+                str(self.dotnet), "restore", project, "--locked-mode", "--disable-parallel",
+                "--no-http-cache", "--packages", str(self.nuget_packages),
+                "--source", str(self.package_feed), "--source", str(self.offline_feed), *package_args,
+            ],
+            "serialized-full-maui-build": [
+                str(self.dotnet), "build", project, "--configuration", provenance.CONFIGURATION,
+                "--framework", provenance.TARGET_FRAMEWORK,
+                "--runtime", provenance.RUNTIME_IDENTIFIER, "--no-restore", "--warnaserror",
+                "-m:1", "-nr:false", "--disable-build-servers",
+                "-p:UseSharedCompilation=false", "-p:BuildInParallel=false",
+                "-p:AndroidPackageFormats=apk", *package_args,
+            ],
+            "apk-content-verification": [
+                str(self.python), content_verifier, "--repo-root", str(self.android),
+                "--core-root", str(self.core), "--manifest", content_manifest,
+                "--apk", str(self.apk), "--receipt", str(self.content_apk), "--check",
+            ],
+            "post-build-source-graph-seal": [
+                str(self.python), graph_verifier, "--android-root", str(self.android),
+                "--workspace-root", str(self.release_workspace), "--package-authority",
+                str(self.release_authority_v2), "--verify-existing", str(self.source_graph),
+            ],
+        }
+        environment = {key: str(self.root) for key in provenance.ENVIRONMENT_ALLOWLIST}
+        environment.update({
+            "ANDROID_HOME": str(self.sdk_packages.parent),
+            "JAVA_HOME": str(self.java.parent.parent), "NUGET_PACKAGES": str(self.nuget_packages),
+            "DOTNET_CLI_TELEMETRY_OPTOUT": "1", "DOTNET_CLI_USE_MSBUILD_SERVER": "0",
+            "MSBUILDDISABLENODEREUSE": "1", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8",
+        })
         rows = []
+        raw_rows = []
         for phase, output in phases:
+            common = {
+                "contractName": provenance.COMMAND_JOURNAL_CONTRACT,
+                "phase": phase, "argv": commands[phase],
+                "workingDirectory": str(self.android), "environment": environment,
+                "timeoutSeconds": 100.0, "deadlineEpoch": 2000.0,
+                "startedEpoch": 1000.0, "outputPath": str(output),
+                "processGroupTermination": True, "publicationAuthorized": False,
+            }
             rows.extend([
+                {**common, "event": "started"},
                 {
-                    "event": "started", "phase": phase,
-                    "processGroupTermination": True, "publicationAuthorized": False,
-                },
-                {
-                    "event": "finished", "phase": phase, "exitCode": 0,
+                    **common, "event": "finished", "exitCode": 0,
                     "outputSha256": provenance.file_sha256(output),
-                    "publicationAuthorized": False,
-                    "timedOut": False, "processGroupTermination": True,
+                    "timedOut": False, "elapsedSeconds": 1.0,
                     "termination": {
                         "groupAbsent": True, "sigtermSent": False, "sigkillSent": False,
                     },
                 },
             ])
+            raw_rows.extend([
+                {
+                    "contractName": provenance.RAW_COMMAND_JOURNAL_CONTRACT,
+                    "phase": phase, "event": "started", "command": commands[phase],
+                    "timeoutSeconds": 100.0, "processGroupTermination": True,
+                    "publicationAuthorized": False,
+                },
+                {
+                    "contractName": provenance.RAW_COMMAND_JOURNAL_CONTRACT,
+                    "phase": phase, "event": "finished", "exitCode": 0,
+                    "timedOut": False, "elapsedSeconds": 1.0,
+                    "outputSha256": provenance.file_sha256(output),
+                    "termination": {
+                        "groupAbsent": True, "sigtermSent": False, "sigkillSent": False,
+                    },
+                    "processGroupTermination": True, "publicationAuthorized": False,
+                },
+            ])
         self.journal.write_text(
             "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8",
+        )
+        self.raw_journal.write_text(
+            "".join(json.dumps(row) + "\n" for row in raw_rows), encoding="utf-8",
         )
 
     def create_arguments(self) -> dict[str, object]:
@@ -396,10 +553,12 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "w5_evidence_directory": self.w5_evidence,
             "source_graph_path": self.source_graph,
             "package_authority_path": self.package_authority,
+            "release_package_authority_v2_path": self.release_authority_v2,
             "content_source_receipt_path": self.content_source,
             "content_apk_receipt_path": self.content_apk,
             "full_project_lock_path": self.lock,
             "assets_path": self.assets,
+            "toolchain_log_path": self.toolchain_log,
             "source_graph_log_path": self.source_graph_log,
             "content_source_log_path": self.content_source_log,
             "build_inputs_log_path": self.build_inputs_log,
@@ -408,8 +567,16 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "content_apk_log_path": self.content_apk_log,
             "source_graph_seal_log_path": self.source_graph_seal_log,
             "command_journal_path": self.journal,
+            "raw_command_journal_path": self.raw_journal,
             "android_sdk_packages_path": self.sdk_packages,
-            "java_version": "openjdk version 21.0.8",
+            "dotnet_workloads_path": self.workloads,
+            "java_path": self.java, "javac_path": self.javac,
+            "dotnet_path": self.dotnet, "python_path": self.python,
+            "release_workspace_root": self.release_workspace,
+            "package_feed_path": self.package_feed,
+            "offline_feed_path": self.offline_feed,
+            "nuget_packages_path": self.nuget_packages,
+            "android_build_tools_version": "36.0.0",
             "dotnet_version": provenance.DOTNET_SDK_VERSION,
             "w5_verifier": self.verified_w5,
             "content_verifier": self.verified_content,
@@ -547,6 +714,202 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "row count"):
             provenance.create_manifest(**self.create_arguments())
 
+    def test_bounded_journal_exact_schema_types_command_environment_and_deadline(self) -> None:
+        mutations = (
+            (lambda rows: rows[0].__setitem__("unknownClaim", True), "keys are not exact"),
+            (lambda rows: rows[0].__setitem__("timeoutSeconds", "100"), "timeout/deadline"),
+            (lambda rows: rows[0].__setitem__("workingDirectory", str(self.root)), "context is not exact"),
+            (lambda rows: rows[0]["environment"].__setitem__("SECRET", "x"), "environment allowlist"),
+            (lambda rows: rows[0]["argv"].append("--forged"), "argv is not exact"),
+            (lambda rows: rows[9].__setitem__("exitCode", True), "failed or terminated"),
+            (lambda rows: rows[9]["termination"].__setitem__("sigkillSent", "false"), "failed or terminated"),
+            (lambda rows: rows.__setitem__(slice(0, 2), [rows[2], rows[3]]), "phase order/context"),
+        )
+        for mutate, error in mutations:
+            with self.subTest(error=error):
+                self.write_journal()
+                rows = [json.loads(line) for line in self.journal.read_text(encoding="utf-8").splitlines()]
+                mutate(rows)
+                self.journal.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, error):
+                    provenance.create_manifest(**self.create_arguments())
+        self.write_journal()
+        raw_rows = [json.loads(line) for line in self.raw_journal.read_text(encoding="utf-8").splitlines()]
+        raw_rows[0]["command"].append("--raw-forgery")
+        self.raw_journal.write_text("".join(json.dumps(row) + "\n" for row in raw_rows), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "does not cross-bind"):
+            provenance.create_manifest(**self.create_arguments())
+        self.write_journal()
+        raw_rows = [json.loads(line) for line in self.raw_journal.read_text(encoding="utf-8").splitlines()]
+        raw_rows[1]["timedOut"] = "false"
+        self.raw_journal.write_text("".join(json.dumps(row) + "\n" for row in raw_rows), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "does not cross-bind"):
+            provenance.create_manifest(**self.create_arguments())
+
+    def test_bounded_wrapper_executes_real_command_and_seals_exact_raw_and_canonical_rows(self) -> None:
+        canonical = self.root / "wrapper-journal.jsonl"
+        raw = self.root / "wrapper-raw-journal.jsonl"
+        output = self.root / "wrapper-output.log"
+        environment = {key: str(self.root) for key in provenance.ENVIRONMENT_ALLOWLIST}
+        environment.update({
+            "ANDROID_HOME": str(self.root), "JAVA_HOME": str(self.root),
+            "NUGET_PACKAGES": str(self.nuget_packages),
+            "DOTNET_CLI_TELEMETRY_OPTOUT": "1", "DOTNET_CLI_USE_MSBUILD_SERVER": "0",
+            "MSBUILDDISABLENODEREUSE": "1", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8",
+        })
+        command = [
+            sys.executable, str(REPO_ROOT / "scripts/materialize-api36-physical-build-provenance.py"),
+            "run-bounded", "--journal", str(canonical), "--raw-journal", str(raw),
+            "--output", str(output), "--phase", "toolchain-intake",
+            "--timeout-seconds", "20", "--deadline-epoch", str(time.time() + 60),
+            "--working-directory", str(self.android),
+        ]
+        for key in sorted(environment):
+            command.extend(("--environment", f"{key}={environment[key]}"))
+        command.extend(("--", sys.executable, "-c", "print('bounded-wrapper-pass')"))
+        completed = subprocess.run(command, check=False, capture_output=True, text=True, timeout=30)
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        self.assertEqual("bounded-wrapper-pass\n", output.read_text(encoding="utf-8"))
+        canonical_rows = [json.loads(line) for line in canonical.read_text(encoding="utf-8").splitlines()]
+        raw_rows = [json.loads(line) for line in raw.read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(["started", "finished"], [row["event"] for row in canonical_rows])
+        self.assertEqual(["started", "finished"], [row["event"] for row in raw_rows])
+        self.assertEqual(canonical_rows[0]["argv"], raw_rows[0]["command"])
+        self.assertEqual(provenance.file_sha256(output), canonical_rows[1]["outputSha256"])
+        self.assertEqual(provenance.COMMAND_JOURNAL_CONTRACT, canonical_rows[0]["contractName"])
+        self.assertEqual(provenance.RAW_COMMAND_JOURNAL_CONTRACT, raw_rows[0]["contractName"])
+
+    def test_six_descriptor_snapshot_swap_races_are_rejected(self) -> None:
+        targets = (
+            ("w5 receipt", self.w5_receipt),
+            ("v2 source graph", self.source_graph),
+            ("v2 package authority", self.release_authority_v2),
+            ("restore log", self.restore_log),
+            ("Core content receipt", self.content_source),
+            ("APK plus APK content receipt", self.apk),
+        )
+        for index, (label, target) in enumerate(targets):
+            with self.subTest(label=label):
+                original = target.read_bytes()
+                receipt_original = self.content_apk.read_bytes()
+
+                def swap() -> None:
+                    if index < 3:
+                        replacement = target.with_name(target.name + ".race-replacement")
+                        replacement.write_bytes(original)
+                        replacement.replace(target)
+                    else:
+                        target.write_bytes(original + b" ")
+                    if target == self.apk:
+                        payload = self.content_payload(apk=True)
+                        write_json(self.content_apk, payload)
+
+                arguments = self.create_arguments()
+                arguments["before_final_recheck"] = swap
+                try:
+                    with self.assertRaisesRegex(ValueError, "changed before provenance seal"):
+                        provenance.create_manifest(**arguments)
+                finally:
+                    target.write_bytes(original)
+                    self.content_apk.write_bytes(receipt_original)
+
+    def test_remaining_authority_lock_asset_log_and_w5_evidence_swaps_are_rejected(self) -> None:
+        targets = (
+            self.w5_evidence / "authority-binding.json",
+            self.package_authority,
+            self.presentation_lock,
+            self.desktop_lock,
+            self.assets,
+            self.build_log,
+            self.workloads,
+            self.sdk_packages,
+            self.raw_journal,
+        )
+        for target in targets:
+            with self.subTest(target=target.name):
+                original = target.read_bytes()
+                arguments = self.create_arguments()
+                arguments["before_final_recheck"] = lambda target=target, original=original: target.write_bytes(original + b" ")
+                try:
+                    with self.assertRaisesRegex(ValueError, "changed before provenance seal"):
+                        provenance.create_manifest(**arguments)
+                finally:
+                    target.write_bytes(original)
+
+    def test_final_android_and_product_source_identity_is_rechecked(self) -> None:
+        targets = (
+            (self.android / "product.txt", "Android repository is dirty"),
+            (self.presentation / "source.txt", "W5 Presentation build source is dirty"),
+            (self.core / "Chummer/data/lifemodules.xml", "Core content source is dirty"),
+        )
+        for product, error in targets:
+            with self.subTest(product=product):
+                original = product.read_bytes()
+                arguments = self.create_arguments()
+                arguments["before_final_recheck"] = lambda product=product: product.write_bytes(b"raced source\n")
+                try:
+                    with self.assertRaisesRegex(ValueError, error):
+                        provenance.create_manifest(**arguments)
+                finally:
+                    product.write_bytes(original)
+
+    def test_toolchain_is_structured_real_and_command_bound(self) -> None:
+        original_xml = self.sdk_packages.read_bytes()
+        original_java = self.java.read_bytes()
+        original_javac = self.javac.read_bytes()
+        original_workloads = self.workloads.read_bytes()
+        cases = (
+            (self.sdk_packages, b"not xml", "well-formed XML"),
+            (
+                self.sdk_packages,
+                b'<sdk:sdk-repository xmlns:sdk="urn:android"><localPackage path="platform-tools" /></sdk:sdk-repository>',
+                "selected API36 toolchain",
+            ),
+            (self.java, b"#!/bin/sh\nprintf 'arbitrary java\\n'\n", "not canonical"),
+            (self.javac, b"#!/bin/sh\nprintf 'javac 22.0.1\\n'\n", "do not match"),
+            (self.workloads, b'{"installed":[],"updateAvailable":[]}\n', "maui-android"),
+        )
+        for path, replacement, error in cases:
+            with self.subTest(error=error):
+                path.write_bytes(replacement)
+                if path in (self.java, self.javac):
+                    path.chmod(0o755)
+                try:
+                    with self.assertRaisesRegex(ValueError, error):
+                        provenance.create_manifest(**self.create_arguments())
+                finally:
+                    originals = {
+                        self.sdk_packages: original_xml, self.java: original_java,
+                        self.javac: original_javac, self.workloads: original_workloads,
+                    }
+                    path.write_bytes(originals[path])
+                    if path in (self.java, self.javac):
+                        path.chmod(0o755)
+        self.write_journal()
+        rows = [json.loads(line) for line in self.journal.read_text(encoding="utf-8").splitlines()]
+        build_started = rows[10]
+        build_started["argv"].remove("-p:AndroidSdkBuildToolsVersion=36.0.0")
+        rows[11]["argv"] = build_started["argv"]
+        self.journal.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "argv is not exact"):
+            provenance.create_manifest(**self.create_arguments())
+
+    def test_apk_output_inventory_rejects_extra_architecture_and_symlink_artifacts(self) -> None:
+        extra = self.root / "com.myexternalbrain.chummer-x86-Signed.apk"
+        extra.write_bytes(self.apk.read_bytes())
+        try:
+            with self.assertRaisesRegex(ValueError, "exactly one"):
+                provenance.create_manifest(**self.create_arguments())
+        finally:
+            extra.unlink()
+        sibling = self.root / "alias.apk"
+        sibling.symlink_to(self.apk)
+        try:
+            with self.assertRaisesRegex(ValueError, "symlink"):
+                provenance.create_manifest(**self.create_arguments())
+        finally:
+            sibling.unlink()
+
     def test_manifest_tamper_unknown_and_duplicate_keys_fail_closed(self) -> None:
         manifest = provenance.create_manifest(**self.create_arguments())
         provenance.write_manifest(self.manifest, manifest)
@@ -568,7 +931,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "RestoreLockedMode=true", "RestorePackagesWithLockFile=true",
             "--source \"$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED\"",
             "--source \"$CHUMMER_API36_OFFLINE_NUGET_FEED\"",
-            "run_internal_phone_beta_bounded.py", "verify_release_source_graph.py",
+            "run-bounded", "capture-workloads", "verify_release_source_graph.py",
             "verify_android_content_bundle.py", "check-inputs", "materialize",
             "--framework net10.0-android36.0", "--runtime android-arm64",
             "-p:AndroidPackageFormats=apk", "-m:1", "--warnaserror",
@@ -576,6 +939,8 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "568fd2c602494329d19fbe8d9a2c83a4c2e82754b50e31141b192c1af7ccf964",
             "202a29a35b4768c3306349ee40a34d8f23ada97c0b0ef11e104763b5ff9cc60e",
             'java_command="${CHUMMER_JAVA:-java}"',
+            'javac_command="${CHUMMER_JAVAC:-javac}"',
+            "AndroidSdkBuildToolsVersion=$android_build_tools_version",
         )
         for fragment in required:
             with self.subTest(fragment=fragment):

@@ -3,10 +3,13 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 import importlib.util
+import io
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -15,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 from typing import Callable, Mapping
+import xml.etree.ElementTree as ET
 import zipfile
 
 
@@ -34,6 +38,8 @@ W5_LOCK_SHA256 = "64454d5420e2a5430a046d392c6eea2ca41d9105c1667f2b8a66e1f61064cc
 W5_AUTHORITY_BINDING_SHA256 = "7f7ab5b827f69eee79addcc5cd47204d9cfa7387acd06c6894329088b6bae839"
 W5_PRESENTATION_COMMIT = "a8a317aff534dc5fd47f2db1bc39466799021990"
 W5_PRESENTATION_TREE = "f8214243280030de5d134351f39ea4b23afbe394"
+W41_PRESENTATION_LOCK_SHA256 = "568fd2c602494329d19fbe8d9a2c83a4c2e82754b50e31141b192c1af7ccf964"
+W41_DESKTOP_LOCK_SHA256 = "202a29a35b4768c3306349ee40a34d8f23ada97c0b0ef11e104763b5ff9cc60e"
 FULL_PROJECT_LOCK_SHA256 = "9037d4afc11dd8661dfbcccbc67a9f814d110fb17cf985cf215268e12ae3583e"
 FULL_PROJECT_LOCK_SIZE = 72165
 PRODUCTION_PRESENTATION_COMMIT = "3a5ca054e1ce126a02dec4199dc92233dfee8804"
@@ -99,6 +105,115 @@ DOES_NOT_ASSERT = (
 SHA40_PATTERN = re.compile(r"[0-9a-f]{40}")
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?")
+JAVA_VERSION_PATTERN = re.compile(r'^(?:openjdk|java) version "(?P<version>[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?)"(?:\s.*)?$')
+JAVAC_VERSION_PATTERN = re.compile(r'^javac (?P<version>[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?)$')
+COMMAND_JOURNAL_CONTRACT = "chummer.android.api36-bounded-command-journal/v1"
+RAW_COMMAND_JOURNAL_CONTRACT = "chummer.android.internal-phone-beta-command-journal/v1"
+EXPECTED_APK_BASENAME = f"{PACKAGE}-Signed.apk"
+PHASE_NAMES = (
+    "toolchain-intake", "source-graph-intake", "core-content-intake", "w5-build-input-intake",
+    "locked-full-restore", "serialized-full-maui-build",
+    "apk-content-verification", "post-build-source-graph-seal",
+)
+ENVIRONMENT_ALLOWLIST = frozenset({
+    "ANDROID_HOME", "DOTNET_CLI_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT",
+    "DOTNET_CLI_USE_MSBUILD_SERVER", "HOME", "JAVA_HOME", "LANG", "LC_ALL",
+    "MSBUILDDISABLENODEREUSE", "NUGET_PACKAGES", "PATH", "TMPDIR",
+})
+
+
+@dataclass(frozen=True)
+class StableFileSnapshot:
+    path: Path
+    label: str
+    data: bytes
+    sha256: str
+    size: int
+    device: int
+    inode: int
+    mode: int
+    modified_ns: int
+    changed_ns: int
+
+    def binding(self) -> dict[str, object]:
+        return {"sha256": self.sha256, "sizeBytes": self.size}
+
+
+class SnapshotRegistry:
+    """Capture regular files through one descriptor and reject later byte/identity drift."""
+
+    def __init__(self) -> None:
+        self._snapshots: dict[Path, StableFileSnapshot] = {}
+
+    @staticmethod
+    def _canonical(path: Path, label: str) -> Path:
+        if not path.is_absolute():
+            raise ValueError(f"{label} must be an absolute path")
+        try:
+            resolved = path.resolve(strict=True)
+        except (FileNotFoundError, RuntimeError, OSError) as error:
+            raise ValueError(f"{label} is missing or has an unsafe path") from error
+        if resolved != path:
+            raise ValueError(f"{label} path must contain no symlink component")
+        return path
+
+    @staticmethod
+    def _read_descriptor(path: Path, label: str) -> StableFileSnapshot:
+        SnapshotRegistry._canonical(path, label)
+        flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            descriptor = os.open(path, flags)
+        except OSError as error:
+            raise ValueError(f"{label} cannot be opened as a stable regular file") from error
+        try:
+            before = os.fstat(descriptor)
+            if not stat.S_ISREG(before.st_mode):
+                raise ValueError(f"{label} must be a regular file")
+            chunks: list[bytes] = []
+            while chunk := os.read(descriptor, 1024 * 1024):
+                chunks.append(chunk)
+            after = os.fstat(descriptor)
+        finally:
+            os.close(descriptor)
+        identity_before = (
+            before.st_dev, before.st_ino, before.st_mode, before.st_size,
+            before.st_mtime_ns, before.st_ctime_ns,
+        )
+        identity_after = (
+            after.st_dev, after.st_ino, after.st_mode, after.st_size,
+            after.st_mtime_ns, after.st_ctime_ns,
+        )
+        if identity_before != identity_after:
+            raise ValueError(f"{label} changed while it was being captured")
+        data = b"".join(chunks)
+        if len(data) != before.st_size:
+            raise ValueError(f"{label} size changed while it was being captured")
+        return StableFileSnapshot(
+            path=path, label=label, data=data, sha256=hashlib.sha256(data).hexdigest(),
+            size=len(data), device=before.st_dev, inode=before.st_ino,
+            mode=before.st_mode, modified_ns=before.st_mtime_ns,
+            changed_ns=before.st_ctime_ns,
+        )
+
+    def capture(self, path: Path, label: str) -> StableFileSnapshot:
+        existing = self._snapshots.get(path)
+        if existing is not None:
+            return existing
+        snapshot = self._read_descriptor(path, label)
+        self._snapshots[path] = snapshot
+        return snapshot
+
+    def recheck_all(self) -> None:
+        for original in self._snapshots.values():
+            current = self._read_descriptor(original.path, original.label)
+            if (
+                current.sha256, current.size, current.device, current.inode,
+                current.mode, current.modified_ns, current.changed_ns,
+            ) != (
+                original.sha256, original.size, original.device, original.inode,
+                original.mode, original.modified_ns, original.changed_ns,
+            ):
+                raise ValueError(f"{original.label} changed before provenance seal")
 
 
 def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -110,11 +225,10 @@ def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
     return result
 
 
-def load_strict_json(path: Path, label: str) -> dict[str, object]:
-    require_regular(path, label)
+def load_strict_json_bytes(data: bytes, label: str) -> dict[str, object]:
     try:
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            data.decode("utf-8"),
             object_pairs_hook=reject_duplicate_keys,
             parse_constant=lambda token: (_ for _ in ()).throw(
                 ValueError(f"{label} contains non-finite number {token}")
@@ -125,6 +239,17 @@ def load_strict_json(path: Path, label: str) -> dict[str, object]:
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be one JSON object")
     return value
+
+
+def load_strict_json(
+    path: Path, label: str, snapshots: SnapshotRegistry | None = None,
+) -> dict[str, object]:
+    if snapshots is None:
+        require_regular(path, label)
+        data = path.read_bytes()
+    else:
+        data = snapshots.capture(path, label).data
+    return load_strict_json_bytes(data, label)
 
 
 def canonical_sha256(value: object) -> str:
@@ -187,7 +312,9 @@ def require_sha(value: object, label: str, *, length: int = 64) -> str:
     return value
 
 
-def binding(path: Path) -> dict[str, object]:
+def binding(path: Path, snapshots: SnapshotRegistry | None = None) -> dict[str, object]:
+    if snapshots is not None:
+        return snapshots.capture(path, str(path)).binding()
     require_regular(path, str(path))
     return {"sha256": file_sha256(path), "sizeBytes": path.stat().st_size}
 
@@ -253,12 +380,14 @@ def validate_w5_receipt(
     evidence_directory: Path,
     *,
     verifier: Callable[[Path, Path], Mapping[str, object]] = _verify_w5_external,
+    snapshots: SnapshotRegistry | None = None,
 ) -> dict[str, object]:
+    receipt_snapshot = snapshots.capture(receipt_path, "W5 compile receipt") if snapshots else None
     require_regular(receipt_path, "W5 compile receipt")
     require_directory(evidence_directory, "W5 evidence directory")
-    if file_sha256(receipt_path) != W5_RECEIPT_SHA256:
+    if (receipt_snapshot.sha256 if receipt_snapshot else file_sha256(receipt_path)) != W5_RECEIPT_SHA256:
         raise ValueError("W5 compile receipt digest is not the authorized PASS receipt")
-    payload = load_strict_json(receipt_path, "W5 compile receipt")
+    payload = load_strict_json(receipt_path, "W5 compile receipt", snapshots)
     exact = {
         "contractName": W5_CONTRACT, "status": "pass",
         "authorityClass": "internal_phone_beta_only", "publicationAuthorized": False,
@@ -277,14 +406,49 @@ def validate_w5_receipt(
     for field, expected in exact.items():
         if payload.get(field) != expected:
             raise ValueError(f"W5 compile receipt authoritative field mismatch: {field}")
+    evidence_rows = payload.get("evidence")
+    if evidence_rows is not None:
+        if not isinstance(evidence_rows, list) or not evidence_rows:
+            raise ValueError("W5 evidence inventory is invalid")
+        names: list[str] = []
+        for index, row in enumerate(evidence_rows):
+            row = require_exact_keys(row, {"path", "sha256", "sizeBytes"}, f"W5 evidence row {index}")
+            name = row.get("path")
+            if (
+                not isinstance(name, str) or not name or name in names
+                or Path(name).name != name or name in {".", ".."}
+            ):
+                raise ValueError("W5 evidence inventory path is not exact")
+            names.append(name)
+            if (
+                not isinstance(row.get("sha256"), str)
+                or SHA256_PATTERN.fullmatch(row["sha256"]) is None
+                or type(row.get("sizeBytes")) is not int or row["sizeBytes"] < 0
+            ):
+                raise ValueError("W5 evidence digest/size types are invalid")
+            evidence_snapshot = snapshots.capture(
+                evidence_directory / name, f"W5 evidence {name}",
+            ) if snapshots else None
+            actual = evidence_snapshot.binding() if evidence_snapshot else binding(evidence_directory / name)
+            if actual != {"sha256": row.get("sha256"), "sizeBytes": row.get("sizeBytes")}:
+                raise ValueError(f"W5 evidence row does not bind bytes: {name}")
+        with os.scandir(evidence_directory) as iterator:
+            entries = list(iterator)
+        if any(entry.is_symlink() or not entry.is_file(follow_symlinks=False) for entry in entries):
+            raise ValueError("W5 evidence directory contains a non-regular entry")
+        actual_names = sorted(entry.name for entry in entries)
+        if actual_names != sorted(names):
+            raise ValueError("W5 evidence directory inventory is not exact")
     verified = verifier(receipt_path, evidence_directory)
     if verified.get("status") != "pass" or verified.get("verifiedReceiptStatus") != "pass":
         raise ValueError("W5 compile receipt did not pass its committed verifier")
     return payload
 
 
-def validate_source_graph(path: Path, android_identity: Mapping[str, str]) -> dict[str, object]:
-    graph = load_strict_json(path, "release source graph")
+def validate_source_graph(
+    path: Path, android_identity: Mapping[str, str], snapshots: SnapshotRegistry | None = None,
+) -> dict[str, object]:
+    graph = load_strict_json(path, "release source graph", snapshots)
     require_exact_keys(graph, {
         "contractName", "generatedAtUtc", "authorityState", "publicationAuthorized",
         "generator", "repositories", "packagePins", "ownerPackagePins",
@@ -411,15 +575,22 @@ def validate_source_graph(path: Path, android_identity: Mapping[str, str]) -> di
 
 def validate_package_authority(
     path: Path, *, committed_path: Path, w5_receipt: Mapping[str, object],
+    snapshots: SnapshotRegistry | None = None,
 ) -> dict[str, object]:
     require_regular(path, "internal package authority")
     require_regular(committed_path, "committed internal package authority")
-    digest = file_sha256(path)
+    source_snapshot = snapshots.capture(path, "internal package authority") if snapshots else None
+    committed_snapshot = snapshots.capture(committed_path, "committed internal package authority") if snapshots else None
+    digest = source_snapshot.sha256 if source_snapshot else file_sha256(path)
     if digest != W5_AUTHORITY_BINDING_SHA256 or digest != w5_receipt.get("authorityBindingSha256"):
         raise ValueError("internal package authority digest is not W5-bound")
-    if path.read_bytes() != committed_path.read_bytes():
+    if (
+        source_snapshot.data if source_snapshot else path.read_bytes()
+    ) != (
+        committed_snapshot.data if committed_snapshot else committed_path.read_bytes()
+    ):
         raise ValueError("internal package authority differs from the committed authority")
-    payload = load_strict_json(path, "internal package authority")
+    payload = load_strict_json(path, "internal package authority", snapshots)
     if (
         payload.get("contractName") != PACKAGE_AUTHORITY_CONTRACT
         or payload.get("authorityClass") != "internal_phone_beta_only"
@@ -442,8 +613,9 @@ def validate_package_authority(
 
 def validate_content_receipt(
     path: Path, *, apk: Path | None, source_binding: Mapping[str, object] | None = None,
+    snapshots: SnapshotRegistry | None = None,
 ) -> dict[str, object]:
-    receipt = load_strict_json(path, "Core content receipt")
+    receipt = load_strict_json(path, "Core content receipt", snapshots)
     require_exact_keys(receipt, {
         "status", "schema", "coreRevision", "bundleDigest", "manifestSha256",
         "apkSha256", "canonicalFileCount", "canonicalByteCount",
@@ -466,10 +638,11 @@ def validate_content_receipt(
         if receipt.get("apkVerified") is not False or receipt.get("apkSha256") is not None or receipt.get("apkCanonicalFileCount") != 0:
             raise ValueError("pre-build Core content receipt contains an APK success claim")
     else:
+        apk_snapshot = snapshots.capture(apk, "ARM64 APK") if snapshots else None
         require_regular(apk, "ARM64 APK")
         if (
             receipt.get("apkVerified") is not True
-            or receipt.get("apkSha256") != file_sha256(apk)
+            or receipt.get("apkSha256") != (apk_snapshot.sha256 if apk_snapshot else file_sha256(apk))
             or receipt.get("apkCanonicalFileCount") != count
         ):
             raise ValueError("post-build Core content receipt does not bind the complete APK content")
@@ -480,8 +653,10 @@ def validate_content_receipt(
     return receipt
 
 
-def validate_full_project_lock(path: Path) -> dict[str, object]:
-    lock = load_strict_json(path, "full-project package lock")
+def validate_full_project_lock(
+    path: Path, snapshots: SnapshotRegistry | None = None,
+) -> dict[str, object]:
+    lock = load_strict_json(path, "full-project package lock", snapshots)
     require_exact_keys(lock, {"version", "dependencies"}, "full-project package lock")
     if lock.get("version") != 1:
         raise ValueError("full-project package lock version must be 1")
@@ -525,8 +700,11 @@ def validate_full_project_lock(path: Path) -> dict[str, object]:
     return lock
 
 
-def validate_assets(path: Path, *, package_authority: Mapping[str, object]) -> dict[str, object]:
-    assets = load_strict_json(path, "full-project restore assets")
+def validate_assets(
+    path: Path, *, package_authority: Mapping[str, object],
+    snapshots: SnapshotRegistry | None = None,
+) -> dict[str, object]:
+    assets = load_strict_json(path, "full-project restore assets", snapshots)
     libraries = assets.get("libraries")
     if not isinstance(libraries, dict):
         raise ValueError("full-project restore assets libraries are invalid")
@@ -548,10 +726,31 @@ def validate_assets(path: Path, *, package_authority: Mapping[str, object]) -> d
     return assets
 
 
-def apk_abis(path: Path) -> list[str]:
+def validate_apk_output_directory(
+    path: Path, snapshots: SnapshotRegistry | None = None,
+) -> StableFileSnapshot | None:
+    if path.name != EXPECTED_APK_BASENAME:
+        raise ValueError("APK basename is not the expected signed package")
+    require_directory(path.parent, "APK output directory")
+    apk_entries: list[str] = []
+    with os.scandir(path.parent) as entries:
+        for entry in entries:
+            if entry.is_symlink():
+                raise ValueError("APK output directory contains a symlink")
+            if entry.name.lower().endswith(".apk"):
+                if not entry.is_file(follow_symlinks=False):
+                    raise ValueError("APK output directory contains a non-regular APK")
+                apk_entries.append(entry.name)
+    if apk_entries != [EXPECTED_APK_BASENAME]:
+        raise ValueError(f"APK output inventory must contain exactly one signed ARM64 APK: {sorted(apk_entries)!r}")
+    return snapshots.capture(path, "signed ARM64 APK") if snapshots else None
+
+
+def apk_abis(path: Path, snapshots: SnapshotRegistry | None = None) -> list[str]:
+    snapshot = snapshots.capture(path, "ARM64 APK") if snapshots else None
     require_regular(path, "ARM64 APK")
     try:
-        with zipfile.ZipFile(path) as archive:
+        with zipfile.ZipFile(io.BytesIO(snapshot.data) if snapshot else path) as archive:
             abis = sorted({
                 parts[1] for name in archive.namelist()
                 if len(parts := name.split("/")) >= 3 and parts[0] == "lib" and parts[1]
@@ -563,12 +762,240 @@ def apk_abis(path: Path) -> list[str]:
     return abis
 
 
+def _probe_version(executable: Path, label: str) -> str:
+    completed = subprocess.run(
+        [os.fspath(executable), "-version"], check=False, capture_output=True,
+        text=True, timeout=20, env={"LC_ALL": "C", "PATH": os.environ.get("PATH", "")},
+    )
+    output = "\n".join(part for part in (completed.stdout, completed.stderr) if part).strip()
+    lines = [line.strip() for line in output.splitlines() if line.strip()]
+    if completed.returncode != 0 or not lines:
+        raise ValueError(f"{label} identity command failed")
+    return lines[0]
+
+
+def validate_toolchain(
+    *, java_path: Path, javac_path: Path, dotnet_path: Path,
+    dotnet_workloads_path: Path, android_sdk_packages_path: Path,
+    android_build_tools_version: str, dotnet_version: str,
+    snapshots: SnapshotRegistry,
+) -> dict[str, object]:
+    if dotnet_version != DOTNET_SDK_VERSION:
+        raise ValueError("full MAUI build SDK selection drifted")
+    for path, label in (
+        (java_path, "Java runtime"), (javac_path, "Java compiler"),
+        (dotnet_path, ".NET host"),
+    ):
+        snapshot = snapshots.capture(path, label)
+        if snapshot.mode & 0o111 == 0:
+            raise ValueError(f"{label} must be executable")
+    if java_path.name != "java" or javac_path.name != "javac" or java_path.parent != javac_path.parent:
+        raise ValueError("java and javac must be the exact sibling tools of one JDK")
+    dotnet_probe = subprocess.run(
+        [os.fspath(dotnet_path), "--version"], check=False, capture_output=True,
+        text=True, timeout=20, env={"LC_ALL": "C", "PATH": os.environ.get("PATH", "")},
+    )
+    if dotnet_probe.returncode != 0 or dotnet_probe.stdout.strip() != DOTNET_SDK_VERSION:
+        raise ValueError("real .NET host SDK identity is not exact")
+    java_line = _probe_version(java_path, "Java runtime")
+    javac_line = _probe_version(javac_path, "Java compiler")
+    java_match = JAVA_VERSION_PATTERN.fullmatch(java_line)
+    javac_match = JAVAC_VERSION_PATTERN.fullmatch(javac_line)
+    if java_match is None or javac_match is None:
+        raise ValueError("JDK version output is not canonical")
+    if java_match.group("version") != javac_match.group("version"):
+        raise ValueError("java and javac versions do not match")
+
+    workloads = load_strict_json(dotnet_workloads_path, ".NET workload inventory", snapshots)
+    require_exact_keys(workloads, {"installed", "updateAvailable"}, ".NET workload inventory")
+    installed = workloads.get("installed")
+    updates = workloads.get("updateAvailable")
+    if (
+        not isinstance(installed, list)
+        or not all(isinstance(value, str) and value for value in installed)
+        or installed != sorted(set(installed))
+        or "maui-android" not in installed
+        or not isinstance(updates, list)
+        or not all(isinstance(value, str) and value for value in updates)
+        or updates != sorted(set(updates))
+    ):
+        raise ValueError(".NET workload inventory does not prove maui-android")
+
+    packages_snapshot = snapshots.capture(android_sdk_packages_path, "Android SDK package inventory")
+    try:
+        root = ET.fromstring(packages_snapshot.data)
+    except ET.ParseError as error:
+        raise ValueError("Android SDK packages.xml is not well-formed XML") from error
+    package_paths: list[str] = []
+    for element in root.iter():
+        if element.tag.rsplit("}", 1)[-1] == "localPackage":
+            package_path = element.get("path")
+            if not isinstance(package_path, str) or not package_path:
+                raise ValueError("Android SDK localPackage path is invalid")
+            package_paths.append(package_path)
+    if len(package_paths) != len(set(package_paths)):
+        raise ValueError("Android SDK packages.xml contains duplicate package identities")
+    required = {
+        "platforms;android-36", f"build-tools;{android_build_tools_version}",
+        "platform-tools",
+    }
+    if not VERSION_PATTERN.fullmatch(android_build_tools_version) or not required.issubset(package_paths):
+        raise ValueError("Android SDK inventory does not contain the selected API36 toolchain")
+    return {
+        "dotnetSdkVersion": DOTNET_SDK_VERSION,
+        "dotnetHost": snapshots.capture(dotnet_path, ".NET host").binding(),
+        "dotnetWorkloads": {
+            **snapshots.capture(dotnet_workloads_path, ".NET workload inventory").binding(),
+            "installed": installed, "updateAvailable": updates,
+        },
+        "java": {
+            **snapshots.capture(java_path, "Java runtime").binding(),
+            "version": java_match.group("version"), "versionLine": java_line,
+        },
+        "javac": {
+            **snapshots.capture(javac_path, "Java compiler").binding(),
+            "version": javac_match.group("version"), "versionLine": javac_line,
+        },
+        "androidSdkPackages": {
+            **packages_snapshot.binding(), "selected": sorted(required),
+        },
+        "androidBuildToolsVersion": android_build_tools_version,
+        "targetFramework": TARGET_FRAMEWORK, "targetSdkVersion": 36,
+        "runtimeIdentifier": RUNTIME_IDENTIFIER, "configuration": CONFIGURATION,
+        "serializedBuild": True,
+    }
+
+
+def _require_argv_value(argv: list[str], option: str, expected: str) -> None:
+    try:
+        index = argv.index(option)
+    except ValueError as error:
+        raise ValueError(f"bounded command is missing {option}") from error
+    if index + 1 >= len(argv) or argv[index + 1] != expected:
+        raise ValueError(f"bounded command {option} value is not exact")
+
+
+def validate_phase_argv(
+    phase: str, argv: object, *, android_root: Path, apk: Path,
+    source_graph_path: Path, content_source_receipt_path: Path,
+    content_apk_receipt_path: Path, android_build_tools_version: str,
+    python_path: Path, dotnet_path: Path, presentation_root: Path,
+    core_content_root: Path, release_workspace_root: Path,
+    release_package_authority_v2_path: Path, package_authority_path: Path,
+    w5_receipt_path: Path, w5_evidence_directory: Path,
+    full_project_lock_path: Path, package_feed_path: Path,
+    offline_feed_path: Path, nuget_packages_path: Path,
+    dotnet_workloads_path: Path,
+) -> list[str]:
+    if not isinstance(argv, list) or not argv or not all(isinstance(value, str) and value for value in argv):
+        raise ValueError("bounded command argv must be a non-empty string array")
+    executable = Path(argv[0])
+    require_regular(executable, f"{phase} executable")
+    if executable.stat().st_mode & 0o111 == 0:
+        raise ValueError(f"{phase} executable is not executable")
+    project = os.fspath(android_root / "src/Chummer.Android/Chummer.Android.csproj")
+    content_manifest = os.fspath(android_root / "src/Chummer.Android/Content/chummer-content-manifest.json")
+    materializer = os.fspath(android_root / "scripts/materialize-api36-physical-build-provenance.py")
+    graph_verifier = os.fspath(android_root / "scripts/verify_release_source_graph.py")
+    content_verifier = os.fspath(android_root / "scripts/verify_android_content_bundle.py")
+    package_args = [
+        f"-p:ChummerPresentationRoot={presentation_root}",
+        f"-p:ChummerCoreEngineRoot={core_content_root}",
+        "-p:ChummerDesktopRuntimeIdentifiers=",
+        "-p:ChummerUseLocalCompatibilityTree=false",
+        "-p:ChummerUseLockedOwnerContractPackages=true",
+        "-p:RestoreLockedMode=true", "-p:RestorePackagesWithLockFile=true",
+        "-p:NuGetAudit=false",
+        f"-p:AndroidSdkBuildToolsVersion={android_build_tools_version}",
+        "-p:ChummerContractsPackageVersion=0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+        "-p:ChummerCoreRuntimePackageVersion=0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+        "-p:ChummerCampaignContractsPackageVersion=0.1.0-packageplane.android.sh1215f9389779e",
+        "-p:ChummerRunContractsPackageVersion=0.1.0-packageplane.android.sh1215f9389779e",
+        "-p:ChummerRunHubContractsPackageVersion=0.1.0-packageplane.android.sh1215f9389779e",
+        "-p:ChummerRunHubPackageVersion=0.1.0-packageplane.android.sh1215f9389779e",
+        "-p:ChummerHubRegistryContractsPackageVersion=0.1.0-packageplane.candidate.sh66c418a5004f",
+        "-p:ChummerUiKitPackageVersion=0.1.0-packageplane.android.shd51ecd99cf720",
+    ]
+    if phase == "source-graph-intake":
+        expected = [
+            os.fspath(python_path), graph_verifier, "--android-root", os.fspath(android_root),
+            "--presentation-root", os.fspath(presentation_root), "--core-content-root",
+            os.fspath(core_content_root), "--workspace-root", os.fspath(release_workspace_root),
+            "--package-authority", os.fspath(release_package_authority_v2_path),
+            "--verify-existing", os.fspath(source_graph_path),
+        ]
+    elif phase == "toolchain-intake":
+        expected = [
+            os.fspath(python_path), materializer, "capture-workloads", "--dotnet",
+            os.fspath(dotnet_path), "--output", os.fspath(dotnet_workloads_path),
+        ]
+    elif phase == "core-content-intake":
+        expected = [
+            os.fspath(python_path), content_verifier, "--repo-root", os.fspath(android_root),
+            "--core-root", os.fspath(core_content_root), "--manifest", content_manifest,
+            "--receipt", os.fspath(content_source_receipt_path), "--check",
+        ]
+    elif phase == "w5-build-input-intake":
+        expected = [
+            os.fspath(python_path), materializer, "check-inputs", "--android-root", os.fspath(android_root),
+            "--presentation-root", os.fspath(presentation_root), "--core-content-root", os.fspath(core_content_root),
+            "--w5-receipt", os.fspath(w5_receipt_path), "--w5-evidence-directory", os.fspath(w5_evidence_directory),
+            "--source-graph", os.fspath(source_graph_path), "--package-authority", os.fspath(package_authority_path),
+            "--release-package-authority-v2", os.fspath(release_package_authority_v2_path),
+            "--content-source-receipt", os.fspath(content_source_receipt_path),
+            "--full-project-lock", os.fspath(full_project_lock_path),
+        ]
+    elif phase == "locked-full-restore":
+        expected = [
+            os.fspath(dotnet_path), "restore", project, "--locked-mode", "--disable-parallel",
+            "--no-http-cache", "--packages", os.fspath(nuget_packages_path),
+            "--source", os.fspath(package_feed_path), "--source", os.fspath(offline_feed_path),
+            *package_args,
+        ]
+    elif phase == "serialized-full-maui-build":
+        expected = [
+            os.fspath(dotnet_path), "build", project, "--configuration", CONFIGURATION,
+            "--framework", TARGET_FRAMEWORK, "--runtime", RUNTIME_IDENTIFIER,
+            "--no-restore", "--warnaserror", "-m:1", "-nr:false",
+            "--disable-build-servers", "-p:UseSharedCompilation=false",
+            "-p:BuildInParallel=false", "-p:AndroidPackageFormats=apk", *package_args,
+        ]
+    elif phase == "apk-content-verification":
+        expected = [
+            os.fspath(python_path), content_verifier, "--repo-root", os.fspath(android_root),
+            "--core-root", os.fspath(core_content_root), "--manifest", content_manifest,
+            "--apk", os.fspath(apk), "--receipt", os.fspath(content_apk_receipt_path), "--check",
+        ]
+    elif phase == "post-build-source-graph-seal":
+        expected = [
+            os.fspath(python_path), graph_verifier, "--android-root", os.fspath(android_root),
+            "--workspace-root", os.fspath(release_workspace_root), "--package-authority",
+            os.fspath(release_package_authority_v2_path), "--verify-existing", os.fspath(source_graph_path),
+        ]
+    else:
+        raise ValueError("bounded command phase is outside the exact build contract")
+    if argv != expected:
+        raise ValueError(f"{phase} argv is not exact")
+    return argv
+
+
 def validate_execution_evidence(
-    source_graph_log: Path, content_source_log: Path, build_inputs_log: Path,
+    toolchain_log: Path, source_graph_log: Path, content_source_log: Path, build_inputs_log: Path,
     restore_log: Path, build_log: Path, content_apk_log: Path,
-    source_graph_seal_log: Path, command_journal: Path,
+    source_graph_seal_log: Path, command_journal: Path, raw_command_journal: Path,
+    *, android_root: Path, apk: Path, source_graph_path: Path,
+    content_source_receipt_path: Path, content_apk_receipt_path: Path,
+    android_build_tools_version: str, snapshots: SnapshotRegistry,
+    python_path: Path, dotnet_path: Path, java_path: Path,
+    android_sdk_packages_path: Path, dotnet_workloads_path: Path,
+    presentation_root: Path, core_content_root: Path,
+    release_workspace_root: Path, release_package_authority_v2_path: Path,
+    package_authority_path: Path, w5_receipt_path: Path,
+    w5_evidence_directory: Path, full_project_lock_path: Path,
+    package_feed_path: Path, offline_feed_path: Path, nuget_packages_path: Path,
 ) -> None:
     for path, label in (
+        (toolchain_log, "toolchain intake log"),
         (source_graph_log, "source graph intake log"),
         (content_source_log, "Core content intake log"),
         (build_inputs_log, "W5 build inputs log"),
@@ -577,15 +1004,20 @@ def validate_execution_evidence(
         (content_apk_log, "APK content verification log"),
         (source_graph_seal_log, "post-build source graph seal log"),
         (command_journal, "bounded command journal"),
+        (raw_command_journal, "raw bounded-runner journal"),
     ):
-        require_regular(path, label)
-    restore = restore_log.read_text(encoding="utf-8")
+        if snapshots.capture(path, label).size <= 0:
+            raise ValueError(f"{label} must not be empty")
+    try:
+        restore = snapshots.capture(restore_log, "locked restore log").data.decode("utf-8")
+        build = snapshots.capture(build_log, "full MAUI build log").data.decode("utf-8")
+    except UnicodeError as error:
+        raise ValueError("build evidence logs must be UTF-8") from error
     if (
         not ("Restored " in restore or "All projects are up-to-date for restore." in restore)
         or re.search(r"\b(?:warning|error)\b", restore, re.IGNORECASE)
     ):
         raise ValueError("locked restore evidence does not prove a clean pass")
-    build = build_log.read_text(encoding="utf-8")
     if not (
         "Build succeeded." in build
         and re.search(r"\b0 Warning\(s\)", build)
@@ -593,15 +1025,21 @@ def validate_execution_evidence(
     ):
         raise ValueError("full MAUI build evidence does not prove warnings=0/errors=0")
     rows: list[dict[str, object]] = []
-    for index, line in enumerate(command_journal.read_bytes().splitlines(), start=1):
+    for index, line in enumerate(snapshots.capture(command_journal, "bounded command journal").data.splitlines(), start=1):
         try:
-            row = json.loads(line.decode("utf-8"), object_pairs_hook=reject_duplicate_keys)
+            row = json.loads(
+                line.decode("utf-8"), object_pairs_hook=reject_duplicate_keys,
+                parse_constant=lambda token: (_ for _ in ()).throw(
+                    ValueError(f"bounded command journal contains {token}")
+                ),
+            )
         except (UnicodeError, json.JSONDecodeError) as error:
             raise ValueError(f"bounded command journal row {index} is invalid") from error
         if not isinstance(row, dict):
             raise ValueError(f"bounded command journal row {index} is not an object")
         rows.append(row)
     expected = (
+        ("toolchain-intake", toolchain_log),
         ("source-graph-intake", source_graph_log),
         ("core-content-intake", content_source_log),
         ("w5-build-input-intake", build_inputs_log),
@@ -613,25 +1051,144 @@ def validate_execution_evidence(
     if len(rows) != len(expected) * 2:
         raise ValueError("bounded command journal row count is not exact")
     for index, (phase, output) in enumerate(expected):
-        started, row = rows[index * 2:index * 2 + 2]
+        started, finished = rows[index * 2:index * 2 + 2]
+        common_keys = {
+            "contractName", "phase", "event", "argv", "workingDirectory",
+            "environment", "timeoutSeconds", "deadlineEpoch", "startedEpoch",
+            "outputPath", "processGroupTermination", "publicationAuthorized",
+        }
+        require_exact_keys(started, common_keys, f"bounded journal {phase} started")
+        require_exact_keys(finished, common_keys | {
+            "elapsedSeconds", "exitCode", "timedOut", "outputSha256", "termination",
+        }, f"bounded journal {phase} finished")
         if (
-            started.get("event") != "started" or started.get("phase") != phase
+            started.get("contractName") != COMMAND_JOURNAL_CONTRACT
+            or started.get("event") != "started" or started.get("phase") != phase
+            or started.get("workingDirectory") != os.fspath(android_root)
+            or started.get("outputPath") != os.fspath(output)
             or started.get("processGroupTermination") is not True
             or started.get("publicationAuthorized") is not False
         ):
-            raise ValueError("bounded command journal started phase order is not exact")
+            raise ValueError("bounded command journal started phase order/context is not exact")
+        environment = started.get("environment")
         if (
-            row.get("event") != "finished" or row.get("phase") != phase
-            or row.get("outputSha256") != file_sha256(output)
-            or row.get("publicationAuthorized") is not False
-            or row.get("exitCode") != 0 or row.get("timedOut") is not False
-            or row.get("processGroupTermination") is not True
-            or not isinstance(row.get("termination"), dict)
-            or row["termination"].get("groupAbsent") is not True
-            or row["termination"].get("sigtermSent") is not False
-            or row["termination"].get("sigkillSent") is not False
+            not isinstance(environment, dict) or set(environment) != ENVIRONMENT_ALLOWLIST
+            or not all(isinstance(value, str) and value for value in environment.values())
+        ):
+            raise ValueError("bounded command environment allowlist is not exact")
+        expected_environment = {
+            "ANDROID_HOME": os.fspath(android_sdk_packages_path.parent),
+            "JAVA_HOME": os.fspath(java_path.parent.parent),
+            "NUGET_PACKAGES": os.fspath(nuget_packages_path),
+            "DOTNET_CLI_TELEMETRY_OPTOUT": "1", "DOTNET_CLI_USE_MSBUILD_SERVER": "0",
+            "MSBUILDDISABLENODEREUSE": "1", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8",
+        }
+        for key, value in expected_environment.items():
+            if environment.get(key) != value:
+                raise ValueError(f"bounded command environment value is not exact: {key}")
+        for key in ("HOME", "DOTNET_CLI_HOME", "TMPDIR"):
+            directory = Path(environment[key])
+            require_directory(directory, f"bounded environment {key}")
+        timeout = started.get("timeoutSeconds")
+        deadline = started.get("deadlineEpoch")
+        epoch = started.get("startedEpoch")
+        if (
+            not isinstance(timeout, (int, float)) or isinstance(timeout, bool) or timeout <= 0
+            or not isinstance(deadline, (int, float)) or isinstance(deadline, bool)
+            or not isinstance(epoch, (int, float)) or isinstance(epoch, bool)
+            or not all(math.isfinite(value) for value in (timeout, deadline, epoch))
+            or deadline <= epoch or timeout > deadline - epoch + 1.0
+        ):
+            raise ValueError("bounded command timeout/deadline facts are invalid")
+        argv = validate_phase_argv(
+            phase, started.get("argv"), android_root=android_root, apk=apk,
+            source_graph_path=source_graph_path,
+            content_source_receipt_path=content_source_receipt_path,
+            content_apk_receipt_path=content_apk_receipt_path,
+            android_build_tools_version=android_build_tools_version,
+            python_path=python_path, dotnet_path=dotnet_path,
+            presentation_root=presentation_root, core_content_root=core_content_root,
+            release_workspace_root=release_workspace_root,
+            release_package_authority_v2_path=release_package_authority_v2_path,
+            package_authority_path=package_authority_path,
+            w5_receipt_path=w5_receipt_path, w5_evidence_directory=w5_evidence_directory,
+            full_project_lock_path=full_project_lock_path,
+            package_feed_path=package_feed_path, offline_feed_path=offline_feed_path,
+            nuget_packages_path=nuget_packages_path,
+            dotnet_workloads_path=dotnet_workloads_path,
+        )
+        for field in common_keys - {"event"}:
+            if finished.get(field) != started.get(field):
+                raise ValueError(f"bounded command finished row drifted: {phase}/{field}")
+        elapsed = finished.get("elapsedSeconds")
+        termination = finished.get("termination")
+        if (
+            finished.get("contractName") != COMMAND_JOURNAL_CONTRACT
+            or finished.get("event") != "finished" or finished.get("phase") != phase
+            or finished.get("argv") != argv
+            or finished.get("outputSha256") != snapshots.capture(output, f"{phase} output").sha256
+            or finished.get("publicationAuthorized") is not False
+            or type(finished.get("exitCode")) is not int or finished.get("exitCode") != 0
+            or finished.get("timedOut") is not False
+            or not isinstance(elapsed, (int, float)) or isinstance(elapsed, bool)
+            or not math.isfinite(elapsed) or elapsed < 0 or elapsed > timeout + 1.0
+            or finished.get("processGroupTermination") is not True
+            or require_exact_keys(
+                termination, {"groupAbsent", "sigtermSent", "sigkillSent"},
+                f"bounded journal {phase} termination",
+            ) != {"groupAbsent": True, "sigtermSent": False, "sigkillSent": False}
+            or not all(type(value) is bool for value in termination.values())
         ):
             raise ValueError("bounded command journal contains a failed or terminated phase")
+
+    raw_rows: list[dict[str, object]] = []
+    for index, line in enumerate(
+        snapshots.capture(raw_command_journal, "raw bounded-runner journal").data.splitlines(), start=1,
+    ):
+        try:
+            raw_row = json.loads(
+                line.decode("utf-8"), object_pairs_hook=reject_duplicate_keys,
+                parse_constant=lambda token: (_ for _ in ()).throw(
+                    ValueError(f"raw bounded-runner journal contains {token}")
+                ),
+            )
+        except (UnicodeError, json.JSONDecodeError) as error:
+            raise ValueError(f"raw bounded-runner journal row {index} is invalid") from error
+        if not isinstance(raw_row, dict):
+            raise ValueError("raw bounded-runner journal row is not an object")
+        raw_rows.append(raw_row)
+    if len(raw_rows) != len(rows):
+        raise ValueError("raw/canonical bounded journal row count differs")
+    for index, (phase, output) in enumerate(expected):
+        canonical_started, canonical_finished = rows[index * 2:index * 2 + 2]
+        raw_started, raw_finished = raw_rows[index * 2:index * 2 + 2]
+        require_exact_keys(raw_started, {
+            "contractName", "phase", "event", "command", "timeoutSeconds",
+            "processGroupTermination", "publicationAuthorized",
+        }, f"raw bounded journal {phase} started")
+        require_exact_keys(raw_finished, {
+            "contractName", "phase", "event", "exitCode", "timedOut",
+            "elapsedSeconds", "outputSha256", "termination",
+            "processGroupTermination", "publicationAuthorized",
+        }, f"raw bounded journal {phase} finished")
+        if (
+            raw_started != {
+                "contractName": RAW_COMMAND_JOURNAL_CONTRACT, "phase": phase,
+                "event": "started", "command": canonical_started["argv"],
+                "timeoutSeconds": canonical_started["timeoutSeconds"],
+                "processGroupTermination": True, "publicationAuthorized": False,
+            }
+            or raw_finished != {
+                "contractName": RAW_COMMAND_JOURNAL_CONTRACT, "phase": phase,
+                "event": "finished", "exitCode": canonical_finished["exitCode"],
+                "timedOut": canonical_finished["timedOut"],
+                "elapsedSeconds": canonical_finished["elapsedSeconds"],
+                "outputSha256": snapshots.capture(output, f"{phase} output").sha256,
+                "termination": canonical_finished["termination"],
+                "processGroupTermination": True, "publicationAuthorized": False,
+            }
+        ):
+            raise ValueError("raw bounded-runner journal does not cross-bind canonical execution")
 
 
 def authenticate_inputs(
@@ -639,10 +1196,13 @@ def authenticate_inputs(
     w5_receipt_path: Path,
     w5_evidence_directory: Path,
     source_graph_path: Path, package_authority_path: Path,
+    release_package_authority_v2_path: Path,
     content_source_receipt_path: Path, full_project_lock_path: Path,
     w5_verifier: Callable[[Path, Path], Mapping[str, object]] = _verify_w5_external,
     content_verifier: Callable[[Path, Path], list[str]] = _verify_core_content_external,
+    snapshots: SnapshotRegistry | None = None,
 ) -> dict[str, object]:
+    snapshots = snapshots or SnapshotRegistry()
     android_identity = repository_identity(android_root)
     presentation_identity = repository_identity(
         presentation_root, label="W5 Presentation build source",
@@ -656,6 +1216,18 @@ def authenticate_inputs(
     )
     if core_content_identity["commit"] != CORE_CONTENT_REVISION:
         raise ValueError("Core content source revision is not exact")
+    presentation_lock = snapshots.capture(
+        presentation_root / "Chummer.Presentation/packages.lock.json",
+        "W4.1 Presentation package lock",
+    )
+    desktop_lock = snapshots.capture(
+        presentation_root / "Chummer.Desktop.Runtime/packages.lock.json",
+        "W4.1 Desktop.Runtime package lock",
+    )
+    if presentation_lock.sha256 != W41_PRESENTATION_LOCK_SHA256:
+        raise ValueError("W4.1 Presentation package lock is not exact")
+    if desktop_lock.sha256 != W41_DESKTOP_LOCK_SHA256:
+        raise ValueError("W4.1 Desktop.Runtime package lock is not exact")
     ancestor = subprocess.run(
         ["git", "-C", os.fspath(android_root), "merge-base", "--is-ancestor", W5_ANDROID_COMMIT, "HEAD"],
         check=False, capture_output=True, timeout=30,
@@ -665,19 +1237,32 @@ def authenticate_inputs(
     changed = set(filter(None, _git(android_root, "diff", "--name-only", f"{W5_ANDROID_COMMIT}..HEAD").splitlines()))
     if not changed.issubset(ALLOWED_POST_W5_PATHS):
         raise ValueError(f"Android product source changed after W5 proof: {sorted(changed - ALLOWED_POST_W5_PATHS)}")
-    w5 = validate_w5_receipt(w5_receipt_path, w5_evidence_directory, verifier=w5_verifier)
-    graph = validate_source_graph(source_graph_path, android_identity)
+    w5 = validate_w5_receipt(
+        w5_receipt_path, w5_evidence_directory, verifier=w5_verifier,
+        snapshots=snapshots,
+    )
+    graph = validate_source_graph(source_graph_path, android_identity, snapshots)
+    release_authority_v2 = snapshots.capture(
+        release_package_authority_v2_path, "v2 release package authority",
+    )
+    load_strict_json(
+        release_package_authority_v2_path, "v2 release package authority", snapshots,
+    )
+    generator_snapshot = snapshots.capture(
+        android_root / "scripts/verify_release_source_graph.py",
+        "release source graph verifier",
+    )
     expected_generator = {
         "path": "scripts/verify_release_source_graph.py",
-        "sha256": file_sha256(android_root / "scripts/verify_release_source_graph.py"),
-        "size_bytes": (android_root / "scripts/verify_release_source_graph.py").stat().st_size,
+        "sha256": generator_snapshot.sha256,
+        "size_bytes": generator_snapshot.size,
     }
     if graph.get("generator") != expected_generator:
         raise ValueError("release source graph generator bytes do not match current Android source")
     authority = validate_package_authority(
         package_authority_path,
         committed_path=android_root / "eng/internal-phone-beta-package-authority.json",
-        w5_receipt=w5,
+        w5_receipt=w5, snapshots=snapshots,
     )
     for graph_row, authority_row in zip(
         graph["packagePins"], authority["packagePins"], strict=True,
@@ -691,16 +1276,17 @@ def authenticate_inputs(
         for field in ("package_id", "version", "sha256", "size_bytes"):
             if graph_row.get(field) != authority_row.get(field):
                 raise ValueError(f"owner package authority cross-binding mismatch: {field}")
-    content = validate_content_receipt(content_source_receipt_path, apk=None)
+    content = validate_content_receipt(content_source_receipt_path, apk=None, snapshots=snapshots)
     content_manifest_path = android_root / "src/Chummer.Android/Content/chummer-content-manifest.json"
-    content_manifest = load_strict_json(content_manifest_path, "committed Core content manifest")
+    content_manifest_snapshot = snapshots.capture(content_manifest_path, "committed Core content manifest")
+    content_manifest = load_strict_json(content_manifest_path, "committed Core content manifest", snapshots)
     files = content_manifest.get("files")
     if not isinstance(files, list):
         raise ValueError("committed Core content manifest file inventory is invalid")
     expected_content = {
         "coreRevision": content_manifest.get("coreRevision"),
         "bundleDigest": content_manifest.get("bundleDigest"),
-        "manifestSha256": file_sha256(content_manifest_path),
+        "manifestSha256": content_manifest_snapshot.sha256,
         "canonicalFileCount": len(files),
         "canonicalByteCount": sum(
             row.get("size", 0) for row in files
@@ -717,17 +1303,21 @@ def authenticate_inputs(
     if full_project_lock_path != expected_lock_path:
         raise ValueError("full-project package lock path is not canonical")
     if (
-        file_sha256(full_project_lock_path) != FULL_PROJECT_LOCK_SHA256
-        or full_project_lock_path.stat().st_size != FULL_PROJECT_LOCK_SIZE
+        snapshots.capture(full_project_lock_path, "full-project package lock").sha256 != FULL_PROJECT_LOCK_SHA256
+        or snapshots.capture(full_project_lock_path, "full-project package lock").size != FULL_PROJECT_LOCK_SIZE
     ):
         raise ValueError("full-project package lock bytes are not exact")
-    validate_full_project_lock(full_project_lock_path)
+    validate_full_project_lock(full_project_lock_path, snapshots)
     return {
         "androidIdentity": android_identity,
         "presentationBuildIdentity": presentation_identity,
         "coreContentIdentity": core_content_identity,
         "w5": w5, "sourceGraph": graph,
         "packageAuthority": authority, "contentSource": content,
+        "presentationLock": presentation_lock.binding(),
+        "desktopLock": desktop_lock.binding(),
+        "releasePackageAuthorityV2": release_authority_v2.binding(),
+        "snapshots": snapshots,
     }
 
 
@@ -735,17 +1325,32 @@ def create_manifest(
     *, android_root: Path, presentation_root: Path, core_content_root: Path,
     apk: Path, w5_receipt_path: Path,
     w5_evidence_directory: Path, source_graph_path: Path,
-    package_authority_path: Path, content_source_receipt_path: Path,
+    package_authority_path: Path, release_package_authority_v2_path: Path,
+    content_source_receipt_path: Path,
     content_apk_receipt_path: Path, full_project_lock_path: Path,
-    assets_path: Path, source_graph_log_path: Path, content_source_log_path: Path,
+    assets_path: Path, toolchain_log_path: Path,
+    source_graph_log_path: Path, content_source_log_path: Path,
     build_inputs_log_path: Path, restore_log_path: Path, build_log_path: Path,
     content_apk_log_path: Path, source_graph_seal_log_path: Path,
-    command_journal_path: Path,
-    android_sdk_packages_path: Path, java_version: str,
-    dotnet_version: str, generated_at_utc: str | None = None,
+    command_journal_path: Path, raw_command_journal_path: Path,
+    android_sdk_packages_path: Path, dotnet_workloads_path: Path,
+    java_path: Path, javac_path: Path, dotnet_path: Path,
+    python_path: Path, release_workspace_root: Path,
+    package_feed_path: Path, offline_feed_path: Path, nuget_packages_path: Path,
+    android_build_tools_version: str, dotnet_version: str,
+    generated_at_utc: str | None = None,
     w5_verifier: Callable[[Path, Path], Mapping[str, object]] = _verify_w5_external,
     content_verifier: Callable[[Path, Path], list[str]] = _verify_core_content_external,
+    before_final_recheck: Callable[[], None] | None = None,
 ) -> dict[str, object]:
+    snapshots = SnapshotRegistry()
+    for path, label in (
+        (release_workspace_root, "release workspace"),
+        (package_feed_path, "W5 package feed"),
+        (offline_feed_path, "offline package feed"),
+        (nuget_packages_path, "NuGet package cache"),
+    ):
+        require_directory(path, label)
     facts = authenticate_inputs(
         android_root=android_root, presentation_root=presentation_root,
         core_content_root=core_content_root,
@@ -753,26 +1358,48 @@ def create_manifest(
         w5_evidence_directory=w5_evidence_directory,
         source_graph_path=source_graph_path,
         package_authority_path=package_authority_path,
+        release_package_authority_v2_path=release_package_authority_v2_path,
         content_source_receipt_path=content_source_receipt_path,
         full_project_lock_path=full_project_lock_path, w5_verifier=w5_verifier,
-        content_verifier=content_verifier,
+        content_verifier=content_verifier, snapshots=snapshots,
     )
-    apk = apk.resolve(strict=True)
-    abis = apk_abis(apk)
+    validate_apk_output_directory(apk, snapshots)
+    abis = apk_abis(apk, snapshots)
     content_apk = validate_content_receipt(
         content_apk_receipt_path, apk=apk, source_binding=facts["contentSource"],
+        snapshots=snapshots,
     )
-    validate_assets(assets_path, package_authority=facts["packageAuthority"])
+    validate_assets(
+        assets_path, package_authority=facts["packageAuthority"], snapshots=snapshots,
+    )
+    toolchain = validate_toolchain(
+        java_path=java_path, javac_path=javac_path, dotnet_path=dotnet_path,
+        dotnet_workloads_path=dotnet_workloads_path,
+        android_sdk_packages_path=android_sdk_packages_path,
+        android_build_tools_version=android_build_tools_version,
+        dotnet_version=dotnet_version, snapshots=snapshots,
+    )
     validate_execution_evidence(
-        source_graph_log_path, content_source_log_path, build_inputs_log_path,
+        toolchain_log_path, source_graph_log_path, content_source_log_path, build_inputs_log_path,
         restore_log_path, build_log_path, content_apk_log_path,
-        source_graph_seal_log_path, command_journal_path,
+        source_graph_seal_log_path, command_journal_path, raw_command_journal_path,
+        android_root=android_root, apk=apk, source_graph_path=source_graph_path,
+        content_source_receipt_path=content_source_receipt_path,
+        content_apk_receipt_path=content_apk_receipt_path,
+        android_build_tools_version=android_build_tools_version,
+        snapshots=snapshots,
+        python_path=python_path, dotnet_path=dotnet_path, java_path=java_path,
+        android_sdk_packages_path=android_sdk_packages_path,
+        dotnet_workloads_path=dotnet_workloads_path,
+        presentation_root=presentation_root, core_content_root=core_content_root,
+        release_workspace_root=release_workspace_root,
+        release_package_authority_v2_path=release_package_authority_v2_path,
+        package_authority_path=package_authority_path,
+        w5_receipt_path=w5_receipt_path, w5_evidence_directory=w5_evidence_directory,
+        full_project_lock_path=full_project_lock_path,
+        package_feed_path=package_feed_path, offline_feed_path=offline_feed_path,
+        nuget_packages_path=nuget_packages_path,
     )
-    require_regular(android_sdk_packages_path, "Android SDK package inventory")
-    if dotnet_version != DOTNET_SDK_VERSION:
-        raise ValueError("full MAUI build SDK selection drifted")
-    if not isinstance(java_version, str) or not java_version.strip() or "\n" in java_version.strip("\n"):
-        raise ValueError("Java toolchain identity must be one non-empty line")
 
     graph = facts["sourceGraph"]
     authority = facts["packageAuthority"]
@@ -781,11 +1408,12 @@ def create_manifest(
         "publicationAuthorized": False, "proofScope": PROOF_SCOPE,
         "dependencyMode": "locked_w5_packages_no_owner_siblings",
         "sourceGraph": {
-            **binding(source_graph_path), "contractName": SOURCE_GRAPH_CONTRACT,
+            **binding(source_graph_path, snapshots), "contractName": SOURCE_GRAPH_CONTRACT,
             "repositories": graph["repositories"],
+            "packageAuthority": facts["releasePackageAuthorityV2"],
         },
         "w5CompileProof": {
-            **binding(w5_receipt_path), "contractName": W5_CONTRACT, "status": "pass",
+            **binding(w5_receipt_path, snapshots), "contractName": W5_CONTRACT, "status": "pass",
             "androidCommit": W5_ANDROID_COMMIT, "androidTree": W5_ANDROID_TREE,
         },
         "presentationBuildSource": {
@@ -793,15 +1421,17 @@ def create_manifest(
             "authorityClass": "W4.1_internal_package_authority_source",
             "productionSource": False,
             "publicationAuthorized": False,
+            "presentationLock": facts["presentationLock"],
+            "desktopRuntimeLock": facts["desktopLock"],
         },
         "packageAuthority": {
-            **binding(package_authority_path), "contractName": PACKAGE_AUTHORITY_CONTRACT,
+            **binding(package_authority_path, snapshots), "contractName": PACKAGE_AUTHORITY_CONTRACT,
             "packagePins": authority["packagePins"],
             "ownerPackagePins": authority["ownerPackagePins"],
         },
         "content": {
-            "sourceReceipt": binding(content_source_receipt_path),
-            "apkReceipt": binding(content_apk_receipt_path),
+            "sourceReceipt": binding(content_source_receipt_path, snapshots),
+            "apkReceipt": binding(content_apk_receipt_path, snapshots),
             "coreRevision": content_apk["coreRevision"],
             "bundleDigest": content_apk["bundleDigest"],
             "manifestSha256": content_apk["manifestSha256"],
@@ -812,39 +1442,48 @@ def create_manifest(
         "restore": {
             "lockedMode": True, "networkSourcesAllowed": False,
             "ownerSourceFallbackAllowed": False,
-            "fullProjectLock": binding(full_project_lock_path),
-            "projectAssets": binding(assets_path),
+            "fullProjectLock": binding(full_project_lock_path, snapshots),
+            "projectAssets": binding(assets_path, snapshots),
         },
         "executionEvidence": {
-            "sourceGraphLog": binding(source_graph_log_path),
-            "contentSourceLog": binding(content_source_log_path),
-            "buildInputsLog": binding(build_inputs_log_path),
-            "restoreLog": binding(restore_log_path),
-            "buildLog": binding(build_log_path),
-            "contentApkLog": binding(content_apk_log_path),
-            "sourceGraphSealLog": binding(source_graph_seal_log_path),
-            "commandJournal": binding(command_journal_path),
+            "toolchainLog": binding(toolchain_log_path, snapshots),
+            "sourceGraphLog": binding(source_graph_log_path, snapshots),
+            "contentSourceLog": binding(content_source_log_path, snapshots),
+            "buildInputsLog": binding(build_inputs_log_path, snapshots),
+            "restoreLog": binding(restore_log_path, snapshots),
+            "buildLog": binding(build_log_path, snapshots),
+            "contentApkLog": binding(content_apk_log_path, snapshots),
+            "sourceGraphSealLog": binding(source_graph_seal_log_path, snapshots),
+            "commandJournal": binding(command_journal_path, snapshots),
+            "rawCommandJournal": binding(raw_command_journal_path, snapshots),
             "boundedProcessGroups": True,
             "warnings": 0,
             "errors": 0,
         },
-        "toolchain": {
-            "dotnetSdkVersion": DOTNET_SDK_VERSION,
-            "javaVersion": java_version.strip(),
-            "androidSdkPackages": binding(android_sdk_packages_path),
-            "targetFramework": TARGET_FRAMEWORK, "targetSdkVersion": 36,
-            "runtimeIdentifier": RUNTIME_IDENTIFIER, "configuration": CONFIGURATION,
-            "serializedBuild": True,
-        },
+        "toolchain": toolchain,
         "artifact": {
-            "basename": apk.name, "sha256": file_sha256(apk),
-            "sizeBytes": apk.stat().st_size, "package": PACKAGE, "abis": abis,
+            "basename": apk.name, **snapshots.capture(apk, "signed ARM64 APK").binding(),
+            "package": PACKAGE, "abis": abis,
             "apiLevel": 36, "configuration": CONFIGURATION,
             "runtimeIdentifier": RUNTIME_IDENTIFIER, "targetFramework": TARGET_FRAMEWORK,
             "fullMauiArtifact": True, "installed": False,
         },
         "doesNotAssert": list(DOES_NOT_ASSERT),
     }
+    if before_final_recheck is not None:
+        before_final_recheck()
+    snapshots.recheck_all()
+    final_android = repository_identity(android_root)
+    final_presentation = repository_identity(
+        presentation_root, label="W5 Presentation build source",
+    )
+    final_core = repository_identity(core_content_root, label="Core content source")
+    if final_android != facts["androidIdentity"]:
+        raise ValueError("Android source identity changed before provenance seal")
+    if final_presentation != facts["presentationBuildIdentity"]:
+        raise ValueError("W5 Presentation source identity changed before provenance seal")
+    if final_core != facts["coreContentIdentity"]:
+        raise ValueError("Core content source identity changed before provenance seal")
     return {
         **authority_payload,
         "authoritySha256": canonical_sha256(authority_payload),
