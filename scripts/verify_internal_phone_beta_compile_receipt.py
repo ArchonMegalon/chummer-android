@@ -28,6 +28,37 @@ DIGEST_BINDINGS = {
     "build.log": "buildOutputSha256",
     "command-journal.jsonl": "journalSha256",
 }
+AUTHORITY_CLASS = "internal_phone_beta_only"
+PROOF_SCOPE = "Native.CompileCheck_dependency_only"
+BLOCKED_DOES_NOT_ASSERT = (
+    "full_maui_build",
+    "core_data_lang_content",
+    "api36_device_execution",
+    "google_play_upload",
+    "public_release_readiness",
+)
+PASS_ONLY_FIELDS = (
+    "dependencyMode",
+    "serializedBuild",
+    "sdkVersion",
+    "androidCommit",
+    "androidTree",
+    "presentationCommit",
+    "presentationTree",
+    "authorityReceiptSha256",
+    "authorityJournalSha256",
+    "authorityBindingSha256",
+    "executionBounds",
+    "compileGraphSha256",
+    "restoreOutputSha256",
+    "buildOutputSha256",
+    "lockSha256",
+    "assetsSha256",
+    "artifact",
+    "fullMauiBuild",
+    "coreDataLangContentVerified",
+    "laterDeviceGateRequirements",
+)
 
 
 def sha256(path: Path) -> str:
@@ -47,6 +78,35 @@ def require_regular(path: Path, label: str) -> None:
         raise ValueError(f"{label} must be a non-symlink regular file")
 
 
+def validate_status_contract(payload: dict[str, object]) -> str:
+    status = payload.get("status")
+    if status not in {"pass", "blocked"}:
+        raise ValueError("compile receipt status must be pass or blocked")
+    if payload.get("authorityClass") != AUTHORITY_CLASS:
+        raise ValueError("compile receipt authority class mismatch")
+    if payload.get("publicationAuthorized") is not False:
+        raise ValueError("compile receipt must remain publication false")
+    if payload.get("proofScope") != PROOF_SCOPE:
+        raise ValueError("compile receipt proof scope mismatch")
+
+    if status == "pass":
+        if "failureStage" in payload or "retryPerformed" in payload:
+            raise ValueError("passing receipt cannot contain blocked-result claims")
+        return status
+
+    failure_stage = payload.get("failureStage")
+    if not isinstance(failure_stage, str) or not failure_stage.strip():
+        raise ValueError("blocked receipt requires failureStage")
+    if payload.get("retryPerformed") is not False:
+        raise ValueError("blocked receipt must bind retryPerformed=false")
+    if payload.get("doesNotAssert") != list(BLOCKED_DOES_NOT_ASSERT):
+        raise ValueError("blocked receipt readiness boundary mismatch")
+    forbidden = [field for field in PASS_ONLY_FIELDS if field in payload]
+    if forbidden:
+        raise ValueError(f"blocked receipt contains success-only fields: {', '.join(forbidden)}")
+    return status
+
+
 def verify_receipt(receipt_path: Path, evidence_directory: Path | None = None) -> dict[str, object]:
     if not receipt_path.is_absolute():
         raise ValueError("receipt path must be absolute")
@@ -54,10 +114,7 @@ def verify_receipt(receipt_path: Path, evidence_directory: Path | None = None) -
     payload = json.loads(receipt_path.read_text(encoding="utf-8"))
     if payload.get("contractName") != CONTRACT:
         raise ValueError("compile receipt contract mismatch")
-    if payload.get("status") not in {"pass", "blocked"}:
-        raise ValueError("compile receipt status must be pass or blocked")
-    if payload.get("publicationAuthorized") is not False:
-        raise ValueError("compile receipt must remain publication false")
+    status = validate_status_contract(payload)
 
     declared_directory = payload.get("evidenceDirectory")
     if not isinstance(declared_directory, str) or not declared_directory.startswith("/"):
@@ -95,7 +152,7 @@ def verify_receipt(receipt_path: Path, evidence_directory: Path | None = None) -
         if row.get("sha256") != digest or row.get("sizeBytes") != size:
             raise ValueError(f"evidence digest/size mismatch: {name}")
         binding = DIGEST_BINDINGS.get(name)
-        if binding is not None and payload.get(binding) != digest:
+        if status == "pass" and binding is not None and payload.get(binding) != digest:
             raise ValueError(f"receipt digest binding mismatch: {name}")
         if name == "command-journal.jsonl" and payload.get("journalSizeBytes") != size:
             raise ValueError("receipt journal size binding mismatch")
@@ -107,13 +164,21 @@ def verify_receipt(receipt_path: Path, evidence_directory: Path | None = None) -
     directory_names = sorted(entry.name for entry in os.scandir(expected_directory))
     if directory_names != sorted(names):
         raise ValueError("evidence directory has missing or extra files")
-    if payload["status"] == "pass" and tuple(names) != EXPECTED_EVIDENCE:
+    if status == "pass" and tuple(names) != EXPECTED_EVIDENCE:
         raise ValueError("passing receipt requires the complete evidence inventory")
+    if status == "blocked":
+        journal = next((row for row in actual_rows if row["path"] == "command-journal.jsonl"), None)
+        expected_digest = journal["sha256"] if journal is not None else ""
+        expected_size = journal["sizeBytes"] if journal is not None else 0
+        if payload.get("journalSha256") != expected_digest:
+            raise ValueError("blocked receipt journal digest binding mismatch")
+        if payload.get("journalSizeBytes") != expected_size:
+            raise ValueError("blocked receipt journal size binding mismatch")
 
     return {
         "contractName": CONTRACT,
         "status": "pass",
-        "verifiedReceiptStatus": payload["status"],
+        "verifiedReceiptStatus": status,
         "publicationAuthorized": False,
         "evidence": actual_rows,
     }

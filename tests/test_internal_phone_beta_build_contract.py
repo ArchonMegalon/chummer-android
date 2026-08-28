@@ -214,7 +214,9 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
         payload = {
             "contractName": self.receipt.CONTRACT,
             "status": "pass",
+            "authorityClass": self.receipt.AUTHORITY_CLASS,
             "publicationAuthorized": False,
+            "proofScope": self.receipt.PROOF_SCOPE,
             "evidenceDirectory": str(evidence),
             "evidence": rows,
             "authorityBindingSha256": digests["authority-binding.json"],
@@ -227,12 +229,88 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
         receipt.write_text(json.dumps(payload), encoding="utf-8")
         return receipt, evidence, payload
 
+    def seed_blocked_compile_receipt(
+        self,
+        root: Path,
+    ) -> tuple[Path, Path, dict[str, object]]:
+        receipt, evidence, payload = self.seed_compile_receipt(root)
+        payload.update({
+            "status": "blocked",
+            "failureStage": "serialized-native-compile",
+            "retryPerformed": False,
+            "doesNotAssert": list(self.receipt.BLOCKED_DOES_NOT_ASSERT),
+        })
+        for field in self.receipt.PASS_ONLY_FIELDS:
+            payload.pop(field, None)
+        journal = next(
+            row for row in payload["evidence"]
+            if row["path"] == "command-journal.jsonl"
+        )
+        payload["journalSha256"] = journal["sha256"]
+        payload["journalSizeBytes"] = journal["sizeBytes"]
+        receipt.write_text(json.dumps(payload), encoding="utf-8")
+        return receipt, evidence, payload
+
     def test_compile_receipt_verifies_persisted_evidence_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             receipt, _evidence, _payload = self.seed_compile_receipt(Path(temporary))
             result = self.receipt.verify_receipt(receipt)
             self.assertEqual("pass", result["status"])
             self.assertEqual(7, len(result["evidence"]))
+
+    def test_real_blocked_receipt_shape_cross_binds_all_available_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, _evidence, _payload = self.seed_blocked_compile_receipt(
+                Path(temporary)
+            )
+            result = self.receipt.verify_receipt(receipt)
+            self.assertEqual("blocked", result["verifiedReceiptStatus"])
+            self.assertEqual(7, len(result["evidence"]))
+
+    def test_blocked_receipt_rejects_tamper_missing_and_forged_status(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, evidence, payload = self.seed_blocked_compile_receipt(
+                Path(temporary)
+            )
+            (evidence / "build.log").write_text("tampered\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "digest/size mismatch"):
+                self.receipt.verify_receipt(receipt)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, evidence, _payload = self.seed_blocked_compile_receipt(
+                Path(temporary)
+            )
+            (evidence / "authority-binding.json").unlink()
+            with self.assertRaisesRegex(ValueError, "authority-binding.json is missing"):
+                self.receipt.verify_receipt(receipt)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, _evidence, payload = self.seed_blocked_compile_receipt(
+                Path(temporary)
+            )
+            payload["status"] = "pass"
+            receipt.write_text(json.dumps(payload), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "blocked-result claims"):
+                self.receipt.verify_receipt(receipt)
+
+    def test_blocked_receipt_rejects_missing_failure_facts_and_success_claims(self) -> None:
+        for field, value, message in (
+            ("failureStage", None, "requires failureStage"),
+            ("retryPerformed", True, "retryPerformed=false"),
+            ("publicationAuthorized", True, "publication false"),
+            ("artifact", {"sha256": "forged"}, "success-only fields"),
+        ):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary:
+                receipt, _evidence, payload = self.seed_blocked_compile_receipt(
+                    Path(temporary)
+                )
+                if value is None:
+                    payload.pop(field)
+                else:
+                    payload[field] = value
+                receipt.write_text(json.dumps(payload), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, message):
+                    self.receipt.verify_receipt(receipt)
 
     def test_build_failure_persists_a_verifiable_blocked_receipt(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
