@@ -1,14 +1,13 @@
 using System.Globalization;
 using Chummer.Contracts.Characters;
-using Chummer.Contracts.Presentation;
 using static Chummer.Android.Native.Sr5CareerFlowStrings;
 
 namespace Chummer.Android.Native;
 
 /// <summary>
-/// Phone-first entry point for the separate typed Career commerce lanes. It
-/// does not provide a generic mutation fallback: every row opens either an
-/// existing exact collection editor or Core's bounded purchase authority.
+/// Phone-first entry point for the bounded typed Career commerce lane. It
+/// does not provide a generic mutation fallback: only Core's complete
+/// Cyberware purchase authority is actionable in this build.
 /// </summary>
 public sealed class Sr5CareerCommerceHubPage : NativePageBase
 {
@@ -29,9 +28,9 @@ public sealed class Sr5CareerCommerceHubPage : NativePageBase
     {
         _body.Clear();
         _body.Add(NativeTheme.Eyebrow(Text("SR5 Career · Typed commerce")));
-        _body.Add(NativeTheme.Title(Text("Gear and implants")));
+        _body.Add(NativeTheme.Title(Text("Cyberware purchase")));
         _body.Add(NativeTheme.Body(
-            Text("Purchase and manage exact Gear, Cyberware, and Bioware identities"),
+            Text("Only the top-level Cyberware purchase lane is typed end to end in this build."),
             NativeTheme.Muted));
         _body.Add(NativeTheme.Body(
             Text("Choose a bounded commerce lane. Each destination reloads its own exact authority before review or persistence."),
@@ -50,48 +49,30 @@ public sealed class Sr5CareerCommerceHubPage : NativePageBase
             Text("Source-bound catalog → configuration → Core quote → durable receipt"),
             () => Navigation.PushAsync(new Sr5CareerCyberwarePurchasePage(Coordinator)),
             automationId: "sr5-career-purchase-cyberware"));
-        _body.Add(NativeTheme.NavigationRow(
+        AddUnavailableLane(
             Text("Installed gear"),
-            Text("Open exact saved Gear identities for quantity purchases, reduction, split, merge, and safe edits"),
-            () => OpenSectionAsync("tab-gear", Text("Gear")),
-            automationId: "sr5-career-installed-gear"));
-        _body.Add(NativeTheme.NavigationRow(
+            "sr5-career-installed-gear-unavailable");
+        AddUnavailableLane(
             Text("Installed cyberware and bioware"),
-            Text("Open exact saved implant identities; eligible Cyberware exposes upgrade and sale quotes"),
-            () => OpenSectionAsync("tab-cyberware", Text("Cyberware and bioware")),
-            automationId: "sr5-career-installed-implants"));
+            "sr5-career-installed-implants-unavailable");
 
         Label boundary = NativeTheme.Body(
-            Text("New Gear and Bioware catalog purchases remain unavailable until Core exposes their exact source, capacity, availability, side-effect, and receipt authorities. Android never substitutes a generic XML add."),
+            Text("Gear, Bioware, and installed-implant mutations remain unavailable here until Core exposes their exact typed quote, review, confirmation, receipt, and recovery authorities. Android never opens the generic collection editor from this wizard."),
             NativeTheme.Muted);
         boundary.AutomationId = "sr5-career-commerce-authority-boundary";
         _body.Add(NativeTheme.Card(boundary));
     }
 
-    private async Task OpenSectionAsync(string tabId, string title)
+    private void AddUnavailableLane(string label, string automationId)
     {
-        NavigationTabDefinition? tab = Coordinator.Surface.NavigationTabs.SingleOrDefault(candidate =>
-            string.Equals(candidate.Id, tabId, StringComparison.Ordinal));
-        if (tab is null || !Coordinator.IsTabEnabled(tab))
-        {
-            await DisplayAlertAsync(
-                Text("Commerce route unavailable"),
-                Text("The exact saved-data section is not available for this runner and ruleset."),
-                Text("OK"));
-            return;
-        }
-
-        await Coordinator.SelectTabAsync(tab.Id);
-        if (!string.Equals(Coordinator.State.ActiveSectionId, tab.SectionId, StringComparison.Ordinal)
-            || Coordinator.State.Error is not null)
-        {
-            await DisplayAlertAsync(
-                Text("Commerce route unavailable"),
-                Text("The exact saved-data section could not be loaded. No fallback editor was opened."),
-                Text("OK"));
-            return;
-        }
-        await Navigation.PushAsync(new BuildSectionPage(Coordinator, tab.Id, title));
+        VerticalStackLayout lane = new() { Spacing = 5 };
+        lane.Add(NativeTheme.Title(label, 19));
+        lane.Add(NativeTheme.Body(
+            Text("Unavailable until a complete typed transaction authority is bound to this exact runner revision."),
+            NativeTheme.Danger));
+        Border card = NativeTheme.Card(lane);
+        card.AutomationId = automationId;
+        _body.Add(card);
     }
 
     private void AddUnavailable(string reason)

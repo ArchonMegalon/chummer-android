@@ -174,11 +174,20 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         }
 
         _body.Add(NativeTheme.Eyebrow(
+            Sr5CareerFlowStrings.Text("After the run")));
+        _body.Add(NativeTheme.NavigationRow(
+            Sr5CareerFlowStrings.Text("After the run"),
+            Sr5CareerFlowStrings.Text(
+                "Only governed proposal, run, and character IDs are selectable. This page never invents a run from the current character file."),
+            OpenAfterRunSettlementAsync,
+            automationId: "sr5-career-action-after-run"));
+
+        _body.Add(NativeTheme.Eyebrow(
             WizardStrings.Get("Career.Commerce", "Commerce")));
         View commerceRoute = NativeTheme.NavigationRow(
-            Sr5CareerFlowStrings.Text("Gear and implants"),
+            Sr5CareerFlowStrings.Text("Cyberware purchase"),
             Sr5CareerFlowStrings.Text(
-                "Choose → configure → Core quote → review diff → confirm → receipt"),
+                "Source-bound catalog → configuration → Core quote → durable receipt"),
             () => Navigation.PushAsync(new Sr5CareerCommerceHubPage(Coordinator)),
             enabled: canOpenCommerce,
             automationId: Sr5CareerRunCapabilityCatalog.CyberwareCommerceRoute);
@@ -202,6 +211,22 @@ public sealed class Sr5CareerWizardPage : NativePageBase
             NativeTheme.Muted);
         boundary.AutomationId = "sr5-career-wizard-navigation-boundary";
         _body.Add(NativeTheme.Card(boundary));
+    }
+
+    private async Task OpenAfterRunSettlementAsync()
+    {
+        Sr5AfterRunSettlementCoordinator authority = new(
+            new RunnerSessionSr5AfterRunSettlementPresenter(Coordinator),
+            new PreferencesSr5CareerCheckpointOwnerAuthority());
+        Sr5AfterRunSettlementEditorState editor = await authority.PrepareAsync();
+        Page destination = editor.Status == Sr5AfterRunCatalogStatus.Missing
+            && Coordinator.SupportsManualAfterRunProposalEntry
+                ? new Sr5AfterRunManualProposalPage(
+                    Coordinator,
+                    editor.WorkspaceId,
+                    editor.WorkspaceRevision)
+                : new Sr5AfterRunSettlementWizardPage(Coordinator, editor);
+        await Navigation.PushAsync(destination);
     }
 
     internal static string LaneToken(Sr5CareerWizardLane lane)

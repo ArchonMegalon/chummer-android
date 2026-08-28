@@ -19,6 +19,8 @@
     </Reference>
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerFlowStrings.cs"
              Link="Native/Sr5CareerFlowStrings.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerRunCapabilityCatalog.cs"
+             Link="Native/Sr5CareerRunCapabilityCatalog.cs" />
     <Compile Include="Program.cs" />
     <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx"
                       Link="Resources/Localization/Sr5CareerFlowStrings.resx">

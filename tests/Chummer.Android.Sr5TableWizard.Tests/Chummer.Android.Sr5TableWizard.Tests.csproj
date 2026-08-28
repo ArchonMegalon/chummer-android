@@ -12,6 +12,8 @@
     <Compile Include="Program.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs"
              Link="Native/Sr5TableWizardPhoneModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerFlowStrings.cs"
+             Link="Native/Sr5CareerFlowStrings.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerRunCapabilityCatalog.cs"
              Link="Native/Sr5CareerRunCapabilityCatalog.cs" />
     <Compile Include="$(ChummerPresentationRoot)/Chummer.Presentation/Overview/CareerEdgeUseEditRequest.cs"

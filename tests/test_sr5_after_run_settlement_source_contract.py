@@ -13,7 +13,7 @@ def test_phone_surface_has_every_governed_stage_and_two_entry_points() -> None:
     model = read("Sr5CareerWizardModel.cs")
     page = read("Sr5AfterRunSettlementWizardPage.cs")
     career = read("Sr5CareerWizardPage.cs")
-    build = read("BuildPage.cs")
+    table = read("PhoneShellPages.cs")
     for route in (
         "AfterRunChoose",
         "AfterRunRewards",
@@ -27,8 +27,11 @@ def test_phone_surface_has_every_governed_stage_and_two_entry_points() -> None:
         assert f"public const string {route}" in model
         assert f"Sr5CareerWizardRoutes.{route}" in page
     assert "OpenAfterRunSettlementAsync" in career
-    assert '"settlement");' in career
-    assert 'automationId: "build-career-after-run-settlement"' in build
+    assert "RunnerSessionSr5AfterRunSettlementPresenter" in career
+    assert 'automationId: "sr5-career-action-after-run"' in career
+    assert 'automationId: "phone-table-after-run"' in table
+    assert "Sr5AfterRunSettlementWizardPage" in table
+    assert "GenericQuickEdit" not in career + table
 
 
 def test_rewards_are_attested_context_not_a_second_character_mutation() -> None:
@@ -41,6 +44,12 @@ def test_rewards_are_attested_context_not_a_second_character_mutation() -> None:
     assert "does not award Karma or Nuyen" in model
     assert "does not duplicate the reward ledger" in page
     assert "manual Karma/Nuyen/reputation" in runner
+    command = model.split(
+        "public CharacterAfterRunSettlementCommand ToCommand()", 1
+    )[1].split("public bool IsExact()", 1)[0]
+    assert "KarmaAward" not in command
+    assert "NuyenAward" not in command
+    assert "RewardReceiptDigest" not in command
     assert "GenericQuickEdit" not in model + page
     assert "QuickEdit" not in model + page
 

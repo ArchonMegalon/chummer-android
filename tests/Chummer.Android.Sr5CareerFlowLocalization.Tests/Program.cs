@@ -214,6 +214,9 @@ static HashSet<string> ReadSourceKeys(string workspace)
         }
     }
 
+    foreach (string key in Sr5CareerRunCapabilityCatalog.ResourceKeys)
+        result.Add(key);
+
     return result;
 }
 
@@ -262,7 +265,9 @@ static void AssertSourceBoundary(string workspace)
 
 static void AssertSourcesParse(string workspace)
 {
-    foreach (string file in TargetPages().Append("Sr5CareerFlowStrings.cs"))
+    foreach (string file in TargetPages()
+                 .Append("Sr5CareerFlowStrings.cs")
+                 .Append("Sr5CareerRunCapabilityCatalog.cs"))
     {
         SyntaxTree tree = ParseTree(File.ReadAllText(Path.Combine(NativeRoot(workspace), file)));
         string[] errors = tree.GetDiagnostics()

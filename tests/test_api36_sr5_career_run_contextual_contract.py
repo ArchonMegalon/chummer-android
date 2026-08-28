@@ -67,6 +67,10 @@ class Sr5CareerRunContextualContractTests(unittest.TestCase):
             self.assertIn(f'"{capability_id}"', catalog)
         self.assertIn("Sr5CareerRunCapabilityStatus.ReadOnly", catalog)
         self.assertIn("no typed Core/Presentation mutation authority", catalog)
+        self.assertIn("LabelKey", catalog)
+        self.assertIn("AuthorityKey", catalog)
+        self.assertIn("Sr5CareerFlowStrings.Text(LabelKey)", catalog)
+        self.assertIn("Sr5CareerFlowStrings.Text(AuthorityKey)", catalog)
         self.assertNotIn("Dictionary<string, object", catalog)
         self.assertNotIn("generic edit", catalog.casefold())
 
@@ -87,6 +91,10 @@ class Sr5CareerRunContextualContractTests(unittest.TestCase):
         self.assertIn("Source availability", page)
         self.assertIn("Grade availability modifier", page)
         self.assertIn("no calendar or elapsed-time mutation", page)
+        self.assertNotIn("BuildSectionPage", page)
+        self.assertNotIn("OpenSectionAsync", page)
+        self.assertIn("sr5-career-installed-gear-unavailable", page)
+        self.assertIn("sr5-career-installed-implants-unavailable", page)
 
         workflow = (ROOT / ".github/workflows/api36-editing-e2e.yml").read_text(
             encoding="utf-8"

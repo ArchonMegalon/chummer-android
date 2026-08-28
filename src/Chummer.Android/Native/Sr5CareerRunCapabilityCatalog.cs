@@ -14,9 +14,14 @@ public enum Sr5CareerRunCapabilityStatus
 
 public sealed record Sr5CareerRunCapability(
     string Id,
-    string Label,
+    string LabelKey,
     Sr5CareerRunCapabilityStatus Status,
-    string Authority);
+    string AuthorityKey)
+{
+    public string Label => Sr5CareerFlowStrings.Text(LabelKey);
+
+    public string Authority => Sr5CareerFlowStrings.Text(AuthorityKey);
+}
 
 public static class Sr5CareerRunCapabilityCatalog
 {
@@ -39,11 +44,11 @@ public static class Sr5CareerRunCapabilityCatalog
         ReadOnly(
             "after-run-karma",
             "Karma reward",
-            "signed completed-run proposal context; this settlement does not award it again"),
+            "digest-bound completed-run proposal context; this settlement does not award it again"),
         ReadOnly(
             "after-run-nuyen",
             "Nuyen reward",
-            "signed completed-run proposal context; this settlement does not award it again"),
+            "digest-bound completed-run proposal context; this settlement does not award it again"),
         Available(
             "after-run-heat",
             "Heat",
@@ -70,6 +75,17 @@ public static class Sr5CareerRunCapabilityCatalog
         Unavailable("after-run-expenses", "Arbitrary expenses"),
         Unavailable("after-run-log", "Run log mutation")
     ];
+
+    public static IReadOnlyList<string> ResourceKeys { get; } = BeforeRun
+        .Concat(AfterRun)
+        .SelectMany(static capability => new[]
+        {
+            capability.LabelKey,
+            capability.AuthorityKey
+        })
+        .Distinct(StringComparer.Ordinal)
+        .Order(StringComparer.Ordinal)
+        .ToArray();
 
     private static Sr5CareerRunCapability Available(string id, string label, string authority)
         => new(id, label, Sr5CareerRunCapabilityStatus.Available, authority);

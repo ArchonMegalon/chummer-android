@@ -554,14 +554,12 @@ Vorschau: {3}…</value></data>
   <data name="Choose one exact grade identity" xml:space="preserve"><value>Eine exakte Ware-Stufen-Identität wählen</value></data>
   <data name="Choose one exact source identity" xml:space="preserve"><value>Eine exakte Quellenidentität wählen</value></data>
   <data name="Close this phone undo receipt and prepare a new purchase from the current saved revision?" xml:space="preserve"><value>Diesen Rückgängig-Beleg schließen und einen neuen Kauf aus der aktuellen gespeicherten Revision vorbereiten?</value></data>
-  <data name="Commerce route unavailable" xml:space="preserve"><value>Handelsweg nicht verfügbar</value></data>
   <data name="Confirm and save purchase" xml:space="preserve"><value>Kauf bestätigen und speichern</value></data>
   <data name="Confirm exact Cyberware purchase" xml:space="preserve"><value>Exakten Cyberware-Kauf bestätigen</value></data>
   <data name="Continue" xml:space="preserve"><value>Fortfahren</value></data>
   <data name="Core proved the purchase was not saved. Review the current quote before confirming again." xml:space="preserve"><value>Core hat bewiesen, dass der Kauf nicht gespeichert wurde. Prüfe das aktuelle Angebot vor einer neuen Bestätigung.</value></data>
   <data name="Core saved the Cyberware, Nuyen expense, Essence bookkeeping, and receipt atomically." xml:space="preserve"><value>Core hat Cyberware, Nuyen-Ausgabe, Essenzbuchhaltung und Beleg atomar gespeichert.</value></data>
   <data name="Cyberware" xml:space="preserve"><value>Cyberware</value></data>
-  <data name="Cyberware and bioware" xml:space="preserve"><value>Cyberware und Bioware</value></data>
   <data name="Cyberware purchase" xml:space="preserve"><value>Cyberware-Kauf</value></data>
   <data name="Cyberware purchase authority unavailable" xml:space="preserve"><value>Cyberware-Kaufautorität nicht verfügbar</value></data>
   <data name="Discount and markup must be exact invariant numbers." xml:space="preserve"><value>Rabatt und Aufschlag müssen exakte invariante Zahlen sein.</value></data>
@@ -569,7 +567,6 @@ Vorschau: {3}…</value></data>
   <data name="Exact Core quote" xml:space="preserve"><value>Exaktes Core-Angebot</value></data>
   <data name="Finish receipt and start another purchase" xml:space="preserve"><value>Beleg abschließen und weiteren Kauf starten</value></data>
   <data name="Free cost" xml:space="preserve"><value>Kostenlos</value></data>
-  <data name="Gear" xml:space="preserve"><value>Ausrüstung</value></data>
   <data name="Gear and implants" xml:space="preserve"><value>Ausrüstung und Implantate</value></data>
   <data name="Installed Essence" xml:space="preserve"><value>Verbrauchte Essenz</value></data>
   <data name="Installed cyberware and bioware" xml:space="preserve"><value>Installierte Cyberware und Bioware</value></data>
@@ -580,11 +577,7 @@ Vorschau: {3}…</value></data>
   <data name="Keep purchase" xml:space="preserve"><value>Kauf behalten</value></data>
   <data name="Keep receipt" xml:space="preserve"><value>Beleg behalten</value></data>
   <data name="Markup percent" xml:space="preserve"><value>Aufschlag in Prozent</value></data>
-  <data name="New Gear and Bioware catalog purchases remain unavailable until Core exposes their exact source, capacity, availability, side-effect, and receipt authorities. Android never substitutes a generic XML add." xml:space="preserve"><value>Neue Ausrüstungs- und Bioware-Katalogkäufe bleiben unverfügbar, bis Core ihre exakten Quellen-, Kapazitäts-, Verfügbarkeits-, Nebenwirkungs- und Belegautoritäten bereitstellt. Android ersetzt das niemals durch generisches XML-Hinzufügen.</value></data>
-  <data name="Open exact saved Gear identities for quantity purchases, reduction, split, merge, and safe edits" xml:space="preserve"><value>Exakt gespeicherte Ausrüstungsidentitäten für Mengenkauf, Reduktion, Teilen, Zusammenführen und sichere Änderungen öffnen</value></data>
-  <data name="Open exact saved implant identities; eligible Cyberware exposes upgrade and sale quotes" xml:space="preserve"><value>Exakt gespeicherte Implantatidentitäten öffnen; geeignete Cyberware bietet Angebote für Upgrade und Verkauf</value></data>
   <data name="Pinned effective cyberware catalog" xml:space="preserve"><value>Gebundener effektiver Cyberware-Katalog</value></data>
-  <data name="Purchase and manage exact Gear, Cyberware, and Bioware identities" xml:space="preserve"><value>Exakte Ausrüstungs-, Cyberware- und Bioware-Identitäten kaufen und verwalten</value></data>
   <data name="Purchase cyberware" xml:space="preserve"><value>Cyberware kaufen</value></data>
   <data name="Quote" xml:space="preserve"><value>Angebot</value></data>
   <data name="Receipt lookup proved the interrupted purchase was already saved." xml:space="preserve"><value>Die Belegsuche hat bewiesen, dass der unterbrochene Kauf bereits gespeichert wurde.</value></data>
@@ -599,8 +592,6 @@ Vorschau: {3}…</value></data>
   <data name="Start another purchase" xml:space="preserve"><value>Weiteren Kauf starten</value></data>
   <data name="The exact Cyberware catalog changed or became unavailable. Return to the purchase page." xml:space="preserve"><value>Der exakte Cyberware-Katalog hat sich geändert oder ist nicht mehr verfügbar. Kehre zur Kaufseite zurück.</value></data>
   <data name="The exact quote and new stable identities are durably reviewed. Confirm separately." xml:space="preserve"><value>Das exakte Angebot und die neuen stabilen Identitäten sind dauerhaft geprüft. Bestätige separat.</value></data>
-  <data name="The exact saved-data section could not be loaded. No fallback editor was opened." xml:space="preserve"><value>Der exakte Speicherbereich konnte nicht geladen werden. Es wurde kein Ersatzeditor geöffnet.</value></data>
-  <data name="The exact saved-data section is not available for this runner and ruleset." xml:space="preserve"><value>Der exakte Speicherbereich ist für diesen Runner und dieses Regelset nicht verfügbar.</value></data>
   <data name="The phone draft was restored for this exact runner and catalog revision." xml:space="preserve"><value>Der Telefonentwurf wurde für diesen exakten Runner und diese Katalogrevision wiederhergestellt.</value></data>
   <data name="The purchase outcome is not provable from the current receipt and runner revision." xml:space="preserve"><value>Das Kaufergebnis ist anhand des aktuellen Belegs und der Runner-Revision nicht beweisbar.</value></data>
   <data name="The receipt-bound Cyberware purchase was undone in one saved revision." xml:space="preserve"><value>Der beleggebundene Cyberware-Kauf wurde in einer gespeicherten Revision rückgängig gemacht.</value></data>
@@ -647,4 +638,24 @@ Vorschau: {3}…</value></data>
   <data name="Bounded command prerequisites" xml:space="preserve"><value>Voraussetzungen des begrenzten Befehls</value></data>
   <data name="Satisfied for this exact Core quote; final availability and elapsed time remain unresolved" xml:space="preserve"><value>Für dieses exakte Core-Angebot erfüllt; endgültige Verfügbarkeit und verstrichene Zeit bleiben ungeklärt</value></data>
   <data name="Unavailable · Core carries the source expression and grade modifier separately" xml:space="preserve"><value>Nicht verfügbar · Core führt Quellausdruck und Qualitätsstufenmodifikator getrennt</value></data>
+  <data name="Ammo reconciliation" xml:space="preserve"><value>Munitionsabgleich</value></data>
+  <data name="Arbitrary expenses" xml:space="preserve"><value>Beliebige Ausgaben</value></data>
+  <data name="Contact selection" xml:space="preserve"><value>Kontaktauswahl</value></data>
+  <data name="Edge preparation" xml:space="preserve"><value>Edge-Vorbereitung</value></data>
+  <data name="Gear, Bioware, and installed-implant mutations remain unavailable here until Core exposes their exact typed quote, review, confirmation, receipt, and recovery authorities. Android never opens the generic collection editor from this wizard." xml:space="preserve"><value>Änderungen an Ausrüstung, Bioware und installierten Implantaten bleiben hier unverfügbar, bis Core ihre exakten typisierten Angebots-, Prüf-, Bestätigungs-, Beleg- und Wiederherstellungsautoritäten bereitstellt. Android öffnet aus diesem Wizard niemals den generischen Sammlungseditor.</value></data>
+  <data name="Injuries" xml:space="preserve"><value>Verletzungen</value></data>
+  <data name="Karma reward" xml:space="preserve"><value>Karma-Belohnung</value></data>
+  <data name="Loadout selection" xml:space="preserve"><value>Ausrüstungsauswahl</value></data>
+  <data name="Loot acquisition" xml:space="preserve"><value>Beuteerwerb</value></data>
+  <data name="New contacts and contact Karma expense" xml:space="preserve"><value>Neue Kontakte und Kontakt-Karma-Ausgabe</value></data>
+  <data name="Nuyen reward" xml:space="preserve"><value>Nuyen-Belohnung</value></data>
+  <data name="Only the top-level Cyberware purchase lane is typed end to end in this build." xml:space="preserve"><value>In diesem Build ist nur der Kauf von Cyberware der obersten Ebene vollständig typisiert.</value></data>
+  <data name="Preparation purchases and healing" xml:space="preserve"><value>Vorbereitungskäufe und Heilung</value></data>
+  <data name="Run commitments" xml:space="preserve"><value>Run-Verpflichtungen</value></data>
+  <data name="Run log mutation" xml:space="preserve"><value>Änderung des Run-Protokolls</value></data>
+  <data name="Unavailable until a complete typed transaction authority is bound to this exact runner revision." xml:space="preserve"><value>Nicht verfügbar, bis eine vollständige typisierte Transaktionsautorität an diese exakte Runner-Revision gebunden ist.</value></data>
+  <data name="digest-bound completed-run proposal context; this settlement does not award it again" xml:space="preserve"><value>Digest-gebundener Kontext des abgeschlossenen Runs; diese Abrechnung vergibt ihn nicht erneut</value></data>
+  <data name="no typed Core/Presentation mutation authority in this build" xml:space="preserve"><value>keine typisierte Core-/Presentation-Mutationsautorität in diesem Build</value></data>
+  <data name="typed Career Edge request with revision-bound review and receipt" xml:space="preserve"><value>typisierte Karriere-Edge-Anfrage mit revisionsgebundener Prüfung und Beleg</value></data>
+  <data name="typed atomic After Run settlement" xml:space="preserve"><value>typisierte atomare Nach-dem-Run-Abrechnung</value></data>
 </root>
