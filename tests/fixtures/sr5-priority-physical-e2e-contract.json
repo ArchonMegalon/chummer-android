@@ -1,5 +1,7 @@
 {
   "schema": "chummer.android.sr5-priority-physical-e2e-contract/v1",
+  "authority": "metadata-only-non-authoritative",
+  "runtimeConsumed": false,
   "buildMethod": "Priority",
   "containsDraftState": false,
   "draftAuthority": "typed-phone-pages-only",
@@ -31,6 +33,7 @@
   },
   "successRequires": [
     "sealed-core-whole-build-plan",
+    "full-plan-preview-and-receipt-digests",
     "explicit-atomic-confirmation",
     "durable-creation-receipt",
     "career-reopen",

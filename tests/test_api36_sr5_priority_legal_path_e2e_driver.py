@@ -31,8 +31,11 @@ class FakePhysicalDevice:
             "ro.product.cpu.abi": "arm64-v8a",
             "ro.product.cpu.abilist": "arm64-v8a,armeabi-v7a",
             "ro.kernel.qemu": "",
+            "ro.boot.qemu": "",
             "ro.product.manufacturer": "Google",
             "ro.product.model": "Pixel 9",
+            "ro.product.device": "tokay",
+            "ro.product.name": "tokay",
             "ro.hardware": "tensor",
             "ro.build.fingerprint": "google/tokay/tokay:16/BP2A/test:user/release-keys",
             "ro.build.id": "BP2A",
@@ -65,6 +68,53 @@ class JourneyDevice:
         self.captures.append(name)
 
 
+class FinalizationDevice:
+    def __init__(self, overrides: dict[str, str] | None = None) -> None:
+        self.values = {
+            "creation-finalization-binding": (
+                f"Revision 16 · plan {PLAN_DIGEST[:18]}… · preview {PREVIEW_DIGEST[:18]}…"
+            ),
+            "creation-finalization-costs": "costs",
+            "creation-finalization-atomic-boundary": "atomic",
+            "creation-finalization-content-revision": "16",
+            "creation-finalization-plan-digest": PLAN_DIGEST,
+            "creation-finalization-preview-digest": PREVIEW_DIGEST,
+            "creation-finalization-receipt": "durable receipt",
+            "creation-finalization-receipt-previous-content-revision": "16",
+            "creation-finalization-receipt-content-revision": "17",
+            "creation-finalization-receipt-saved-revision": "17",
+            "creation-finalization-receipt-build-method": "Priority",
+            "creation-finalization-receipt-plan-digest": PLAN_DIGEST,
+            "creation-finalization-receipt-preview-digest": PREVIEW_DIGEST,
+            "creation-finalization-receipt-digest": RECEIPT_DIGEST,
+            "creation-finalization-career-reopen": "Fresh reopen verified: this runner is now using Career mode.",
+            "creation-finalization-authority-ready": "ready",
+            "creation-finalization-open-review": "review",
+            "creation-finalization-confirm": "confirm",
+            "creation-finalization-open-career": "open",
+        }
+        self.values.update(overrides or {})
+        self.taps: list[tuple[str, ...]] = []
+
+    def wait_exact_resource_id_bidirectional(self, selector: str, **_kwargs: object) -> driver.shared.UiNode:
+        if selector not in self.values:
+            raise AssertionError(selector)
+        return driver.shared.UiNode({
+            "content-desc": self.values[selector], "enabled": "true",
+            "clickable": "true", "bounds": "[0,0][20,20]",
+        })
+
+    def wait_for_single_exact_resource_id(self, *_args: object, **_kwargs: object) -> object:
+        return object()
+
+    def shell(self, *arguments: str) -> str:
+        self.taps.append(arguments)
+        return ""
+
+    def capture(self, _name: str) -> None:
+        return None
+
+
 def stage_projection(_device: object, stage: driver.LegalPathStage) -> dict[str, object]:
     if stage.step_id == "identity-story":
         return {
@@ -76,13 +126,44 @@ def stage_projection(_device: object, stage: driver.LegalPathStage) -> dict[str,
             "draftFabricated": False,
             "blocker": driver.IDENTITY_CONTRACT_BLOCKER,
         }
-    return {
+    result: dict[str, object] = {
         "stepId": stage.step_id,
         "routeId": stage.route_id,
         "requiredByCurrentFinalizer": stage.required_by_finalizer,
         "routeStatus": "typed-authority-visible",
         "authorityVisible": True,
         "draftFabricated": False,
+    }
+    if stage.step_id == "method":
+        result["buildMethod"] = "Priority"
+    return result
+
+
+PLAN_DIGEST = "64879f7d6b960a01909762d911a32d4582c20010c5641ee90278b644a9e3b525"
+PREVIEW_DIGEST = "5975cf1bba432391c94667f5886225f69377c0aa8b9fa21fddfb21c89bcf9092"
+RECEIPT_DIGEST = "6f32860910ca0fb2a20c7fda143666b09dbf8db5238195c90a586fb542ff0cad"
+
+
+def exact_finalization() -> dict[str, object]:
+    return {
+        "review": "sealed-core-whole-build-plan",
+        "sealedPlanAuthority": {
+            "contentRevision": 16,
+            "planDigest": PLAN_DIGEST,
+            "previewDigest": PREVIEW_DIGEST,
+        },
+        "receiptAuthority": {
+            "previousContentRevision": 16,
+            "contentRevision": 17,
+            "savedRevision": 17,
+            "buildMethod": "Priority",
+            "planDigest": PLAN_DIGEST,
+            "previewDigest": PREVIEW_DIGEST,
+            "receiptDigest": RECEIPT_DIGEST,
+        },
+        "confirmation": "explicit-atomic-once",
+        "receipt": "durable",
+        "careerReopen": "verified",
     }
 
 
@@ -101,7 +182,10 @@ class Api36Sr5PriorityLegalPathDriverTests(unittest.TestCase):
             [stage.step_id for stage in driver.LEGAL_PATH_STAGES if stage.required_by_finalizer],
         )
         self.assertFalse(fixture["containsDraftState"])
+        self.assertEqual("metadata-only-non-authoritative", fixture["authority"])
+        self.assertFalse(fixture["runtimeConsumed"])
         self.assertEqual(driver.IDENTITY_CONTRACT_BLOCKER, fixture["identityGap"]["blocker"])
+        self.assertNotIn(CONTRACT_FIXTURE.name, DRIVER.read_text(encoding="utf-8"))
 
     def test_driver_is_physical_api36_arm64_apk_and_build_provenance_bound(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
@@ -113,12 +197,16 @@ class Api36Sr5PriorityLegalPathDriverTests(unittest.TestCase):
             "load_and_verify_manifest",
             'device.require_transport_stability(expected_api_level="36")',
             "physical_device_observation",
+            "creation-prerequisite-build-method-id",
+            "cross_bind_finalization_authorities",
+            "provenance_file_identity",
             'device.install_verified(apk, expected_apk_sha256, "--no-streaming", "-r")',
             '"status": "device-pass-source-bound"',
             '"physicalDeviceProof": True',
             '"installedArtifactBound": True',
             '"releaseAttested": False',
             '"publicationAuthorized": False',
+            '"disposableDeviceAuthorization"',
         ):
             self.assertIn(marker, source)
         self.assertLess(execute.index("load_and_verify_manifest"), execute.index("install_verified"))
@@ -136,7 +224,14 @@ class Api36Sr5PriorityLegalPathDriverTests(unittest.TestCase):
             ({"ro.build.version.sdk": "35"}, "API 36"),
             ({"ro.product.cpu.abi": "x86_64"}, "arm64-v8a"),
             ({"ro.kernel.qemu": "1"}, "emulator"),
+            ({"ro.boot.qemu": "1"}, "emulator"),
             ({"serial": "emulator-5554"}, "emulator"),
+            ({"serial": "localhost:5555"}, "emulator"),
+            ({"serial": "127.0.0.1:5555"}, "emulator"),
+            ({"ro.hardware": "ranchu"}, "emulator"),
+            ({"ro.build.fingerprint": "generic/sdk_gphone64_arm64/emulator:16/test"}, "emulator"),
+            ({"ro.product.device": "aosp_cf_arm64_phone"}, "emulator"),
+            ({"ro.product.name": "sdk_gphone64_arm64"}, "emulator"),
         ):
             with self.subTest(overrides=overrides):
                 with self.assertRaisesRegex(RuntimeError, message):
@@ -170,6 +265,61 @@ class Api36Sr5PriorityLegalPathDriverTests(unittest.TestCase):
         self.assertFalse(result["draftFabricated"])
         self.assertEqual(driver.IDENTITY_CONTRACT_BLOCKER, result["blocker"])
 
+    def test_runtime_build_method_binding_rejects_every_non_priority_value(self) -> None:
+        self.assertEqual("Priority", driver.require_priority_build_method("Priority", "test"))
+        for value in ("", "priority", "SumToTen", "Karma", "Priority "):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(RuntimeError, "exactly BuildMethod 'Priority'"):
+                    driver.require_priority_build_method(value, "test")
+
+    def test_full_finalization_authorities_reject_placeholders_revision_and_digest_mismatch(self) -> None:
+        review = driver.FinalizationReviewAuthority(16, PLAN_DIGEST, PREVIEW_DIGEST)
+        receipt = driver.FinalizationReceiptAuthority(
+            16, 17, 17, "Priority", PLAN_DIGEST, PREVIEW_DIGEST, RECEIPT_DIGEST,
+        )
+        driver.cross_bind_finalization_authorities(review, receipt)
+        rejected = (
+            (review.__class__(16, "plan-placeholder", PREVIEW_DIGEST), receipt),
+            (review.__class__(16, PLAN_DIGEST, "preview-placeholder"), receipt),
+            (review, receipt.__class__(16, 17, 17, "Priority", "abcd…", PREVIEW_DIGEST, RECEIPT_DIGEST)),
+            (review, receipt.__class__(15, 17, 17, "Priority", PLAN_DIGEST, PREVIEW_DIGEST, RECEIPT_DIGEST)),
+            (review, receipt.__class__(16, 18, 18, "Priority", PLAN_DIGEST, PREVIEW_DIGEST, RECEIPT_DIGEST)),
+            (review, receipt.__class__(16, 17, 16, "Priority", PLAN_DIGEST, PREVIEW_DIGEST, RECEIPT_DIGEST)),
+            (review, receipt.__class__(16, 17, 17, "SumToTen", PLAN_DIGEST, PREVIEW_DIGEST, RECEIPT_DIGEST)),
+            (review, receipt.__class__(16, 17, 17, "Priority", RECEIPT_DIGEST, PREVIEW_DIGEST, RECEIPT_DIGEST)),
+            (review, receipt.__class__(16, 17, 17, "Priority", PLAN_DIGEST, RECEIPT_DIGEST, RECEIPT_DIGEST)),
+            (review, receipt.__class__(16, 17, 17, "Priority", PLAN_DIGEST, PREVIEW_DIGEST, "receipt-placeholder")),
+        )
+        for candidate_review, candidate_receipt in rejected:
+            with self.subTest(candidate_receipt=candidate_receipt):
+                with self.assertRaises(RuntimeError):
+                    driver.cross_bind_finalization_authorities(candidate_review, candidate_receipt)
+
+    def test_finalize_parses_full_authorities_and_rejects_resigned_display_or_receipt_mismatch(self) -> None:
+        result = driver.finalize_exact_build(FinalizationDevice())
+        self.assertEqual(16, result["sealedPlanAuthority"]["contentRevision"])
+        self.assertEqual(PLAN_DIGEST, result["sealedPlanAuthority"]["planDigest"])
+        self.assertEqual(PREVIEW_DIGEST, result["sealedPlanAuthority"]["previewDigest"])
+        self.assertEqual(RECEIPT_DIGEST, result["receiptAuthority"]["receiptDigest"])
+        for overrides, message in (
+            ({"creation-finalization-plan-digest": "1" * 18 + "…"}, "full lowercase SHA-256"),
+            ({"creation-finalization-plan-digest": "0" * 64}, "full lowercase SHA-256"),
+            ({"creation-finalization-receipt-plan-digest": RECEIPT_DIGEST}, "plan digest does not match"),
+            ({"creation-finalization-receipt-preview-digest": RECEIPT_DIGEST}, "preview digest does not match"),
+            ({"creation-finalization-receipt-build-method": "SumToTen"}, "exactly BuildMethod 'Priority'"),
+            ({"creation-finalization-receipt-previous-content-revision": "15"}, "reviewed workspace revision"),
+            ({"creation-finalization-receipt-content-revision": "18"}, "advance the reviewed revision exactly once"),
+            ({"creation-finalization-receipt-digest": "receipt-placeholder"}, "full lowercase SHA-256"),
+            ({
+                "creation-finalization-binding": (
+                    f"Revision 16 · plan {RECEIPT_DIGEST[:18]}… · preview {PREVIEW_DIGEST[:18]}…"
+                )
+            }, "Displayed whole-build binding"),
+        ):
+            with self.subTest(overrides=overrides):
+                with self.assertRaisesRegex(RuntimeError, message):
+                    driver.finalize_exact_build(FinalizationDevice(overrides))
+
     def test_whole_build_finalize_restart_and_exact_saved_workspace_are_required(self) -> None:
         persisted = driver.shared.WorkspaceAuthority("workspace-priority", 17, 17, "1" * 64, "2" * 64)
         launch = driver.shared.LaunchState(("101",), "com.myexternalbrain.chummer/.MainActivity", "")
@@ -182,9 +332,10 @@ class Api36Sr5PriorityLegalPathDriverTests(unittest.TestCase):
         with (
             mock.patch.object(driver.shared, "wait_for_phone_runner_route"),
             mock.patch.object(driver, "open_exact_stage", side_effect=stage_projection),
-            mock.patch.object(driver, "finalize_exact_build", return_value={"receipt": "durable"}),
+            mock.patch.object(driver, "finalize_exact_build", return_value=exact_finalization()),
             mock.patch.object(driver, "require_career_surface") as career_surface,
             mock.patch.object(driver.shared, "read_phone_workspace_authority", side_effect=[persisted, persisted]),
+            mock.patch.object(driver, "read_persisted_creation_receipt_digest", side_effect=[RECEIPT_DIGEST, RECEIPT_DIGEST]),
             mock.patch.object(driver.shared, "force_stop_and_launch_new_process", return_value=restart) as force_stop,
         ):
             result = driver.prove_priority_journey(device, launch)
@@ -207,9 +358,10 @@ class Api36Sr5PriorityLegalPathDriverTests(unittest.TestCase):
         with (
             mock.patch.object(driver.shared, "wait_for_phone_runner_route"),
             mock.patch.object(driver, "open_exact_stage", side_effect=stage_projection),
-            mock.patch.object(driver, "finalize_exact_build", return_value={"receipt": "durable"}),
+            mock.patch.object(driver, "finalize_exact_build", return_value=exact_finalization()),
             mock.patch.object(driver, "require_career_surface"),
             mock.patch.object(driver.shared, "read_phone_workspace_authority", side_effect=[persisted, drifted]),
+            mock.patch.object(driver, "read_persisted_creation_receipt_digest", return_value=RECEIPT_DIGEST),
             mock.patch.object(driver.shared, "force_stop_and_launch_new_process", return_value=restart),
         ):
             with self.assertRaisesRegex(RuntimeError, "does not match the exact saved document"):
@@ -282,6 +434,8 @@ class Api36Sr5PriorityLegalPathDriverTests(unittest.TestCase):
                 workspace_root=root,
                 allow_destructive_disposable_device=True,
             )
+            manifest_bytes = b'{"contractName":"test-build-provenance"}\n'
+            args.build_provenance_manifest.write_bytes(manifest_bytes)
             context: dict[str, object] = {}
             with (
                 mock.patch.object(driver, "load_and_verify_manifest", side_effect=verify_manifest),
@@ -297,15 +451,82 @@ class Api36Sr5PriorityLegalPathDriverTests(unittest.TestCase):
             events,
         )
         self.assertEqual("device-pass-source-bound", receipt["status"])
+        self.assertEqual("Priority", receipt["buildMethod"])
         self.assertEqual("a" * 64, receipt["apkSha256"])
         self.assertEqual(manifest, receipt["buildProvenance"])
         self.assertTrue(receipt["buildProvenanceRecheckedAfterRun"])
+        self.assertTrue(receipt["buildProvenanceFileRecheckedAfterRun"])
+        self.assertEqual(len(manifest_bytes), receipt["buildProvenanceFile"]["size"])
+        self.assertRegex(receipt["buildProvenanceFile"]["sha256"], r"^[0-9a-f]{64}$")
+        self.assertEqual(
+            {
+                "authorized": True,
+                "flag": driver.DISPOSABLE_DEVICE_FLAG,
+                "serial": "R5CT30PHYSICAL",
+                "scope": "install-apk-and-atomically-finalize-one-pending-runner",
+            },
+            receipt["disposableDeviceAuthorization"],
+        )
         self.assertTrue(receipt["physicalDeviceProof"])
         self.assertTrue(receipt["installedArtifactBound"])
         self.assertFalse(receipt["draftStateFabricated"])
         self.assertFalse(receipt["releaseAttested"])
         self.assertFalse(receipt["publicationAuthorized"])
         self.assertEqual(journey, receipt["authorityProofStages"])
+
+    def test_execute_rejects_raw_manifest_byte_drift_even_when_parsed_payload_is_equal(self) -> None:
+        manifest = {"artifact": {"sha256": "a" * 64}, "contractName": "same-payload"}
+        launch = driver.shared.LaunchState(("101",), "component", "")
+        device = mock.Mock()
+        device.transport_summary.return_value = {"status": "pass"}
+        observation = {"apiLevel": 36, "abi": "arm64-v8a"}
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            manifest_path = root / "build-provenance.json"
+            manifest_path.write_bytes(b'{"artifact":{"sha256":"' + b"a" * 64 + b'"}}\n')
+            args = SimpleNamespace(
+                adb=root / "adb", apk=root / "app.apk",
+                build_provenance_manifest=manifest_path,
+                serial="R5CT30PHYSICAL", evidence=root / "evidence",
+                receipt=root / "receipt.json", workspace_root=root,
+                allow_destructive_disposable_device=True,
+            )
+
+            def mutate_manifest(_device: object, _launch: object) -> dict[str, object]:
+                manifest_path.write_bytes(b'{ "artifact": { "sha256": "' + b"a" * 64 + b'" } }\n')
+                return {"receipt": "would-have-passed"}
+
+            with (
+                mock.patch.object(driver, "load_and_verify_manifest", return_value=manifest) as verify,
+                mock.patch.object(driver.shared, "Device", return_value=device),
+                mock.patch.object(driver, "physical_device_observation", return_value=observation),
+                mock.patch.object(driver.shared, "launch_app", return_value=launch),
+                mock.patch.object(driver, "prove_priority_journey", side_effect=mutate_manifest),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "manifest bytes changed during physical execution"):
+                    driver.execute(args, {})
+            self.assertEqual(1, verify.call_count)
+
+    def test_receipt_digest_drift_after_new_process_fails_closed(self) -> None:
+        persisted = driver.shared.WorkspaceAuthority("workspace-priority", 17, 17, "1" * 64, "2" * 64)
+        launch = driver.shared.LaunchState(("101",), "component", "")
+        restart = driver.shared.ProcessRestartProof(
+            launch, driver.shared.LaunchState((), None, ""), driver.shared.LaunchState(("202",), "component", "")
+        )
+        with (
+            mock.patch.object(driver.shared, "wait_for_phone_runner_route"),
+            mock.patch.object(driver, "open_exact_stage", side_effect=stage_projection),
+            mock.patch.object(driver, "finalize_exact_build", return_value=exact_finalization()),
+            mock.patch.object(driver, "require_career_surface"),
+            mock.patch.object(driver.shared, "read_phone_workspace_authority", side_effect=[persisted, persisted]),
+            mock.patch.object(
+                driver, "read_persisted_creation_receipt_digest",
+                side_effect=[RECEIPT_DIGEST, "4" * 64],
+            ),
+            mock.patch.object(driver.shared, "force_stop_and_launch_new_process", return_value=restart),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "receipt digest changed"):
+                driver.prove_priority_journey(JourneyDevice(), launch)
 
     def test_durable_receipt_is_new_mode_600_and_never_overwritten(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

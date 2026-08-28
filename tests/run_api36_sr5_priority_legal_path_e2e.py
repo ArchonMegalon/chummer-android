@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -32,6 +33,16 @@ SCHEMA = "chummer.android.sr5-priority-create-physical-e2e/v1"
 IDENTITY_CONTRACT_BLOCKER = "creation-identity-draft-contract-unavailable"
 DISPOSABLE_DEVICE_FLAG = "--allow-destructive-disposable-device"
 SAFE_ADB_SERIAL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+CANONICAL_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+POSITIVE_REVISION = re.compile(r"^[1-9][0-9]*$")
+FINALIZATION_BINDING = re.compile(
+    r"^Revision (?P<revision>[1-9][0-9]*) · plan (?P<plan>[0-9a-f]{18})… · "
+    r"preview (?P<preview>[0-9a-f]{18})…$"
+)
+VIRTUAL_MARKERS = (
+    "aosp_cf_", "cuttlefish", "emulator", "generic", "goldfish", "qemu",
+    "ranchu", "sdk_gphone", "vbox", "virtualbox",
+)
 
 
 @dataclass(frozen=True)
@@ -42,6 +53,30 @@ class LegalPathStage:
     authority_id: str | None
     required_by_finalizer: bool
     expected_clickable: bool = True
+
+
+@dataclass(frozen=True)
+class ProvenanceFileIdentity:
+    sha256: str
+    size: int
+
+
+@dataclass(frozen=True)
+class FinalizationReviewAuthority:
+    content_revision: int
+    plan_digest: str
+    preview_digest: str
+
+
+@dataclass(frozen=True)
+class FinalizationReceiptAuthority:
+    previous_content_revision: int
+    content_revision: int
+    saved_revision: int
+    build_method: str
+    plan_digest: str
+    preview_digest: str
+    receipt_digest: str
 
 
 LEGAL_PATH_STAGES = (
@@ -88,6 +123,106 @@ def _node_text(node: shared.UiNode) -> str:
 def _require_enabled(node: shared.UiNode, label: str) -> None:
     if node.attributes.get("enabled") != "true" or node.attributes.get("clickable") != "true":
         raise RuntimeError(f"{label} is not enabled and clickable")
+
+
+def _read_exact_authority(
+    device: shared.Device,
+    selector: str,
+    label: str,
+) -> str:
+    node = device.wait_exact_resource_id_bidirectional(
+        selector, timeout=60, backward_scrolls=30, forward_scrolls=30,
+        scroll_distance_ratio=0.22, evidence_prefix=selector,
+        surface_name=label, require_tappable=False,
+    )
+    value = _node_text(node).strip()
+    if not value:
+        raise RuntimeError(f"{label} did not expose an exact machine-readable value")
+    return value
+
+
+def is_canonical_authority_digest(value: str) -> bool:
+    return CANONICAL_SHA256.fullmatch(value) is not None and len(set(value)) > 1
+
+
+def _read_canonical_digest(device: shared.Device, selector: str, label: str) -> str:
+    value = _read_exact_authority(device, selector, label)
+    if not is_canonical_authority_digest(value):
+        raise RuntimeError(f"{label} is not one full lowercase SHA-256 digest: {value!r}")
+    return value
+
+
+def _read_positive_revision(device: shared.Device, selector: str, label: str) -> int:
+    value = _read_exact_authority(device, selector, label)
+    if POSITIVE_REVISION.fullmatch(value) is None:
+        raise RuntimeError(f"{label} is not one exact positive revision: {value!r}")
+    return int(value)
+
+
+def require_priority_build_method(value: str, label: str) -> str:
+    if value != "Priority":
+        raise RuntimeError(f"{label} must be exactly BuildMethod 'Priority', got {value!r}")
+    return value
+
+
+def cross_bind_finalization_authorities(
+    review: FinalizationReviewAuthority,
+    receipt: FinalizationReceiptAuthority,
+) -> None:
+    for label, digest in (
+        ("sealed plan digest", review.plan_digest),
+        ("finalization preview digest", review.preview_digest),
+        ("receipt plan digest", receipt.plan_digest),
+        ("receipt preview digest", receipt.preview_digest),
+        ("durable receipt digest", receipt.receipt_digest),
+    ):
+        if not is_canonical_authority_digest(digest):
+            raise RuntimeError(f"{label} is not one full lowercase SHA-256 digest: {digest!r}")
+    require_priority_build_method(receipt.build_method, "Durable creation receipt")
+    if receipt.previous_content_revision != review.content_revision:
+        raise RuntimeError("Durable receipt does not bind the reviewed workspace revision")
+    if receipt.content_revision != review.content_revision + 1:
+        raise RuntimeError("Atomic finalization did not advance the reviewed revision exactly once")
+    if receipt.saved_revision != receipt.content_revision:
+        raise RuntimeError("Durable receipt content and saved revisions do not match")
+    if receipt.plan_digest != review.plan_digest:
+        raise RuntimeError("Durable receipt plan digest does not match the sealed reviewed plan")
+    if receipt.preview_digest != review.preview_digest:
+        raise RuntimeError("Durable receipt preview digest does not match the sealed review")
+
+
+def provenance_file_identity(path: Path) -> ProvenanceFileIdentity:
+    resolved = path.resolve(strict=True)
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(resolved, flags)
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            raise RuntimeError("Build-provenance manifest is not a regular file")
+        digest = hashlib.sha256()
+        size = 0
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+            size += len(chunk)
+        after = os.fstat(descriptor)
+    finally:
+        os.close(descriptor)
+    if (
+        before.st_dev != after.st_dev
+        or before.st_ino != after.st_ino
+        or before.st_size != after.st_size
+        or before.st_mtime_ns != after.st_mtime_ns
+        or size != after.st_size
+    ):
+        raise RuntimeError("Build-provenance manifest changed during exact byte capture")
+    return ProvenanceFileIdentity(digest.hexdigest(), size)
+
+
+def provenance_file_identity_json(identity: ProvenanceFileIdentity) -> dict[str, object]:
+    return {"sha256": identity.sha256, "size": identity.size}
 
 
 def open_exact_stage(device: shared.Device, stage: LegalPathStage) -> dict[str, object]:
@@ -137,7 +272,16 @@ def open_exact_stage(device: shared.Device, stage: LegalPathStage) -> dict[str, 
         "authorityId": stage.authority_id, "requiredByCurrentFinalizer": stage.required_by_finalizer,
         "routeStatus": "typed-authority-visible", "authorityVisible": True, "draftFabricated": False,
     }
-    if stage.step_id == "basics":
+    if stage.step_id == "method":
+        result["buildMethod"] = require_priority_build_method(
+            _read_exact_authority(
+                device,
+                "creation-prerequisite-build-method-id",
+                "Machine-readable creation BuildMethod authority",
+            ),
+            "Creation prerequisite authority",
+        )
+    elif stage.step_id == "basics":
         device.wait_exact_resource_id_bidirectional(
             "creation-basics-sourcebooks-contract-unavailable", timeout=60,
             backward_scrolls=24, forward_scrolls=24, scroll_distance_ratio=0.22,
@@ -227,8 +371,27 @@ def finalize_exact_build(device: shared.Device) -> dict[str, object]:
             surface_name="Sealed creation finalization review",
         )
         reviewed[identity] = _node_text(node)
-    if not all(marker in reviewed["creation-finalization-binding"] for marker in ("Revision ", "plan ", "preview ")):
-        raise RuntimeError("Whole-build plan binding is not visible and revision-bound")
+    review = FinalizationReviewAuthority(
+        content_revision=_read_positive_revision(
+            device, "creation-finalization-content-revision",
+            "Sealed review content revision",
+        ),
+        plan_digest=_read_canonical_digest(
+            device, "creation-finalization-plan-digest", "Sealed whole-build plan digest",
+        ),
+        preview_digest=_read_canonical_digest(
+            device, "creation-finalization-preview-digest", "Sealed finalization preview digest",
+        ),
+    )
+    display_binding = FINALIZATION_BINDING.fullmatch(reviewed["creation-finalization-binding"])
+    if display_binding is None:
+        raise RuntimeError("Whole-build plan display binding is not exact and revision-bound")
+    if (
+        int(display_binding.group("revision")) != review.content_revision
+        or display_binding.group("plan") != review.plan_digest[:18]
+        or display_binding.group("preview") != review.preview_digest[:18]
+    ):
+        raise RuntimeError("Displayed whole-build binding does not match its full authority values")
     confirm = device.wait_exact_resource_id_bidirectional(
         "creation-finalization-confirm", timeout=60, backward_scrolls=30,
         forward_scrolls=30, scroll_distance_ratio=0.22,
@@ -245,6 +408,37 @@ def finalize_exact_build(device: shared.Device) -> dict[str, object]:
         forward_scrolls=24, scroll_distance_ratio=0.22,
         evidence_prefix="sr5-priority-finalization-receipt", surface_name="Durable creation receipt",
     )
+    receipt = FinalizationReceiptAuthority(
+        previous_content_revision=_read_positive_revision(
+            device, "creation-finalization-receipt-previous-content-revision",
+            "Durable receipt previous content revision",
+        ),
+        content_revision=_read_positive_revision(
+            device, "creation-finalization-receipt-content-revision",
+            "Durable receipt content revision",
+        ),
+        saved_revision=_read_positive_revision(
+            device, "creation-finalization-receipt-saved-revision",
+            "Durable receipt saved revision",
+        ),
+        build_method=_read_exact_authority(
+            device, "creation-finalization-receipt-build-method",
+            "Durable receipt BuildMethod",
+        ),
+        plan_digest=_read_canonical_digest(
+            device, "creation-finalization-receipt-plan-digest",
+            "Durable receipt plan digest",
+        ),
+        preview_digest=_read_canonical_digest(
+            device, "creation-finalization-receipt-preview-digest",
+            "Durable receipt preview digest",
+        ),
+        receipt_digest=_read_canonical_digest(
+            device, "creation-finalization-receipt-digest",
+            "Durable creation receipt digest",
+        ),
+    )
+    cross_bind_finalization_authorities(review, receipt)
     reopen = device.wait_exact_resource_id_bidirectional(
         "creation-finalization-career-reopen", timeout=60, backward_scrolls=24,
         forward_scrolls=24, scroll_distance_ratio=0.22,
@@ -262,6 +456,20 @@ def finalize_exact_build(device: shared.Device) -> dict[str, object]:
     device.shell("input", "tap", *(str(value) for value in open_career.center))
     return {
         "review": "sealed-core-whole-build-plan", "reviewedAuthority": reviewed,
+        "sealedPlanAuthority": {
+            "contentRevision": review.content_revision,
+            "planDigest": review.plan_digest,
+            "previewDigest": review.preview_digest,
+        },
+        "receiptAuthority": {
+            "previousContentRevision": receipt.previous_content_revision,
+            "contentRevision": receipt.content_revision,
+            "savedRevision": receipt.saved_revision,
+            "buildMethod": receipt.build_method,
+            "planDigest": receipt.plan_digest,
+            "previewDigest": receipt.preview_digest,
+            "receiptDigest": receipt.receipt_digest,
+        },
         "confirmation": "explicit-atomic-once", "receipt": "durable", "careerReopen": "verified",
     }
 
@@ -277,6 +485,29 @@ def require_career_surface(device: shared.Device) -> None:
     _require_enabled(career, "Finalized SR5 Career wizard")
 
 
+def read_persisted_creation_receipt_digest(device: shared.Device) -> str:
+    return _read_canonical_digest(
+        device,
+        "phone-workspace-creation-receipt-digest",
+        "Persisted workspace creation receipt digest",
+    )
+
+
+def bind_saved_workspace_to_receipt(
+    workspace: shared.WorkspaceAuthority,
+    receipt: dict[str, object],
+) -> None:
+    content_revision = receipt.get("contentRevision")
+    saved_revision = receipt.get("savedRevision")
+    if not isinstance(content_revision, int) or not isinstance(saved_revision, int):
+        raise RuntimeError("Finalization result omitted exact receipt revisions")
+    if workspace.content_revision != content_revision or workspace.saved_revision != saved_revision:
+        raise RuntimeError("Saved Career workspace revisions do not match the durable creation receipt")
+    digest = receipt.get("receiptDigest")
+    if not isinstance(digest, str) or not is_canonical_authority_digest(digest):
+        raise RuntimeError("Finalization result omitted the canonical durable receipt digest")
+
+
 def prove_priority_journey(device: shared.Device, initial_launch: shared.LaunchState) -> dict[str, object]:
     shared.wait_for_phone_runner_route(device, created=False, timeout=90)
     device.wait_for_single_exact_resource_id(
@@ -284,6 +515,8 @@ def prove_priority_journey(device: shared.Device, initial_launch: shared.LaunchS
         surface_name="Creation wizard dashboard",
     )
     stages = [open_exact_stage(device, stage) for stage in LEGAL_PATH_STAGES]
+    method = next(row for row in stages if row["stepId"] == "method")
+    require_priority_build_method(str(method.get("buildMethod", "")), "Observed creation stage")
     identity = next(row for row in stages if row["stepId"] == "identity-story")
     expected_identity = {
         "stepId": "identity-story", "routeId": "creation-stage-identity-story",
@@ -294,13 +527,23 @@ def prove_priority_journey(device: shared.Device, initial_launch: shared.LaunchS
     if identity != expected_identity:
         raise RuntimeError("Identity gap changed or acquired fabricated draft authority")
     finalization = finalize_exact_build(device)
+    receipt = finalization.get("receiptAuthority")
+    if not isinstance(receipt, dict):
+        raise RuntimeError("Finalization did not return one exact durable receipt authority")
     require_career_surface(device)
     persisted = shared.read_phone_workspace_authority(device)
     shared.require_saved_authority(persisted)
+    bind_saved_workspace_to_receipt(persisted, receipt)
+    persisted_receipt_digest = read_persisted_creation_receipt_digest(device)
+    if persisted_receipt_digest != receipt["receiptDigest"]:
+        raise RuntimeError("Career workspace receipt digest does not match the durable finalization receipt")
     restart = shared.force_stop_and_launch_new_process(device, initial_launch)
     require_career_surface(device)
     restored = shared.read_phone_workspace_authority(device)
     shared.require_restored_authority(persisted, restored)
+    restored_receipt_digest = read_persisted_creation_receipt_digest(device)
+    if restored_receipt_digest != persisted_receipt_digest:
+        raise RuntimeError("Creation receipt digest changed after force-stop and new-process reopen")
     device.capture("sr5-priority-finalized-career-restored-new-process")
     return {
         "stages": stages, "identityGap": identity,
@@ -308,6 +551,8 @@ def prove_priority_journey(device: shared.Device, initial_launch: shared.LaunchS
         "finalization": finalization,
         "savedCareerWorkspace": shared.workspace_authority_json(persisted),
         "restoredCareerWorkspace": shared.workspace_authority_json(restored),
+        "persistedCreationReceiptDigest": persisted_receipt_digest,
+        "restoredCreationReceiptDigest": restored_receipt_digest,
         "processRestart": {
             "beforeProcessIds": list(restart.before_force_stop.process_ids),
             "afterForceStopProcessIds": list(restart.after_force_stop.process_ids),
@@ -323,23 +568,39 @@ def physical_device_observation(device: shared.Device) -> dict[str, object]:
     abi = device.shell("getprop", "ro.product.cpu.abi")
     abi_list = device.shell("getprop", "ro.product.cpu.abilist")
     qemu = device.shell("getprop", "ro.kernel.qemu")
+    boot_qemu = device.shell("getprop", "ro.boot.qemu")
     hardware = device.shell("getprop", "ro.hardware")
+    fingerprint = device.shell("getprop", "ro.build.fingerprint")
+    product_device = device.shell("getprop", "ro.product.device")
+    product_name = device.shell("getprop", "ro.product.name")
     if api != "36":
         raise RuntimeError(f"Physical SR5 Priority proof requires API 36, got {api!r}")
     if abi != "arm64-v8a" or "arm64-v8a" not in abi_list.split(","):
         raise RuntimeError(f"Physical SR5 Priority proof requires arm64-v8a, got {abi!r}")
+    serial = device.serial.lower()
+    serial_is_virtual_transport = (
+        serial.startswith("emulator-")
+        or serial.startswith("localhost:")
+        or serial.startswith("127.0.0.1:")
+        or serial.startswith("::1:")
+    )
+    virtual_surface = "\n".join((hardware, fingerprint, product_device, product_name)).lower()
     if (
-        device.serial.startswith("emulator-") or qemu == "1"
-        or any(token in hardware.lower() for token in ("goldfish", "ranchu", "cuttlefish"))
+        serial_is_virtual_transport
+        or qemu not in ("", "0")
+        or boot_qemu not in ("", "0")
+        or any(token in virtual_surface for token in VIRTUAL_MARKERS)
     ):
         raise RuntimeError("The requested transport is an emulator, not a physical phone")
     return {
         "classification": "non-emulator-arm64-api36",
         "evidenceNature": "non-cryptographic getprop and adb serial observations",
-        "serial": device.serial, "apiLevel": 36, "abi": abi, "abiList": abi_list, "qemu": qemu,
+        "serial": device.serial, "apiLevel": 36, "abi": abi, "abiList": abi_list,
+        "qemu": qemu, "bootQemu": boot_qemu,
         "manufacturer": device.shell("getprop", "ro.product.manufacturer"),
         "model": device.shell("getprop", "ro.product.model"), "hardware": hardware,
-        "buildFingerprint": device.shell("getprop", "ro.build.fingerprint"),
+        "productDevice": product_device, "productName": product_name,
+        "buildFingerprint": fingerprint,
         "buildId": device.shell("getprop", "ro.build.id"),
         "securityPatch": device.shell("getprop", "ro.build.version.security_patch"),
         "verifiedBootState": device.shell("getprop", "ro.boot.verifiedbootstate"),
@@ -414,6 +675,12 @@ def execute(args: argparse.Namespace, context: dict[str, object]) -> dict[str, o
         )
     if SAFE_ADB_SERIAL.fullmatch(args.serial) is None:
         raise RuntimeError("ADB serial does not match the exact safe grammar")
+    context["disposableDeviceAuthorization"] = {
+        "authorized": True,
+        "flag": DISPOSABLE_DEVICE_FLAG,
+        "serial": args.serial,
+        "scope": "install-apk-and-atomically-finalize-one-pending-runner",
+    }
     driver = Path(__file__).resolve()
     android_root = driver.parents[1]
     workspace_root = args.workspace_root.resolve()
@@ -421,15 +688,20 @@ def execute(args: argparse.Namespace, context: dict[str, object]) -> dict[str, o
     presentation_root = workspace_root / "chummer-presentation"
     apk = args.apk.resolve()
     validate_output_paths(args.receipt, args.evidence, source_roots(android_root, workspace_root))
+    manifest_file_before = provenance_file_identity(args.build_provenance_manifest)
     manifest = load_and_verify_manifest(
         args.build_provenance_manifest, android_root=android_root, core_root=core_root,
         presentation_root=presentation_root, apk=apk,
     )
+    manifest_file_after_parse = provenance_file_identity(args.build_provenance_manifest)
+    if manifest_file_after_parse != manifest_file_before:
+        raise RuntimeError("Build-provenance manifest bytes changed while validating its payload")
     artifact = manifest.get("artifact")
     if not isinstance(artifact, dict) or not isinstance(artifact.get("sha256"), str):
         raise RuntimeError("Verified build-provenance artifact is malformed")
     expected_apk_sha256 = artifact["sha256"]
     context["buildProvenance"] = manifest
+    context["buildProvenanceFile"] = provenance_file_identity_json(manifest_file_before)
     context["releaseEvidenceStatus"] = "source-and-apk-bound-local-build-not-release-attested"
     device = shared.Device(args.adb.resolve(), args.serial, args.evidence.resolve())
     device.require_transport_stability(expected_api_level="36")
@@ -438,10 +710,16 @@ def execute(args: argparse.Namespace, context: dict[str, object]) -> dict[str, o
     device.install_verified(apk, expected_apk_sha256, "--no-streaming", "-r")
     initial_launch = shared.launch_app(device)
     journey = prove_priority_journey(device, initial_launch)
+    manifest_file_before_recheck = provenance_file_identity(args.build_provenance_manifest)
+    if manifest_file_before_recheck != manifest_file_before:
+        raise RuntimeError("Build-provenance manifest bytes changed during physical execution")
     manifest_after = load_and_verify_manifest(
         args.build_provenance_manifest, android_root=android_root, core_root=core_root,
         presentation_root=presentation_root, apk=apk,
     )
+    manifest_file_after_recheck = provenance_file_identity(args.build_provenance_manifest)
+    if manifest_file_after_recheck != manifest_file_before:
+        raise RuntimeError("Build-provenance manifest bytes changed during post-run validation")
     if manifest_after != manifest:
         raise RuntimeError("Source/APK build provenance changed during physical execution")
     transport = device.transport_summary()
@@ -451,10 +729,15 @@ def execute(args: argparse.Namespace, context: dict[str, object]) -> dict[str, o
         "schema": SCHEMA, "status": "device-pass-source-bound", "executionStatus": "pass",
         "releaseEvidenceStatus": context["releaseEvidenceStatus"], "releaseAttested": False,
         "publicationAuthorized": False, "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
-        "journey": "sr5-priority-create-physical", "profile": "phone", "serial": args.serial,
+        "journey": "sr5-priority-create-physical", "buildMethod": "Priority",
+        "profile": "phone", "serial": args.serial,
         "apiLevel": observation["apiLevel"], "abi": observation["abi"], "package": shared.PACKAGE,
         "apk": str(apk), "apkSha256": expected_apk_sha256, "buildProvenance": manifest,
-        "buildProvenanceRecheckedAfterRun": True, "deviceObservation": observation,
+        "buildProvenanceFile": provenance_file_identity_json(manifest_file_before),
+        "buildProvenanceRecheckedAfterRun": True,
+        "buildProvenanceFileRecheckedAfterRun": True,
+        "disposableDeviceAuthorization": context["disposableDeviceAuthorization"],
+        "deviceObservation": observation,
         "adbTransport": transport, "physicalDeviceProof": True, "installedArtifactBound": True,
         "draftStateFabricated": False, "identityContractStatus": "typed-contract-unavailable",
         "authorityProofStages": journey,
