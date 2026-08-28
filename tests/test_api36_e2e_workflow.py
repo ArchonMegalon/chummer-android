@@ -73,7 +73,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         )
         content_check = "python3 chummer-android/scripts/verify_android_content_bundle.py"
         self.assertEqual(2, self.text.count(content_check))
-        self.assertEqual(2, self.text.count("--core-root chummer-core-engine"))
+        self.assertEqual(2, self.text.count("--core-root chummer-core-content"))
         self.assertIn(
             '--apk "$RUNNER_TEMP/chummer-android-apk/chummer-android-x64-debug.apk"',
             self.text,
@@ -140,6 +140,22 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertIn("Chummer.Desktop.Runtime", presentation_checkout)
         self.assertIn("Chummer.Tests", presentation_checkout)
         self.assertIn("\n            Chummer\n", presentation_checkout)
+
+        content_checkout = self.text[
+            self.text.index("Check out the pinned canonical Android content source") :
+            self.text.index("Check out the pinned Hub contract dependencies")
+        ]
+        self.assertIn("repository: ArchonMegalon/chummer6-core", content_checkout)
+        self.assertIn(
+            "ref: 2fb2ae9bb48e5a1a6b25a174ba88008ce995fcd5",
+            content_checkout,
+        )
+        self.assertIn("path: chummer-core-content", content_checkout)
+        self.assertIn("persist-credentials: false", content_checkout)
+        self.assertIn("fetch-depth: 1", content_checkout)
+        self.assertIn("sparse-checkout:", content_checkout)
+        self.assertIn("Chummer/data", content_checkout)
+        self.assertIn("Chummer/lang", content_checkout)
 
     def test_preview_source_compatibility_checkout_includes_run_hub_closure(self) -> None:
         for path in (

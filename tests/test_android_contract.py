@@ -80,26 +80,38 @@ class AndroidContractTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-        for dependency, commit, checkout_count in (
-            ("ArchonMegalon/chummer6-ui", "4c88c1810e6ce2754fe7b00e03db9b36b75d517c", 2),
-            ("ArchonMegalon/chummer6-core", "4450825f53a5a96778e6061c16689e7c5993baf7", 2),
-            ("ArchonMegalon/chummer6-hub", "d29a880f624ec94aabedd0c2901ae8fed2f93ed4", 1),
-            ("ArchonMegalon/chummer6-ui-kit", "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61", 1),
-            ("ArchonMegalon/chummer6-hub-registry", "af9a7e19c3bf331e96411dfb8f9e7820a98cab29", 1),
-            ("ArchonMegalon/chummer6-media-factory", "415c8163d3d90b1211e4014fef332bdec6d75f73", 1),
+        for dependency, commits in (
+            ("ArchonMegalon/chummer6-ui", ("4c88c1810e6ce2754fe7b00e03db9b36b75d517c",) * 2),
+            (
+                "ArchonMegalon/chummer6-core",
+                (
+                    "4450825f53a5a96778e6061c16689e7c5993baf7",
+                    "2fb2ae9bb48e5a1a6b25a174ba88008ce995fcd5",
+                    "4450825f53a5a96778e6061c16689e7c5993baf7",
+                ),
+            ),
+            ("ArchonMegalon/chummer6-hub", ("d29a880f624ec94aabedd0c2901ae8fed2f93ed4",)),
+            ("ArchonMegalon/chummer6-ui-kit", ("d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",)),
+            ("ArchonMegalon/chummer6-hub-registry", ("af9a7e19c3bf331e96411dfb8f9e7820a98cab29",)),
+            ("ArchonMegalon/chummer6-media-factory", ("415c8163d3d90b1211e4014fef332bdec6d75f73",)),
         ):
             checkout = f"repository: {dependency}\n"
-            self.assertEqual(checkout_count, workflow.count(checkout), dependency)
+            self.assertEqual(len(commits), workflow.count(checkout), dependency)
             cursor = 0
-            for _ in range(checkout_count):
+            for commit in commits:
                 start = workflow.index(checkout, cursor)
                 dependency_block = workflow[start:]
                 dependency_block = dependency_block[: dependency_block.index("fetch-depth: 1")]
                 self.assertIn(f"ref: {commit}", dependency_block, dependency)
                 cursor = start + len(checkout)
-            self.assertEqual(checkout_count, workflow.count(f"ref: {commit}"), dependency)
+            for commit in set(commits):
+                self.assertEqual(commits.count(commit), workflow.count(f"ref: {commit}"), dependency)
 
         self.assertIn("path: fleet/repos/chummer-media-factory", workflow)
+        self.assertEqual(2, workflow.count("path: chummer-core-engine"))
+        self.assertEqual(1, workflow.count("path: chummer-core-content"))
+        self.assertEqual(2, workflow.count("--core-root chummer-core-content"))
+        self.assertNotIn("--core-root chummer-core-engine", workflow)
 
     def test_android_uses_play_updates_and_verified_links(self) -> None:
         project = (PROJECT / "Chummer.Android.csproj").read_text(encoding="utf-8")

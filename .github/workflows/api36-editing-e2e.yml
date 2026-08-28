@@ -81,6 +81,18 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
+      - name: Check out the pinned canonical Android content source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-core
+          ref: 2fb2ae9bb48e5a1a6b25a174ba88008ce995fcd5
+          path: chummer-core-content
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: |
+            Chummer/data
+            Chummer/lang
+
       - name: Check out the pinned Hub contract dependencies
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -173,7 +185,7 @@ jobs:
         run: >-
           python3 chummer-android/scripts/verify_android_content_bundle.py
           --repo-root chummer-android
-          --core-root chummer-core-engine
+          --core-root chummer-core-content
           --check
 
       - name: Install the governed .NET SDK
@@ -224,7 +236,7 @@ jobs:
         run: >-
           python3 chummer-android/scripts/verify_android_content_bundle.py
           --repo-root chummer-android
-          --core-root chummer-core-engine
+          --core-root chummer-core-content
           --apk "$RUNNER_TEMP/chummer-android-apk/chummer-android-x64-debug.apk"
           --receipt "$RUNNER_TEMP/chummer-android-apk/chummer-android-content-bundle-receipt.json"
           --check
