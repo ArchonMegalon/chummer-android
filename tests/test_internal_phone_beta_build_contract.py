@@ -222,7 +222,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
                 "compileProject": str(
                     root / "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj"
                 ),
-                "compiledOwnedSourceCount": 210,
+                "compiledOwnedSourceCount": 211,
                 "generatedProjectReferenceCount": 3,
                 "issues": [],
                 "repoRoot": str(root),
@@ -610,6 +610,19 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
                 receipt, evidence, payload, "compile-graph.json", "package-compile-graph"
             )
             with self.assertRaisesRegex(ValueError, "duplicate JSON key: status"):
+                self.receipt.verify_receipt(receipt)
+
+    def test_pass_receipt_rejects_stale_owned_source_inventory_count(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, evidence, payload = self.seed_compile_receipt(Path(temporary))
+            graph_path = evidence / "owned-compile-graph.log"
+            graph = json.loads(graph_path.read_text(encoding="utf-8"))
+            graph["compiledOwnedSourceCount"] = 210
+            graph_path.write_text(json.dumps(graph), encoding="utf-8")
+            self.refresh_evidence_binding(
+                receipt, evidence, payload, "owned-compile-graph.log", "owned-compile-graph"
+            )
+            with self.assertRaisesRegex(ValueError, "owned compile graph evidence facts mismatch"):
                 self.receipt.verify_receipt(receipt)
 
     def test_pass_phase_evidence_rejects_warning_and_journal_bound_drift(self) -> None:
