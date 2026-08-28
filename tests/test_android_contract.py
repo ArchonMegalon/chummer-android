@@ -81,8 +81,8 @@ class AndroidContractTests(unittest.TestCase):
         )
 
         for dependency, commit, checkout_count in (
-            ("ArchonMegalon/chummer6-ui", "37b4f048fa50911db7cd493217e1b64005c37770", 2),
-            ("ArchonMegalon/chummer6-core", "b7a5f29f51ea7b9aa3c1a0a6b41e1f3d747e8edc", 2),
+            ("ArchonMegalon/chummer6-ui", "4c88c1810e6ce2754fe7b00e03db9b36b75d517c", 2),
+            ("ArchonMegalon/chummer6-core", "4450825f53a5a96778e6061c16689e7c5993baf7", 2),
             ("ArchonMegalon/chummer6-hub", "d29a880f624ec94aabedd0c2901ae8fed2f93ed4", 1),
             ("ArchonMegalon/chummer6-ui-kit", "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61", 1),
             ("ArchonMegalon/chummer6-hub-registry", "af9a7e19c3bf331e96411dfb8f9e7820a98cab29", 1),
@@ -90,9 +90,14 @@ class AndroidContractTests(unittest.TestCase):
         ):
             checkout = f"repository: {dependency}\n"
             self.assertEqual(checkout_count, workflow.count(checkout), dependency)
-            dependency_block = workflow[workflow.index(checkout) :]
-            dependency_block = dependency_block[: dependency_block.index("fetch-depth: 1")]
-            self.assertIn(f"ref: {commit}", dependency_block, dependency)
+            cursor = 0
+            for _ in range(checkout_count):
+                start = workflow.index(checkout, cursor)
+                dependency_block = workflow[start:]
+                dependency_block = dependency_block[: dependency_block.index("fetch-depth: 1")]
+                self.assertIn(f"ref: {commit}", dependency_block, dependency)
+                cursor = start + len(checkout)
+            self.assertEqual(checkout_count, workflow.count(f"ref: {commit}"), dependency)
 
         self.assertIn("path: fleet/repos/chummer-media-factory", workflow)
 
@@ -130,7 +135,7 @@ class AndroidContractTests(unittest.TestCase):
                                       system_service.index("public Task ShareTextAsync")]
         self.assertNotIn("Launcher.Default", check_method)
         self.assertIn('"Updates come through Google Play"', more)
-        self.assertIn('button.Text = "Checking"', more)
+        self.assertIn('button.Text = PhoneStrings.Get("Checking", "Checking")', more)
         self.assertNotIn("await RunAsync(async () =>", more[more.index("private async Task CheckUpdatesAsync"):])
         self.assertNotIn("DesktopUpdateRuntime", "".join(p.read_text(encoding="utf-8") for p in PROJECT.rglob("*.cs")))
         self.assertIn('DataHost = "chummer.run"', activity)
@@ -248,16 +253,17 @@ class AndroidContractTests(unittest.TestCase):
         phone_shell = shell[shell.index("private void BuildPhoneShell"):shell.index("private void BuildTabletShell")]
         tablet_shell = shell[shell.index("private void BuildTabletShell"):]
         self.assertEqual(4, phone_shell.count("tabs.Items.Add(CreatePhoneTab<"))
-        for page_type, label, route in (
-            ("ShadowArchivePage", "Stories", "Stories"),
-            ("RunnersPage", "Runners", "Runners"),
-            ("BuildPage", "Runner", "Runner"),
-            ("PhoneMorePage", "More", "More"),
+        for page_type, key, label, route in (
+            ("ShadowArchivePage", "ShellStories", "Stories", "Archive"),
+            ("RunnersPage", "ShellRunners", "Runners", "Runners"),
+            ("BuildPage", "ShellRunner", "Runner", "Runner"),
+            ("PhoneMorePage", "ShellMore", "More", "More"),
         ):
-            self.assertIn(
-                f'CreatePhoneTab<{page_type}>(services, "{label}", PhoneShellRoutes.{route}',
-                phone_shell,
-            )
+            marker = f"CreatePhoneTab<{page_type}>("
+            start = phone_shell.index(marker)
+            block = phone_shell[start:phone_shell.index("));", start)]
+            self.assertIn(f'PhoneStrings.Get("{key}", "{label}")', block)
+            self.assertIn(f"PhoneShellRoutes.{route}", block)
         for route in ("archive", "runners", "runner", "play", "table", "more"):
             self.assertIn(f'"{route}"', routes)
             self.assertIn('$"phone-destination-{route}"', shell)
@@ -271,7 +277,7 @@ class AndroidContractTests(unittest.TestCase):
         self.assertNotIn('AutomationId = "phone-runner-create"', build)
         self.assertNotIn('AutomationId = "phone-runner-sheet"', build)
         self.assertIn('AutomationId = "phone-play-unavailable"', phone_pages)
-        self.assertIn('AutomationId = "phone-table-unavailable"', phone_pages)
+        self.assertIn('AutomationId = "phone-table-unavailable-authorities"', phone_pages)
         self.assertIn("showUnrestrictedActions: false", phone_pages)
         self.assertIn("runnerRouteAfterOpen: PhoneShellRoutes.RunnerAbsolute", phone_pages)
         self.assertIn("if (_showUnrestrictedActions)", more)
@@ -279,7 +285,7 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn('open.AutomationId = "more-open-file"', more)
         more_open = more[
             more.index('open.AutomationId = "more-open-file"'):
-            more.index('Button save = NativeTheme.SecondaryButton("Save")')
+            more.index('Button save = NativeTheme.SecondaryButton(PhoneStrings.Get("Save", "Save"))')
         ]
         self.assertIn(
             "NativeWorkspaceActivationReceipt? activation = await Coordinator.OpenLocalAsync()",
@@ -1528,7 +1534,10 @@ class AndroidContractTests(unittest.TestCase):
         dialog = (PROJECT / "Native" / "NativeDialogPage.cs").read_text(encoding="utf-8")
         self.assertIn("HeightRequest = 50", theme)
         self.assertIn("LineBreakMode.WordWrap", theme)
-        self.assertIn('NativeTheme.SecondaryButton("Print")', more)
+        self.assertIn(
+            'NativeTheme.SecondaryButton(PhoneStrings.Get("Print", "Print"))',
+            more,
+        )
         self.assertIn('Text = "Close"', dialog)
         self.assertNotIn("Print current view", more + dialog)
 

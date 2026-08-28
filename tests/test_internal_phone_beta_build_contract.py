@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -15,6 +17,7 @@ REPO = Path(__file__).resolve().parents[1]
 AUTHORITY_SCRIPT = REPO / "scripts/verify_internal_phone_beta_package_authority.py"
 GRAPH_SCRIPT = REPO / "scripts/verify_internal_phone_beta_compile_graph.py"
 RUNNER = REPO / "scripts/run_internal_phone_beta_bounded.py"
+RECEIPT_VERIFIER = REPO / "scripts/verify_internal_phone_beta_compile_receipt.py"
 BUILD = REPO / "scripts/build-internal-phone-beta-native-compile.sh"
 WORKFLOW = REPO / ".github/workflows/internal-phone-beta-package-compile.yml"
 
@@ -33,6 +36,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.authority = load_module(AUTHORITY_SCRIPT, "verify_internal_phone_beta_package_authority")
         cls.graph = load_module(GRAPH_SCRIPT, "verify_internal_phone_beta_compile_graph")
+        cls.receipt = load_module(RECEIPT_VERIFIER, "verify_internal_phone_beta_compile_receipt")
 
     def test_build_is_exact_locked_serialized_and_bounded(self) -> None:
         text = BUILD.read_text(encoding="utf-8")
@@ -50,6 +54,10 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
         self.assertIn('proofScope: "Native.CompileCheck_dependency_only"', text)
         self.assertIn("fullMauiBuild: false", text)
         self.assertIn("coreDataLangContentVerified: false", text)
+        self.assertNotIn('>"$restore_log"', text)
+        self.assertNotIn('>"$build_log"', text)
+        self.assertIn("persist_evidence", text)
+        self.assertIn("verify_internal_phone_beta_compile_receipt.py", text)
 
     def test_source_sibling_inputs_are_rejected_not_forwarded(self) -> None:
         text = BUILD.read_text(encoding="utf-8")
@@ -117,16 +125,22 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             root = Path(temporary)
             journal = root / "journal.jsonl"
             success = root / "success.log"
+            side_effect = root / "side-effect.txt"
             completed = subprocess.run(
                 [
                     sys.executable, str(RUNNER), "--journal", str(journal),
                     "--output", str(success), "--phase", "success",
                     "--timeout-seconds", "2", "--deadline-epoch", str(time.time() + 10),
-                    "--", sys.executable, "-c", "print('green')",
+                    "--", sys.executable, "-c",
+                    "from pathlib import Path; import sys; "
+                    "Path(sys.argv[1]).write_text('executed'); print('green')",
+                    str(side_effect),
                 ],
                 check=False, capture_output=True, text=True,
             )
             self.assertEqual(0, completed.returncode, completed.stderr)
+            self.assertEqual("executed", side_effect.read_text(encoding="utf-8"))
+            self.assertEqual("green\n", success.read_text(encoding="utf-8"))
             timed = root / "timed.log"
             completed = subprocess.run(
                 [
@@ -143,6 +157,151 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             self.assertTrue(rows[-1]["timedOut"])
             self.assertTrue(all(row["publicationAuthorized"] is False for row in rows))
             self.assertTrue(all(row.get("processGroupTermination", True) for row in rows))
+
+    def test_bounded_runner_kills_sigterm_resistant_descendant(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            child_pid_path = root / "child.pid"
+            child_code = (
+                "import os,signal,time; from pathlib import Path; "
+                "signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+                f"Path({str(child_pid_path)!r}).write_text(str(os.getpid())); "
+                "time.sleep(30)"
+            )
+            parent_code = (
+                "import subprocess,sys,time; "
+                f"subprocess.Popen([sys.executable, '-c', {child_code!r}]); "
+                "time.sleep(30)"
+            )
+            journal = root / "journal.jsonl"
+            output = root / "timeout.log"
+            completed = subprocess.run(
+                [
+                    sys.executable, str(RUNNER), "--journal", str(journal),
+                    "--output", str(output), "--phase", "resistant-child",
+                    "--timeout-seconds", "0.4", "--term-grace-seconds", "0.1",
+                    "--deadline-epoch", str(time.time() + 10),
+                    "--", sys.executable, "-c", parent_code,
+                ],
+                check=False, capture_output=True, text=True, timeout=5,
+            )
+            self.assertEqual(124, completed.returncode, completed.stderr)
+            child_pid = int(child_pid_path.read_text(encoding="utf-8"))
+            with self.assertRaises(ProcessLookupError):
+                os.kill(child_pid, 0)
+            rows = [json.loads(line) for line in journal.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual({
+                "sigtermSent": True,
+                "sigkillSent": True,
+                "groupAbsent": True,
+            }, rows[-1]["termination"])
+
+    def seed_compile_receipt(self, root: Path) -> tuple[Path, Path, dict[str, object]]:
+        receipt = root / "compile-receipt.json"
+        evidence = Path(f"{receipt}.evidence")
+        evidence.mkdir(mode=0o700)
+        rows = []
+        digests = {}
+        sizes = {}
+        for index, name in enumerate(self.receipt.EXPECTED_EVIDENCE):
+            path = evidence / name
+            path.write_text(f"evidence-{index}\n", encoding="utf-8")
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            size = path.stat().st_size
+            rows.append({"path": name, "sha256": digest, "sizeBytes": size})
+            digests[name] = digest
+            sizes[name] = size
+        payload = {
+            "contractName": self.receipt.CONTRACT,
+            "status": "pass",
+            "publicationAuthorized": False,
+            "evidenceDirectory": str(evidence),
+            "evidence": rows,
+            "authorityBindingSha256": digests["authority-binding.json"],
+            "restoreOutputSha256": digests["restore.log"],
+            "compileGraphSha256": digests["compile-graph.json"],
+            "buildOutputSha256": digests["build.log"],
+            "journalSha256": digests["command-journal.jsonl"],
+            "journalSizeBytes": sizes["command-journal.jsonl"],
+        }
+        receipt.write_text(json.dumps(payload), encoding="utf-8")
+        return receipt, evidence, payload
+
+    def test_compile_receipt_verifies_persisted_evidence_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, _evidence, _payload = self.seed_compile_receipt(Path(temporary))
+            result = self.receipt.verify_receipt(receipt)
+            self.assertEqual("pass", result["status"])
+            self.assertEqual(7, len(result["evidence"]))
+
+    def test_build_failure_persists_a_verifiable_blocked_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            presentation = root / "presentation"
+            feed = root / "feed"
+            packages = root / "packages"
+            for directory in (presentation, feed, packages):
+                directory.mkdir()
+            authority_receipt = root / "authority.json"
+            authority_journal = root / "authority.journal.json"
+            authority_receipt.write_text("{}\n", encoding="utf-8")
+            authority_journal.write_text("{}\n", encoding="utf-8")
+            fake_dotnet = root / "dotnet"
+            fake_dotnet.write_text("#!/usr/bin/env bash\nprintf '0.0.0\\n'\n", encoding="utf-8")
+            fake_dotnet.chmod(0o700)
+            build_receipt = root / "blocked.json"
+            environment = os.environ.copy()
+            for forbidden in (
+                "CHUMMER_CORE_ENGINE_ROOT", "CHUMMER_RUN_SERVICES_ROOT",
+                "CHUMMER_HUB_REGISTRY_ROOT", "CHUMMER_UI_KIT_ROOT",
+                "CHUMMER_MEDIA_FACTORY_ROOT",
+            ):
+                environment.pop(forbidden, None)
+            environment.update({
+                "CHUMMER_DOTNET": str(fake_dotnet),
+                "CHUMMER_PRESENTATION_ROOT": str(presentation),
+                "CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED": str(feed),
+                "CHUMMER_INTERNAL_PHONE_BETA_NUGET_PACKAGES": str(packages),
+                "CHUMMER_W41_PACKAGE_AUTHORITY_RECEIPT": str(authority_receipt),
+                "CHUMMER_W41_PACKAGE_AUTHORITY_JOURNAL": str(authority_journal),
+                "CHUMMER_INTERNAL_PHONE_BETA_BUILD_RECEIPT": str(build_receipt),
+            })
+            completed = subprocess.run(
+                [str(BUILD)], env=environment, check=False,
+                capture_output=True, text=True, timeout=10,
+            )
+            self.assertEqual(2, completed.returncode, completed.stderr)
+            payload = json.loads(build_receipt.read_text(encoding="utf-8"))
+            self.assertEqual("blocked", payload["status"])
+            self.assertEqual("dotnet-sdk-not-10.0.111", payload["failureStage"])
+            result = self.receipt.verify_receipt(build_receipt)
+            self.assertEqual("blocked", result["verifiedReceiptStatus"])
+            self.assertTrue(Path(f"{build_receipt}.evidence").is_dir())
+
+    def test_compile_receipt_rejects_tamper_missing_and_inventory_deletion(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt, evidence, payload = self.seed_compile_receipt(root)
+            (evidence / "build.log").write_text("tampered\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "digest/size mismatch"):
+                self.receipt.verify_receipt(receipt)
+
+            receipt.unlink()
+            for child in evidence.iterdir():
+                child.unlink()
+            evidence.rmdir()
+            receipt, evidence, payload = self.seed_compile_receipt(root)
+            (evidence / "restore.log").unlink()
+            with self.assertRaisesRegex(ValueError, "evidence restore.log is missing"):
+                self.receipt.verify_receipt(receipt)
+
+            (evidence / "restore.log").write_text("replacement\n", encoding="utf-8")
+            payload["evidence"] = [
+                row for row in payload["evidence"] if row["path"] != "restore.log"
+            ]
+            receipt.write_text(json.dumps(payload), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "missing or extra files"):
+                self.receipt.verify_receipt(receipt)
 
     def seed_compile_graph(self, root: Path):
         android = root / "android"

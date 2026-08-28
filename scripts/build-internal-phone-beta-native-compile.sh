@@ -7,11 +7,23 @@ lock="$repo_dir/tests/Chummer.Android.Native.CompileCheck/packages.lock.json"
 dotnet_command="${CHUMMER_DOTNET:-dotnet}"
 proof_tmp=""
 receipt_output=""
+evidence_output=""
 output_ready="false"
 proof_complete="false"
+evidence_persisted="false"
 current_stage="initialization"
+evidence_names=(
+  authority-intake.log
+  authority-binding.json
+  restore.log
+  owned-compile-graph.log
+  compile-graph.json
+  build.log
+  command-journal.jsonl
+)
 
 fail() {
+  current_stage="$1"
   printf 'internal_phone_beta_native_compile=blocked stage=%s publication_authorized=false\n' "$1" >&2
   exit 2
 }
@@ -22,7 +34,7 @@ cleanup() {
   if [[ "$status" -ne 0 && "$output_ready" == "true" && -n "$proof_tmp" \
         && "$proof_complete" != "true" \
         && ! -e "$receipt_output" && ! -L "$receipt_output" ]]; then
-    local failure_tmp journal_sha256 journal_size
+    local failure_tmp journal_sha256 journal_size evidence_json
     failure_tmp="$proof_tmp/failure-receipt.json"
     journal_sha256=""
     journal_size=0
@@ -30,11 +42,14 @@ cleanup() {
       journal_sha256="$(sha256sum "$proof_tmp/command-journal.jsonl" | cut -d' ' -f1)"
       journal_size="$(stat -c '%s' "$proof_tmp/command-journal.jsonl")"
     fi
+    evidence_json="$(build_evidence_json)"
     jq -n \
       --arg contractName "chummer.android.internal-phone-beta-native-compile/v1" \
       --arg failureStage "$current_stage" \
       --arg journalSha256 "$journal_sha256" \
       --argjson journalSizeBytes "$journal_size" \
+      --arg evidenceDirectory "$evidence_output" \
+      --argjson evidence "$evidence_json" \
       '{
         contractName: $contractName,
         status: "blocked",
@@ -44,16 +59,50 @@ cleanup() {
         failureStage: $failureStage,
         journalSha256: $journalSha256,
         journalSizeBytes: $journalSizeBytes,
+        evidenceDirectory: $evidenceDirectory,
+        evidence: $evidence,
         proofScope: "Native.CompileCheck_dependency_only",
         doesNotAssert: ["full_maui_build", "core_data_lang_content", "api36_device_execution", "google_play_upload", "public_release_readiness"]
       }' >"$failure_tmp"
     chmod 0600 "$failure_tmp"
-    ln -- "$failure_tmp" "$receipt_output" || true
+    if persist_evidence; then
+      ln -- "$failure_tmp" "$receipt_output" || true
+    fi
   fi
-  if [[ -n "$proof_tmp" && -d "$proof_tmp" ]]; then
+  if [[ "$evidence_persisted" == "true" && -n "$proof_tmp" && -d "$proof_tmp" ]]; then
     rm -rf -- "$proof_tmp"
   fi
   exit "$status"
+}
+
+build_evidence_json() {
+  local rows name path digest size
+  rows='[]'
+  for name in "${evidence_names[@]}"; do
+    path="$proof_tmp/$name"
+    [[ -f "$path" && ! -L "$path" ]] || continue
+    digest="$(sha256sum "$path" | cut -d' ' -f1)"
+    size="$(stat -c '%s' "$path")"
+    rows="$(jq -cn \
+      --argjson rows "$rows" \
+      --arg path "$name" \
+      --arg sha256 "$digest" \
+      --argjson sizeBytes "$size" \
+      '$rows + [{path: $path, sha256: $sha256, sizeBytes: $sizeBytes}]')"
+  done
+  printf '%s\n' "$rows"
+}
+
+persist_evidence() {
+  local name source
+  [[ "$evidence_persisted" != "true" ]] || return 0
+  mkdir -m 0700 -- "$evidence_output" || return 1
+  for name in "${evidence_names[@]}"; do
+    source="$proof_tmp/$name"
+    [[ -f "$source" && ! -L "$source" ]] || continue
+    ln -- "$source" "$evidence_output/$name" || return 1
+  done
+  evidence_persisted="true"
 }
 
 require_canonical_file() {
@@ -90,7 +139,7 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-for command in cut date dirname git jq ln mktemp python3 realpath rm sha256sum stat; do
+for command in cut date dirname git jq ln mkdir mktemp python3 realpath rm sha256sum stat; do
   command -v "$command" >/dev/null 2>&1 || fail "missing-command-$command"
 done
 command -v "$dotnet_command" >/dev/null 2>&1 || fail "missing-dotnet"
@@ -102,7 +151,15 @@ require_canonical_file CHUMMER_W41_PACKAGE_AUTHORITY_RECEIPT
 require_canonical_file CHUMMER_W41_PACKAGE_AUTHORITY_JOURNAL
 require_absent_output CHUMMER_INTERNAL_PHONE_BETA_BUILD_RECEIPT
 receipt_output="$CHUMMER_INTERNAL_PHONE_BETA_BUILD_RECEIPT"
+evidence_output="$receipt_output.evidence"
+[[ ! -e "$evidence_output" && ! -L "$evidence_output" ]] \
+  || fail "build-evidence-output-not-absent"
 output_ready="true"
+
+proof_parent="$(dirname -- "$CHUMMER_INTERNAL_PHONE_BETA_BUILD_RECEIPT")"
+[[ ! -L "$proof_parent" && -d "$proof_parent" ]] || fail "build-receipt-parent-invalid"
+proof_tmp="$(mktemp -d "$proof_parent/.internal-phone-beta-native.XXXXXX")"
+chmod 0700 "$proof_tmp"
 
 for forbidden in \
   CHUMMER_CORE_ENGINE_ROOT \
@@ -119,10 +176,6 @@ sdk_version="$($dotnet_command --version)"
 [[ -z "$(git -C "$repo_dir" status --porcelain --untracked-files=all)" ]] \
   || fail "android-proof-head-not-clean"
 
-proof_parent="$(dirname -- "$CHUMMER_INTERNAL_PHONE_BETA_BUILD_RECEIPT")"
-[[ ! -L "$proof_parent" && -d "$proof_parent" ]] || fail "build-receipt-parent-invalid"
-proof_tmp="$(mktemp -d "$proof_parent/.internal-phone-beta-native.XXXXXX")"
-chmod 0700 "$proof_tmp"
 authority_binding="$proof_tmp/authority-binding.json"
 restore_log="$proof_tmp/restore.log"
 compile_graph="$proof_tmp/compile-graph.json"
@@ -184,8 +237,7 @@ run_bounded locked-restore "$restore_log" \
   --source "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
   --source https://api.nuget.org/v3/index.json \
   --ignore-failed-sources \
-  "${package_args[@]}" \
-  >"$restore_log" 2>&1
+  "${package_args[@]}"
 
 run_bounded owned-compile-graph "$proof_tmp/owned-compile-graph.log" \
   python3 "$repo_dir/scripts/verify_native_compile_graph.py" \
@@ -209,8 +261,7 @@ run_bounded serialized-native-compile "$build_log" \
   --disable-build-servers \
   -p:UseSharedCompilation=false \
   -p:BuildInParallel=false \
-  "${package_args[@]}" \
-  >"$build_log" 2>&1
+  "${package_args[@]}"
 
 artifact="$repo_dir/tests/Chummer.Android.Native.CompileCheck/bin/Release/net10.0/Chummer.Android.Native.CompileCheck.dll"
 [[ -f "$artifact" && ! -L "$artifact" ]] || fail "native-compile-artifact-missing"
@@ -231,6 +282,7 @@ compile_graph_sha256="$(sha256sum "$compile_graph" | cut -d' ' -f1)"
 authority_binding_sha256="$(sha256sum "$authority_binding" | cut -d' ' -f1)"
 journal_sha256="$(sha256sum "$journal" | cut -d' ' -f1)"
 journal_size="$(stat -c '%s' "$journal")"
+evidence_json="$(build_evidence_json)"
 
 jq -n \
   --arg contractName "chummer.android.internal-phone-beta-native-compile/v1" \
@@ -244,6 +296,8 @@ jq -n \
   --arg authorityBindingSha256 "$authority_binding_sha256" \
   --arg journalSha256 "$journal_sha256" \
   --argjson journalSizeBytes "$journal_size" \
+  --arg evidenceDirectory "$evidence_output" \
+  --argjson evidence "$evidence_json" \
   --arg compileGraphSha256 "$compile_graph_sha256" \
   --arg restoreOutputSha256 "$restore_sha256" \
   --arg buildOutputSha256 "$build_sha256" \
@@ -270,6 +324,8 @@ jq -n \
     executionBounds: {perCommandSeconds: 900, totalSeconds: 3600, processGroupTermination: true},
     journalSha256: $journalSha256,
     journalSizeBytes: $journalSizeBytes,
+    evidenceDirectory: $evidenceDirectory,
+    evidence: $evidence,
     compileGraphSha256: $compileGraphSha256,
     restoreOutputSha256: $restoreOutputSha256,
     buildOutputSha256: $buildOutputSha256,
@@ -283,6 +339,11 @@ jq -n \
     doesNotAssert: ["full_maui_build", "core_data_lang_content", "api36_device_execution", "google_play_upload", "public_release_readiness", "publication_authority", "tablet_readiness"]
   }' >"$receipt_tmp"
 chmod 0600 "$receipt_tmp"
+persist_evidence || fail "build-evidence-persist-failed"
+python3 "$repo_dir/scripts/verify_internal_phone_beta_compile_receipt.py" \
+  --receipt "$receipt_tmp" \
+  --evidence-directory "$evidence_output" \
+  >/dev/null || fail "build-evidence-verification-failed"
 ln -- "$receipt_tmp" "$CHUMMER_INTERNAL_PHONE_BETA_BUILD_RECEIPT" \
   || fail "build-receipt-output-collision"
 proof_complete="true"
