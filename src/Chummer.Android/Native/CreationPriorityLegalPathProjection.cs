@@ -101,4 +101,61 @@ public sealed record CreationPriorityLegalPathProjection(
                 ? CharacterCreationFinalizationOutcomes.Unavailable
                 : outcome];
     }
+
+    public static string? NormalizeMachineDigestPayload(string? value)
+        => CharacterCreationFinalizationDigest.IsCanonical(value)
+            ? value!["sha256:".Length..]
+            : null;
+
+    public static CharacterCreationFinalizationReceipt? ResolvePersistedPriorityReceipt(
+        CharacterCreationFinalizationResult<CharacterCreationFinalizationState>? result,
+        CharacterWorkspaceId workspaceId,
+        long contentRevision,
+        long savedRevision)
+    {
+        if (contentRevision <= 0
+            || savedRevision <= 0
+            || result is null
+            || !string.Equals(
+                result.Outcome,
+                CharacterCreationFinalizationOutcomes.Blocked,
+                StringComparison.Ordinal)
+            || result.Blockers.All(static blocker => !string.Equals(
+                blocker,
+                CharacterCreationFinalizationBlockers.CharacterAlreadyCreated,
+                StringComparison.Ordinal))
+            || result.Value is not
+               {
+                   CharacterCreated: true,
+                   CanReview: false,
+                   LastReceipt: { } receipt
+               } state
+            || state.Binding.WorkspaceId != workspaceId
+            || state.Binding.ContentRevision != contentRevision
+            || state.Binding.SavedRevision != savedRevision
+            || receipt.WorkspaceId != workspaceId
+            || receipt.ContentRevision != contentRevision
+            || receipt.SavedRevision != savedRevision
+            || receipt.PreviousContentRevision + 1 != receipt.ContentRevision
+            || !receipt.CharacterCreated
+            || !CharacterCreationFinalizationDigest.EqualsFixedTime(
+                state.Binding.AuthorityDigest,
+                receipt.AuthorityDigest)
+            || !string.Equals(
+                state.Binding.BuildMethod,
+                CharacterCreationBuildMethods.Priority,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                receipt.BuildMethod,
+                CharacterCreationBuildMethods.Priority,
+                StringComparison.Ordinal)
+            || !CharacterCreationFinalizationDigest.IsCanonical(receipt.ReceiptDigest)
+            || !CharacterCreationFinalizationDigest.EqualsFixedTime(
+                receipt.ReceiptDigest,
+                CharacterCreationFinalizationDigest.ComputeReceiptDigest(receipt)))
+        {
+            return null;
+        }
+        return receipt;
+    }
 }

@@ -360,7 +360,15 @@ public sealed class BuildPage : NativePageBase
     {
         Label marker = NativeTheme.Eyebrow(label);
         marker.AutomationId = automationId;
-        _body.Add(marker);
+        CharacterCreationFinalizationReceipt? persistedReceipt =
+            Coordinator.LoadPersistedPriorityCreationReceipt();
+        _body.Add(persistedReceipt is null
+            ? marker
+            : NativeAuthoritySemantics.Overlay(
+                marker,
+                NativeAuthoritySemantics.Digest(
+                    "phone-workspace-creation-receipt-digest",
+                    persistedReceipt.ReceiptDigest)));
     }
 
     private void AddSr5CareerWizardRoute()

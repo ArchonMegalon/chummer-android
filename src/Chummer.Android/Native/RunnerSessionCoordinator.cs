@@ -990,6 +990,24 @@ public sealed class RunnerSessionCoordinator : IDisposable
         return result;
     }
 
+    internal CharacterCreationFinalizationReceipt? LoadPersistedPriorityCreationReceipt()
+    {
+        if (_creationFinalizationService is null
+            || State.Profile?.Created != true
+            || State.WorkspaceId is not { } workspaceId)
+        {
+            return null;
+        }
+
+        CharacterCreationFinalizationResult<CharacterCreationFinalizationState> result =
+            _creationFinalizationService.Load(new(workspaceId));
+        return CreationPriorityLegalPathProjection.ResolvePersistedPriorityReceipt(
+            result,
+            workspaceId,
+            State.ContentRevision,
+            State.SavedRevision);
+    }
+
     public CharacterCreationFinalizationResult<CharacterCreationFinalizationReview>
         ReviewCreationFinalization(CharacterCreationFinalizationBinding binding)
     {

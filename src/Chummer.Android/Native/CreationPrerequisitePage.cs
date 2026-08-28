@@ -185,7 +185,11 @@ public sealed class CreationPrerequisitePage : NativePageBase
         }
         Border border = NativeTheme.Card(card);
         border.AutomationId = "creation-prerequisite-method";
-        _body.Add(border);
+        _body.Add(NativeAuthoritySemantics.Overlay(
+            border,
+            NativeAuthoritySemantics.Identifier(
+                "creation-prerequisite-build-method-id",
+                state.BuildMethod)));
     }
 
     private void AddPendingDraft(CharacterCreationPrerequisiteDraft pending)

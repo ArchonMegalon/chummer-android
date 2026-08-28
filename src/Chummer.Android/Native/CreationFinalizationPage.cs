@@ -52,7 +52,17 @@ public sealed class CreationFinalizationPage : NativePageBase
             + $"plan {Short(_review.Plan!.PlanDigest)} · preview {Short(_review.PreviewDigest)}",
             NativeTheme.Muted);
         binding.AutomationId = "creation-finalization-binding";
-        _body.Add(binding);
+        _body.Add(NativeAuthoritySemantics.Overlay(
+            binding,
+            NativeAuthoritySemantics.PositiveRevision(
+                "creation-finalization-content-revision",
+                _review.Binding.ContentRevision),
+            NativeAuthoritySemantics.Digest(
+                "creation-finalization-plan-digest",
+                _review.Plan.PlanDigest),
+            NativeAuthoritySemantics.Digest(
+                "creation-finalization-preview-digest",
+                _review.PreviewDigest)));
 
         VerticalStackLayout budget = new() { Spacing = 6 };
         budget.Add(NativeTheme.Eyebrow("After finalization"));
@@ -173,7 +183,29 @@ public sealed class CreationFinalizationReceiptPage : NativePageBase
         receipt.Add(NativeTheme.Metric("Created", _receipt.CharacterCreated ? "Yes" : "No"));
         Border card = NativeTheme.Card(receipt);
         card.AutomationId = "creation-finalization-receipt";
-        _body.Add(card);
+        _body.Add(NativeAuthoritySemantics.Overlay(
+            card,
+            NativeAuthoritySemantics.PositiveRevision(
+                "creation-finalization-receipt-previous-content-revision",
+                _receipt.PreviousContentRevision),
+            NativeAuthoritySemantics.PositiveRevision(
+                "creation-finalization-receipt-content-revision",
+                _receipt.ContentRevision),
+            NativeAuthoritySemantics.PositiveRevision(
+                "creation-finalization-receipt-saved-revision",
+                _receipt.SavedRevision),
+            NativeAuthoritySemantics.Identifier(
+                "creation-finalization-receipt-build-method",
+                _receipt.BuildMethod),
+            NativeAuthoritySemantics.Digest(
+                "creation-finalization-receipt-plan-digest",
+                _receipt.PlanDigest),
+            NativeAuthoritySemantics.Digest(
+                "creation-finalization-receipt-preview-digest",
+                _receipt.PreviewDigest),
+            NativeAuthoritySemantics.Digest(
+                "creation-finalization-receipt-digest",
+                _receipt.ReceiptDigest)));
 
         Label reopen = NativeTheme.Body(
             Coordinator.State.Profile?.Created == true
