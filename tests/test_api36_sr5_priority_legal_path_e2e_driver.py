@@ -15,12 +15,145 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 DRIVER = ROOT / "tests/run_api36_sr5_priority_legal_path_e2e.py"
 CONTRACT_FIXTURE = ROOT / "tests/fixtures/sr5-priority-physical-e2e-contract.json"
+PACKAGE5_INACTIVE_REFERENCE_FILES = (
+    "scripts/api36_arm64_physical_contract.py",
+    "scripts/run-api36-arm64-physical-e2e.sh",
+    "scripts/verify-api36-arm64-physical-aggregate.py",
+)
+PACKAGE5_DRIVER_GUARD_FILES = (
+    "tests/test_api36_sr5_priority_legal_path_e2e_driver.py",
+    "tests/test_api36_sr5_career_active_skill_wizard_e2e_driver.py",
+    "tests/test_run_api36_sr5_before_run_edge_physical_e2e_driver.py",
+    "tests/test_api36_sr5_after_run_settlement_contract.py",
+    "tests/test_api36_sr5_downtime_calendar_e2e_driver.py",
+    "tests/test_run_api36_sr5_playtime_weapon_physical_e2e_driver.py",
+    "tests/test_api36_arm64_physical_contract.py",
+)
+PACKAGE5_AGGREGATE_GUARDS = {
+    "test_symlink_and_aggregate_order_extra_seal_and_authority_tamper_fail_closed",
+    "test_exact_integrated_driver_git_authority_and_cli_contracts",
+    "test_orchestrator_is_bounded_external_and_inactive",
+}
 sys.path.insert(0, str(DRIVER.parent))
 SPEC = importlib.util.spec_from_file_location("sr5_priority_legal_path_driver", DRIVER)
 assert SPEC is not None and SPEC.loader is not None
 driver = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = driver
 SPEC.loader.exec_module(driver)
+
+
+def package5_inactive_driver_reference_violations(
+    root: Path, driver_relative: str,
+) -> list[str]:
+    """Validate the sole non-release path from Package 5 into physical drivers."""
+
+    violations: list[str] = []
+    allowed = set(PACKAGE5_INACTIVE_REFERENCE_FILES)
+    references: set[str] = set()
+    for activation_root in (root / ".github", root / "scripts"):
+        if not activation_root.exists():
+            continue
+        for path in activation_root.rglob("*"):
+            if not path.is_file() or path.suffix not in {".py", ".yml", ".yaml", ".sh", ".json"}:
+                continue
+            if driver_relative in path.read_text(encoding="utf-8", errors="replace"):
+                references.add(path.relative_to(root).as_posix())
+
+    foreign = sorted(references - allowed)
+    if foreign:
+        violations.append(f"foreign driver references: {foreign!r}")
+    if PACKAGE5_INACTIVE_REFERENCE_FILES[0] not in references:
+        violations.append("exact Package 5 driver authority reference is missing")
+
+    workflow_needles = (driver_relative, *PACKAGE5_INACTIVE_REFERENCE_FILES)
+    workflow_root = root / ".github"
+    if workflow_root.exists():
+        for path in workflow_root.rglob("*"):
+            if not path.is_file():
+                continue
+            source = path.read_text(encoding="utf-8", errors="replace")
+            if any(needle in source for needle in workflow_needles):
+                violations.append(
+                    f"workflow activation reference: {path.relative_to(root).as_posix()}"
+                )
+
+    required = (*PACKAGE5_INACTIVE_REFERENCE_FILES, *PACKAGE5_DRIVER_GUARD_FILES)
+    missing = [
+        relative for relative in required
+        if not (root / relative).is_file() or (root / relative).is_symlink()
+    ]
+    if missing:
+        violations.append(f"Package 5 inactive authority/guard files missing: {missing!r}")
+        return violations
+
+    authority_source = (root / PACKAGE5_INACTIVE_REFERENCE_FILES[0]).read_text(encoding="utf-8")
+    for marker in (
+        '"publicationAuthorized": False',
+        'repository_root.resolve(strict=True) != repository_root',
+        '("status", "--porcelain=v1", "--untracked-files=all")',
+        '("ls-tree", head, "--", relative)',
+        'source graph does not bind the clean Package 5 Android commit/tree',
+    ):
+        if marker not in authority_source:
+            violations.append(f"Package 5 driver authority omitted {marker!r}")
+    if '"publicationAuthorized": True' in authority_source:
+        violations.append("Package 5 driver authority enables publication")
+
+    orchestrator_source = (root / PACKAGE5_INACTIVE_REFERENCE_FILES[1]).read_text(encoding="utf-8")
+    for marker in (
+        'journeys=(priority career before-run after-run downtime playtime)',
+        'driver_authority_args+=(--driver "$journey=${drivers[$journey]}")',
+        '--timeout-seconds 3600',
+        'deadline_epoch="$(( $(date +%s) + 28800 ))"',
+        'run_bounded "journey-$journey"',
+    ):
+        if orchestrator_source.count(marker) != 1:
+            violations.append(f"Package 5 bounded orchestrator marker is not exact: {marker!r}")
+    if orchestrator_source.count("publication_authorized=false") != 2:
+        violations.append("Package 5 orchestrator publication=false outcomes are not exact")
+    if "publication_authorized=true" in orchestrator_source.lower():
+        violations.append("Package 5 orchestrator enables publication")
+    for forbidden in ("dotnet build", "dotnet publish", "https://", "google play"):
+        if forbidden in orchestrator_source.lower():
+            violations.append(f"Package 5 orchestrator contains release/build activation: {forbidden!r}")
+
+    verifier_source = (root / PACKAGE5_INACTIVE_REFERENCE_FILES[2]).read_text(encoding="utf-8")
+    for marker in (
+        "capture_driver_authority",
+        'parser.add_argument("--driver", action="append", default=[], required=True)',
+        "physical_build_inputs=pass publication_authorized=false",
+        "physical_six_journey_aggregate=pass publication_authorized=false",
+    ):
+        if marker not in verifier_source:
+            violations.append(f"Package 5 verifier omitted {marker!r}")
+
+    aggregate_test = root / "tests/test_api36_arm64_physical_contract.py"
+    try:
+        aggregate_tree = ast.parse(aggregate_test.read_text(encoding="utf-8"))
+    except SyntaxError as error:
+        violations.append(f"Package 5 aggregate guard does not parse: {error}")
+    else:
+        test_names = {
+            node.name for node in ast.walk(aggregate_tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        }
+        absent_guards = sorted(PACKAGE5_AGGREGATE_GUARDS - test_names)
+        if absent_guards:
+            violations.append(f"Package 5 aggregate guards missing: {absent_guards!r}")
+
+    for relative in PACKAGE5_DRIVER_GUARD_FILES[:-1]:
+        try:
+            guard_tree = ast.parse((root / relative).read_text(encoding="utf-8"))
+        except SyntaxError as error:
+            violations.append(f"Package 5 driver guard {relative} does not parse: {error}")
+            continue
+        if not any(
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name.startswith("test_")
+            for node in ast.walk(guard_tree)
+        ):
+            violations.append(f"Package 5 driver guard has no executable tests: {relative}")
+    return violations
 
 
 class FakePhysicalDevice:
@@ -596,15 +729,71 @@ class Api36Sr5PriorityLegalPathDriverTests(unittest.TestCase):
 
     def test_driver_is_not_activated_as_release_or_workflow_authority(self) -> None:
         relative = DRIVER.relative_to(ROOT).as_posix()
-        matches: list[str] = []
-        for activation_root in (ROOT / ".github", ROOT / "scripts"):
-            if not activation_root.exists():
-                continue
-            for path in activation_root.rglob("*"):
-                if path.is_file() and path.suffix in {".py", ".yml", ".yaml", ".sh", ".json"}:
-                    if relative in path.read_text(encoding="utf-8", errors="replace"):
-                        matches.append(path.relative_to(ROOT).as_posix())
-        self.assertEqual([], matches)
+        self.assertEqual([], package5_inactive_driver_reference_violations(ROOT, relative))
+
+    def test_inactive_package5_allowance_rejects_foreign_active_and_workflow_references(self) -> None:
+        relative = DRIVER.relative_to(ROOT).as_posix()
+
+        def seed(root: Path) -> None:
+            for source_relative in (
+                *PACKAGE5_INACTIVE_REFERENCE_FILES,
+                *PACKAGE5_DRIVER_GUARD_FILES,
+            ):
+                destination = root / source_relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes((ROOT / source_relative).read_bytes())
+
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture_root = Path(temporary).resolve()
+            seed(fixture_root)
+            self.assertEqual(
+                [], package5_inactive_driver_reference_violations(fixture_root, relative)
+            )
+
+            foreign = fixture_root / "scripts/foreign-physical-runner.py"
+            foreign.write_text(f'FOREIGN_DRIVER = "{relative}"\n', encoding="utf-8")
+            violations = package5_inactive_driver_reference_violations(fixture_root, relative)
+            self.assertTrue(any("foreign driver references" in item for item in violations))
+            foreign.unlink()
+
+            authority = fixture_root / PACKAGE5_INACTIVE_REFERENCE_FILES[0]
+            original_authority = authority.read_text(encoding="utf-8")
+            authority.write_text(
+                original_authority.replace(
+                    '"publicationAuthorized": False',
+                    '"publicationAuthorized": True',
+                    1,
+                ),
+                encoding="utf-8",
+            )
+            violations = package5_inactive_driver_reference_violations(fixture_root, relative)
+            self.assertTrue(any("enables publication" in item for item in violations))
+            authority.write_text(original_authority, encoding="utf-8")
+
+            workflow = fixture_root / ".github/workflows/activate-package5.yml"
+            workflow.parent.mkdir(parents=True, exist_ok=True)
+            workflow.write_text(
+                f"run: python3 {PACKAGE5_INACTIVE_REFERENCE_FILES[1]}\n",
+                encoding="utf-8",
+            )
+            violations = package5_inactive_driver_reference_violations(fixture_root, relative)
+            self.assertTrue(any("workflow activation reference" in item for item in violations))
+            workflow.unlink()
+
+            orchestrator = fixture_root / PACKAGE5_INACTIVE_REFERENCE_FILES[1]
+            original_orchestrator = orchestrator.read_text(encoding="utf-8")
+            orchestrator.write_text(
+                original_orchestrator.replace("--timeout-seconds 3600", "--timeout-seconds 0", 1),
+                encoding="utf-8",
+            )
+            violations = package5_inactive_driver_reference_violations(fixture_root, relative)
+            self.assertTrue(any("bounded orchestrator marker" in item for item in violations))
+            orchestrator.write_text(original_orchestrator, encoding="utf-8")
+
+            guard = fixture_root / "tests/test_api36_arm64_physical_contract.py"
+            guard.unlink()
+            violations = package5_inactive_driver_reference_violations(fixture_root, relative)
+            self.assertTrue(any("guard files missing" in item for item in violations))
 
 
 if __name__ == "__main__":
