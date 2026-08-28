@@ -1,0 +1,351 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "Microsoft.Extensions.Logging.Debug": {
+        "type": "Direct",
+        "requested": "[10.0.0, )",
+        "resolved": "10.0.0",
+        "contentHash": "A/4vBtVaySLBGj4qluye+KSbeVCCMa6GcTbxf2YgnSDHs9b9105+VojBJ1eJPel8F1ny0JOh+Ci3vgCKn69tNQ==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
+          "Microsoft.Extensions.Logging": "10.0.0",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.0"
+        }
+      },
+      "Microsoft.Maui.Controls": {
+        "type": "Direct",
+        "requested": "[10.0.20, )",
+        "resolved": "10.0.20",
+        "contentHash": "c/Tsp1TGBQNkqpKd/aNkTnFV0FOtjyMyV04Naigg/7MphJwdc0ZI0Dw2P0TvC+tm//Ut+SnviTqlDow6V4tSmA==",
+        "dependencies": {
+          "Microsoft.Maui.Controls.Build.Tasks": "10.0.20",
+          "Microsoft.Maui.Controls.Core": "10.0.20",
+          "Microsoft.Maui.Controls.Xaml": "10.0.20",
+          "Microsoft.Maui.Resizetizer": "10.0.20"
+        }
+      },
+      "Chummer.Application": {
+        "type": "Transitive",
+        "resolved": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+        "contentHash": "xLiNQqqHjpUQEsBpdOx/UcktLX4UnSxw+EL1PEnRlHBE+ZtBo71kDMx8KJEFSHMO0aZ2CMnk/nrIJZJzWWtsHw==",
+        "dependencies": {
+          "Chummer.Engine.Contracts": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819"
+        }
+      },
+      "Chummer.Campaign.Contracts": {
+        "type": "Transitive",
+        "resolved": "0.1.0-packageplane.android.sh1215f9389779e",
+        "contentHash": "DxywuNzhUMGG2u/3LmZtYVmVSVpleow+bFgWvCsisbjWno/sko16G5Pvb7xlGQsOxkqp/9FG3Asnf8oTkEXXpA==",
+        "dependencies": {
+          "Chummer.Engine.Contracts": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819"
+        }
+      },
+      "Chummer.Engine.Contracts": {
+        "type": "Transitive",
+        "resolved": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+        "contentHash": "3CJoAQnbLHCNKDDjzQ72quV15D+86plmFdlDPvRroLfZ4eUVaTwUslAZYteqWtyXzZI6mRyJ+9fZ4TGW0GSmVg=="
+      },
+      "Chummer.Hub.Registry.Contracts": {
+        "type": "Transitive",
+        "resolved": "0.1.0-packageplane.candidate.sh66c418a5004f",
+        "contentHash": "LWCwqeEiPPCfISFe+k2bMb1wIaZ+9qsdLfBd2GzRMNAkeLIEOjzru0Q5fmBPP+O4UAUoYcZRprF6mnLYJa0PYQ=="
+      },
+      "Chummer.Infrastructure": {
+        "type": "Transitive",
+        "resolved": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+        "contentHash": "e/ktObTndVltDrEOrED7C+tz1Pl/BETBhFfK3aSzQhGGqgROL6Q86O+0vLjIZS5lr8qZVSmtL5gTfpZ3CG795Q==",
+        "dependencies": {
+          "Chummer.Application": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Chummer.Engine.Contracts": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Chummer.Rulesets.Hosting": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Chummer.Rulesets.Sr5": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Chummer.Rulesets.Sr6": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Microsoft.Extensions.DependencyInjection": "10.0.0",
+          "SharpCompress": "0.50.1"
+        }
+      },
+      "Chummer.Play.Contracts": {
+        "type": "Transitive",
+        "resolved": "0.1.0-packageplane.android.sh1215f9389779e",
+        "contentHash": "T9MZifxO4LpI62y6e23JtJa2vuNTjpfjGpsE0rPe0F6oSjGg2aU3YFnLsU8FUKLKNXo8d/4tzzOkt5WNhDaOWQ=="
+      },
+      "Chummer.Rulesets.Hosting": {
+        "type": "Transitive",
+        "resolved": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+        "contentHash": "UzFZ8i+DYx1vFofZ0qZBtTqyWWa0rS2fZ2zqiAXuEeyoyznkqUcRp/9ArI6EygBtdVPkK/UeoL73CX5asIT7Jw==",
+        "dependencies": {
+          "Chummer.Application": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Chummer.Engine.Contracts": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Microsoft.Extensions.DependencyInjection": "10.0.0"
+        }
+      },
+      "Chummer.Rulesets.Sr4": {
+        "type": "Transitive",
+        "resolved": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+        "contentHash": "z9YRZUnANjLKlHaopoY5VSJxAyDzNwdUnx/AHFfrYDYS1o0G83+CsqsAsDEezdtG0HxyMJUMsr1O8BekG2r9rw==",
+        "dependencies": {
+          "Chummer.Application": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Chummer.Engine.Contracts": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Chummer.Infrastructure": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Microsoft.Extensions.DependencyInjection": "10.0.0"
+        }
+      },
+      "Chummer.Rulesets.Sr5": {
+        "type": "Transitive",
+        "resolved": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+        "contentHash": "YXKoeE1s4iMISLBf8/VxUFNHx+xt7M63DvfpT2Icx7SZ1r9201nYdSrcbgJA41kr0MHbsoWQyZM0WYaH4Yv40g==",
+        "dependencies": {
+          "Chummer.Application": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Chummer.Engine.Contracts": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Microsoft.Extensions.DependencyInjection": "10.0.0"
+        }
+      },
+      "Chummer.Rulesets.Sr6": {
+        "type": "Transitive",
+        "resolved": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+        "contentHash": "rPAmR4Qcxl95UcLoS7Qd3gnRKLzmk3K/aQ7DP1Y8Nql0AJJfNX8q7dFmpJtffCpuiwlLfU42VCSxzaBjKO+aIw==",
+        "dependencies": {
+          "Chummer.Application": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Chummer.Engine.Contracts": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Microsoft.Extensions.DependencyInjection": "10.0.0"
+        }
+      },
+      "Chummer.Run.Contracts": {
+        "type": "Transitive",
+        "resolved": "0.1.0-packageplane.android.sh1215f9389779e",
+        "contentHash": "LhQhrltFhmcrYlbhHTBq4GuBp0YXVUNRqfqqxalAPvUKcBrLoJHm/NKTKdKJQ5XDB0+vWaI6y9R/3fPy+eRC8w==",
+        "dependencies": {
+          "Chummer.Engine.Contracts": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Chummer.Hub.Registry.Contracts": "0.1.0-packageplane.candidate.sh66c418a5004f",
+          "Chummer.Play.Contracts": "0.1.0-packageplane.android.sh1215f9389779e"
+        }
+      },
+      "Chummer.Run.Hub": {
+        "type": "Transitive",
+        "resolved": "0.1.0-packageplane.android.sh1215f9389779e",
+        "contentHash": "hMdqYTBSn/JWTHmoEX1z1XPrK7GXvwhHaFHwU0d+pQ0JcUJ3jb7WHdo949bgUMvbReh9y4nhSsgH7nYpJCvobA==",
+        "dependencies": {
+          "Chummer.Application": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Chummer.Engine.Contracts": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Chummer.Hub.Registry.Contracts": "0.1.0-packageplane.candidate.sh66c418a5004f",
+          "Chummer.Infrastructure": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Chummer.Rulesets.Hosting": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Chummer.Rulesets.Sr4": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Chummer.Rulesets.Sr6": "0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
+          "Chummer.Run.Contracts": "0.1.0-packageplane.android.sh1215f9389779e",
+          "Chummer.Run.Hub.Contracts": "0.1.0-packageplane.android.sh1215f9389779e"
+        }
+      },
+      "Chummer.Run.Hub.Contracts": {
+        "type": "Transitive",
+        "resolved": "0.1.0-packageplane.android.sh1215f9389779e",
+        "contentHash": "8PTxNreqMAWyusd79aqWylNp63V9oHv/wBwPgxVX8ejC3BI6qXK3OFZYeyf5BDycUMAvCu9f+gdoe9ZnKwVSJw=="
+      },
+      "Chummer.Ui.Kit": {
+        "type": "Transitive",
+        "resolved": "0.1.0-packageplane.android.shd51ecd99cf720",
+        "contentHash": "aO47jWB4BezqvOmJzrMSarBpWLsZlV147uKrJME8VOh8yG3/V4w0I4JfxZohXSuInQppI9BkhpfPdFXVQVfDrg=="
+      },
+      "Microsoft.Extensions.Configuration": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "H4SWETCh/cC5L1WtWchHR6LntGk3rDTTznZMssr4cL8IbDmMWBxY+MOGDc/ASnqNolLKPIWHWeuC1ddiL/iNPw==",
+        "dependencies": {
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.0",
+          "Microsoft.Extensions.Primitives": "10.0.0"
+        }
+      },
+      "Microsoft.Extensions.Configuration.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "d2kDKnCsJvY7mBVhcjPSp9BkJk48DsaHPg5u+Oy4f8XaOqnEedRy/USyvnpHL92wpJ6DrTPy7htppUUzskbCXQ==",
+        "dependencies": {
+          "Microsoft.Extensions.Primitives": "10.0.0"
+        }
+      },
+      "Microsoft.Extensions.DependencyInjection": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "f0RBabswJq+gRu5a+hWIobrLWiUYPKMhCD9WO3sYBAdSy3FFH14LMvLVFZc2kPSCimBLxSuitUhsd6tb0TAY6A==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0"
+        }
+      },
+      "Microsoft.Extensions.DependencyInjection.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "L3AdmZ1WOK4XXT5YFPEwyt0ep6l8lGIPs7F5OOBZc77Zqeo01Of7XXICy47628sdVl0v/owxYJTe86DTgFwKCA=="
+      },
+      "Microsoft.Extensions.Diagnostics.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "SfK89ytD61S7DgzorFljSkUeluC1ncn6dtZgwc0ot39f/BEYWBl5jpgvodxduoYAs1d9HG8faCDRZxE95UMo2A==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
+          "Microsoft.Extensions.Options": "10.0.0"
+        }
+      },
+      "Microsoft.Extensions.FileProviders.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "/ppSdehKk3fuXjlqCDgSOtjRK/pSHU8eWgzSHfHdwVm5BP4Dgejehkw+PtxKG2j98qTDEHDst2Y99aNsmJldmw==",
+        "dependencies": {
+          "Microsoft.Extensions.Primitives": "10.0.0"
+        }
+      },
+      "Microsoft.Extensions.Hosting.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "KrN6TGFwCwqOkLLk/idW/XtDQh+8In+CL9T4M1Dx+5ScsjTq4TlVbal8q532m82UYrMr6RiQJF2HvYCN0QwVsA==",
+        "dependencies": {
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.0",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
+          "Microsoft.Extensions.Diagnostics.Abstractions": "10.0.0",
+          "Microsoft.Extensions.FileProviders.Abstractions": "10.0.0",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.0"
+        }
+      },
+      "Microsoft.Extensions.Logging": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "BStFkd5CcnEtarlcgYDBcFzGYCuuNMzPs02wN3WBsOFoYIEmYoUdAiU+au6opzoqfTYJsMTW00AeqDdnXH2CvA==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection": "10.0.0",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.0",
+          "Microsoft.Extensions.Options": "10.0.0"
+        }
+      },
+      "Microsoft.Extensions.Logging.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "FU/IfjDfwaMuKr414SSQNTIti/69bHEMb+QKrskRb26oVqpx3lNFXMjs/RC9ZUuhBhcwDM2BwOgoMw+PZ+beqQ==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0"
+        }
+      },
+      "Microsoft.Extensions.Options": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "8oCAgXOow5XDrY9HaXX1QmH3ORsyZO/ANVHBlhLyCeWTH5Sg4UuqZeOTWJi6484M+LqSx0RqQXDJtdYy2BNiLQ==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
+          "Microsoft.Extensions.Primitives": "10.0.0"
+        }
+      },
+      "Microsoft.Extensions.Primitives": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "inRnbpCS0nwO/RuoZIAqxQUuyjaknOOnCEZB55KSMMjRhl0RQDttSmLSGsUJN3RQ3ocf5NDLFd2mOQViHqMK5w=="
+      },
+      "Microsoft.Maui.Controls.Build.Tasks": {
+        "type": "Transitive",
+        "resolved": "10.0.20",
+        "contentHash": "8DbAwGgvgf3QPV1WCu6CabRDTZjtq7kd11sELwYhZ2ZFCdHtGTeLyvpMgnbAtMUwix4hnGyWH8fZKQJlVDBuYA==",
+        "dependencies": {
+          "Microsoft.Maui.Controls.Core": "10.0.20",
+          "Microsoft.Maui.Controls.Xaml": "10.0.20"
+        }
+      },
+      "Microsoft.Maui.Controls.Core": {
+        "type": "Transitive",
+        "resolved": "10.0.20",
+        "contentHash": "Go8C7a0QaGiQ2EBMsxbbm52DI5+HipgT7C9AslfyfkCU8/H6gicLsPUxae5r9TyrZbgsw5KUnnPEUPJlUwtBcw==",
+        "dependencies": {
+          "Microsoft.Extensions.Configuration": "10.0.0",
+          "Microsoft.Extensions.DependencyInjection": "10.0.0",
+          "Microsoft.Extensions.Logging": "10.0.0",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.0",
+          "Microsoft.Maui.Core": "10.0.20"
+        }
+      },
+      "Microsoft.Maui.Controls.Xaml": {
+        "type": "Transitive",
+        "resolved": "10.0.20",
+        "contentHash": "Ih2rMfJ5B8HbFeNgwsOi31Ngo1A31Zixl8lEuJME+7mXE8VFwVcZcfeKljKG0XTULWxe4/ALZ/nL5tTMMjIFnw==",
+        "dependencies": {
+          "Microsoft.Extensions.Configuration": "10.0.0",
+          "Microsoft.Maui.Controls.Core": "10.0.20",
+          "Microsoft.Maui.Core": "10.0.20"
+        }
+      },
+      "Microsoft.Maui.Core": {
+        "type": "Transitive",
+        "resolved": "10.0.20",
+        "contentHash": "xbrQSNTMJzwpR80ga7eWVTU544NJUJM6zXdmfx1LenuizoFc8oejr1nJ1zRgISTQ0ZuQEs6flF72DyF/YemP8w==",
+        "dependencies": {
+          "Microsoft.Extensions.Configuration": "10.0.0",
+          "Microsoft.Extensions.DependencyInjection": "10.0.0",
+          "Microsoft.Extensions.Hosting.Abstractions": "10.0.0",
+          "Microsoft.Extensions.Logging": "10.0.0",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.0",
+          "Microsoft.Maui.Essentials": "10.0.20",
+          "Microsoft.Maui.Graphics": "10.0.20"
+        }
+      },
+      "Microsoft.Maui.Essentials": {
+        "type": "Transitive",
+        "resolved": "10.0.20",
+        "contentHash": "jalsUhCCL+T5qng/OXAkJhSaV/Uhml3s4LLExx/RBVz4z/kSIOjyXLkV/O66BBUxy/0nPFILeNx9p21TVqWrMg==",
+        "dependencies": {
+          "Microsoft.Maui.Graphics": "10.0.20"
+        }
+      },
+      "Microsoft.Maui.Graphics": {
+        "type": "Transitive",
+        "resolved": "10.0.20",
+        "contentHash": "X1IfBjN/0KcrcbaDU47xNrZufQeI/PJyBVPxt+3a/yNDhduGS+jlihi4sByil7E4VbQTFVPxclevnbhLtWxNQw=="
+      },
+      "Microsoft.Maui.Resizetizer": {
+        "type": "Transitive",
+        "resolved": "10.0.20",
+        "contentHash": "6MVR9wsKgfN25AuEL/KzDLd5x8TpuBrC0DRvlUq2Ddi0WdO1q0B9VsTePJF8mdDmdLybo4h/F5F59kfOTPzIXA=="
+      },
+      "SharpCompress": {
+        "type": "Transitive",
+        "resolved": "0.50.1",
+        "contentHash": "VY90K8BBvaAMvvRDJ8EvsfI/GgoIYxlgxMpxdgwpzaesJ0pGSHTLbZ7SD4JYxsGCnOibzua/+8HvDjV6KTw4jA=="
+      },
+      "System.Security.Cryptography.ProtectedData": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "qy6C3gQRTrfhFfuiIYU1jNwWfFdJpBVo1BARW7jgMm1zTEm3LRzLLyOLJGaAuKE+nZCGkEP71y4rj9NWjqLGdQ=="
+      },
+      "chummer.desktop.runtime": {
+        "type": "Project",
+        "dependencies": {
+          "Chummer.Application": "[0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819, )",
+          "Chummer.Campaign.Contracts": "[0.1.0-packageplane.android.sh1215f9389779e, )",
+          "Chummer.Engine.Contracts": "[0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819, )",
+          "Chummer.Hub.Registry.Contracts": "[0.1.0-packageplane.candidate.sh66c418a5004f, )",
+          "Chummer.Infrastructure": "[0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819, )",
+          "Chummer.Presentation": "[1.0.0, )",
+          "Chummer.Rulesets.Hosting": "[0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819, )",
+          "Chummer.Rulesets.Sr4": "[0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819, )",
+          "Chummer.Rulesets.Sr5": "[0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819, )",
+          "Chummer.Rulesets.Sr6": "[0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819, )",
+          "Chummer.Run.Contracts": "[0.1.0-packageplane.android.sh1215f9389779e, )",
+          "Chummer.Run.Hub": "[0.1.0-packageplane.android.sh1215f9389779e, )",
+          "Microsoft.Extensions.DependencyInjection": "[10.0.0, )",
+          "System.Security.Cryptography.ProtectedData": "[10.0.0, )"
+        }
+      },
+      "chummer.presentation": {
+        "type": "Project",
+        "dependencies": {
+          "Chummer.Application": "[0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819, )",
+          "Chummer.Campaign.Contracts": "[0.1.0-packageplane.android.sh1215f9389779e, )",
+          "Chummer.Engine.Contracts": "[0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819, )",
+          "Chummer.Infrastructure": "[0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819, )",
+          "Chummer.Rulesets.Hosting": "[0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819, )",
+          "Chummer.Rulesets.Sr4": "[0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819, )",
+          "Chummer.Rulesets.Sr5": "[0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819, )",
+          "Chummer.Rulesets.Sr6": "[0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819, )",
+          "Chummer.Run.Contracts": "[0.1.0-packageplane.android.sh1215f9389779e, )",
+          "Chummer.Run.Hub.Contracts": "[0.1.0-packageplane.android.sh1215f9389779e, )",
+          "Chummer.Ui.Kit": "[0.1.0-packageplane.android.shd51ecd99cf720, )"
+        }
+      }
+    }
+  }
+}
