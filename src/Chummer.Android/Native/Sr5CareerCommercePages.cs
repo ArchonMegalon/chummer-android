@@ -167,6 +167,9 @@ public sealed class Sr5CareerCyberwarePurchasePage : NativePageBase
         card.Add(NativeTheme.Metric(Text("Settings profile"), preparation.SettingsProfileId));
         card.Add(NativeTheme.Metric(Text("Catalog"), ShortDigest(preparation.CatalogDigest)));
         card.Add(NativeTheme.Metric(Text("Source bytes"), ShortDigest(preparation.CyberwareXmlDigest)));
+        card.Add(NativeTheme.Metric(
+            Text("Excluded unsupported catalog rows"),
+            preparation.Exclusions.Count.ToString(CultureInfo.InvariantCulture)));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "career-cyberware-purchase-binding";
         _body.Add(border);
@@ -268,14 +271,43 @@ public sealed class Sr5CareerCyberwarePurchasePage : NativePageBase
             return;
         }
 
+        CharacterCyberwarePurchaseCatalogEntry source = snapshot.Preparation!.Entries.Single(candidate =>
+            candidate.SourceId == quote.SourceId);
+        CharacterCyberwarePurchaseGrade grade = source.Grades.Single(candidate =>
+            candidate.Id == quote.GradeId);
         VerticalStackLayout card = new() { Spacing = 6 };
         card.Add(NativeTheme.Metric(Text("Item"), quote.Name));
         card.Add(NativeTheme.Metric(Text("Grade"), quote.GradeName));
         card.Add(NativeTheme.Metric(Text("Base cost"), Nuyen(quote.BaseCost)));
         card.Add(NativeTheme.Metric(Text("Charged now"), Nuyen(quote.ChargedCost)));
         card.Add(NativeTheme.Metric(
+            Text("Nuyen after purchase"),
+            Nuyen(snapshot.Preparation.AvailableNuyen + quote.NuyenDelta)));
+        card.Add(NativeTheme.Metric(Text("Source availability"), source.AvailabilityExpression));
+        card.Add(NativeTheme.Metric(
+            Text("Grade availability modifier"),
+            grade.AvailabilityModifier.ToString(CultureInfo.InvariantCulture)));
+        card.Add(NativeTheme.Metric(
+            Text("Final availability"),
+            Text("Unavailable · Core carries the source expression and grade modifier separately")));
+        card.Add(NativeTheme.Metric(
+            Text("Karma mutation"),
+            Text("None · this bounded purchase command contains no Karma field")));
+        card.Add(NativeTheme.Metric(
             Text("Installed Essence"),
             quote.InstalledEssence.ToString("0.####", CultureInfo.CurrentCulture)));
+        card.Add(NativeTheme.Metric(
+            Text("Essence hole before / after"),
+            Format(
+                "{0} / {1}",
+                StoredRating(snapshot.Preparation.EssenceHoleRating),
+                StoredRating(quote.NewEssenceHoleRating))));
+        card.Add(NativeTheme.Metric(
+            Text("Elapsed time mutation"),
+            Text("Unavailable · this bounded command carries no calendar or elapsed-time mutation")));
+        card.Add(NativeTheme.Metric(
+            Text("Bounded command prerequisites"),
+            Text("Satisfied for this exact Core quote; final availability and elapsed time remain unresolved")));
         card.Add(NativeTheme.Metric(Text("Quote"), ShortDigest(quote.QuoteDigest)));
         Border border = NativeTheme.Card(card);
         border.AutomationId = "career-cyberware-purchase-quote";
@@ -299,6 +331,8 @@ public sealed class Sr5CareerCyberwarePurchasePage : NativePageBase
         if (!snapshot.CanConfirm)
             return;
 
+        AddReviewDiff(snapshot);
+
         Button confirm = NativeTheme.PrimaryButton(Text("Confirm and save purchase"));
         confirm.AutomationId = "career-cyberware-purchase-confirm";
         confirm.Clicked += async (_, _) => await RunAsync(async () =>
@@ -315,6 +349,42 @@ public sealed class Sr5CareerCyberwarePurchasePage : NativePageBase
             _operationNotice = result.Notice;
         });
         _body.Add(confirm);
+    }
+
+    private void AddReviewDiff(Sr5CareerCyberwarePurchaseSnapshot snapshot)
+    {
+        CharacterCyberwarePurchasePreparation preparation = snapshot.Preparation!;
+        CharacterCyberwarePurchaseQuote quote = snapshot.Quote!;
+        CharacterCyberwarePurchaseCommand command = snapshot.Checkpoint!.Command!;
+        VerticalStackLayout card = new() { Spacing = 6 };
+        card.Add(NativeTheme.Eyebrow(Text("Review exact diff")));
+        card.Add(NativeTheme.Metric(
+            Text("Nuyen before / after"),
+            Format(
+                "{0} / {1}",
+                Nuyen(preparation.AvailableNuyen),
+                Nuyen(preparation.AvailableNuyen + quote.NuyenDelta))));
+        card.Add(NativeTheme.Metric(
+            Text("Essence hole before / after"),
+            Format(
+                "{0} / {1}",
+                StoredRating(preparation.EssenceHoleRating),
+                StoredRating(quote.NewEssenceHoleRating))));
+        card.Add(NativeTheme.Metric(
+            Text("New Cyberware instance"),
+            command.NewInstanceId.Value.ToString("D")));
+        card.Add(NativeTheme.Metric(Text("New Nuyen expense"), command.NewExpenseId.ToString("D")));
+        card.Add(NativeTheme.Metric(
+            Text("Expense time"),
+            command.ExpenseDate.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)));
+        Label sideEffects = NativeTheme.Body(
+            Text("Confirm creates exactly one Cyberware instance and one Nuyen expense in one atomic saved revision. It does not create a calendar entry or apply elapsed time."),
+            NativeTheme.Muted);
+        sideEffects.AutomationId = "career-cyberware-purchase-review-side-effects";
+        card.Add(sideEffects);
+        Border border = NativeTheme.Card(card);
+        border.AutomationId = "career-cyberware-purchase-review-diff";
+        _body.Add(border);
     }
 
     private void AddReceipt(Sr5CareerCyberwarePurchaseSnapshot snapshot)
@@ -449,6 +519,9 @@ public sealed class Sr5CareerCyberwarePurchasePage : NativePageBase
     internal static string Nuyen(decimal value)
         => Format("{0} nuyen", value.ToString("0.##", CultureInfo.CurrentCulture));
 
+    internal static string StoredRating(int? value)
+        => value?.ToString(CultureInfo.InvariantCulture) ?? Text("not present");
+
     internal static string ShortDigest(string value)
         => value.Length <= 19 ? value : value[..19] + "…";
 }
@@ -491,8 +564,8 @@ public sealed class Sr5CareerCyberwareCatalogPage : NativePageBase
                 _body.Add(NativeTheme.NavigationRow(
                     entry.Name,
                     Format(
-                        "{0} · Essence {1} · availability {2} · {3} {4}",
-                        Sr5CareerCyberwarePurchasePage.Nuyen(ParseCost(entry.CostExpression)),
+                        "cost {0} · Essence {1} · availability {2} · {3} {4}",
+                        entry.CostExpression,
                         entry.EssenceExpression,
                         entry.AvailabilityExpression,
                         entry.SourceBook,
@@ -530,10 +603,6 @@ public sealed class Sr5CareerCyberwareCatalogPage : NativePageBase
         _body.Add(NativeTheme.Card(blocker));
     }
 
-    private static decimal ParseCost(string expression)
-        => decimal.TryParse(expression, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal value)
-            ? value
-            : 0m;
 }
 
 public sealed class Sr5CareerCyberwareGradePage : NativePageBase

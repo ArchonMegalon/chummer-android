@@ -69,9 +69,11 @@ public sealed class Sr5TableWizardPage : NativePageBase
                 : Text("Live / playtime")));
         _body.Add(NativeTheme.Body(
             _lane == Sr5TableWizardLane.BeforeRun
-                ? Text("Review one exact point of Edge use before the run. Loadout, healing, contacts, and acquisitions remain unavailable until they have typed authority.")
+                ? Text("Review one exact point of Edge use before the run. Loadout, preparation, contacts, and commitments remain unavailable until they have typed authority.")
                 : Text("Use exact Edge and direct Weapon-fire actions without opening unrestricted runner editing."),
             NativeTheme.Muted));
+        if (_lane == Sr5TableWizardLane.BeforeRun)
+            AddCapabilityScope(Sr5CareerRunCapabilityCatalog.BeforeRun);
 
         if (_loading)
         {
@@ -313,6 +315,32 @@ public sealed class Sr5TableWizardPage : NativePageBase
         Label label = NativeTheme.Body(text, color);
         label.AutomationId = automationId;
         _body.Add(NativeTheme.Card(label));
+    }
+
+    private void AddCapabilityScope(IReadOnlyList<Sr5CareerRunCapability> capabilities)
+    {
+        VerticalStackLayout card = new() { Spacing = 5 };
+        card.Add(NativeTheme.Eyebrow(Text("Typed mutation scope")));
+        foreach (Sr5CareerRunCapability capability in capabilities)
+        {
+            string status = capability.Status switch
+            {
+                Sr5CareerRunCapabilityStatus.Available => Text("available"),
+                Sr5CareerRunCapabilityStatus.ReadOnly => Text("read-only"),
+                Sr5CareerRunCapabilityStatus.Unavailable => Text("unavailable"),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+            Label row = NativeTheme.Body(
+                Format("{0} · {1} · {2}", capability.Label, status, capability.Authority),
+                capability.Status == Sr5CareerRunCapabilityStatus.Unavailable
+                    ? NativeTheme.Danger
+                    : NativeTheme.Muted);
+            row.AutomationId = "sr5-table-capability-" + capability.Id;
+            card.Add(row);
+        }
+        View border = NativeTheme.Card(card);
+        border.AutomationId = "sr5-table-capability-scope";
+        _body.Add(border);
     }
 
     private static string ActionDetail(Sr5TableWizardActionState action)

@@ -48,7 +48,7 @@ public sealed class PhonePlayPage : NativePageBase
 
 /// <summary>
 /// Phone table-use-case chooser. It exposes only currently typed SR5 authorities: the existing
-/// atomic After Run flow and the governed Downtime Calendar flow. Missing authorities stay
+/// typed Before Run Edge flow, atomic After Run flow, and governed Downtime Calendar flow. Missing authorities stay
 /// explicit and disabled rather than falling back to generic edits.
 /// </summary>
 public sealed class PhoneTablePage : NativePageBase
@@ -84,9 +84,14 @@ public sealed class PhoneTablePage : NativePageBase
             && !Coordinator.State.IsDirty
             && Coordinator.State.Error is null;
 
-        Button beforeRun = NativeTheme.SecondaryButton("Before Run (unavailable)");
-        beforeRun.AutomationId = "phone-table-before-run-unavailable";
-        beforeRun.IsEnabled = false;
+        View beforeRun = NativeTheme.NavigationRow(
+            "Before Run",
+            "Choose one revision-bound Edge preparation action; other preparation remains explicitly blocked",
+            () => Navigation.PushAsync(new Sr5TableWizardPage(
+                Coordinator,
+                Sr5TableWizardLane.BeforeRun)),
+            automationId: "phone-table-before-run");
+        beforeRun.IsEnabled = hasExactSr5CareerAuthority;
         _body.Add(beforeRun);
         View afterRun = NativeTheme.NavigationRow(
             "After Run",
@@ -109,6 +114,7 @@ public sealed class PhoneTablePage : NativePageBase
             automationId: "phone-table-after-run");
         afterRun.IsEnabled = hasExactSr5CareerAuthority;
         _body.Add(afterRun);
+        AddCapabilityScope("After Run authority", Sr5CareerRunCapabilityCatalog.AfterRun);
         View downtime = NativeTheme.NavigationRow(
             "Downtime calendar",
             "Review, confirm and persist one exact SR5 Calendar add, edit or delete with restart recovery",
@@ -121,10 +127,38 @@ public sealed class PhoneTablePage : NativePageBase
         playtime.IsEnabled = false;
         _body.Add(playtime);
         Label blocker = NativeTheme.Body(
-            "Before Run and Playtime remain unavailable until Core exposes replayable typed authorities. No generic mutation fallback is used.",
+            "Playtime remains unavailable from this shell until its replayable typed authority is release-bound. Before Run exposes only typed Edge; no generic preparation fallback is used.",
             NativeTheme.Danger);
         blocker.AutomationId = "phone-table-unavailable-authorities";
         _body.Add(NativeTheme.Card(blocker));
+    }
+
+    private void AddCapabilityScope(
+        string title,
+        IReadOnlyList<Sr5CareerRunCapability> capabilities)
+    {
+        VerticalStackLayout card = new() { Spacing = 5 };
+        card.Add(NativeTheme.Eyebrow(title));
+        foreach (Sr5CareerRunCapability capability in capabilities)
+        {
+            string status = capability.Status switch
+            {
+                Sr5CareerRunCapabilityStatus.Available => "available",
+                Sr5CareerRunCapabilityStatus.ReadOnly => "read-only",
+                Sr5CareerRunCapabilityStatus.Unavailable => "unavailable",
+                _ => throw new ArgumentOutOfRangeException()
+            };
+            Label row = NativeTheme.Body(
+                $"{capability.Label} · {status} · {capability.Authority}",
+                capability.Status == Sr5CareerRunCapabilityStatus.Unavailable
+                    ? NativeTheme.Danger
+                    : NativeTheme.Muted);
+            row.AutomationId = "phone-table-capability-" + capability.Id;
+            card.Add(row);
+        }
+        View border = NativeTheme.Card(card);
+        border.AutomationId = "phone-table-after-run-capability-scope";
+        _body.Add(border);
     }
 }
 

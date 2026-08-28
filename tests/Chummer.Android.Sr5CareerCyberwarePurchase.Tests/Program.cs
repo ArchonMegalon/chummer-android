@@ -45,6 +45,18 @@ internal static class Program
 
         Sr5CareerCyberwarePurchaseSnapshot applied = first.Confirm(WorkspaceId);
         Assert(applied.HasAppliedReceipt, "applied receipt");
+        try
+        {
+            _ = first.Confirm(WorkspaceId);
+            throw new InvalidOperationException("repeated confirmation must fail closed");
+        }
+        catch (InvalidOperationException exception)
+            when (exception.Message.Contains("stale", StringComparison.OrdinalIgnoreCase))
+        {
+            // The applied checkpoint cannot become a fresh review again.
+        }
+        Assert(authority.CommitCalls == 1,
+            "repeated confirmation must never replay the authority call");
         Assert(workspaces.Revision == 8 && workspaces.SavedRevision == 8, "atomic saved revision");
         Assert(workspaces.Xml.Contains(command.NewInstanceId.Value.ToString("D"), StringComparison.Ordinal),
             "saved exact instance");

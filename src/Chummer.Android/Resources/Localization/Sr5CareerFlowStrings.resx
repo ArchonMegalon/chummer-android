@@ -518,7 +518,6 @@ Preview: {3}…</value></data>
   <data name="Retry" xml:space="preserve"><value>Retry</value></data>
   <data name="Return to Career and load the current runner revision." xml:space="preserve"><value>Return to Career and load the current runner revision.</value></data>
   <data name="Review draft unavailable" xml:space="preserve"><value>Review draft unavailable</value></data>
-  <data name="Review one exact point of Edge use before the run. Loadout, healing, contacts, and acquisitions remain unavailable until they have typed authority." xml:space="preserve"><value>Review one exact point of Edge use before the run. Loadout, healing, contacts, and acquisitions remain unavailable until they have typed authority.</value></data>
   <data name="Review table action" xml:space="preserve"><value>Review table action</value></data>
   <data name="SR5 Career · table-safe actions" xml:space="preserve"><value>SR5 Career · table-safe actions</value></data>
   <data name="Save not verified" xml:space="preserve"><value>Save not verified</value></data>
@@ -611,6 +610,41 @@ Preview: {3}…</value></data>
   <data name="Undo this purchase" xml:space="preserve"><value>Undo this purchase</value></data>
   <data name="Update exact quote" xml:space="preserve"><value>Update exact quote</value></data>
   <data name="{0} · {1} · {2} {3}" xml:space="preserve"><value>{0} · {1} · {2} {3}</value></data>
-  <data name="{0} · Essence {1} · availability {2} · {3} {4}" xml:space="preserve"><value>{0} · Essence {1} · availability {2} · {3} {4}</value></data>
   <data name="Cost × {0} · Essence × {1} · availability {2}" xml:space="preserve"><value>Cost × {0} · Essence × {1} · availability {2}</value></data>
+  <data name="Catalog" xml:space="preserve"><value>Catalog</value></data>
+  <data name="Charged now" xml:space="preserve"><value>Charged now</value></data>
+  <data name="Choose grade" xml:space="preserve"><value>Choose grade</value></data>
+  <data name="Confirm creates exactly one Cyberware instance and one Nuyen expense in one atomic saved revision. It does not create a calendar entry or apply elapsed time." xml:space="preserve"><value>Confirm creates exactly one Cyberware instance and one Nuyen expense in one atomic saved revision. It does not create a calendar entry or apply elapsed time.</value></data>
+  <data name="Elapsed time mutation" xml:space="preserve"><value>Elapsed time mutation</value></data>
+  <data name="Essence hole before / after" xml:space="preserve"><value>Essence hole before / after</value></data>
+  <data name="Expense time" xml:space="preserve"><value>Expense time</value></data>
+  <data name="Grade" xml:space="preserve"><value>Grade</value></data>
+  <data name="Grade availability modifier" xml:space="preserve"><value>Grade availability modifier</value></data>
+  <data name="Keep reviewing" xml:space="preserve"><value>Keep reviewing</value></data>
+  <data name="Lock exact review" xml:space="preserve"><value>Lock exact review</value></data>
+  <data name="New Cyberware instance" xml:space="preserve"><value>New Cyberware instance</value></data>
+  <data name="New Nuyen expense" xml:space="preserve"><value>New Nuyen expense</value></data>
+  <data name="Nuyen after purchase" xml:space="preserve"><value>Nuyen after purchase</value></data>
+  <data name="Nuyen before / after" xml:space="preserve"><value>Nuyen before / after</value></data>
+  <data name="Review one exact point of Edge use before the run. Loadout, preparation, contacts, and commitments remain unavailable until they have typed authority." xml:space="preserve"><value>Review one exact point of Edge use before the run. Loadout, preparation, contacts, and commitments remain unavailable until they have typed authority.</value></data>
+  <data name="Settings profile" xml:space="preserve"><value>Settings profile</value></data>
+  <data name="Source availability" xml:space="preserve"><value>Source availability</value></data>
+  <data name="Typed mutation scope" xml:space="preserve"><value>Typed mutation scope</value></data>
+  <data name="Unavailable · this bounded command carries no calendar or elapsed-time mutation" xml:space="preserve"><value>Unavailable · this bounded command carries no calendar or elapsed-time mutation</value></data>
+  <data name="Verified Career receipt" xml:space="preserve"><value>Verified Career receipt</value></data>
+  <data name="available" xml:space="preserve"><value>available</value></data>
+  <data name="cost {0} · Essence {1} · availability {2} · {3} {4}" xml:space="preserve"><value>cost {0} · Essence {1} · availability {2} · {3} {4}</value></data>
+  <data name="not present" xml:space="preserve"><value>not present</value></data>
+  <data name="read-only" xml:space="preserve"><value>read-only</value></data>
+  <data name="unavailable" xml:space="preserve"><value>unavailable</value></data>
+  <data name="{0} / {1}" xml:space="preserve"><value>{0} / {1}</value></data>
+  <data name="{0} nuyen" xml:space="preserve"><value>{0} nuyen</value></data>
+  <data name="{0} · {1} · {2}" xml:space="preserve"><value>{0} · {1} · {2}</value></data>
+  <data name="Excluded unsupported catalog rows" xml:space="preserve"><value>Excluded unsupported catalog rows</value></data>
+  <data name="Final availability" xml:space="preserve"><value>Final availability</value></data>
+  <data name="Karma mutation" xml:space="preserve"><value>Karma mutation</value></data>
+  <data name="None · this bounded purchase command contains no Karma field" xml:space="preserve"><value>None · this bounded purchase command contains no Karma field</value></data>
+  <data name="Bounded command prerequisites" xml:space="preserve"><value>Bounded command prerequisites</value></data>
+  <data name="Satisfied for this exact Core quote; final availability and elapsed time remain unresolved" xml:space="preserve"><value>Satisfied for this exact Core quote; final availability and elapsed time remain unresolved</value></data>
+  <data name="Unavailable · Core carries the source expression and grade modifier separately" xml:space="preserve"><value>Unavailable · Core carries the source expression and grade modifier separately</value></data>
 </root>

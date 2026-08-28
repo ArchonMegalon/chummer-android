@@ -16,6 +16,8 @@
              Link="Native/Sr5CareerFlowStrings.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs"
              Link="Native/Sr5TableWizardPhoneModel.cs" />
+    <Compile Include="../../src/Chummer.Android/Native/Sr5CareerRunCapabilityCatalog.cs"
+             Link="Native/Sr5CareerRunCapabilityCatalog.cs" />
     <Compile Include="../../src/Chummer.Android/Native/RunnerSessionSr5TableWizardPhoneAuthority.cs"
              Link="Native/RunnerSessionSr5TableWizardPhoneAuthority.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5TableWizardPage.cs"

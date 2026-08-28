@@ -518,7 +518,6 @@ Vorschau: {3}…</value></data>
   <data name="Retry" xml:space="preserve"><value>Erneut versuchen</value></data>
   <data name="Return to Career and load the current runner revision." xml:space="preserve"><value>Zur Karriere zurückkehren und die aktuelle Runner-Revision laden.</value></data>
   <data name="Review draft unavailable" xml:space="preserve"><value>Prüfentwurf nicht verfügbar</value></data>
-  <data name="Review one exact point of Edge use before the run. Loadout, healing, contacts, and acquisitions remain unavailable until they have typed authority." xml:space="preserve"><value>Vor dem Run einen exakten Punkt Edge-Verwendung prüfen. Ausrüstung, Heilung, Kontakte und Anschaffungen bleiben ohne typisierte Instanz nicht verfügbar.</value></data>
   <data name="Review table action" xml:space="preserve"><value>Spieltischaktion prüfen</value></data>
   <data name="SR5 Career · table-safe actions" xml:space="preserve"><value>SR5-Karriere · spieltischsichere Aktionen</value></data>
   <data name="Save not verified" xml:space="preserve"><value>Speichern nicht bestätigt</value></data>
@@ -611,6 +610,41 @@ Vorschau: {3}…</value></data>
   <data name="Undo this purchase" xml:space="preserve"><value>Diesen Kauf rückgängig machen</value></data>
   <data name="Update exact quote" xml:space="preserve"><value>Exaktes Angebot aktualisieren</value></data>
   <data name="{0} · {1} · {2} {3}" xml:space="preserve"><value>{0} · {1} · {2} {3}</value></data>
-  <data name="{0} · Essence {1} · availability {2} · {3} {4}" xml:space="preserve"><value>{0} · Essenz {1} · Verfügbarkeit {2} · {3} {4}</value></data>
   <data name="Cost × {0} · Essence × {1} · availability {2}" xml:space="preserve"><value>Kosten × {0} · Essenz × {1} · Verfügbarkeit {2}</value></data>
+  <data name="Catalog" xml:space="preserve"><value>Katalog</value></data>
+  <data name="Charged now" xml:space="preserve"><value>Jetzt belastet</value></data>
+  <data name="Choose grade" xml:space="preserve"><value>Qualitätsstufe wählen</value></data>
+  <data name="Confirm creates exactly one Cyberware instance and one Nuyen expense in one atomic saved revision. It does not create a calendar entry or apply elapsed time." xml:space="preserve"><value>Bestätigen erstellt genau eine Cyberware-Instanz und eine Nuyen-Ausgabe in einer atomar gespeicherten Revision. Es erstellt keinen Kalendereintrag und wendet keine verstrichene Zeit an.</value></data>
+  <data name="Elapsed time mutation" xml:space="preserve"><value>Änderung verstrichener Zeit</value></data>
+  <data name="Essence hole before / after" xml:space="preserve"><value>Essenzloch vorher / nachher</value></data>
+  <data name="Expense time" xml:space="preserve"><value>Ausgabenzeitpunkt</value></data>
+  <data name="Grade" xml:space="preserve"><value>Qualitätsstufe</value></data>
+  <data name="Grade availability modifier" xml:space="preserve"><value>Verfügbarkeitsmodifikator der Qualitätsstufe</value></data>
+  <data name="Keep reviewing" xml:space="preserve"><value>Weiter prüfen</value></data>
+  <data name="Lock exact review" xml:space="preserve"><value>Exakte Prüfung sperren</value></data>
+  <data name="New Cyberware instance" xml:space="preserve"><value>Neue Cyberware-Instanz</value></data>
+  <data name="New Nuyen expense" xml:space="preserve"><value>Neue Nuyen-Ausgabe</value></data>
+  <data name="Nuyen after purchase" xml:space="preserve"><value>Nuyen nach dem Kauf</value></data>
+  <data name="Nuyen before / after" xml:space="preserve"><value>Nuyen vorher / nachher</value></data>
+  <data name="Review one exact point of Edge use before the run. Loadout, preparation, contacts, and commitments remain unavailable until they have typed authority." xml:space="preserve"><value>Prüfe vor dem Run genau einen Edge-Einsatz. Ausrüstung, Vorbereitung, Kontakte und Verpflichtungen bleiben nicht verfügbar, bis sie eine typisierte Autorität besitzen.</value></data>
+  <data name="Settings profile" xml:space="preserve"><value>Einstellungsprofil</value></data>
+  <data name="Source availability" xml:space="preserve"><value>Quellenverfügbarkeit</value></data>
+  <data name="Typed mutation scope" xml:space="preserve"><value>Typisierter Änderungsumfang</value></data>
+  <data name="Unavailable · this bounded command carries no calendar or elapsed-time mutation" xml:space="preserve"><value>Nicht verfügbar · dieser begrenzte Befehl enthält keine Kalender- oder verstrichene Zeitänderung</value></data>
+  <data name="Verified Career receipt" xml:space="preserve"><value>Verifizierter Karrierenachweis</value></data>
+  <data name="available" xml:space="preserve"><value>verfügbar</value></data>
+  <data name="cost {0} · Essence {1} · availability {2} · {3} {4}" xml:space="preserve"><value>Kosten {0} · Essenz {1} · Verfügbarkeit {2} · {3} {4}</value></data>
+  <data name="not present" xml:space="preserve"><value>nicht vorhanden</value></data>
+  <data name="read-only" xml:space="preserve"><value>nur lesbar</value></data>
+  <data name="unavailable" xml:space="preserve"><value>nicht verfügbar</value></data>
+  <data name="{0} / {1}" xml:space="preserve"><value>{0} / {1}</value></data>
+  <data name="{0} nuyen" xml:space="preserve"><value>{0} Nuyen</value></data>
+  <data name="{0} · {1} · {2}" xml:space="preserve"><value>{0} · {1} · {2}</value></data>
+  <data name="Excluded unsupported catalog rows" xml:space="preserve"><value>Ausgeschlossene nicht unterstützte Katalogzeilen</value></data>
+  <data name="Final availability" xml:space="preserve"><value>Endgültige Verfügbarkeit</value></data>
+  <data name="Karma mutation" xml:space="preserve"><value>Karma-Änderung</value></data>
+  <data name="None · this bounded purchase command contains no Karma field" xml:space="preserve"><value>Keine · dieser begrenzte Kaufbefehl enthält kein Karma-Feld</value></data>
+  <data name="Bounded command prerequisites" xml:space="preserve"><value>Voraussetzungen des begrenzten Befehls</value></data>
+  <data name="Satisfied for this exact Core quote; final availability and elapsed time remain unresolved" xml:space="preserve"><value>Für dieses exakte Core-Angebot erfüllt; endgültige Verfügbarkeit und verstrichene Zeit bleiben ungeklärt</value></data>
+  <data name="Unavailable · Core carries the source expression and grade modifier separately" xml:space="preserve"><value>Nicht verfügbar · Core führt Quellausdruck und Qualitätsstufenmodifikator getrennt</value></data>
 </root>

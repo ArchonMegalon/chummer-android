@@ -128,7 +128,10 @@ public sealed class Sr5CareerWizardPage : NativePageBase
                 NativeTheme.Muted);
         }
 
-        if (!state.Snapshot.CanOpenAnyAction)
+        Sr5CareerCyberwarePurchaseSnapshot commerce =
+            Coordinator.LoadCareerCyberwarePurchase();
+        bool canOpenCommerce = commerce.IsReady;
+        if (!state.Snapshot.CanOpenAnyAction && !canOpenCommerce)
         {
             AddStatus(
                 WizardStrings.Get(
@@ -168,6 +171,27 @@ public sealed class Sr5CareerWizardPage : NativePageBase
                     _checkpointStore,
                     family.FamilyId)),
                 automationId: definition.RouteId));
+        }
+
+        _body.Add(NativeTheme.Eyebrow(
+            WizardStrings.Get("Career.Commerce", "Commerce")));
+        View commerceRoute = NativeTheme.NavigationRow(
+            Sr5CareerFlowStrings.Text("Gear and implants"),
+            Sr5CareerFlowStrings.Text(
+                "Choose → configure → Core quote → review diff → confirm → receipt"),
+            () => Navigation.PushAsync(new Sr5CareerCommerceHubPage(Coordinator)),
+            enabled: canOpenCommerce,
+            automationId: Sr5CareerRunCapabilityCatalog.CyberwareCommerceRoute);
+        _body.Add(commerceRoute);
+        if (!canOpenCommerce)
+        {
+            Label commerceBlocker = NativeTheme.Body(
+                commerce.Blockers.FirstOrDefault()
+                ?? Sr5CareerFlowStrings.Text(
+                    "The typed Cyberware purchase authority is unavailable for this exact runner revision."),
+                NativeTheme.Danger);
+            commerceBlocker.AutomationId = "sr5-career-commerce-blocker";
+            _body.Add(NativeTheme.Card(commerceBlocker));
         }
 
         Label boundary = NativeTheme.Body(

@@ -49,7 +49,71 @@ backend.Payload = Convert.ToBase64String(new byte[40 * 1024]);
 Assert(store.Read().Status == Sr5TableWizardCheckpointReadStatus.Invalid,
     "oversized checkpoint payload must be rejected and removed");
 
+AssertCapabilityBoundaries();
+
 Console.WriteLine("SR5 Before Run / Playtime Android draft-store tests passed.");
+
+static void AssertCapabilityBoundaries()
+{
+    Assert(
+        Sr5CareerRunCapabilityCatalog.BeforeRun.Single(capability =>
+            capability.Id == "before-run-edge").Status
+        == Sr5CareerRunCapabilityStatus.Available,
+        "Before Run must expose only the existing typed Edge preparation lane");
+    foreach (string blocked in new[]
+             {
+                 "before-run-loadout",
+                 "before-run-preparation",
+                 "before-run-contacts",
+                 "before-run-commitments"
+             })
+    {
+        Assert(
+            Sr5CareerRunCapabilityCatalog.BeforeRun.Single(capability =>
+                capability.Id == blocked).Status
+            == Sr5CareerRunCapabilityStatus.Unavailable,
+            $"{blocked} must stay fail-closed without typed authority");
+    }
+
+    foreach (string readOnly in new[] { "after-run-karma", "after-run-nuyen" })
+    {
+        Assert(
+            Sr5CareerRunCapabilityCatalog.AfterRun.Single(capability =>
+                capability.Id == readOnly).Status
+            == Sr5CareerRunCapabilityStatus.ReadOnly,
+            $"{readOnly} must remain signed proposal context and never be re-awarded");
+    }
+    foreach (string available in new[]
+             {
+                 "after-run-heat",
+                 "after-run-street-cred",
+                 "after-run-notoriety",
+                 "after-run-public-awareness",
+                 "after-run-contacts"
+             })
+    {
+        Assert(
+            Sr5CareerRunCapabilityCatalog.AfterRun.Single(capability =>
+                capability.Id == available).Status
+            == Sr5CareerRunCapabilityStatus.Available,
+            $"{available} must map to the typed atomic settlement");
+    }
+    foreach (string blocked in new[]
+             {
+                 "after-run-injuries",
+                 "after-run-ammo",
+                 "after-run-loot",
+                 "after-run-expenses",
+                 "after-run-log"
+             })
+    {
+        Assert(
+            Sr5CareerRunCapabilityCatalog.AfterRun.Single(capability =>
+                capability.Id == blocked).Status
+            == Sr5CareerRunCapabilityStatus.Unavailable,
+            $"{blocked} must stay fail-closed without typed authority");
+    }
+}
 
 static void Assert(bool condition, string message)
 {

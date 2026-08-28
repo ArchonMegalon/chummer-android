@@ -1,0 +1,98 @@
+import json
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class Sr5CareerRunContextualContractTests(unittest.TestCase):
+    def test_before_run_driver_semantics_are_typed_but_not_release_claimed(self) -> None:
+        shell = (ROOT / "src/Chummer.Android/Native/PhoneShellPages.cs").read_text(
+            encoding="utf-8"
+        )
+        table = (ROOT / "src/Chummer.Android/Native/Sr5TableWizardPage.cs").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('automationId: "phone-table-before-run"', shell)
+        self.assertIn("Sr5TableWizardLane.BeforeRun", shell)
+        self.assertIn('"sr5-table-action-"', table)
+        self.assertIn('"sr5-table-wizard-resume-review"', table)
+        self.assertIn('"sr5-table-wizard-boundary"', table)
+
+        inventory = json.loads(
+            (
+                ROOT
+                / "docs/ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
+            ).read_text(encoding="utf-8")
+        )
+        recognition = inventory["generationInputs"]["api36JourneyRecognition"]
+        self.assertEqual("recognized", recognition["recognitionStatus"])
+        self.assertEqual("not_executed", recognition["executionStatus"])
+        self.assertIsNone(recognition["matrixJourney"])
+        self.assertFalse(recognition["releaseClaim"])
+        self.assertEqual(0, recognition["completionCountContribution"])
+
+        workflow = (ROOT / ".github/workflows/api36-editing-e2e.yml").read_text(
+            encoding="utf-8"
+        )
+        runner = (ROOT / "scripts/run-api36-editing-e2e-ci.sh").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("phone-table-before-run", workflow)
+        self.assertNotIn("phone-table-before-run", runner)
+
+    def test_contextual_scope_is_explicit_and_generic_mutation_is_absent(self) -> None:
+        catalog = (
+            ROOT / "src/Chummer.Android/Native/Sr5CareerRunCapabilityCatalog.cs"
+        ).read_text(encoding="utf-8")
+        for capability_id in (
+            "before-run-edge",
+            "before-run-loadout",
+            "before-run-preparation",
+            "before-run-contacts",
+            "before-run-commitments",
+            "after-run-karma",
+            "after-run-nuyen",
+            "after-run-heat",
+            "after-run-notoriety",
+            "after-run-public-awareness",
+            "after-run-contacts",
+            "after-run-injuries",
+            "after-run-ammo",
+            "after-run-loot",
+            "after-run-expenses",
+            "after-run-log",
+        ):
+            self.assertIn(f'"{capability_id}"', catalog)
+        self.assertIn("Sr5CareerRunCapabilityStatus.ReadOnly", catalog)
+        self.assertIn("no typed Core/Presentation mutation authority", catalog)
+        self.assertNotIn("Dictionary<string, object", catalog)
+        self.assertNotIn("generic edit", catalog.casefold())
+
+    def test_career_commerce_follows_review_receipt_semantics_without_repin(self) -> None:
+        page = (
+            ROOT / "src/Chummer.Android/Native/Sr5CareerCommercePages.cs"
+        ).read_text(encoding="utf-8")
+        for automation_id in (
+            "career-cyberware-purchase-source-route",
+            "career-cyberware-purchase-grade-route",
+            "career-cyberware-purchase-update-quote",
+            "career-cyberware-purchase-review-diff",
+            "career-cyberware-purchase-confirm",
+            "career-cyberware-purchase-receipt",
+            "career-cyberware-purchase-recovery-unknown",
+        ):
+            self.assertIn(f'"{automation_id}"', page)
+        self.assertIn("Source availability", page)
+        self.assertIn("Grade availability modifier", page)
+        self.assertIn("no calendar or elapsed-time mutation", page)
+
+        workflow = (ROOT / ".github/workflows/api36-editing-e2e.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("career-cyberware-purchase-review-diff", workflow)
+
+
+if __name__ == "__main__":
+    unittest.main()
