@@ -1,3 +1,4 @@
+import json
 import unittest
 from pathlib import Path
 
@@ -159,6 +160,43 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertLess(self.text.index(check), self.text.index(settings_check))
         self.assertLess(self.text.index(check), self.text.index("run: scripts/build-debug.sh"))
         self.assertIn("needs: build", self.text)
+
+    def test_sr5_table_wizard_development_journey_is_recognized_without_release_claim(
+        self,
+    ) -> None:
+        payload = json.loads(
+            (
+                REPO_ROOT
+                / "docs"
+                / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
+            ).read_text(encoding="utf-8")
+        )
+        recognition = payload["generationInputs"]["api36JourneyRecognition"]
+        journey_id = "sr5-table-wizard-before-run-playtime"
+        self.assertEqual(journey_id, recognition["journeyId"])
+        self.assertEqual("sr5-career/table", recognition["parentCareerLane"])
+        self.assertEqual(
+            ["sr5-career/before-run", "sr5-career/playtime"],
+            recognition["routes"],
+        )
+        self.assertEqual("recognized", recognition["recognitionStatus"])
+        self.assertEqual("not_executed", recognition["executionStatus"])
+        self.assertIsNone(recognition["matrixJourney"])
+        self.assertFalse(recognition["releaseClaim"])
+        self.assertEqual(0, recognition["completionCountContribution"])
+
+        runner = (
+            REPO_ROOT / "scripts" / "run-api36-editing-e2e-ci.sh"
+        ).read_text(encoding="utf-8")
+        aggregate = (
+            REPO_ROOT / "scripts" / "verify-api36-editing-e2e-aggregate.py"
+        ).read_text(encoding="utf-8")
+        finalizer = (
+            REPO_ROOT / "scripts" / "finalize-api36-e2e-journey-receipt.py"
+        ).read_text(encoding="utf-8")
+        for authority in (self.text, runner, aggregate, finalizer):
+            with self.subTest(authority=authority[:40]):
+                self.assertNotIn(journey_id, authority)
 
     def test_phone_path_validates_the_pinned_phone_beta_contract(self) -> None:
         check = "python3 chummer-design/scripts/ai/validate_android_phone_beta_contract.py"

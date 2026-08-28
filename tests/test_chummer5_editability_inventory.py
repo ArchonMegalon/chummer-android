@@ -6275,6 +6275,85 @@ public sealed class Demo
             )
         self.assertEqual("missing", drifted["status"])
 
+    def test_sr5_table_wizard_development_lane_is_exactly_bound_without_completion_claim(self) -> None:
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        recognition = payload["generationInputs"]["api36JourneyRecognition"]
+        self.assertEqual(
+            "sr5-table-wizard-before-run-playtime",
+            recognition["journeyId"],
+        )
+        self.assertEqual("sr5-career/table", recognition["parentCareerLane"])
+        self.assertEqual(
+            ["sr5-career/before-run", "sr5-career/playtime"],
+            recognition["routes"],
+        )
+        self.assertEqual("recognized", recognition["recognitionStatus"])
+        self.assertEqual("not_executed", recognition["executionStatus"])
+        self.assertIsNone(recognition["matrixJourney"])
+        self.assertFalse(recognition["releaseClaim"])
+        self.assertEqual(0, recognition["completionCountContribution"])
+        self.assertEqual(
+            {
+                "implemented_pending_emulator": 547,
+                "missing": 918,
+                "not_applicable_non_mutating": 478,
+                "partial_create_only": 106,
+                "partial_exact_saved_data": 180,
+            },
+            payload["summary"]["phoneStatusCounts"],
+        )
+        self.assertEqual(478, payload["summary"]["completionProvenCount"])
+
+        expected = set(inventory.SR5_TABLE_WIZARD_AUTHORITY_INPUTS)
+        self.assertEqual(len(expected), len(inventory.SR5_TABLE_WIZARD_AUTHORITY_INPUTS))
+        bound = {
+            row["path"]: row
+            for row in payload["generationInputs"]["androidAndPresenterSources"]
+        }
+        self.assertTrue(expected.issubset(bound))
+        presenter = inventory.SR5_TABLE_WIZARD_PRESENTER_INPUTS[0]
+        self.assertFalse(bound[presenter]["exists"])
+        self.assertIsNone(bound[presenter]["sha256"])
+        self.assertIn(f"source-missing:{presenter}", recognition["blockers"])
+        for path in expected - {presenter}:
+            with self.subTest(path=path):
+                self.assertTrue(bound[path]["exists"])
+                self.assertRegex(bound[path]["sha256"], r"^[0-9a-f]{64}$")
+
+        authority_paths = inventory._sr5_table_wizard_authority_paths(PRESENTATION_ROOT)
+        omitted = inventory._sr5_table_wizard_api36_recognition(
+            authority_paths[1:],
+            PRESENTATION_ROOT,
+        )
+        self.assertIn(
+            "generation-input-missing:"
+            + inventory.SR5_TABLE_WIZARD_AUTHORITY_INPUTS[0],
+            omitted["blockers"],
+        )
+        self.assertEqual("blocked", omitted["sourceAuthorityStatus"])
+
+        original_contains = inventory._contains
+
+        def drift_table_page(path: Path, *needles: str) -> bool:
+            if path.name == "Sr5TableWizardPage.cs":
+                return False
+            return original_contains(path, *needles)
+
+        with patch.object(inventory, "_contains", side_effect=drift_table_page):
+            drifted = inventory._sr5_table_wizard_api36_recognition(
+                authority_paths,
+                PRESENTATION_ROOT,
+            )
+        self.assertIn(
+            "source-contract-drift:src/Chummer.Android/Native/Sr5TableWizardPage.cs",
+            drifted["blockers"],
+        )
+        self.assertEqual("blocked", drifted["sourceAuthorityStatus"])
+
 
 if __name__ == "__main__":
     unittest.main()

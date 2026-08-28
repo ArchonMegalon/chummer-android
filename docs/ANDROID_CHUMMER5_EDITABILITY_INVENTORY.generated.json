@@ -607,6 +607,151 @@
         "sha256": "10948278f0215fe8eadfdfe3aa8d27624d7b1e1e519ddac851033555268c94c1"
       },
       {
+        "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
+        "exists": true,
+        "sha256": "8fcb90f057a134872a0d1ac08165b1c9d144aea2c208a34d02cdd578a81db4aa"
+      },
+      {
+        "path": "src/Chummer.Android/Native/RunnerSessionSr5TableWizardPhoneAuthority.cs",
+        "exists": true,
+        "sha256": "91b844da893d70ec8b8913f6e553e726b830af1d10825941cb4b2fda7f083863"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5CareerFlowStrings.cs",
+        "exists": true,
+        "sha256": "c60f70248339daf625ecd656cc0663c6a83a4977b094410e6d3ae7d4340c4074"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5CareerWizardModel.cs",
+        "exists": true,
+        "sha256": "3268cce77a5469e1f82d7ff5e2632d201a9999033e4312d1b089c2ab1c9104d5"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
+        "exists": true,
+        "sha256": "8bcfc5b7ea60ccbf875f503f10a42b2e52fd6b3b329214c5359f1dadba037272"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
+        "exists": true,
+        "sha256": "64c03d1d1531626fbea8a5a4364d3ba22f91dcedcbc12547e35bf2b1edf145e3"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
+        "exists": true,
+        "sha256": "7592771dd7cc7dc721e39471f3da658dc1dc666c2ca3fde1258bf84f0f316f7f"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
+        "exists": true,
+        "sha256": "99965319a2cdce47e39cbb32c7eb1d8ac78a382fa646290ae6de2a9874bd4b80"
+      },
+      {
+        "path": "chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs",
+        "exists": false,
+        "sha256": null
+      },
+      {
+        "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx",
+        "exists": true,
+        "sha256": "67917d103eeff391213b86776da7387c84b57af13420109e8059d32e0c863ef4"
+      },
+      {
+        "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.de.resx",
+        "exists": true,
+        "sha256": "660eb172bb31426b91b41d8280626b4ec21ed797f372932eea51c21be48ee905"
+      },
+      {
+        "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.es.resx",
+        "exists": true,
+        "sha256": "0944dc10be3804cdbdbf27ba771093eaa11eecf7a3e52776afea74b233a07bdd"
+      },
+      {
+        "path": "src/Chummer.Android/Resources/Localization/WizardStrings.resx",
+        "exists": true,
+        "sha256": "70fb1397a7326a4f74a4ca7787a957bdb613d381a6d4023f27be4e70dd4f8791"
+      },
+      {
+        "path": "src/Chummer.Android/Resources/Localization/WizardStrings.de.resx",
+        "exists": true,
+        "sha256": "113c720719a4b6258fb882fbba1635c53ffed9f9af30cde6adc3eccf47592fb3"
+      },
+      {
+        "path": "src/Chummer.Android/Resources/Localization/WizardStrings.es.resx",
+        "exists": true,
+        "sha256": "a26e31af78820c44ea0e2c80f3d7ab0ee726e280774237975dbc57e09e9be39d"
+      },
+      {
+        "path": "tests/Chummer.Android.Sr5CareerChooser.Tests/Chummer.Android.Sr5CareerChooser.Tests.csproj",
+        "exists": true,
+        "sha256": "8af68354230f14cf86dd0d3d9badbb4d309a0812d2acc67d627e923f0c1b7276"
+      },
+      {
+        "path": "tests/Chummer.Android.Sr5CareerChooser.Tests/Program.cs",
+        "exists": true,
+        "sha256": "741f8efff9592963ac0839d1d4b2c9cabfc398d880948184984eaec97dfddba7"
+      },
+      {
+        "path": "tests/Chummer.Android.Sr5CareerFlowLocalization.Tests/Chummer.Android.Sr5CareerFlowLocalization.Tests.csproj",
+        "exists": true,
+        "sha256": "1c3264b7fd4741a1a064c2d5af91703bdf67c0f1c5aca9d232f11729b047dafa"
+      },
+      {
+        "path": "tests/Chummer.Android.Sr5CareerFlowLocalization.Tests/Program.cs",
+        "exists": true,
+        "sha256": "cd8263008e3bd1a52ffa604e19c67cbe4d268c0b396a2a1cee0474420ba4c6f6"
+      },
+      {
+        "path": "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests.csproj",
+        "exists": true,
+        "sha256": "5c87e4993de0a1fe203cd445103e363bea3a0d66b82b185aa93b5200f8a10e01"
+      },
+      {
+        "path": "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/NativeCompileStubs.cs",
+        "exists": true,
+        "sha256": "cb3f65fc08d3775dde7617f4ffac1cd5d954a0e7554d9c2bc03648337dd451b4"
+      },
+      {
+        "path": "tests/Chummer.Android.Sr5TableWizard.Tests/Chummer.Android.Sr5TableWizard.Tests.csproj",
+        "exists": true,
+        "sha256": "3435b6bedb904485996c38d3515cb4932948364f4a5a9f9cc618d253f4a0b7c6"
+      },
+      {
+        "path": "tests/Chummer.Android.Sr5TableWizard.Tests/Program.cs",
+        "exists": true,
+        "sha256": "f8757f357fae3e1199d8001d563ceba09ec464223aa6ceb9a308f049adde7e4e"
+      },
+      {
+        "path": ".github/workflows/api36-editing-e2e.yml",
+        "exists": true,
+        "sha256": "19445a0810e4751918cc7f7ae116c5df93e3604bbb21b0b242cea2da3a62e047"
+      },
+      {
+        "path": "scripts/run-api36-editing-e2e-ci.sh",
+        "exists": true,
+        "sha256": "bb0c2e6c7d7d60481f611a3d520662cd9d4e32af442e89abfa41b6800e3b42bb"
+      },
+      {
+        "path": "src/Chummer.Android/Chummer.Android.csproj",
+        "exists": true,
+        "sha256": "7d3196e3212aad0e7dd9c06308cbd3abb42eaad05d0acf22896d072fb6121a3f"
+      },
+      {
+        "path": "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
+        "exists": true,
+        "sha256": "73fe43f3108bbe5777f2cd59a8009626e4ffdb162e44d89ef8f1e3e0a8f2547e"
+      },
+      {
+        "path": "tests/test_api36_e2e_workflow.py",
+        "exists": true,
+        "sha256": "58ef7784bcf6109a711e3c6cdf4a9e3979521af16322cecb72f11122f9860059"
+      },
+      {
+        "path": "tests/test_chummer5_editability_inventory.py",
+        "exists": true,
+        "sha256": "5d81b2d130c355155b95ad801709d88cfe99ab9bbc5010f9efc7019dd0923c12"
+      },
+      {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
         "exists": true,
         "sha256": "69c0cd816933ce6388a8f8ba5e9e2e86de897cc5e8acb6a597720fda223310a4"
@@ -2387,9 +2532,66 @@
         "sha256": "9753a446b1eddbbe3c45cddf4d19b297896c5052b77ccfb42e593c8d5590a16b"
       }
     ],
+    "api36JourneyRecognition": {
+      "journeyId": "sr5-table-wizard-before-run-playtime",
+      "parentCareerLane": "sr5-career/table",
+      "routes": [
+        "sr5-career/before-run",
+        "sr5-career/playtime"
+      ],
+      "recognitionStatus": "recognized",
+      "sourceAuthorityStatus": "blocked",
+      "executionStatus": "not_executed",
+      "matrixJourney": null,
+      "releaseClaim": false,
+      "completionCountContribution": 0,
+      "androidSourcePaths": [
+        "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+        "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
+        "src/Chummer.Android/Native/RunnerSessionSr5TableWizardPhoneAuthority.cs",
+        "src/Chummer.Android/Native/Sr5CareerFlowStrings.cs",
+        "src/Chummer.Android/Native/Sr5CareerWizardModel.cs",
+        "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
+        "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
+        "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
+        "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs"
+      ],
+      "presenterSourcePaths": [
+        "chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs"
+      ],
+      "localizationPaths": [
+        "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx",
+        "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.de.resx",
+        "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.es.resx",
+        "src/Chummer.Android/Resources/Localization/WizardStrings.resx",
+        "src/Chummer.Android/Resources/Localization/WizardStrings.de.resx",
+        "src/Chummer.Android/Resources/Localization/WizardStrings.es.resx"
+      ],
+      "testPaths": [
+        "tests/Chummer.Android.Sr5CareerChooser.Tests/Chummer.Android.Sr5CareerChooser.Tests.csproj",
+        "tests/Chummer.Android.Sr5CareerChooser.Tests/Program.cs",
+        "tests/Chummer.Android.Sr5CareerFlowLocalization.Tests/Chummer.Android.Sr5CareerFlowLocalization.Tests.csproj",
+        "tests/Chummer.Android.Sr5CareerFlowLocalization.Tests/Program.cs",
+        "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests.csproj",
+        "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/NativeCompileStubs.cs",
+        "tests/Chummer.Android.Sr5TableWizard.Tests/Chummer.Android.Sr5TableWizard.Tests.csproj",
+        "tests/Chummer.Android.Sr5TableWizard.Tests/Program.cs"
+      ],
+      "gatePaths": [
+        ".github/workflows/api36-editing-e2e.yml",
+        "scripts/run-api36-editing-e2e-ci.sh",
+        "src/Chummer.Android/Chummer.Android.csproj",
+        "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
+        "tests/test_api36_e2e_workflow.py",
+        "tests/test_chummer5_editability_inventory.py"
+      ],
+      "blockers": [
+        "source-missing:chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs"
+      ]
+    },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "92e3fe52289ac4cfb5b3afbe0f487a93689055ff51c1e6449da79bf5aabb34b7"
+      "sha256": "cd6061518a86f31e2d8d7d27a92665dc329c9c8b8389d19e15650c8e2d5285e4"
     }
   },
   "coverageByFamily": {

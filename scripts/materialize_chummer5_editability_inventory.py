@@ -51,6 +51,148 @@ DEFAULT_REGISTRY = Path(
     )
 ).resolve()
 DEFAULT_OUTPUT = REPO_ROOT / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
+SR5_TABLE_WIZARD_API36_JOURNEY_ID = "sr5-table-wizard-before-run-playtime"
+SR5_TABLE_WIZARD_ANDROID_SOURCE_INPUTS = (
+    "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
+    "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
+    "src/Chummer.Android/Native/RunnerSessionSr5TableWizardPhoneAuthority.cs",
+    "src/Chummer.Android/Native/Sr5CareerFlowStrings.cs",
+    "src/Chummer.Android/Native/Sr5CareerWizardModel.cs",
+    "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
+    "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
+    "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
+    "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
+)
+SR5_TABLE_WIZARD_PRESENTER_INPUTS = (
+    "chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs",
+)
+SR5_TABLE_WIZARD_LOCALIZATION_INPUTS = (
+    "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx",
+    "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.de.resx",
+    "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.es.resx",
+    "src/Chummer.Android/Resources/Localization/WizardStrings.resx",
+    "src/Chummer.Android/Resources/Localization/WizardStrings.de.resx",
+    "src/Chummer.Android/Resources/Localization/WizardStrings.es.resx",
+)
+SR5_TABLE_WIZARD_TEST_INPUTS = (
+    "tests/Chummer.Android.Sr5CareerChooser.Tests/Chummer.Android.Sr5CareerChooser.Tests.csproj",
+    "tests/Chummer.Android.Sr5CareerChooser.Tests/Program.cs",
+    "tests/Chummer.Android.Sr5CareerFlowLocalization.Tests/Chummer.Android.Sr5CareerFlowLocalization.Tests.csproj",
+    "tests/Chummer.Android.Sr5CareerFlowLocalization.Tests/Program.cs",
+    "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests.csproj",
+    "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/NativeCompileStubs.cs",
+    "tests/Chummer.Android.Sr5TableWizard.Tests/Chummer.Android.Sr5TableWizard.Tests.csproj",
+    "tests/Chummer.Android.Sr5TableWizard.Tests/Program.cs",
+)
+SR5_TABLE_WIZARD_GATE_INPUTS = (
+    ".github/workflows/api36-editing-e2e.yml",
+    "scripts/run-api36-editing-e2e-ci.sh",
+    "src/Chummer.Android/Chummer.Android.csproj",
+    "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
+    "tests/test_api36_e2e_workflow.py",
+    "tests/test_chummer5_editability_inventory.py",
+)
+SR5_TABLE_WIZARD_AUTHORITY_INPUTS = (
+    *SR5_TABLE_WIZARD_ANDROID_SOURCE_INPUTS,
+    *SR5_TABLE_WIZARD_PRESENTER_INPUTS,
+    *SR5_TABLE_WIZARD_LOCALIZATION_INPUTS,
+    *SR5_TABLE_WIZARD_TEST_INPUTS,
+    *SR5_TABLE_WIZARD_GATE_INPUTS,
+)
+SR5_TABLE_WIZARD_AUTHORITY_MARKERS = {
+    "src/Chummer.Android/Native/RunnerSessionCoordinator.cs": (
+        "PrepareCareerWeaponFireCatalogAsync(",
+    ),
+    "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs": (
+        "Sr5CareerWizardActionIds.BeforeRun",
+        "Sr5CareerWizardActionIds.Playtime",
+        "RunnerSessionSr5TableWizardPhoneAuthority",
+    ),
+    "src/Chummer.Android/Native/RunnerSessionSr5TableWizardPhoneAuthority.cs": (
+        "CareerEdgeUseEditorState? edge",
+        "Sr5TableWizardLane.Playtime",
+        "PrepareCareerWeaponFireCatalogAsync",
+    ),
+    "src/Chummer.Android/Native/Sr5CareerWizardModel.cs": (
+        'BeforeRun = "sr5-career/before-run"',
+        'Playtime = "sr5-career/playtime"',
+    ),
+    "src/Chummer.Android/Native/Sr5CareerWizardPage.cs": (
+        "new Sr5TableWizardPage(Coordinator, Sr5TableWizardLane.BeforeRun)",
+        "new Sr5TableWizardPage(Coordinator, Sr5TableWizardLane.Playtime)",
+    ),
+    "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs": (
+        "Sr5CareerWizardFamilyIds.Table",
+        "Sr5CareerWizardActionIds.BeforeRun",
+        "Sr5CareerWizardActionIds.Playtime",
+    ),
+    "src/Chummer.Android/Native/Sr5TableWizardPage.cs": (
+        'AutomationId = lane == Sr5TableWizardLane.BeforeRun',
+        '"sr5-table-wizard-confirm"',
+        "ApplyCareerWeaponFireAsync(",
+        "ApplyCareerEdgeUseEditAsync(",
+    ),
+    "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs": (
+        "Sr5TableWizardCheckpointStore",
+        "TryDeserializeCheckpoint(",
+        "CryptographicOperations.ZeroMemory",
+    ),
+    "chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs": (
+        "Sr5TableWizardLane",
+        "Sr5TableWizardSession",
+        "TryDeserializeCheckpoint(",
+    ),
+    "tests/Chummer.Android.Sr5TableWizard.Tests/Program.cs": (
+        "Sr5TableWizardLane.BeforeRun",
+        "tampered phone draft must be removed and fail closed",
+    ),
+    "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests.csproj": (
+        "RunnerSessionSr5TableWizardPhoneAuthority.cs",
+        "Sr5TableWizardPage.cs",
+        "Sr5TableWizardSession.cs",
+    ),
+    "tests/Chummer.Android.Sr5CareerFlowLocalization.Tests/Program.cs": (
+        '"Sr5TableWizardPage.cs"',
+        "AssertSameKeys(neutral, german, \"de\")",
+        "AssertSameKeys(neutral, spanish, \"es\")",
+    ),
+    "tests/test_api36_e2e_workflow.py": (
+        "test_sr5_table_wizard_development_journey_is_recognized_without_release_claim",
+    ),
+    "tests/test_chummer5_editability_inventory.py": (
+        "test_sr5_table_wizard_development_lane_is_exactly_bound_without_completion_claim",
+    ),
+    "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx": (
+        'name="Before the run"',
+        'name="Live / playtime"',
+        'name="SR5 Career · table-safe actions"',
+    ),
+    "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.de.resx": (
+        'name="Before the run"',
+        'name="Live / playtime"',
+        'name="SR5 Career · table-safe actions"',
+    ),
+    "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.es.resx": (
+        'name="Before the run"',
+        'name="Live / playtime"',
+        'name="SR5 Career · table-safe actions"',
+    ),
+    "src/Chummer.Android/Resources/Localization/WizardStrings.resx": (
+        'name="Career.Family.career.table.Title"',
+        'name="Career.Action.career.before-run.prepare.Title"',
+        'name="Career.Action.career.playtime.open.Title"',
+    ),
+    "src/Chummer.Android/Resources/Localization/WizardStrings.de.resx": (
+        'name="Career.Family.career.table.Title"',
+        'name="Career.Action.career.before-run.prepare.Title"',
+        'name="Career.Action.career.playtime.open.Title"',
+    ),
+    "src/Chummer.Android/Resources/Localization/WizardStrings.es.resx": (
+        'name="Career.Family.career.table.Title"',
+        'name="Career.Action.career.before-run.prepare.Title"',
+        'name="Career.Action.career.playtime.open.Title"',
+    ),
+}
 CONDITION_E2E_RECEIPTS = {
     "phone": REPO_ROOT
     / "docs"
@@ -23194,6 +23336,62 @@ def _status_counts(rows: list[dict[str, Any]], key: str) -> dict[str, int]:
     return dict(sorted(Counter(str(row[key]["status"]) for row in rows).items()))
 
 
+def _sr5_table_wizard_authority_paths(presentation_root: Path) -> list[Path]:
+    prefix = "chummer-presentation/"
+    return [
+        (
+            presentation_root / relative.removeprefix(prefix)
+            if relative.startswith(prefix)
+            else REPO_ROOT / relative
+        )
+        for relative in SR5_TABLE_WIZARD_AUTHORITY_INPUTS
+    ]
+
+
+def _sr5_table_wizard_api36_recognition(
+    android_inputs: Iterable[Path],
+    presentation_root: Path,
+) -> dict[str, Any]:
+    canonical_by_path = dict(zip(
+        _sr5_table_wizard_authority_paths(presentation_root),
+        SR5_TABLE_WIZARD_AUTHORITY_INPUTS,
+        strict=True,
+    ))
+    input_set = {path.resolve() for path in android_inputs}
+    blockers: list[str] = []
+    for path, relative in canonical_by_path.items():
+        if path.resolve() not in input_set:
+            blockers.append(f"generation-input-missing:{relative}")
+            continue
+        if not path.is_file():
+            blockers.append(f"source-missing:{relative}")
+            continue
+        markers = SR5_TABLE_WIZARD_AUTHORITY_MARKERS.get(relative, ())
+        if markers and not _contains(path, *markers):
+            blockers.append(f"source-contract-drift:{relative}")
+
+    return {
+        "journeyId": SR5_TABLE_WIZARD_API36_JOURNEY_ID,
+        "parentCareerLane": "sr5-career/table",
+        "routes": [
+            "sr5-career/before-run",
+            "sr5-career/playtime",
+        ],
+        "recognitionStatus": "recognized",
+        "sourceAuthorityStatus": "ready" if not blockers else "blocked",
+        "executionStatus": "not_executed",
+        "matrixJourney": None,
+        "releaseClaim": False,
+        "completionCountContribution": 0,
+        "androidSourcePaths": list(SR5_TABLE_WIZARD_ANDROID_SOURCE_INPUTS),
+        "presenterSourcePaths": list(SR5_TABLE_WIZARD_PRESENTER_INPUTS),
+        "localizationPaths": list(SR5_TABLE_WIZARD_LOCALIZATION_INPUTS),
+        "testPaths": list(SR5_TABLE_WIZARD_TEST_INPUTS),
+        "gatePaths": list(SR5_TABLE_WIZARD_GATE_INPUTS),
+        "blockers": blockers,
+    }
+
+
 def build_inventory(
     chummer5_root: Path,
     registry_path: Path,
@@ -23325,7 +23523,7 @@ def build_inventory(
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationTalentSkillGrantPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPrerequisitePreviewPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "CreationPrerequisitePhoneDraft.cs",
-        REPO_ROOT / "src" / "Chummer.Android" / "Native" / "RunnerSessionCoordinator.cs",
+        *_sr5_table_wizard_authority_paths(presentation_root),
         REPO_ROOT / "src" / "Chummer.Android" / "Native" / "TabletBuildPage.cs",
         REPO_ROOT / "src" / "Chummer.Android" / "Platform" / "IAndroidLinkedCharacterFileService.cs",
         REPO_ROOT / "tests" / "run_api36_editing_e2e.py",
@@ -23724,6 +23922,10 @@ def build_inventory(
                 }
                 for path in android_inputs
             ],
+            "api36JourneyRecognition": _sr5_table_wizard_api36_recognition(
+                android_inputs,
+                presentation_root,
+            ),
             "generator": {
                 "path": "scripts/materialize_chummer5_editability_inventory.py",
                 "sha256": _sha256_file(Path(__file__).resolve()),
