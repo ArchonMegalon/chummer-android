@@ -11,8 +11,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from api36_arm64_physical_contract import (  # noqa: E402
     JOURNEY_ORDER,
     capture_build_inputs,
+    capture_driver_authority,
     create_aggregate,
     load_and_verify_aggregate,
+    parse_driver_paths,
+    validate_source_graph,
     write_json_exclusive,
 )
 
@@ -37,6 +40,8 @@ def add_common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--source-graph", type=Path, required=True)
     parser.add_argument("--build-provenance", type=Path, required=True)
     parser.add_argument("--device-observation", type=Path, required=True)
+    parser.add_argument("--android-repository", type=Path, required=True)
+    parser.add_argument("--driver", action="append", default=[], required=True)
     parser.add_argument("--raw-receipt", action="append", default=[], required=True)
     parser.add_argument("--restart-evidence", action="append", default=[], required=True)
     parser.add_argument("--journey-seal", action="append", default=[], required=True)
@@ -54,6 +59,8 @@ def arguments(args: argparse.Namespace) -> dict[str, object]:
         "apk_path": args.apk, "source_graph_path": args.source_graph,
         "build_provenance_path": args.build_provenance,
         "device_observation_path": args.device_observation,
+        "repository_root": args.android_repository,
+        "driver_paths": parse_driver_paths(args.driver),
     }
 
 
@@ -64,6 +71,8 @@ def main(argv: list[str] | None = None) -> int:
     preflight.add_argument("--apk", type=Path, required=True)
     preflight.add_argument("--source-graph", type=Path, required=True)
     preflight.add_argument("--build-provenance", type=Path, required=True)
+    preflight.add_argument("--android-repository", type=Path, required=True)
+    preflight.add_argument("--driver", action="append", default=[], required=True)
     materialize = subparsers.add_parser("materialize")
     add_common(materialize)
     materialize.add_argument("--output", type=Path, required=True)
@@ -74,9 +83,14 @@ def main(argv: list[str] | None = None) -> int:
     repository_root = Path(__file__).resolve().parents[1]
     try:
         if args.command == "preflight":
-            _apk, _graph, _provenance, payload = capture_build_inputs(
+            _apk, graph, _provenance, payload = capture_build_inputs(
                 apk_path=args.apk, source_graph_path=args.source_graph,
                 build_provenance_path=args.build_provenance,
+            )
+            capture_driver_authority(
+                repository_root=args.android_repository,
+                driver_paths=parse_driver_paths(args.driver),
+                source_graph=validate_source_graph(graph),
             )
             print(
                 "physical_build_inputs=pass publication_authorized=false "

@@ -12,8 +12,9 @@ import os
 from pathlib import Path
 import re
 import stat
+import subprocess
 import tempfile
-from typing import Mapping, Sequence
+from typing import Callable, Mapping, Sequence
 import zipfile
 
 
@@ -68,6 +69,100 @@ VIRTUAL_MARKERS = (
     "aosp_cf_", "cuttlefish", "emulator", "generic", "goldfish", "qemu",
     "ranchu", "sdk_gphone", "vbox", "virtualbox",
 )
+SOURCE_GRAPH_DOES_NOT_ASSERT = (
+    "google_play_upload", "google_play_processing", "tester_installation",
+    "production_rollout", "presentation_package_authority",
+)
+WP1_DOES_NOT_ASSERT = (
+    "apk_install", "api36_device_execution", "physical_journey_pass",
+    "google_play_upload", "google_play_processing", "tester_installation",
+    "public_release_readiness", "publication_authority", "tablet_readiness",
+)
+WP1_COMMITTED_ADAPTER = "wp1-33e69-v2"
+WP1_SOURCE_GRAPH_FIELDS = {
+    "sha256", "sizeBytes", "contractName", "repositories", "packageAuthority",
+    "packageAuthorityContract", "packageAuthorityPublicationAuthorized",
+}
+WP1_ARTIFACT_FIELDS = {
+    "basename", "sha256", "sizeBytes", "package", "abis", "apiLevel",
+    "configuration", "runtimeIdentifier", "targetFramework", "fullMauiArtifact",
+    "installed", "signing",
+}
+WP1_EXECUTION_EVIDENCE_FIELDS = {
+    "toolchainLog", "sourceGraphLog", "contentSourceLog", "buildInputsLog",
+    "restoreLog", "buildLog", "signingPhaseLog", "apksignerLog",
+    "jarsignerLog", "signingReceipt", "contentApkLog", "sourceGraphSealLog",
+    "commandJournal", "rawCommandJournal", "delegateCommandJournal",
+    "boundedProcessGroups", "warnings", "errors",
+}
+WP1_TOOLCHAIN_FIELDS = {
+    "dotnetSdkVersion", "dotnetRuntimeVersion", "workloadSetVersion", "dotnetHost",
+    "dotnetWorkloads", "workloadManifests", "java", "javac", "jarsigner",
+    "keytool", "jdkRelease", "androidSdk", "androidBuildToolsVersion",
+    "androidPlatformLabel", "targetFramework", "targetSdkVersion",
+    "runtimeIdentifier", "configuration", "serializedBuild",
+}
+REPOSITORY_NAMES = (
+    "chummer-android", "chummer6-ui", "chummer6-core", "chummer6-ui-kit",
+    "chummer6-hub", "chummer6-hub-registry", "chummer6-media-factory",
+    "chummer6-design",
+)
+REPOSITORY_ROLES = (
+    "app", "runtime", "runtime", "runtime", "contracts_and_validation",
+    "contracts", "contracts", "validation",
+)
+REPOSITORY_URLS = (
+    "https://github.com/ArchonMegalon/chummer-android.git",
+    "https://github.com/ArchonMegalon/chummer6-ui.git",
+    "https://github.com/ArchonMegalon/chummer6-core.git",
+    "https://github.com/ArchonMegalon/chummer6-ui-kit.git",
+    "https://github.com/ArchonMegalon/chummer6-hub.git",
+    "https://github.com/ArchonMegalon/chummer6-hub-registry.git",
+    "https://github.com/ArchonMegalon/chummer6-media-factory.git",
+    "https://github.com/ArchonMegalon/chummer6-design.git",
+)
+CORE_PACKAGE_IDS = (
+    "Chummer.Application", "Chummer.Infrastructure", "Chummer.Rulesets.Hosting",
+    "Chummer.Rulesets.Sr4", "Chummer.Rulesets.Sr5", "Chummer.Rulesets.Sr6",
+)
+OWNER_PACKAGE_SPECS = (
+    ("Chummer.Campaign.Contracts", "chummer6-hub"),
+    ("Chummer.Play.Contracts", "chummer6-hub"),
+    ("Chummer.Run.Contracts", "chummer6-hub"),
+    ("Chummer.Run.Hub.Contracts", "chummer6-hub"),
+    ("Chummer.Run.Hub", "chummer6-hub"),
+    ("Chummer.Hub.Registry.Contracts", "chummer6-hub-registry"),
+    ("Chummer.Ui.Kit", "chummer6-ui-kit"),
+)
+INTEGRATION_BASE_COMMIT = "90e0c7377c85be135d79ff142c8d4657f545f10f"
+INTEGRATION_BASE_TREE = "897c86b4f889a149118f2a21c0ecc5a93fb0dde0"
+DRIVER_AUTHORITY_SCHEMA = "chummer.android.api36-arm64-physical-driver-authority/v1"
+DRIVER_SPECS = {
+    "priority": (
+        "tests/run_api36_sr5_priority_legal_path_e2e.py",
+        "2d14209d315b4779d95923bea67ce2d9932a1e01",
+    ),
+    "career": (
+        "tests/run_api36_sr5_career_active_skill_wizard_e2e.py",
+        "58fa882e91e837bb9ded9a1d60303ec9da43f97c",
+    ),
+    "before-run": (
+        "tests/run_api36_sr5_before_run_edge_physical_e2e.py",
+        "e5bb245ccb2f8248a6f944458b909719536681ab",
+    ),
+    "after-run": (
+        "tests/run_api36_sr5_after_run_settlement_e2e.py",
+        "84b36544f4cd5db8dc3954fbf809209bd2b91b20",
+    ),
+    "downtime": (
+        "tests/run_api36_sr5_downtime_calendar_e2e.py",
+        "be87da9aa497b26ef29936c680dbf317ff924c9e",
+    ),
+    "playtime": (
+        "tests/run_api36_sr5_playtime_weapon_physical_e2e.py",
+        "00c04c7f5748d98835d5a73b8c0607a2366b438f",
+    ),
+}
 
 
 CAREER_SOURCE_FIELDS = {
@@ -135,6 +230,194 @@ RAW_FIELDS = {
         "journeys",
     },
 }
+RAW_DEVICE_FIELDS = {
+    "priority": {
+        "classification", "evidenceNature", "serial", "apiLevel", "abi", "abiList",
+        "qemu", "bootQemu", "manufacturer", "model", "hardware", "productDevice",
+        "productName", "buildFingerprint", "buildId", "securityPatch", "verifiedBootState",
+    },
+    "shared": {
+        "classification", "evidenceNature", "serial", "apiLevel", "abi", "abiList",
+        "qemu", "manufacturer", "model", "hardware", "buildFingerprint", "buildId",
+        "securityPatch", "verifiedBootState",
+    },
+}
+SOURCE_AUTHORITY_FIELDS = {
+    "expectedAndroidSourceRevision", "androidSourceRevision",
+    "expectedPresentationSourceRevision", "presentationSourceRevision",
+    "expectedCoreSourceRevision", "coreSourceRevision", "expectedApkSha256",
+    "apkSha256", "apkAbis", "sourceFileSha256", "authoritySha256",
+}
+SOURCE_FILE_FIELDS = {
+    "career": CAREER_SOURCE_FIELDS,
+    "before-run": {
+        "sharedPhysicalDriverSha256", "sharedProvenanceHelperSha256",
+        "careerWizardPageSha256", "tableWizardPageSha256", "tableWizardModelSha256",
+        "tableWizardTransactionSha256", "tableWizardAuthoritySha256",
+        "runnerCoordinatorSha256", "workspaceStoreSha256", "fixtureSha256",
+        "driverSha256", "careerEdgeRequestSha256", "careerEdgeRulesSha256",
+        "presenterMutationSha256", "presenterPersistenceSha256",
+    },
+    "playtime": {
+        "sharedPhysicalDriverSha256", "sharedProvenanceHelperSha256",
+        "careerWizardPageSha256", "tableWizardPageSha256", "tableWizardModelSha256",
+        "tableWizardTransactionSha256", "tableWizardAuthoritySha256",
+        "runnerCoordinatorSha256", "workspaceStoreSha256", "fixtureSha256",
+        "driverSha256", "careerWeaponRequestSha256", "careerWeaponRulesSha256",
+        "presenterMutationSha256", "presenterPersistenceSha256",
+        "weaponFixtureAuthorityHelperSha256",
+    },
+    "after-run": {
+        "driverSha256", "fixtureSha256", "physicalHarnessSha256",
+        "sharedDeviceHarnessSha256", "buildProvenanceVerifierSha256",
+        "careerWizardPageSha256", "manualProposalPageSha256",
+        "manualProposalSourceSha256", "workspaceSnapshotSha256",
+        "checkpointStoreSha256", "settlementCoordinatorSha256",
+        "settlementModelSha256", "settlementPageSha256", "runnerCoordinatorSha256",
+    },
+    "downtime": {
+        "driverSha256", "fixtureSha256", "runnerFixtureSha256",
+        "physicalHarnessSha256", "sharedDeviceHarnessSha256",
+        "calendarImportHarnessSha256", "buildProvenanceVerifierSha256",
+        "careerWizardPageSha256", "downtimePageSha256", "downtimeModelSha256",
+        "downtimeAuthoritySha256", "runnerCoordinatorSha256",
+    },
+}
+SUBJOURNEY_FIELDS = {
+    "career": {
+        "chooseExactTypedSkill", "reviewDurableCheckpoint",
+        "reviewedCheckpointProcessRestartResume", "applyOnceAndFreshTypedReceipt",
+        "appliedCheckpointProcessRestartRecovery", "acknowledgeAndDeleteAppliedCheckpoint",
+        "acknowledgedDeletionFinalProcessRestart", "savedSuccessorRevisionAndPayloadDigest",
+    },
+    "before-run": {
+        "importExactCareerFixture", "persistDurableReview", "restartAndResumeReview",
+        "applyRepresentativeTypedActionOnce", "verifySavedRevisionPlusOne",
+        "restartAndRecoverExactReceipt", "acknowledgeReceipt",
+        "restartAndReopenSavedSuccessor",
+    },
+    "playtime": {
+        "importExactCareerFixture", "persistDurableReview", "restartAndResumeReview",
+        "applyRepresentativeTypedActionOnce", "verifySavedRevisionPlusOne",
+        "restartAndRecoverExactReceipt", "acknowledgeReceipt",
+        "restartAndReopenSavedSuccessor",
+    },
+    "after-run": {
+        "exactProposalRunCharacterIds", "rewardHeatReputationAndContacts",
+        "gmAndOwnerReviewDigests", "durableReviewRestartResume",
+        "atomicCoreReceiptAndSuccessor", "receiptRestartRecovery",
+        "acknowledgementAndFinalRestart",
+    },
+    "downtime": {
+        "exactCalendarEdit", "durableReview", "reviewRestartAndReconfirm",
+        "atomicApplyAndReceipt", "receiptRestartRecovery", "acknowledgeAndReopen",
+        "finalRestartSuccessor",
+    },
+}
+WORKSPACE_FIELDS = {
+    "workspaceId", "contentRevision", "savedRevision", "payloadSha256", "documentSha256",
+}
+CAREER_PROOF_FIELDS = {
+    "import", "restoredBeforeApply", "restoredAfterApply",
+    "finalRestoredAfterAcknowledgement", "reviewedCheckpoint",
+    "reviewedCheckpointSha256", "appliedCheckpoint", "appliedCheckpointSha256",
+    "receiptProjection", "generatedExpenseGuid", "restartProcessIds",
+}
+CAREER_CHECKPOINT_FIELDS = {
+    "SchemaVersion", "Version", "RouteId", "Kind", "WorkspaceId", "OwnerId",
+    "ExpectedContentRevision", "SkillId", "SourceSkillId", "LogicalRevision",
+    "SourceRevision", "RuleDigest", "SkillName", "SkillCategory", "BasePoints",
+    "PreviousKarmaPoints", "RatingMaximum", "ActionId", "ExpenseDateLocal",
+    "ExpenseAmount", "ExpenseReason", "ExpenseType", "ExpenseRefund",
+    "ExpenseForceCareerVisible", "KarmaUndoType", "NuyenUndoType", "UndoObjectId",
+    "UndoQuantity", "UndoExtra", "PreviousRating", "TargetRating", "SavedKarma",
+    "IdempotencyKey", "Phase",
+}
+LANE_PROOF_FIELDS = {
+    "scope", "import", "restoredBeforeApply", "savedSuccessor",
+    "finalRestoredSuccessor", "actionAutomationId", "successorActionAutomationIds",
+    "successorActionAuthority", "reviewedTransactionSha256",
+    "appliedTransactionSha256", "receipt", "restartProcessIds",
+}
+LANE_JOURNAL_FIELDS = {
+    "SchemaVersion", "Version", "Phase", "OwnerId", "TransactionId",
+    "IdempotencyKey", "Review", "ExpectedPostconditionDigest", "Receipt", "JournalDigest",
+}
+LANE_REVIEW_FIELDS = {
+    "Schema", "WorkspaceId", "WorkspaceRevision", "SnapshotDigest", "Lane", "SelectedAction",
+}
+LANE_RECEIPT_FIELDS = {
+    "ContractName", "TransactionId", "IdempotencyKey", "WorkspaceId",
+    "ExpectedWorkspaceRevision", "AppliedWorkspaceRevision", "ActionId", "ActionKind",
+    "ActionDigest", "ExpectedPostconditionDigest", "ObservedPostconditionDigest",
+    "ReceiptDigest",
+}
+AFTER_PROOF_FIELDS = {
+    "import", "restoredBeforeApply", "savedSuccessor", "finalRestartSuccessor",
+    "reviewedCheckpoint", "reviewedCheckpointSha256", "appliedCheckpoint",
+    "appliedCheckpointSha256", "transactionAndReviewAuthority", "restartProcessIds",
+}
+AFTER_CHECKPOINT_FIELDS = {
+    "SchemaVersion", "Version", "RouteId", "Phase", "Draft", "Receipt", "IdempotencyKey",
+}
+AFTER_DRAFT_FIELDS = {"OwnerId", "Candidate", "Plan", "Acknowledgements"}
+AFTER_CANDIDATE_FIELDS = {"RewardContext", "Binding"}
+AFTER_REWARD_CONTEXT_FIELDS = {
+    "ContractName", "Identity", "RunTitle", "CompletedAt", "KarmaAward",
+    "NuyenAward", "RewardReceiptDigest", "ContextDigest",
+}
+AFTER_BINDING_FIELDS = {
+    "ContractName", "WorkspaceId", "WorkspaceRevision", "Identity", "Quote", "BindingDigest",
+}
+AFTER_IDENTITY_FIELDS = {"ProposalId", "RunId", "CharacterId"}
+AFTER_QUOTE_FIELDS = {
+    "Identity", "HeatBefore", "HeatDelta", "HeatAfter", "StreetCredBefore",
+    "StreetCredDelta", "StreetCredAfter", "NotorietyBefore", "NotorietyDelta",
+    "NotorietyAfter", "PublicAwarenessBefore", "RequestedPublicAwarenessDelta",
+    "PublicAwarenessAfter", "KarmaBefore", "ContactKarmaCost", "KarmaAfter", "Contacts",
+    "GmReviewDigest", "OwnerReviewDigest", "Prerequisites", "CanSettle", "Blocker",
+    "SourceDigest", "CustomDataDigest", "GmPolicyDigest", "RuntimeDigest", "LogicalDigest",
+}
+AFTER_PLAN_FIELDS = {
+    "Identity", "TransactionId", "TargetHeat", "TargetStreetCred", "TargetNotoriety",
+    "TargetPublicAwareness", "TargetKarma", "ContactKarmaCost", "ContactsToAdd",
+    "ExpenseId", "ExpenseAmount", "ExpenseReason", "GmReviewDigest", "OwnerReviewDigest",
+    "ExpectedSourceDigest", "ExpectedCustomDataDigest", "ExpectedGmPolicyDigest",
+    "ExpectedRuntimeDigest", "ExpectedLogicalDigest", "PlanDigest",
+}
+AFTER_ACK_FIELDS = {
+    "RunContextReviewed", "RewardsReviewed", "ConsequencesReviewed", "ContactsReviewed",
+    "GmApprovalReviewed", "OwnerApprovalReviewed",
+}
+AFTER_RECEIPT_FIELDS = {
+    "TransactionId", "Identity", "HeatBefore", "HeatAfter", "StreetCredBefore",
+    "StreetCredAfter", "NotorietyBefore", "NotorietyAfter", "PublicAwarenessBefore",
+    "PublicAwarenessAfter", "KarmaBefore", "KarmaAfter", "ContactKarmaCost",
+    "AddedContacts", "ExpenseId", "ExpenseAmount", "ExpenseReason", "GmReviewDigest",
+    "OwnerReviewDigest", "SourceDigest", "CustomDataDigest", "GmPolicyDigest",
+    "RuntimeDigest", "LogicalDigestBefore", "LogicalDigestAfter", "ReceiptDigest",
+}
+DOWNTIME_PROOF_FIELDS = {
+    "import", "restoredBeforeApply", "savedSuccessor", "finalRestartSuccessor",
+    "reviewedJournal", "reviewedJournalSha256", "appliedJournal", "appliedJournalSha256",
+    "receiptAuthority", "restartProcessIds",
+}
+DOWNTIME_JOURNAL_FIELDS = {
+    "SchemaVersion", "Version", "Phase", "OwnerId", "ActionId", "Review",
+    "ExpectedPostconditionDigest", "Receipt", "JournalDigest",
+}
+DOWNTIME_REVIEW_FIELDS = {"Schema", "WorkspaceId", "WorkspaceRevision", "SnapshotDigest", "Preview"}
+DOWNTIME_PREVIEW_FIELDS = {
+    "Schema", "WeekId", "Year", "Week", "Notes", "NotesColor", "Operation",
+    "ExpectedCalendarRevision", "ExpectedSourceRevision", "ExpectedLogicalRevision",
+    "Summary", "PreviewDigest",
+}
+DOWNTIME_RECEIPT_FIELDS = {
+    "ContractName", "WorkspaceId", "ExpectedWorkspaceRevision", "AppliedWorkspaceRevision",
+    "ActionId", "Operation", "PreviewDigest", "ExpectedPostconditionDigest",
+    "ObservedPostconditionDigest", "CalendarRevisionAfter", "SourceDigestAfter",
+    "ContentDigestAfter", "ReceiptDigest",
+}
 
 
 @dataclass(frozen=True)
@@ -185,6 +468,42 @@ def require_exact_keys(value: object, expected: set[str], label: str) -> dict[st
             f"extra={sorted(set(value) - expected)}"
         )
     return value
+
+
+def require_string(value: object, label: str, *, nonempty: bool = True) -> str:
+    if not isinstance(value, str) or (nonempty and not value):
+        raise ValueError(f"{label} must be one string")
+    return value
+
+
+def require_integer(value: object, label: str, *, minimum: int = 0) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value < minimum:
+        raise ValueError(f"{label} must be one non-boolean integer >= {minimum}")
+    return value
+
+
+def require_hex(value: object, label: str, *, length: int = 64) -> str:
+    text = require_string(value, label)
+    if re.fullmatch(rf"[0-9a-f]{{{length}}}", text) is None:
+        raise ValueError(f"{label} must be one canonical lowercase hex digest")
+    return text
+
+
+def require_string_list(value: object, label: str, *, nonempty: bool = False) -> list[str]:
+    if not isinstance(value, list) or (nonempty and not value) or any(
+        not isinstance(row, str) or not row for row in value
+    ):
+        raise ValueError(f"{label} must be a list of strings")
+    return value
+
+
+def require_field_types(
+    value: Mapping[str, object], types: Mapping[str, type | tuple[type, ...]], label: str,
+) -> None:
+    for field, expected in types.items():
+        actual = value.get(field)
+        if type(actual) not in ((expected,) if isinstance(expected, type) else expected):
+            raise ValueError(f"{label}.{field} has the wrong JSON type")
 
 
 def canonical_sha256(value: object) -> str:
@@ -297,12 +616,41 @@ def validate_source_graph(bound: BoundBytes) -> dict[str, object]:
         "generator", "repositories", "packagePins", "ownerPackagePins",
         "dependencyClosure", "presentationSource", "doesNotAssert",
     }, "v2 release source graph")
-    if graph.get("contractName") != SOURCE_GRAPH_SCHEMA or graph.get("publicationAuthorized") is not False:
+    if (
+        graph.get("contractName") != SOURCE_GRAPH_SCHEMA
+        or graph.get("authorityState") != "local_review_required"
+        or graph.get("publicationAuthorized") is not False
+        or graph.get("doesNotAssert") != list(SOURCE_GRAPH_DOES_NOT_ASSERT)
+    ):
         raise ValueError("source graph contract/publication posture is not exact")
     require_utc_timestamp(graph.get("generatedAtUtc"), "source graph generatedAtUtc", canonical_z=True)
+    generator = require_exact_keys(
+        graph.get("generator"), {"path", "sha256", "size_bytes"}, "source graph generator",
+    )
+    if generator.get("path") != "scripts/verify_release_source_graph.py":
+        raise ValueError("source graph generator path is not exact")
+    require_hex(generator.get("sha256"), "source graph generator sha256")
+    require_integer(generator.get("size_bytes"), "source graph generator size", minimum=1)
     repositories = graph.get("repositories")
-    if not isinstance(repositories, list) or len(repositories) != 8:
+    if not isinstance(repositories, list) or len(repositories) != len(REPOSITORY_NAMES):
         raise ValueError("source graph must bind exactly eight repositories")
+    repository_map: dict[str, dict[str, object]] = {}
+    for expected_name, expected_role, expected_url, row in zip(
+        REPOSITORY_NAMES, REPOSITORY_ROLES, REPOSITORY_URLS, repositories, strict=True,
+    ):
+        row = require_exact_keys(
+            row, {"name", "role", "commit", "tree", "tree_sha256", "repository"},
+            f"source graph repository {expected_name}",
+        )
+        if (
+            row.get("name") != expected_name or row.get("role") != expected_role
+            or row.get("repository") != expected_url
+        ):
+            raise ValueError("source graph repository order/identity is not exact")
+        require_hex(row.get("commit"), f"{expected_name} commit", length=40)
+        require_hex(row.get("tree"), f"{expected_name} tree", length=40)
+        require_hex(row.get("tree_sha256"), f"{expected_name} tree sha256")
+        repository_map[expected_name] = row
     package_pins = graph.get("packagePins")
     owner_pins = graph.get("ownerPackagePins")
     if (
@@ -310,10 +658,291 @@ def validate_source_graph(bound: BoundBytes) -> dict[str, object]:
         or not isinstance(owner_pins, list) or len(owner_pins) != 7
     ):
         raise ValueError("source graph must bind six Core and seven owner package pins")
+    core_commit = repository_map["chummer6-core"]["commit"]
+    for expected_id, row in zip(CORE_PACKAGE_IDS, package_pins, strict=True):
+        row = require_exact_keys(
+            row, {"package_id", "version", "sha256", "repository", "commit"},
+            f"Core package pin {expected_id}",
+        )
+        if (
+            row.get("package_id") != expected_id or row.get("repository") != "chummer6-core"
+            or row.get("commit") != core_commit
+        ):
+            raise ValueError("source graph Core package pin authority/order is not exact")
+        require_string(row.get("version"), f"Core package {expected_id} version")
+        require_hex(row.get("sha256"), f"Core package {expected_id} sha256")
+    owner_fields = {
+        "package_id", "version", "sha256", "size_bytes", "owner_repository",
+        "source_commit", "source_tree", "authority_receipt_sha256",
+        "package_inventory_sha256", "package_plane_lock_sha256", "dependency_mode",
+    }
+    for (expected_id, expected_owner), row in zip(OWNER_PACKAGE_SPECS, owner_pins, strict=True):
+        row = require_exact_keys(row, owner_fields, f"owner package pin {expected_id}")
+        owner_repository = repository_map[expected_owner]
+        if (
+            row.get("package_id") != expected_id
+            or row.get("owner_repository") != expected_owner
+            or row.get("source_commit") != owner_repository["commit"]
+            or row.get("source_tree") != owner_repository["tree"]
+            or row.get("dependency_mode") != "locked_package"
+        ):
+            raise ValueError("source graph owner package authority/order is not exact")
+        require_string(row.get("version"), f"owner package {expected_id} version")
+        require_integer(row.get("size_bytes"), f"owner package {expected_id} size", minimum=1)
+        for field in (
+            "sha256", "authority_receipt_sha256", "package_inventory_sha256",
+            "package_plane_lock_sha256",
+        ):
+            require_hex(row.get(field), f"owner package {expected_id} {field}")
+    closure = graph.get("dependencyClosure")
+    if not isinstance(closure, list) or len(closure) != len(OWNER_PACKAGE_SPECS):
+        raise ValueError("source graph dependency closure cardinality is not exact")
+    for (expected_id, _owner), row in zip(OWNER_PACKAGE_SPECS, closure, strict=True):
+        row = require_exact_keys(row, {"package_id", "dependencies"}, f"closure {expected_id}")
+        dependencies = require_string_list(row.get("dependencies"), f"closure {expected_id} dependencies")
+        if row.get("package_id") != expected_id or dependencies != sorted(set(dependencies)):
+            raise ValueError("source graph dependency closure order/uniqueness is not exact")
+    presentation = require_exact_keys(
+        graph.get("presentationSource"), {
+            "repository", "commit", "tree", "source_path", "authority_state",
+            "publication_authorized", "dependency_mode",
+        }, "source graph Presentation binding",
+    )
+    if (
+        presentation.get("repository") != "chummer6-ui"
+        or presentation.get("commit") != repository_map["chummer6-ui"]["commit"]
+        or presentation.get("tree") != repository_map["chummer6-ui"]["tree"]
+        or presentation.get("source_path") != "chummer-presentation"
+        or presentation.get("authority_state") != "local_review_required"
+        or presentation.get("publication_authorized") is not False
+        or presentation.get("dependency_mode") != "source_compatibility"
+    ):
+        raise ValueError("source graph Presentation binding is not exact/non-publication")
     return graph
 
 
-def validate_build_provenance(bound: BoundBytes, graph: BoundBytes, apk: BoundBytes) -> dict[str, object]:
+GitRunner = Callable[[Path, Sequence[str]], str]
+
+
+def run_git(repository_root: Path, arguments: Sequence[str]) -> str:
+    result = subprocess.run(
+        ["git", *arguments], cwd=repository_root, check=True, capture_output=True,
+        text=True, timeout=30,
+    )
+    return result.stdout
+
+
+def capture_driver_authority(
+    *, repository_root: Path, driver_paths: Mapping[str, Path],
+    source_graph: Mapping[str, object], git_runner: GitRunner = run_git,
+) -> dict[str, object]:
+    expected_root = Path(__file__).resolve().parents[1]
+    if (
+        not repository_root.is_absolute()
+        or repository_root.resolve(strict=True) != repository_root
+        or repository_root != expected_root
+    ):
+        raise ValueError("driver repository must be this exact canonical Package 5 checkout")
+    if tuple(driver_paths) != JOURNEY_ORDER:
+        raise ValueError("driver path cardinality/order is not exact")
+    head = git_runner(repository_root, ("rev-parse", "HEAD")).strip()
+    tree = git_runner(repository_root, ("rev-parse", "HEAD^{tree}")).strip()
+    merge_base = git_runner(
+        repository_root, ("merge-base", INTEGRATION_BASE_COMMIT, head),
+    ).strip()
+    if (
+        re.fullmatch(r"[0-9a-f]{40}", head) is None
+        or re.fullmatch(r"[0-9a-f]{40}", tree) is None
+        or merge_base != INTEGRATION_BASE_COMMIT
+    ):
+        raise ValueError("driver repository is not a successor of the exact GREEN integration head")
+    if git_runner(
+        repository_root, ("status", "--porcelain=v1", "--untracked-files=all"),
+    ):
+        raise ValueError("driver repository must be clean, including untracked files")
+    repositories = source_graph.get("repositories")
+    if not isinstance(repositories, list):
+        raise ValueError("source graph repository rows are unavailable for driver authority")
+    android_rows = [row for row in repositories if isinstance(row, dict) and row.get("name") == "chummer-android"]
+    if len(android_rows) != 1 or (
+        android_rows[0].get("commit"), android_rows[0].get("tree")
+    ) != (head, tree):
+        raise ValueError("source graph does not bind the clean Package 5 Android commit/tree")
+
+    rows: list[dict[str, object]] = []
+    for journey_id, (relative, expected_blob) in DRIVER_SPECS.items():
+        supplied = driver_paths[journey_id]
+        expected_path = repository_root / relative
+        if supplied != expected_path or supplied.resolve(strict=True) != expected_path:
+            raise ValueError(f"{journey_id} driver path is not the exact integrated repository path")
+        captured = bind_regular(supplied, f"{journey_id} integrated driver")
+        line = git_runner(repository_root, ("ls-tree", head, "--", relative)).rstrip("\n")
+        expected_line = f"100644 blob {expected_blob}\t{relative}"
+        if line != expected_line:
+            raise ValueError(f"{journey_id} driver Git blob/mode/path differs from GREEN integration")
+        rows.append({
+            "journeyId": journey_id, "repositoryRelativePath": relative,
+            "gitBlobSha1": expected_blob, "sha256": captured.sha256,
+            "sizeBytes": captured.size_bytes,
+        })
+    authority = {
+        "schema": DRIVER_AUTHORITY_SCHEMA,
+        "integrationBaseCommit": INTEGRATION_BASE_COMMIT,
+        "integrationBaseTree": INTEGRATION_BASE_TREE,
+        "repositoryCommit": head, "repositoryTree": tree,
+        "publicationAuthorized": False, "drivers": rows,
+    }
+    return {**authority, "authoritySha256": canonical_sha256(authority)}
+
+
+def parse_driver_paths(values: Sequence[str]) -> dict[str, Path]:
+    result: dict[str, Path] = {}
+    for value in values:
+        journey, separator, raw_path = value.partition("=")
+        if not separator or journey not in JOURNEY_ORDER or not raw_path or journey in result:
+            raise ValueError("driver bindings must contain each exact journey once as id=/absolute/path")
+        path = Path(raw_path)
+        if not path.is_absolute():
+            raise ValueError(f"driver path must be absolute: {journey}")
+        result[journey] = path
+    if tuple(result) != JOURNEY_ORDER:
+        raise ValueError(f"driver cardinality/order must be {JOURNEY_ORDER!r}")
+    return result
+
+
+def _validate_wp1_binding(value: object, label: str) -> dict[str, object]:
+    binding = require_exact_keys(value, {"sha256", "sizeBytes"}, label)
+    require_hex(binding.get("sha256"), f"{label} sha256")
+    require_integer(binding.get("sizeBytes"), f"{label} size", minimum=1)
+    return binding
+
+
+def _validate_wp1_successor_surfaces(value: Mapping[str, object]) -> None:
+    evidence = require_exact_keys(
+        value.get("executionEvidence"), WP1_EXECUTION_EVIDENCE_FIELDS,
+        f"{WP1_COMMITTED_ADAPTER} execution evidence",
+    )
+    for field in WP1_EXECUTION_EVIDENCE_FIELDS - {
+        "boundedProcessGroups", "warnings", "errors",
+    }:
+        _validate_wp1_binding(evidence.get(field), f"WP1 execution evidence {field}")
+    if (
+        evidence.get("boundedProcessGroups") is not True
+        or evidence.get("warnings") != 0 or type(evidence.get("warnings")) is not int
+        or evidence.get("errors") != 0 or type(evidence.get("errors")) is not int
+    ):
+        raise ValueError("WP1 execution evidence outcome/bounds are not exact")
+
+    toolchain = require_exact_keys(
+        value.get("toolchain"), WP1_TOOLCHAIN_FIELDS,
+        f"{WP1_COMMITTED_ADAPTER} toolchain",
+    )
+    if (
+        toolchain.get("dotnetSdkVersion") != "10.0.111"
+        or toolchain.get("dotnetRuntimeVersion") != "10.0.11"
+        or toolchain.get("workloadSetVersion") != "10.0.110.1"
+        or toolchain.get("androidBuildToolsVersion") != "36.0.0"
+        or toolchain.get("androidPlatformLabel") != "Android 16"
+        or toolchain.get("targetFramework") != TARGET_FRAMEWORK
+        or toolchain.get("targetSdkVersion") != 36
+        or type(toolchain.get("targetSdkVersion")) is not int
+        or toolchain.get("runtimeIdentifier") != RUNTIME_IDENTIFIER
+        or toolchain.get("configuration") != "Debug"
+        or toolchain.get("serializedBuild") is not True
+    ):
+        raise ValueError("WP1 toolchain release selection is not exact")
+    for field in ("dotnetHost", "jarsigner", "keytool"):
+        _validate_wp1_binding(toolchain.get(field), f"WP1 toolchain {field}")
+    for field in ("java", "javac"):
+        entry = require_exact_keys(
+            toolchain.get(field), {"sha256", "sizeBytes", "version", "versionLine"},
+            f"WP1 toolchain {field}",
+        )
+        require_hex(entry.get("sha256"), f"WP1 toolchain {field} sha256")
+        require_integer(entry.get("sizeBytes"), f"WP1 toolchain {field} size", minimum=1)
+        if entry.get("version") != "17.0.14" or not isinstance(entry.get("versionLine"), str):
+            raise ValueError(f"WP1 toolchain {field} identity is not exact")
+    manifests = require_exact_keys(
+        toolchain.get("workloadManifests"), {"android", "maui"},
+        "WP1 workload manifests",
+    )
+    for field, version in (("android", "36.1.69"), ("maui", "10.0.20")):
+        entry = require_exact_keys(
+            manifests.get(field), {"sha256", "sizeBytes", "version"},
+            f"WP1 workload manifest {field}",
+        )
+        require_hex(entry.get("sha256"), f"WP1 workload manifest {field} sha256")
+        require_integer(entry.get("sizeBytes"), f"WP1 workload manifest {field} size", minimum=1)
+        if entry.get("version") != version:
+            raise ValueError(f"WP1 workload manifest {field} version is not exact")
+    workloads = require_exact_keys(
+        toolchain.get("dotnetWorkloads"), {
+            "sha256", "sizeBytes", "installed", "updateAvailable", "workloadSetVersion",
+            "manifestVersions", "runtimeVersion",
+        }, "WP1 .NET workloads",
+    )
+    require_hex(workloads.get("sha256"), "WP1 .NET workloads sha256")
+    require_integer(workloads.get("sizeBytes"), "WP1 .NET workloads size", minimum=1)
+    if workloads.get("installed") != ["maui-android"] or workloads.get("updateAvailable") != []:
+        raise ValueError("WP1 .NET workload inventory is not exact")
+    if workloads.get("workloadSetVersion") != "10.0.110.1" or workloads.get("runtimeVersion") != "10.0.11":
+        raise ValueError("WP1 .NET workload versions are not exact")
+    if workloads.get("manifestVersions") != {
+        "maui-android": "10.0.20/10.0.100",
+        "microsoft.net.sdk.android": "36.1.69",
+    }:
+        raise ValueError("WP1 .NET workload manifest versions are not exact")
+    jdk_release = require_exact_keys(
+        toolchain.get("jdkRelease"), {"sha256", "sizeBytes", "fields"},
+        "WP1 JDK release identity",
+    )
+    require_hex(jdk_release.get("sha256"), "WP1 JDK release sha256")
+    require_integer(jdk_release.get("sizeBytes"), "WP1 JDK release size", minimum=1)
+    release_fields = require_exact_keys(jdk_release.get("fields"), {
+        "IMPLEMENTOR", "IMPLEMENTOR_VERSION", "JAVA_RUNTIME_VERSION", "JAVA_VERSION",
+        "JAVA_VERSION_DATE", "LIBC", "MODULES", "OS_ARCH", "OS_NAME", "SOURCE",
+    }, "WP1 JDK release fields")
+    if (
+        release_fields.get("IMPLEMENTOR") != "Microsoft"
+        or release_fields.get("JAVA_VERSION") != "17.0.14"
+        or any(type(field) is not str for field in release_fields.values())
+    ):
+        raise ValueError("WP1 JDK release identity is not exact")
+    android_sdk = require_exact_keys(toolchain.get("androidSdk"), {
+        "root", "selectedInventory", "installedPackages", "androidJar", "aapt2",
+        "zipalign", "adb", "apksigner", "apksignerJar",
+    }, "WP1 Android SDK")
+    if android_sdk.get("root") != "/home/tibor/.cache/chummer-android-toolchain/android-sdk":
+        raise ValueError("WP1 Android SDK root is not exact")
+    for field in (
+        "selectedInventory", "androidJar", "aapt2", "zipalign", "adb",
+        "apksigner", "apksignerJar",
+    ):
+        _validate_wp1_binding(android_sdk.get(field), f"WP1 Android SDK {field}")
+    packages = require_exact_keys(android_sdk.get("installedPackages"), {
+        "platforms;android-36", "build-tools;36.0.0", "platform-tools",
+    }, "WP1 Android SDK installed packages")
+    for package_id, revision in (
+        ("platforms;android-36", "2.0.0"),
+        ("build-tools;36.0.0", "36.0.0"),
+        ("platform-tools", "36.0.0"),
+    ):
+        package = require_exact_keys(
+            packages.get(package_id), {"sha256", "sizeBytes", "revision"},
+            f"WP1 Android SDK package {package_id}",
+        )
+        require_hex(package.get("sha256"), f"WP1 Android SDK package {package_id} sha256")
+        require_integer(package.get("sizeBytes"), f"WP1 Android SDK package {package_id} size", minimum=1)
+        if package.get("revision") != revision:
+            raise ValueError(f"WP1 Android SDK package {package_id} revision is not exact")
+
+
+def validate_build_provenance(
+    bound: BoundBytes, graph: BoundBytes, apk: BoundBytes,
+    *, adapter: str = WP1_COMMITTED_ADAPTER,
+) -> dict[str, object]:
+    if adapter != WP1_COMMITTED_ADAPTER:
+        raise ValueError(f"unsupported explicit WP1 adapter: {adapter!r}")
     value = strict_json_bytes(bound.data, "WP1 build provenance")
     require_exact_keys(value, {
         "schema", "status", "authorityClass", "publicationAuthorized", "proofScope",
@@ -337,10 +966,7 @@ def validate_build_provenance(bound: BoundBytes, graph: BoundBytes, apk: BoundBy
         raise ValueError("WP1 authority digest is not canonical")
     if canonical_sha256(authority) != authority_sha:
         raise ValueError("WP1 authority digest does not authenticate its payload")
-    source = require_exact_keys(
-        value.get("sourceGraph"), {"sha256", "sizeBytes", "contractName", "repositories"},
-        "WP1 source graph binding",
-    )
+    source = require_exact_keys(value.get("sourceGraph"), WP1_SOURCE_GRAPH_FIELDS, f"{WP1_COMMITTED_ADAPTER} source graph binding")
     graph_payload = validate_source_graph(graph)
     if (
         source.get("sha256") != graph.sha256 or source.get("sizeBytes") != graph.size_bytes
@@ -348,24 +974,48 @@ def validate_build_provenance(bound: BoundBytes, graph: BoundBytes, apk: BoundBy
         or source.get("repositories") != graph_payload["repositories"]
     ):
         raise ValueError("WP1 build provenance does not bind the supplied v2 source graph bytes")
+    package_authority = require_exact_keys(
+        source.get("packageAuthority"), {"sha256", "sizeBytes"},
+        f"{WP1_COMMITTED_ADAPTER} source graph package authority",
+    )
+    require_hex(package_authority.get("sha256"), "WP1 source graph package authority sha256")
+    require_integer(package_authority.get("sizeBytes"), "WP1 source graph package authority size", minimum=1)
+    if (
+        source.get("packageAuthorityContract") != "chummer.android.release-package-authority/v2"
+        or source.get("packageAuthorityPublicationAuthorized") is not False
+    ):
+        raise ValueError("WP1 source graph package authority contract/publication posture is not exact")
     presentation_source = value.get("presentationBuildSource")
     if not isinstance(presentation_source, dict) or (
         presentation_source.get("productionSource") is not False
         or presentation_source.get("publicationAuthorized") is not False
     ):
         raise ValueError("WP1 Presentation build source is not internal/non-publication-only")
-    artifact = require_exact_keys(value.get("artifact"), {
-        "basename", "sha256", "sizeBytes", "package", "abis", "apiLevel",
-        "configuration", "runtimeIdentifier", "targetFramework", "fullMauiArtifact", "installed",
-    }, "WP1 artifact")
+    artifact = require_exact_keys(value.get("artifact"), WP1_ARTIFACT_FIELDS, f"{WP1_COMMITTED_ADAPTER} artifact")
     expected = {
         "basename": apk.path.name, "sha256": apk.sha256, "sizeBytes": apk.size_bytes,
         "package": PACKAGE, "abis": [ABI], "apiLevel": 36, "configuration": "Debug",
         "runtimeIdentifier": RUNTIME_IDENTIFIER, "targetFramework": TARGET_FRAMEWORK,
         "fullMauiArtifact": True, "installed": False,
     }
-    if artifact != expected:
+    if {key: artifact[key] for key in expected} != expected:
         raise ValueError("WP1 artifact does not bind the exact supplied ARM64 APK")
+    signing = require_exact_keys(
+        artifact.get("signing"), {"certificateSha256", "verifiedSchemes", "receipt"},
+        f"{WP1_COMMITTED_ADAPTER} artifact signing",
+    )
+    require_hex(signing.get("certificateSha256"), "WP1 artifact signing certificate")
+    schemes = signing.get("verifiedSchemes")
+    if (
+        not isinstance(schemes, list) or schemes != sorted(set(schemes))
+        or not all(type(scheme) is int and scheme in (1, 2, 3, 4) for scheme in schemes)
+        or not set(schemes).intersection({2, 3, 4})
+    ):
+        raise ValueError("WP1 artifact signing schemes are not a canonical modern set")
+    _validate_wp1_binding(signing.get("receipt"), "WP1 artifact signing receipt")
+    _validate_wp1_successor_surfaces(value)
+    if value.get("doesNotAssert") != list(WP1_DOES_NOT_ASSERT):
+        raise ValueError("WP1 non-claim boundary is not exact")
     restore = value.get("restore")
     if not isinstance(restore, dict) or restore.get("lockedMode") is not True or restore.get("networkSourcesAllowed") is not False:
         raise ValueError("WP1 restore posture is not locked and offline")
@@ -485,58 +1135,697 @@ def parse_restart_evidence(bound: BoundBytes) -> dict[str, object]:
     return {**authority, "restartAuthoritySha256": canonical_sha256(authority)}
 
 
-def _raw_device_matches(raw: Mapping[str, object], device: Mapping[str, object]) -> None:
-    observation = raw.get("deviceObservation")
-    if not isinstance(observation, dict):
-        raise ValueError("raw receipt omitted deviceObservation")
-    aliases = {
-        "serial": "serial", "apiLevel": "apiLevel", "abi": "abi", "abiList": "abiList",
-        "qemu": "ro.kernel.qemu", "bootQemu": "ro.boot.qemu", "hardware": "ro.hardware",
-        "buildFingerprint": "ro.build.fingerprint", "buildId": "ro.build.id",
-        "securityPatch": "ro.build.version.security_patch",
-        "verifiedBootState": "ro.boot.verifiedbootstate", "manufacturer": "ro.product.manufacturer",
-        "model": "ro.product.model", "productDevice": "ro.product.device", "productName": "ro.product.name",
-    }
+def _raw_device_matches(
+    journey_id: str, raw: Mapping[str, object], device: Mapping[str, object],
+) -> None:
+    variant = "priority" if journey_id == "priority" else "shared"
+    observation = require_exact_keys(
+        raw.get("deviceObservation"), RAW_DEVICE_FIELDS[variant],
+        f"{journey_id} device observation",
+    )
     properties = device["properties"]
-    for raw_key, device_key in aliases.items():
-        if raw_key not in observation:
-            continue
-        expected = device.get(device_key) if device_key in {"serial", "apiLevel", "abi", "abiList"} else properties[device_key]
-        observed = observation[raw_key]
-        if raw_key == "abiList" and isinstance(observed, str):
-            observed = observed.split(",")
-        if observed != expected:
-            raise ValueError(f"raw receipt device observation diverged: {raw_key}")
-    for mandatory in ("serial", "apiLevel", "abi"):
-        if mandatory not in observation:
-            raise ValueError(f"raw receipt device observation omitted {mandatory}")
+    expected = {
+        "classification": "non-emulator-arm64-api36",
+        "evidenceNature": "non-cryptographic getprop and adb serial observations",
+        "serial": device["serial"], "apiLevel": 36, "abi": ABI,
+        "abiList": properties["ro.product.cpu.abilist"],
+        "qemu": properties["ro.kernel.qemu"],
+        "manufacturer": properties["ro.product.manufacturer"],
+        "model": properties["ro.product.model"], "hardware": properties["ro.hardware"],
+        "buildFingerprint": properties["ro.build.fingerprint"],
+        "buildId": properties["ro.build.id"],
+        "securityPatch": properties["ro.build.version.security_patch"],
+        "verifiedBootState": properties["ro.boot.verifiedbootstate"],
+    }
+    if variant == "priority":
+        expected.update({
+            "bootQemu": properties["ro.boot.qemu"],
+            "productDevice": properties["ro.product.device"],
+            "productName": properties["ro.product.name"],
+        })
+    if observation != expected:
+        raise ValueError(f"{journey_id} nested device observation differs from the shared device bytes")
 
 
-def _raw_restart_pids(journey_id: str, proof: Mapping[str, object]) -> list[str]:
+def validate_adb_transport(value: object, *, serial: str, label: str) -> None:
+    summary = require_exact_keys(value, {
+        "schema", "status", "preflight", "eventCount", "terminalFailureCount", "events",
+        "readOnlyMaximumAttempts", "readOnlyRetryDelaySeconds",
+        "preflightObservationDelaySeconds", "explicitAdbReconnectCommandAllowed",
+        "nonReplayableCommandMaximumAttempts",
+    }, f"{label} ADB summary")
+    events = summary.get("events")
+    require_field_types(summary, {
+        "schema": str, "status": str, "preflight": dict, "eventCount": int,
+        "terminalFailureCount": int, "events": list, "readOnlyMaximumAttempts": int,
+        "readOnlyRetryDelaySeconds": float, "preflightObservationDelaySeconds": float,
+        "explicitAdbReconnectCommandAllowed": bool,
+        "nonReplayableCommandMaximumAttempts": int,
+    }, f"{label} ADB summary")
+    if (
+        summary.get("schema") != "chummer.android.adb-transport-summary/v1"
+        or summary.get("status") != "pass"
+        or not isinstance(events, list)
+        or summary.get("eventCount") != len(events)
+        or summary.get("terminalFailureCount") != 0
+        or summary.get("readOnlyMaximumAttempts") != 3
+        or summary.get("readOnlyRetryDelaySeconds") != 1.0
+        or summary.get("preflightObservationDelaySeconds") != 1.0
+        or summary.get("explicitAdbReconnectCommandAllowed") is not False
+        or summary.get("nonReplayableCommandMaximumAttempts") != 1
+    ):
+        raise ValueError(f"{label} ADB summary pass/bounds are not exact")
+    preflight = require_exact_keys(summary.get("preflight"), {
+        "schema", "status", "serial", "expectedApiLevel", "requiredConsecutiveObservations",
+        "maximumObservations", "observationDelaySeconds", "observationsPerformed",
+        "consecutiveStableObservations", "mutationCommandsIssued", "recoveryPolicy",
+        "recoveryMechanism", "observations",
+    }, f"{label} ADB preflight")
+    observations = preflight.get("observations")
+    require_field_types(preflight, {
+        "schema": str, "status": str, "serial": str, "expectedApiLevel": str,
+        "requiredConsecutiveObservations": int, "maximumObservations": int,
+        "observationDelaySeconds": float, "observationsPerformed": int,
+        "consecutiveStableObservations": int, "mutationCommandsIssued": int,
+        "recoveryPolicy": str, "recoveryMechanism": str, "observations": list,
+    }, f"{label} ADB preflight")
+    if (
+        preflight.get("schema") != "chummer.android.adb-transport-preflight/v1"
+        or preflight.get("status") != "pass" or preflight.get("serial") != serial
+        or preflight.get("expectedApiLevel") != "36"
+        or preflight.get("requiredConsecutiveObservations") != 3
+        or preflight.get("maximumObservations") != 7
+        or preflight.get("observationDelaySeconds") != 1.0
+        or not isinstance(observations, list)
+        or preflight.get("observationsPerformed") != len(observations)
+        or preflight.get("consecutiveStableObservations") != 3
+        or preflight.get("mutationCommandsIssued") != 0
+        or preflight.get("recoveryPolicy") != "bounded-read-only-observation-retry"
+        or preflight.get("recoveryMechanism") != "fresh-adb-invocation-no-reconnect-command"
+    ):
+        raise ValueError(f"{label} ADB preflight is not an exact stable pass")
+    if not 3 <= len(observations) <= 7:
+        raise ValueError(f"{label} ADB preflight observation count is outside its bound")
+    for expected_index, observation in enumerate(observations, start=1):
+        if not isinstance(observation, dict):
+            raise ValueError(f"{label} ADB observation must be one object")
+        if observation.get("status") == "stable":
+            require_exact_keys(observation, {"index", "status", "getState", "apiLevel"}, f"{label} stable observation")
+            require_field_types(observation, {
+                "index": int, "status": str, "getState": str, "apiLevel": str,
+            }, f"{label} stable observation")
+            if observation != {
+                "index": expected_index, "status": "stable", "getState": "device", "apiLevel": "36",
+            }:
+                raise ValueError(f"{label} stable ADB observation is not exact")
+        else:
+            require_exact_keys(observation, {
+                "index", "status", "classification", "classificationAuthority",
+                "retryableReadOnlyObservation", "failure",
+            }, f"{label} retryable observation")
+            failure = require_exact_keys(
+                observation.get("failure"), {"type", "returnCode", "stdout", "stderr"},
+                f"{label} retryable observation failure",
+            )
+            require_field_types(observation, {
+                "index": int, "status": str, "classification": str,
+                "classificationAuthority": str, "retryableReadOnlyObservation": bool,
+                "failure": dict,
+            }, f"{label} retryable observation")
+            if (
+                observation.get("index") != expected_index
+                or observation.get("status") != "transport-failure"
+                or observation.get("retryableReadOnlyObservation") is not True
+                or any(not isinstance(failure[key], str) for key in ("type", "stdout", "stderr"))
+                or (failure["returnCode"] is not None and (
+                    not isinstance(failure["returnCode"], int) or isinstance(failure["returnCode"], bool)
+                ))
+            ):
+                raise ValueError(f"{label} retryable ADB observation is malformed")
+    if [row["status"] for row in observations[-3:]] != ["stable", "stable", "stable"]:
+        raise ValueError(f"{label} ADB preflight lacks the final three stable observations")
+
+    base_event_fields = {
+        "schema", "status", "serial", "classification", "classificationAuthority",
+        "retryableTransportClassification", "commandPolicy", "policyReason", "adbArguments",
+        "adbArgumentsSha256", "attempt", "maximumAttempts", "commandInvocationPerformed",
+        "outcomeMutationAuthority", "replay", "failure", "evidenceFile",
+    }
+    for index, event in enumerate(events, start=1):
+        if not isinstance(event, dict):
+            raise ValueError(f"{label} ADB event must be one object")
+        status = event.get("status")
+        fields = set(base_event_fields)
+        if status == "reconciled-unknown-swipe":
+            fields.update({"reconcilesEvidenceFile", "readOnlyObservation"})
+        require_exact_keys(event, fields, f"{label} ADB event")
+        require_field_types(event, {
+            "schema": str, "status": str, "serial": str, "classification": str,
+            "classificationAuthority": str, "retryableTransportClassification": bool,
+            "commandPolicy": str, "policyReason": str, "adbArguments": list,
+            "adbArgumentsSha256": str, "attempt": int, "maximumAttempts": int,
+            "commandInvocationPerformed": bool, "outcomeMutationAuthority": str,
+            "replay": dict, "evidenceFile": str,
+        }, f"{label} ADB event")
+        if (
+            event.get("schema") != "chummer.android.adb-transport-event/v1"
+            or event.get("serial") != serial
+            or status not in {"retrying-read-only", "recovered-read-only", "reconciled-unknown-swipe"}
+            or not isinstance(event.get("adbArguments"), list)
+            or any(not isinstance(row, str) for row in event["adbArguments"])
+            or SHA256.fullmatch(str(event.get("adbArgumentsSha256"))) is None
+            or event.get("evidenceFile") != f"adb-transport-event-{index:04d}.json"
+        ):
+            raise ValueError(f"{label} ADB event identity/status is not exact")
+        replay = require_exact_keys(
+            event.get("replay"), {"eligible", "performed", "scheduled", "suppressed"},
+            f"{label} ADB event replay",
+        )
+        if any(type(replay[key]) is not bool for key in replay):
+            raise ValueError(f"{label} ADB replay fields must be booleans")
+        failure = event.get("failure")
+        if failure is not None:
+            require_exact_keys(failure, {"type", "returnCode", "stdout", "stderr"}, f"{label} ADB event failure")
+        if status == "reconciled-unknown-swipe":
+            observation = require_exact_keys(event.get("readOnlyObservation"), {
+                "arguments", "consecutiveMatching", "observationsPerformed", "hierarchySha256",
+            }, f"{label} ADB reconciliation")
+            require_hex(observation.get("hierarchySha256"), f"{label} ADB hierarchy sha256")
+
+
+def validate_workspace(value: object, label: str) -> None:
+    workspace = require_exact_keys(value, WORKSPACE_FIELDS, label)
+    require_string(workspace.get("workspaceId"), f"{label} workspaceId")
+    require_integer(workspace.get("contentRevision"), f"{label} contentRevision", minimum=1)
+    require_integer(workspace.get("savedRevision"), f"{label} savedRevision", minimum=1)
+    require_hex(workspace.get("payloadSha256"), f"{label} payloadSha256")
+    require_hex(workspace.get("documentSha256"), f"{label} documentSha256")
+
+
+def validate_source_authority(journey_id: str, value: object, apk: BoundBytes) -> None:
+    authority = require_exact_keys(value, SOURCE_AUTHORITY_FIELDS, f"{journey_id} source graph authority")
+    for field in (
+        "expectedAndroidSourceRevision", "androidSourceRevision",
+        "expectedPresentationSourceRevision", "presentationSourceRevision",
+        "expectedCoreSourceRevision", "coreSourceRevision",
+    ):
+        require_hex(authority.get(field), f"{journey_id} {field}", length=40)
+    if (
+        authority["expectedAndroidSourceRevision"] != authority["androidSourceRevision"]
+        or authority["expectedPresentationSourceRevision"] != authority["presentationSourceRevision"]
+        or authority["expectedCoreSourceRevision"] != authority["coreSourceRevision"]
+        or authority.get("expectedApkSha256") != apk.sha256
+        or authority.get("apkSha256") != apk.sha256
+        or authority.get("apkAbis") != [ABI]
+    ):
+        raise ValueError(f"{journey_id} source graph authority revisions/APK are not cross-bound")
+    source_files = require_exact_keys(
+        authority.get("sourceFileSha256"), SOURCE_FILE_FIELDS[journey_id],
+        f"{journey_id} source file authority",
+    )
+    for field, digest in source_files.items():
+        require_hex(digest, f"{journey_id} source file {field}")
+    unsigned = dict(authority)
+    digest = unsigned.pop("authoritySha256")
+    if digest != canonical_sha256(unsigned):
+        raise ValueError(f"{journey_id} source graph authority digest is not canonical")
+
+
+def _pid_list(value: object, label: str) -> list[str]:
+    if not isinstance(value, list) or not value or any(
+        not isinstance(row, str) or PID.fullmatch(row) is None for row in value
+    ):
+        raise ValueError(f"{label} must contain canonical PID strings")
+    if len(value) != len(set(value)):
+        raise ValueError(f"{label} contains duplicate PIDs")
+    return value
+
+
+def _raw_restart_pids(
+    journey_id: str, proof: Mapping[str, object], restart: Mapping[str, object],
+) -> list[str]:
     if journey_id == "priority":
-        restart = proof.get("processRestart")
-        if not isinstance(restart, dict):
-            raise ValueError("Priority raw receipt omitted processRestart")
-        before = restart.get("beforeProcessIds")
-        after = restart.get("afterForceStopProcessIds")
-        restarted = restart.get("restartedProcessIds")
-        if not isinstance(before, list) or not isinstance(after, list) or not isinstance(restarted, list):
-            raise ValueError("Priority raw restart PID sets are malformed")
-        if after or not before or not restarted or set(before).intersection(restarted):
+        raw_restart = require_exact_keys(
+            proof.get("processRestart"), {
+                "beforeProcessIds", "afterForceStopProcessIds", "restartedProcessIds",
+                "newPidVerified",
+            }, "Priority raw processRestart",
+        )
+        before = _pid_list(raw_restart.get("beforeProcessIds"), "Priority before PIDs")
+        after = raw_restart.get("afterForceStopProcessIds")
+        restarted = _pid_list(raw_restart.get("restartedProcessIds"), "Priority restarted PIDs")
+        if not isinstance(after, list) or after or raw_restart.get("newPidVerified") is not True:
             raise ValueError("Priority raw restart semantics are invalid")
-        return [str(row) for row in restarted]
+        if set(before).intersection(restarted):
+            raise ValueError("Priority raw restart reused a PID")
+        if (
+            before != restart["beforeProcessIds"]
+            or after != restart["afterForceStopProcessIds"]
+            or restarted != restart["restartedProcessIds"]
+        ):
+            raise ValueError("Priority raw restart does not fully cross-bind the durable restart file")
+        return restarted
     rows = proof.get("restartProcessIds")
     if not isinstance(rows, list) or len(rows) != 3:
         raise ValueError(f"{journey_id} raw receipt must contain exactly three restarted PID sets")
-    normalized: list[list[str]] = []
-    for row in rows:
-        if not isinstance(row, list) or not row or any(not isinstance(pid, str) or PID.fullmatch(pid) is None for pid in row):
-            raise ValueError(f"{journey_id} raw restarted PID set is invalid")
-        normalized.append(row)
+    normalized = [_pid_list(row, f"{journey_id} restarted PID set") for row in rows]
     flattened = [pid for row in normalized for pid in row]
     if len(flattened) != len(set(flattened)):
         raise ValueError(f"{journey_id} raw receipt reused a restarted PID")
+    if normalized[-1] != restart["restartedProcessIds"]:
+        raise ValueError(f"{journey_id} raw final restart does not bind the durable restart file")
     return normalized[-1]
+
+
+def _validate_workspace_group(proof: Mapping[str, object], fields: Sequence[str], label: str) -> None:
+    for field in fields:
+        validate_workspace(proof.get(field), f"{label}.{field}")
+
+
+def _validate_priority_proof(proof: Mapping[str, object]) -> None:
+    require_exact_keys(proof, {
+        "stages", "identityGap", "draftStateAuthority", "finalization",
+        "savedCareerWorkspace", "restoredCareerWorkspace",
+        "persistedCreationReceiptDigest", "restoredCreationReceiptDigest", "processRestart",
+    }, "Priority authorityProofStages")
+    stages = proof.get("stages")
+    expected_steps = (
+        "basics", "method", "foundation", "attributes", "qualities", "skills",
+        "magic-resonance", "resources", "contacts-lifestyles", "identity-story",
+    )
+    if not isinstance(stages, list) or len(stages) != len(expected_steps):
+        raise ValueError("Priority stage cardinality is not exact")
+    for expected_step, stage in zip(expected_steps, stages, strict=True):
+        common = {
+            "stepId", "routeId", "requiredByCurrentFinalizer", "routeStatus",
+            "authorityVisible", "draftFabricated",
+        }
+        if expected_step == "identity-story":
+            fields = common | {"blocker"}
+        else:
+            fields = common | {"pageId", "authorityId"}
+            extras = {
+                "basics": "sourcebookMutation", "method": "buildMethod",
+                "resources": "gearDraft", "contacts-lifestyles": "lifestylesAuthority",
+            }
+            if expected_step in extras:
+                fields.add(extras[expected_step])
+        stage = require_exact_keys(stage, fields, f"Priority stage {expected_step}")
+        require_field_types(stage, {
+            "stepId": str, "routeId": str, "requiredByCurrentFinalizer": bool,
+            "routeStatus": str, "authorityVisible": bool, "draftFabricated": bool,
+        }, f"Priority stage {expected_step}")
+        for field in fields - common:
+            if type(stage.get(field)) is not str:
+                raise ValueError(f"Priority stage {expected_step}.{field} has the wrong JSON type")
+        if stage.get("stepId") != expected_step or stage.get("draftFabricated") is not False:
+            raise ValueError(f"Priority stage {expected_step} identity/fabrication posture is invalid")
+        if expected_step == "identity-story":
+            if (
+                stage.get("routeStatus") != "typed-contract-unavailable"
+                or stage.get("authorityVisible") is not False
+                or stage.get("blocker") != "creation-identity-draft-contract-unavailable"
+            ):
+                raise ValueError("Priority Identity gap is not exact")
+        elif stage.get("routeStatus") != "typed-authority-visible" or stage.get("authorityVisible") is not True:
+            raise ValueError(f"Priority stage {expected_step} did not expose typed authority")
+    if proof.get("identityGap") != stages[-1]:
+        raise ValueError("Priority Identity gap does not cross-bind its ordered stage")
+    if proof.get("draftStateAuthority") != "typed-phone-pages-preexisting-no-seed-or-fabrication":
+        raise ValueError("Priority draft-state authority is not exact")
+    finalization = require_exact_keys(proof.get("finalization"), {
+        "review", "visibleReviewEvidence", "sealedPlanAuthority", "receiptAuthority",
+        "confirmation", "receipt", "careerReopen",
+    }, "Priority finalization")
+    require_field_types(finalization, {
+        "review": str, "visibleReviewEvidence": dict, "sealedPlanAuthority": dict,
+        "receiptAuthority": dict, "confirmation": str, "receipt": str,
+        "careerReopen": str,
+    }, "Priority finalization")
+    visible = require_exact_keys(finalization.get("visibleReviewEvidence"), {
+        "creation-finalization-binding", "creation-finalization-costs",
+        "creation-finalization-atomic-boundary",
+    }, "Priority visible finalization review")
+    if any(not isinstance(value, str) or not value for value in visible.values()):
+        raise ValueError("Priority visible finalization review is malformed")
+    plan = require_exact_keys(
+        finalization.get("sealedPlanAuthority"), {"contentRevision", "planDigest", "previewDigest"},
+        "Priority sealed plan",
+    )
+    receipt = require_exact_keys(finalization.get("receiptAuthority"), {
+        "previousContentRevision", "contentRevision", "savedRevision", "buildMethod",
+        "planDigest", "previewDigest", "receiptDigest",
+    }, "Priority receipt authority")
+    require_field_types(plan, {"contentRevision": int, "planDigest": str, "previewDigest": str}, "Priority sealed plan")
+    require_field_types(receipt, {
+        "previousContentRevision": int, "contentRevision": int, "savedRevision": int,
+        "buildMethod": str, "planDigest": str, "previewDigest": str,
+        "receiptDigest": str,
+    }, "Priority receipt authority")
+    for field in ("contentRevision",):
+        require_integer(plan.get(field), f"Priority plan {field}", minimum=1)
+    for field in ("previousContentRevision", "contentRevision", "savedRevision"):
+        require_integer(receipt.get(field), f"Priority receipt {field}", minimum=1)
+    for field in ("planDigest", "previewDigest"):
+        require_hex(plan.get(field), f"Priority plan {field}")
+        if receipt.get(field) != plan[field]:
+            raise ValueError(f"Priority receipt {field} does not bind the sealed plan")
+    require_hex(receipt.get("receiptDigest"), "Priority receipt digest")
+    if receipt.get("buildMethod") != "Priority":
+        raise ValueError("Priority finalization receipt BuildMethod is not exact")
+    _validate_workspace_group(proof, ("savedCareerWorkspace", "restoredCareerWorkspace"), "Priority")
+    if proof["savedCareerWorkspace"] != proof["restoredCareerWorkspace"]:
+        raise ValueError("Priority restored workspace differs from the saved authority")
+    for field in ("persistedCreationReceiptDigest", "restoredCreationReceiptDigest"):
+        require_hex(proof.get(field), f"Priority {field}")
+    if (
+        proof["persistedCreationReceiptDigest"] != proof["restoredCreationReceiptDigest"]
+        or proof["persistedCreationReceiptDigest"] != receipt["receiptDigest"]
+    ):
+        raise ValueError("Priority durable receipt digest cross-binding failed")
+
+
+def _validate_career_checkpoint(value: object, label: str) -> None:
+    checkpoint = require_exact_keys(value, CAREER_CHECKPOINT_FIELDS, label)
+    integer_fields = {
+        "SchemaVersion", "Version", "Kind", "ExpectedContentRevision", "BasePoints",
+        "PreviousKarmaPoints", "RatingMaximum", "ExpenseAmount", "UndoQuantity",
+        "PreviousRating", "TargetRating", "SavedKarma", "Phase",
+    }
+    boolean_fields = {"ExpenseRefund", "ExpenseForceCareerVisible"}
+    require_field_types(checkpoint, {
+        **{field: int for field in integer_fields},
+        **{field: bool for field in boolean_fields},
+        **{
+            field: str
+            for field in CAREER_CHECKPOINT_FIELDS - integer_fields - boolean_fields
+        },
+    }, label)
+
+
+def _validate_career_proof(proof: Mapping[str, object]) -> None:
+    require_exact_keys(proof, CAREER_PROOF_FIELDS, "Career authorityProofStages")
+    _validate_workspace_group(proof, (
+        "import", "restoredBeforeApply", "restoredAfterApply",
+        "finalRestoredAfterAcknowledgement",
+    ), "Career")
+    _validate_career_checkpoint(proof.get("reviewedCheckpoint"), "Career reviewed checkpoint")
+    _validate_career_checkpoint(proof.get("appliedCheckpoint"), "Career applied checkpoint")
+    for field in ("reviewedCheckpointSha256", "appliedCheckpointSha256"):
+        require_hex(proof.get(field), f"Career {field}")
+    projection = require_exact_keys(proof.get("receiptProjection"), {
+        "skill", "source", "source_digest", "reviewed_rule", "loaded_rule",
+        "loaded_quote", "owner", "action",
+    }, "Career receipt projection")
+    if any(not isinstance(value, str) or not value for value in projection.values()):
+        raise ValueError("Career receipt projection values must be strings")
+    require_string(proof.get("generatedExpenseGuid"), "Career generated expense GUID")
+
+
+def _validate_lane_proof(journey_id: str, proof: Mapping[str, object]) -> None:
+    require_exact_keys(proof, LANE_PROOF_FIELDS, f"{journey_id} authorityProofStages")
+    scope = require_exact_keys(proof.get("scope"), {"representativeAction", "excluded", "claim"}, f"{journey_id} scope")
+    if (
+        not isinstance(scope.get("representativeAction"), str)
+        or not isinstance(scope.get("excluded"), list)
+        or any(not isinstance(row, str) for row in scope["excluded"])
+        or scope.get("claim") != "one representative typed action only"
+    ):
+        raise ValueError(f"{journey_id} scope is not exact/typed")
+    _validate_workspace_group(proof, (
+        "import", "restoredBeforeApply", "savedSuccessor", "finalRestoredSuccessor",
+    ), journey_id)
+    require_string(proof.get("actionAutomationId"), f"{journey_id} actionAutomationId")
+    automation = require_string_list(
+        proof.get("successorActionAutomationIds"), f"{journey_id} successor automation IDs", nonempty=True,
+    )
+    contracts = proof.get("successorActionAuthority")
+    expected_ids = (
+        {"before-run.edge.spend", "before-run.edge.regain"}
+        if journey_id == "before-run" else {"playtime.weapon.fire"}
+    )
+    contracts = require_exact_keys(contracts, expected_ids, f"{journey_id} successor action authority")
+    if len(automation) != len(expected_ids) or len(automation) != len(set(automation)):
+        raise ValueError(f"{journey_id} successor automation authority is not unique/exact")
+    for action_id, row in contracts.items():
+        fields = (
+            {"actionId", "kind", "edgeUsedBefore", "edgeUsedAfter", "totalEdge", "targetRevision", "actionDigest", "automationId"}
+            if journey_id == "before-run" else
+            {"actionId", "kind", "weaponId", "ammoSlot", "ammoGearId", "fireMode", "roundsConsumed", "ammoBefore", "ammoAfter", "targetRevision", "actionDigest", "automationId"}
+        )
+        row = require_exact_keys(row, fields, f"{journey_id} successor {action_id}")
+        integer_fields = (
+            {"edgeUsedBefore", "edgeUsedAfter", "totalEdge"}
+            if journey_id == "before-run" else
+            {"ammoSlot", "roundsConsumed", "ammoBefore", "ammoAfter"}
+        )
+        require_field_types(row, {
+            **{field: int for field in integer_fields},
+            **{field: str for field in fields - integer_fields},
+        }, f"{journey_id} successor {action_id}")
+        if row.get("actionId") != action_id or row.get("automationId") not in automation:
+            raise ValueError(f"{journey_id} successor action identity is not cross-bound")
+        require_hex(row.get("targetRevision"), f"{journey_id} successor target revision")
+        require_hex(row.get("actionDigest"), f"{journey_id} successor action digest")
+    for field in ("reviewedTransactionSha256", "appliedTransactionSha256"):
+        require_hex(proof.get(field), f"{journey_id} {field}")
+    receipt = require_exact_keys(proof.get("receipt"), LANE_RECEIPT_FIELDS, f"{journey_id} transaction receipt")
+    require_field_types(receipt, {
+        **{field: int for field in {"ExpectedWorkspaceRevision", "AppliedWorkspaceRevision", "ActionKind"}},
+        **{
+            field: str
+            for field in LANE_RECEIPT_FIELDS
+            - {"ExpectedWorkspaceRevision", "AppliedWorkspaceRevision", "ActionKind"}
+        },
+    }, f"{journey_id} transaction receipt")
+    for field in ("ActionDigest", "ExpectedPostconditionDigest", "ObservedPostconditionDigest", "ReceiptDigest"):
+        require_hex(str(receipt.get(field)).removeprefix("sha256:"), f"{journey_id} receipt {field}")
+
+
+def _validate_after_checkpoint(value: object, label: str) -> None:
+    checkpoint = require_exact_keys(value, AFTER_CHECKPOINT_FIELDS, label)
+    require_field_types(checkpoint, {
+        "SchemaVersion": int, "Version": int, "RouteId": str, "Phase": int,
+        "Draft": dict, "Receipt": (dict, type(None)), "IdempotencyKey": str,
+    }, label)
+    draft = require_exact_keys(checkpoint.get("Draft"), AFTER_DRAFT_FIELDS, f"{label}.Draft")
+    require_field_types(draft, {
+        "OwnerId": str, "Candidate": dict, "Plan": dict, "Acknowledgements": dict,
+    }, f"{label}.Draft")
+    candidate = require_exact_keys(draft.get("Candidate"), AFTER_CANDIDATE_FIELDS, f"{label}.Candidate")
+    require_field_types(candidate, {"RewardContext": dict, "Binding": dict}, f"{label}.Candidate")
+    reward = require_exact_keys(candidate.get("RewardContext"), AFTER_REWARD_CONTEXT_FIELDS, f"{label}.RewardContext")
+    require_field_types(reward, {
+        "ContractName": str, "Identity": dict, "RunTitle": str, "CompletedAt": str,
+        "KarmaAward": int, "NuyenAward": int, "RewardReceiptDigest": str,
+        "ContextDigest": str,
+    }, f"{label}.RewardContext")
+    binding = require_exact_keys(candidate.get("Binding"), AFTER_BINDING_FIELDS, f"{label}.Binding")
+    require_field_types(binding, {
+        "ContractName": str, "WorkspaceId": dict, "WorkspaceRevision": int,
+        "Identity": dict, "Quote": dict, "BindingDigest": str,
+    }, f"{label}.Binding")
+    workspace_id = require_exact_keys(binding.get("WorkspaceId"), {"Value"}, f"{label}.Binding.WorkspaceId")
+    require_field_types(workspace_id, {"Value": str}, f"{label}.Binding.WorkspaceId")
+    for identity in (reward.get("Identity"), binding.get("Identity")):
+        identity = require_exact_keys(identity, AFTER_IDENTITY_FIELDS, f"{label}.Identity")
+        require_field_types(identity, {field: str for field in AFTER_IDENTITY_FIELDS}, f"{label}.Identity")
+    quote = require_exact_keys(binding.get("Quote"), AFTER_QUOTE_FIELDS, f"{label}.Quote")
+    numeric_quote = {
+        "HeatBefore", "HeatDelta", "HeatAfter", "StreetCredBefore", "StreetCredDelta",
+        "StreetCredAfter", "NotorietyBefore", "NotorietyDelta", "NotorietyAfter",
+        "PublicAwarenessBefore", "RequestedPublicAwarenessDelta", "PublicAwarenessAfter",
+        "KarmaBefore", "ContactKarmaCost", "KarmaAfter", "Blocker",
+    }
+    require_field_types(quote, {
+        **{field: int for field in numeric_quote},
+        **{field: str for field in {
+            "GmReviewDigest", "OwnerReviewDigest", "SourceDigest", "CustomDataDigest",
+            "GmPolicyDigest", "RuntimeDigest", "LogicalDigest",
+        }},
+        "Identity": dict, "Contacts": list, "Prerequisites": list, "CanSettle": bool,
+    }, f"{label}.Quote")
+    quote_identity = require_exact_keys(quote.get("Identity"), AFTER_IDENTITY_FIELDS, f"{label}.Quote.Identity")
+    require_field_types(quote_identity, {field: str for field in AFTER_IDENTITY_FIELDS}, f"{label}.Quote.Identity")
+    contacts = quote.get("Contacts")
+    if not isinstance(contacts, list):
+        raise ValueError(f"{label}.Quote.Contacts must be a list")
+    contact_fields = {"ContactId", "Name", "Role", "Location", "Connection", "Loyalty", "Kind", "KarmaCost"}
+    for contact in contacts:
+        contact = require_exact_keys(contact, contact_fields, f"{label}.Quote.Contact")
+        require_field_types(contact, {
+            **{field: str for field in {"ContactId", "Name", "Role", "Location"}},
+            **{field: int for field in {"Connection", "Loyalty", "Kind", "KarmaCost"}},
+        }, f"{label}.Quote.Contact")
+    prerequisites = quote.get("Prerequisites")
+    if not isinstance(prerequisites, list):
+        raise ValueError(f"{label}.Quote.Prerequisites must be a list")
+    for prerequisite in prerequisites:
+        prerequisite = require_exact_keys(prerequisite, {"Prerequisite", "Satisfied", "Authority"}, f"{label}.Prerequisite")
+        require_field_types(prerequisite, {
+            "Prerequisite": int, "Satisfied": bool, "Authority": str,
+        }, f"{label}.Prerequisite")
+    plan = require_exact_keys(draft.get("Plan"), AFTER_PLAN_FIELDS, f"{label}.Plan")
+    numeric_plan = {
+        "TargetHeat", "TargetStreetCred", "TargetNotoriety", "TargetPublicAwareness",
+        "TargetKarma", "ContactKarmaCost", "ExpenseAmount",
+    }
+    require_field_types(plan, {
+        **{field: int for field in numeric_plan},
+        **{field: str for field in AFTER_PLAN_FIELDS - numeric_plan - {"Identity", "ContactsToAdd"}},
+        "Identity": dict, "ContactsToAdd": list,
+    }, f"{label}.Plan")
+    plan_identity = require_exact_keys(plan.get("Identity"), AFTER_IDENTITY_FIELDS, f"{label}.Plan.Identity")
+    require_field_types(plan_identity, {field: str for field in AFTER_IDENTITY_FIELDS}, f"{label}.Plan.Identity")
+    planned_contacts = plan.get("ContactsToAdd")
+    if not isinstance(planned_contacts, list):
+        raise ValueError(f"{label}.Plan.ContactsToAdd must be a list")
+    for contact in planned_contacts:
+        contact = require_exact_keys(contact, contact_fields, f"{label}.Plan.Contact")
+        require_field_types(contact, {
+            **{field: str for field in {"ContactId", "Name", "Role", "Location"}},
+            **{field: int for field in {"Connection", "Loyalty", "Kind", "KarmaCost"}},
+        }, f"{label}.Plan.Contact")
+    acknowledgements = require_exact_keys(draft.get("Acknowledgements"), AFTER_ACK_FIELDS, f"{label}.Acknowledgements")
+    if any(type(value) is not bool for value in acknowledgements.values()):
+        raise ValueError(f"{label}.Acknowledgements must be booleans")
+    receipt = checkpoint.get("Receipt")
+    if receipt is not None:
+        receipt = require_exact_keys(receipt, AFTER_RECEIPT_FIELDS, f"{label}.Receipt")
+        numeric_receipt = {
+            "HeatBefore", "HeatAfter", "StreetCredBefore", "StreetCredAfter",
+            "NotorietyBefore", "NotorietyAfter", "PublicAwarenessBefore",
+            "PublicAwarenessAfter", "KarmaBefore", "KarmaAfter", "ContactKarmaCost",
+            "ExpenseAmount",
+        }
+        require_field_types(receipt, {
+            **{field: int for field in numeric_receipt},
+            **{field: str for field in AFTER_RECEIPT_FIELDS - numeric_receipt - {"Identity", "AddedContacts"}},
+            "Identity": dict, "AddedContacts": list,
+        }, f"{label}.Receipt")
+        receipt_identity = require_exact_keys(receipt.get("Identity"), AFTER_IDENTITY_FIELDS, f"{label}.Receipt.Identity")
+        require_field_types(receipt_identity, {field: str for field in AFTER_IDENTITY_FIELDS}, f"{label}.Receipt.Identity")
+        added = receipt.get("AddedContacts")
+        if not isinstance(added, list):
+            raise ValueError(f"{label}.Receipt.AddedContacts must be a list")
+        for contact in added:
+            contact = require_exact_keys(contact, contact_fields, f"{label}.Receipt.Contact")
+            require_field_types(contact, {
+                **{field: str for field in {"ContactId", "Name", "Role", "Location"}},
+                **{field: int for field in {"Connection", "Loyalty", "Kind", "KarmaCost"}},
+            }, f"{label}.Receipt.Contact")
+
+
+def _validate_after_proof(proof: Mapping[str, object]) -> None:
+    require_exact_keys(proof, AFTER_PROOF_FIELDS, "After Run authorityProofStages")
+    _validate_workspace_group(proof, (
+        "import", "restoredBeforeApply", "savedSuccessor", "finalRestartSuccessor",
+    ), "After Run")
+    _validate_after_checkpoint(proof.get("reviewedCheckpoint"), "After Run reviewed checkpoint")
+    _validate_after_checkpoint(proof.get("appliedCheckpoint"), "After Run applied checkpoint")
+    for field in ("reviewedCheckpointSha256", "appliedCheckpointSha256"):
+        require_hex(proof.get(field), f"After Run {field}")
+    projection = require_exact_keys(proof.get("transactionAndReviewAuthority"), {
+        "transactionId", "gmReviewDigest", "ownerReviewDigest", "receiptDigest",
+    }, "After Run transaction authority")
+    for field in ("gmReviewDigest", "ownerReviewDigest", "receiptDigest"):
+        require_hex(projection.get(field), f"After Run {field}")
+
+
+def _validate_downtime_journal(value: object, label: str) -> None:
+    journal = require_exact_keys(value, DOWNTIME_JOURNAL_FIELDS, label)
+    require_field_types(journal, {
+        "SchemaVersion": int, "Version": int, "Phase": int, "OwnerId": str,
+        "ActionId": str, "Review": dict, "ExpectedPostconditionDigest": str,
+        "Receipt": (dict, type(None)), "JournalDigest": str,
+    }, label)
+    review = require_exact_keys(journal.get("Review"), DOWNTIME_REVIEW_FIELDS, f"{label}.Review")
+    require_field_types(review, {
+        "Schema": str, "WorkspaceId": str, "WorkspaceRevision": int,
+        "SnapshotDigest": str, "Preview": dict,
+    }, f"{label}.Review")
+    preview = require_exact_keys(review.get("Preview"), DOWNTIME_PREVIEW_FIELDS, f"{label}.Preview")
+    require_field_types(preview, {
+        **{field: int for field in {"Year", "Week", "Operation"}},
+        **{field: str for field in DOWNTIME_PREVIEW_FIELDS - {"Year", "Week", "Operation"}},
+    }, f"{label}.Preview")
+    receipt = journal.get("Receipt")
+    if receipt is not None:
+        receipt = require_exact_keys(receipt, DOWNTIME_RECEIPT_FIELDS, f"{label}.Receipt")
+        require_field_types(receipt, {
+            **{field: int for field in {"ExpectedWorkspaceRevision", "AppliedWorkspaceRevision", "Operation"}},
+            **{
+                field: str
+                for field in DOWNTIME_RECEIPT_FIELDS
+                - {"ExpectedWorkspaceRevision", "AppliedWorkspaceRevision", "Operation"}
+            },
+        }, f"{label}.Receipt")
+
+
+def _validate_downtime_proof(proof: Mapping[str, object]) -> None:
+    require_exact_keys(proof, DOWNTIME_PROOF_FIELDS, "Downtime authorityProofStages")
+    _validate_workspace_group(proof, (
+        "import", "restoredBeforeApply", "savedSuccessor", "finalRestartSuccessor",
+    ), "Downtime")
+    _validate_downtime_journal(proof.get("reviewedJournal"), "Downtime reviewed journal")
+    _validate_downtime_journal(proof.get("appliedJournal"), "Downtime applied journal")
+    for field in ("reviewedJournalSha256", "appliedJournalSha256"):
+        require_hex(proof.get(field), f"Downtime {field}")
+    projection = require_exact_keys(proof.get("receiptAuthority"), {
+        "actionId", "previewDigest", "expectedPostconditionDigest", "receiptDigest",
+    }, "Downtime receipt authority")
+    for field in ("previewDigest", "expectedPostconditionDigest", "receiptDigest"):
+        require_hex(projection.get(field), f"Downtime {field}")
+
+
+def validate_proof_stages(journey_id: str, proof: Mapping[str, object]) -> None:
+    if journey_id == "priority":
+        _validate_priority_proof(proof)
+    elif journey_id == "career":
+        _validate_career_proof(proof)
+    elif journey_id in {"before-run", "playtime"}:
+        _validate_lane_proof(journey_id, proof)
+    elif journey_id == "after-run":
+        _validate_after_proof(proof)
+    else:
+        _validate_downtime_proof(proof)
+
+
+def validate_remote_cleanup(journey_id: str, raw: Mapping[str, object]) -> None:
+    if journey_id in {"career", "after-run", "downtime"}:
+        rows = raw.get("remoteTemporaryFiles")
+        if not isinstance(rows, list) or len(rows) != 2:
+            raise ValueError(f"{journey_id} remote temporary file cardinality is not exact")
+        expected_fields = {
+            "path", "purpose", "precleanAttempted", "precleaned", "cleanupAttempted",
+            "cleanupReplaySuppressed", "deletedAndVerified",
+        }
+        paths: list[str] = []
+        for row in rows:
+            row = require_exact_keys(row, expected_fields, f"{journey_id} remote temporary file")
+            path = require_string(row.get("path"), f"{journey_id} remote path")
+            require_string(row.get("purpose"), f"{journey_id} remote purpose")
+            if (
+                row.get("precleanAttempted") is not True or row.get("precleaned") is not True
+                or row.get("cleanupAttempted") is not True
+                or row.get("cleanupReplaySuppressed") is not False
+                or row.get("deletedAndVerified") is not True
+            ):
+                raise ValueError(f"{journey_id} remote cleanup booleans are not an exact success")
+            paths.append(path)
+    elif journey_id in {"before-run", "playtime"}:
+        cleanup = raw.get("remoteTemporaryFilesDeleted")
+        if not isinstance(cleanup, dict) or len(cleanup) != 2 or any(value is not True for value in cleanup.values()):
+            raise ValueError(f"{journey_id} remote cleanup map is not exact")
+        paths = list(cleanup)
+    else:
+        return
+    if (
+        len(paths) != len(set(paths))
+        or "/sdcard/chummer-editing-window.xml" not in paths
+        or len([path for path in paths if re.fullmatch(r"/sdcard/Download/[A-Za-z0-9][A-Za-z0-9._-]{0,126}\.chum5", path)]) != 1
+    ):
+        raise ValueError(f"{journey_id} remote cleanup paths are not the exact fixture/hierarchy set")
 
 
 def validate_raw_receipt(
@@ -622,20 +1911,35 @@ def validate_raw_receipt(
         raise ValueError(f"{journey_id} raw receipt did not recheck its source graph")
     transport = value.get("adbTransport")
     if "adbTransport" in RAW_FIELDS[journey_id] and (
-        not isinstance(transport, dict) or transport.get("status") != "pass"
+        not isinstance(transport, dict)
     ):
         raise ValueError(f"{journey_id} raw receipt ADB transport did not pass")
+    if "adbTransport" in RAW_FIELDS[journey_id]:
+        validate_adb_transport(transport, serial=str(device["serial"]), label=journey_id)
     journeys = value.get("journeys")
-    if journeys is not None and (
-        not isinstance(journeys, dict) or not journeys
-        or any(result != "pass" for result in journeys.values())
-    ):
-        raise ValueError(f"{journey_id} raw subjourney claims are not all pass")
+    if journey_id != "priority":
+        journeys = require_exact_keys(
+            journeys, SUBJOURNEY_FIELDS[journey_id], f"{journey_id} subjourneys",
+        )
+        if any(result != "pass" for result in journeys.values()):
+            raise ValueError(f"{journey_id} raw subjourney claims are not all pass")
+        source_authority = value.get("sourceGraphAuthority")
+        validate_source_authority(journey_id, source_authority, apk)
+        if value.get("postRunSourceGraphAuthoritySha256", source_authority["authoritySha256"]) != source_authority["authoritySha256"]:
+            raise ValueError(f"{journey_id} post-run source graph digest is not cross-bound")
+        if journey_id == "career":
+            source_files = source_authority["sourceFileSha256"]
+            if any(value.get(field) != source_files[field] for field in CAREER_SOURCE_FIELDS):
+                raise ValueError("Career flattened source digests differ from sourceGraphAuthority")
+    validate_remote_cleanup(journey_id, value)
     proof = value.get("authorityProofStages")
     if not isinstance(proof, dict):
         raise ValueError(f"{journey_id} raw receipt omitted authorityProofStages")
-    _raw_device_matches(value, device)
-    final_raw_pids = _raw_restart_pids(journey_id, proof)
+    validate_proof_stages(journey_id, proof)
+    if journey_id in {"before-run", "playtime"} and value.get("scope") != proof.get("scope"):
+        raise ValueError(f"{journey_id} top-level scope differs from authorityProofStages")
+    _raw_device_matches(journey_id, value, device)
+    final_raw_pids = _raw_restart_pids(journey_id, proof, restart)
     if final_raw_pids != restart["restartedProcessIds"]:
         raise ValueError(f"{journey_id} raw final restarted PIDs do not match restart evidence")
     return value
@@ -644,7 +1948,7 @@ def validate_raw_receipt(
 def common_authority(
     *, apk: BoundBytes, graph: BoundBytes, provenance: BoundBytes,
     provenance_payload: Mapping[str, object], device: BoundBytes,
-    device_payload: Mapping[str, object],
+    device_payload: Mapping[str, object], driver_authority: Mapping[str, object],
 ) -> dict[str, object]:
     return {
         "artifact": {
@@ -654,6 +1958,7 @@ def common_authority(
         "sourceGraph": {**graph.json(), "contractName": SOURCE_GRAPH_SCHEMA},
         "buildProvenance": {
             **provenance.json(), "schema": BUILD_PROVENANCE_SCHEMA,
+            "adapter": WP1_COMMITTED_ADAPTER,
             "authoritySha256": provenance_payload["authoritySha256"],
         },
         "deviceObservation": {
@@ -661,20 +1966,29 @@ def common_authority(
             "serial": device_payload["serial"],
             "serialSha256": device_payload["serialSha256"],
         },
+        "driverAuthority": dict(driver_authority),
     }
 
 
 def capture_authority_inputs(
     *, apk_path: Path, source_graph_path: Path, build_provenance_path: Path,
-    device_observation_path: Path,
-) -> tuple[BoundBytes, BoundBytes, BoundBytes, dict[str, object], BoundBytes, dict[str, object]]:
+    device_observation_path: Path, repository_root: Path,
+    driver_paths: Mapping[str, Path],
+) -> tuple[
+    BoundBytes, BoundBytes, BoundBytes, dict[str, object], BoundBytes,
+    dict[str, object], dict[str, object],
+]:
     apk, graph, provenance, provenance_payload = capture_build_inputs(
         apk_path=apk_path, source_graph_path=source_graph_path,
         build_provenance_path=build_provenance_path,
     )
     device = bind_regular(device_observation_path, "physical device observation")
     device_payload = validate_device_observation(device)
-    return apk, graph, provenance, provenance_payload, device, device_payload
+    driver_authority = capture_driver_authority(
+        repository_root=repository_root, driver_paths=driver_paths,
+        source_graph=validate_source_graph(graph),
+    )
+    return apk, graph, provenance, provenance_payload, device, device_payload, driver_authority
 
 
 def capture_build_inputs(
@@ -692,12 +2006,23 @@ def capture_build_inputs(
 def create_journey_seal(
     *, journey_id: str, raw_receipt_path: Path, restart_evidence_path: Path,
     apk_path: Path, source_graph_path: Path, build_provenance_path: Path,
-    device_observation_path: Path, generated_at_utc: str | None = None,
+    device_observation_path: Path, repository_root: Path | None = None,
+    driver_paths: Mapping[str, Path] | None = None,
+    generated_at_utc: str | None = None,
 ) -> dict[str, object]:
-    apk, graph, provenance, provenance_payload, device, device_payload = capture_authority_inputs(
+    repository_root = repository_root or Path(__file__).resolve().parents[1]
+    driver_paths = driver_paths or {
+        journey: repository_root / relative
+        for journey, (relative, _blob) in DRIVER_SPECS.items()
+    }
+    (
+        apk, graph, provenance, provenance_payload, device, device_payload,
+        driver_authority,
+    ) = capture_authority_inputs(
         apk_path=apk_path, source_graph_path=source_graph_path,
         build_provenance_path=build_provenance_path,
         device_observation_path=device_observation_path,
+        repository_root=repository_root, driver_paths=driver_paths,
     )
     raw = bind_regular(raw_receipt_path, f"{journey_id} raw receipt")
     restart_file = bind_regular(restart_evidence_path, f"{journey_id} restart evidence")
@@ -720,7 +2045,7 @@ def create_journey_seal(
         **common_authority(
             apk=apk, graph=graph, provenance=provenance,
             provenance_payload=provenance_payload, device=device,
-            device_payload=device_payload,
+            device_payload=device_payload, driver_authority=driver_authority,
         ),
         "doesNotAssert": list(DOES_NOT_ASSERT),
     }
@@ -745,7 +2070,7 @@ def load_and_verify_journey_seal(path: Path, **arguments: object) -> tuple[dict[
     require_exact_keys(value, {
         "schema", "status", "authorityClass", "publicationAuthorized", "profile",
         "journeyId", "journeyOrder", "rawReceipt", "restartEvidence", "artifact",
-        "sourceGraph", "buildProvenance", "deviceObservation", "doesNotAssert",
+        "sourceGraph", "buildProvenance", "deviceObservation", "driverAuthority", "doesNotAssert",
         "sealAuthoritySha256", "generatedAtUtc",
     }, "journey seal")
     generated = require_utc_timestamp(
@@ -761,18 +2086,29 @@ def load_and_verify_journey_seal(path: Path, **arguments: object) -> tuple[dict[
 def create_aggregate(
     *, journey_inputs: Sequence[tuple[str, Path, Path, Path]], apk_path: Path,
     source_graph_path: Path, build_provenance_path: Path,
-    device_observation_path: Path, generated_at_utc: str | None = None,
+    device_observation_path: Path, repository_root: Path | None = None,
+    driver_paths: Mapping[str, Path] | None = None,
+    generated_at_utc: str | None = None,
 ) -> dict[str, object]:
     if tuple(row[0] for row in journey_inputs) != JOURNEY_ORDER or len(journey_inputs) != 6:
         raise ValueError("aggregate journey cardinality/order is not exact")
-    apk, graph, provenance, provenance_payload, device, device_payload = capture_authority_inputs(
+    repository_root = repository_root or Path(__file__).resolve().parents[1]
+    driver_paths = driver_paths or {
+        journey: repository_root / relative
+        for journey, (relative, _blob) in DRIVER_SPECS.items()
+    }
+    (
+        apk, graph, provenance, provenance_payload, device, device_payload,
+        driver_authority,
+    ) = capture_authority_inputs(
         apk_path=apk_path, source_graph_path=source_graph_path,
         build_provenance_path=build_provenance_path,
         device_observation_path=device_observation_path,
+        repository_root=repository_root, driver_paths=driver_paths,
     )
     rows: list[dict[str, object]] = []
     captured_journey_files: list[tuple[BoundBytes, str]] = []
-    restarted_pids: set[str] = set()
+    observed_pids: set[str] = set()
     for journey_id, raw_path, restart_path, seal_path in journey_inputs:
         seal, seal_bound = load_and_verify_journey_seal(
             seal_path, journey_id=journey_id, raw_receipt_path=raw_path,
@@ -780,6 +2116,7 @@ def create_aggregate(
             source_graph_path=source_graph_path,
             build_provenance_path=build_provenance_path,
             device_observation_path=device_observation_path,
+            repository_root=repository_root, driver_paths=driver_paths,
         )
         raw_bound = bind_regular(raw_path, f"{journey_id} raw receipt")
         restart_bound = bind_regular(restart_path, f"{journey_id} restart evidence")
@@ -796,10 +2133,13 @@ def create_aggregate(
             (restart_bound, f"{journey_id} restart evidence"),
             (seal_bound, f"{journey_id} journey seal"),
         ))
-        journey_restarted = seal["restartEvidence"]["restartedProcessIds"]
-        if restarted_pids.intersection(journey_restarted):
-            raise ValueError("aggregate reused a restarted PID across physical journeys")
-        restarted_pids.update(journey_restarted)
+        journey_pids = [
+            *seal["restartEvidence"]["beforeProcessIds"],
+            *seal["restartEvidence"]["restartedProcessIds"],
+        ]
+        if observed_pids.intersection(journey_pids):
+            raise ValueError("aggregate reused a before/restarted PID across physical journeys")
+        observed_pids.update(journey_pids)
         rows.append({
             "journeyId": journey_id, "journeyOrder": JOURNEY_ORDER.index(journey_id),
             "rawReceipt": seal["rawReceipt"], "restartEvidence": seal["restartEvidence"],
@@ -813,7 +2153,7 @@ def create_aggregate(
         **common_authority(
             apk=apk, graph=graph, provenance=provenance,
             provenance_payload=provenance_payload, device=device,
-            device_payload=device_payload,
+            device_payload=device_payload, driver_authority=driver_authority,
         ),
         "doesNotAssert": list(DOES_NOT_ASSERT),
     }
@@ -837,7 +2177,7 @@ def load_and_verify_aggregate(path: Path, **arguments: object) -> dict[str, obje
     require_exact_keys(value, {
         "schema", "status", "authorityClass", "publicationAuthorized", "profile",
         "journeyOrder", "journeys", "artifact", "sourceGraph", "buildProvenance",
-        "deviceObservation", "doesNotAssert", "authoritySha256", "generatedAtUtc",
+        "deviceObservation", "driverAuthority", "doesNotAssert", "authoritySha256", "generatedAtUtc",
     }, "six-journey aggregate")
     generated = require_utc_timestamp(
         value.get("generatedAtUtc"), "aggregate generatedAtUtc", canonical_z=True,

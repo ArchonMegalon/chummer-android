@@ -113,6 +113,10 @@ for journey in "${journeys[@]}"; do
   [[ "$(basename -- "${drivers[$journey]}")" == "${expected_driver[$journey]}" ]] \
     || fail "driver-basename-mismatch-$journey"
 done
+driver_authority_args=(--android-repository "$repo_dir")
+for journey in "${journeys[@]}"; do
+  driver_authority_args+=(--driver "$journey=${drivers[$journey]}")
+done
 
 mkdir -m 0700 -- "$output_root"
 mkdir -m 0700 -- "$output_root/raw" "$output_root/evidence" "$output_root/seals" "$output_root/logs"
@@ -122,7 +126,8 @@ run_bounded build-authority-preflight "$output_root/logs/build-authority-preflig
   python3 "$aggregate" preflight \
   --apk "$CHUMMER_API36_ARM64_APK" \
   --source-graph "$CHUMMER_RELEASE_SOURCE_GRAPH" \
-  --build-provenance "$CHUMMER_API36_BUILD_PROVENANCE"
+  --build-provenance "$CHUMMER_API36_BUILD_PROVENANCE" \
+  "${driver_authority_args[@]}"
 
 run_bounded physical-device-capture "$output_root/logs/physical-device-capture.log" \
   python3 "$capture" \
@@ -153,6 +158,7 @@ for journey in "${journeys[@]}"; do
     --source-graph "$CHUMMER_RELEASE_SOURCE_GRAPH" \
     --build-provenance "$CHUMMER_API36_BUILD_PROVENANCE" \
     --device-observation "$output_root/device-observation.json" \
+    "${driver_authority_args[@]}" \
     --output "$seal"
 done
 
@@ -161,6 +167,7 @@ aggregate_args=(
   --source-graph "$CHUMMER_RELEASE_SOURCE_GRAPH"
   --build-provenance "$CHUMMER_API36_BUILD_PROVENANCE"
   --device-observation "$output_root/device-observation.json"
+  "${driver_authority_args[@]}"
 )
 for journey in "${journeys[@]}"; do
   aggregate_args+=(

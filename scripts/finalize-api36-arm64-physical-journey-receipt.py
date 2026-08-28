@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from api36_arm64_physical_contract import (  # noqa: E402
     JOURNEY_ORDER,
     create_journey_seal,
+    parse_driver_paths,
     write_json_exclusive,
 )
 
@@ -24,6 +25,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--source-graph", type=Path, required=True)
     parser.add_argument("--build-provenance", type=Path, required=True)
     parser.add_argument("--device-observation", type=Path, required=True)
+    parser.add_argument("--android-repository", type=Path, required=True)
+    parser.add_argument("--driver", action="append", default=[], required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     repository_root = Path(__file__).resolve().parents[1]
@@ -34,6 +37,8 @@ def main(argv: list[str] | None = None) -> int:
             source_graph_path=args.source_graph,
             build_provenance_path=args.build_provenance,
             device_observation_path=args.device_observation,
+            repository_root=args.android_repository,
+            driver_paths=parse_driver_paths(args.driver),
         )
         write_json_exclusive(args.output, seal, repository_root)
     except Exception as error:  # noqa: BLE001 - fail-closed CLI boundary
