@@ -4,6 +4,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <ChummerPresentationRoot Condition="'$(ChummerPresentationRoot)' == ''">../../../chummer-presentation</ChummerPresentationRoot>
   </PropertyGroup>
   <ItemGroup>

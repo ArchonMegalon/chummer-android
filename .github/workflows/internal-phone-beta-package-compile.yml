@@ -1,0 +1,54 @@
+name: Internal phone beta package compile (inactive)
+
+# Source-only W5 contract. Activation awaits the full MAUI/content/API36 gate.
+on: []
+
+permissions:
+  contents: read
+
+jobs:
+  native-compile-dependency-proof:
+    if: ${{ false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    steps:
+      - name: Check out the exact Android W5 candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: chummer-android
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out the exact internal Presentation package authority
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArchonMegalon/chummer6-ui
+          ref: a8a317aff534dc5fd47f2db1bc39466799021990
+          path: chummer-presentation
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: |
+            config/android-presentation-package-authority.json
+            Chummer.Desktop.Runtime
+            Chummer.Presentation
+            Chummer.Product.UnitTests
+            Chummer.Tests/Presentation
+            Directory.Build.props
+            Directory.Build.targets
+            global.json
+
+      - name: Install the governed Android consumer SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 10.0.111
+
+      - name: Run the bounded package-only Native.CompileCheck proof
+        working-directory: chummer-android
+        env:
+          CHUMMER_PRESENTATION_ROOT: ${{ github.workspace }}/chummer-presentation
+          CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED: ${{ runner.temp }}/w41-input/feed
+          CHUMMER_INTERNAL_PHONE_BETA_NUGET_PACKAGES: ${{ runner.temp }}/w41-input/packages
+          CHUMMER_W41_PACKAGE_AUTHORITY_RECEIPT: ${{ runner.temp }}/w41-input/chummer-ui-w41-android-presentation-package-proof.a8a317aff.json
+          CHUMMER_W41_PACKAGE_AUTHORITY_JOURNAL: ${{ runner.temp }}/w41-input/chummer-ui-w41-android-presentation-package-proof.a8a317aff.journal.json
+          CHUMMER_INTERNAL_PHONE_BETA_BUILD_RECEIPT: ${{ runner.temp }}/internal-phone-beta-native-compile.json
+        run: scripts/build-internal-phone-beta-native-compile.sh
