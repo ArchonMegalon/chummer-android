@@ -286,13 +286,17 @@ evidence_json="$(build_evidence_json)"
 
 jq -n \
   --arg contractName "chummer.android.internal-phone-beta-native-compile/v1" \
+  --arg schema "chummer.android.internal-phone-beta-native-compile/v1" \
   --arg sdkVersion "$sdk_version" \
+  --arg producerSdkVersion "10.0.103" \
   --arg androidCommit "$android_commit" \
   --arg androidTree "$android_tree" \
   --arg presentationCommit "$presentation_commit" \
   --arg presentationTree "$presentation_tree" \
   --arg authorityReceiptSha256 "aaf2c755ef7233f2b21bc257e306ea5de60ac42125c3c8b47501aa05a3b949dd" \
   --arg authorityJournalSha256 "4b41a6c2afded5acf83b07a59ac73605faf5037948a0dd0fbed772440ff54bec" \
+  --arg packageAuthoritySha256 "4dfc8bff234ced999792797b7ac4e5f5dd5d371c1c261bc56b2f6adcfa382c4b" \
+  --arg desktopRuntimeLockSha256 "202a29a35b4768c3306349ee40a34d8f23ada97c0b0ef11e104763b5ff9cc60e" \
   --arg authorityBindingSha256 "$authority_binding_sha256" \
   --arg journalSha256 "$journal_sha256" \
   --argjson journalSizeBytes "$journal_size" \
@@ -302,36 +306,62 @@ jq -n \
   --arg restoreOutputSha256 "$restore_sha256" \
   --arg buildOutputSha256 "$build_sha256" \
   --arg lockSha256 "$lock_sha256" \
+  --argjson lockSizeBytes "$(stat -c '%s' "$lock")" \
   --arg assetsSha256 "$assets_sha256" \
   --arg artifactPath "tests/Chummer.Android.Native.CompileCheck/bin/Release/net10.0/Chummer.Android.Native.CompileCheck.dll" \
   --arg artifactSha256 "$artifact_sha256" \
   --argjson artifactSizeBytes "$artifact_size" \
   '{
     contractName: $contractName,
+    schema: $schema,
     status: "pass",
     authorityClass: "internal_phone_beta_only",
     publicationAuthorized: false,
     dependencyMode: "locked_package_no_siblings",
+    packageOnly: true,
+    restoreLockedMode: true,
+    sourceCheckoutsPresent: false,
+    siblingsAllowed: false,
     serializedBuild: true,
     sdkVersion: $sdkVersion,
+    producerSdkVersion: $producerSdkVersion,
     androidCommit: $androidCommit,
     androidTree: $androidTree,
+    androidWorktreeClean: true,
     presentationCommit: $presentationCommit,
     presentationTree: $presentationTree,
     authorityReceiptSha256: $authorityReceiptSha256,
     authorityJournalSha256: $authorityJournalSha256,
+    packageAuthoritySha256: $packageAuthoritySha256,
+    desktopRuntimeLockSha256: $desktopRuntimeLockSha256,
     authorityBindingSha256: $authorityBindingSha256,
     executionBounds: {perCommandSeconds: 900, totalSeconds: 3600, processGroupTermination: true},
     journalSha256: $journalSha256,
     journalSizeBytes: $journalSizeBytes,
     evidenceDirectory: $evidenceDirectory,
     evidence: $evidence,
+    evidenceBindings: ($evidence | map({key: .path, value: {sha256: .sha256, sizeBytes: .sizeBytes}}) | from_entries),
     compileGraphSha256: $compileGraphSha256,
     restoreOutputSha256: $restoreOutputSha256,
     buildOutputSha256: $buildOutputSha256,
     lockSha256: $lockSha256,
+    lockSizeBytes: $lockSizeBytes,
     assetsSha256: $assetsSha256,
-    artifact: {path: $artifactPath, sha256: $artifactSha256, sizeBytes: $artifactSizeBytes},
+    artifact: {
+      path: $artifactPath,
+      kind: "native_compile_check_dependency_dll",
+      scope: "Native.CompileCheck_dependency_only",
+      sha256: $artifactSha256,
+      sizeBytes: $artifactSizeBytes,
+      fullMauiArtifact: false
+    },
+    phaseResults: {
+      authorityIntake: {status: "pass"},
+      lockedRestore: {status: "pass"},
+      ownedCompileGraph: {status: "pass"},
+      packageCompileGraph: {status: "pass"},
+      serializedNativeCompile: {status: "pass", warnings: 0, errors: 0}
+    },
     proofScope: "Native.CompileCheck_dependency_only",
     fullMauiBuild: false,
     coreDataLangContentVerified: false,

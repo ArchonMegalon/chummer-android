@@ -20,6 +20,7 @@ RUNNER = REPO / "scripts/run_internal_phone_beta_bounded.py"
 RECEIPT_VERIFIER = REPO / "scripts/verify_internal_phone_beta_compile_receipt.py"
 BUILD = REPO / "scripts/build-internal-phone-beta-native-compile.sh"
 WORKFLOW = REPO / ".github/workflows/internal-phone-beta-package-compile.yml"
+AUTHORITY_MANIFEST = REPO / "eng/internal-phone-beta-package-authority.json"
 
 
 def load_module(path: Path, name: str):
@@ -58,6 +59,8 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
         self.assertNotIn('>"$build_log"', text)
         self.assertIn("persist_evidence", text)
         self.assertIn("verify_internal_phone_beta_compile_receipt.py", text)
+        for field in self.receipt.PASS_ALLOWED_KEYS:
+            self.assertIn(f"{field}:", text, field)
 
     def test_source_sibling_inputs_are_rejected_not_forwarded(self) -> None:
         text = BUILD.read_text(encoding="utf-8")
@@ -200,12 +203,107 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
         receipt = root / "compile-receipt.json"
         evidence = Path(f"{receipt}.evidence")
         evidence.mkdir(mode=0o700)
+        evidence_payloads = {
+            "authority-intake.log": json.dumps({
+                "authorityClass": self.receipt.AUTHORITY_CLASS,
+                "contractName": "chummer.android.internal-phone-beta-package-authority/v1",
+                "doesNotAssert": [
+                    "api36_device_execution", "google_play_upload", "public_release_readiness",
+                    "publication_authority", "tablet_readiness",
+                ],
+                "ownerPackagePinCount": 7,
+                "packagePinCount": 6,
+                "publicationAuthorized": False,
+                "receiptSha256": self.receipt.AUTHORITY_RECEIPT_SHA256,
+                "status": "pass",
+            }, sort_keys=True) + "\n",
+            "restore.log": "Restored compile-check dependencies.\n",
+            "owned-compile-graph.log": json.dumps({
+                "compileProject": str(
+                    root / "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj"
+                ),
+                "compiledOwnedSourceCount": 210,
+                "generatedProjectReferenceCount": 3,
+                "issues": [],
+                "repoRoot": str(root),
+                "schema": "chummer.android.native-compile-graph/v1",
+                "status": "pass",
+                "workspaceRoot": str(root.parent),
+            }, sort_keys=True) + "\n",
+            "compile-graph.json": json.dumps({
+                "chummerPackageCount": 14,
+                "contractName": "chummer.android.internal-phone-beta-compile-graph/v1",
+                "dependencyMode": "locked_package_no_siblings",
+                "doesNotAssert": ["api36_device_execution", "public_release_readiness"],
+                "projectCount": 3,
+                "projectLibraries": [
+                    "Chummer.Desktop.Runtime/1.0.0", "Chummer.Presentation/1.0.0",
+                ],
+                "publicationAuthorized": False,
+                "status": "pass",
+            }, sort_keys=True) + "\n",
+            "build.log": "Build succeeded.\n    0 Warning(s)\n    0 Error(s)\n",
+        }
+        for name, text in evidence_payloads.items():
+            (evidence / name).write_text(text, encoding="utf-8")
+        (evidence / "authority-binding.json").write_bytes(AUTHORITY_MANIFEST.read_bytes())
+
+        phase_commands = {
+            "authority-intake": ["python3", "verify_internal_phone_beta_package_authority.py"],
+            "locked-restore": [
+                "dotnet", "restore", "--locked-mode", "--disable-parallel",
+                "-p:ChummerUseLocalCompatibilityTree=false",
+                "-p:ChummerUseLockedOwnerContractPackages=true",
+                "-p:RestoreLockedMode=true", "-p:RestorePackagesWithLockFile=true",
+            ],
+            "owned-compile-graph": [
+                "python3", "verify_native_compile_graph.py", "--require-assets",
+            ],
+            "package-compile-graph": [
+                "python3", "verify_internal_phone_beta_compile_graph.py",
+            ],
+            "serialized-native-compile": [
+                "dotnet", "build", "--no-restore", "--warnaserror", "-m:1",
+                "-p:BuildInParallel=false",
+                "-p:ChummerUseLocalCompatibilityTree=false",
+                "-p:ChummerUseLockedOwnerContractPackages=true",
+                "-p:RestoreLockedMode=true", "-p:RestorePackagesWithLockFile=true",
+            ],
+        }
+        journal_rows = []
+        for phase, evidence_name in self.receipt.PHASES:
+            journal_rows.extend(({
+                "command": phase_commands[phase],
+                "contractName": "chummer.android.internal-phone-beta-command-journal/v1",
+                "event": "started",
+                "phase": phase,
+                "processGroupTermination": True,
+                "publicationAuthorized": False,
+                "timeoutSeconds": 900.0,
+            }, {
+                "contractName": "chummer.android.internal-phone-beta-command-journal/v1",
+                "elapsedSeconds": 1.0,
+                "event": "finished",
+                "exitCode": 0,
+                "outputSha256": hashlib.sha256((evidence / evidence_name).read_bytes()).hexdigest(),
+                "phase": phase,
+                "processGroupTermination": True,
+                "publicationAuthorized": False,
+                "termination": {
+                    "groupAbsent": True, "sigkillSent": False, "sigtermSent": False,
+                },
+                "timedOut": False,
+            }))
+        (evidence / "command-journal.jsonl").write_text(
+            "".join(json.dumps(row, sort_keys=True) + "\n" for row in journal_rows),
+            encoding="utf-8",
+        )
+
         rows = []
         digests = {}
         sizes = {}
-        for index, name in enumerate(self.receipt.EXPECTED_EVIDENCE):
+        for name in self.receipt.EXPECTED_EVIDENCE:
             path = evidence / name
-            path.write_text(f"evidence-{index}\n", encoding="utf-8")
             digest = hashlib.sha256(path.read_bytes()).hexdigest()
             size = path.stat().st_size
             rows.append({"path": name, "sha256": digest, "sizeBytes": size})
@@ -213,18 +311,64 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             sizes[name] = size
         payload = {
             "contractName": self.receipt.CONTRACT,
+            "schema": self.receipt.CONTRACT,
             "status": "pass",
             "authorityClass": self.receipt.AUTHORITY_CLASS,
             "publicationAuthorized": False,
             "proofScope": self.receipt.PROOF_SCOPE,
+            "dependencyMode": "locked_package_no_siblings",
+            "packageOnly": True,
+            "restoreLockedMode": True,
+            "sourceCheckoutsPresent": False,
+            "siblingsAllowed": False,
+            "serializedBuild": True,
+            "sdkVersion": self.receipt.CONSUMER_SDK_VERSION,
+            "producerSdkVersion": self.receipt.PRODUCER_SDK_VERSION,
+            "androidCommit": "a" * 40,
+            "androidTree": "b" * 40,
+            "androidWorktreeClean": True,
+            "presentationCommit": self.receipt.PRESENTATION_COMMIT,
+            "presentationTree": self.receipt.PRESENTATION_TREE,
+            "authorityReceiptSha256": self.receipt.AUTHORITY_RECEIPT_SHA256,
+            "authorityJournalSha256": self.receipt.AUTHORITY_JOURNAL_SHA256,
+            "packageAuthoritySha256": self.receipt.PACKAGE_AUTHORITY_SHA256,
+            "desktopRuntimeLockSha256": self.receipt.DESKTOP_RUNTIME_LOCK_SHA256,
             "evidenceDirectory": str(evidence),
             "evidence": rows,
+            "evidenceBindings": {
+                row["path"]: {"sha256": row["sha256"], "sizeBytes": row["sizeBytes"]}
+                for row in rows
+            },
             "authorityBindingSha256": digests["authority-binding.json"],
             "restoreOutputSha256": digests["restore.log"],
             "compileGraphSha256": digests["compile-graph.json"],
             "buildOutputSha256": digests["build.log"],
             "journalSha256": digests["command-journal.jsonl"],
             "journalSizeBytes": sizes["command-journal.jsonl"],
+            "lockSha256": self.receipt.ANDROID_LOCK_SHA256,
+            "lockSizeBytes": self.receipt.ANDROID_LOCK_SIZE,
+            "assetsSha256": "c" * 64,
+            "artifact": {
+                "path": (
+                    "tests/Chummer.Android.Native.CompileCheck/bin/Release/net10.0/"
+                    "Chummer.Android.Native.CompileCheck.dll"
+                ),
+                "kind": "native_compile_check_dependency_dll",
+                "scope": self.receipt.PROOF_SCOPE,
+                "sha256": "d" * 64,
+                "sizeBytes": 123,
+                "fullMauiArtifact": False,
+            },
+            "phaseResults": copy.deepcopy(self.receipt.EXPECTED_PHASE_RESULTS),
+            "executionBounds": {
+                "perCommandSeconds": 900,
+                "totalSeconds": 3600,
+                "processGroupTermination": True,
+            },
+            "fullMauiBuild": False,
+            "coreDataLangContentVerified": False,
+            "laterDeviceGateRequirements": list(self.receipt.LATER_DEVICE_REQUIREMENTS),
+            "doesNotAssert": list(self.receipt.PASS_DOES_NOT_ASSERT),
         }
         receipt.write_text(json.dumps(payload), encoding="utf-8")
         return receipt, evidence, payload
@@ -251,12 +395,207 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
         receipt.write_text(json.dumps(payload), encoding="utf-8")
         return receipt, evidence, payload
 
+    def refresh_evidence_binding(
+        self,
+        receipt: Path,
+        evidence: Path,
+        payload: dict[str, object],
+        name: str,
+        phase: str | None = None,
+    ) -> None:
+        top_level = {
+            "authority-binding.json": "authorityBindingSha256",
+            "restore.log": "restoreOutputSha256",
+            "compile-graph.json": "compileGraphSha256",
+            "build.log": "buildOutputSha256",
+            "command-journal.jsonl": "journalSha256",
+        }
+
+        def bind(bound_name: str) -> str:
+            path = evidence / bound_name
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            size = path.stat().st_size
+            row = next(row for row in payload["evidence"] if row["path"] == bound_name)
+            row.update({"sha256": digest, "sizeBytes": size})
+            payload["evidenceBindings"][bound_name] = {
+                "sha256": digest,
+                "sizeBytes": size,
+            }
+            if bound_name in top_level:
+                payload[top_level[bound_name]] = digest
+            if bound_name == "command-journal.jsonl":
+                payload["journalSizeBytes"] = size
+            return digest
+
+        digest = bind(name)
+        if phase is not None:
+            journal = evidence / "command-journal.jsonl"
+            rows = [json.loads(line) for line in journal.read_text(encoding="utf-8").splitlines()]
+            finished = next(
+                row for row in rows
+                if row["phase"] == phase and row["event"] == "finished"
+            )
+            finished["outputSha256"] = digest
+            journal.write_text(
+                "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows),
+                encoding="utf-8",
+            )
+            bind("command-journal.jsonl")
+        receipt.write_text(json.dumps(payload), encoding="utf-8")
+
     def test_compile_receipt_verifies_persisted_evidence_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             receipt, _evidence, _payload = self.seed_compile_receipt(Path(temporary))
             result = self.receipt.verify_receipt(receipt)
             self.assertEqual("pass", result["status"])
             self.assertEqual(7, len(result["evidence"]))
+
+    def test_pass_receipt_rejects_every_missing_authoritative_field(self) -> None:
+        for field in sorted(self.receipt.PASS_ALLOWED_KEYS):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary:
+                receipt, _evidence, payload = self.seed_compile_receipt(Path(temporary))
+                payload.pop(field)
+                receipt.write_text(json.dumps(payload), encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    self.receipt.verify_receipt(receipt)
+
+    def test_pass_receipt_rejects_wrong_values_in_every_authority_group(self) -> None:
+        cases = (
+            ("schema", "schema", "forged/v1"),
+            ("android", "androidWorktreeClean", False),
+            ("lock", "lockSha256", "0" * 64),
+            ("presentation", "presentationCommit", "0" * 40),
+            ("w41-receipt", "authorityReceiptSha256", "0" * 64),
+            ("w41-authority", "packageAuthoritySha256", "0" * 64),
+            ("desktop-lock", "desktopRuntimeLockSha256", "0" * 64),
+            ("producer-sdk", "producerSdkVersion", "10.0.111"),
+            ("consumer-sdk", "sdkVersion", "10.0.103"),
+            ("dependency", "siblingsAllowed", True),
+            ("serialization", "serializedBuild", False),
+            ("phase-results", "phaseResults", {}),
+            ("bounds", "executionBounds", {"perCommandSeconds": 0}),
+            ("evidence", "evidenceBindings", {}),
+            ("artifact", "artifact", {"path": "forged"}),
+            ("maui-boundary", "fullMauiBuild", True),
+            ("non-claims", "doesNotAssert", []),
+        )
+        for label, field, value in cases:
+            with self.subTest(group=label), tempfile.TemporaryDirectory() as temporary:
+                receipt, _evidence, payload = self.seed_compile_receipt(Path(temporary))
+                payload[field] = value
+                receipt.write_text(json.dumps(payload), encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    self.receipt.verify_receipt(receipt)
+
+    def test_pass_receipt_binds_current_clean_android_tree_lock_assets_and_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            proof = root / "proof"
+            proof.mkdir()
+            receipt, _evidence, payload = self.seed_compile_receipt(proof)
+            android = root / "android"
+            lock = android / "tests/Chummer.Android.Native.CompileCheck/packages.lock.json"
+            assets = android / "tests/Chummer.Android.Native.CompileCheck/obj/project.assets.json"
+            artifact = (
+                android
+                / "tests/Chummer.Android.Native.CompileCheck/bin/Release/net10.0/"
+                / "Chummer.Android.Native.CompileCheck.dll"
+            )
+            for path in (lock, assets, artifact):
+                path.parent.mkdir(parents=True, exist_ok=True)
+            lock.write_bytes(
+                (REPO / "tests/Chummer.Android.Native.CompileCheck/packages.lock.json").read_bytes()
+            )
+            assets.write_bytes(b"locked-assets\n")
+            artifact.write_bytes(b"compile-only-artifact\n")
+            subprocess.run(["git", "init", "-q", str(android)], check=True)
+            subprocess.run(["git", "-C", str(android), "add", "."], check=True)
+            subprocess.run([
+                "git", "-C", str(android), "-c", "user.name=W5 test",
+                "-c", "user.email=w5@example.invalid", "commit", "-q", "-m", "fixture",
+            ], check=True)
+            payload["androidCommit"] = subprocess.run(
+                ["git", "-C", str(android), "rev-parse", "HEAD"],
+                check=True, capture_output=True, text=True,
+            ).stdout.strip()
+            payload["androidTree"] = subprocess.run(
+                ["git", "-C", str(android), "rev-parse", "HEAD^{tree}"],
+                check=True, capture_output=True, text=True,
+            ).stdout.strip()
+            payload["assetsSha256"] = hashlib.sha256(assets.read_bytes()).hexdigest()
+            payload["artifact"]["sha256"] = hashlib.sha256(artifact.read_bytes()).hexdigest()
+            payload["artifact"]["sizeBytes"] = artifact.stat().st_size
+            receipt.write_text(json.dumps(payload), encoding="utf-8")
+            self.assertEqual(
+                "pass",
+                self.receipt.verify_receipt(receipt, android_root=android)["status"],
+            )
+
+            payload["androidTree"] = "f" * 40
+            receipt.write_text(json.dumps(payload), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "clean commit/tree mismatch"):
+                self.receipt.verify_receipt(receipt, android_root=android)
+
+    def test_receipt_rejects_extra_and_duplicate_json_keys(self) -> None:
+        for claim in ("publicReleaseReady", "googlePlayUploadAuthorized"):
+            with self.subTest(claim=claim), tempfile.TemporaryDirectory() as temporary:
+                receipt, _evidence, payload = self.seed_compile_receipt(Path(temporary))
+                payload[claim] = True
+                receipt.write_text(json.dumps(payload), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "keys mismatch"):
+                    self.receipt.verify_receipt(receipt)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, _evidence, _payload = self.seed_compile_receipt(Path(temporary))
+            text = receipt.read_text(encoding="utf-8")
+            text = text.replace('"status": "pass"', '"status": "pass", "status": "pass"', 1)
+            receipt.write_text(text, encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "duplicate JSON key: status"):
+                self.receipt.verify_receipt(receipt)
+
+    def test_relevant_evidence_json_rejects_extra_and_duplicate_keys(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, evidence, payload = self.seed_compile_receipt(Path(temporary))
+            graph = json.loads((evidence / "compile-graph.json").read_text(encoding="utf-8"))
+            graph["publicReleaseReady"] = True
+            (evidence / "compile-graph.json").write_text(json.dumps(graph), encoding="utf-8")
+            self.refresh_evidence_binding(receipt, evidence, payload, "compile-graph.json")
+            with self.assertRaisesRegex(ValueError, "keys mismatch"):
+                self.receipt.verify_receipt(receipt)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, evidence, payload = self.seed_compile_receipt(Path(temporary))
+            (evidence / "compile-graph.json").write_text(
+                '{"status":"pass","status":"pass"}\n', encoding="utf-8"
+            )
+            self.refresh_evidence_binding(receipt, evidence, payload, "compile-graph.json")
+            with self.assertRaisesRegex(ValueError, "duplicate JSON key: status"):
+                self.receipt.verify_receipt(receipt)
+
+    def test_pass_phase_evidence_rejects_warning_and_journal_bound_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, evidence, payload = self.seed_compile_receipt(Path(temporary))
+            (evidence / "build.log").write_text(
+                "Build succeeded.\n    1 Warning(s)\n    0 Error(s)\n", encoding="utf-8"
+            )
+            self.refresh_evidence_binding(
+                receipt, evidence, payload, "build.log", "serialized-native-compile"
+            )
+            with self.assertRaisesRegex(ValueError, "warnings=0/errors=0"):
+                self.receipt.verify_receipt(receipt)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, evidence, payload = self.seed_compile_receipt(Path(temporary))
+            journal = evidence / "command-journal.jsonl"
+            rows = [json.loads(line) for line in journal.read_text(encoding="utf-8").splitlines()]
+            rows[2]["timeoutSeconds"] = 901.0
+            journal.write_text(
+                "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows),
+                encoding="utf-8",
+            )
+            self.refresh_evidence_binding(receipt, evidence, payload, "command-journal.jsonl")
+            with self.assertRaisesRegex(ValueError, "phase facts mismatch"):
+                self.receipt.verify_receipt(receipt)
 
     def test_real_blocked_receipt_shape_cross_binds_all_available_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -267,7 +606,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             self.assertEqual("blocked", result["verifiedReceiptStatus"])
             self.assertEqual(7, len(result["evidence"]))
 
-    def test_blocked_receipt_rejects_tamper_missing_and_forged_status(self) -> None:
+    def test_mutated_f17c_blocked_shape_rejects_tamper_missing_and_forged_pass(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             receipt, evidence, payload = self.seed_blocked_compile_receipt(
                 Path(temporary)
@@ -310,6 +649,16 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
                     payload[field] = value
                 receipt.write_text(json.dumps(payload), encoding="utf-8")
                 with self.assertRaisesRegex(ValueError, message):
+                    self.receipt.verify_receipt(receipt)
+
+        for claim in ("publicReleaseReady", "googlePlayUploadAuthorized"):
+            with self.subTest(claim=claim), tempfile.TemporaryDirectory() as temporary:
+                receipt, _evidence, payload = self.seed_blocked_compile_receipt(
+                    Path(temporary)
+                )
+                payload[claim] = True
+                receipt.write_text(json.dumps(payload), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "keys mismatch"):
                     self.receipt.verify_receipt(receipt)
 
     def test_build_failure_persists_a_verifiable_blocked_receipt(self) -> None:
