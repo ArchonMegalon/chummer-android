@@ -14,8 +14,8 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 478,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 547,
-      "missing": 918,
+      "implemented_pending_emulator": 536,
+      "missing": 929,
       "not_applicable_non_mutating": 478,
       "partial_create_only": 106,
       "partial_exact_saved_data": 180
@@ -574,7 +574,7 @@
       {
         "path": "src/Chummer.Android/Native/CreationPrerequisitePage.cs",
         "exists": true,
-        "sha256": "f13ed02b2f517ac5c85988da51d28e6abeb0015dc0940a811b8580b51accd653"
+        "sha256": "383572dd3775d5238f1ed0261caf2bd5a5450180eef3fb5d7f7dfbe8217ba13b"
       },
       {
         "path": "src/Chummer.Android/Native/CreationPriorityCategoryPage.cs",
@@ -609,7 +609,7 @@
       {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
-        "sha256": "8c492bc78ce7728a34cb28d71152ee874f568056b49bbe2bb782c577d68b30f9"
+        "sha256": "f6e61a78b5399ae1d1c262ca911a728418b99cb889f608b9d54305c0c764cd0b"
       },
       {
         "path": "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
@@ -658,13 +658,13 @@
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
-        "exists": false,
-        "sha256": null
+        "exists": true,
+        "sha256": "54f9b9e899e6e32f09034400824b605536c074ac883852a8ed2f28ab6d1139b9"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs",
-        "exists": false,
-        "sha256": null
+        "exists": true,
+        "sha256": "b9bdb631b2217389d9373f9b7d6eca72636d273c87f6563a8e351ba5aff85fcb"
       },
       {
         "path": "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx",
@@ -739,7 +739,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "b50cc288773f7215e8ae1bf4ee4197f2c32805a23ceaf7e9ed9c7bac5429e64d"
+        "sha256": "e3e74ce29c4196df1b5f5796f61f75c43f234233d00fe3eb59ecfe4f823be32c"
       },
       {
         "path": "scripts/run-api36-editing-e2e-ci.sh",
@@ -759,12 +759,12 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "303a4e0b23d689918496f1b20b0cf46330342f49411fbe7c5d65f979a6ef435e"
+        "sha256": "4c250a53cb52d66326e5526e256a67acd87707c638ddea7adbbaf9dc16c729e8"
       },
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "8f58e4f0bbcd3b63d4a8dd8b1668d9b95f1f5563b284aa4a03c8b33bbd7cebdc"
+        "sha256": "8bd621de6983657d768ce1fb372ce803939731f27414de1915f240c069cd3e83"
       },
       {
         "path": "tests/test_sr5_contextual_wizard_scope.py",
@@ -784,7 +784,7 @@
       {
         "path": "tests/run_api36_editing_e2e.py",
         "exists": true,
-        "sha256": "f34a6a36564751dc82ed1d455333491b0c70748601c0befcd143520853f97fbe"
+        "sha256": "71ac359be01b53b775dab2f0ab83e4e6c052a05a28b2fb21dc78ea7bf6219a78"
       },
       {
         "path": "tests/run_api36_career_active_skill_advance_e2e.py",
@@ -1204,7 +1204,7 @@
       {
         "path": "tests/run_api36_creation_prerequisite_e2e.py",
         "exists": true,
-        "sha256": "042131bb977e7c8872484bfbf3168dff8cce4ccf139cb5c5154e237fb2aa3d68"
+        "sha256": "0d1830ab7c72e10610e0e29920e0b640ae38a3bf78f0d4619c3859cd928986db"
       },
       {
         "path": "tests/fixtures/career-condition-monitor-e2e.chum5",
@@ -2219,7 +2219,7 @@
       {
         "path": "chummer-core-engine/Chummer.Application/Characters/ICharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "7adcbe6a2a0522ca85146148296e2fd2cc5b6be57aca4ee9bb8618886ef165b7"
+        "sha256": "5dc99ca6b3aa0d4d124b2411e9c1caaa04467c39658067ee31c58747b24a51a5"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterFileService.cs",
@@ -2229,17 +2229,17 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/CharacterSectionService.cs",
         "exists": true,
-        "sha256": "538300dad3365ab7848e356905afdeec6127953441f1a0600970613d5c05b087"
+        "sha256": "d1727b57898c1d4718dc76e963f92d1014f4f8cb070d6f54840959dffb1f1c4a"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Workspaces/FileWorkspaceStore.cs",
         "exists": true,
-        "sha256": "cf67cffb9bc7c35146b01d22f22595f5ee77a4b84b1347cfe61da5538e5aa00c"
+        "sha256": "d2a77c80c153b14a99058bd428d600b90c7284ed2a8d9c5da0ec7f3748bb7e95"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "6373a8d89f02c68f368b6f2c9cec6916e5f3bae064f9bc038e7531205c99f7ce"
+        "sha256": "696af5fdce6594629d224a4f462d96445eae90ea594ab59586fc86748490ce58"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -2259,7 +2259,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.WorkspaceMutations.cs",
         "exists": true,
-        "sha256": "b5686400b4f3424e6f607bcd736834596805efb3d99a72767527f8fa4b33672c"
+        "sha256": "5d3f4156c6b03e0168ca3c08c6428e871a2e0dac452914809a375100b578accc"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerReputationEditRequest.cs",
@@ -2309,7 +2309,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerWeaponFireRequest.cs",
         "exists": true,
-        "sha256": "387f65d88f099bb83cf74b7faac0cd13630f999b9a22abf9257fd902283bc874"
+        "sha256": "8d60cba9a1ac538cf20027a64a1b9bd032aee3b34ca5a6f85025ca7c4c7b8b6b"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CareerActiveSkillAdvanceEditRequest.cs",
@@ -2479,7 +2479,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewState.cs",
         "exists": true,
-        "sha256": "3cdf7425e1c0dfabbe7ee1bd4e345e19c18b4b4fcc91b996d151f7fa3cdf7c47"
+        "sha256": "25344339580baa08ffaa7434c1e9d81f0e08642d04abb2130e77294a2980ad18"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/CharacterOverviewPresenter.Persistence.cs",
@@ -2489,7 +2489,7 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ICharacterOverviewPresenter.cs",
         "exists": true,
-        "sha256": "04a00b27697c3757a88e76e2fdd6d73a16e3913e5a2ff2a10f33f67ad2bfaeb0"
+        "sha256": "7c7d62245f7352d36d912fe466faacfe09836e7cb0fc954b82373d2b36e7828b"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/ConditionMonitorEditRequest.cs",
@@ -2504,12 +2504,12 @@
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DialogCoordinator.cs",
         "exists": true,
-        "sha256": "12bf0a51a914a0f85653d8e350ed34170b8eaf041964301cfee91c2f9e6eeea6"
+        "sha256": "acef24db637281075e68a6e6c289aed41b2d516566dbde85178700bb7bbd300c"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.cs",
         "exists": true,
-        "sha256": "69dd033f37ec517c6f7e139f72d82decaf631ac5c4a6c776c79bd569538f7a18"
+        "sha256": "3f9c41de15d3d807c00e74edd79c3d3878d2f9f2786e45bcdd8dbdc125108120"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/DesktopDialogFactory.CharacterSettings.cs",
@@ -2560,7 +2560,7 @@
         "sr5-career/playtime"
       ],
       "recognitionStatus": "recognized",
-      "sourceAuthorityStatus": "blocked",
+      "sourceAuthorityStatus": "ready",
       "executionStatus": "not_executed",
       "matrixJourney": null,
       "releaseClaim": false,
@@ -2615,10 +2615,7 @@
           "chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs"
         ]
       },
-      "blockers": [
-        "source-missing:chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
-        "source-missing:chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs"
-      ]
+      "blockers": []
     },
     "contextualMutationJourneyRecognition": {
       "journeyId": "sr5-downtime-playtime-typed-transactions",
@@ -2642,19 +2639,16 @@
         "playtime.initiative-run-state"
       ],
       "recognitionStatus": "recognized",
-      "sourceAuthorityStatus": "blocked",
+      "sourceAuthorityStatus": "ready",
       "executionStatus": "not_executed",
       "matrixJourney": null,
       "releaseClaim": false,
       "completionCountContribution": 0,
-      "blockers": [
-        "source-missing:chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
-        "source-missing:chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs"
-      ]
+      "blockers": []
     },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "d67d18655f65ec6ad1617c42a0f850e675d2c0958ef792bb35c715be4cb7c837"
+      "sha256": "8dd83c76071e8b7eac748b700f5aae4d67c3479289278d31b8bf1fb9905444f7"
     }
   },
   "coverageByFamily": {
@@ -2724,7 +2718,7 @@
     "character_settings": {
       "rowCount": 209,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 17,
+      "phoneMissingCount": 28,
       "tabletMissingCount": 197,
       "completionProvenCount": 12
     },
@@ -12994,7 +12988,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterignorerules",
@@ -13057,7 +13051,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactersetting",
@@ -13177,7 +13171,7 @@
       "mutationFamily": "character_settings",
       "operation": "commit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method",
         "surface": "NativeDialogPage",
         "automationId": "dialog-action-create-character",
@@ -13851,7 +13845,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterpossessionmethod",
@@ -13915,7 +13909,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterpossessionbased",
@@ -13974,7 +13968,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharacterforce",
@@ -14038,7 +14032,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactermetatypecategory",
@@ -14102,7 +14096,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactermetavariant",
@@ -14170,7 +14164,7 @@
       "mutationFamily": "character_settings",
       "operation": "select_or_mutate_collection",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactermetatype",
@@ -14348,7 +14342,7 @@
       "mutationFamily": "character_settings",
       "operation": "commit",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-action-complete-new-character-workflow",
@@ -14412,7 +14406,7 @@
       "mutationFamily": "character_settings",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Home > New runner > Select Build Method > Karma > Select Metatype",
         "surface": "NativeDialogPage",
         "automationId": "dialog-field-newcharactermetatypesearch",

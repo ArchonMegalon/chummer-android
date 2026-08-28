@@ -27,12 +27,12 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ArchonMegalon/chummer6-ui
-          ref: a8a317aff534dc5fd47f2db1bc39466799021990
+          ref: 5beaccc912f914c8ff4ae262509ed4d13b84bf75
           path: chummer-presentation
           persist-credentials: false
           fetch-depth: 1
           sparse-checkout: |
-            config/android-presentation-package-authority.json
+            config/package-plane.lock.json
             Chummer.Desktop.Runtime
             Chummer.Presentation
             Chummer.Product.UnitTests
@@ -50,9 +50,8 @@ jobs:
         working-directory: chummer-android
         env:
           CHUMMER_PRESENTATION_ROOT: ${{ github.workspace }}/chummer-presentation
-          CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED: ${{ runner.temp }}/w41-input/feed
-          CHUMMER_INTERNAL_PHONE_BETA_NUGET_PACKAGES: ${{ runner.temp }}/w41-input/packages
-          CHUMMER_W41_PACKAGE_AUTHORITY_RECEIPT: ${{ runner.temp }}/w41-input/chummer-ui-w41-android-presentation-package-proof.a8a317aff.json
-          CHUMMER_W41_PACKAGE_AUTHORITY_JOURNAL: ${{ runner.temp }}/w41-input/chummer-ui-w41-android-presentation-package-proof.a8a317aff.journal.json
+          CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED: ${{ runner.temp }}/current-ui-input/packages
+          CHUMMER_INTERNAL_PHONE_BETA_NUGET_PACKAGES: ${{ runner.temp }}/current-ui-input/nuget-packages
+          CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT: ${{ runner.temp }}/current-ui-input/ui-current-authority-5beaccc9.receipt.json
           CHUMMER_INTERNAL_PHONE_BETA_BUILD_RECEIPT: ${{ runner.temp }}/internal-phone-beta-native-compile.json
         run: scripts/build-internal-phone-beta-native-compile.sh

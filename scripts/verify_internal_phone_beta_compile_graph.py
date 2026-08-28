@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail closed unless the internal native compile graph uses only W4.1 packages."""
+"""Fail closed unless the internal native compile graph uses the current package graph."""
 
 from __future__ import annotations
 
@@ -13,11 +13,7 @@ import verify_internal_phone_beta_package_authority as authority
 
 
 CONTRACT = "chummer.android.internal-phone-beta-compile-graph/v1"
-EXPECTED_CHUMMER_IDS = tuple(
-    package_id
-    for package_id, _, _, _, _ in authority.EXPECTED_PACKAGES
-    if package_id != "Chummer.Engine.GmCharacterEdits"
-)
+EXPECTED_CHUMMER_IDS = tuple(authority.EXPECTED_COMPILE_PACKAGES)
 
 
 def load_object(path: Path) -> dict[str, Any]:
@@ -73,7 +69,6 @@ def validate_compile_graph(
     }
     if project_libraries != {"Chummer.Desktop.Runtime/1.0.0", "Chummer.Presentation/1.0.0"}:
         raise ValueError("internal phone-beta assets contain a missing or sibling project library")
-    expected_rows = {row[0]: row for row in authority.EXPECTED_PACKAGES}
     chummer_libraries: dict[str, str] = {}
     for identity, metadata in libraries.items():
         if not identity.startswith("Chummer.") or not isinstance(metadata, dict) or metadata.get("type") != "package":
@@ -83,9 +78,9 @@ def validate_compile_graph(
             raise ValueError("internal phone-beta assets contain duplicate or malformed Chummer packages")
         chummer_libraries[package_id] = version
     if tuple(package_id for package_id in EXPECTED_CHUMMER_IDS if package_id in chummer_libraries) != EXPECTED_CHUMMER_IDS or set(chummer_libraries) != set(EXPECTED_CHUMMER_IDS):
-        raise ValueError("internal phone-beta assets do not contain the exact fourteen-package compile closure")
+        raise ValueError("internal phone-beta assets do not contain the exact current compile closure")
     for package_id, version in chummer_libraries.items():
-        if version != expected_rows[package_id][1]:
+        if version != authority.EXPECTED_COMPILE_PACKAGES[package_id]:
             raise ValueError(f"internal phone-beta package version drifted: {package_id}")
     dependencies = lock.get("dependencies")
     if not isinstance(dependencies, dict) or set(dependencies) != {"net10.0"}:
@@ -99,9 +94,9 @@ def validate_compile_graph(
         if package_id.startswith("Chummer.")
     }
     if set(locked_chummer) != set(EXPECTED_CHUMMER_IDS):
-        raise ValueError("internal phone-beta lock does not contain the exact fourteen-package closure")
+        raise ValueError("internal phone-beta lock does not contain the exact current compile closure")
     for package_id, row in locked_chummer.items():
-        if not isinstance(row, dict) or row.get("resolved") != expected_rows[package_id][1] or not isinstance(row.get("contentHash"), str):
+        if not isinstance(row, dict) or row.get("resolved") != authority.EXPECTED_COMPILE_PACKAGES[package_id] or not isinstance(row.get("contentHash"), str):
             raise ValueError(f"internal phone-beta lock package drifted: {package_id}")
     return {
         "contractName": CONTRACT,

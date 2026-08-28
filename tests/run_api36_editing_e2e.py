@@ -88,6 +88,10 @@ COMPONENT = re.compile(
 )
 PROCESS_ID = re.compile(r"[1-9][0-9]*")
 SHA256_TEXT = re.compile(r"[0-9a-f]{64}")
+CANONICAL_COLLECTION_ITEM_RESOURCE_ID = re.compile(
+    r"^collection-item-(?P<kind>[a-z0-9-]+)-"
+    r"(?P<item_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$"
+)
 BODY_TOTAL_DESCRIPTION = re.compile(
     r"^Body\.\s+(?:Selected\s+·\s+)?(?P<total>[0-9]+)(?:\s+·|$)"
 )
@@ -107,6 +111,16 @@ ADB_READ_ONLY_HIERARCHY_ARGUMENTS = (
     "--compressed",
     "/dev/tty",
 )
+ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS = (
+    "logcat",
+    "-d",
+    "-t",
+    "50",
+    "-s",
+    "ChummerBootstrap:I",
+    "*:S",
+)
+ADB_CREATION_BOOTSTRAP_LOGCAT_CLEAR_ARGUMENTS = ("logcat", "-c")
 ADB_PREFLIGHT_REQUIRED_CONSECUTIVE = 3
 ADB_PREFLIGHT_MAX_OBSERVATIONS = 7
 ADB_PREFLIGHT_OBSERVATION_DELAY_SECONDS = 1.0
@@ -261,6 +275,11 @@ def adb_command_retry_policy(arguments: tuple[str, ...]) -> tuple[str, str]:
         return ("read-only-retryable", "exact remote-file byte observation")
     if arguments == ("logcat", "-d", "-t", "500"):
         return ("read-only-retryable", "bounded logcat dump observation")
+    if arguments == ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS:
+        return (
+            "read-only-retryable",
+            "bounded exact-tag creation-bootstrap timing observation",
+        )
     if arguments[:1] != ("shell",):
         return (
             "non-replayable",
@@ -679,6 +698,7 @@ class Device:
     ) -> subprocess.CompletedProcess:
         adb_arguments = tuple(arguments)
         command_policy, policy_reason = adb_command_retry_policy(adb_arguments)
+        package_process_observation = adb_arguments == ("shell", "pidof", PACKAGE)
         if command_policy != "read-only-retryable" and self._mutation_blocker is not None:
             blocker = dict(self._mutation_blocker)
             suppression = RuntimeError(
@@ -712,8 +732,25 @@ class Device:
                     adb_arguments,
                     timeout=timeout,
                     text=text,
-                    check=check,
+                    # Android pidof uses exit 1 with no output for the exact,
+                    # expected observation "this package has no process".  Run
+                    # only that command unchecked so its result can be bound
+                    # below; every other command retains subprocess check=True.
+                    check=check and not package_process_observation,
                 )
+                if package_process_observation and check and result.returncode != 0:
+                    process_absent = (
+                        result.returncode == 1
+                        and not _bounded_adb_detail(result.stdout).strip()
+                        and not _bounded_adb_detail(result.stderr).strip()
+                    )
+                    if not process_absent:
+                        raise subprocess.CalledProcessError(
+                            result.returncode,
+                            result.args,
+                            output=result.stdout,
+                            stderr=result.stderr,
+                        )
                 if adb_arguments == ("get-state",):
                     observed_state = _bounded_adb_detail(result.stdout).strip()
                     if observed_state != "device":
@@ -1429,12 +1466,6 @@ class Device:
             "product-anr-process-ids.txt",
             "\n".join(process_ids) or "process id unavailable",
         )
-        for process_id in process_ids:
-            _write_launch_evidence(
-                self,
-                f"product-anr-sigquit-{process_id}.txt",
-                _safe_shell(self, "kill", "-3", process_id, timeout=15),
-            )
 
         diagnostics = (
             (
@@ -1517,20 +1548,39 @@ class Device:
         selector: str,
         *,
         timeout: int = 45,
+        scroll: bool = False,
+        max_scrolls: int = 6,
+        scroll_distance_ratio: float = 0.52,
         evidence_prefix: str = "exact-resource-tap",
         surface_name: str = "Exact resource-id control",
     ) -> None:
         """Tap one cardinality-checked resource ID without text/prefix fallback."""
-        node = self.wait_for_single_exact_resource_id(
-            selector,
-            timeout=timeout,
-            evidence_prefix=evidence_prefix,
-            surface_name=surface_name,
-        )
-        if not self.node_has_tappable_bounds(node):
+        if scroll:
+            node = self.wait_exact_resource_id_bidirectional(
+                selector,
+                timeout=timeout,
+                backward_scrolls=0,
+                forward_scrolls=max_scrolls,
+                scroll_distance_ratio=scroll_distance_ratio,
+                evidence_prefix=evidence_prefix,
+                surface_name=surface_name,
+                require_tappable=True,
+            )
+        else:
+            node = self.wait_for_single_exact_resource_id(
+                selector,
+                timeout=timeout,
+                evidence_prefix=evidence_prefix,
+                surface_name=surface_name,
+            )
+        if (
+            node.attributes.get("enabled") != "true"
+            or node.attributes.get("clickable") != "true"
+            or not self.node_has_tappable_bounds(node)
+        ):
             self.capture(f"{evidence_prefix}-bounds-invalid")
             raise RuntimeError(
-                f"{surface_name} {selector!r} has no tappable on-screen bounds"
+                f"{surface_name} {selector!r} is not enabled, clickable, and tappable"
             )
         x, y = node.center
         self.shell("input", "tap", str(x), str(y))
@@ -1661,6 +1711,30 @@ class Device:
             "after a bounded bidirectional search"
         )
 
+    def tap_exact_resource_id_bidirectional(
+        self,
+        selector: str,
+        *,
+        timeout: int = 90,
+        backward_scrolls: int = 24,
+        forward_scrolls: int = 24,
+        scroll_distance_ratio: float = 0.22,
+        evidence_prefix: str = "exact-resource-bidirectional-tap",
+        surface_name: str = "Exact resource-id control",
+    ) -> None:
+        """Tap the exact cardinality-checked node from one observed hierarchy."""
+        node = self.wait_exact_resource_id_bidirectional(
+            selector,
+            timeout=timeout,
+            backward_scrolls=backward_scrolls,
+            forward_scrolls=forward_scrolls,
+            scroll_distance_ratio=scroll_distance_ratio,
+            evidence_prefix=evidence_prefix,
+            surface_name=surface_name,
+        )
+        x, y = node.center
+        self.shell("input", "tap", str(x), str(y))
+
     def tap_bidirectional(
         self,
         selector: str,
@@ -1775,6 +1849,9 @@ class Device:
         evidence_prefix: str = "exact-resource-transition",
         source_name: str = "Exact source control",
         target_name: str = "Exact target control",
+        target_scroll_surface: str | None = None,
+        max_target_scrolls: int = 0,
+        target_scroll_distance_ratio: float = 0.22,
     ) -> UiNode:
         """Open a route without depending on localized visible text.
 
@@ -1783,6 +1860,7 @@ class Device:
         or stale/non-tappable source fails closed.
         """
         deadline = time.monotonic() + timeout
+        target_scrolls = 0
         while time.monotonic() < deadline:
             nodes = self.hierarchy()
             if not nodes:
@@ -1801,6 +1879,41 @@ class Device:
                 raise RuntimeError(
                     f"{target_name} {target!r} has cardinality {len(targets)}; expected one"
                 )
+            scroll_surfaces = (
+                [
+                    node
+                    for node in nodes
+                    if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                    == target_scroll_surface
+                ]
+                if target_scroll_surface is not None
+                else []
+            )
+            if len(scroll_surfaces) > 1:
+                self.capture(f"{evidence_prefix}-scroll-surface-cardinality-invalid")
+                raise RuntimeError(
+                    f"Target scroll surface {target_scroll_surface!r} has cardinality "
+                    f"{len(scroll_surfaces)}; expected at most one"
+                )
+            if len(scroll_surfaces) == 1:
+                surface = scroll_surfaces[0]
+                if not self.node_has_tappable_bounds(surface):
+                    self.capture(f"{evidence_prefix}-scroll-surface-bounds-invalid")
+                    raise RuntimeError(
+                        f"Target scroll surface {target_scroll_surface!r} did not expose "
+                        "exact on-screen bounds"
+                    )
+                if target_scrolls >= max_target_scrolls:
+                    break
+                left, _, right, _ = surface.bounds
+                display_width, _ = self.display_size()
+                self.swipe_up(
+                    x_ratio=((left + right) / 2) / display_width,
+                    distance_ratio=target_scroll_distance_ratio,
+                )
+                target_scrolls += 1
+                time.sleep(0.75)
+                continue
             sources = [
                 node
                 for node in nodes
@@ -2560,21 +2673,53 @@ def wait_for_phone_shell_destination_snapshot(
     timeout: int,
     evidence_prefix: str,
     selected_label: str | None = None,
+    required_route_resource_id: str | None = None,
 ) -> tuple[list[UiNode], tuple[tuple[str, UiNode], ...]]:
     deadline = time.monotonic() + timeout
     last_error = "native phone bottom bar was absent"
     previous_signature: tuple[tuple[object, ...], ...] | None = None
     while time.monotonic() < deadline:
         binding_failed = False
+        hierarchy = device.hierarchy()
+        route_signature: tuple[object, ...] = ()
+        if required_route_resource_id is not None:
+            route_matches = [
+                node
+                for node in hierarchy
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == required_route_resource_id
+            ]
+            if len(route_matches) > 1:
+                device.capture(f"{evidence_prefix}-route-cardinality-invalid")
+                raise RuntimeError(
+                    f"Required phone route {required_route_resource_id!r} has "
+                    f"cardinality {len(route_matches)}; expected one"
+                )
+            if not route_matches:
+                last_error = (
+                    f"required phone route {required_route_resource_id!r} was absent"
+                )
+                previous_signature = None
+                time.sleep(0.75)
+                continue
+            route = route_matches[0]
+            route_signature = (
+                required_route_resource_id,
+                route.attributes.get("class", ""),
+                route.attributes.get("enabled", ""),
+                route.attributes.get("bounds", ""),
+            )
         try:
-            hierarchy = device.hierarchy()
             destinations = bind_phone_shell_destinations(device, hierarchy)
             selected = [
                 PHONE_SHELL_DESTINATION_MAPPING[resource_id]
                 for resource_id, node in destinations
                 if node.attributes.get("selected") == "true"
             ]
-            signature = _phone_shell_destination_signature(destinations)
+            signature = (
+                *_phone_shell_destination_signature(destinations),
+                route_signature,
+            )
             if selected_label is not None and selected != [selected_label]:
                 last_error = (
                     f"selected destination remained {selected!r}; "
@@ -2621,6 +2766,7 @@ def record_phone_ui_locale_evidence(
     *,
     evidence_prefix: str,
     timeout: int = 45,
+    required_route_resource_id: str | None = None,
 ) -> dict[str, object]:
     """Bind system locale and native no-ID shell labels in one durable receipt."""
     binding = detect_phone_ui_locale(device)
@@ -2628,6 +2774,7 @@ def record_phone_ui_locale_evidence(
         device,
         timeout=timeout,
         evidence_prefix=evidence_prefix,
+        required_route_resource_id=required_route_resource_id,
     )
     observed_labels = tuple(
         node.attributes.get("content-desc", "") for _, node in destinations
@@ -2647,6 +2794,8 @@ def record_phone_ui_locale_evidence(
         "destinationResourceIds": list(PHONE_SHELL_DESTINATION_IDS),
         "nativeResourceIdPosture": "empty-pinned-maui-api36",
     }
+    if required_route_resource_id is not None:
+        receipt["boundRouteResourceId"] = required_route_resource_id
     _write_new_json_receipt(
         device.evidence / f"{evidence_prefix}-phone-ui-locale.json",
         receipt,
@@ -2684,7 +2833,13 @@ def tap_phone_destination(
     )
     if selected_before_tap == resource_id:
         return
-    fresh_destinations = bind_phone_shell_destinations(device)
+    selected_label_before_tap = PHONE_SHELL_DESTINATION_MAPPING[selected_before_tap]
+    fresh_destinations = wait_for_phone_shell_destinations(
+        device,
+        timeout=timeout,
+        evidence_prefix=f"{resource_id}-tap-reacquire",
+        selected_label=selected_label_before_tap,
+    )
     if _phone_shell_destination_signature(fresh_destinations) != (
         _phone_shell_destination_signature(destinations)
     ):
@@ -2921,11 +3076,11 @@ def return_to_phone_runner_root(
     """Unwind a preserved Shell Build stack and prove its exact root.
 
     Selecting an already-selected Shell destination does not pop MAUI's nested
-    navigation stack. Require the immutable BuildPage marker and its fixed Save
-    toolbar before resetting its preserved viewport, then require the lifecycle
-    route marker. Otherwise activate only the platform's exact ``Navigate up``
-    control. This keeps recovery bounded and prevents a stale collection editor
-    from being mistaken for the Build root.
+    navigation stack. Require the immutable BuildPage marker, its fixed Save
+    toolbar, and the exact lifecycle route marker. Reset the preserved viewport
+    only when that exact route marker is clipped. Otherwise activate only the
+    platform's exact ``Navigate up`` control. This keeps recovery bounded and
+    prevents a stale collection editor from being mistaken for the Build root.
     """
     deadline = time.monotonic() + timeout
     back_steps = 0
@@ -2980,32 +3135,17 @@ def return_to_phone_runner_root(
             and device.node_has_tappable_bounds(toolbar_matches[0])
         )
         if root_authority:
-            if route is not None and viewport_reset:
-                expected_label = (
-                    "CREATION RUNNER"
-                    if route.attributes["resource-id"].endswith("phone-runner-create")
-                    else "CAREER RUNNER"
-                )
-                if (
-                    route.attributes.get("class") != "android.widget.TextView"
-                    or route.attributes.get("enabled") != "true"
-                    or route.attributes.get("clickable") != "false"
-                    or route.attributes.get("focusable") != "false"
-                    or route.attributes.get("text") != expected_label
-                    or not device.node_has_tappable_bounds(route)
-                ):
-                    device.capture("phone-runner-route-structure-invalid")
-                    raise RuntimeError(
-                        "Exact phone runner lifecycle marker was not visible with its "
-                        "pinned native role and label after the root viewport reset"
-                    )
+            if route is not None and device.node_has_tappable_bounds(route):
                 return route
             if not viewport_reset:
                 # The lifecycle marker is the first child of BuildPage's
                 # ScrollView and can be clipped by a preserved deep offset.
-                # The exact immutable page plus root-only toolbar authorizes the
-                # reset; the route marker must then become visible before return.
-                reset_scroll_to_top(device, swipes=48)
+                # Only an exact immutable page plus root-only toolbar authorizes
+                # the reset; the route marker must then become visible before return.
+                rewind_surface_to_stable_start(
+                    device,
+                    evidence_prefix="phone-runner-root",
+                )
                 viewport_reset = True
                 continue
             # Never treat the toolbar alone as final route authority.
@@ -3118,11 +3258,469 @@ def tap_collection_item(device: Device, selector: str) -> None:
     )
 
 
+COLLECTION_ROUTE_SCAN_MAX_SCROLLS = 32
+COLLECTION_ROUTE_SCAN_DISTANCE_RATIO = 0.52
+COLLECTION_ROUTE_SCAN_STABLE_REPEATS = 2
+
+
+@dataclass(frozen=True)
+class CollectionRouteInventory:
+    route_viewports: dict[str, int]
+    bottom_movement_swipes: int
+
+
+def rewind_surface_to_stable_start(
+    device: Device,
+    *,
+    evidence_prefix: str,
+) -> int:
+    """Prove a scroll surface's start through fresh post-gesture snapshots."""
+    previous_sha256: str | None = None
+    unchanged = 0
+    swipes = 0
+    consecutive_empty_reads = 0
+    while swipes <= COLLECTION_ROUTE_SCAN_MAX_SCROLLS:
+        nodes = device.hierarchy()
+        if not nodes:
+            consecutive_empty_reads += 1
+            if consecutive_empty_reads > 3:
+                device.capture(f"{evidence_prefix}-stable-start-empty-hierarchy")
+                raise RuntimeError(
+                    "Collection route stable-start proof exhausted empty hierarchies"
+                )
+            time.sleep(0.75)
+            continue
+        consecutive_empty_reads = 0
+        hierarchy_sha256 = Device._hierarchy_sha256(nodes)
+        unchanged = unchanged + 1 if hierarchy_sha256 == previous_sha256 else 0
+        previous_sha256 = hierarchy_sha256
+        if unchanged >= COLLECTION_ROUTE_SCAN_STABLE_REPEATS:
+            return swipes - COLLECTION_ROUTE_SCAN_STABLE_REPEATS
+        if swipes >= COLLECTION_ROUTE_SCAN_MAX_SCROLLS:
+            break
+        device.swipe_down(
+            x_ratio=0.5,
+            distance_ratio=COLLECTION_ROUTE_SCAN_DISTANCE_RATIO,
+        )
+        swipes += 1
+        time.sleep(0.2)
+    device.capture(f"{evidence_prefix}-stable-start-unproven")
+    raise RuntimeError(
+        "Collection route surface did not prove its stable start within the exact bound"
+    )
+
+
+def scan_collection_route_inventory(
+    device: Device,
+    *,
+    kind: str,
+    evidence_prefix: str,
+) -> CollectionRouteInventory:
+    """Inventory typed collection routes from one proven start to stable end."""
+    rewind_surface_to_stable_start(device, evidence_prefix=evidence_prefix)
+    positions: dict[str, int] = {}
+    semantics: dict[str, tuple[str, ...]] = {}
+    previous_sha256: str | None = None
+    unchanged = 0
+    swipes = 0
+    consecutive_empty_reads = 0
+    while swipes <= COLLECTION_ROUTE_SCAN_MAX_SCROLLS:
+        nodes = device.hierarchy()
+        if not nodes:
+            consecutive_empty_reads += 1
+            if consecutive_empty_reads > 3:
+                device.capture(f"{evidence_prefix}-empty-hierarchy")
+                raise RuntimeError(
+                    "Collection route inventory exhausted empty hierarchies"
+                )
+            time.sleep(0.75)
+            continue
+        consecutive_empty_reads = 0
+
+        viewport_routes: set[str] = set()
+        for node in nodes:
+            resource_id = node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+            match = CANONICAL_COLLECTION_ITEM_RESOURCE_ID.fullmatch(resource_id)
+            if match is None or match.group("kind") != kind:
+                continue
+            if resource_id in viewport_routes:
+                device.capture(f"{evidence_prefix}-route-cardinality-invalid")
+                raise RuntimeError(
+                    f"Typed {kind} collection route {resource_id!r} was duplicated in one viewport"
+                )
+            viewport_routes.add(resource_id)
+            signature = tuple(
+                node.attributes.get(key, "")
+                for key in (
+                    "resource-id",
+                    "class",
+                    "content-desc",
+                    "text",
+                    "enabled",
+                    "clickable",
+                    "focusable",
+                )
+            )
+            prior = semantics.setdefault(resource_id, signature)
+            if signature != prior:
+                device.capture(f"{evidence_prefix}-route-semantics-drift")
+                raise RuntimeError(
+                    f"Typed {kind} collection route {resource_id!r} changed semantics"
+                )
+            if (
+                node.attributes.get("enabled") != "true"
+                or node.attributes.get("clickable") != "true"
+            ):
+                device.capture(f"{evidence_prefix}-route-not-enabled")
+                raise RuntimeError(
+                    f"Typed {kind} collection route {resource_id!r} was not enabled and clickable"
+                )
+            if device.node_has_tappable_bounds(node):
+                positions.setdefault(resource_id, swipes)
+
+        hierarchy_sha256 = Device._hierarchy_sha256(nodes)
+        unchanged = unchanged + 1 if hierarchy_sha256 == previous_sha256 else 0
+        previous_sha256 = hierarchy_sha256
+        if unchanged >= COLLECTION_ROUTE_SCAN_STABLE_REPEATS:
+            return CollectionRouteInventory(
+                route_viewports=dict(positions),
+                bottom_movement_swipes=swipes - COLLECTION_ROUTE_SCAN_STABLE_REPEATS,
+            )
+        if swipes >= COLLECTION_ROUTE_SCAN_MAX_SCROLLS:
+            break
+        device.swipe_up(
+            x_ratio=0.5,
+            distance_ratio=COLLECTION_ROUTE_SCAN_DISTANCE_RATIO,
+        )
+        swipes += 1
+        time.sleep(0.2)
+    device.capture(f"{evidence_prefix}-stable-end-unproven")
+    raise RuntimeError(
+        "Collection route inventory did not prove a stable end within the exact bound"
+    )
+
+
+def tap_typed_collection_route(
+    device: Device,
+    *,
+    inventory: CollectionRouteInventory,
+    route_id: str,
+    evidence_prefix: str,
+) -> str:
+    """Restore one measured typed route, tap it, and bind its exact editor."""
+    match = CANONICAL_COLLECTION_ITEM_RESOURCE_ID.fullmatch(route_id)
+    if match is None or route_id not in inventory.route_viewports:
+        raise RuntimeError(f"Unknown scan-proven typed collection route {route_id!r}")
+    target_viewport = inventory.route_viewports[route_id]
+    reverse_swipes = inventory.bottom_movement_swipes - target_viewport
+    if reverse_swipes < 0:
+        device.capture(f"{evidence_prefix}-viewport-invalid")
+        raise RuntimeError("Typed collection route produced an invalid measured viewport")
+    for _ in range(reverse_swipes):
+        device.swipe_down(
+            x_ratio=0.5,
+            distance_ratio=COLLECTION_ROUTE_SCAN_DISTANCE_RATIO,
+        )
+        time.sleep(0.2)
+
+    nodes = device.hierarchy()
+    matches = [
+        node
+        for node in nodes
+        if node.attributes.get("resource-id", "").rsplit("/", 1)[-1] == route_id
+    ]
+    if len(matches) != 1:
+        device.capture(f"{evidence_prefix}-fresh-cardinality-invalid")
+        raise RuntimeError(
+            f"Typed collection route {route_id!r} has fresh cardinality {len(matches)}"
+        )
+    node = matches[0]
+    if (
+        node.attributes.get("enabled") != "true"
+        or node.attributes.get("clickable") != "true"
+        or not device.node_has_tappable_bounds(node)
+    ):
+        device.capture(f"{evidence_prefix}-fresh-not-tappable")
+        raise RuntimeError(f"Typed collection route {route_id!r} was not freshly tappable")
+    device.shell("input", "tap", *(str(value) for value in node.center))
+
+    editor_id = (
+        f"collection-editor-{match.group('kind')}-{match.group('item_id')}"
+    )
+    device.wait_for_single_exact_resource_id(
+        editor_id,
+        timeout=60,
+        evidence_prefix=f"{evidence_prefix}-editor",
+        surface_name="Typed collection editor route",
+    )
+    rewind_surface_to_stable_start(
+        device,
+        evidence_prefix=f"{evidence_prefix}-editor",
+    )
+    editor_nodes = device.hierarchy()
+    editor_matches = [
+        candidate
+        for candidate in editor_nodes
+        if candidate.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+        == editor_id
+    ]
+    if len(editor_matches) != 1:
+        device.capture(f"{evidence_prefix}-editor-cardinality-invalid")
+        raise RuntimeError(
+            f"Typed collection editor {editor_id!r} has cardinality {len(editor_matches)}"
+        )
+    return match.group("item_id")
+
+
 def reset_collection_editor_to_top(device: Device, profile: str) -> None:
     reset_scroll_to_top(
         device,
         x_ratio=0.82 if profile == "tablet" else 0.5,
         swipes=12,
+    )
+
+
+PHONE_BUILD_SECTION_ORDER = ("attributes", "combat", "gear", "relationships")
+PHONE_BUILD_SECTIONS = frozenset(PHONE_BUILD_SECTION_ORDER)
+PHONE_BUILD_SECTION_SCAN_MAX_SCROLLS = 32
+PHONE_BUILD_SECTION_SCAN_DISTANCE_RATIO = 0.52
+PHONE_BUILD_SECTION_SCAN_STABLE_REPEATS = 2
+PHONE_BUILD_SECTION_REACQUIRE_DISTANCE_RATIO = 0.22
+
+
+@dataclass(frozen=True)
+class PhoneBuildSectionInventory:
+    viewport_by_section: dict[str, int]
+    bottom_movement_swipes: int
+
+
+def scan_phone_build_section_inventory(device: Device) -> PhoneBuildSectionInventory:
+    """Inventory every canonical section route across one measured root traversal."""
+    positions: dict[str, int] = {}
+    semantics: dict[str, tuple[str, ...]] = {}
+    previous_hierarchy_sha256: str | None = None
+    unchanged = 0
+    swipes = 0
+    consecutive_empty_reads = 0
+    while swipes <= PHONE_BUILD_SECTION_SCAN_MAX_SCROLLS:
+        # The direct ``/dev/tty`` UIAutomator stream can replay the pre-swipe
+        # viewport on API 36.  Section inventory is scroll-dependent, so use
+        # the canonical dump-file hierarchy for every measured viewport.
+        nodes = device.hierarchy()
+        if not nodes:
+            consecutive_empty_reads += 1
+            if consecutive_empty_reads > 3:
+                device.capture("phone-build-section-inventory-empty-hierarchy")
+                raise RuntimeError(
+                    "Phone Build section inventory exhausted transient empty hierarchy reads"
+                )
+            time.sleep(0.75)
+            continue
+        consecutive_empty_reads = 0
+
+        for section in PHONE_BUILD_SECTION_ORDER:
+            selector = f"build-section-tab-{section}"
+            matches = [
+                node
+                for node in nodes
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == selector
+            ]
+            if len(matches) > 1:
+                device.capture(f"{section}-section-route-cardinality-invalid")
+                raise RuntimeError(
+                    f"{section.title()} section route {selector!r} has cardinality "
+                    f"{len(matches)} in one root viewport"
+                )
+            if len(matches) != 1:
+                continue
+            node = matches[0]
+            signature = tuple(
+                node.attributes.get(key, "")
+                for key in (
+                    "resource-id",
+                    "class",
+                    "content-desc",
+                    "text",
+                    "enabled",
+                    "clickable",
+                    "focusable",
+                )
+            )
+            prior = semantics.setdefault(section, signature)
+            if signature != prior:
+                device.capture(f"{section}-section-route-drift")
+                raise RuntimeError(
+                    f"{section.title()} section route changed semantics during root inventory"
+                )
+            if (
+                node.attributes.get("enabled") != "true"
+                or node.attributes.get("clickable") != "true"
+            ):
+                device.capture(f"{section}-section-route-not-enabled")
+                raise RuntimeError(
+                    f"{section.title()} section route was not enabled and clickable"
+                )
+            if device.node_has_tappable_bounds(node):
+                positions.setdefault(section, swipes)
+
+        hierarchy_sha256 = Device._hierarchy_sha256(nodes)
+        unchanged = (
+            unchanged + 1
+            if hierarchy_sha256 == previous_hierarchy_sha256
+            else 0
+        )
+        previous_hierarchy_sha256 = hierarchy_sha256
+        if unchanged >= PHONE_BUILD_SECTION_SCAN_STABLE_REPEATS:
+            missing = [
+                section
+                for section in PHONE_BUILD_SECTION_ORDER
+                if section not in positions
+            ]
+            if missing:
+                device.capture("phone-build-section-inventory-incomplete")
+                raise RuntimeError(
+                    "Phone Build root reached its stable end without one tappable exact "
+                    f"route for every section; missing={missing!r}"
+                )
+            return PhoneBuildSectionInventory(
+                viewport_by_section=dict(positions),
+                bottom_movement_swipes=(
+                    swipes - PHONE_BUILD_SECTION_SCAN_STABLE_REPEATS
+                ),
+            )
+        if swipes >= PHONE_BUILD_SECTION_SCAN_MAX_SCROLLS:
+            break
+        device.swipe_up(
+            x_ratio=0.5,
+            distance_ratio=PHONE_BUILD_SECTION_SCAN_DISTANCE_RATIO,
+        )
+        swipes += 1
+        time.sleep(0.75)
+
+    device.capture("phone-build-section-inventory-end-unproven")
+    raise RuntimeError(
+        "Phone Build section inventory did not prove the outer root surface end "
+        f"within {PHONE_BUILD_SECTION_SCAN_MAX_SCROLLS} gestures"
+    )
+
+
+def tap_phone_build_section(device: Device, section: str) -> None:
+    """Activate one canonical phone Build section from the proven Build root.
+
+    Section routes do not exist on nested collection pages.  Bind the immutable
+    root page, toolbar, and exactly one lifecycle marker before searching for the
+    requested exact resource ID.  ``created=None`` is intentional: this helper is
+    shared by the created full-editing journey and the uncreated contact/pet
+    journey, while the root binder still requires one unambiguous lifecycle
+    marker.  The bound root is already at its measured top viewport, so a blind
+    downward reset would only add latency and could move the search off authority.
+    """
+    if section not in PHONE_BUILD_SECTIONS:
+        raise RuntimeError(f"Unsupported canonical phone Build section {section!r}")
+    return_to_phone_runner_root(device, created=None)
+    inventory = scan_phone_build_section_inventory(device)
+    target_viewport = inventory.viewport_by_section[section]
+    reverse_swipes = inventory.bottom_movement_swipes - target_viewport
+    if reverse_swipes < 0:
+        device.capture(f"{section}-section-route-viewport-invalid")
+        raise RuntimeError(
+            f"{section.title()} section route inventory produced an invalid viewport delta"
+        )
+    for _ in range(reverse_swipes):
+        device.swipe_down(
+            x_ratio=0.5,
+            distance_ratio=PHONE_BUILD_SECTION_SCAN_DISTANCE_RATIO,
+        )
+        time.sleep(0.2)
+    if reverse_swipes > 0:
+        time.sleep(0.75)
+
+    selector = f"build-section-tab-{section}"
+    node = acquire_fresh_phone_build_section_route(
+        device,
+        section=section,
+        selector=selector,
+        measured_target_viewport=target_viewport,
+    )
+    x, y = node.center
+    device.shell("input", "tap", str(x), str(y))
+
+
+def acquire_fresh_phone_build_section_route(
+    device: Device,
+    *,
+    section: str,
+    selector: str,
+    measured_target_viewport: int,
+) -> UiNode:
+    """Bind an exact section node after every gesture/state transition.
+
+    The measured reverse delta remains the fast path, but it is never accepted
+    without a fresh hierarchy.  If that viewport no longer contains the exact
+    route (MAUI can preserve a different offset after navigation), invalidate
+    the measurement, prove the current root's stable start, then use bounded
+    overlapping forward snapshots.  Text, stale nodes, and blind extra taps are
+    never fallbacks.
+    """
+    if measured_target_viewport < 0:
+        raise RuntimeError("Measured phone Build section viewport is invalid")
+
+    def exact_from(nodes: list[UiNode]) -> UiNode | None:
+        matches = [
+            node
+            for node in nodes
+            if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+            == selector
+        ]
+        if len(matches) > 1:
+            device.capture(f"{section}-section-route-fresh-cardinality-invalid")
+            raise RuntimeError(
+                f"Measured {section.title()} section viewport exposed cardinality "
+                f"{len(matches)} for exact route {selector!r}; expected at most one"
+            )
+        if len(matches) != 1:
+            return None
+        node = matches[0]
+        if (
+            node.attributes.get("enabled") != "true"
+            or node.attributes.get("clickable") != "true"
+        ):
+            device.capture(f"{section}-section-route-fresh-not-enabled")
+            raise RuntimeError(
+                f"Measured {section.title()} section route was not freshly enabled and clickable"
+            )
+        return node if device.node_has_tappable_bounds(node) else None
+
+    measured = exact_from(device.hierarchy())
+    if measured is not None:
+        return measured
+
+    # A zero-cardinality or clipped measured viewport invalidates that
+    # observation.  Rebind the exact root scroll origin before any new search.
+    rewind_surface_to_stable_start(
+        device,
+        evidence_prefix=f"{section}-section-route-reacquire",
+    )
+    max_forward_swipes = min(
+        PHONE_BUILD_SECTION_SCAN_MAX_SCROLLS * 3,
+        max(8, (measured_target_viewport + 2) * 3),
+    )
+    for forward_swipes in range(max_forward_swipes + 1):
+        node = exact_from(device.hierarchy())
+        if node is not None:
+            return node
+        if forward_swipes >= max_forward_swipes:
+            break
+        device.swipe_up(
+            x_ratio=0.5,
+            distance_ratio=PHONE_BUILD_SECTION_REACQUIRE_DISTANCE_RATIO,
+        )
+        time.sleep(0.2)
+    device.capture(f"{section}-section-route-fresh-cardinality-invalid")
+    raise RuntimeError(
+        f"Measured {section.title()} section viewport exposed cardinality 0 for "
+        f"exact route {selector!r} after bounded fresh reacquisition"
     )
 
 
@@ -3138,13 +3736,7 @@ def open_attribute_section(
         device.wait(f"tablet-attribute-{attribute_token}", timeout=45)
         device.tap(f"tablet-attribute-{attribute_token}")
         return
-    device.tap_bidirectional(
-        "build-section-tab-attributes",
-        timeout=120,
-        backward_scrolls=24,
-        forward_scrolls=24,
-        scroll_distance_ratio=0.22,
-    )
+    tap_phone_build_section(device, "attributes")
     reset_scroll_to_top(device)
     device.wait(
         f"attribute-{attribute_token}",
@@ -3292,13 +3884,7 @@ def open_condition_monitor_section(device: Device, profile: str) -> None:
             scroll_distance_ratio=0.22,
         )
         return
-    device.tap(
-        "build-section-tab-combat",
-        scroll=True,
-        timeout=120,
-        max_scrolls=24,
-        scroll_distance_ratio=0.22,
-    )
+    tap_phone_build_section(device, "combat")
     device.tap(
         "build-action-tab-combat-conditionmonitor",
         timeout=120,
@@ -3395,15 +3981,7 @@ def open_gear_section(device: Device, profile: str) -> None:
             scroll_distance_ratio=0.22,
         )
         return
-    return_to_phone_runner_root(device, created=True)
-    device.tap_bidirectional(
-        "build-section-tab-gear",
-        timeout=120,
-        backward_scrolls=24,
-        forward_scrolls=24,
-        scroll_distance_ratio=0.22,
-        exact_resource_id=True,
-    )
+    tap_phone_build_section(device, "gear")
     device.wait_exact_resource_id_bidirectional(
         "section-quick-gear-add",
         timeout=180,
@@ -3510,22 +4088,16 @@ def _open_phone_relationship_collection(
     quick_add_selector: str,
     expected_item: str | None,
 ) -> None:
-    device.tap_bidirectional(
-        "build-section-tab-relationships",
-        timeout=120,
-        backward_scrolls=24,
-        forward_scrolls=24,
-        scroll_distance_ratio=0.22,
-        exact_resource_id=True,
-    )
+    tap_phone_build_section(device, "relationships")
     time.sleep(5)
-    device.tap_bidirectional(
+    device.tap_exact_resource_id_bidirectional(
         action_selector,
         timeout=180,
         backward_scrolls=24,
         forward_scrolls=48,
         scroll_distance_ratio=0.22,
-        exact_resource_id=True,
+        evidence_prefix="relationships-collection-route",
+        surface_name="Relationships collection route",
     )
     time.sleep(2)
     if expected_item is not None:
@@ -4154,14 +4726,24 @@ def prepare_full_editing_runner(
         evidence_prefix="new-runner-build-method-dialog",
         source_name="New runner control",
         target_name="Create-character build-method action",
+        target_scroll_surface="dialog-surface",
+        max_target_scrolls=16,
     )
-    device.tap("dialog-action-create-character", scroll=True)
-    device.wait("dialog-action-complete-new-character-workflow", timeout=45, scroll=True)
-    device.tap("dialog-action-complete-new-character-workflow", scroll=True)
+    device.tap_single_exact_resource_id(
+        "dialog-action-create-character",
+        timeout=45,
+        scroll=True,
+        max_scrolls=12,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="new-runner-create-character-action",
+        surface_name="Create-character build-method action",
+    )
 
     creation_authority: WorkspaceAuthority | None = None
     if profile == "phone":
-        # A new creation-mode runner now routes directly to the fail-closed wizard.
+        # The authoritative bootstrap routes directly to the real Creation
+        # Wizard. The retired legacy metatype dialog is not part of this journey.
+        wait_for_phone_runner_route(device, created=False)
         # The unrestricted editor must remain unavailable until creation is complete.
         open_creation_dashboard(
             device,
@@ -4280,9 +4862,25 @@ def assert_link_persisted_then_remove(
         device.back()
 
 
-def add_and_edit_gear(device: Device, profile: str) -> None:
+def add_and_edit_gear(device: Device, profile: str) -> str | None:
     open_gear_section(device, profile)
-    device.tap("tablet-quick-gear-add" if profile == "tablet" else "section-quick-gear-add", scroll=True)
+    original_routes: frozenset[str] = frozenset()
+    if profile == "phone":
+        before = scan_collection_route_inventory(
+            device,
+            kind="gear",
+            evidence_prefix="gear-before-add",
+        )
+        original_routes = frozenset(before.route_viewports)
+        rewind_surface_to_stable_start(device, evidence_prefix="gear-before-add-action")
+        device.tap_single_exact_resource_id(
+            "section-quick-gear-add",
+            timeout=60,
+            evidence_prefix="gear-add-action",
+            surface_name="Exact gear add action",
+        )
+    else:
+        device.tap("tablet-quick-gear-add", scroll=True)
     device.set_text(
         "dialog-field-uigearname",
         "Gear Name",
@@ -4298,14 +4896,9 @@ def add_and_edit_gear(device: Device, profile: str) -> None:
         max_scrolls=48,
         scroll_distance_ratio=0.28,
     )
-    reset_scroll_to_top(
-        device,
-        x_ratio=0.375 if profile == "tablet" else 0.5,
-        swipes=6,
-    )
-    tap_collection_item(device, "Ares Predator V")
-
     if profile == "tablet":
+        reset_scroll_to_top(device, x_ratio=0.375, swipes=6)
+        tap_collection_item(device, "Ares Predator V")
         device.wait("tablet-inspector-save", timeout=60, scroll=True)
         reset_scroll_to_top(device, x_ratio=0.82, swipes=12)
         device.set_text("tablet-field-customname", "Custom Name", "GearProofE2E")
@@ -4323,13 +4916,45 @@ def add_and_edit_gear(device: Device, profile: str) -> None:
                 "Gear Custom Name was not saved in the tablet inspector: "
                 f"expected 'GearProofE2E', got {saved_custom_name!r}"
             )
-        return
+        return None
 
-    device.set_text("collection-field-customname", "Custom Name", "GearProofE2E")
-    device.tap("Save changes", scroll=True)
-    reset_scroll_to_top(device, swipes=6)
+    after = scan_collection_route_inventory(
+        device,
+        kind="gear",
+        evidence_prefix="gear-after-add",
+    )
+    current_routes = frozenset(after.route_viewports)
+    added_routes = current_routes - original_routes
+    missing_routes = original_routes - current_routes
+    if len(added_routes) != 1 or missing_routes:
+        device.capture("gear-new-route-delta-invalid")
+        raise RuntimeError(
+            "Gear add did not materialize exactly one new typed route while preserving "
+            f"the baseline: added={sorted(added_routes)!r}, missing={sorted(missing_routes)!r}"
+        )
+    new_route = next(iter(added_routes))
+    item_id = tap_typed_collection_route(
+        device,
+        inventory=after,
+        route_id=new_route,
+        evidence_prefix="gear-new-route",
+    )
+    custom_name_id = f"collection-field-customname-{item_id}"
+    save_id = f"collection-save-{item_id}"
+    device.set_text(custom_name_id, "Custom Name", "GearProofE2E")
+    device.tap_exact_resource_id_bidirectional(
+        save_id,
+        timeout=90,
+        backward_scrolls=0,
+        forward_scrolls=32,
+        scroll_distance_ratio=0.22,
+        evidence_prefix="gear-save",
+        surface_name="Exact typed gear save action",
+    )
+    rewind_surface_to_stable_start(device, evidence_prefix="gear-saved-editor")
     device.assert_text("GearProofE2E")
     device.back()
+    return item_id
 
 
 def add_contact_from_dialog(device: Device, profile: str, name: str, role: str) -> None:
@@ -5071,7 +5696,7 @@ def main() -> int:
     if args.profile == "phone":
         device.back()
 
-    add_and_edit_gear(device, args.profile)
+    added_gear_item_id = add_and_edit_gear(device, args.profile)
     if args.profile == "phone":
         device.back()
     add_and_edit_contact(
@@ -5131,13 +5756,26 @@ def main() -> int:
     if args.profile == "phone":
         device.back()
     open_gear_section(device, args.profile)
-    reset_scroll_to_top(
-        device,
-        x_ratio=0.375 if args.profile == "tablet" else 0.5,
-        swipes=6,
-    )
-    tap_collection_item(device, "Ares Predator V")
-    gear_field = "tablet-field-customname" if args.profile == "tablet" else "collection-field-customname"
+    if args.profile == "phone":
+        if added_gear_item_id is None:
+            raise RuntimeError("Phone gear proof lost its exact typed item identity")
+        restored_inventory = scan_collection_route_inventory(
+            device,
+            kind="gear",
+            evidence_prefix="gear-after-restart",
+        )
+        restored_route = f"collection-item-gear-{added_gear_item_id}"
+        tap_typed_collection_route(
+            device,
+            inventory=restored_inventory,
+            route_id=restored_route,
+            evidence_prefix="gear-after-restart",
+        )
+        gear_field = f"collection-field-customname-{added_gear_item_id}"
+    else:
+        reset_scroll_to_top(device, x_ratio=0.375, swipes=6)
+        tap_collection_item(device, "Ares Predator V")
+        gear_field = "tablet-field-customname"
     persisted_custom_name = selected_text(device, gear_field, "Custom Name", scroll=True)
     if persisted_custom_name != "GearProofE2E":
         device.capture(f"{args.profile}-gear-custom-name-not-persisted")

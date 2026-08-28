@@ -200,7 +200,7 @@ done
   || fail "w41-presentation-lock-mismatch"
 [[ "$("$sha256sum_command" "$CHUMMER_PRESENTATION_ROOT/Chummer.Desktop.Runtime/packages.lock.json" | "$cut_command" -d' ' -f1)" == "202a29a35b4768c3306349ee40a34d8f23ada97c0b0ef11e104763b5ff9cc60e" ]] \
   || fail "w41-desktop-lock-mismatch"
-[[ "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" rev-parse HEAD)" == "2fb2ae9bb48e5a1a6b25a174ba88008ce995fcd5" ]] \
+[[ "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" rev-parse HEAD)" == "3260ac73714d8b001a3599d6776196e394dc6c35" ]] \
   || fail "core-content-commit-mismatch"
 [[ -z "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" status --porcelain=v1 --untracked-files=all -- Chummer/data Chummer/lang)" ]] \
   || fail "core-content-not-clean"

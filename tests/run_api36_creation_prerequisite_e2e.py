@@ -77,10 +77,24 @@ CREATION_AUTHORITY_PENDING_TIMEOUT_TEXT_LIMIT = 1_000_000
 PROGRESS_SCHEMA = "chummer.android.creation-prerequisite-progress/v1"
 PROGRESS_FILE_NAME = "creation-prerequisite-progress.json"
 PROGRESS_EVENTS_FILE_NAME = "creation-prerequisite-progress.jsonl"
+CREATION_BOOTSTRAP_TIMING_PREFIX = "CHUMMER_CREATION_BOOTSTRAP_TIMING "
+CREATION_BOOTSTRAP_TIMING_FILE_NAME = "creation-bootstrap-timing.json"
+CREATION_BOOTSTRAP_LOGCAT_FILE_NAME = "creation-bootstrap-timing-logcat.txt"
 TOTAL_PERFORMANCE_TARGET_MS = 15 * 60 * 1000
+INITIAL_AUTHORITY_MILESTONE_ORDER = (
+    "app-cold-start-complete",
+    "phone-shell-locale-complete",
+    "dialog-acquisition-complete",
+    "create-bootstrap-transaction-complete",
+    "dashboard-render-complete",
+)
 PHASE_BUDGET_MS = {
     "device-preflight-install": 180_000,
     "initial-authority": 90_000,
+    # Exhaustive scroll inventories are kept outside initial create/render
+    # latency. They retain their own strict bound and the unchanged 15-minute
+    # aggregate target; no authority field or stable-end proof is removed.
+    "authority-inventory": 90_000,
     "priority-ranks": 150_000,
     "typed-authority-options": 150_000,
     "preview-confirm": 150_000,
@@ -106,6 +120,198 @@ def accessibility_signature(
         "bounds",
     )
     return tuple(sorted(tuple(node.attributes.get(key, "") for key in keys) for node in nodes))
+
+
+def read_only_hierarchy_timed(
+    device: shared.Device,
+    durations_ms: list[int],
+) -> list[shared.UiNode]:
+    """Read the same UIAutomator XML in one non-mutating ADB round trip."""
+    started = time.perf_counter()
+    # Real ``Device`` instances always take the one-command read-only path.
+    # Minimal contract fakes predating that API may expose only ``hierarchy``;
+    # retaining that structural fallback keeps pure tests usable without
+    # allowing the production driver to regress to a device-side dump file.
+    reader = getattr(type(device), "read_only_hierarchy", None)
+    nodes = device.read_only_hierarchy() if callable(reader) else device.hierarchy()
+    durations_ms.append(round((time.perf_counter() - started) * 1000))
+    return nodes
+
+
+def fresh_hierarchy_timed(
+    device: shared.Device,
+    durations_ms: list[int],
+) -> list[shared.UiNode]:
+    """Acquire a post-gesture hierarchy through UIAutomator's dump file.
+
+    API 36 can return an older viewport from the direct ``/dev/tty`` stream
+    immediately after a swipe even though the rendered frame has moved.  The
+    normal dump-to-file plus read path is slower, but it is the authority for
+    every scroll-dependent inventory.  Busy-state polling deliberately keeps
+    using :func:`read_only_hierarchy_timed` because it never changes viewport.
+    """
+    started = time.perf_counter()
+    nodes = device.hierarchy()
+    durations_ms.append(round((time.perf_counter() - started) * 1000))
+    return nodes
+
+
+def capture_creation_bootstrap_timing(
+    device: shared.Device,
+    *,
+    logcat: str | None = None,
+) -> dict[str, object]:
+    """Capture the product-emitted, exact create/load/shell timing partition."""
+    if logcat is None:
+        result = device.run(
+            *shared.ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS,
+            timeout=30,
+        )
+        logcat = str(result.stdout)
+    device.evidence.mkdir(parents=True, exist_ok=True)
+    (device.evidence / CREATION_BOOTSTRAP_LOGCAT_FILE_NAME).write_text(
+        logcat,
+        encoding="utf-8",
+    )
+    decoded: dict[str, dict[str, object]] = {}
+    for line in logcat.splitlines():
+        if CREATION_BOOTSTRAP_TIMING_PREFIX not in line:
+            continue
+        payload_text = line.split(CREATION_BOOTSTRAP_TIMING_PREFIX, 1)[1].strip()
+        try:
+            payload = json.loads(payload_text)
+        except json.JSONDecodeError as error:
+            device.capture("creation-bootstrap-timing-json-invalid")
+            raise RuntimeError(
+                "Creation bootstrap timing log contained invalid JSON"
+            ) from error
+        if not isinstance(payload, dict):
+            raise RuntimeError("Creation bootstrap timing payload was not an object")
+        decoded[json.dumps(payload, sort_keys=True, separators=(",", ":"))] = payload
+
+    if len(decoded) != 1:
+        device.capture("creation-bootstrap-timing-cardinality-invalid")
+        raise RuntimeError(
+            "Expected exactly one unique create bootstrap timing receipt, "
+            f"found {len(decoded)}"
+        )
+    timing = next(iter(decoded.values()))
+    required_literal = {
+        "schema": "chummer.android.creation-bootstrap-timing/v1",
+        "actionId": "create_character",
+        "loadStartObserved": True,
+        "workspaceStatePublished": True,
+        "exactPublishedWorkspace": True,
+        "reusedPresenterShellSync": True,
+        "androidFullShellSyncMs": -1,
+    }
+    for key, expected in required_literal.items():
+        if timing.get(key) != expected:
+            device.capture("creation-bootstrap-timing-authority-invalid")
+            raise RuntimeError(
+                f"Creation bootstrap timing field {key!r} was not exact: "
+                f"expected={expected!r}, actual={timing.get(key)!r}"
+            )
+    duration_fields = (
+        "coreCreateMs",
+        "presenterLoadMs",
+        "presenterNavigationAndShellMs",
+        "activeSectionMs",
+        "androidRetainedRefreshMs",
+        "processPendingOutputsMs",
+        "totalMs",
+    )
+    for field in duration_fields:
+        value = timing.get(field)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise RuntimeError(
+                f"Creation bootstrap timing field {field!r} was not a nonnegative integer"
+            )
+    partition_total = sum(int(timing[field]) for field in duration_fields[:-1])
+    if abs(partition_total - int(timing["totalMs"])) > len(duration_fields) - 1:
+        raise RuntimeError(
+            "Creation bootstrap timing segments did not partition the product transaction: "
+            f"segments={partition_total}, total={timing['totalMs']}"
+        )
+    timing_path = device.evidence / CREATION_BOOTSTRAP_TIMING_FILE_NAME
+    timing_path.write_text(
+        json.dumps(timing, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return timing
+
+
+def wait_for_creation_bootstrap_timing_log(
+    device: shared.Device,
+    *,
+    timeout: float = 90.0,
+    observation_out: dict[str, object] | None = None,
+) -> str:
+    """Wait cheaply for the post-action product marker before observing the UI."""
+    if timeout <= 0:
+        raise ValueError("Creation bootstrap timing wait requires a positive timeout")
+    deadline = time.monotonic() + timeout
+    started = time.monotonic()
+    read_durations_ms: list[int] = []
+    last_logcat = ""
+
+    def record(status: str) -> None:
+        if observation_out is not None:
+            observation_out.update({
+                "scanId": "creation-bootstrap-timing-log-poll",
+                "status": status,
+                "logcatReadCount": len(read_durations_ms),
+                "logcatElapsedMs": sum(read_durations_ms),
+                "maximumLogcatReadMs": max(read_durations_ms, default=0),
+                "elapsedMs": round((time.monotonic() - started) * 1000),
+            })
+
+    while time.monotonic() < deadline:
+        read_started = time.perf_counter()
+        result = device.run(
+            *shared.ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS,
+            timeout=30,
+        )
+        read_durations_ms.append(round((time.perf_counter() - read_started) * 1000))
+        last_logcat = str(result.stdout)
+        if CREATION_BOOTSTRAP_TIMING_PREFIX in last_logcat:
+            record("resolved")
+            device.evidence.mkdir(parents=True, exist_ok=True)
+            (device.evidence / CREATION_BOOTSTRAP_LOGCAT_FILE_NAME).write_text(
+                last_logcat,
+                encoding="utf-8",
+            )
+            return last_logcat
+        time.sleep(0.75)
+
+    record("timeout")
+    device.evidence.mkdir(parents=True, exist_ok=True)
+    (device.evidence / CREATION_BOOTSTRAP_LOGCAT_FILE_NAME).write_text(
+        last_logcat,
+        encoding="utf-8",
+    )
+    device.capture("creation-bootstrap-timing-log-timeout")
+    raise RuntimeError(
+        "Timed out waiting for the exact post-action creation bootstrap timing marker"
+    )
+
+
+def clear_creation_bootstrap_timing_log(device: shared.Device) -> None:
+    """Remove stale log authority immediately before the create mutation.
+
+    The clear is deliberately a one-shot, non-replayable ADB command.  A marker
+    observed by the following exact-tag poll must therefore have been emitted by
+    the create action under proof, never by an earlier app process or journey.
+    """
+    device.run(*shared.ADB_CREATION_BOOTSTRAP_LOGCAT_CLEAR_ARGUMENTS, timeout=30)
+
+
+def hierarchy_timing_fields(durations_ms: list[int]) -> dict[str, int]:
+    return {
+        "hierarchyReadCount": len(durations_ms),
+        "hierarchyElapsedMs": sum(durations_ms),
+        "maximumHierarchyReadMs": max(durations_ms, default=0),
+    }
 
 
 def scan_forward_until_stable(
@@ -139,8 +345,9 @@ def scan_forward_until_stable(
     swipes = 0
     consecutive_empty_reads = 0
     total_empty_reads = 0
+    hierarchy_durations_ms: list[int] = []
     while swipes <= max_scrolls:
-        nodes = device.hierarchy()
+        nodes = fresh_hierarchy_timed(device, hierarchy_durations_ms)
         if not nodes:
             consecutive_empty_reads += 1
             total_empty_reads += 1
@@ -154,6 +361,7 @@ def scan_forward_until_stable(
                     "stableRepeats": stable_repeats,
                     "emptyHierarchyReads": total_empty_reads,
                     "maximumConsecutiveEmptyReads": max_consecutive_empty_reads,
+                    **hierarchy_timing_fields(hierarchy_durations_ms),
                     "elapsedMs": round((time.monotonic() - started) * 1000),
                 }
                 if observer is not None:
@@ -179,6 +387,7 @@ def scan_forward_until_stable(
                 "stableRepeats": stable_repeats,
                 "emptyHierarchyReads": total_empty_reads,
                 "maximumConsecutiveEmptyReads": max_consecutive_empty_reads,
+                **hierarchy_timing_fields(hierarchy_durations_ms),
                 "elapsedMs": round((time.monotonic() - started) * 1000),
             }
             if observer is not None:
@@ -199,6 +408,7 @@ def scan_forward_until_stable(
         "stableRepeats": stable_repeats,
         "emptyHierarchyReads": total_empty_reads,
         "maximumConsecutiveEmptyReads": max_consecutive_empty_reads,
+        **hierarchy_timing_fields(hierarchy_durations_ms),
         "elapsedMs": round((time.monotonic() - started) * 1000),
     }
     if observer is not None:
@@ -207,6 +417,192 @@ def scan_forward_until_stable(
     raise RuntimeError(
         f"Accessibility scan {scan_id!r} did not prove a stable page end within "
         f"{max_scrolls} forward swipes"
+    )
+
+
+class StableViewportScan(NamedTuple):
+    screens: list[list[shared.UiNode]]
+    swipes: int
+
+
+def scan_forward_with_receipt(
+    device: shared.Device,
+    *,
+    scan_id: str,
+    max_scrolls: int,
+    distance_ratio: float,
+    observer: Callable[[dict[str, object]], None] | None = None,
+) -> StableViewportScan:
+    """Return the stable scan's actual viewport delta without another dump."""
+    receipt: dict[str, object] = {}
+
+    def record(value: dict[str, object]) -> None:
+        receipt.update(value)
+        if observer is not None:
+            observer(value)
+
+    screens = scan_forward_until_stable(
+        device,
+        scan_id=scan_id,
+        max_scrolls=max_scrolls,
+        distance_ratio=distance_ratio,
+        observer=record,
+    )
+    swipes = receipt.get("swipes")
+    stable_repeats = receipt.get("stableRepeats")
+    if (
+        receipt.get("status") != "stable-end"
+        or type(swipes) is not int
+        or type(stable_repeats) is not int
+        or swipes < stable_repeats
+    ):
+        raise RuntimeError(f"Accessibility scan {scan_id!r} emitted no stable swipe receipt")
+    # Stable-end proof deliberately spends ``stable_repeats`` gestures against
+    # the clamped page end. They are evidence, not viewport movement. Callers
+    # restoring a measured node must reverse only the successful movement delta.
+    return StableViewportScan(screens, swipes - stable_repeats)
+
+
+def rewind_to_stable_start(
+    device: shared.Device,
+    *,
+    scan_id: str,
+    max_scrolls: int,
+    distance_ratio: float,
+    stable_repeats: int = 2,
+    observer: Callable[[dict[str, object]], None] | None = None,
+) -> int:
+    """Prove the page start and return only successful reverse movement."""
+    if not scan_id or max_scrolls < stable_repeats or stable_repeats < 1:
+        raise ValueError("A named reverse scan with a stable-start budget is required")
+    started = time.monotonic()
+    previous: tuple[tuple[str, ...], ...] | None = None
+    unchanged = 0
+    swipes = 0
+    screens = 0
+    hierarchy_durations_ms: list[int] = []
+    while swipes <= max_scrolls:
+        nodes = fresh_hierarchy_timed(device, hierarchy_durations_ms)
+        if not nodes:
+            time.sleep(0.75)
+            continue
+        screens += 1
+        signature = accessibility_signature(nodes)
+        unchanged = unchanged + 1 if previous is not None and signature == previous else 0
+        previous = signature
+        if unchanged >= stable_repeats:
+            result = {
+                "scanId": scan_id,
+                "status": "stable-start",
+                "screens": screens,
+                "swipes": swipes,
+                "movementSwipes": swipes - stable_repeats,
+                "configuredMaxScrolls": max_scrolls,
+                "stableRepeats": stable_repeats,
+                **hierarchy_timing_fields(hierarchy_durations_ms),
+                "elapsedMs": round((time.monotonic() - started) * 1000),
+            }
+            if observer is not None:
+                observer(result)
+            return swipes - stable_repeats
+        if swipes >= max_scrolls:
+            break
+        device.swipe_down(distance_ratio=distance_ratio)
+        swipes += 1
+        time.sleep(0.2)
+    result = {
+        "scanId": scan_id,
+        "status": "bound-exhausted",
+        "screens": screens,
+        "swipes": swipes,
+        "configuredMaxScrolls": max_scrolls,
+        "stableRepeats": stable_repeats,
+        **hierarchy_timing_fields(hierarchy_durations_ms),
+        "elapsedMs": round((time.monotonic() - started) * 1000),
+    }
+    if observer is not None:
+        observer(result)
+    device.capture(f"{scan_id}-stable-start-unproven")
+    raise RuntimeError(
+        f"Accessibility reverse scan {scan_id!r} did not prove a stable page start "
+        f"within {max_scrolls} swipes"
+    )
+
+
+def move_between_measured_viewports(
+    device: shared.Device,
+    current_viewport: int,
+    target_viewport: int,
+    *,
+    distance_ratio: float = 0.68,
+) -> int:
+    """Move an exact scan-proven delta without hierarchy churn between endpoints."""
+    if current_viewport < 0 or target_viewport < 0:
+        raise ValueError("Measured viewport indexes must be nonnegative")
+    if target_viewport < current_viewport:
+        for _ in range(current_viewport - target_viewport):
+            device.swipe_down(distance_ratio=distance_ratio)
+            time.sleep(0.2)
+    else:
+        for _ in range(target_viewport - current_viewport):
+            device.swipe_up(distance_ratio=distance_ratio)
+            time.sleep(0.2)
+    return target_viewport
+
+
+def rewind_to_exact_resource_id(
+    device: shared.Device,
+    selector: str,
+    *,
+    max_swipes: int,
+    distance_ratio: float,
+    evidence_prefix: str,
+    surface_name: str,
+    require_tappable: bool,
+) -> tuple[shared.UiNode, int]:
+    """Reverse only as far as needed, observing one hierarchy per viewport."""
+    if max_swipes < 0:
+        raise ValueError("A nonnegative scan-proven reverse bound is required")
+    for reverse_swipes in range(max_swipes + 1):
+        nodes = fresh_hierarchy_timed(device, [])
+        if not nodes:
+            time.sleep(0.75)
+            continue
+        matches = [
+            node
+            for node in nodes
+            if node.attributes.get("resource-id", "").rsplit("/", 1)[-1] == selector
+        ]
+        if len(matches) > 1:
+            device.capture(f"{evidence_prefix}-cardinality-invalid")
+            raise RuntimeError(
+                f"{surface_name} {selector!r} has cardinality {len(matches)}; expected one"
+            )
+        if len(matches) == 1:
+            node = matches[0]
+            visible = device.node_has_tappable_bounds(node)
+            interactive = (
+                node.attributes.get("enabled") == "true"
+                and node.attributes.get("clickable") == "true"
+            )
+            if visible and (interactive or not require_tappable):
+                return node, reverse_swipes
+            device.capture(f"{evidence_prefix}-not-tappable")
+            raise RuntimeError(
+                f"{surface_name} {selector!r} was not visible"
+                + (", enabled, and clickable" if require_tappable else "")
+            )
+        if device.dismiss_system_ui_anr(nodes):
+            time.sleep(2)
+            continue
+        if reverse_swipes >= max_swipes:
+            break
+        device.swipe_down(distance_ratio=distance_ratio)
+        time.sleep(0.2)
+    device.capture(f"{evidence_prefix}-unavailable")
+    raise RuntimeError(
+        f"Timed out reversing to exact {surface_name.lower()} {selector!r} "
+        f"within the scan-proven {max_swipes}-swipe bound"
     )
 
 
@@ -219,6 +615,7 @@ class ProgressRecorder:
         self.started = time.monotonic()
         self.phases: list[dict[str, object]] = []
         self.scans: list[dict[str, object]] = []
+        self.milestones: list[dict[str, object]] = []
         self.events: list[dict[str, object]] = []
         self._active_id: str | None = None
         self._active_started = 0.0
@@ -250,6 +647,45 @@ class ProgressRecorder:
         self.scans.append({**scan, "phaseId": self._active_id})
         self._write("running")
 
+    def record_initial_authority_milestone(self, milestone_id: str) -> None:
+        """Emit ordered wall-clock segments without changing phase boundaries."""
+        if self._active_id != "initial-authority" or self._finished:
+            raise RuntimeError(
+                "Initial-authority milestone was recorded outside the active initial phase"
+            )
+        expected_index = len(self.milestones)
+        expected = (
+            INITIAL_AUTHORITY_MILESTONE_ORDER[expected_index]
+            if expected_index < len(INITIAL_AUTHORITY_MILESTONE_ORDER)
+            else None
+        )
+        if milestone_id != expected:
+            raise RuntimeError(
+                f"Expected initial-authority milestone {expected!r}, got {milestone_id!r}"
+            )
+        phase_elapsed = round((time.monotonic() - self._active_started) * 1000)
+        total_elapsed = round((time.monotonic() - self.started) * 1000)
+        previous_elapsed = (
+            int(self.milestones[-1]["phaseElapsedMs"])
+            if self.milestones
+            else 0
+        )
+        milestone = {
+            "milestoneId": milestone_id,
+            "phaseId": self._active_id,
+            "ordinal": expected_index + 1,
+            "phaseElapsedMs": phase_elapsed,
+            "segmentElapsedMs": phase_elapsed - previous_elapsed,
+            "totalElapsedMs": total_elapsed,
+        }
+        self.milestones.append(milestone)
+        self._emit({
+            "schema": PROGRESS_SCHEMA,
+            "event": "phase-milestone",
+            **milestone,
+        })
+        self._write("running")
+
     def finish(self) -> dict[str, object]:
         if self._finished:
             raise RuntimeError("Prerequisite progress was already finalized")
@@ -260,8 +696,20 @@ class ProgressRecorder:
                 f"Prerequisite progress is incomplete: expected={PHASE_ORDER!r}, "
                 f"actual={completed!r}"
             )
-        self._finished = True
         snapshot = self.snapshot("timing-complete")
+        over_budget = tuple(
+            str(phase["phaseId"])
+            for phase in self.phases
+            if phase.get("withinBudget") is not True
+            or phase.get("elapsedMs", 0) > phase.get("budgetMs", -1)
+        )
+        if over_budget or snapshot["withinConfiguredTotalTarget"] is not True:
+            raise RuntimeError(
+                "Prerequisite progress exceeded its explicit timing budget: "
+                f"phases={over_budget!r}, totalElapsedMs={snapshot['totalElapsedMs']}, "
+                f"configuredTotalTargetMs={snapshot['configuredTotalTargetMs']}"
+            )
+        self._finished = True
         self._atomic_write(snapshot)
         self._emit({
             "schema": PROGRESS_SCHEMA,
@@ -299,6 +747,7 @@ class ProgressRecorder:
             "phaseBudgetsMs": dict(PHASE_BUDGET_MS),
             "phases": list(self.phases),
             "scans": list(self.scans),
+            "milestones": list(self.milestones),
         }
 
     def _close_active(self, status: str) -> None:
@@ -318,6 +767,12 @@ class ProgressRecorder:
         self._emit({"schema": PROGRESS_SCHEMA, "event": "phase-complete", **phase})
         self._active_id = None
         self._active_started = 0.0
+        if status == "pass" and phase["withinBudget"] is not True:
+            raise RuntimeError(
+                "Prerequisite progress exceeded its explicit phase timing budget: "
+                f"phase={phase['phaseId']!r}, elapsedMs={phase['elapsedMs']}, "
+                f"budgetMs={phase['budgetMs']}"
+            )
 
     def _write(self, status: str) -> None:
         self._atomic_write(self.snapshot(status))
@@ -376,13 +831,20 @@ def node_text(device: shared.Device, selector: str, *, scroll: bool = False) -> 
     return node.attributes.get("text") or node.attributes.get("content-desc") or ""
 
 
+class CreationDashboardScanProof(NamedTuple):
+    binding: str
+    method_detail: str
+    swipes: int
+    method_viewport: int
+
+
 def assert_uncreated_advanced_editor_gated(
     device: shared.Device,
     *,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     scan_id: str = "advanced-editor-gate",
-) -> None:
-    """Scan the whole creation dashboard for Career/editor escape hatches."""
+) -> CreationDashboardScanProof:
+    """Scan the dashboard once for forbidden controls and reusable authority."""
     forbidden = (
         "Actions",
         "build-origin-dossier",
@@ -391,14 +853,17 @@ def assert_uncreated_advanced_editor_gated(
         "creation-wizard-attributes",
         "attribute-save-",
     )
-    screens = scan_forward_until_stable(
+    scan = scan_forward_with_receipt(
         device,
         scan_id=scan_id,
         max_scrolls=18,
         distance_ratio=0.68,
         observer=scan_observer,
     )
-    for nodes in screens:
+    bindings: set[str] = set()
+    method_states: set[tuple[str, str, str]] = set()
+    method_viewports: set[int] = set()
+    for viewport_index, nodes in enumerate(scan.screens):
         for selector in forbidden:
             if any(shared.Device._matches(node, selector) for node in nodes):
                 device.capture(f"wizard-forbidden-{selector}")
@@ -406,7 +871,58 @@ def assert_uncreated_advanced_editor_gated(
                     "Creation dashboard exposed a Career/advanced-editor control while "
                     f"the authoritative runner is still uncreated: {selector!r}"
                 )
-    shared.reset_scroll_to_top(device, swipes=12)
+        for selector in ("creation-wizard-binding", "creation-stage-method"):
+            matches = [
+                node
+                for node in nodes
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == selector
+            ]
+            if len(matches) > 1:
+                device.capture(f"{scan_id}-{selector}-cardinality-invalid")
+                raise RuntimeError(
+                    f"Creation dashboard {selector!r} has cardinality {len(matches)}"
+                )
+            if len(matches) == 1:
+                value = (
+                    matches[0].attributes.get("text")
+                    or matches[0].attributes.get("content-desc")
+                    or ""
+                ).strip()
+                if value:
+                    if selector == "creation-wizard-binding":
+                        bindings.add(value)
+                    else:
+                        method_viewports.add(min(viewport_index, scan.swipes))
+                        method_states.add((
+                            value,
+                            matches[0].attributes.get("enabled", ""),
+                            matches[0].attributes.get("clickable", ""),
+                        ))
+    if len(bindings) != 1 or len(method_states) != 1 or not method_viewports:
+        device.capture(f"{scan_id}-authority-incomplete")
+        raise RuntimeError(
+            "Creation dashboard stable scan did not expose one binding and one method row: "
+            f"bindings={sorted(bindings)!r}, methods={sorted(method_states)!r}, "
+            f"methodViewports={sorted(method_viewports)!r}"
+        )
+    method_detail, method_enabled, method_clickable = next(iter(method_states))
+    require_creation_method_navigation(
+        shared.UiNode(
+            {
+                "content-desc": method_detail,
+                "enabled": method_enabled,
+                "clickable": method_clickable,
+            }
+        ),
+        ready=True,
+    )
+    return CreationDashboardScanProof(
+        binding=next(iter(bindings)),
+        method_detail=method_detail,
+        swipes=scan.swipes,
+        method_viewport=max(method_viewports),
+    )
 
 
 def canonical_digest(device: shared.Device, selector: str, *, scroll: bool = False) -> str:
@@ -441,12 +957,35 @@ def require_new_character_dialog_transition(
     device: shared.Device,
     *,
     timeout: int = 120,
-) -> None:
+    observation_out: dict[str, object] | None = None,
+    fresh_first: bool = False,
+) -> list[shared.UiNode]:
     """Require the production modal to publish either Build or one exact error."""
     deadline = time.monotonic() + timeout
     selectors = ("dialog-surface", "dialog-error", "build-save-runner")
+    started = time.monotonic()
+    hierarchy_durations_ms: list[int] = []
+    empty_hierarchy_reads = 0
+    first_observation = True
+
+    def record_observation(status: str) -> None:
+        if observation_out is not None:
+            observation_out.update({
+                "scanId": "dialog-transition-poll",
+                "status": status,
+                "emptyHierarchyReads": empty_hierarchy_reads,
+                **hierarchy_timing_fields(hierarchy_durations_ms),
+                "elapsedMs": round((time.monotonic() - started) * 1000),
+            })
+
     while time.monotonic() < deadline:
-        nodes = device.hierarchy()
+        if first_observation and fresh_first:
+            nodes = fresh_hierarchy_timed(device, hierarchy_durations_ms)
+        else:
+            nodes = read_only_hierarchy_timed(device, hierarchy_durations_ms)
+        first_observation = False
+        if not nodes:
+            empty_hierarchy_reads += 1
         matches = {
             selector: [
                 node
@@ -465,11 +1004,13 @@ def require_new_character_dialog_transition(
             if len(candidates) > 1
         }
         if ambiguous:
+            record_observation("cardinality-invalid")
             device.capture("creation-priority-dialog-transition-cardinality-invalid")
             raise RuntimeError(
                 f"New-character modal transition was ambiguous: {ambiguous!r}"
             )
         if len(matches["dialog-error"]) == 1:
+            record_observation("product-error")
             error = matches["dialog-error"][0]
             message = (
                 error.attributes.get("text")
@@ -482,20 +1023,70 @@ def require_new_character_dialog_transition(
             )
         if len(matches["build-save-runner"]) == 1:
             if matches["dialog-surface"]:
+                record_observation("route-overlap")
                 device.capture("creation-priority-dialog-route-overlap")
                 raise RuntimeError(
                     "New-character modal and Build toolbar were published together"
                 )
-            return
-        if device.dismiss_system_ui_anr():
+            record_observation("resolved")
+            return nodes
+        if device.dismiss_system_ui_anr(nodes):
             time.sleep(2)
             continue
         time.sleep(0.75)
 
+    record_observation("timeout")
     device.capture("creation-priority-dialog-transition-unavailable")
     raise RuntimeError(
         "New-character production modal published neither one exact error nor the Build route"
     )
+
+
+def require_initial_creation_dashboard_snapshot(
+    device: shared.Device,
+    nodes: list[shared.UiNode],
+) -> None:
+    """Bind the automatic create-to-dashboard handoff from its one fresh snapshot."""
+    selectors = (
+        "phone-runner-page",
+        "phone-runner-create",
+        "creation-wizard-dashboard",
+    )
+    matches = {
+        selector: [
+            node
+            for node in nodes
+            if node.attributes.get("resource-id", "").rsplit("/", 1)[-1] == selector
+        ]
+        for selector in selectors
+    }
+    ambiguous = {
+        selector: len(candidates)
+        for selector, candidates in matches.items()
+        if len(candidates) != 1
+    }
+    if ambiguous:
+        device.capture("creation-priority-dashboard-handoff-cardinality-invalid")
+        raise RuntimeError(
+            "New-character production handoff did not publish one exact creation dashboard: "
+            f"{ambiguous!r}"
+        )
+    page = matches["phone-runner-page"][0]
+    route = matches["phone-runner-create"][0]
+    dashboard = matches["creation-wizard-dashboard"][0]
+    if (
+        page.attributes.get("class") != "android.view.ViewGroup"
+        or page.attributes.get("enabled") != "true"
+        or route.attributes.get("class") != "android.widget.TextView"
+        or route.attributes.get("text") != "CREATION RUNNER"
+        or route.attributes.get("enabled") != "true"
+        or route.attributes.get("clickable") != "false"
+        or dashboard.attributes.get("enabled") != "true"
+    ):
+        device.capture("creation-priority-dashboard-handoff-structure-invalid")
+        raise RuntimeError(
+            "New-character production handoff changed its exact native creation-dashboard structure"
+        )
 
 
 def require_creation_method_navigation(
@@ -852,42 +1443,92 @@ def wait_creation_dashboard_authority(
     device: shared.Device,
     *,
     timeout: float = 30.0,
+    observation_out: dict[str, object] | None = None,
 ) -> bool:
     """Wait for the explicitly asynchronous authority projection, never for a guessed row state."""
     deadline = time.monotonic() + timeout
     saw_loading = False
+    started = time.monotonic()
+    hierarchy_durations_ms: list[int] = []
+    empty_hierarchy_reads = 0
+
+    def record_observation(status: str) -> None:
+        if observation_out is not None:
+            observation_out.update({
+                "scanId": "dashboard-authority-poll",
+                "status": status,
+                "emptyHierarchyReads": empty_hierarchy_reads,
+                **hierarchy_timing_fields(hierarchy_durations_ms),
+                "elapsedMs": round((time.monotonic() - started) * 1000),
+            })
+
+    def raise_pending_timeout() -> None:
+        record_observation("timeout")
+        try:
+            capture_creation_authority_pending_timeout_diagnostics(
+                device,
+                timeout=timeout,
+            )
+        except Exception as error:
+            # Evidence collection is deliberately best-effort. It must never
+            # turn the product's bounded pending timeout into a false success
+            # or replace the stable timeout contract with a tooling exception.
+            try:
+                _write_pending_timeout_artifact(
+                    device,
+                    f"{CREATION_AUTHORITY_PENDING_TIMEOUT_PREFIX}-collection-error.txt",
+                    _pending_timeout_error(error),
+                    status="collection-error",
+                )
+            except Exception:
+                pass
+        raise RuntimeError(
+            "Creation dashboard authority projection remained pending past the bounded wait"
+        )
+
     while True:
-        if device.find("creation-dashboard-authority-failed") is not None:
+        nodes = read_only_hierarchy_timed(device, hierarchy_durations_ms)
+        if not nodes:
+            empty_hierarchy_reads += 1
+            if time.monotonic() >= deadline:
+                raise_pending_timeout()
+            time.sleep(0.75)
+            continue
+        matches = {
+            selector: [
+                node
+                for node in nodes
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == selector
+            ]
+            for selector in (
+                "creation-dashboard-authority-failed",
+                "creation-dashboard-authority-loading",
+            )
+        }
+        ambiguous = {
+            selector: len(candidates)
+            for selector, candidates in matches.items()
+            if len(candidates) > 1
+        }
+        if ambiguous:
+            record_observation("cardinality-invalid")
+            device.capture("creation-dashboard-authority-cardinality-invalid")
+            raise RuntimeError(
+                f"Creation dashboard authority state was ambiguous: {ambiguous!r}"
+            )
+        if matches["creation-dashboard-authority-failed"]:
+            record_observation("product-failed")
             device.capture("creation-dashboard-authority-failed")
             raise RuntimeError(
                 "Creation dashboard reported an explicit authority projection failure"
             )
-        loading = device.find("creation-dashboard-authority-loading")
-        if loading is None:
+        if not matches["creation-dashboard-authority-loading"]:
+            record_observation("resolved")
             return saw_loading
         saw_loading = True
         if time.monotonic() >= deadline:
-            try:
-                capture_creation_authority_pending_timeout_diagnostics(
-                    device,
-                    timeout=timeout,
-                )
-            except Exception as error:
-                # Evidence collection is deliberately best-effort. It must never
-                # turn the product's bounded pending timeout into a false success
-                # or replace the stable timeout contract with a tooling exception.
-                try:
-                    _write_pending_timeout_artifact(
-                        device,
-                        f"{CREATION_AUTHORITY_PENDING_TIMEOUT_PREFIX}-collection-error.txt",
-                        _pending_timeout_error(error),
-                        status="collection-error",
-                    )
-                except Exception:
-                    pass
-            raise RuntimeError(
-                "Creation dashboard authority projection remained pending past the bounded wait"
-            )
+            raise_pending_timeout()
         time.sleep(0.5)
 
 
@@ -1120,6 +1761,272 @@ def read_source_authority_digests(device: shared.Device) -> list[str]:
     return sorted(digests)
 
 
+PREREQUISITE_AUTHORITY_SELECTORS = (
+    "creation-prerequisite-binding",
+    "creation-prerequisite-method",
+    "creation-prerequisite-karma-budget",
+    "creation-prerequisite-snapshot-digest",
+    "creation-prerequisite-raw-character-xml-digest",
+    "creation-prerequisite-auxiliary-state-digest",
+    "creation-prerequisite-authority-digest",
+    "creation-prerequisite-profile-inputs-digest",
+    "creation-prerequisite-priorities-xml-digest",
+)
+
+
+class PrerequisiteAuthorityScanProof(NamedTuple):
+    values: dict[str, str]
+    swipes: int
+    category_viewports: dict[str, int]
+
+
+def scan_prerequisite_authority(
+    device: shared.Device,
+    *,
+    scan_observer: Callable[[dict[str, object]], None] | None = None,
+) -> PrerequisiteAuthorityScanProof:
+    """Read every initial prerequisite authority field in one stable traversal."""
+    # This is a newly pushed page, and the product pins the short build-method
+    # card before the tall binding/Karma cards.  Begin with the route's current
+    # first viewport: reversing merely until the later binding becomes visible
+    # can place the method above the viewport and recreate the exact skip this
+    # proof is intended to catch.  The full selector set below fails closed if
+    # the new-page origin contract changes.
+    scan = scan_forward_with_receipt(
+        device,
+        scan_id="prerequisite-authority-initial",
+        max_scrolls=22,
+        distance_ratio=0.68,
+        observer=scan_observer,
+    )
+    observed: dict[str, set[str]] = {
+        selector: set() for selector in PREREQUISITE_AUTHORITY_SELECTORS
+    }
+    category_viewports: dict[str, set[int]] = {
+        category: set() for category in CATEGORIES
+    }
+    category_semantics: dict[str, tuple[str, ...]] = {}
+    for viewport_index, nodes in enumerate(scan.screens):
+        for selector in PREREQUISITE_AUTHORITY_SELECTORS:
+            matches = [
+                node
+                for node in nodes
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == selector
+            ]
+            if len(matches) > 1:
+                device.capture(f"{selector}-cardinality-invalid")
+                raise RuntimeError(
+                    f"Creation prerequisite authority {selector!r} has cardinality "
+                    f"{len(matches)} in one viewport"
+                )
+            if len(matches) == 1:
+                value = (
+                    matches[0].attributes.get("text")
+                    or matches[0].attributes.get("content-desc")
+                    or ""
+                ).strip()
+                if value:
+                    observed[selector].add(value)
+        for category in CATEGORIES:
+            selector = f"creation-prerequisite-category-{category}"
+            matches = [
+                node
+                for node in nodes
+                if _exact_resource_id(node) == selector
+            ]
+            if len(matches) > 1:
+                device.capture(f"creation-prerequisite-{category}-inventory-cardinality-invalid")
+                raise RuntimeError(
+                    f"Creation prerequisite category inventory {selector!r} has "
+                    f"cardinality {len(matches)} in one viewport"
+                )
+            if len(matches) != 1:
+                continue
+            node = matches[0]
+            signature = tuple(
+                node.attributes.get(key, "")
+                for key in (
+                    "resource-id",
+                    "class",
+                    "content-desc",
+                    "text",
+                    "enabled",
+                    "clickable",
+                    "focusable",
+                )
+            )
+            prior = category_semantics.setdefault(category, signature)
+            if signature != prior:
+                device.capture(f"creation-prerequisite-{category}-inventory-drift")
+                raise RuntimeError(
+                    f"Creation prerequisite category {category!r} changed semantics "
+                    "during the digest-bound authority scan"
+                )
+            if (
+                node.attributes.get("enabled") != "true"
+                or node.attributes.get("clickable") != "true"
+            ):
+                device.capture(f"creation-prerequisite-{category}-inventory-disabled")
+                raise RuntimeError(
+                    f"Creation prerequisite category {category!r} was not enabled and clickable"
+                )
+            if device.node_has_tappable_bounds(node):
+                category_viewports[category].add(min(viewport_index, scan.swipes))
+    invalid = {
+        selector: sorted(values)
+        for selector, values in observed.items()
+        if len(values) != 1
+    }
+    if invalid:
+        device.capture("creation-prerequisite-authority-scan-invalid")
+        raise RuntimeError(
+            "Creation prerequisite authority scan was incomplete or changed while scrolling: "
+            f"{invalid!r}"
+        )
+    values = {selector: next(iter(entries)) for selector, entries in observed.items()}
+    for selector in (
+        "creation-prerequisite-snapshot-digest",
+        "creation-prerequisite-raw-character-xml-digest",
+        "creation-prerequisite-authority-digest",
+        "creation-prerequisite-profile-inputs-digest",
+        "creation-prerequisite-priorities-xml-digest",
+    ):
+        if CANONICAL_AUTHORITY_DIGEST.fullmatch(values[selector]) is None:
+            raise RuntimeError(
+                f"{selector} did not expose one canonical digest: {values[selector]!r}"
+            )
+    auxiliary = values["creation-prerequisite-auxiliary-state-digest"]
+    if CANONICAL_AUXILIARY_STATE_DIGEST.fullmatch(auxiliary) is None:
+        raise RuntimeError(
+            "creation-prerequisite-auxiliary-state-digest did not expose one "
+            f"canonical auxiliary-state digest: {auxiliary!r}"
+        )
+    source_digests = {
+        values["creation-prerequisite-authority-digest"],
+        values["creation-prerequisite-profile-inputs-digest"],
+        values["creation-prerequisite-priorities-xml-digest"],
+    }
+    if len(source_digests) != 3:
+        raise RuntimeError(
+            "Creation prerequisite source authority did not expose three distinct digests"
+        )
+    invalid_categories = {
+        category: sorted(viewports)
+        for category, viewports in category_viewports.items()
+        if not viewports
+    }
+    if invalid_categories:
+        device.capture("creation-prerequisite-category-inventory-incomplete")
+        raise RuntimeError(
+            "Digest-bound prerequisite authority scan omitted an exact tappable "
+            f"priority category: {invalid_categories!r}"
+        )
+    measured_categories = {
+        category: max(category_viewports[category])
+        for category in CATEGORIES
+    }
+    ordered_viewports = [measured_categories[category] for category in CATEGORIES]
+    if ordered_viewports != sorted(ordered_viewports):
+        device.capture("creation-prerequisite-category-inventory-order-invalid")
+        raise RuntimeError(
+            "Digest-bound prerequisite category inventory changed canonical row order: "
+            f"{measured_categories!r}"
+        )
+    return PrerequisiteAuthorityScanProof(
+        values=values,
+        swipes=scan.swipes,
+        category_viewports=measured_categories,
+    )
+
+
+def acquire_measured_priority_category_row(
+    device: shared.Device,
+    category: str,
+    navigation: dict[str, object],
+) -> shared.UiNode:
+    """Reacquire one exact category from the digest-bound ordered inventory.
+
+    The first category restores only the already measured viewport delta from
+    the authority scan's stable end.  Later categories are below the freshly
+    verified prior row, so they use bounded forward-only snapshots.  A rank
+    selection can change row height; no pre-navigation node or blind absolute
+    viewport is reused after that state transition.
+    """
+    viewports = navigation.get("viewportByCategory")
+    current_viewport = navigation.get("currentViewport")
+    last_category = navigation.get("lastCategory")
+    if (
+        not isinstance(viewports, dict)
+        or set(viewports) != set(CATEGORIES)
+        or type(current_viewport) is not int
+        or current_viewport < 0
+        or last_category is not None and last_category not in CATEGORIES
+    ):
+        raise RuntimeError("Priority category navigation has no complete measured authority")
+    target_viewport = viewports.get(category)
+    if type(target_viewport) is not int or target_viewport < 0:
+        raise RuntimeError(f"Priority category {category!r} has no measured viewport")
+
+    if last_category is None:
+        if category != CATEGORIES[0] or target_viewport > current_viewport:
+            raise RuntimeError(
+                "Priority category navigation did not start with the first ordered row"
+            )
+        move_between_measured_viewports(
+            device,
+            current_viewport,
+            target_viewport,
+        )
+        max_forward_swipes = 0
+    else:
+        last_index = CATEGORIES.index(last_category)
+        if last_index + 1 >= len(CATEGORIES) or CATEGORIES[last_index + 1] != category:
+            raise RuntimeError(
+                f"Priority category navigation skipped canonical row order after {last_category!r}"
+            )
+        prior_viewport = viewports[last_category]
+        if type(prior_viewport) is not int or target_viewport < prior_viewport:
+            raise RuntimeError("Priority category inventory order changed after navigation")
+        # Initial 0.68 scans can place adjacent rows in the same viewport.
+        # After a selection mutates row height, use overlapping 0.22 gestures
+        # with a small bound derived from the measured initial separation.
+        max_forward_swipes = max(4, (target_viewport - prior_viewport + 2) * 4)
+
+    selector = f"creation-prerequisite-category-{category}"
+    for forward_swipes in range(max_forward_swipes + 1):
+        nodes = fresh_hierarchy_timed(device, [])
+        matches = [node for node in nodes if _exact_resource_id(node) == selector]
+        if len(matches) > 1:
+            device.capture(f"creation-prerequisite-{category}-category-row-cardinality-invalid")
+            raise RuntimeError(
+                f"Measured {category} priority category row {selector!r} has "
+                f"cardinality {len(matches)}"
+            )
+        if len(matches) == 1:
+            node = matches[0]
+            if (
+                node.attributes.get("enabled") != "true"
+                or node.attributes.get("clickable") != "true"
+            ):
+                device.capture(f"creation-prerequisite-{category}-category-row-disabled")
+                raise RuntimeError(
+                    f"Measured {category} priority category row was not enabled and clickable"
+                )
+            if device.node_has_tappable_bounds(node):
+                navigation["currentViewport"] = target_viewport
+                return node
+        if forward_swipes >= max_forward_swipes:
+            break
+        device.swipe_up(distance_ratio=0.22)
+        time.sleep(0.2)
+    device.capture(f"creation-prerequisite-{category}-category-row-unavailable")
+    raise RuntimeError(
+        f"Timed out acquiring exact ordered {category} priority category row "
+        f"{selector!r} within {max_forward_swipes} forward swipes"
+    )
+
+
 def tap_prescribed_exact_enabled_priority_rank(
     device: shared.Device,
     category: str,
@@ -1139,17 +2046,26 @@ def tap_prescribed_exact_enabled_priority_rank(
     selected_resource_id = f"{prefix}{prescribed_rank}"
     observed_ids: set[str] = set()
     candidates: set[str] = set()
+    selected_viewports: list[int] = []
     invalid_ids: set[str] = set()
     duplicate_ids: set[str] = set()
-    shared.reset_scroll_to_top(device, swipes=22)
-    screens = scan_forward_until_stable(
+    rewind_to_exact_resource_id(
+        device,
+        f"{prefix}a",
+        max_swipes=8,
+        distance_ratio=0.68,
+        evidence_prefix=f"creation-prerequisite-{category}-rank-origin",
+        surface_name=f"{category} rank scan origin",
+        require_tappable=False,
+    )
+    scan = scan_forward_with_receipt(
         device,
         scan_id=f"rank-cardinality-{category}",
-        max_scrolls=22,
-        distance_ratio=0.22,
+        max_scrolls=8,
+        distance_ratio=0.68,
         observer=scan_observer,
     )
-    for nodes in screens:
+    for viewport_index, nodes in enumerate(scan.screens):
         screen_ids: list[str] = []
         for node in nodes:
             resource_id = node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
@@ -1167,6 +2083,8 @@ def tap_prescribed_exact_enabled_priority_rank(
                 and device.node_has_tappable_bounds(node)
             ):
                 candidates.add(resource_id)
+                if resource_id == selected_resource_id:
+                    selected_viewports.append(viewport_index)
         duplicate_ids.update(
             resource_id
             for resource_id in set(screen_ids)
@@ -1177,6 +2095,7 @@ def tap_prescribed_exact_enabled_priority_rank(
         or duplicate_ids
         or observed_ids != expected_ids
         or selected_resource_id not in candidates
+        or not selected_viewports
     ):
         device.capture(f"creation-prerequisite-{category}-rank-cardinality-invalid")
         raise RuntimeError(
@@ -1185,16 +2104,25 @@ def tap_prescribed_exact_enabled_priority_rank(
             f"invalidIds={sorted(invalid_ids)!r}, duplicateIds={sorted(duplicate_ids)!r}"
         )
 
-    shared.reset_scroll_to_top(device, swipes=22)
-    node = device.wait_exact_resource_id_bidirectional(
-        selected_resource_id,
-        timeout=45,
-        backward_scrolls=0,
-        forward_scrolls=22,
-        scroll_distance_ratio=0.22,
-        evidence_prefix=f"creation-prerequisite-{category}-rank-option",
-        surface_name=f"Enabled {category} rank option",
-    )
+    selected_viewport = max(selected_viewports)
+    reverse_swipes = max(0, scan.swipes - selected_viewport)
+    for _ in range(reverse_swipes):
+        device.swipe_down(distance_ratio=0.68)
+        time.sleep(0.2)
+    nodes = device.hierarchy()
+    exact_selected = [
+        node
+        for node in nodes
+        if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+        == selected_resource_id
+    ]
+    if len(exact_selected) != 1:
+        device.capture(f"creation-prerequisite-{category}-rank-option-cardinality-invalid")
+        raise RuntimeError(
+            f"Enabled {category} rank option {selected_resource_id!r} has cardinality "
+            f"{len(exact_selected)} after reversing the exact scan delta"
+        )
+    node = exact_selected[0]
     if (
         node.attributes.get("enabled") != "true"
         or node.attributes.get("clickable") != "true"
@@ -1212,29 +2140,26 @@ def select_priority_rank(
     device: shared.Device,
     category: str,
     *,
+    category_navigation: dict[str, object],
     expected_rank: str | None = None,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
 ) -> str:
     """Select one exact projected rank and prove that the parent draft refreshed.
 
-    Source-authority collection intentionally finishes at the bottom of the long
-    prerequisite page.  The generic tap helper only scrolls forwards, so every
-    category transition must start from a deterministic origin.  A bare wait for
-    the parent page is insufficient because navigation can briefly expose the
-    parent's accessibility marker before its refreshed category row is ready.
+    The first row is restored from the digest-bound authority inventory; every
+    later row is reacquired forward from the freshly verified prior row.  A bare
+    wait for the parent page is insufficient because navigation can briefly
+    expose the parent's accessibility marker before its refreshed category row
+    is ready.
     """
     if category not in CATEGORIES:
         raise RuntimeError(f"Unsupported prerequisite category {category!r}")
 
     category_selector = f"creation-prerequisite-category-{category}"
-    category_row = device.wait_exact_resource_id_bidirectional(
-        category_selector,
-        timeout=90,
-        backward_scrolls=22,
-        forward_scrolls=22,
-        scroll_distance_ratio=0.22,
-        evidence_prefix=f"creation-prerequisite-{category}-category-row",
-        surface_name=f"{category} priority category row",
+    category_row = acquire_measured_priority_category_row(
+        device,
+        category,
+        category_navigation,
     )
     device.shell("input", "tap", *(str(value) for value in category_row.center))
     device.wait_for_single_exact_resource_id(
@@ -1266,35 +2191,51 @@ def select_priority_rank(
         )
 
     deadline = time.monotonic() + 45
+    row: shared.UiNode | None = None
     while time.monotonic() < deadline:
-        if device.find_exact_resource_id("creation-prerequisite-category-page") is None:
+        nodes = device.hierarchy()
+        if not nodes:
+            time.sleep(0.75)
+            continue
+        matches = {
+            selector: [
+                node
+                for node in nodes
+                if node.attributes.get("resource-id", "").rsplit("/", 1)[-1]
+                == selector
+            ]
+            for selector in (
+                "creation-prerequisite-category-page",
+                "creation-prerequisite-page",
+                category_selector,
+            )
+        }
+        ambiguous = {
+            selector: len(candidates)
+            for selector, candidates in matches.items()
+            if len(candidates) > 1
+        }
+        if ambiguous:
+            device.capture(f"creation-prerequisite-{category}-pop-cardinality-invalid")
+            raise RuntimeError(
+                f"{category} rank selection published ambiguous parent state: {ambiguous!r}"
+            )
+        if (
+            not matches["creation-prerequisite-category-page"]
+            and len(matches["creation-prerequisite-page"]) == 1
+            and len(matches[category_selector]) == 1
+        ):
+            row = matches[category_selector][0]
             break
-        if device.dismiss_system_ui_anr():
+        if device.dismiss_system_ui_anr(nodes):
             time.sleep(2)
             continue
         time.sleep(0.25)
-    else:
+    if row is None:
         device.capture(f"creation-prerequisite-{category}-category-pop-timeout")
-        raise RuntimeError(f"{category} rank selection did not leave the category route")
-
-    device.wait_for_single_exact_resource_id(
-        "creation-prerequisite-page",
-        timeout=45,
-        evidence_prefix=f"creation-prerequisite-{category}-parent-route",
-        surface_name="Creation prerequisite parent route",
-    )
-    # PopAsync returns to the same long ScrollView offset.  Reacquire the exact
-    # row with the same bounded overlapping scan, then require the selected rank
-    # text. This proves the shared in-memory phone draft survived deep navigation.
-    row = device.wait_exact_resource_id_bidirectional(
-        category_selector,
-        timeout=90,
-        backward_scrolls=22,
-        forward_scrolls=22,
-        scroll_distance_ratio=0.22,
-        evidence_prefix=f"creation-prerequisite-{category}-selected-row",
-        surface_name=f"Selected {category} category row",
-    )
+        raise RuntimeError(
+            f"{category} rank selection did not publish one refreshed parent row"
+        )
     detail = row.attributes.get("content-desc", "")
     expected_rank = rank_token.upper()
     locale_binding = getattr(device, "_phone_ui_locale_binding", None)
@@ -1318,6 +2259,7 @@ def select_priority_rank(
             f"Selected {category} rank {expected_rank!r} was not projected by the "
             f"refreshed phone draft row: {detail!r}"
         )
+    category_navigation["lastCategory"] = category
     return selected_resource_id
 
 
@@ -1361,21 +2303,27 @@ def tap_enabled_authority_option(
     *,
     max_scrolls: int = 40,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
+    navigation_out: dict[str, object] | None = None,
 ) -> str:
     candidate_ids: set[str] = set()
+    candidate_viewports: dict[str, set[int]] = {}
     duplicate_resource_id = False
-    shared.reset_scroll_to_top(device, swipes=max_scrolls)
-    screens = scan_forward_until_stable(
+    scan_token = re.sub(r"[^a-z0-9]+", "-", required_label.casefold()).strip("-")
+    rewind_to_stable_start(
         device,
-        scan_id=(
-            "authority-option-cardinality-"
-            + re.sub(r"[^a-z0-9]+", "-", required_label.casefold()).strip("-")
-        ),
+        scan_id=f"authority-option-start-{scan_token}",
         max_scrolls=max_scrolls,
-        distance_ratio=0.22,
+        distance_ratio=0.68,
         observer=scan_observer,
     )
-    for nodes in screens:
+    scan = scan_forward_with_receipt(
+        device,
+        scan_id="authority-option-cardinality-" + scan_token,
+        max_scrolls=max_scrolls,
+        distance_ratio=0.68,
+        observer=scan_observer,
+    )
+    for viewport_index, nodes in enumerate(scan.screens):
         screen_ids = exact_enabled_authority_option_ids(
             nodes,
             prefix,
@@ -1385,6 +2333,10 @@ def tap_enabled_authority_option(
         if len(screen_ids) != len(set(screen_ids)):
             duplicate_resource_id = True
         candidate_ids.update(screen_ids)
+        for resource_id in screen_ids:
+            candidate_viewports.setdefault(resource_id, set()).add(
+                min(viewport_index, scan.swipes)
+            )
     if duplicate_resource_id or len(candidate_ids) != 1:
         device.capture(
             "invalid-authority-option-cardinality-"
@@ -1396,17 +2348,35 @@ def tap_enabled_authority_option(
             f"found {len(candidate_ids)} unique candidates"
         )
     resource_id = next(iter(candidate_ids))
-    shared.reset_scroll_to_top(device, swipes=max_scrolls)
-    node = device.wait_exact_resource_id_bidirectional(
-        resource_id,
-        timeout=90,
-        backward_scrolls=0,
-        forward_scrolls=max_scrolls,
-        scroll_distance_ratio=0.22,
-        evidence_prefix="creation-prerequisite-authority-option",
-        surface_name=f"Enabled authority option {required_label}",
-    )
+    target_viewport = max(candidate_viewports[resource_id])
+    move_between_measured_viewports(device, scan.swipes, target_viewport)
+    nodes = device.hierarchy()
+    exact = [node for node in nodes if _exact_resource_id(node) == resource_id]
+    if len(exact) != 1:
+        device.capture("creation-prerequisite-authority-option-cardinality-invalid")
+        raise RuntimeError(
+            f"Enabled authority option {required_label!r} changed cardinality to "
+            f"{len(exact)} in its measured viewport"
+        )
+    node = exact[0]
+    if (
+        node.attributes.get("enabled") != "true"
+        or node.attributes.get("clickable") != "true"
+        or not device.node_has_tappable_bounds(node)
+    ):
+        device.capture("creation-prerequisite-authority-option-not-tappable")
+        raise RuntimeError(
+            f"Enabled authority option {required_label!r} was not tappable in its fresh snapshot"
+        )
     device.shell("input", "tap", *(str(value) for value in node.center))
+    if navigation_out is not None:
+        navigation_out.clear()
+        navigation_out.update(
+            {
+                "endViewport": target_viewport,
+                "resourceViewports": {resource_id: target_viewport},
+            }
+        )
     return resource_id
 
 
@@ -1472,6 +2442,7 @@ def read_talent_grant_surface(
     max_scrolls: int = 40,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     scan_id: str | None = None,
+    navigation_out: dict[str, object] | None = None,
 ) -> TalentGrantSurface:
     """Read one complete, exact Core-projected Talent grant prompt.
 
@@ -1493,15 +2464,22 @@ def read_talent_grant_surface(
         evidence_prefix="creation-prerequisite-talent-grant-route",
         surface_name=f"{expected_kind} Talent grant route",
     )
-    shared.reset_scroll_to_top(device, swipes=max_scrolls)
-    screens = scan_forward_until_stable(
+    scan_token = scan_id or (
+        "talent-grant-cardinality-"
+        + re.sub(r"[^a-z0-9]+", "-", expected_kind.casefold()).strip("-")
+    )
+    rewind_to_stable_start(
         device,
-        scan_id=scan_id or (
-            "talent-grant-cardinality-"
-            + re.sub(r"[^a-z0-9]+", "-", expected_kind.casefold()).strip("-")
-        ),
+        scan_id=f"{scan_token}-start",
         max_scrolls=max_scrolls,
-        distance_ratio=0.22,
+        distance_ratio=0.68,
+        observer=scan_observer,
+    )
+    scan = scan_forward_with_receipt(
+        device,
+        scan_id=scan_token,
+        max_scrolls=max_scrolls,
+        distance_ratio=0.68,
         observer=scan_observer,
     )
 
@@ -1518,12 +2496,21 @@ def read_talent_grant_surface(
     seen_authority = False
     seen_digest = False
     seen_completion = False
+    resource_viewports: dict[str, set[int]] = {}
 
-    for nodes in screens:
+    for viewport_index, nodes in enumerate(scan.screens):
         screen_ids: list[str] = []
         for node in nodes:
             resource_id = _exact_resource_id(node)
             values = _accessible_values(node)
+            if (
+                navigation_out is not None
+                and resource_id
+                and device.node_has_tappable_bounds(node)
+            ):
+                resource_viewports.setdefault(resource_id, set()).add(
+                    min(viewport_index, scan.swipes)
+                )
             if resource_id.startswith(opposite_prefix):
                 opposite_option_ids.add(resource_id)
             if resource_id.startswith(option_prefix):
@@ -1611,7 +2598,7 @@ def read_talent_grant_surface(
             f"selectedIds={sorted(selected_option_ids)!r}, "
             f"completionEnabled={completion_enabled}"
         )
-    return TalentGrantSurface(
+    surface = TalentGrantSurface(
         kind=observed_kind,
         selected_count=selected_count,
         required_count=required_count,
@@ -1620,6 +2607,201 @@ def read_talent_grant_surface(
         enabled_option_ids=tuple(sorted(enabled_option_ids)),
         selected_option_ids=tuple(sorted(selected_option_ids)),
         completion_enabled=completion_enabled,
+    )
+    if navigation_out is not None:
+        navigation_out.clear()
+        navigation_out.update(
+            {
+                "endViewport": scan.swipes,
+                "resourceViewports": {
+                    resource_id: max(viewports)
+                    for resource_id, viewports in resource_viewports.items()
+                },
+            }
+        )
+    return surface
+
+
+class TalentGrantMutableState(NamedTuple):
+    selected_count: int
+    selected_option_ids: tuple[str, ...]
+    completion_enabled: bool
+
+
+def _measured_resource_viewport(
+    navigation: dict[str, object],
+    resource_id: str,
+) -> int:
+    viewports = navigation.get("resourceViewports")
+    if not isinstance(viewports, dict):
+        raise RuntimeError("Talent grant inventory emitted no measured resource viewports")
+    viewport = viewports.get(resource_id)
+    if type(viewport) is not int or viewport < 0:
+        raise RuntimeError(
+            f"Talent grant inventory emitted no measured viewport for {resource_id!r}"
+        )
+    return viewport
+
+
+def tap_exact_measured_talent_resource(
+    device: shared.Device,
+    resource_id: str,
+    navigation: dict[str, object],
+    current_viewport: int,
+    *,
+    evidence_prefix: str,
+) -> int:
+    """Move to a measured viewport, reacquire one exact node, then tap it."""
+    target_viewport = _measured_resource_viewport(navigation, resource_id)
+    move_between_measured_viewports(device, current_viewport, target_viewport)
+    nodes = device.hierarchy()
+    matches = [node for node in nodes if _exact_resource_id(node) == resource_id]
+    if len(matches) != 1:
+        device.capture(f"{evidence_prefix}-cardinality-invalid")
+        raise RuntimeError(
+            f"Measured Talent resource {resource_id!r} has cardinality {len(matches)}"
+        )
+    node = matches[0]
+    if (
+        node.attributes.get("enabled") != "true"
+        or node.attributes.get("clickable") != "true"
+        or not device.node_has_tappable_bounds(node)
+    ):
+        device.capture(f"{evidence_prefix}-not-tappable")
+        raise RuntimeError(f"Measured Talent resource {resource_id!r} was not tappable")
+    device.shell("input", "tap", *(str(value) for value in node.center))
+    return target_viewport
+
+
+def read_talent_grant_grouped_state(
+    device: shared.Device,
+    expected_kind: str,
+    baseline: TalentGrantSurface,
+    navigation: dict[str, object],
+    current_viewport: int,
+    *,
+    expected_selected_option_ids: tuple[str, ...],
+    expected_unselected_option_ids: tuple[str, ...] = (),
+    expected_completion_enabled: bool,
+    evidence_prefix: str,
+) -> tuple[TalentGrantMutableState, int]:
+    """Read fresh exact state groups without rescanning the immutable catalog."""
+    expected_selected = tuple(sorted(expected_selected_option_ids))
+    expected_unselected = tuple(sorted(expected_unselected_option_ids))
+    if (
+        set(expected_selected) & set(expected_unselected)
+        or not set(expected_selected).issubset(baseline.option_ids)
+        or not set(expected_unselected).issubset(baseline.option_ids)
+    ):
+        raise RuntimeError("Grouped Talent state expected IDs are not a valid catalog partition")
+    authority_id = "creation-prerequisite-talent-grant-authority"
+    digest_id = "creation-prerequisite-talent-grant-digest"
+    completion_id = "creation-prerequisite-talent-grant-complete"
+    required_ids = (
+        authority_id,
+        digest_id,
+        *expected_selected,
+        *expected_unselected,
+        completion_id,
+    )
+    grouped: dict[int, list[str]] = {}
+    for resource_id in required_ids:
+        grouped.setdefault(
+            _measured_resource_viewport(navigation, resource_id),
+            [],
+        ).append(resource_id)
+
+    observed: dict[str, shared.UiNode] = {}
+    for viewport in sorted(grouped):
+        current_viewport = move_between_measured_viewports(
+            device,
+            current_viewport,
+            viewport,
+        )
+        nodes = device.hierarchy()
+        for resource_id in grouped[viewport]:
+            matches = [node for node in nodes if _exact_resource_id(node) == resource_id]
+            if len(matches) != 1:
+                device.capture(f"{evidence_prefix}-{resource_id}-cardinality-invalid")
+                raise RuntimeError(
+                    f"Grouped Talent state {resource_id!r} has cardinality {len(matches)}"
+                )
+            observed[resource_id] = matches[0]
+
+    authority_values = _accessible_values(observed[authority_id])
+    counts = {
+        (
+            int(match.group("selected")),
+            int(match.group("required")),
+            match.group("kind"),
+        )
+        for value in authority_values
+        for match in TALENT_GRANT_REQUIRED.finditer(value)
+    }
+    digest_values = {
+        value
+        for value in _accessible_values(observed[digest_id])
+        if CANONICAL_AUTHORITY_DIGEST.fullmatch(value)
+    }
+    if len(counts) != 1 or digest_values != {baseline.grant_digest}:
+        device.capture(f"{evidence_prefix}-authority-drift")
+        raise RuntimeError(
+            "Grouped Talent state changed immutable authority: "
+            f"counts={sorted(counts)!r}, digests={sorted(digest_values)!r}"
+        )
+    selected_count, required_count, observed_kind = next(iter(counts))
+    if observed_kind != expected_kind or required_count != baseline.required_count:
+        device.capture(f"{evidence_prefix}-kind-count-drift")
+        raise RuntimeError(
+            "Grouped Talent state changed kind or required count: "
+            f"kind={observed_kind!r}, required={required_count}"
+        )
+
+    for resource_id in expected_selected:
+        node = observed[resource_id]
+        if (
+            not any(value.startswith("✓ ") for value in _accessible_values(node))
+            or node.attributes.get("enabled") != "true"
+            or node.attributes.get("clickable") != "true"
+            or not device.node_has_tappable_bounds(node)
+        ):
+            device.capture(f"{evidence_prefix}-{resource_id}-selected-state-invalid")
+            raise RuntimeError(
+                f"Grouped Talent state did not expose enabled exact selection {resource_id!r}"
+            )
+    for resource_id in expected_unselected:
+        node = observed[resource_id]
+        if (
+            any(value.startswith("✓ ") for value in _accessible_values(node))
+            or node.attributes.get("enabled") != "true"
+            or node.attributes.get("clickable") != "true"
+            or not device.node_has_tappable_bounds(node)
+        ):
+            device.capture(f"{evidence_prefix}-{resource_id}-unselected-state-invalid")
+            raise RuntimeError(
+                f"Grouped Talent state did not expose enabled exact unselection {resource_id!r}"
+            )
+
+    completion = observed[completion_id]
+    completion_enabled = completion.attributes.get("enabled") == "true"
+    if (
+        selected_count != len(expected_selected)
+        or completion_enabled != expected_completion_enabled
+        or completion_enabled != (selected_count == required_count)
+    ):
+        device.capture(f"{evidence_prefix}-selection-count-invalid")
+        raise RuntimeError(
+            "Grouped Talent state did not match exact selection/completion parity: "
+            f"selected={selected_count}, expected={len(expected_selected)}, "
+            f"required={required_count}, completion={completion_enabled}"
+        )
+    return (
+        TalentGrantMutableState(
+            selected_count=selected_count,
+            selected_option_ids=expected_selected,
+            completion_enabled=completion_enabled,
+        ),
+        current_viewport,
     )
 
 
@@ -1698,19 +2880,28 @@ def tap_exact_talent_option(
     )
 
 
+class TalentGrantChoiceProof(NamedTuple):
+    receipt: dict[str, object]
+    navigation: dict[str, object]
+    current_viewport: int
+
+
 def choose_and_prove_talent_grant(
     device: shared.Device,
     expected_kind: str,
     talent_option_id: str,
+    talent_option_navigation: dict[str, object],
     *,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     scan_id_prefix: str,
-) -> dict[str, object]:
+) -> TalentGrantChoiceProof:
+    navigation: dict[str, object] = {}
     initial = read_talent_grant_surface(
         device,
         expected_kind,
         scan_observer=scan_observer,
         scan_id=f"{scan_id_prefix}-initial",
+        navigation_out=navigation,
     )
     if initial.selected_count != 0 or initial.completion_enabled:
         device.capture(f"{scan_id_prefix}-initial-selection-not-empty")
@@ -1729,25 +2920,40 @@ def choose_and_prove_talent_grant(
             f"required={initial.required_count}, available={available!r}"
         )
     chosen = tuple(sorted(available)[: initial.required_count])
+    current_viewport = int(navigation["endViewport"])
     for resource_id in chosen:
-        tap_exact_talent_grant_option(device, expected_kind, resource_id)
-    complete = read_talent_grant_surface(
+        current_viewport = tap_exact_measured_talent_resource(
+            device,
+            resource_id,
+            navigation,
+            current_viewport,
+            evidence_prefix=f"{scan_id_prefix}-choose-{resource_id}",
+        )
+        device.wait_for_single_exact_resource_id(
+            "creation-prerequisite-talent-grant-page",
+            timeout=45,
+            evidence_prefix=f"{scan_id_prefix}-choice-refresh",
+            surface_name=f"Refreshed {expected_kind} Talent grant route",
+        )
+    complete_state, current_viewport = read_talent_grant_grouped_state(
         device,
         expected_kind,
-        scan_observer=scan_observer,
-        scan_id=f"{scan_id_prefix}-complete",
+        initial,
+        navigation,
+        current_viewport,
+        expected_selected_option_ids=chosen,
+        expected_completion_enabled=True,
+        evidence_prefix=f"{scan_id_prefix}-complete",
     )
     if (
-        complete.grant_digest != initial.grant_digest
-        or complete.option_ids != initial.option_ids
-        or complete.selected_option_ids != chosen
-        or set(complete.enabled_option_ids) != set(chosen)
-        or not complete.completion_enabled
+        complete_state.selected_option_ids != chosen
+        or complete_state.selected_count != initial.required_count
+        or not complete_state.completion_enabled
     ):
         device.capture(f"{scan_id_prefix}-selection-mismatch")
         raise RuntimeError(
             f"{expected_kind} exact selection/capacity changed authority: "
-            f"initial={initial!r}, complete={complete!r}, chosen={chosen!r}"
+            f"initial={initial!r}, complete={complete_state!r}, chosen={chosen!r}"
         )
 
     # A native Back followed by the exact same Talent option must preserve the
@@ -1760,72 +2966,130 @@ def choose_and_prove_talent_grant(
         evidence_prefix=f"{scan_id_prefix}-back-to-talent",
         surface_name="Talent detail route after grant Back",
     )
-    tap_exact_talent_option(device, talent_option_id)
-    preserved = read_talent_grant_surface(
+    talent_viewport = int(talent_option_navigation["endViewport"])
+    tap_exact_measured_talent_resource(
+        device,
+        talent_option_id,
+        talent_option_navigation,
+        talent_viewport,
+        evidence_prefix=f"{scan_id_prefix}-reenter-talent-option",
+    )
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-talent-grant-page",
+        timeout=45,
+        evidence_prefix=f"{scan_id_prefix}-preserved-route",
+        surface_name=f"Preserved {expected_kind} Talent grant route",
+    )
+    preserved_state, current_viewport = read_talent_grant_grouped_state(
         device,
         expected_kind,
-        scan_observer=scan_observer,
-        scan_id=f"{scan_id_prefix}-preserved",
+        initial,
+        navigation,
+        current_viewport,
+        expected_selected_option_ids=chosen,
+        expected_completion_enabled=True,
+        evidence_prefix=f"{scan_id_prefix}-preserved",
     )
-    if preserved != complete:
+    if preserved_state != complete_state:
         device.capture(f"{scan_id_prefix}-back-preservation-mismatch")
         raise RuntimeError(
             f"{expected_kind} native Back/re-enter did not preserve the exact draft: "
-            f"complete={complete!r}, preserved={preserved!r}"
+            f"complete={complete_state!r}, preserved={preserved_state!r}"
         )
 
     reset_id = chosen[0]
-    tap_exact_talent_grant_option(device, expected_kind, reset_id)
-    incomplete = read_talent_grant_surface(
+    current_viewport = tap_exact_measured_talent_resource(
         device,
-        expected_kind,
-        scan_observer=scan_observer,
-        scan_id=f"{scan_id_prefix}-explicit-reset",
+        reset_id,
+        navigation,
+        current_viewport,
+        evidence_prefix=f"{scan_id_prefix}-explicit-reset-tap",
+    )
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-talent-grant-page",
+        timeout=45,
+        evidence_prefix=f"{scan_id_prefix}-explicit-reset-route",
+        surface_name=f"Reset {expected_kind} Talent grant route",
     )
     expected_after_reset = tuple(resource_id for resource_id in chosen if resource_id != reset_id)
+    incomplete_state, current_viewport = read_talent_grant_grouped_state(
+        device,
+        expected_kind,
+        initial,
+        navigation,
+        current_viewport,
+        expected_selected_option_ids=expected_after_reset,
+        expected_unselected_option_ids=(reset_id,),
+        expected_completion_enabled=False,
+        evidence_prefix=f"{scan_id_prefix}-explicit-reset",
+    )
     if (
-        incomplete.selected_option_ids != expected_after_reset
-        or incomplete.completion_enabled
-        or incomplete.selected_count != initial.required_count - 1
+        incomplete_state.selected_option_ids != expected_after_reset
+        or incomplete_state.completion_enabled
+        or incomplete_state.selected_count != initial.required_count - 1
     ):
         device.capture(f"{scan_id_prefix}-explicit-reset-mismatch")
         raise RuntimeError(
-            f"{expected_kind} explicit deselection did not reopen the exact prompt: {incomplete!r}"
+            f"{expected_kind} explicit deselection did not reopen the exact prompt: "
+            f"{incomplete_state!r}"
         )
-    tap_exact_talent_grant_option(device, expected_kind, reset_id)
-    restored = read_talent_grant_surface(
+    current_viewport = tap_exact_measured_talent_resource(
+        device,
+        reset_id,
+        navigation,
+        current_viewport,
+        evidence_prefix=f"{scan_id_prefix}-explicit-reselect-tap",
+    )
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-talent-grant-page",
+        timeout=45,
+        evidence_prefix=f"{scan_id_prefix}-explicit-reselect-route",
+        surface_name=f"Reselected {expected_kind} Talent grant route",
+    )
+    restored_state, current_viewport = read_talent_grant_grouped_state(
         device,
         expected_kind,
-        scan_observer=scan_observer,
-        scan_id=f"{scan_id_prefix}-explicit-reselect",
+        initial,
+        navigation,
+        current_viewport,
+        expected_selected_option_ids=chosen,
+        expected_completion_enabled=True,
+        evidence_prefix=f"{scan_id_prefix}-explicit-reselect",
     )
-    if restored != complete:
+    if restored_state != complete_state:
         device.capture(f"{scan_id_prefix}-explicit-reselect-mismatch")
         raise RuntimeError(
             f"{expected_kind} explicit reselection did not restore exact authority: "
-            f"expected={complete!r}, actual={restored!r}"
+            f"expected={complete_state!r}, actual={restored_state!r}"
         )
     device.capture(f"{scan_id_prefix}-complete-exact")
-    return {
-        "kind": expected_kind,
-        "talentOptionAutomationId": talent_option_id,
-        "grantDigest": restored.grant_digest,
-        "requiredCount": restored.required_count,
-        "allOptionAutomationIds": list(restored.option_ids),
-        "selectedOptionAutomationIds": list(restored.selected_option_ids),
-        "backPreservedSelection": True,
-        "explicitDeselectReselect": True,
-    }
+    return TalentGrantChoiceProof(
+        receipt={
+            "kind": expected_kind,
+            "talentOptionAutomationId": talent_option_id,
+            "grantDigest": initial.grant_digest,
+            "requiredCount": initial.required_count,
+            "allOptionAutomationIds": list(initial.option_ids),
+            "selectedOptionAutomationIds": list(restored_state.selected_option_ids),
+            "backPreservedSelection": True,
+            "explicitDeselectReselect": True,
+        },
+        navigation=navigation,
+        current_viewport=current_viewport,
+    )
 
 
-def complete_talent_grant_to_prerequisite(device: shared.Device) -> None:
-    device.tap_bidirectional(
+def complete_talent_grant_to_prerequisite(
+    device: shared.Device,
+    navigation: dict[str, object],
+    current_viewport: int,
+) -> None:
+    tap_exact_measured_talent_resource(
+        device,
         "creation-prerequisite-talent-grant-complete",
-        timeout=90,
-        backward_scrolls=40,
-        forward_scrolls=40,
-        scroll_distance_ratio=0.22,
-        exact_resource_id=True,
+        navigation,
+        current_viewport,
+        evidence_prefix="creation-prerequisite-talent-grant-complete",
     )
     device.wait_for_single_exact_resource_id(
         "creation-prerequisite-talent-page",
@@ -2349,69 +3613,143 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     device.shell("pm", "clear", shared.PACKAGE)
     progress.advance("initial-authority")
     initial_launch = shared.launch_app(device)
-    shared.wait_for_phone_runners(device)
+    progress.record_initial_authority_milestone("app-cold-start-complete")
     phone_ui_locale = shared.record_phone_ui_locale_evidence(
         device,
         evidence_prefix="creation-prerequisite",
+        required_route_resource_id="phone-runners",
     )
-    device.tap_exact_resource_id_until_exact_resource_id(
+    progress.record_initial_authority_milestone("phone-shell-locale-complete")
+    create_character = device.tap_exact_resource_id_until_exact_resource_id(
         "home-new-runner",
         "dialog-action-create-character",
         evidence_prefix="new-runner-build-method-dialog",
         source_name="New runner control",
         target_name="Create-character build-method action",
+        target_scroll_surface="dialog-surface",
+        max_target_scrolls=16,
     )
-    device.tap("dialog-action-create-character", scroll=True)
-    require_new_character_dialog_transition(device)
-    shared.wait_for_phone_runner_route(device, created=False)
-    shared.open_creation_dashboard(
+    progress.record_initial_authority_milestone("dialog-acquisition-complete")
+    if (
+        create_character.attributes.get("enabled") != "true"
+        or create_character.attributes.get("clickable") != "true"
+        or not device.node_has_tappable_bounds(create_character)
+    ):
+        device.capture("dialog-action-create-character-not-tappable")
+        raise RuntimeError(
+            "Exact create-character dialog action was not visible, enabled, and clickable"
+        )
+    clear_creation_bootstrap_timing_log(device)
+    device.shell(
+        "input",
+        "tap",
+        *(str(value) for value in create_character.center),
+    )
+    bootstrap_log_observation: dict[str, object] = {}
+    bootstrap_logcat = wait_for_creation_bootstrap_timing_log(
         device,
-        open_build_route=False,
-        toolbar_timeout=120,
-        dashboard_timeout=30,
-        reset_swipes=8,
+        observation_out=bootstrap_log_observation,
     )
-    assert_uncreated_advanced_editor_gated(
+    progress.record_scan(bootstrap_log_observation)
+    transition_observation: dict[str, object] = {}
+    transition_nodes = require_new_character_dialog_transition(
+        device,
+        timeout=30,
+        observation_out=transition_observation,
+        fresh_first=True,
+    )
+    progress.record_scan(transition_observation)
+    progress.record_initial_authority_milestone("create-bootstrap-transaction-complete")
+    creation_bootstrap_timing = capture_creation_bootstrap_timing(
+        device,
+        logcat=bootstrap_logcat,
+    )
+    require_initial_creation_dashboard_snapshot(device, transition_nodes)
+    progress.record_initial_authority_milestone("dashboard-render-complete")
+    progress.advance("authority-inventory")
+    dashboard_authority_observation: dict[str, object] = {}
+    authority_projection_waited = wait_creation_dashboard_authority(
+        device,
+        observation_out=dashboard_authority_observation,
+    )
+    progress.record_scan(dashboard_authority_observation)
+    dashboard_scan = assert_uncreated_advanced_editor_gated(
         device,
         scan_observer=progress.record_scan,
         scan_id="advanced-editor-gate-initial",
     )
-
-    dashboard_binding = node_text(device, "creation-wizard-binding", scroll=True)
-    ready_navigation = wait_creation_method_navigation(device, ready=True)
+    dashboard_binding = dashboard_scan.binding
+    move_between_measured_viewports(
+        device,
+        dashboard_scan.swipes,
+        dashboard_scan.method_viewport,
+    )
+    method_nodes = [
+        node
+        for node in fresh_hierarchy_timed(device, [])
+        if _exact_resource_id(node) == "creation-stage-method"
+    ]
+    if len(method_nodes) != 1:
+        device.capture("creation-stage-method-ready-cardinality-invalid")
+        raise RuntimeError(
+            "Measured ready creation method navigation has cardinality "
+            f"{len(method_nodes)} after exact viewport restore"
+        )
+    method_node = method_nodes[0]
+    if not device.node_has_tappable_bounds(method_node):
+        device.capture("creation-stage-method-ready-not-tappable")
+        raise RuntimeError(
+            "Measured ready creation method navigation was not visible after exact viewport restore"
+        )
+    method_detail = require_creation_method_navigation(method_node, ready=True)
+    if method_detail != dashboard_scan.method_detail:
+        device.capture("creation-stage-method-changed-after-dashboard-scan")
+        raise RuntimeError(
+            "Creation method authority changed between the stable dashboard scan and tap: "
+            f"scan={dashboard_scan.method_detail!r}, tap={method_detail!r}"
+        )
+    ready_navigation = {
+        "detail": method_detail,
+        "clickable": True,
+        "enabled": True,
+        "authorityProjectionWaited": authority_projection_waited,
+    }
     device.capture("creation-priority-core-bootstrap-ready")
 
-    open_prerequisite(device)
-    prerequisite_binding = node_text(device, "creation-prerequisite-binding", scroll=True)
-    prerequisite_binding_authority = require_prerequisite_binding(prerequisite_binding)
-    prerequisite_snapshot_digest = canonical_digest(
-        device,
-        "creation-prerequisite-snapshot-digest",
-        scroll=True,
+    device.shell("input", "tap", *(str(value) for value in method_node.center))
+    device.wait_for_single_exact_resource_id(
+        "creation-prerequisite-page",
+        timeout=60,
+        evidence_prefix="creation-prerequisite-route",
+        surface_name="Creation prerequisite route",
     )
+    prerequisite_scan = scan_prerequisite_authority(
+        device,
+        scan_observer=progress.record_scan,
+    )
+    prerequisite_values = prerequisite_scan.values
+    prerequisite_binding = prerequisite_values["creation-prerequisite-binding"]
+    prerequisite_binding_authority = require_prerequisite_binding(prerequisite_binding)
+    prerequisite_snapshot_digest = prerequisite_values[
+        "creation-prerequisite-snapshot-digest"
+    ]
     prerequisite_digests = {
-        "rawCharacterXml": canonical_digest(
-            device,
-            "creation-prerequisite-raw-character-xml-digest",
-            scroll=True,
-        ),
-        "auxiliaryState": canonical_auxiliary_state_digest(
-            device,
-            "creation-prerequisite-auxiliary-state-digest",
-            scroll=True,
-        ),
-        "authority": canonical_digest(
-            device,
-            "creation-prerequisite-authority-digest",
-            scroll=True,
-        ),
+        "rawCharacterXml": prerequisite_values[
+            "creation-prerequisite-raw-character-xml-digest"
+        ],
+        "auxiliaryState": prerequisite_values[
+            "creation-prerequisite-auxiliary-state-digest"
+        ],
+        "authority": prerequisite_values[
+            "creation-prerequisite-authority-digest"
+        ],
     }
     require_binding_matches_canonical_digests(
         prerequisite_binding_authority,
         prerequisite_snapshot_digest,
         prerequisite_digests["authority"],
     )
-    karma = node_text(device, "creation-prerequisite-karma-budget", scroll=True)
+    karma = prerequisite_values["creation-prerequisite-karma-budget"]
     karma_labels = PRIORITY_KARMA_LABELS_BY_LANGUAGE[
         str(phone_ui_locale["language"])
     ]
@@ -2424,16 +3762,28 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
                 f"{phone_ui_locale['language']!r} label {label!r}: {karma!r}"
             )
         cursor = position + len(label)
-    source_authority_digests = read_source_authority_digests(device)
+    source_authority_digests = sorted(
+        {
+            prerequisite_values["creation-prerequisite-authority-digest"],
+            prerequisite_values["creation-prerequisite-profile-inputs-digest"],
+            prerequisite_values["creation-prerequisite-priorities-xml-digest"],
+        }
+    )
 
     progress.advance("priority-ranks")
     selected: dict[str, str] = {}
     if tuple(PRIORITY_PROOF_RANKS) != CATEGORIES:
         raise RuntimeError("Priority proof rank allocation does not cover the ordered categories")
+    priority_category_navigation: dict[str, object] = {
+        "viewportByCategory": prerequisite_scan.category_viewports,
+        "currentViewport": prerequisite_scan.swipes,
+        "lastCategory": None,
+    }
     for category, expected_rank in PRIORITY_PROOF_RANKS.items():
         selected[category] = select_priority_rank(
             device,
             category,
+            category_navigation=priority_category_navigation,
             expected_rank=expected_rank,
             scan_observer=progress.record_scan,
         )
@@ -2479,23 +3829,31 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         max_scrolls=22,
     )
     device.wait("creation-prerequisite-talent-page", timeout=45)
+    active_talent_option_navigation: dict[str, object] = {}
     active_talent_option_id = tap_enabled_authority_option(
         device,
         "creation-prerequisite-talent-option-",
         ACTIVE_SKILL_TALENT_LABEL,
         max_scrolls=40,
         scan_observer=progress.record_scan,
+        navigation_out=active_talent_option_navigation,
     )
     device.wait("creation-prerequisite-talent-grant-page", timeout=45)
-    active_grant = choose_and_prove_talent_grant(
+    active_grant_proof = choose_and_prove_talent_grant(
         device,
         "Active skills",
         active_talent_option_id,
+        active_talent_option_navigation,
         scan_observer=progress.record_scan,
         scan_id_prefix="talent-active-skill-grant",
     )
+    active_grant = active_grant_proof.receipt
     active_selected_option_ids = tuple(active_grant["selectedOptionAutomationIds"])
-    complete_talent_grant_to_prerequisite(device)
+    complete_talent_grant_to_prerequisite(
+        device,
+        active_grant_proof.navigation,
+        active_grant_proof.current_viewport,
+    )
     active_talent_selection_id = node_text(
         device,
         "creation-prerequisite-talent-selection-id",
@@ -2537,25 +3895,33 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         max_scrolls=22,
     )
     device.wait("creation-prerequisite-talent-page", timeout=45)
+    skill_group_option_navigation: dict[str, object] = {}
     typed_selections["talent"] = tap_enabled_authority_option(
         device,
         "creation-prerequisite-talent-option-",
         SKILL_GROUP_TALENT_LABEL,
         max_scrolls=40,
         scan_observer=progress.record_scan,
+        navigation_out=skill_group_option_navigation,
     )
     device.wait("creation-prerequisite-talent-grant-page", timeout=45)
-    skill_group_grant = choose_and_prove_talent_grant(
+    skill_group_grant_proof = choose_and_prove_talent_grant(
         device,
         "Skill groups",
         typed_selections["talent"],
+        skill_group_option_navigation,
         scan_observer=progress.record_scan,
         scan_id_prefix="talent-skill-group-grant",
     )
+    skill_group_grant = skill_group_grant_proof.receipt
     skill_group_selected_option_ids = tuple(
         skill_group_grant["selectedOptionAutomationIds"]
     )
-    complete_talent_grant_to_prerequisite(device)
+    complete_talent_grant_to_prerequisite(
+        device,
+        skill_group_grant_proof.navigation,
+        skill_group_grant_proof.current_viewport,
+    )
     device.wait_for_single_exact_resource_id(
         "creation-prerequisite-talent-selection",
         timeout=60,
@@ -2903,6 +4269,9 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         "priorityCompatibilityDriverSha256": sha256(priority_compatibility_path),
         "progressSnapshotSha256": sha256(progress.evidence_path),
         "progressEventsJsonlSha256": sha256(progress.events_path),
+        "creationBootstrapTimingSha256": sha256(
+            device.evidence / CREATION_BOOTSTRAP_TIMING_FILE_NAME
+        ),
     }
     receipt = {
         "schema": "chummer.android.creation-prerequisite-e2e/v1",
@@ -2930,6 +4299,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
             "completion": "exact completion resource ID enabled iff selected count equals required count",
         },
         "timing": timing,
+        "creationBootstrapTiming": creation_bootstrap_timing,
         "progressEvidence": {
             "snapshot": {
                 "path": str(progress.evidence_path),

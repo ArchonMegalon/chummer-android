@@ -8,11 +8,11 @@ WORKFLOW = REPO_ROOT / ".github" / "workflows" / "api36-editing-e2e.yml"
 PREVIEW_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "preview9-arm64-aab.yml"
 COMPATIBILITY_GRAPH = {
     "ArchonMegalon/chummer6-ui":
-        "4c88c1810e6ce2754fe7b00e03db9b36b75d517c",
+        "5beaccc912f914c8ff4ae262509ed4d13b84bf75",
     "ArchonMegalon/chummer6-core":
-        "4450825f53a5a96778e6061c16689e7c5993baf7",
+        "febd698752e195dceef79fbc3f83dc971564fe00",
     "ArchonMegalon/chummer6-hub":
-        "d29a880f624ec94aabedd0c2901ae8fed2f93ed4",
+        "8cc22cb6fdf9bdf2af3c390125f7a88de90700b3",
     "ArchonMegalon/chummer6-hub-registry":
         "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
     "ArchonMegalon/chummer6-ui-kit":
@@ -147,7 +147,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         ]
         self.assertIn("repository: ArchonMegalon/chummer6-core", content_checkout)
         self.assertIn(
-            "ref: 2fb2ae9bb48e5a1a6b25a174ba88008ce995fcd5",
+            "ref: 3260ac73714d8b001a3599d6776196e394dc6c35",
             content_checkout,
         )
         self.assertIn("path: chummer-core-content", content_checkout)

@@ -81,16 +81,16 @@ class AndroidContractTests(unittest.TestCase):
         )
 
         for dependency, commits in (
-            ("ArchonMegalon/chummer6-ui", ("4c88c1810e6ce2754fe7b00e03db9b36b75d517c",) * 2),
+            ("ArchonMegalon/chummer6-ui", ("5beaccc912f914c8ff4ae262509ed4d13b84bf75",) * 2),
             (
                 "ArchonMegalon/chummer6-core",
                 (
-                    "4450825f53a5a96778e6061c16689e7c5993baf7",
-                    "2fb2ae9bb48e5a1a6b25a174ba88008ce995fcd5",
-                    "4450825f53a5a96778e6061c16689e7c5993baf7",
+                    "febd698752e195dceef79fbc3f83dc971564fe00",
+                    "3260ac73714d8b001a3599d6776196e394dc6c35",
+                    "febd698752e195dceef79fbc3f83dc971564fe00",
                 ),
             ),
-            ("ArchonMegalon/chummer6-hub", ("d29a880f624ec94aabedd0c2901ae8fed2f93ed4",)),
+            ("ArchonMegalon/chummer6-hub", ("8cc22cb6fdf9bdf2af3c390125f7a88de90700b3",)),
             ("ArchonMegalon/chummer6-ui-kit", ("d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",)),
             ("ArchonMegalon/chummer6-hub-registry", ("af9a7e19c3bf331e96411dfb8f9e7820a98cab29",)),
             ("ArchonMegalon/chummer6-media-factory", ("415c8163d3d90b1211e4014fef332bdec6d75f73",)),
@@ -1073,7 +1073,7 @@ class AndroidContractTests(unittest.TestCase):
         self.assertIn("item.CanDelete", phone + tablet)
         self.assertIn("WorkspacePatchCollectionItemRequest", phone + tablet)
         for marker in (
-            "build-section-tab-relationships",
+            'tap_phone_build_section(device, "relationships")',
             "build-action-tab-relationships-contacts",
             "tablet-build-tab-tab-relationships",
             "tablet-build-action-tab-relationships-contacts",
