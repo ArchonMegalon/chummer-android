@@ -54,7 +54,9 @@ DEFAULT_REGISTRY = Path(
 ).resolve()
 DEFAULT_OUTPUT = REPO_ROOT / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json"
 SR5_TABLE_WIZARD_API36_JOURNEY_ID = "sr5-table-wizard-before-run-playtime"
+SR5_CONTEXTUAL_MUTATION_API36_JOURNEY_ID = "sr5-downtime-playtime-typed-transactions"
 SR5_TABLE_WIZARD_ANDROID_SOURCE_INPUTS = (
+    "src/Chummer.Android/Native/PhoneShellPages.cs",
     "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
     "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
     "src/Chummer.Android/Native/RunnerSessionSr5TableWizardPhoneAuthority.cs",
@@ -64,6 +66,7 @@ SR5_TABLE_WIZARD_ANDROID_SOURCE_INPUTS = (
     "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
     "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
     "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
+    "src/Chummer.Android/Native/Sr5TableWizardTypedTransaction.cs",
 )
 SR5_TABLE_WIZARD_PRESENTER_INPUTS = (
     "chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
@@ -100,6 +103,7 @@ SR5_TABLE_WIZARD_GATE_INPUTS = (
     "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
     "tests/test_api36_e2e_workflow.py",
     "tests/test_chummer5_editability_inventory.py",
+    "tests/test_sr5_contextual_wizard_scope.py",
 )
 SR5_TABLE_WIZARD_AUTHORITY_INPUTS = (
     *SR5_TABLE_WIZARD_ANDROID_SOURCE_INPUTS,
@@ -111,6 +115,12 @@ SR5_TABLE_WIZARD_AUTHORITY_INPUTS = (
 SR5_TABLE_WIZARD_AUTHORITY_MARKERS = {
     "src/Chummer.Android/Native/RunnerSessionCoordinator.cs": (
         "PrepareCareerWeaponFireCatalogAsync(",
+    ),
+    "src/Chummer.Android/Native/PhoneShellPages.cs": (
+        'automationId: "phone-table-downtime"',
+        'automationId: "phone-table-playtime"',
+        "Sr5TableWizardLane.Playtime",
+        "No generic mutation fallback is used.",
     ),
     "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs": (
         "Sr5CareerWizardActionIds.BeforeRun",
@@ -146,6 +156,13 @@ SR5_TABLE_WIZARD_AUTHORITY_MARKERS = {
         "TryDeserializeCheckpoint(",
         "CryptographicOperations.ZeroMemory",
     ),
+    "src/Chummer.Android/Native/Sr5TableWizardTypedTransaction.cs": (
+        "Sr5TableWizardTransactionPhase",
+        "Sr5TableWizardRecoveryObservation",
+        "ExpectedPostconditionDigest",
+        "TryBeginApplying(",
+        "TryComplete(",
+    ),
     "chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs": (
         "Sr5TableWizardLane",
         "Sr5TableWizardSession",
@@ -163,6 +180,8 @@ SR5_TABLE_WIZARD_AUTHORITY_MARKERS = {
     "tests/Chummer.Android.Sr5TableWizard.Tests/Program.cs": (
         "Sr5TableWizardLane.BeforeRun",
         "tampered phone draft must be removed and fail closed",
+        "a stale duplicate confirmation must fail closed",
+        "the exact applied receipt must survive process restart",
     ),
     "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests.csproj": (
         "RunnerSessionSr5TableWizardPhoneAuthority.cs",
@@ -179,6 +198,11 @@ SR5_TABLE_WIZARD_AUTHORITY_MARKERS = {
     ),
     "tests/test_chummer5_editability_inventory.py": (
         "test_sr5_table_wizard_development_lane_is_exactly_bound_without_completion_claim",
+    ),
+    "tests/test_sr5_contextual_wizard_scope.py": (
+        "test_phone_table_exposes_only_typed_contextual_mutations",
+        "test_playtime_uses_one_restart_safe_typed_transaction_presenter",
+        "No generic mutation fallback is used.",
     ),
     "src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx": (
         'name="Before the run"',
@@ -23464,6 +23488,40 @@ def _sr5_table_wizard_api36_recognition(
     }
 
 
+def _sr5_contextual_mutation_api36_recognition(
+    table_recognition: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "journeyId": SR5_CONTEXTUAL_MUTATION_API36_JOURNEY_ID,
+        "parentCareerLane": "sr5-career/table",
+        "routes": [
+            "sr5-career/downtime",
+            "sr5-career/playtime",
+        ],
+        "supportedTypedMutations": [
+            "downtime.calendar",
+            "playtime.edge",
+            "playtime.direct-weapon-ammunition",
+        ],
+        "explicitBlockers": [
+            "downtime.healing",
+            "downtime.training",
+            "downtime.acquisition-install-repair-crafting",
+            "downtime.lifestyle-contact-project",
+            "playtime.damage-conditions",
+            "playtime.temporary-modifiers",
+            "playtime.initiative-run-state",
+        ],
+        "recognitionStatus": "recognized",
+        "sourceAuthorityStatus": table_recognition["sourceAuthorityStatus"],
+        "executionStatus": "not_executed",
+        "matrixJourney": None,
+        "releaseClaim": False,
+        "completionCountContribution": 0,
+        "blockers": list(table_recognition["blockers"]),
+    }
+
+
 def build_inventory(
     chummer5_root: Path,
     registry_path: Path,
@@ -23998,6 +24056,13 @@ def build_inventory(
                 android_inputs,
                 presentation_root,
             ),
+            "contextualMutationJourneyRecognition":
+                _sr5_contextual_mutation_api36_recognition(
+                    _sr5_table_wizard_api36_recognition(
+                        android_inputs,
+                        presentation_root,
+                    )
+                ),
             "generator": {
                 "path": "scripts/materialize_chummer5_editability_inventory.py",
                 "sha256": _sha256_file(Path(__file__).resolve()),

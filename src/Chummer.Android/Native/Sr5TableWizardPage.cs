@@ -8,7 +8,7 @@ public sealed class Sr5TableWizardPage : NativePageBase
 {
     private readonly Sr5TableWizardLane _lane;
     private readonly RunnerSessionSr5TableWizardPhoneAuthority _authority;
-    private readonly Sr5TableWizardCheckpointStore _checkpointStore;
+    private readonly Sr5TableWizardTransactionStore _transactionStore;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -17,6 +17,7 @@ public sealed class Sr5TableWizardPage : NativePageBase
     private CancellationTokenSource? _loadLifetime;
     private Sr5TableWizardSession? _session;
     private Sr5TableWizardSnapshot? _snapshot;
+    private Sr5TableWizardTransactionJournal? _transaction;
     private string? _notice;
     private bool _loading;
     private long _loadVersion;
@@ -29,7 +30,7 @@ public sealed class Sr5TableWizardPage : NativePageBase
             throw new ArgumentOutOfRangeException(nameof(lane));
         _lane = lane;
         _authority = new RunnerSessionSr5TableWizardPhoneAuthority(coordinator);
-        _checkpointStore = new Sr5TableWizardCheckpointStore(
+        _transactionStore = new Sr5TableWizardTransactionStore(
             new PreferencesSr5TableWizardCheckpointBackend(lane));
         Title = lane == Sr5TableWizardLane.BeforeRun
             ? Text("Before the run")
@@ -96,7 +97,7 @@ public sealed class Sr5TableWizardPage : NativePageBase
         Sr5TableWizardState state = _session.State;
         if (!MatchesCurrent(state.Snapshot))
         {
-            _checkpointStore.Clear();
+            _transaction = null;
             AddStatus(
                 Text("The saved runner changed. Return to Career and reopen this table wizard."),
                 "sr5-table-wizard-stale",
@@ -122,16 +123,31 @@ public sealed class Sr5TableWizardPage : NativePageBase
                 NativeTheme.Muted);
         }
 
-        if (state.Resume.Restored && state.SelectedAction is not null)
+        if (_transaction is { Phase: Sr5TableWizardTransactionPhase.Applied, Receipt: { } receipt })
         {
-            Sr5TableWizardActionState restored = state.SelectedAction;
+            AddReceipt(receipt);
+            return;
+        }
+        if (_transaction is { Phase: Sr5TableWizardTransactionPhase.Applying })
+        {
+            AddStatus(
+                Text("The prior confirmation is locked because its exact postcondition could not be classified. Reload the current runner before retrying."),
+                "sr5-table-wizard-applying-conflict",
+                NativeTheme.Danger);
+            return;
+        }
+        if (_transaction is { Phase: Sr5TableWizardTransactionPhase.Reviewed } reviewed
+            && state.Resume.Restored
+            && state.SelectedAction is not null)
+        {
             _body.Add(NativeTheme.NavigationRow(
                 Text("Resume reviewed action"),
-                ActionDetail(restored),
+                ActionDetail(reviewed.Quote),
                 () => Navigation.PushAsync(new Sr5TableWizardReviewPage(
                     Coordinator,
                     _session,
-                    _checkpointStore)),
+                    _transactionStore,
+                    reviewed)),
                 automationId: "sr5-table-wizard-resume-review"));
         }
 
@@ -189,35 +205,26 @@ public sealed class Sr5TableWizardPage : NativePageBase
         _body.Add(NativeTheme.NavigationRow(
             title,
             ActionDetail(action),
-            () => RunAsync(() => ReviewAsync(action.Identity)),
+            () => RunAsync(() => QuoteAsync(action.Identity)),
             automationId: "sr5-table-action-" + action.Identity.ActionDigest[7..19]));
     }
 
-    private async Task ReviewAsync(Sr5TableWizardActionIdentity identity)
+    private async Task QuoteAsync(Sr5TableWizardActionIdentity identity)
     {
         if (_session is null
             || !MatchesCurrent(_session.State.Snapshot)
             || !_session.TrySelect(identity))
         {
-            _checkpointStore.Clear();
             await DisplayAlertAsync(
                 Text("Table authority changed"),
                 Text("Return to Career and load the current runner revision."),
                 Text("OK"));
             return;
         }
-        if (!_checkpointStore.TryWrite(_session))
-        {
-            await DisplayAlertAsync(
-                Text("Review draft unavailable"),
-                Text("The action was not opened because its durable review draft could not be saved and verified."),
-                Text("OK"));
-            return;
-        }
-        await Navigation.PushAsync(new Sr5TableWizardReviewPage(
+        await Navigation.PushAsync(new Sr5TableWizardQuotePage(
             Coordinator,
             _session,
-            _checkpointStore));
+            _transactionStore));
     }
 
     private async Task ReloadAsync()
@@ -252,26 +259,48 @@ public sealed class Sr5TableWizardPage : NativePageBase
                 return;
             }
 
-            Sr5TableWizardCheckpointRead checkpoint = _checkpointStore.Read();
-            if (checkpoint.Status == Sr5TableWizardCheckpointReadStatus.Unavailable)
+            Sr5TableWizardCheckpointReadStatus transactionStatus =
+                _transactionStore.TryRead(out Sr5TableWizardTransactionJournal? transaction);
+            if (transactionStatus == Sr5TableWizardCheckpointReadStatus.Unavailable)
             {
                 _snapshot = null;
                 _session = null;
                 return;
             }
-            if (checkpoint.Status == Sr5TableWizardCheckpointReadStatus.Invalid)
+            if (transactionStatus == Sr5TableWizardCheckpointReadStatus.Invalid)
                 _notice = Sr5TableWizardCheckpointInvalidationReasons.InvalidCheckpoint;
+
+            if (transaction is { Phase: Sr5TableWizardTransactionPhase.Applying })
+            {
+                Sr5TableWizardRecoveryObservation observation =
+                    Sr5TableWizardTypedTransactionPresenter.Observe(transaction, snapshot, out _);
+                if (observation == Sr5TableWizardRecoveryObservation.Original
+                    && _transactionStore.TryReturnToReview(transaction, out var recovered))
+                {
+                    transaction = recovered;
+                    _notice = "table-wizard-applying-not-observed";
+                }
+                else if (observation == Sr5TableWizardRecoveryObservation.Applied
+                         && _transactionStore.TryComplete(transaction, snapshot, out var applied))
+                {
+                    transaction = applied;
+                    _notice = "table-wizard-receipt-recovered";
+                }
+            }
 
             var session = new Sr5TableWizardSession();
             Sr5TableWizardState state = session.Bind(
                 snapshot,
-                checkpoint.Status == Sr5TableWizardCheckpointReadStatus.Ready
-                    ? checkpoint.Checkpoint
+                transaction is { Phase: Sr5TableWizardTransactionPhase.Reviewed }
+                    ? transaction.Review
                     : null);
-            if (!state.Resume.Restored && state.Resume.InvalidationReason is not null)
+            if (transaction is { Phase: Sr5TableWizardTransactionPhase.Reviewed }
+                && !state.Resume.Restored)
             {
-                _checkpointStore.Clear();
-                _notice = state.Resume.InvalidationReason;
+                if (_transactionStore.TryDiscardReview(transaction))
+                    transaction = null;
+                _notice = state.Resume.InvalidationReason
+                          ?? Sr5TableWizardCheckpointInvalidationReasons.InvalidCheckpoint;
             }
             else if (state.Resume.Restored)
             {
@@ -279,6 +308,7 @@ public sealed class Sr5TableWizardPage : NativePageBase
             }
             _snapshot = snapshot;
             _session = session;
+            _transaction = transaction;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -343,6 +373,38 @@ public sealed class Sr5TableWizardPage : NativePageBase
         _body.Add(border);
     }
 
+    private void AddReceipt(Sr5TableWizardTransactionReceipt receipt)
+    {
+        VerticalStackLayout card = new() { Spacing = 8 };
+        card.Add(NativeTheme.Eyebrow(Text("Verified receipt")));
+        card.Add(NativeTheme.Body(Format(
+            "{0} · revision {1} → {2}",
+            receipt.ActionId,
+            receipt.ExpectedWorkspaceRevision,
+            receipt.AppliedWorkspaceRevision)));
+        Label digest = NativeTheme.Body(
+            Format("Receipt {0}", ShortDigest(receipt.ReceiptDigest)),
+            NativeTheme.Muted);
+        digest.AutomationId = "sr5-table-wizard-receipt-digest";
+        card.Add(digest);
+        Button acknowledge = NativeTheme.PrimaryButton(Text("Acknowledge receipt"));
+        acknowledge.AutomationId = "sr5-table-wizard-receipt-acknowledge";
+        acknowledge.Clicked += (_, _) =>
+        {
+            if (_transaction is { } current
+                && _transactionStore.TryClearApplied(current))
+            {
+                _transaction = null;
+                _notice = null;
+                Refresh();
+            }
+        };
+        card.Add(acknowledge);
+        View border = NativeTheme.Card(card);
+        border.AutomationId = "sr5-table-wizard-receipt";
+        _body.Add(border);
+    }
+
     private static string ActionDetail(Sr5TableWizardActionState action)
         => action.Identity.Kind switch
         {
@@ -366,6 +428,10 @@ public sealed class Sr5TableWizardPage : NativePageBase
         {
             "table-wizard-checkpoint-restored" =>
                 Text("The exact reviewed action was restored. Confirm it again before saving."),
+            "table-wizard-applying-not-observed" =>
+                Text("The previous confirmation did not change the runner. Its exact quote returned to review."),
+            "table-wizard-receipt-recovered" =>
+                Text("The previous confirmation was observed after restart and its exact receipt was recovered."),
             Sr5TableWizardCheckpointInvalidationReasons.WorkspaceRevisionChanged =>
                 Text("The runner revision changed, so the saved table review was discarded."),
             Sr5TableWizardCheckpointInvalidationReasons.SnapshotChanged =>
@@ -394,10 +460,105 @@ public sealed class Sr5TableWizardPage : NativePageBase
         => value.Length <= 19 ? value : value[..19] + "…";
 }
 
+public sealed class Sr5TableWizardQuotePage : NativePageBase
+{
+    private readonly Sr5TableWizardSession _session;
+    private readonly Sr5TableWizardTransactionStore _transactionStore;
+    private readonly VerticalStackLayout _body = new()
+    {
+        Padding = new Thickness(20, 18, 20, 40),
+        Spacing = 14
+    };
+
+    public Sr5TableWizardQuotePage(
+        RunnerSessionCoordinator coordinator,
+        Sr5TableWizardSession session,
+        Sr5TableWizardTransactionStore transactionStore) : base(coordinator)
+    {
+        _session = session ?? throw new ArgumentNullException(nameof(session));
+        _transactionStore = transactionStore ?? throw new ArgumentNullException(nameof(transactionStore));
+        if (_session.State.SelectedAction is null)
+            throw new ArgumentException("Quote requires an exact selected table action.", nameof(session));
+        Title = Text("Exact table quote");
+        AutomationId = "sr5-table-wizard-quote";
+        Content = new ScrollView { Content = _body };
+    }
+
+    protected override void Refresh()
+    {
+        _body.Clear();
+        Sr5TableWizardActionState quote = _session.State.SelectedAction
+            ?? throw new InvalidOperationException("The exact table quote disappeared.");
+        _body.Add(NativeTheme.Eyebrow(Text("Configure → quote")));
+        _body.Add(NativeTheme.Title(Sr5TableWizardReviewPage.TitleFor(quote)));
+        _body.Add(NativeTheme.Card(NativeTheme.Body(
+            Sr5TableWizardReviewPage.ReviewDetail(quote))));
+
+        VerticalStackLayout facts = new() { Spacing = 6 };
+        facts.Add(NativeTheme.FieldLabel(Text("Exact authority facts")));
+        facts.Add(NativeTheme.Body(quote.Identity.Kind switch
+        {
+            Sr5TableWizardActionKind.SpendEdge =>
+                Text("Resource cost: 1 point of current Edge use. Karma: 0. Nuyen: 0."),
+            Sr5TableWizardActionKind.RegainEdge =>
+                Text("Resource change: restore 1 used Edge. Karma: 0. Nuyen: 0."),
+            Sr5TableWizardActionKind.FireWeapon when quote.WeaponPlan is { } plan =>
+                Format("Resource cost: {0} rounds from the bound active clip. Karma: 0. Nuyen: 0.", plan.RoundsConsumed),
+            _ => throw new InvalidOperationException("Unknown typed table quote.")
+        }));
+        facts.Add(NativeTheme.Body(
+            Text("Prerequisites: the exact saved runner revision and this listed typed action must remain available."),
+            NativeTheme.Muted));
+        facts.Add(NativeTheme.Body(
+            Text("Elapsed in-game time: not supplied by this typed table leaf; no duration is invented."),
+            NativeTheme.Muted));
+        View quoteCard = NativeTheme.Card(facts);
+        quoteCard.AutomationId = "sr5-table-wizard-quote-facts";
+        _body.Add(quoteCard);
+
+        Button review = NativeTheme.PrimaryButton(Text("Review exact diff"));
+        review.AutomationId = "sr5-table-wizard-open-review";
+        review.Clicked += async (_, _) => await RunAsync(OpenReviewAsync);
+        _body.Add(review);
+    }
+
+    private async Task OpenReviewAsync()
+    {
+        Sr5TableWizardSnapshot snapshot = _session.State.Snapshot;
+        if (Coordinator.State.WorkspaceId != snapshot.WorkspaceId
+            || Coordinator.State.ContentRevision != snapshot.WorkspaceRevision)
+        {
+            await DisplayAlertAsync(
+                Text("Runner changed"),
+                Text("Reopen Playtime and request a current quote."),
+                Text("OK"));
+            return;
+        }
+        if (!_transactionStore.TryWriteReview(
+                _session,
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                out Sr5TableWizardTransactionJournal? review))
+        {
+            await DisplayAlertAsync(
+                Text("Review unavailable"),
+                Text("The exact quote was not opened because its durable review could not be saved and verified."),
+                Text("OK"));
+            return;
+        }
+        await Navigation.PushAsync(new Sr5TableWizardReviewPage(
+            Coordinator,
+            _session,
+            _transactionStore,
+            review!));
+    }
+}
+
 public sealed class Sr5TableWizardReviewPage : NativePageBase
 {
     private readonly Sr5TableWizardSession _session;
-    private readonly Sr5TableWizardCheckpointStore _checkpointStore;
+    private readonly Sr5TableWizardTransactionStore _transactionStore;
+    private Sr5TableWizardTransactionJournal _transaction;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -408,11 +569,16 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
     public Sr5TableWizardReviewPage(
         RunnerSessionCoordinator coordinator,
         Sr5TableWizardSession session,
-        Sr5TableWizardCheckpointStore checkpointStore) : base(coordinator)
+        Sr5TableWizardTransactionStore transactionStore,
+        Sr5TableWizardTransactionJournal transaction) : base(coordinator)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
-        _checkpointStore = checkpointStore ?? throw new ArgumentNullException(nameof(checkpointStore));
-        if (_session.State.SelectedAction is null)
+        _transactionStore = transactionStore ?? throw new ArgumentNullException(nameof(transactionStore));
+        _transaction = transaction ?? throw new ArgumentNullException(nameof(transaction));
+        if (_session.State.SelectedAction is null
+            || !_transaction.IsExact()
+            || _transaction.Phase != Sr5TableWizardTransactionPhase.Reviewed
+            || _transaction.Quote != _session.State.SelectedAction)
             throw new ArgumentException("Review requires an exact selected table action.", nameof(session));
         Title = Text("Review table action");
         AutomationId = _session.State.Snapshot.Lane == Sr5TableWizardLane.BeforeRun
@@ -476,6 +642,18 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
             return;
         }
 
+        if (!_transactionStore.TryBeginApplying(
+                _transaction,
+                out Sr5TableWizardTransactionJournal? applying))
+        {
+            await DisplayAlertAsync(
+                Text("Confirmation already claimed"),
+                Text("This exact review is stale, already applying, or already has a receipt. Reopen Playtime to recover it."),
+                Text("OK"));
+            return;
+        }
+        _transaction = applying!;
+
         long expectedRevision = state.Snapshot.WorkspaceRevision;
         if (selected.Identity.Kind == Sr5TableWizardActionKind.FireWeapon)
         {
@@ -488,26 +666,33 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
                 _session.CreateEdgeRequest(confirmed: true));
         }
 
-        bool applied = Coordinator.State.Error is null
-                       && Coordinator.State.WorkspaceId == state.Snapshot.WorkspaceId
-                       && Coordinator.State.ContentRevision > expectedRevision;
-        if (!applied)
+        Sr5TableWizardSnapshot? observed = null;
+        if (Coordinator.State.Error is null
+            && Coordinator.State.WorkspaceId == state.Snapshot.WorkspaceId
+            && Coordinator.State.ContentRevision == expectedRevision + 1)
+        {
+            observed = await new RunnerSessionSr5TableWizardPhoneAuthority(Coordinator)
+                .LoadAsync(state.Snapshot.Lane, CancellationToken.None);
+        }
+        if (observed is null
+            || !_transactionStore.TryComplete(_transaction, observed, out var applied))
         {
             await DisplayAlertAsync(
                 Text("Save not verified"),
-                Text("The exact post-save revision was not observed. The review remains locked for recovery."),
+                Text("The exact next-revision postcondition was not observed. The Applying journal remains locked for restart recovery."),
                 Text("OK"));
             return;
         }
 
-        _checkpointStore.Clear();
+        _transaction = applied!;
         await DisplayAlertAsync(
             Text("Table action saved"),
             Format(
-                "Verified runner revision {0} after {1}.",
-                Coordinator.State.ContentRevision,
-                TitleFor(selected)),
+                "Verified runner revision {0}. Receipt {1}.",
+                applied!.Receipt!.AppliedWorkspaceRevision,
+                Sr5TableWizardPage.ShortDigest(applied.Receipt.ReceiptDigest)),
             Text("OK"));
+        await Navigation.PopAsync();
         await Navigation.PopAsync();
     }
 
@@ -519,7 +704,7 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
            && Coordinator.State.WorkspaceId == snapshot.WorkspaceId
            && Coordinator.State.ContentRevision == snapshot.WorkspaceRevision;
 
-    private static string TitleFor(Sr5TableWizardActionState action)
+    internal static string TitleFor(Sr5TableWizardActionState action)
         => action.Identity.Kind switch
         {
             Sr5TableWizardActionKind.SpendEdge => Text("Spend 1 Edge"),
@@ -529,7 +714,7 @@ public sealed class Sr5TableWizardReviewPage : NativePageBase
             _ => throw new InvalidOperationException("Unknown reviewed table action.")
         };
 
-    private static string ReviewDetail(Sr5TableWizardActionState action)
+    internal static string ReviewDetail(Sr5TableWizardActionState action)
         => action.Identity.Kind switch
         {
             Sr5TableWizardActionKind.SpendEdge or Sr5TableWizardActionKind.RegainEdge =>

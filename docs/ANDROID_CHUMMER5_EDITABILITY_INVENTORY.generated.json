@@ -602,6 +602,11 @@
         "sha256": "352d251725ed809213fb2541f4a2bd736bddad2c4bcd44ef11d7ca1954d512ec"
       },
       {
+        "path": "src/Chummer.Android/Native/PhoneShellPages.cs",
+        "exists": true,
+        "sha256": "77706e001bb90b83fb67a5b4d65e35e89103fba90004a515d63683edf0dd242c"
+      },
+      {
         "path": "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "exists": true,
         "sha256": "10948278f0215fe8eadfdfe3aa8d27624d7b1e1e519ddac851033555268c94c1"
@@ -639,12 +644,17 @@
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
         "exists": true,
-        "sha256": "7592771dd7cc7dc721e39471f3da658dc1dc666c2ca3fde1258bf84f0f316f7f"
+        "sha256": "5751d9eebf6f3dc6908cda36abaa4b15441587887751c42241ca57f3b13194a9"
       },
       {
         "path": "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
         "exists": true,
         "sha256": "99965319a2cdce47e39cbb32c7eb1d8ac78a382fa646290ae6de2a9874bd4b80"
+      },
+      {
+        "path": "src/Chummer.Android/Native/Sr5TableWizardTypedTransaction.cs",
+        "exists": true,
+        "sha256": "dfc8ba627ce754065bcb5e66f597dbbe7b7e39272cb2ce6f0fc1ad4de1acd1bc"
       },
       {
         "path": "chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
@@ -709,7 +719,7 @@
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests.csproj",
         "exists": true,
-        "sha256": "5c87e4993de0a1fe203cd445103e363bea3a0d66b82b185aa93b5200f8a10e01"
+        "sha256": "b2cd3162b37bcf752f05bfc97a148c9c8e4290e0f926781de0d439c24e9fbe5f"
       },
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.NativeCompile.Tests/NativeCompileStubs.cs",
@@ -719,12 +729,12 @@
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.Tests/Chummer.Android.Sr5TableWizard.Tests.csproj",
         "exists": true,
-        "sha256": "3435b6bedb904485996c38d3515cb4932948364f4a5a9f9cc618d253f4a0b7c6"
+        "sha256": "89a7dda4a536a8bcaefc3b6e045871155357fe27477d1f4ba552de1b1292689c"
       },
       {
         "path": "tests/Chummer.Android.Sr5TableWizard.Tests/Program.cs",
         "exists": true,
-        "sha256": "f8757f357fae3e1199d8001d563ceba09ec464223aa6ceb9a308f049adde7e4e"
+        "sha256": "51534c4edc67005f4c5e0f986948d586c8579a9e6702af0217d29a0cc390bd53"
       },
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
@@ -749,12 +759,17 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "58ef7784bcf6109a711e3c6cdf4a9e3979521af16322cecb72f11122f9860059"
+        "sha256": "f8c71d61b1a02a996bbba61e9ff5c7ad8f44f298623028acb0ab7d720a0a49cb"
       },
       {
         "path": "tests/test_chummer5_editability_inventory.py",
         "exists": true,
-        "sha256": "5fd223bf201df257a3268360e6148d14794437933251fa9c2a4798b31515d1f2"
+        "sha256": "8f58e4f0bbcd3b63d4a8dd8b1668d9b95f1f5563b284aa4a03c8b33bbd7cebdc"
+      },
+      {
+        "path": "tests/test_sr5_contextual_wizard_scope.py",
+        "exists": true,
+        "sha256": "ab072a8b66eab8ff795ddfdbd6685a6df5c9ec992b810d69e03b08478210459d"
       },
       {
         "path": "src/Chummer.Android/Native/TabletBuildPage.cs",
@@ -2551,6 +2566,7 @@
       "releaseClaim": false,
       "completionCountContribution": 0,
       "androidSourcePaths": [
+        "src/Chummer.Android/Native/PhoneShellPages.cs",
         "src/Chummer.Android/Native/RunnerSessionCoordinator.cs",
         "src/Chummer.Android/Native/RunnerSessionSr5CareerWizardPhoneAuthority.cs",
         "src/Chummer.Android/Native/RunnerSessionSr5TableWizardPhoneAuthority.cs",
@@ -2559,7 +2575,8 @@
         "src/Chummer.Android/Native/Sr5CareerWizardPage.cs",
         "src/Chummer.Android/Native/Sr5CareerWizardPhoneModel.cs",
         "src/Chummer.Android/Native/Sr5TableWizardPage.cs",
-        "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs"
+        "src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs",
+        "src/Chummer.Android/Native/Sr5TableWizardTypedTransaction.cs"
       ],
       "presenterSourcePaths": [
         "chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
@@ -2589,7 +2606,8 @@
         "src/Chummer.Android/Chummer.Android.csproj",
         "tests/Chummer.Android.Native.CompileCheck/NativeCompileInputs.props",
         "tests/test_api36_e2e_workflow.py",
-        "tests/test_chummer5_editability_inventory.py"
+        "tests/test_chummer5_editability_inventory.py",
+        "tests/test_sr5_contextual_wizard_scope.py"
       ],
       "careerChooserCompileClosure": {
         "projectPath": "tests/Chummer.Android.Sr5CareerChooser.Tests/Chummer.Android.Sr5CareerChooser.Tests.csproj",
@@ -2602,9 +2620,41 @@
         "source-missing:chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs"
       ]
     },
+    "contextualMutationJourneyRecognition": {
+      "journeyId": "sr5-downtime-playtime-typed-transactions",
+      "parentCareerLane": "sr5-career/table",
+      "routes": [
+        "sr5-career/downtime",
+        "sr5-career/playtime"
+      ],
+      "supportedTypedMutations": [
+        "downtime.calendar",
+        "playtime.edge",
+        "playtime.direct-weapon-ammunition"
+      ],
+      "explicitBlockers": [
+        "downtime.healing",
+        "downtime.training",
+        "downtime.acquisition-install-repair-crafting",
+        "downtime.lifestyle-contact-project",
+        "playtime.damage-conditions",
+        "playtime.temporary-modifiers",
+        "playtime.initiative-run-state"
+      ],
+      "recognitionStatus": "recognized",
+      "sourceAuthorityStatus": "blocked",
+      "executionStatus": "not_executed",
+      "matrixJourney": null,
+      "releaseClaim": false,
+      "completionCountContribution": 0,
+      "blockers": [
+        "source-missing:chummer-presentation/Chummer.Presentation/Overview/Sr5CareerWizardDesktopSession.cs",
+        "source-missing:chummer-presentation/Chummer.Presentation/Overview/Sr5TableWizardSession.cs"
+      ]
+    },
     "generator": {
       "path": "scripts/materialize_chummer5_editability_inventory.py",
-      "sha256": "3ed8b26bffdd639495662fbbd68cdeae2134cdb59fede1cfa91aacdbea98e93e"
+      "sha256": "d67d18655f65ec6ad1617c42a0f850e675d2c0958ef792bb35c715be4cb7c837"
     }
   },
   "coverageByFamily": {

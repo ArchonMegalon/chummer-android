@@ -49,8 +49,9 @@ public sealed class PhonePlayPage : NativePageBase
 }
 
 /// <summary>
-/// Phone table-use-case chooser. It exposes only currently typed SR5 authorities: the existing
-/// typed Before Run Edge flow, atomic After Run flow, and governed Downtime Calendar flow. Missing authorities stay
+/// Phone table-use-case chooser. It exposes only currently typed SR5 authorities: the typed
+/// Before Run Edge flow, atomic After Run flow, governed Downtime Calendar flow, and typed
+/// Playtime Edge/ammo flow. Missing authorities stay
 /// explicit and disabled rather than falling back to generic edits.
 /// </summary>
 public sealed class PhoneTablePage : NativePageBase
@@ -124,12 +125,17 @@ public sealed class PhoneTablePage : NativePageBase
             automationId: "phone-table-downtime");
         downtime.IsEnabled = hasExactSr5CareerAuthority;
         _body.Add(downtime);
-        Button playtime = NativeTheme.SecondaryButton("Playtime (unavailable)");
-        playtime.AutomationId = "phone-table-playtime-unavailable";
-        playtime.IsEnabled = false;
+        View playtime = NativeTheme.NavigationRow(
+            "Playtime",
+            "Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt",
+            () => Navigation.PushAsync(new Sr5TableWizardPage(
+                Coordinator,
+                Sr5TableWizardLane.Playtime)),
+            automationId: "phone-table-playtime");
+        playtime.IsEnabled = hasExactSr5CareerAuthority;
         _body.Add(playtime);
         Label blocker = NativeTheme.Body(
-            "Playtime remains unavailable from this shell until its replayable typed authority is release-bound. Before Run exposes only typed Edge; no generic preparation fallback is used.",
+            "Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used.",
             NativeTheme.Danger);
         blocker.AutomationId = "phone-table-unavailable-authorities";
         _body.Add(NativeTheme.Card(blocker));

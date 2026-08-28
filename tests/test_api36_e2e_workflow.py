@@ -198,6 +198,21 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             with self.subTest(authority=authority[:40]):
                 self.assertNotIn(journey_id, authority)
 
+        contextual = payload["generationInputs"]["contextualMutationJourneyRecognition"]
+        contextual_id = "sr5-downtime-playtime-typed-transactions"
+        self.assertEqual(contextual_id, contextual["journeyId"])
+        self.assertEqual(
+            ["sr5-career/downtime", "sr5-career/playtime"],
+            contextual["routes"],
+        )
+        self.assertEqual("not_executed", contextual["executionStatus"])
+        self.assertIsNone(contextual["matrixJourney"])
+        self.assertFalse(contextual["releaseClaim"])
+        self.assertEqual(0, contextual["completionCountContribution"])
+        for authority in (self.text, runner, aggregate, finalizer):
+            with self.subTest(contextual_authority=authority[:40]):
+                self.assertNotIn(contextual_id, authority)
+
     def test_phone_path_validates_the_pinned_phone_beta_contract(self) -> None:
         check = "python3 chummer-design/scripts/ai/validate_android_phone_beta_contract.py"
         self.assertEqual(1, self.text.count(check))

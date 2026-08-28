@@ -6308,6 +6308,31 @@ public sealed class Demo
         )
         self.assertEqual(478, payload["summary"]["completionProvenCount"])
 
+        contextual = payload["generationInputs"]["contextualMutationJourneyRecognition"]
+        self.assertEqual(
+            "sr5-downtime-playtime-typed-transactions",
+            contextual["journeyId"],
+        )
+        self.assertEqual(
+            ["sr5-career/downtime", "sr5-career/playtime"],
+            contextual["routes"],
+        )
+        self.assertEqual(
+            [
+                "downtime.calendar",
+                "playtime.edge",
+                "playtime.direct-weapon-ammunition",
+            ],
+            contextual["supportedTypedMutations"],
+        )
+        self.assertIn("downtime.training", contextual["explicitBlockers"])
+        self.assertIn("playtime.damage-conditions", contextual["explicitBlockers"])
+        self.assertEqual("not_executed", contextual["executionStatus"])
+        self.assertIsNone(contextual["matrixJourney"])
+        self.assertFalse(contextual["releaseClaim"])
+        self.assertEqual(0, contextual["completionCountContribution"])
+        self.assertEqual(recognition["blockers"], contextual["blockers"])
+
         expected = set(inventory.SR5_TABLE_WIZARD_AUTHORITY_INPUTS)
         self.assertEqual(len(expected), len(inventory.SR5_TABLE_WIZARD_AUTHORITY_INPUTS))
         bound = {
