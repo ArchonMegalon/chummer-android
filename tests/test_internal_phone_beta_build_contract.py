@@ -595,7 +595,9 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             graph = json.loads((evidence / "compile-graph.json").read_text(encoding="utf-8"))
             graph["publicReleaseReady"] = True
             (evidence / "compile-graph.json").write_text(json.dumps(graph), encoding="utf-8")
-            self.refresh_evidence_binding(receipt, evidence, payload, "compile-graph.json")
+            self.refresh_evidence_binding(
+                receipt, evidence, payload, "compile-graph.json", "package-compile-graph"
+            )
             with self.assertRaisesRegex(ValueError, "keys mismatch"):
                 self.receipt.verify_receipt(receipt)
 
@@ -604,7 +606,9 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             (evidence / "compile-graph.json").write_text(
                 '{"status":"pass","status":"pass"}\n', encoding="utf-8"
             )
-            self.refresh_evidence_binding(receipt, evidence, payload, "compile-graph.json")
+            self.refresh_evidence_binding(
+                receipt, evidence, payload, "compile-graph.json", "package-compile-graph"
+            )
             with self.assertRaisesRegex(ValueError, "duplicate JSON key: status"):
                 self.receipt.verify_receipt(receipt)
 
@@ -641,6 +645,105 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
             result = self.receipt.verify_receipt(receipt)
             self.assertEqual("blocked", result["verifiedReceiptStatus"])
             self.assertEqual(7, len(result["evidence"]))
+
+    def test_real_f17_shape_rejects_deleted_successful_authority_binding(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, evidence, payload = self.seed_blocked_compile_receipt(Path(temporary))
+            (evidence / "authority-binding.json").unlink()
+            payload["evidence"] = [
+                row for row in payload["evidence"]
+                if row["path"] != "authority-binding.json"
+            ]
+            receipt.write_text(json.dumps(payload), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "authenticated phase prefix"):
+                self.receipt.verify_receipt(receipt)
+
+    def test_blocked_receipt_requires_every_causal_phase_side_effect(self) -> None:
+        for missing in self.receipt.EXPECTED_EVIDENCE:
+            with self.subTest(missing=missing), tempfile.TemporaryDirectory() as temporary:
+                receipt, evidence, payload = self.seed_blocked_compile_receipt(
+                    Path(temporary)
+                )
+                (evidence / missing).unlink()
+                payload["evidence"] = [
+                    row for row in payload["evidence"] if row["path"] != missing
+                ]
+                if missing == "command-journal.jsonl":
+                    payload["journalSha256"] = ""
+                    payload["journalSizeBytes"] = 0
+                receipt.write_text(json.dumps(payload), encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    self.receipt.verify_receipt(receipt)
+
+    def test_earlier_failure_rejects_later_phase_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, evidence, payload = self.seed_blocked_compile_receipt(Path(temporary))
+            payload["failureStage"] = "locked-restore"
+            journal = evidence / "command-journal.jsonl"
+            rows = [json.loads(line) for line in journal.read_text(encoding="utf-8").splitlines()]
+            rows = rows[:4]
+            rows[-1]["exitCode"] = 1
+            journal.write_text(
+                "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows),
+                encoding="utf-8",
+            )
+            self.refresh_blocked_journal_binding(receipt, evidence, payload)
+            with self.assertRaisesRegex(ValueError, "authenticated phase prefix"):
+                self.receipt.verify_receipt(receipt)
+
+    def test_journal_rejects_reordered_and_duplicate_phase_rows(self) -> None:
+        for mutation in ("reordered", "duplicate"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
+                receipt, evidence, payload = self.seed_blocked_compile_receipt(
+                    Path(temporary)
+                )
+                journal = evidence / "command-journal.jsonl"
+                rows = [
+                    json.loads(line) for line in journal.read_text(encoding="utf-8").splitlines()
+                ]
+                if mutation == "reordered":
+                    rows[:4] = rows[2:4] + rows[:2]
+                else:
+                    rows.insert(2, copy.deepcopy(rows[1]))
+                journal.write_text(
+                    "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows),
+                    encoding="utf-8",
+                )
+                self.refresh_blocked_journal_binding(receipt, evidence, payload)
+                with self.assertRaises(ValueError):
+                    self.receipt.verify_receipt(receipt)
+
+    def test_graph_status_must_match_authenticated_phase_result(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, evidence, payload = self.seed_compile_receipt(Path(temporary))
+            graph_path = evidence / "compile-graph.json"
+            graph = json.loads(graph_path.read_text(encoding="utf-8"))
+            graph["status"] = "blocked"
+            graph_path.write_text(json.dumps(graph), encoding="utf-8")
+            self.refresh_evidence_binding(
+                receipt, evidence, payload, "compile-graph.json", "package-compile-graph"
+            )
+            with self.assertRaisesRegex(ValueError, "facts mismatch"):
+                self.receipt.verify_receipt(receipt)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            receipt, evidence, payload = self.seed_blocked_compile_receipt(Path(temporary))
+            payload["failureStage"] = "package-compile-graph"
+            journal = evidence / "command-journal.jsonl"
+            rows = [json.loads(line) for line in journal.read_text(encoding="utf-8").splitlines()]
+            rows = rows[:8]
+            rows[-1]["exitCode"] = 1
+            journal.write_text(
+                "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows),
+                encoding="utf-8",
+            )
+            (evidence / "build.log").unlink()
+            payload["evidence"] = [
+                row for row in payload["evidence"] if row["path"] != "build.log"
+            ]
+            self.refresh_blocked_journal_binding(receipt, evidence, payload)
+            with self.assertRaisesRegex(ValueError, "evidence claims pass"):
+                self.receipt.verify_receipt(receipt)
 
     def test_blocked_failure_stage_is_derived_from_the_first_failing_phase(self) -> None:
         for forged_stage in (

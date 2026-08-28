@@ -10,6 +10,7 @@ import os
 import re
 import stat
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 
@@ -166,6 +167,13 @@ PHASES = (
 )
 PREFLIGHT_STAGE = "preflight"
 POST_COMPILE_STAGE = "post-compile-seal"
+
+
+@dataclass(frozen=True)
+class JournalFacts:
+    failure_stage: str | None
+    passed_phases: tuple[str, ...]
+    failed_phase_has_result: bool
 
 
 def sha256(path: Path) -> str:
@@ -359,28 +367,43 @@ def require_object(value: object, label: str) -> dict[str, object]:
     return value
 
 
-def validate_authority_evidence(paths: dict[str, Path]) -> None:
+def parse_result_json(path: Path, label: str, required: bool) -> dict[str, object] | None:
+    raw = path.read_bytes()
+    if not required and not raw.lstrip().startswith(b"{"):
+        return None
+    return require_object(parse_json_bytes(raw, label), label)
+
+
+def validate_authority_evidence(paths: dict[str, Path], facts: JournalFacts) -> None:
+    authority_passed = "authority-intake" in facts.passed_phases
+    authority_failed = (
+        facts.failure_stage == "authority-intake" and facts.failed_phase_has_result
+    )
     if "authority-intake.log" in paths:
-        intake = require_object(
-            parse_json_file(paths["authority-intake.log"], "authority intake evidence"),
+        intake = parse_result_json(
+            paths["authority-intake.log"],
             "authority intake evidence",
+            required=authority_passed,
         )
-        require_exact_keys(intake, AUTHORITY_INTAKE_KEYS, "authority intake evidence")
-        expected = {
-            "authorityClass": AUTHORITY_CLASS,
-            "contractName": "chummer.android.internal-phone-beta-package-authority/v1",
-            "doesNotAssert": [
-                "api36_device_execution", "google_play_upload", "public_release_readiness",
-                "publication_authority", "tablet_readiness",
-            ],
-            "ownerPackagePinCount": 7,
-            "packagePinCount": 6,
-            "publicationAuthorized": False,
-            "receiptSha256": AUTHORITY_RECEIPT_SHA256,
-            "status": "pass",
-        }
-        if intake != expected:
-            raise ValueError("authority intake evidence facts mismatch")
+        if intake is not None:
+            require_exact_keys(intake, AUTHORITY_INTAKE_KEYS, "authority intake evidence")
+            expected = {
+                "authorityClass": AUTHORITY_CLASS,
+                "contractName": "chummer.android.internal-phone-beta-package-authority/v1",
+                "doesNotAssert": [
+                    "api36_device_execution", "google_play_upload", "public_release_readiness",
+                    "publication_authority", "tablet_readiness",
+                ],
+                "ownerPackagePinCount": 7,
+                "packagePinCount": 6,
+                "publicationAuthorized": False,
+                "receiptSha256": AUTHORITY_RECEIPT_SHA256,
+                "status": "pass",
+            }
+            if authority_passed and intake != expected:
+                raise ValueError("authority intake evidence facts mismatch")
+            if authority_failed and intake.get("status") == "pass":
+                raise ValueError("failed authority phase evidence claims pass")
     if "authority-binding.json" in paths:
         authority = require_object(
             parse_json_file(paths["authority-binding.json"], "authority binding evidence"),
@@ -423,52 +446,65 @@ def validate_authority_evidence(paths: dict[str, Path]) -> None:
             raise ValueError("authority binding evidence facts mismatch")
 
 
-def validate_graph_evidence(paths: dict[str, Path]) -> None:
+def validate_graph_evidence(paths: dict[str, Path], facts: JournalFacts) -> None:
     if "owned-compile-graph.log" in paths:
-        owned = require_object(
-            parse_json_file(paths["owned-compile-graph.log"], "owned compile graph evidence"),
-            "owned compile graph evidence",
+        passed = "owned-compile-graph" in facts.passed_phases
+        failed = (
+            facts.failure_stage == "owned-compile-graph" and facts.failed_phase_has_result
         )
-        require_exact_keys(owned, OWNED_GRAPH_KEYS, "owned compile graph evidence")
-        if not (
-            owned.get("schema") == "chummer.android.native-compile-graph/v1"
-            and owned.get("status") == "pass"
-            and owned.get("compiledOwnedSourceCount") == 210
-            and owned.get("generatedProjectReferenceCount") == 3
-            and owned.get("issues") == []
-            and isinstance(owned.get("compileProject"), str)
-            and str(owned["compileProject"]).endswith(
-                "/tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj"
+        owned = parse_result_json(
+            paths["owned-compile-graph.log"], "owned compile graph evidence", required=passed,
+        )
+        if owned is not None:
+            require_exact_keys(owned, OWNED_GRAPH_KEYS, "owned compile graph evidence")
+            pass_facts = (
+                owned.get("schema") == "chummer.android.native-compile-graph/v1"
+                and owned.get("status") == "pass"
+                and owned.get("compiledOwnedSourceCount") == 210
+                and owned.get("generatedProjectReferenceCount") == 3
+                and owned.get("issues") == []
+                and isinstance(owned.get("compileProject"), str)
+                and str(owned["compileProject"]).endswith(
+                    "/tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj"
+                )
             )
-        ):
-            raise ValueError("owned compile graph evidence facts mismatch")
+            if passed and not pass_facts:
+                raise ValueError("owned compile graph evidence facts mismatch")
+            if failed and owned.get("status") == "pass":
+                raise ValueError("failed owned graph phase evidence claims pass")
     if "compile-graph.json" in paths:
-        package = require_object(
-            parse_json_file(paths["compile-graph.json"], "package compile graph evidence"),
-            "package compile graph evidence",
+        passed = "package-compile-graph" in facts.passed_phases
+        failed = (
+            facts.failure_stage == "package-compile-graph" and facts.failed_phase_has_result
         )
-        require_exact_keys(package, PACKAGE_GRAPH_KEYS, "package compile graph evidence")
-        expected = {
-            "chummerPackageCount": 14,
-            "contractName": "chummer.android.internal-phone-beta-compile-graph/v1",
-            "dependencyMode": "locked_package_no_siblings",
-            "doesNotAssert": ["api36_device_execution", "public_release_readiness"],
-            "projectCount": 3,
-            "projectLibraries": [
-                "Chummer.Desktop.Runtime/1.0.0", "Chummer.Presentation/1.0.0",
-            ],
-            "publicationAuthorized": False,
-            "status": "pass",
-        }
-        if package != expected:
-            raise ValueError("package compile graph evidence facts mismatch")
+        package = parse_result_json(
+            paths["compile-graph.json"], "package compile graph evidence", required=passed,
+        )
+        if package is not None:
+            require_exact_keys(package, PACKAGE_GRAPH_KEYS, "package compile graph evidence")
+            expected = {
+                "chummerPackageCount": 14,
+                "contractName": "chummer.android.internal-phone-beta-compile-graph/v1",
+                "dependencyMode": "locked_package_no_siblings",
+                "doesNotAssert": ["api36_device_execution", "public_release_readiness"],
+                "projectCount": 3,
+                "projectLibraries": [
+                    "Chummer.Desktop.Runtime/1.0.0", "Chummer.Presentation/1.0.0",
+                ],
+                "publicationAuthorized": False,
+                "status": "pass",
+            }
+            if passed and package != expected:
+                raise ValueError("package compile graph evidence facts mismatch")
+            if failed and package.get("status") == "pass":
+                raise ValueError("failed package graph phase evidence claims pass")
 
 
 def validate_journal(
     path: Path,
     status: str,
     evidence_rows: dict[str, dict[str, object]],
-) -> str | None:
+) -> JournalFacts:
     lines = path.read_bytes().splitlines()
     rows = [
         require_object(parse_json_bytes(line, f"journal row {index}"), f"journal row {index}")
@@ -479,6 +515,9 @@ def validate_journal(
     row_index = 0
     phase_index = 0
     failure_stage: str | None = None
+    failed_phase_has_result = False
+    passed_phases: list[str] = []
+    finished_phases: list[str] = []
     while row_index < len(rows):
         if phase_index >= len(PHASES):
             raise ValueError("command journal contains a later phase/result after completion")
@@ -595,14 +634,18 @@ def validate_journal(
             ):
                 raise ValueError(f"command journal timeout termination mismatch: {phase}")
             failure_stage = phase
+            failed_phase_has_result = True
         elif exit_code == 0:
             if termination != clean_termination:
                 raise ValueError(f"passing phase forged process termination: {phase}")
+            passed_phases.append(phase)
         else:
             if exit_code == 124 or termination != clean_termination:
                 raise ValueError(f"non-timeout failure termination mismatch: {phase}")
             failure_stage = phase
+            failed_phase_has_result = True
 
+        finished_phases.append(phase)
         row_index += 2
         phase_index += 1
         if failure_stage is not None:
@@ -613,28 +656,68 @@ def validate_journal(
     if status == "pass":
         if failure_stage is not None or phase_index != len(PHASES) or row_index != len(rows):
             raise ValueError("passing command journal must contain five passing phases")
-        return None
-    if failure_stage is not None:
-        return failure_stage
-    if phase_index == len(PHASES) and row_index == len(rows):
-        if tuple(evidence_rows) != EXPECTED_EVIDENCE:
-            raise ValueError("post-compile failure requires complete evidence")
-        return POST_COMPILE_STAGE
-    raise ValueError("blocked journal has no authenticated failing phase")
+        facts = JournalFacts(None, tuple(passed_phases), False)
+    elif failure_stage is not None:
+        facts = JournalFacts(
+            failure_stage,
+            tuple(passed_phases),
+            failed_phase_has_result,
+        )
+    elif phase_index == len(PHASES) and row_index == len(rows):
+        facts = JournalFacts(POST_COMPILE_STAGE, tuple(passed_phases), False)
+    else:
+        raise ValueError("blocked journal has no authenticated failing phase")
 
-
-def validate_pass_text_evidence(paths: dict[str, Path]) -> None:
-    restore = paths["restore.log"].read_text(encoding="utf-8")
-    restored = "Restored " in restore or "All projects are up-to-date for restore." in restore
-    if not restored or re.search(r"\b(?:warning|error)\b", restore, re.IGNORECASE):
-        raise ValueError("locked restore evidence does not prove a clean pass")
-    build = paths["build.log"].read_text(encoding="utf-8")
-    if not (
-        "Build succeeded." in build
-        and re.search(r"\b0 Warning\(s\)", build)
-        and re.search(r"\b0 Error\(s\)", build)
+    required_evidence = {"command-journal.jsonl"}
+    required_evidence.update(
+        evidence_name
+        for phase, evidence_name in PHASES
+        if phase in finished_phases
+    )
+    allowed_evidence = set(required_evidence)
+    if "authority-intake" in passed_phases:
+        required_evidence.add("authority-binding.json")
+        allowed_evidence.add("authority-binding.json")
+    elif facts.failure_stage == "authority-intake" and facts.failed_phase_has_result:
+        allowed_evidence.add("authority-binding.json")
+    actual_evidence = set(evidence_rows)
+    if not required_evidence.issubset(actual_evidence) or not actual_evidence.issubset(
+        allowed_evidence
     ):
-        raise ValueError("serialized compile evidence does not prove warnings=0/errors=0")
+        raise ValueError("durable evidence does not match the authenticated phase prefix")
+    return facts
+
+
+def validate_text_evidence(paths: dict[str, Path], facts: JournalFacts) -> None:
+    if "restore.log" in paths:
+        restore = paths["restore.log"].read_text(encoding="utf-8")
+        restored = "Restored " in restore or "All projects are up-to-date for restore." in restore
+        clean_restore = restored and not re.search(
+            r"\b(?:warning|error)\b", restore, re.IGNORECASE
+        )
+        if "locked-restore" in facts.passed_phases and not clean_restore:
+            raise ValueError("locked restore evidence does not prove a clean pass")
+        if (
+            facts.failure_stage == "locked-restore"
+            and facts.failed_phase_has_result
+            and clean_restore
+        ):
+            raise ValueError("failed locked restore evidence claims pass")
+    if "build.log" in paths:
+        build = paths["build.log"].read_text(encoding="utf-8")
+        clean_build = bool(
+            "Build succeeded." in build
+            and re.search(r"\b0 Warning\(s\)", build)
+            and re.search(r"\b0 Error\(s\)", build)
+        )
+        if "serialized-native-compile" in facts.passed_phases and not clean_build:
+            raise ValueError("serialized compile evidence does not prove warnings=0/errors=0")
+        if (
+            facts.failure_stage == "serialized-native-compile"
+            and facts.failed_phase_has_result
+            and clean_build
+        ):
+            raise ValueError("failed serialized compile evidence claims pass")
 
 
 def verify_receipt(
@@ -712,14 +795,16 @@ def verify_receipt(
         raise ValueError("evidence directory has missing or extra files")
     if status == "pass" and tuple(names) != EXPECTED_EVIDENCE:
         raise ValueError("passing receipt requires the complete evidence inventory")
-    validate_authority_evidence(evidence_paths)
-    validate_graph_evidence(evidence_paths)
     evidence_by_name = {str(row["path"]): row for row in actual_rows}
-    derived_failure_stage: str | None = None
     if "command-journal.jsonl" in evidence_paths:
-        derived_failure_stage = validate_journal(
+        journal_facts = validate_journal(
             evidence_paths["command-journal.jsonl"], status, evidence_by_name
         )
+    else:
+        journal_facts = JournalFacts(PREFLIGHT_STAGE, (), False)
+    validate_authority_evidence(evidence_paths, journal_facts)
+    validate_graph_evidence(evidence_paths, journal_facts)
+    validate_text_evidence(evidence_paths, journal_facts)
     if status == "pass":
         expected_bindings = {
             str(row["path"]): {
@@ -730,7 +815,6 @@ def verify_receipt(
         }
         if payload.get("evidenceBindings") != expected_bindings:
             raise ValueError("passing receipt top-level evidence bindings mismatch")
-        validate_pass_text_evidence(evidence_paths)
     if status == "blocked":
         journal = next((row for row in actual_rows if row["path"] == "command-journal.jsonl"), None)
         expected_digest = journal["sha256"] if journal is not None else ""
@@ -747,7 +831,7 @@ def verify_receipt(
             if failure_stage != PREFLIGHT_STAGE or actual_rows:
                 raise ValueError("journal-free blocked receipt must be an empty preflight failure")
         else:
-            if failure_stage != derived_failure_stage:
+            if failure_stage != journal_facts.failure_stage:
                 raise ValueError("blocked receipt failureStage does not match authenticated journal")
             if failure_stage in {phase for phase, _ in PHASES}:
                 failed_index = next(
