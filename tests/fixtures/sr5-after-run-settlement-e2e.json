@@ -1,0 +1,87 @@
+{
+  "schema": "chummer.android.sr5-after-run-settlement-fixture/v1",
+  "runner": {
+    "fileName": "sr5-after-run-settlement-e2e.chum5",
+    "name": "Operation Glass Harbor E2E",
+    "alias": "Sr5AfterRunSettlementE2E",
+    "settingsId": "223a11ff-80e0-428b-89a9-6ef1c243b8b6",
+    "streetCred": 10,
+    "notoriety": 4,
+    "publicAwareness": 6,
+    "karma": 30,
+    "nuyen": 1000,
+    "heat": 1,
+    "customSentinel": "after-run-unrelated-xml-must-survive",
+    "expectedSha256": "7d15569aa7785df171830078f5c5a51f9e0b5689fec82fcc76a7f13d1a927a9e"
+  },
+  "identity": {
+    "proposalId": "11111111-1111-1111-1111-111111111111",
+    "runId": "22222222-2222-2222-2222-222222222222",
+    "characterId": "33333333-3333-3333-3333-333333333333"
+  },
+  "reward": {
+    "runTitle": "Operation Glass Harbor",
+    "completedAtUtc": "2026-08-26T20:00:00Z",
+    "karmaAward": 8,
+    "nuyenAward": 12500,
+    "receiptSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "consequences": {
+    "currentHeat": 1,
+    "heatDelta": 2,
+    "streetCredDelta": 2,
+    "notorietyDelta": 1,
+    "publicAwarenessDelta": 1
+  },
+  "policy": {
+    "maximumHeat": 20,
+    "maximumReputation": 100,
+    "maximumConnection": 12,
+    "maximumLoyalty": 6,
+    "karmaPerContactPoint": 1,
+    "allowRunRewardContacts": true,
+    "allowKarmaPurchasedContacts": true,
+    "calculatePublicAwareness": false
+  },
+  "contacts": [
+    {
+      "contactId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "name": "Fixer Jane",
+      "role": "Fixer",
+      "location": "Seattle",
+      "connection": 4,
+      "loyalty": 3,
+      "kind": "Run reward"
+    },
+    {
+      "contactId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      "name": "Doc Red",
+      "role": "Street Doc",
+      "location": "Tacoma",
+      "connection": 6,
+      "loyalty": 5,
+      "kind": "Karma purchase"
+    }
+  ],
+  "reviews": {
+    "gm": {
+      "actorId": "gm-17",
+      "reviewId": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+      "reason": "Run settlement approved"
+    },
+    "owner": {
+      "actorId": "owner-23",
+      "reviewId": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+      "reason": "Complete proposal accepted"
+    }
+  },
+  "expected": {
+    "heatAfter": 3,
+    "streetCredAfter": 12,
+    "notorietyAfter": 5,
+    "publicAwarenessAfter": 7,
+    "contactKarmaCost": 11,
+    "karmaAfter": 19,
+    "contactsAdded": 2
+  }
+}
