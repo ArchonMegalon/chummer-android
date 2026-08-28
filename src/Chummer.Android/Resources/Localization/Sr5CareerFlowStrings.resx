@@ -517,8 +517,6 @@ Preview: {3}…</value></data>
   <data name="Resume reviewed action" xml:space="preserve"><value>Resume reviewed action</value></data>
   <data name="Retry" xml:space="preserve"><value>Retry</value></data>
   <data name="Return to Career and load the current runner revision." xml:space="preserve"><value>Return to Career and load the current runner revision.</value></data>
-  <data name="Review draft unavailable" xml:space="preserve"><value>Review draft unavailable</value></data>
-  <data name="Review one exact point of Edge use before the run. Loadout, healing, contacts, and acquisitions remain unavailable until they have typed authority." xml:space="preserve"><value>Review one exact point of Edge use before the run. Loadout, healing, contacts, and acquisitions remain unavailable until they have typed authority.</value></data>
   <data name="Review table action" xml:space="preserve"><value>Review table action</value></data>
   <data name="SR5 Career · table-safe actions" xml:space="preserve"><value>SR5 Career · table-safe actions</value></data>
   <data name="Save not verified" xml:space="preserve"><value>Save not verified</value></data>
@@ -681,12 +679,11 @@ Preview: {3}…</value></data>
   <data name="SR5 Table" xml:space="preserve"><value>SR5 Table</value></data>
   <data name="Choose a governed table flow" xml:space="preserve"><value>Choose a governed table flow</value></data>
   <data name="Each enabled route is backed by a typed Core/Presentation authority and exact saved-runner revision." xml:space="preserve"><value>Each enabled route is backed by a typed Core/Presentation authority and exact saved-runner revision.</value></data>
-  <data name="Before Run (unavailable)" xml:space="preserve"><value>Before Run (unavailable)</value></data>
   <data name="After Run" xml:space="preserve"><value>After Run</value></data>
   <data name="Settle governed rewards, Heat/reputation, contacts, approvals and the atomic Core receipt" xml:space="preserve"><value>Settle governed rewards, Heat/reputation, contacts, approvals and the atomic Core receipt</value></data>
   <data name="Review, confirm and persist one exact SR5 Calendar add, edit or delete with restart recovery" xml:space="preserve"><value>Review, confirm and persist one exact SR5 Calendar add, edit or delete with restart recovery</value></data>
   <data name="Playtime" xml:space="preserve"><value>Playtime</value></data>
   <data name="Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt" xml:space="preserve"><value>Quote, review and confirm exact Edge or direct-weapon ammunition changes with a restart-safe receipt</value></data>
-  <data name="Before Run remains unavailable here. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used." xml:space="preserve"><value>Before Run remains unavailable here. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used.</value></data>
   <data name="Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used." xml:space="preserve"><value>Before Run exposes only typed Edge, and Playtime exposes only typed Edge and direct-weapon ammunition. Downtime healing, training, acquisition/install/repair/crafting, lifestyle/contact/project planning, and Playtime damage/conditions, temporary modifiers, initiative and run-state remain blocked until composed typed quote/time/receipt authorities exist. No generic mutation fallback is used.</value></data>
+  <data name="Before Run" xml:space="preserve"><value>Before Run</value></data>
 </root>
