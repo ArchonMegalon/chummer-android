@@ -220,7 +220,7 @@ public static class Sr5TableWizardTypedTransactionPresenter
             return Sr5TableWizardRecoveryObservation.Conflict;
         try
         {
-            Sr5TableWizardProjector.ValidateSnapshot(observed);
+            _ = new Sr5TableWizardSession().Bind(observed);
         }
         catch (InvalidOperationException)
         {

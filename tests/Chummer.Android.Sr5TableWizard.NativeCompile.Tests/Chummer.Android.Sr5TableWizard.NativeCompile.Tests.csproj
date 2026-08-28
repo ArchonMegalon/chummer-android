@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="NativeCompileStubs.cs" />
+    <Compile Include="TransactionValidationCompileProbe.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5CareerFlowStrings.cs"
              Link="Native/Sr5CareerFlowStrings.cs" />
     <Compile Include="../../src/Chummer.Android/Native/Sr5TableWizardPhoneModel.cs"

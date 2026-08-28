@@ -101,6 +101,19 @@ Assert(transactionStore.TryReturnToReview(applying!, out Sr5TableWizardTransacti
 Assert(transactionStore.TryBeginApplying(recoveredReview!, out applying),
     "the recovered review may be confirmed once");
 
+AssertObservedSnapshotConflict(
+    applying!,
+    snapshot with { Schema = "chummer.sr5_table_wizard.snapshot.invalid" },
+    "a snapshot with an unknown schema must fail closed before recovery classification");
+AssertObservedSnapshotConflict(
+    applying!,
+    snapshot with { SnapshotDigest = "sha256:" + new string('0', 64) },
+    "a snapshot whose digest does not match its typed projection must fail closed");
+AssertObservedSnapshotConflict(
+    applying!,
+    snapshot with { Actions = [] },
+    "a snapshot with a truncated typed action catalog must fail closed");
+
 Sr5TableWizardSnapshot appliedSnapshot = Sr5TableWizardProjector.Project(
     Sr5TableWizardLane.BeforeRun,
     new CareerEdgeUseEditorState(
@@ -248,6 +261,21 @@ Assert(weaponStore.TryComplete(weaponApplying!, weaponAppliedSnapshot, out var w
     "direct weapon ammunition must produce the same durable typed receipt");
 
 Console.WriteLine("SR5 Before Run / Playtime Android draft-store tests passed.");
+
+static void AssertObservedSnapshotConflict(
+    Sr5TableWizardTransactionJournal applying,
+    Sr5TableWizardSnapshot observed,
+    string message)
+{
+    Assert(
+        Sr5TableWizardTypedTransactionPresenter.Observe(
+            applying,
+            observed,
+            out string observedPostconditionDigest)
+        == Sr5TableWizardRecoveryObservation.Conflict
+        && observedPostconditionDigest.Length == 0,
+        message);
+}
 
 static void AssertCapabilityBoundaries()
 {
