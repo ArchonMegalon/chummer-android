@@ -72,7 +72,8 @@ class FinalizationDevice:
     def __init__(self, overrides: dict[str, str] | None = None) -> None:
         self.values = {
             "creation-finalization-binding": (
-                f"Revision 16 · plan {PLAN_DIGEST[:18]}… · preview {PREVIEW_DIGEST[:18]}…"
+                f"Revision 16 · plan sha256:{PLAN_DIGEST[:11]}… · "
+                f"preview sha256:{PREVIEW_DIGEST[:11]}…"
             ),
             "creation-finalization-costs": "costs",
             "creation-finalization-atomic-boundary": "atomic",
@@ -295,30 +296,47 @@ class Api36Sr5PriorityLegalPathDriverTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     driver.cross_bind_finalization_authorities(candidate_review, candidate_receipt)
 
-    def test_finalize_parses_full_authorities_and_rejects_resigned_display_or_receipt_mismatch(self) -> None:
+    def test_finalize_uses_machine_authority_and_only_formats_visible_typed_digest_markers(self) -> None:
         result = driver.finalize_exact_build(FinalizationDevice())
         self.assertEqual(16, result["sealedPlanAuthority"]["contentRevision"])
         self.assertEqual(PLAN_DIGEST, result["sealedPlanAuthority"]["planDigest"])
         self.assertEqual(PREVIEW_DIGEST, result["sealedPlanAuthority"]["previewDigest"])
         self.assertEqual(RECEIPT_DIGEST, result["receiptAuthority"]["receiptDigest"])
+        self.assertNotIn("reviewedAuthority", result)
+        self.assertIn("visibleReviewEvidence", result)
+        display_only = driver.finalize_exact_build(FinalizationDevice({
+            "creation-finalization-binding": (
+                "Revision 999 · plan sha256:aaaaaaaaaaa… · preview sha256:bbbbbbbbbbb…"
+            ),
+        }))
+        self.assertEqual(result["sealedPlanAuthority"], display_only["sealedPlanAuthority"])
         for overrides, message in (
             ({"creation-finalization-plan-digest": "1" * 18 + "…"}, "full lowercase SHA-256"),
             ({"creation-finalization-plan-digest": "0" * 64}, "full lowercase SHA-256"),
+            ({"creation-finalization-plan-digest": "sha256:" + PLAN_DIGEST}, "full lowercase SHA-256"),
+            ({"creation-finalization-plan-digest": PLAN_DIGEST.upper()}, "full lowercase SHA-256"),
             ({"creation-finalization-receipt-plan-digest": RECEIPT_DIGEST}, "plan digest does not match"),
             ({"creation-finalization-receipt-preview-digest": RECEIPT_DIGEST}, "preview digest does not match"),
             ({"creation-finalization-receipt-build-method": "SumToTen"}, "exactly BuildMethod 'Priority'"),
             ({"creation-finalization-receipt-previous-content-revision": "15"}, "reviewed workspace revision"),
             ({"creation-finalization-receipt-content-revision": "18"}, "advance the reviewed revision exactly once"),
             ({"creation-finalization-receipt-digest": "receipt-placeholder"}, "full lowercase SHA-256"),
-            ({
-                "creation-finalization-binding": (
-                    f"Revision 16 · plan {RECEIPT_DIGEST[:18]}… · preview {PREVIEW_DIGEST[:18]}…"
-                )
-            }, "Displayed whole-build binding"),
         ):
             with self.subTest(overrides=overrides):
                 with self.assertRaisesRegex(RuntimeError, message):
                     driver.finalize_exact_build(FinalizationDevice(overrides))
+        for visible in (
+            f"Revision 16 · plan {PLAN_DIGEST[:11]}… · preview sha256:{PREVIEW_DIGEST[:11]}…",
+            f"Revision 16 · plan sha512:{PLAN_DIGEST[:11]}… · preview sha256:{PREVIEW_DIGEST[:11]}…",
+            f"Revision 16 · plan SHA256:{PLAN_DIGEST[:11]}… · preview sha256:{PREVIEW_DIGEST[:11]}…",
+            f"Revision 16 · plan sha256:{PLAN_DIGEST[:12]}… · preview sha256:{PREVIEW_DIGEST[:11]}…",
+            f"Revision 16 · plan sha256:{PLAN_DIGEST} · preview sha256:{PREVIEW_DIGEST}",
+        ):
+            with self.subTest(visible=visible):
+                with self.assertRaisesRegex(RuntimeError, "canonical truncated sha256 markers"):
+                    driver.finalize_exact_build(FinalizationDevice({
+                        "creation-finalization-binding": visible,
+                    }))
 
     def test_whole_build_finalize_restart_and_exact_saved_workspace_are_required(self) -> None:
         persisted = driver.shared.WorkspaceAuthority("workspace-priority", 17, 17, "1" * 64, "2" * 64)

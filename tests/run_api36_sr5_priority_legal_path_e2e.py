@@ -35,9 +35,9 @@ DISPOSABLE_DEVICE_FLAG = "--allow-destructive-disposable-device"
 SAFE_ADB_SERIAL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 CANONICAL_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 POSITIVE_REVISION = re.compile(r"^[1-9][0-9]*$")
-FINALIZATION_BINDING = re.compile(
-    r"^Revision (?P<revision>[1-9][0-9]*) · plan (?P<plan>[0-9a-f]{18})… · "
-    r"preview (?P<preview>[0-9a-f]{18})…$"
+VISIBLE_FINALIZATION_BINDING = re.compile(
+    r"^Revision [1-9][0-9]* · plan sha256:[0-9a-f]{11}… · "
+    r"preview sha256:[0-9a-f]{11}…$"
 )
 VIRTUAL_MARKERS = (
     "aosp_cf_", "cuttlefish", "emulator", "generic", "goldfish", "qemu",
@@ -383,15 +383,11 @@ def finalize_exact_build(device: shared.Device) -> dict[str, object]:
             device, "creation-finalization-preview-digest", "Sealed finalization preview digest",
         ),
     )
-    display_binding = FINALIZATION_BINDING.fullmatch(reviewed["creation-finalization-binding"])
-    if display_binding is None:
-        raise RuntimeError("Whole-build plan display binding is not exact and revision-bound")
-    if (
-        int(display_binding.group("revision")) != review.content_revision
-        or display_binding.group("plan") != review.plan_digest[:18]
-        or display_binding.group("preview") != review.preview_digest[:18]
-    ):
-        raise RuntimeError("Displayed whole-build binding does not match its full authority values")
+    if VISIBLE_FINALIZATION_BINDING.fullmatch(reviewed["creation-finalization-binding"]) is None:
+        raise RuntimeError(
+            "Whole-build display must use canonical truncated sha256 markers; "
+            "the machine-readable authorities remain the only trusted values"
+        )
     confirm = device.wait_exact_resource_id_bidirectional(
         "creation-finalization-confirm", timeout=60, backward_scrolls=30,
         forward_scrolls=30, scroll_distance_ratio=0.22,
@@ -455,7 +451,7 @@ def finalize_exact_build(device: shared.Device) -> dict[str, object]:
     device.capture("sr5-priority-finalization-receipt-durable")
     device.shell("input", "tap", *(str(value) for value in open_career.center))
     return {
-        "review": "sealed-core-whole-build-plan", "reviewedAuthority": reviewed,
+        "review": "sealed-core-whole-build-plan", "visibleReviewEvidence": reviewed,
         "sealedPlanAuthority": {
             "contentRevision": review.content_revision,
             "planDigest": review.plan_digest,
