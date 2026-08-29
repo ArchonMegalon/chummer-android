@@ -1915,17 +1915,20 @@ def scan_prerequisite_authority(
     scan_observer: Callable[[dict[str, object]], None] | None = None,
 ) -> PrerequisiteAuthorityScanProof:
     """Read every initial prerequisite authority field in one stable traversal."""
-    # This is a newly pushed page, and the product pins the short build-method
-    # card before the tall binding/Karma cards.  Begin with the route's current
-    # first viewport: reversing merely until the later binding becomes visible
-    # can place the method above the viewport and recreate the exact skip this
-    # proof is intended to catch.  The full selector set below fails closed if
-    # the new-page origin contract changes.
+    # Android can retain the dashboard's scroll offset on the newly pushed
+    # native page. Establish a bounded origin before scanning; the exact top
+    # selectors below still fail closed if this is insufficient or the page
+    # shape changes.
+    shared.reset_scroll_to_top(device, swipes=8)
+    # Heritage and Talent are short, intermediate category rows. Keep every
+    # UIAutomator viewport overlapping so a full-height gesture cannot jump
+    # from the authority cards directly to Attributes; retain the existing
+    # stable-end, 22-scroll and 90-second authority bounds.
     scan = scan_forward_with_receipt(
         device,
         scan_id="prerequisite-authority-initial",
         max_scrolls=22,
-        distance_ratio=0.68,
+        distance_ratio=0.22,
         observer=scan_observer,
     )
     observed: dict[str, set[str]] = {
@@ -2106,6 +2109,7 @@ def acquire_measured_priority_category_row(
             device,
             current_viewport,
             target_viewport,
+            distance_ratio=0.22,
         )
         max_forward_swipes = 0
     else:

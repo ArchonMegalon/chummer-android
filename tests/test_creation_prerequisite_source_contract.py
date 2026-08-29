@@ -2035,12 +2035,16 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
 
         prerequisite_source = inspect.getsource(driver.scan_prerequisite_authority)
         self.assertIn("scan_forward_with_receipt(", prerequisite_source)
-        self.assertIn("distance_ratio=0.68", prerequisite_source)
-        self.assertNotIn("reset_scroll_to_top", prerequisite_source)
+        self.assertIn("max_scrolls=22", prerequisite_source)
+        self.assertIn("distance_ratio=0.22", prerequisite_source)
+        self.assertIn("shared.reset_scroll_to_top(device, swipes=8)", prerequisite_source)
 
         selection_source = inspect.getsource(driver.select_priority_rank)
         self.assertIn("acquire_measured_priority_category_row", selection_source)
         self.assertNotIn("rewind_to_exact_resource_id", selection_source)
+
+        acquisition_source = inspect.getsource(driver.acquire_measured_priority_category_row)
+        self.assertIn("distance_ratio=0.22", acquisition_source)
 
         rank_source = inspect.getsource(driver.tap_prescribed_exact_enabled_priority_rank)
         self.assertIn("reverse_swipes = max(0, scan.swipes - selected_viewport)", rank_source)
@@ -2124,13 +2128,21 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver,
             "scan_forward_with_receipt",
             return_value=driver.StableViewportScan([nodes], 6),
-        ):
+        ) as scan, mock.patch.object(driver.shared, "reset_scroll_to_top") as reset:
             proof = driver.scan_prerequisite_authority(device)
         self.assertEqual(values, proof.values)
         self.assertEqual(6, proof.swipes)
         self.assertEqual(
             {category: 0 for category in driver.CATEGORIES},
             proof.category_viewports,
+        )
+        reset.assert_called_once_with(device, swipes=8)
+        scan.assert_called_once_with(
+            device,
+            scan_id="prerequisite-authority-initial",
+            max_scrolls=22,
+            distance_ratio=0.22,
+            observer=None,
         )
 
         changed = driver.shared.UiNode(
@@ -2143,8 +2155,94 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver,
             "scan_forward_with_receipt",
             return_value=driver.StableViewportScan([nodes, [changed]], 6),
-        ), self.assertRaisesRegex(RuntimeError, "changed while scrolling"):
+        ), mock.patch.object(driver.shared, "reset_scroll_to_top"), self.assertRaisesRegex(
+            RuntimeError, "changed while scrolling"
+        ):
             driver.scan_prerequisite_authority(device)
+
+    def test_priority_category_inventory_captures_intermediate_only_rows_and_fails_closed(
+        self,
+    ) -> None:
+        def category_node(category: str, *, enabled: str = "true"):
+            return driver.shared.UiNode(
+                {
+                    "resource-id": f"creation-prerequisite-category-{category}",
+                    "content-desc": category,
+                    "enabled": enabled,
+                    "clickable": "true",
+                    "focusable": "true",
+                    "bounds": "[10,100][900,300]",
+                }
+            )
+
+        authority_values = {
+            "creation-prerequisite-binding": "Revision 7",
+            "creation-prerequisite-method": "Priority",
+            "creation-prerequisite-karma-budget": "Total 25 · Used 0 · Remaining 25",
+            "creation-prerequisite-snapshot-digest": "sha256:" + "1" * 64,
+            "creation-prerequisite-raw-character-xml-digest": "sha256:" + "2" * 64,
+            "creation-prerequisite-auxiliary-state-digest": "3" * 64,
+            "creation-prerequisite-authority-digest": "sha256:" + "4" * 64,
+            "creation-prerequisite-profile-inputs-digest": "sha256:" + "5" * 64,
+            "creation-prerequisite-priorities-xml-digest": "sha256:" + "6" * 64,
+        }
+        authority_nodes = [
+            driver.shared.UiNode({"resource-id": selector, "content-desc": value})
+            for selector, value in authority_values.items()
+        ]
+        screens = [
+            [*authority_nodes, category_node(driver.CATEGORIES[0])],
+            *[[category_node(category)] for category in driver.CATEGORIES[1:]],
+        ]
+        device = mock.Mock()
+        device.node_has_tappable_bounds.side_effect = (
+            lambda node: bool(node.attributes.get("bounds"))
+        )
+
+        def scan(candidate_screens):
+            with mock.patch.object(
+                driver,
+                "scan_forward_with_receipt",
+                return_value=driver.StableViewportScan(candidate_screens, 7),
+            ), mock.patch.object(driver.shared, "reset_scroll_to_top"):
+                return driver.scan_prerequisite_authority(device)
+
+        proof = scan(screens)
+        self.assertEqual(
+            {category: index for index, category in enumerate(driver.CATEGORIES)},
+            proof.category_viewports,
+        )
+
+        missing_talent = [
+            screen
+            for category, screen in zip(driver.CATEGORIES, screens, strict=True)
+            if category != "talent"
+        ]
+        with self.assertRaisesRegex(
+            RuntimeError, "omitted an exact tappable priority category"
+        ):
+            scan(missing_talent)
+
+        duplicate_heritage = [
+            [*authority_nodes, category_node("heritage"), category_node("heritage")],
+            *screens[1:],
+        ]
+        with self.assertRaisesRegex(
+            RuntimeError, "cardinality 2"
+        ):
+            scan(duplicate_heritage)
+
+        disabled_talent = [
+            [*authority_nodes, category_node(driver.CATEGORIES[0])],
+            *[
+                [category_node(category, enabled="false" if category == "talent" else "true")]
+                for category in driver.CATEGORIES[1:]
+            ],
+        ]
+        with self.assertRaisesRegex(
+            RuntimeError, "was not enabled and clickable"
+        ):
+            scan(disabled_talent)
 
     def test_prerequisite_page_pins_short_method_authority_before_tall_cards(self) -> None:
         source = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
