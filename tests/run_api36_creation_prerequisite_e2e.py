@@ -370,6 +370,11 @@ COMPOSED_SCAN_TIMING_TRIGGER_FIELDS = (
     "traversalEmptyHierarchyReads",
     "totalNavigationSwipes",
 )
+COMPOSED_SCAN_FORWARD_STATUSES = frozenset({
+    "stable-end",
+    "bound-exhausted",
+    "empty-hierarchy-exhausted",
+})
 
 
 def require_composed_scan_timing(scan: dict[str, object]) -> None:
@@ -381,7 +386,10 @@ def require_composed_scan_timing(scan: dict[str, object]) -> None:
     allowance.  Receipts without composed origin/traversal fields are separate
     polling observations and remain outside this contract.
     """
-    composed = any(field in scan for field in COMPOSED_SCAN_TIMING_TRIGGER_FIELDS)
+    composed = (
+        scan.get("status") in COMPOSED_SCAN_FORWARD_STATUSES
+        or any(field in scan for field in COMPOSED_SCAN_TIMING_TRIGGER_FIELDS)
+    )
     if not composed:
         return
     missing = [field for field in COMPOSED_SCAN_TIMING_FIELDS if field not in scan]
@@ -411,6 +419,21 @@ def require_composed_scan_timing(scan: dict[str, object]) -> None:
     )
     origin_rounding_ms = (value["originHierarchyReadCount"] + 1) // 2
     traversal_rounding_ms = (traversal_reads + 1) // 2
+    origin_maximum_lower_bound = (
+        (
+            value["originHierarchyElapsedMs"]
+            + value["originHierarchyReadCount"]
+            - 1
+        )
+        // value["originHierarchyReadCount"]
+        if value["originHierarchyReadCount"] > 0
+        else 0
+    )
+    traversal_maximum_lower_bound = (
+        (traversal_hierarchy_ms + traversal_reads - 1) // traversal_reads
+        if traversal_reads > 0
+        else 0
+    )
     relationships_hold = (
         traversal_reads >= 0
         and traversal_hierarchy_ms >= 0
@@ -433,6 +456,34 @@ def require_composed_scan_timing(scan: dict[str, object]) -> None:
         and value["maximumHierarchyReadMs"] <= value["hierarchyElapsedMs"]
         and value["originMaximumHierarchyReadMs"]
         <= value["originHierarchyElapsedMs"]
+        and (
+            (
+                value["originHierarchyReadCount"] > 0
+                and value["originMaximumHierarchyReadMs"]
+                >= origin_maximum_lower_bound
+            )
+            or (
+                value["originHierarchyReadCount"] == 0
+                and value["originHierarchyElapsedMs"] == 0
+                and value["originMaximumHierarchyReadMs"] == 0
+            )
+        )
+        and (
+            (
+                traversal_reads > 0
+                and value["maximumHierarchyReadMs"]
+                >= traversal_maximum_lower_bound
+            )
+            or (traversal_reads == 0 and traversal_hierarchy_ms == 0)
+        )
+        and (
+            value["hierarchyReadCount"] > 0
+            or (
+                value["hierarchyReadCount"] == 0
+                and value["hierarchyElapsedMs"] == 0
+                and value["maximumHierarchyReadMs"] == 0
+            )
+        )
         and value["maximumHierarchyReadMs"]
         <= max(
             value["originMaximumHierarchyReadMs"],
@@ -744,7 +795,7 @@ def rewind_to_stable_start(
         time.sleep(0.2)
     result = {
         "scanId": scan_id,
-        "status": "bound-exhausted",
+        "status": "stable-start-bound-exhausted",
         "screens": screens,
         "swipes": swipes,
         "configuredMaxScrolls": max_scrolls,

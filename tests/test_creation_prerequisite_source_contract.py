@@ -429,6 +429,10 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                     "originHierarchyReadCount",
                 )
             ),
+            "all-trigger-fields-omitted": lambda value: tuple(
+                value.pop(field)
+                for field in driver.COMPOSED_SCAN_TIMING_TRIGGER_FIELDS
+            ),
             "bool-as-integer": lambda value: value.__setitem__("swipes", True),
             "elapsed-partition": lambda value: value.__setitem__("elapsedMs", 3299),
             "hierarchy-outside-clock": lambda value: value.__setitem__(
@@ -453,6 +457,28 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "traversal-maximum-exceeds-traversal-sum": lambda value: value.__setitem__(
                 "maximumHierarchyReadMs", 700
             ),
+            "origin-maximum-below-rounded-average": lambda value: value.__setitem__(
+                "originMaximumHierarchyReadMs", 524
+            ),
+            "traversal-maximum-below-rounded-average": lambda value: value.update({
+                "originHierarchyElapsedMs": 300,
+                "originMaximumHierarchyReadMs": 100,
+                "hierarchyElapsedMs": 900,
+                "maximumHierarchyReadMs": 199,
+            }),
+            "zero-origin-reads-with-nonzero-sum": lambda value: value.update({
+                "reusedInitialScreen": False,
+                "originElapsedMs": 1,
+                "originReverseSwipes": 0,
+                "originEmptyHierarchyReads": 0,
+                "originHierarchyReadCount": 0,
+                "originHierarchyElapsedMs": 1,
+                "originMaximumHierarchyReadMs": 1,
+            }),
+            "zero-traversal-reads-with-nonzero-sum": lambda value: value.update({
+                "hierarchyReadCount": 4,
+                "hierarchyElapsedMs": 2101,
+            }),
         }
         for case, mutate in mutations.items():
             forged = dict(receipt)
@@ -462,6 +488,41 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "Composed accessibility scan timing",
             ):
                 driver.require_composed_scan_timing(forged)
+
+    def test_every_forward_terminal_status_requires_composed_timing(self) -> None:
+        for status in sorted(driver.COMPOSED_SCAN_FORWARD_STATUSES):
+            with self.subTest(status=status), self.assertRaisesRegex(
+                RuntimeError,
+                "Composed accessibility scan timing omitted fields",
+            ):
+                driver.require_composed_scan_timing({
+                    "scanId": "rank-cardinality-heritage",
+                    "status": status,
+                })
+
+    def test_realistic_hosted_rank_scan_timing_reconciles(self) -> None:
+        receipt: dict[str, object] = {
+            "scanId": "rank-cardinality-heritage",
+            "status": "stable-end",
+            "reusedInitialScreen": True,
+            "originElapsedMs": 11000,
+            "originReverseSwipes": 0,
+            "originEmptyHierarchyReads": 3,
+            "originHierarchyReadCount": 4,
+            "originHierarchyElapsedMs": 8600,
+            "originMaximumHierarchyReadMs": 2200,
+            "traversalElapsedMs": 7100,
+            "traversalEmptyHierarchyReads": 0,
+            "emptyHierarchyReads": 3,
+            "totalNavigationSwipes": 3,
+            "hierarchyReadCount": 7,
+            "hierarchyElapsedMs": 15000,
+            "maximumHierarchyReadMs": 2250,
+            "elapsedMs": 18100,
+            "swipes": 3,
+        }
+
+        driver.require_composed_scan_timing(receipt)
 
     def test_noncomposed_poll_and_reverse_scan_observations_remain_separate(self) -> None:
         observations = (
@@ -483,6 +544,16 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "hierarchyElapsedMs": 1200,
                 "maximumHierarchyReadMs": 400,
                 "elapsedMs": 1600,
+            },
+            {
+                "scanId": "authority-option-start-human",
+                "status": "stable-start-bound-exhausted",
+                "screens": 2,
+                "swipes": 1,
+                "hierarchyReadCount": 2,
+                "hierarchyElapsedMs": 800,
+                "maximumHierarchyReadMs": 400,
+                "elapsedMs": 1000,
             },
         )
 
@@ -691,6 +762,20 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                                 "swipes": 3,
                                 "configuredMaxScrolls": 22,
                                 "stableRepeats": 2,
+                                "reusedInitialScreen": False,
+                                "originElapsedMs": 0,
+                                "originReverseSwipes": 0,
+                                "originEmptyHierarchyReads": 0,
+                                "originHierarchyReadCount": 0,
+                                "originHierarchyElapsedMs": 0,
+                                "originMaximumHierarchyReadMs": 0,
+                                "traversalElapsedMs": 1200,
+                                "traversalEmptyHierarchyReads": 0,
+                                "emptyHierarchyReads": 0,
+                                "totalNavigationSwipes": 3,
+                                "hierarchyReadCount": 4,
+                                "hierarchyElapsedMs": 800,
+                                "maximumHierarchyReadMs": 200,
                                 "elapsedMs": 1200,
                             }
                         )
