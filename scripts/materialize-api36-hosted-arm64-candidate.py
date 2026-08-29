@@ -33,6 +33,7 @@ EXPECTED_SOURCES = {
 DOES_NOT_ASSERT = (
     "api36_device_execution",
     "apk_install",
+    "dependency_closure_attestation",
     "google_play_processing",
     "google_play_upload",
     "physical_build_provenance",

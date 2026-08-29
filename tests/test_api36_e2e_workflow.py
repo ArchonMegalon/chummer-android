@@ -6,6 +6,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "api36-editing-e2e.yml"
 PREVIEW_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "preview9-arm64-aab.yml"
+BUILD_SCRIPT = REPO_ROOT / "scripts" / "build-debug.sh"
+GITIGNORE = REPO_ROOT / ".gitignore"
 COMPATIBILITY_GRAPH = {
     "ArchonMegalon/chummer6-ui":
         "1438978f6f883be321c62de69165c9216e10e011",
@@ -33,6 +35,8 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.text = WORKFLOW.read_text(encoding="utf-8")
         cls.preview_text = PREVIEW_WORKFLOW.read_text(encoding="utf-8")
+        cls.build_script_text = BUILD_SCRIPT.read_text(encoding="utf-8")
+        cls.gitignore_text = GITIGNORE.read_text(encoding="utf-8")
 
     def test_runs_only_the_phone_beta_profile_on_api_36(self) -> None:
         self.assertIn("api-level: 36", self.text)
@@ -100,6 +104,36 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             self.text.index("Install the governed .NET SDK"),
         )
         self.assertIn("needs: build", self.text)
+
+    def test_local_compatibility_restore_preserves_tracked_package_locks(self) -> None:
+        clean_step = "Verify clean Android source before local-compatibility restores"
+        self.assertEqual(1, self.text.count(clean_step))
+        self.assertIn(
+            'git -C chummer-android status --porcelain=v1 --untracked-files=no',
+            self.text,
+        )
+        self.assertLess(
+            self.text.index(clean_step),
+            self.text.index("Build the emulator APK and native compile gate"),
+        )
+        self.assertIn(
+            '"-p:RestorePackagesWithLockFile=true"',
+            self.build_script_text,
+        )
+        self.assertIn(
+            '"-p:NuGetLockFilePath=obj/chummer.local-compat.${runtime_identifier}.packages.lock.json"',
+            self.build_script_text,
+        )
+        self.assertNotIn(
+            "src/Chummer.Android/packages.lock.json",
+            self.build_script_text,
+        )
+        self.assertNotIn(
+            "tests/Chummer.Android.Native.CompileCheck/packages.lock.json",
+            self.build_script_text,
+        )
+        self.assertIn("obj/", self.gitignore_text.splitlines())
+        self.assertNotIn("git restore", self.build_script_text)
 
     def test_full_local_compatibility_tree_is_commit_pinned(self) -> None:
         for repository, commit in COMPATIBILITY_GRAPH.items():

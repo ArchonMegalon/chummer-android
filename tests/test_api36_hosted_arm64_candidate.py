@@ -214,6 +214,7 @@ class Api36HostedArm64CandidateTests(unittest.TestCase):
             candidate.validate_observation(tampered)
         for claim in (
             "apk_install",
+            "dependency_closure_attestation",
             "physical_device_observation",
             "physical_journey_pass",
             "google_play_processing",

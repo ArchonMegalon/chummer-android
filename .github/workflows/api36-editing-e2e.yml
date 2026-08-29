@@ -196,6 +196,12 @@ jobs:
       - name: Restore the pinned MAUI Android workload
         run: dotnet workload restore chummer-android/Chummer.Android.slnx
 
+      - name: Verify clean Android source before local-compatibility restores
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git -C chummer-android status --porcelain=v1 --untracked-files=no)"
+
       - name: Build the emulator APK and native compile gate
         working-directory: chummer-android
         env:
