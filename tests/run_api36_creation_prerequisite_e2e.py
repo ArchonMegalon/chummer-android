@@ -643,6 +643,7 @@ def move_between_measured_viewports(
     target_viewport: int,
     *,
     distance_ratio: float = 0.68,
+    delay_seconds: float = 0.2,
 ) -> int:
     """Move an exact scan-proven delta without hierarchy churn between endpoints."""
     if current_viewport < 0 or target_viewport < 0:
@@ -650,11 +651,13 @@ def move_between_measured_viewports(
     if target_viewport < current_viewport:
         for _ in range(current_viewport - target_viewport):
             device.swipe_down(distance_ratio=distance_ratio)
-            time.sleep(0.2)
+            if delay_seconds > 0:
+                time.sleep(delay_seconds)
     else:
         for _ in range(target_viewport - current_viewport):
             device.swipe_up(distance_ratio=distance_ratio)
-            time.sleep(0.2)
+            if delay_seconds > 0:
+                time.sleep(delay_seconds)
     return target_viewport
 
 
@@ -1132,6 +1135,7 @@ class CreationDashboardScanProof(NamedTuple):
 def assert_uncreated_advanced_editor_gated(
     device: shared.Device,
     *,
+    initial_observation: PriorityRankOrigin | None = None,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
     scan_id: str = "advanced-editor-gate",
 ) -> CreationDashboardScanProof:
@@ -1149,6 +1153,8 @@ def assert_uncreated_advanced_editor_gated(
         scan_id=scan_id,
         max_scrolls=18,
         distance_ratio=0.68,
+        initial_observation=initial_observation,
+        delay_seconds=0.0,
         observer=scan_observer,
     )
     bindings: set[str] = set()
@@ -1249,6 +1255,7 @@ def require_new_character_dialog_transition(
     *,
     timeout: int = 120,
     observation_out: dict[str, object] | None = None,
+    resolved_viewport_out: list[PriorityRankOrigin] | None = None,
     fresh_first: bool = False,
 ) -> list[shared.UiNode]:
     """Require the production modal to publish either Build or one exact error."""
@@ -1318,6 +1325,16 @@ def require_new_character_dialog_transition(
                 device.capture("creation-priority-dialog-route-overlap")
                 raise RuntimeError(
                     "New-character modal and Build toolbar were published together"
+                )
+            if resolved_viewport_out is not None:
+                resolved_viewport_out.append(
+                    PriorityRankOrigin(
+                        nodes=nodes,
+                        reverse_swipes=0,
+                        elapsed_ms=hierarchy_durations_ms[-1],
+                        hierarchy_durations_ms=(hierarchy_durations_ms[-1],),
+                        empty_hierarchy_reads=0,
+                    )
                 )
             record_observation("resolved")
             return nodes
@@ -1735,13 +1752,21 @@ def wait_creation_dashboard_authority(
     *,
     timeout: float = 30.0,
     observation_out: dict[str, object] | None = None,
+    initial_observation: PriorityRankOrigin | None = None,
+    resolved_viewport_out: list[PriorityRankOrigin] | None = None,
+    poll_delay_seconds: float = 0.5,
 ) -> bool:
     """Wait for the explicitly asynchronous authority projection, never for a guessed row state."""
+    if timeout <= 0 or poll_delay_seconds < 0:
+        raise ValueError(
+            "Creation authority polling requires a positive timeout and nonnegative delay"
+        )
     deadline = time.monotonic() + timeout
     saw_loading = False
     started = time.monotonic()
     hierarchy_durations_ms: list[int] = []
     empty_hierarchy_reads = 0
+    pending_initial_observation = initial_observation
 
     def record_observation(status: str) -> None:
         if observation_out is not None:
@@ -1778,7 +1803,19 @@ def wait_creation_dashboard_authority(
         )
 
     while True:
-        nodes = read_only_hierarchy_timed(device, hierarchy_durations_ms)
+        if pending_initial_observation is not None:
+            current_observation = pending_initial_observation
+            pending_initial_observation = None
+            nodes = current_observation.nodes
+        else:
+            nodes = read_only_hierarchy_timed(device, hierarchy_durations_ms)
+            current_observation = PriorityRankOrigin(
+                nodes=nodes,
+                reverse_swipes=0,
+                elapsed_ms=hierarchy_durations_ms[-1],
+                hierarchy_durations_ms=(hierarchy_durations_ms[-1],),
+                empty_hierarchy_reads=0 if nodes else 1,
+            )
         if not nodes:
             empty_hierarchy_reads += 1
             if time.monotonic() >= deadline:
@@ -1815,12 +1852,15 @@ def wait_creation_dashboard_authority(
                 "Creation dashboard reported an explicit authority projection failure"
             )
         if not matches["creation-dashboard-authority-loading"]:
+            if resolved_viewport_out is not None:
+                resolved_viewport_out.append(current_observation)
             record_observation("resolved")
             return saw_loading
         saw_loading = True
         if time.monotonic() >= deadline:
             raise_pending_timeout()
-        time.sleep(0.5)
+        if poll_delay_seconds > 0:
+            time.sleep(poll_delay_seconds)
 
 
 def wait_creation_method_navigation(
@@ -2071,26 +2111,104 @@ class PrerequisiteAuthorityScanProof(NamedTuple):
     category_viewports: dict[str, int]
 
 
+def wait_for_prerequisite_scan_origin(
+    device: shared.Device,
+    *,
+    timeout: float = 60.0,
+    max_reverse_swipes: int = 8,
+    distance_ratio: float = 0.68,
+) -> PriorityRankOrigin:
+    """Acquire and retain the exact top viewport of the pushed prerequisite page.
+
+    A pushed MAUI page can inherit the prior inner-scroll offset.  The former
+    proof therefore issued eight blind reverse gestures, waited, and then paid
+    for a second hierarchy read at the start of the stable scan.  This bounded
+    acquisition instead reverses only while the exact prerequisite route is
+    present but its two top authority anchors are absent.  The hierarchy that
+    proves those anchors is returned for direct reuse as the scan's first
+    viewport; duplicate route or anchor nodes still fail closed.
+    """
+    if timeout <= 0 or max_reverse_swipes < 0:
+        raise ValueError("A positive timeout and nonnegative reverse bound are required")
+    route_selector = "creation-prerequisite-page"
+    top_selectors = (
+        "creation-prerequisite-method",
+        "creation-prerequisite-binding",
+    )
+    started = time.monotonic()
+    deadline = time.monotonic() + timeout
+    reverse_swipes = 0
+    empty_hierarchy_reads = 0
+    hierarchy_durations_ms: list[int] = []
+    while time.monotonic() < deadline:
+        nodes = fresh_hierarchy_timed(device, hierarchy_durations_ms)
+        if not nodes:
+            empty_hierarchy_reads += 1
+            time.sleep(0.75)
+            continue
+        matches = {
+            selector: [
+                node for node in nodes if _exact_resource_id(node) == selector
+            ]
+            for selector in (route_selector, *top_selectors)
+        }
+        ambiguous = {
+            selector: len(candidates)
+            for selector, candidates in matches.items()
+            if len(candidates) > 1
+        }
+        if ambiguous:
+            device.capture("creation-prerequisite-scan-origin-cardinality-invalid")
+            raise RuntimeError(
+                "Creation prerequisite scan origin was ambiguous: "
+                f"{ambiguous!r}"
+            )
+        if len(matches[route_selector]) == 1 and all(
+            len(matches[selector]) == 1 for selector in top_selectors
+        ):
+            return PriorityRankOrigin(
+                nodes=nodes,
+                reverse_swipes=reverse_swipes,
+                elapsed_ms=round((time.monotonic() - started) * 1000),
+                hierarchy_durations_ms=tuple(hierarchy_durations_ms),
+                empty_hierarchy_reads=empty_hierarchy_reads,
+            )
+        if device.dismiss_system_ui_anr(nodes):
+            time.sleep(2)
+            continue
+        if len(matches[route_selector]) == 1 and reverse_swipes < max_reverse_swipes:
+            device.swipe_down(distance_ratio=distance_ratio)
+            reverse_swipes += 1
+            continue
+        time.sleep(0.25)
+    device.capture("creation-prerequisite-scan-origin-unavailable")
+    raise RuntimeError(
+        "Timed out acquiring the exact prerequisite route and both top authority "
+        f"anchors within {max_reverse_swipes} reverse swipes"
+    )
+
+
 def scan_prerequisite_authority(
     device: shared.Device,
     *,
+    initial_observation: PriorityRankOrigin,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
 ) -> PrerequisiteAuthorityScanProof:
     """Read every initial prerequisite authority field in one stable traversal."""
-    # Android can retain the dashboard's scroll offset on the newly pushed
-    # native page. Establish a bounded origin before scanning; the exact top
-    # selectors below still fail closed if this is insufficient or the page
-    # shape changes.
-    shared.reset_scroll_to_top(device, swipes=8)
-    # Heritage and Talent are short, intermediate category rows. Keep every
-    # UIAutomator viewport overlapping so a full-height gesture cannot jump
-    # from the authority cards directly to Attributes; retain the existing
-    # stable-end, 22-scroll and 90-second authority bounds.
+    # The origin has already proved the exact pushed route and its two top
+    # authority anchors. Reuse that fresh hierarchy instead of dumping it a
+    # second time. Keep the overlap-heavy 0.22-height gesture: Heritage and
+    # Talent are short intermediate rows, and widening this step would trade
+    # physical evidence coverage for speed. The real reduction comes from
+    # eliminating duplicate observations and blind navigation, not weaker
+    # sampling.
     scan = scan_forward_with_receipt(
         device,
         scan_id="prerequisite-authority-initial",
         max_scrolls=22,
         distance_ratio=0.22,
+        initial_observation=initial_observation,
+        delay_seconds=0.0,
         observer=scan_observer,
     )
     observed: dict[str, set[str]] = {
@@ -3979,24 +4097,39 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     progress.record_initial_milestone("create-bootstrap-transaction-complete")
     progress.advance("dashboard-proof")
     transition_observation: dict[str, object] = {}
+    transition_viewport: list[PriorityRankOrigin] = []
     transition_nodes = require_new_character_dialog_transition(
         device,
         timeout=30,
         observation_out=transition_observation,
+        resolved_viewport_out=transition_viewport,
         fresh_first=True,
     )
     progress.record_scan(transition_observation)
     require_initial_creation_dashboard_snapshot(device, transition_nodes)
+    if len(transition_viewport) != 1:
+        raise RuntimeError(
+            "Creation dashboard transition did not retain one exact resolved viewport"
+        )
     progress.record_initial_milestone("dashboard-render-complete")
     progress.advance("authority-inventory")
     dashboard_authority_observation: dict[str, object] = {}
+    resolved_dashboard_viewport: list[PriorityRankOrigin] = []
     authority_projection_waited = wait_creation_dashboard_authority(
         device,
         observation_out=dashboard_authority_observation,
+        initial_observation=transition_viewport[0],
+        resolved_viewport_out=resolved_dashboard_viewport,
+        poll_delay_seconds=0.0,
     )
     progress.record_scan(dashboard_authority_observation)
+    if len(resolved_dashboard_viewport) != 1:
+        raise RuntimeError(
+            "Creation dashboard authority wait did not retain one exact resolved viewport"
+        )
     dashboard_scan = assert_uncreated_advanced_editor_gated(
         device,
+        initial_observation=resolved_dashboard_viewport[0],
         scan_observer=progress.record_scan,
         scan_id="advanced-editor-gate-initial",
     )
@@ -4005,6 +4138,7 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
         device,
         dashboard_scan.swipes,
         dashboard_scan.method_viewport,
+        delay_seconds=0.0,
     )
     method_nodes = [
         node
@@ -4039,14 +4173,10 @@ def execute(args: argparse.Namespace, progress: ProgressRecorder) -> int:
     device.capture("creation-priority-core-bootstrap-ready")
 
     device.shell("input", "tap", *(str(value) for value in method_node.center))
-    device.wait_for_single_exact_resource_id(
-        "creation-prerequisite-page",
-        timeout=60,
-        evidence_prefix="creation-prerequisite-route",
-        surface_name="Creation prerequisite route",
-    )
+    prerequisite_origin = wait_for_prerequisite_scan_origin(device)
     prerequisite_scan = scan_prerequisite_authority(
         device,
+        initial_observation=prerequisite_origin,
         scan_observer=progress.record_scan,
     )
     prerequisite_values = prerequisite_scan.values

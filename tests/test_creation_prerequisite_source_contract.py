@@ -2398,7 +2398,16 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertIn("scan_forward_with_receipt(", prerequisite_source)
         self.assertIn("max_scrolls=22", prerequisite_source)
         self.assertIn("distance_ratio=0.22", prerequisite_source)
-        self.assertIn("shared.reset_scroll_to_top(device, swipes=8)", prerequisite_source)
+        self.assertIn("initial_observation=initial_observation", prerequisite_source)
+        self.assertNotIn("reset_scroll_to_top", prerequisite_source)
+
+        prerequisite_origin_source = inspect.getsource(
+            driver.wait_for_prerequisite_scan_origin
+        )
+        self.assertIn('route_selector = "creation-prerequisite-page"', prerequisite_origin_source)
+        self.assertIn('"creation-prerequisite-method"', prerequisite_origin_source)
+        self.assertIn('"creation-prerequisite-binding"', prerequisite_origin_source)
+        self.assertIn("max_reverse_swipes: int = 8", prerequisite_origin_source)
 
         selection_source = inspect.getsource(driver.select_priority_rank)
         self.assertIn("acquire_measured_priority_category_row", selection_source)
@@ -2452,6 +2461,132 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         ), self.assertRaisesRegex(RuntimeError, "cardinality 2"):
             driver.assert_uncreated_advanced_editor_gated(device)
 
+    def test_dashboard_scan_reuses_the_resolved_authority_viewport(self) -> None:
+        nodes = [
+            driver.shared.UiNode({"resource-id": "creation-wizard-dashboard"}),
+            driver.shared.UiNode(
+                {
+                    "resource-id": "creation-wizard-binding",
+                    "content-desc": "Revision 7",
+                }
+            ),
+            driver.shared.UiNode(
+                {
+                    "resource-id": "creation-stage-method",
+                    "content-desc": "Priority",
+                    "enabled": "true",
+                    "clickable": "true",
+                }
+            ),
+        ]
+
+        class ResolvedDevice:
+            def read_only_hierarchy(self):
+                raise AssertionError("Resolved transition viewport must be reused")
+
+        transition_viewport = driver.PriorityRankOrigin(nodes, 0, 3, (3,), 0)
+        viewport: list[driver.PriorityRankOrigin] = []
+        waited = driver.wait_creation_dashboard_authority(
+            ResolvedDevice(),
+            initial_observation=transition_viewport,
+            resolved_viewport_out=viewport,
+        )
+        self.assertFalse(waited)
+        self.assertEqual(1, len(viewport))
+        self.assertIs(nodes, viewport[0].nodes)
+        self.assertEqual((3,), viewport[0].hierarchy_durations_ms)
+
+        device = mock.Mock()
+        with mock.patch.object(
+            driver,
+            "scan_forward_with_receipt",
+            return_value=driver.StableViewportScan([nodes], 0),
+        ) as scan:
+            proof = driver.assert_uncreated_advanced_editor_gated(
+                device,
+                initial_observation=viewport[0],
+            )
+        self.assertEqual("Revision 7", proof.binding)
+        scan.assert_called_once_with(
+            device,
+            scan_id="advanced-editor-gate",
+            max_scrolls=18,
+            distance_ratio=0.68,
+            initial_observation=viewport[0],
+            delay_seconds=0.0,
+            observer=None,
+        )
+
+    def test_prerequisite_scan_origin_reuses_exact_top_viewport_after_bounded_rewind(
+        self,
+    ) -> None:
+        route = driver.shared.UiNode(
+            {"resource-id": "creation-prerequisite-page"}
+        )
+        method = driver.shared.UiNode(
+            {"resource-id": "creation-prerequisite-method"}
+        )
+        binding = driver.shared.UiNode(
+            {"resource-id": "creation-prerequisite-binding"}
+        )
+
+        class OriginDevice:
+            def __init__(self):
+                self.reads = [[route], [route, method, binding]]
+                self.swipes = 0
+                self.captures: list[str] = []
+
+            def hierarchy(self):
+                return self.reads.pop(0)
+
+            def dismiss_system_ui_anr(self, _nodes):
+                return False
+
+            def swipe_down(self, **_kwargs):
+                self.swipes += 1
+
+            def capture(self, name):
+                self.captures.append(name)
+
+        device = OriginDevice()
+        with mock.patch.object(driver.time, "sleep"), mock.patch.object(
+            driver.time,
+            "perf_counter",
+            side_effect=[1.0, 1.002, 2.0, 2.003],
+        ):
+            origin = driver.wait_for_prerequisite_scan_origin(device)
+        self.assertEqual([route, method, binding], origin.nodes)
+        self.assertEqual(1, origin.reverse_swipes)
+        self.assertEqual((2, 3), origin.hierarchy_durations_ms)
+        self.assertEqual(1, device.swipes)
+        self.assertEqual([], device.captures)
+
+    def test_prerequisite_scan_origin_rejects_duplicate_route_or_top_anchor(self) -> None:
+        route = driver.shared.UiNode(
+            {"resource-id": "creation-prerequisite-page"}
+        )
+        method = driver.shared.UiNode(
+            {"resource-id": "creation-prerequisite-method"}
+        )
+
+        class AmbiguousOriginDevice:
+            def __init__(self):
+                self.captures: list[str] = []
+
+            def hierarchy(self):
+                return [route, route, method]
+
+            def capture(self, name):
+                self.captures.append(name)
+
+        device = AmbiguousOriginDevice()
+        with self.assertRaisesRegex(RuntimeError, "ambiguous"):
+            driver.wait_for_prerequisite_scan_origin(device)
+        self.assertEqual(
+            ["creation-prerequisite-scan-origin-cardinality-invalid"],
+            device.captures,
+        )
+
     def test_prerequisite_authority_scan_collects_once_and_rejects_drift(self) -> None:
         digest_values = {
             "creation-prerequisite-snapshot-digest": "sha256:" + "1" * 64,
@@ -2485,24 +2620,29 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
         device = mock.Mock()
         device.node_has_tappable_bounds.return_value = True
+        origin = driver.PriorityRankOrigin(nodes, 0, 1, (1,), 0)
         with mock.patch.object(
             driver,
             "scan_forward_with_receipt",
             return_value=driver.StableViewportScan([nodes], 6),
-        ) as scan, mock.patch.object(driver.shared, "reset_scroll_to_top") as reset:
-            proof = driver.scan_prerequisite_authority(device)
+        ) as scan:
+            proof = driver.scan_prerequisite_authority(
+                device,
+                initial_observation=origin,
+            )
         self.assertEqual(values, proof.values)
         self.assertEqual(6, proof.swipes)
         self.assertEqual(
             {category: 0 for category in driver.CATEGORIES},
             proof.category_viewports,
         )
-        reset.assert_called_once_with(device, swipes=8)
         scan.assert_called_once_with(
             device,
             scan_id="prerequisite-authority-initial",
             max_scrolls=22,
             distance_ratio=0.22,
+            initial_observation=origin,
+            delay_seconds=0.0,
             observer=None,
         )
 
@@ -2516,10 +2656,13 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             driver,
             "scan_forward_with_receipt",
             return_value=driver.StableViewportScan([nodes, [changed]], 6),
-        ), mock.patch.object(driver.shared, "reset_scroll_to_top"), self.assertRaisesRegex(
+        ), self.assertRaisesRegex(
             RuntimeError, "changed while scrolling"
         ):
-            driver.scan_prerequisite_authority(device)
+            driver.scan_prerequisite_authority(
+                device,
+                initial_observation=origin,
+            )
 
     def test_priority_category_inventory_captures_intermediate_only_rows_and_fails_closed(
         self,
@@ -2561,12 +2704,16 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         )
 
         def scan(candidate_screens):
+            origin = driver.PriorityRankOrigin(candidate_screens[0], 0, 1, (1,), 0)
             with mock.patch.object(
                 driver,
                 "scan_forward_with_receipt",
                 return_value=driver.StableViewportScan(candidate_screens, 7),
-            ), mock.patch.object(driver.shared, "reset_scroll_to_top"):
-                return driver.scan_prerequisite_authority(device)
+            ):
+                return driver.scan_prerequisite_authority(
+                    device,
+                    initial_observation=origin,
+                )
 
         proof = scan(screens)
         self.assertEqual(
@@ -2629,12 +2776,32 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual(3, len(receipt.screens))
         self.assertEqual(2, device.swipe_up.call_count)
 
+    def test_exact_measured_viewport_restore_can_omit_redundant_fixed_delays(self) -> None:
+        device = mock.Mock()
+        with mock.patch.object(driver.time, "sleep") as sleep:
+            restored = driver.move_between_measured_viewports(
+                device,
+                5,
+                1,
+                distance_ratio=0.68,
+                delay_seconds=0.0,
+            )
+        self.assertEqual(1, restored)
+        self.assertEqual(4, device.swipe_down.call_count)
+        sleep.assert_not_called()
+
     def test_execute_emits_all_phase_and_scan_timing_into_digest_bound_receipt(self) -> None:
         source = inspect.getsource(driver.execute)
         offsets = [source.index(f'progress.advance("{phase_id}")') for phase_id in driver.PHASE_ORDER]
         self.assertEqual(sorted(offsets), offsets)
         for marker in (
             "scan_observer=progress.record_scan",
+            "initial_observation=transition_viewport[0]",
+            "resolved_viewport_out=resolved_dashboard_viewport",
+            "poll_delay_seconds=0.0",
+            "prerequisite_origin = wait_for_prerequisite_scan_origin(device)",
+            "initial_observation=prerequisite_origin",
+            "delay_seconds=0.0",
             'timing = progress.finish()',
             '"timing": timing',
             '"path": str(progress.evidence_path)',
@@ -2706,6 +2873,31 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         self.assertEqual([route], observed)
         fresh.assert_called_once()
         read_only.assert_not_called()
+
+    def test_new_character_dialog_transition_retains_its_exact_resolved_viewport(self) -> None:
+        route = driver.shared.UiNode({"content-desc": "build-save-runner"})
+
+        class TransitionDevice:
+            def hierarchy(self):
+                return [route]
+
+        retained: list[driver.PriorityRankOrigin] = []
+        with mock.patch.object(
+            driver.time,
+            "perf_counter",
+            side_effect=[1.0, 1.004],
+        ):
+            observed = driver.require_new_character_dialog_transition(
+                TransitionDevice(),
+                timeout=1,
+                resolved_viewport_out=retained,
+                fresh_first=True,
+            )
+        self.assertEqual([route], observed)
+        self.assertEqual(1, len(retained))
+        self.assertIs(observed, retained[0].nodes)
+        self.assertEqual((4,), retained[0].hierarchy_durations_ms)
+        self.assertEqual(0, retained[0].reverse_swipes)
 
     def test_creation_dashboard_handoff_reuses_one_exact_transition_snapshot(self) -> None:
         nodes = [
