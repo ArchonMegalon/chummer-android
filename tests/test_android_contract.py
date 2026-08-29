@@ -81,16 +81,16 @@ class AndroidContractTests(unittest.TestCase):
         )
 
         for dependency, commits in (
-            ("ArchonMegalon/chummer6-ui", ("1438978f6f883be321c62de69165c9216e10e011",) * 2),
+            ("ArchonMegalon/chummer6-ui", ("d02368a24a7c4d7ae1a5ddd031475e1e54141904",) * 2),
             (
                 "ArchonMegalon/chummer6-core",
                 (
-                    "febd698752e195dceef79fbc3f83dc971564fe00",
-                    "3260ac73714d8b001a3599d6776196e394dc6c35",
-                    "febd698752e195dceef79fbc3f83dc971564fe00",
+                    "60112dccb6a3faad330d32c3c98eef0aa81d97af",
+                    "c06f22c185c7b733637fdb76b3cf333f31716781",
+                    "60112dccb6a3faad330d32c3c98eef0aa81d97af",
                 ),
             ),
-            ("ArchonMegalon/chummer6-hub", ("8cc22cb6fdf9bdf2af3c390125f7a88de90700b3",)),
+            ("ArchonMegalon/chummer6-hub", ("bc199cbe0982833ec2fc9ce625826e612759d67a",)),
             ("ArchonMegalon/chummer6-ui-kit", ("d51ecd99cf72098d4adc8db0192bff7bf9fd8e61",)),
             ("ArchonMegalon/chummer6-hub-registry", ("af9a7e19c3bf331e96411dfb8f9e7820a98cab29",)),
             ("ArchonMegalon/chummer6-media-factory", ("415c8163d3d90b1211e4014fef332bdec6d75f73",)),

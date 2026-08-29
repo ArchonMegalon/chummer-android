@@ -80,7 +80,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("on: []", text)
         self.assertIn("if: ${{ false }}", text)
-        self.assertIn("1438978f6f883be321c62de69165c9216e10e011", text)
+        self.assertIn("d02368a24a7c4d7ae1a5ddd031475e1e54141904", text)
         self.assertIn("Chummer.Desktop.Runtime", text)
         self.assertIn("Chummer.Presentation", text)
         self.assertIn("dotnet-version: 10.0.111", text)
@@ -107,7 +107,7 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
         lock = REPO / "tests/Chummer.Android.Native.CompileCheck/packages.lock.json"
         self.assertTrue(lock.is_file())
         self.assertEqual(
-            "efbb131ff76a9d1e4d7ec86c5d6b50614587ff51a36316ede5a1d24c5800efd2",
+            "f421578231b43f5bd81eebedb5b82fd4b9345dc91bc2af005cbefcaab117b00b",
             self.authority.sha256(lock),
         )
 

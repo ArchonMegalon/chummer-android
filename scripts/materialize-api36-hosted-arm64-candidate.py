@@ -352,7 +352,7 @@ def validate_observation(value: object) -> dict[str, object]:
         or set(content) != {"contractName", "coreRevision", "sha256", "sizeBytes", "status"}
         or content["contractName"] != "chummer.android.content-bundle/v1"
         or content["coreRevision"]
-        != "3260ac73714d8b001a3599d6776196e394dc6c35"
+        != "c06f22c185c7b733637fdb76b3cf333f31716781"
         or content["status"] != "pass"
         or not isinstance(content["sha256"], str)
         or SHA256.fullmatch(content["sha256"]) is None

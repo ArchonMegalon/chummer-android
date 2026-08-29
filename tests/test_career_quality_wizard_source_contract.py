@@ -223,9 +223,9 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
             .read_text(encoding="utf-8")
         )
         self.assertEqual(
-            manifest["coreRevision"], "3260ac73714d8b001a3599d6776196e394dc6c35"
+            manifest["coreRevision"], "c06f22c185c7b733637fdb76b3cf333f31716781"
         )
-        self.assertEqual(manifest["bundleDigest"], "0013ad7b47aa1da28a2c03454ce9d98738a742e9c7a097625fc100cfaadc17ab")
+        self.assertEqual(manifest["bundleDigest"], "d35912b66d30deb251b8befc189e29db9c29e1f8d07a65f39199655781f27201")
         self.assertEqual(len(manifest["files"]), 110)
 
     def test_focused_compile_harness_uses_exact_authority_sources(self) -> None:

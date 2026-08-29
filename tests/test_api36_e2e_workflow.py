@@ -10,11 +10,11 @@ BUILD_SCRIPT = REPO_ROOT / "scripts" / "build-debug.sh"
 GITIGNORE = REPO_ROOT / ".gitignore"
 COMPATIBILITY_GRAPH = {
     "ArchonMegalon/chummer6-ui":
-        "1438978f6f883be321c62de69165c9216e10e011",
+        "d02368a24a7c4d7ae1a5ddd031475e1e54141904",
     "ArchonMegalon/chummer6-core":
-        "febd698752e195dceef79fbc3f83dc971564fe00",
+        "60112dccb6a3faad330d32c3c98eef0aa81d97af",
     "ArchonMegalon/chummer6-hub":
-        "8cc22cb6fdf9bdf2af3c390125f7a88de90700b3",
+        "bc199cbe0982833ec2fc9ce625826e612759d67a",
     "ArchonMegalon/chummer6-hub-registry":
         "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
     "ArchonMegalon/chummer6-ui-kit":
@@ -206,7 +206,7 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         ]
         self.assertIn("repository: ArchonMegalon/chummer6-core", content_checkout)
         self.assertIn(
-            "ref: 3260ac73714d8b001a3599d6776196e394dc6c35",
+            "ref: c06f22c185c7b733637fdb76b3cf333f31716781",
             content_checkout,
         )
         self.assertIn("path: chummer-core-content", content_checkout)

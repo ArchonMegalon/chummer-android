@@ -19,8 +19,8 @@
   "verificationReceipt": {
     "contractName": "chummer6-ui.fresh-package-plane-verification",
     "contractVersion": 11,
-    "sha256": "940d4cf0d77bb371e50b1cb3fb566089843a945c097b73a122522db1a673b547",
-    "sizeBytes": 46808,
+    "sha256": "a670f95bb8a7cca9819d9824a0353ad84165b86207bac97ff6eb7e49d8e52bd1",
+    "sizeBytes": 39791,
     "status": "passed"
   },
   "artifactCache": {
@@ -72,14 +72,14 @@
     {
       "project": "src/Chummer.Android/Chummer.Android.csproj",
       "path": "src/Chummer.Android/packages.lock.json",
-      "sha256": "2c6b273ed9eb11db0c3820ebb7e8434ccea6471e7ac2db38763a0aa08db294d9",
-      "sizeBytes": 70376
+      "sha256": "66bbd296462b8db4838672af7af011a03ace6fa3c5a98bd7b5cc5c65a20464e6",
+      "sizeBytes": 70375
     },
     {
       "project": "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj",
       "path": "tests/Chummer.Android.Native.CompileCheck/packages.lock.json",
-      "sha256": "efbb131ff76a9d1e4d7ec86c5d6b50614587ff51a36316ede5a1d24c5800efd2",
-      "sizeBytes": 16179
+      "sha256": "f421578231b43f5bd81eebedb5b82fd4b9345dc91bc2af005cbefcaab117b00b",
+      "sizeBytes": 16178
     }
   ],
   "doesNotAssert": [

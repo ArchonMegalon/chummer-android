@@ -14,8 +14,8 @@
     "unclassifiedCount": 0,
     "completionProvenCount": 478,
     "phoneStatusCounts": {
-      "implemented_pending_emulator": 536,
-      "missing": 929,
+      "implemented_pending_emulator": 526,
+      "missing": 939,
       "not_applicable_non_mutating": 478,
       "partial_create_only": 106,
       "partial_exact_saved_data": 180
@@ -739,7 +739,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "7845a52d42d1ab2042051ab2860c7c8c2a543ea2a2401536e5059bad7f093ebe"
+        "sha256": "a1c13213747c6890afb53ea91b6aa8ff0d21e7cd6a0de01a8a802479c4997a63"
       },
       {
         "path": "scripts/run-api36-editing-e2e-ci.sh",
@@ -759,7 +759,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "c41e53fdf142481a43e59cd9e373f4db84733402d0e895fbe4beaf48e2ed46ba"
+        "sha256": "6817e4368f8e01a9191cffbb364e43ee344d8d9e9665b40be4fe8a184f605035"
       },
       {
         "path": "tests/test_chummer5_editability_inventory.py",
@@ -2239,7 +2239,7 @@
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/FileSystemCharacterSourceDataResolver.cs",
         "exists": true,
-        "sha256": "696af5fdce6594629d224a4f462d96445eae90ea594ab59586fc86748490ce58"
+        "sha256": "2fe9d232183571275d60074d1ad1a082db54f418492846eaec10110c78007151"
       },
       {
         "path": "chummer-core-engine/Chummer.Infrastructure/Xml/Chummer5LinkedDocumentCodec.cs",
@@ -2991,7 +2991,7 @@
     "spirits_and_sprites": {
       "rowCount": 32,
       "reviewRequiredCount": 0,
-      "phoneMissingCount": 0,
+      "phoneMissingCount": 10,
       "tabletMissingCount": 28,
       "completionProvenCount": 4
     },
@@ -16836,7 +16836,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-manipulation-value",
@@ -16903,7 +16903,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-illusion-value",
@@ -16970,7 +16970,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-health-value",
@@ -17037,7 +17037,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-detection-value",
@@ -17104,7 +17104,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-combat-value",
@@ -59595,7 +59595,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-combat-value",
@@ -59662,7 +59662,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-manipulation-value",
@@ -59729,7 +59729,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-illusion-value",
@@ -59796,7 +59796,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-health-value",
@@ -59863,7 +59863,7 @@
       "mutationFamily": "spirits_and_sprites",
       "operation": "set_value",
       "phone": {
-        "status": "implemented_pending_emulator",
+        "status": "missing",
         "route": "Build > Magic > Tradition spirits",
         "surface": "TraditionSpiritCategoryPage",
         "automationId": "tradition-spirit-detection-value",
