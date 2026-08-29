@@ -421,6 +421,14 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
         }
         mutations = {
             "omitted": lambda value: value.pop("originHierarchyElapsedMs"),
+            "aggregate-trigger-omission": lambda value: tuple(
+                value.pop(field)
+                for field in (
+                    "originElapsedMs",
+                    "traversalElapsedMs",
+                    "originHierarchyReadCount",
+                )
+            ),
             "bool-as-integer": lambda value: value.__setitem__("swipes", True),
             "elapsed-partition": lambda value: value.__setitem__("elapsedMs", 3299),
             "hierarchy-outside-clock": lambda value: value.__setitem__(
@@ -435,6 +443,16 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
             "false-reuse-with-origin": lambda value: value.__setitem__(
                 "reusedInitialScreen", False
             ),
+            "maximum-exceeds-total": lambda value: value.__setitem__(
+                "maximumHierarchyReadMs", 2701
+            ),
+            "origin-maximum-exceeds-origin-sum": lambda value: (
+                value.__setitem__("originMaximumHierarchyReadMs", 2101),
+                value.__setitem__("maximumHierarchyReadMs", 2101),
+            ),
+            "traversal-maximum-exceeds-traversal-sum": lambda value: value.__setitem__(
+                "maximumHierarchyReadMs", 700
+            ),
         }
         for case, mutate in mutations.items():
             forged = dict(receipt)
@@ -444,6 +462,33 @@ class CreationPrerequisiteSourceContractTests(unittest.TestCase):
                 "Composed accessibility scan timing",
             ):
                 driver.require_composed_scan_timing(forged)
+
+    def test_noncomposed_poll_and_reverse_scan_observations_remain_separate(self) -> None:
+        observations = (
+            {
+                "scanId": "dialog-transition-poll",
+                "status": "resolved",
+                "emptyHierarchyReads": 0,
+                "hierarchyReadCount": 1,
+                "hierarchyElapsedMs": 400,
+                "maximumHierarchyReadMs": 400,
+                "elapsedMs": 401,
+            },
+            {
+                "scanId": "stable-start",
+                "status": "stable-start",
+                "screens": 3,
+                "swipes": 2,
+                "hierarchyReadCount": 3,
+                "hierarchyElapsedMs": 1200,
+                "maximumHierarchyReadMs": 400,
+                "elapsedMs": 1600,
+            },
+        )
+
+        for observation in observations:
+            with self.subTest(scan_id=observation["scanId"]):
+                driver.require_composed_scan_timing(observation)
 
     def test_reused_scan_origin_must_be_nonempty(self) -> None:
         node = driver.shared.UiNode({"resource-id": "rank-origin"})

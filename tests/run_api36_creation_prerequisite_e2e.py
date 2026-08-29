@@ -358,6 +358,18 @@ COMPOSED_SCAN_TIMING_FIELDS = (
     "elapsedMs",
     "swipes",
 )
+COMPOSED_SCAN_TIMING_TRIGGER_FIELDS = (
+    "reusedInitialScreen",
+    "originElapsedMs",
+    "originReverseSwipes",
+    "originEmptyHierarchyReads",
+    "originHierarchyReadCount",
+    "originHierarchyElapsedMs",
+    "originMaximumHierarchyReadMs",
+    "traversalElapsedMs",
+    "traversalEmptyHierarchyReads",
+    "totalNavigationSwipes",
+)
 
 
 def require_composed_scan_timing(scan: dict[str, object]) -> None:
@@ -369,14 +381,7 @@ def require_composed_scan_timing(scan: dict[str, object]) -> None:
     allowance.  Receipts without composed origin/traversal fields are separate
     polling observations and remain outside this contract.
     """
-    composed = any(
-        field in scan
-        for field in (
-            "originElapsedMs",
-            "traversalElapsedMs",
-            "originHierarchyReadCount",
-        )
-    )
+    composed = any(field in scan for field in COMPOSED_SCAN_TIMING_TRIGGER_FIELDS)
     if not composed:
         return
     missing = [field for field in COMPOSED_SCAN_TIMING_FIELDS if field not in scan]
@@ -425,6 +430,14 @@ def require_composed_scan_timing(scan: dict[str, object]) -> None:
         <= value["traversalElapsedMs"] + traversal_rounding_ms
         and value["originMaximumHierarchyReadMs"]
         <= value["maximumHierarchyReadMs"]
+        and value["maximumHierarchyReadMs"] <= value["hierarchyElapsedMs"]
+        and value["originMaximumHierarchyReadMs"]
+        <= value["originHierarchyElapsedMs"]
+        and value["maximumHierarchyReadMs"]
+        <= max(
+            value["originMaximumHierarchyReadMs"],
+            traversal_hierarchy_ms,
+        )
         and (
             reused
             and value["originHierarchyReadCount"]
