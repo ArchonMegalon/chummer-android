@@ -116,11 +116,9 @@ def add_common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--android-root", type=Path, required=True)
     parser.add_argument("--presentation-root", type=Path, required=True)
     parser.add_argument("--core-content-root", type=Path, required=True)
-    parser.add_argument("--w5-receipt", type=Path, required=True)
-    parser.add_argument("--w5-evidence-directory", type=Path, required=True)
-    parser.add_argument("--source-graph", type=Path, required=True)
+    parser.add_argument("--ui-authority-receipt", type=Path, required=True)
+    parser.add_argument("--package-feed", type=Path, required=True)
     parser.add_argument("--package-authority", type=Path, required=True)
-    parser.add_argument("--release-package-authority-v2", type=Path, required=True)
     parser.add_argument("--content-source-receipt", type=Path, required=True)
     parser.add_argument("--full-project-lock", type=Path, required=True)
 
@@ -130,7 +128,6 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest="command", required=True)
     check = subparsers.add_parser("check-inputs")
     add_common(check)
-    check.add_argument("--release-workspace-root", type=Path, required=True)
     bounded = subparsers.add_parser("run-bounded")
     bounded.add_argument("--journal", type=Path, required=True)
     bounded.add_argument("--raw-journal", type=Path, required=True)
@@ -167,7 +164,8 @@ def main() -> int:
     materialize.add_argument("--content-apk-receipt", type=Path, required=True)
     materialize.add_argument("--assets", type=Path, required=True)
     materialize.add_argument("--toolchain-log", type=Path, required=True)
-    materialize.add_argument("--source-graph-log", type=Path, required=True)
+    materialize.add_argument("--package-authority-log", type=Path, required=True)
+    materialize.add_argument("--package-authority-binding", type=Path, required=True)
     materialize.add_argument("--content-source-log", type=Path, required=True)
     materialize.add_argument("--build-inputs-log", type=Path, required=True)
     materialize.add_argument("--restore-log", type=Path, required=True)
@@ -177,7 +175,8 @@ def main() -> int:
     materialize.add_argument("--jarsigner-log", type=Path, required=True)
     materialize.add_argument("--signing-receipt", type=Path, required=True)
     materialize.add_argument("--content-apk-log", type=Path, required=True)
-    materialize.add_argument("--source-graph-seal-log", type=Path, required=True)
+    materialize.add_argument("--package-authority-seal-log", type=Path, required=True)
+    materialize.add_argument("--package-authority-seal", type=Path, required=True)
     materialize.add_argument("--command-journal", type=Path, required=True)
     materialize.add_argument("--raw-command-journal", type=Path, required=True)
     materialize.add_argument("--delegate-command-journal", type=Path, required=True)
@@ -192,8 +191,6 @@ def main() -> int:
     materialize.add_argument("--apksigner-path", type=Path, required=True)
     materialize.add_argument("--dotnet-path", type=Path, required=True)
     materialize.add_argument("--python-path", type=Path, required=True)
-    materialize.add_argument("--release-workspace-root", type=Path, required=True)
-    materialize.add_argument("--package-feed", type=Path, required=True)
     materialize.add_argument("--offline-feed", type=Path, required=True)
     materialize.add_argument("--nuget-packages", type=Path, required=True)
     materialize.add_argument("--android-build-tools-version", required=True)
@@ -438,16 +435,14 @@ def main() -> int:
         "android_root": args.android_root,
         "presentation_root": args.presentation_root,
         "core_content_root": args.core_content_root,
-        "w5_receipt_path": args.w5_receipt,
-        "w5_evidence_directory": args.w5_evidence_directory,
-        "source_graph_path": args.source_graph,
+        "ui_authority_receipt_path": args.ui_authority_receipt,
+        "package_feed_path": args.package_feed,
         "package_authority_path": args.package_authority,
-        "release_package_authority_v2_path": args.release_package_authority_v2,
         "content_source_receipt_path": args.content_source_receipt,
         "full_project_lock_path": args.full_project_lock,
     }
     if args.command == "check-inputs":
-        authenticate_inputs(**common, release_workspace_root=args.release_workspace_root)
+        authenticate_inputs(**common)
         print("api36_physical_build_inputs=pass publication_authorized=false")
         return 0
     manifest = create_manifest(
@@ -456,7 +451,8 @@ def main() -> int:
         content_apk_receipt_path=args.content_apk_receipt,
         assets_path=args.assets,
         toolchain_log_path=args.toolchain_log,
-        source_graph_log_path=args.source_graph_log,
+        package_authority_log_path=args.package_authority_log,
+        package_authority_binding_path=args.package_authority_binding,
         content_source_log_path=args.content_source_log,
         build_inputs_log_path=args.build_inputs_log,
         restore_log_path=args.restore_log,
@@ -466,7 +462,8 @@ def main() -> int:
         jarsigner_log_path=args.jarsigner_log,
         signing_receipt_path=args.signing_receipt,
         content_apk_log_path=args.content_apk_log,
-        source_graph_seal_log_path=args.source_graph_seal_log,
+        package_authority_seal_log_path=args.package_authority_seal_log,
+        package_authority_seal_path=args.package_authority_seal,
         command_journal_path=args.command_journal,
         raw_command_journal_path=args.raw_command_journal,
         delegate_command_journal_path=args.delegate_command_journal,
@@ -478,8 +475,7 @@ def main() -> int:
         java_path=args.java_path, javac_path=args.javac_path,
         jarsigner_path=args.jarsigner_path, apksigner_path=args.apksigner_path,
         dotnet_path=args.dotnet_path, python_path=args.python_path,
-        release_workspace_root=args.release_workspace_root,
-        package_feed_path=args.package_feed, offline_feed_path=args.offline_feed,
+        offline_feed_path=args.offline_feed,
         nuget_packages_path=args.nuget_packages,
         android_build_tools_version=args.android_build_tools_version,
         dotnet_version=args.dotnet_version,

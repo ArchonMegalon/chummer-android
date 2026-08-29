@@ -189,7 +189,7 @@
       "Chummer.Campaign.Contracts": {
         "type": "Transitive",
         "resolved": "0.1.0-preview",
-        "contentHash": "ThskyCGEGV2+CAzqMBIBVQCYcL7OH50jqyZPfK5K5mu7fBt9mPh9gVPhAEjxUSMcyXh68j8eaQqZEraLnV6AJA==",
+        "contentHash": "Gi8GX67knevwJCS7QwOYXemZm+dYcTgtVbQPPWaAMFd5J0t23EAljoUXetDj+RWhH1zZUBFd4zFRcMIXFDy21w==",
         "dependencies": {
           "Chummer.Engine.Contracts": "0.0.0-packageplane.candidate.shfebd698752e19"
         }
@@ -283,7 +283,7 @@
       "Chummer.Ui.Kit": {
         "type": "Transitive",
         "resolved": "0.1.0-preview",
-        "contentHash": "qT0MgnSQCyGbskemL0tB15NidHTyvhoejChfLnRBLjTEVVkB5acso0SxLKxekgZZjHShM9MjazEueiaXNHMzFQ=="
+        "contentHash": "xleA/H16bpl91aWcB3SODNorKp81zY1WCBMfLobLSTqxyFcdEfYKybajd8lv2xQ/I/yxYClt+T9tRs9Im2aNXQ=="
       },
       "GoogleGson": {
         "type": "Transitive",

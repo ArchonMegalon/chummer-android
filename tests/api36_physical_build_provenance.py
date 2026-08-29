@@ -11,7 +11,7 @@ import io
 import json
 import math
 import os
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import re
 import stat
 import subprocess
@@ -26,25 +26,27 @@ SCHEMA = "chummer.android.api36-arm64-physical-build-provenance/v2"
 AUTHORITY_CLASS = "internal_phone_beta_physical_candidate_only"
 PROOF_SCOPE = "full_maui_arm64_apk_build_only"
 PACKAGE = "com.myexternalbrain.chummer"
-SOURCE_GRAPH_CONTRACT = "chummer.android.release-source-graph/v2"
-W5_CONTRACT = "chummer.android.internal-phone-beta-native-compile/v1"
-PACKAGE_AUTHORITY_CONTRACT = "chummer.android.internal-phone-beta-package-authority/v1"
+PACKAGE_AUTHORITY_CONTRACT = "chummer.android.internal-phone-beta-package-authority/v2"
+UI_AUTHORITY_RECEIPT_CONTRACT = "chummer6-ui.fresh-package-plane-verification"
 CONTENT_CONTRACT = "chummer.android.content-bundle/v1"
 
-W5_RECEIPT_SHA256 = "f2a9ac4518b90c0e8cde7cc046a864783180f81304b5fe44ad5b97269d69be64"
-W5_ANDROID_COMMIT = "d91db2f46793129b24eab3f460fa5e27bf87cdbe"
-W5_ANDROID_TREE = "a8a46e4547c7e60944112aa09f5ef79734cc50cc"
-W5_LOCK_SHA256 = "64454d5420e2a5430a046d392c6eea2ca41d9105c1667f2b8a66e1f61064cccc"
-W5_AUTHORITY_BINDING_SHA256 = "7f7ab5b827f69eee79addcc5cd47204d9cfa7387acd06c6894329088b6bae839"
-W5_PRESENTATION_COMMIT = "a8a317aff534dc5fd47f2db1bc39466799021990"
-W5_PRESENTATION_TREE = "f8214243280030de5d134351f39ea4b23afbe394"
-W41_PRESENTATION_LOCK_SHA256 = "568fd2c602494329d19fbe8d9a2c83a4c2e82754b50e31141b192c1af7ccf964"
-W41_DESKTOP_LOCK_SHA256 = "202a29a35b4768c3306349ee40a34d8f23ada97c0b0ef11e104763b5ff9cc60e"
-FULL_PROJECT_LOCK_SHA256 = "9037d4afc11dd8661dfbcccbc67a9f814d110fb17cf985cf215268e12ae3583e"
-FULL_PROJECT_LOCK_SIZE = 72165
-PRODUCTION_PRESENTATION_COMMIT = "3a5ca054e1ce126a02dec4199dc92233dfee8804"
-PRODUCTION_PRESENTATION_TREE = "25def23deef40822e3ff89549cc509e01c149ed4"
+UI_AUTHORITY_RECEIPT_SHA256 = "940d4cf0d77bb371e50b1cb3fb566089843a945c097b73a122522db1a673b547"
+UI_AUTHORITY_RECEIPT_SIZE = 46808
+PACKAGE_AUTHORITY_SHA256 = "8fc702e2614c47a1623c51967d56dfb5085085145575b2a75fdeb8f180c85551"
+PACKAGE_CACHE_MANIFEST_SHA256 = "b31e6f2b1903d9cab0cfe550c2892b9bb0ffc1183bbb8bb2eab4289b1710b09c"
+PRESENTATION_COMMIT = "1438978f6f883be321c62de69165c9216e10e011"
+PRESENTATION_TREE = "d1ae70610a1c4f43cfa8386db22d6f55e620fa6e"
+PRESENTATION_REMOTE_REF = "refs/remotes/origin/main"
+PRESENTATION_PACKAGE_LOCK_SHA256 = "42e01c93a863882022cf156d86674cda1fbaecba7b9a1112323a27e42dd73a61"
+PRESENTATION_PRODUCER_LOCK_SHA256 = "f4dd03dea3a51674913e2492e77390ba8d9d3587d8dac12def72156403cddd50"
+FULL_PROJECT_LOCK_SHA256 = "2c6b273ed9eb11db0c3820ebb7e8434ccea6471e7ac2db38763a0aa08db294d9"
+FULL_PROJECT_LOCK_SIZE = 70376
 CORE_CONTENT_REVISION = "3260ac73714d8b001a3599d6776196e394dc6c35"
+CORE_RUNTIME_REVISION = "febd698752e195dceef79fbc3f83dc971564fe00"
+CORE_CONTENT_DIGEST = "0013ad7b47aa1da28a2c03454ce9d98738a742e9c7a097625fc100cfaadc17ab"
+HUB_REVISION = "8cc22cb6fdf9bdf2af3c390125f7a88de90700b3"
+UI_KIT_REVISION = "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61"
+REGISTRY_REVISION = "af9a7e19c3bf331e96411dfb8f9e7820a98cab29"
 DOTNET_SDK_VERSION = "10.0.111"
 TARGET_FRAMEWORK = "net10.0-android36.0"
 RUNTIME_IDENTIFIER = "android-arm64"
@@ -83,25 +85,6 @@ TOOLCHAIN_SHA256_AUTHORITY = {
     "maui_workload_manifest": "e2506ea1897fca4cf528fa2e950d3267477e28e5253f1e7781520058742ced10",
 }
 
-REPOSITORY_NAMES = (
-    "chummer-android", "chummer6-ui", "chummer6-core", "chummer6-ui-kit",
-    "chummer6-hub", "chummer6-hub-registry", "chummer6-media-factory",
-    "chummer6-design",
-)
-REPOSITORY_ROLES = (
-    "app", "runtime", "runtime", "runtime", "contracts_and_validation",
-    "contracts", "contracts", "validation",
-)
-REPOSITORY_URLS = (
-    "https://github.com/ArchonMegalon/chummer-android.git",
-    "https://github.com/ArchonMegalon/chummer6-ui.git",
-    "https://github.com/ArchonMegalon/chummer6-core.git",
-    "https://github.com/ArchonMegalon/chummer6-ui-kit.git",
-    "https://github.com/ArchonMegalon/chummer6-hub.git",
-    "https://github.com/ArchonMegalon/chummer6-hub-registry.git",
-    "https://github.com/ArchonMegalon/chummer6-media-factory.git",
-    "https://github.com/ArchonMegalon/chummer6-design.git",
-)
 REVISION_ENVIRONMENT_VARIABLES = (
     "CHUMMER_ANDROID_REVISION",
     "CHUMMER_PRESENTATION_REVISION",
@@ -109,47 +92,37 @@ REVISION_ENVIRONMENT_VARIABLES = (
     "CHUMMER_UI_KIT_REVISION",
     "CHUMMER_RUN_SERVICES_REVISION",
     "CHUMMER_HUB_REGISTRY_REVISION",
-    "CHUMMER_MEDIA_FACTORY_REVISION",
-    "CHUMMER_DESIGN_REVISION",
-)
-RELEASE_WORKSPACE_PATHS = (
-    ("chummer-android",),
-    ("chummer-presentation",),
-    ("chummer-core-engine",),
-    ("chummer-ui-kit",),
-    ("chummer.run-services",),
-    ("chummer-hub-registry",),
-    ("fleet", "repos", "chummer-media-factory"),
-    ("chummer-design",),
-)
-SOURCE_GRAPH_DOES_NOT_ASSERT = (
-    "google_play_upload", "google_play_processing", "tester_installation",
-    "production_rollout", "presentation_package_authority",
 )
 CORE_PACKAGE_IDS = (
-    "Chummer.Application", "Chummer.Infrastructure", "Chummer.Rulesets.Hosting",
+    "Chummer.Application", "Chummer.Engine.Contracts", "Chummer.Infrastructure", "Chummer.Rulesets.Hosting",
     "Chummer.Rulesets.Sr4", "Chummer.Rulesets.Sr5", "Chummer.Rulesets.Sr6",
 )
-OWNER_PACKAGE_SPECS = (
-    ("Chummer.Campaign.Contracts", "chummer6-hub"),
-    ("Chummer.Play.Contracts", "chummer6-hub"),
-    ("Chummer.Run.Contracts", "chummer6-hub"),
-    ("Chummer.Run.Hub.Contracts", "chummer6-hub"),
-    ("Chummer.Run.Hub", "chummer6-hub"),
-    ("Chummer.Hub.Registry.Contracts", "chummer6-hub-registry"),
-    ("Chummer.Ui.Kit", "chummer6-ui-kit"),
+OWNER_PACKAGE_IDS = (
+    "Chummer.Campaign.Contracts",
+    "Chummer.Play.Contracts",
+    "Chummer.Run.Contracts",
+    "Chummer.Hub.Registry.Contracts",
+    "Chummer.Ui.Kit",
 )
-OWNER_PACKAGE_IDS = tuple(row[0] for row in OWNER_PACKAGE_SPECS)
+CORE_PACKAGE_VERSION = "0.0.0-packageplane.candidate.shfebd698752e19"
+HUB_PACKAGE_VERSION = "0.1.0-packageplane.candidate.sh66c418a5004f"
+EXPECTED_PACKAGE_VERSIONS = {
+    "Chummer.Application": CORE_PACKAGE_VERSION,
+    "Chummer.Engine.Contracts": CORE_PACKAGE_VERSION,
+    "Chummer.Infrastructure": CORE_PACKAGE_VERSION,
+    "Chummer.Rulesets.Hosting": CORE_PACKAGE_VERSION,
+    "Chummer.Rulesets.Sr4": CORE_PACKAGE_VERSION,
+    "Chummer.Rulesets.Sr5": CORE_PACKAGE_VERSION,
+    "Chummer.Rulesets.Sr6": CORE_PACKAGE_VERSION,
+    "Chummer.Campaign.Contracts": "0.1.0-preview",
+    "Chummer.Play.Contracts": HUB_PACKAGE_VERSION,
+    "Chummer.Run.Contracts": HUB_PACKAGE_VERSION,
+    "Chummer.Hub.Registry.Contracts": HUB_PACKAGE_VERSION,
+    "Chummer.Ui.Kit": "0.1.0-preview",
+}
 EXPECTED_PROJECT_LIBRARIES = (
     "Chummer.Desktop.Runtime/1.0.0", "Chummer.Presentation/1.0.0",
 )
-ALLOWED_POST_W5_PATHS = frozenset({
-    "scripts/build-api36-physical-candidate.sh",
-    "scripts/materialize-api36-physical-build-provenance.py",
-    "tests/api36_physical_build_provenance.py",
-    "tests/test_api36_physical_build_provenance.py",
-    "src/Chummer.Android/packages.lock.json",
-})
 DOES_NOT_ASSERT = (
     "apk_install", "api36_device_execution", "physical_journey_pass",
     "google_play_upload", "google_play_processing", "tester_installation",
@@ -157,7 +130,6 @@ DOES_NOT_ASSERT = (
 )
 SHA40_PATTERN = re.compile(r"[0-9a-f]{40}")
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
-VERSION_PATTERN = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?")
 JAVA_VERSION_PATTERN = re.compile(r'^(?:openjdk|java) version "(?P<version>[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?)"(?:\s.*)?$')
 JAVAC_VERSION_PATTERN = re.compile(r'^javac (?P<version>[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?)$')
 COMMAND_JOURNAL_CONTRACT = "chummer.android.api36-bounded-command-journal/v1"
@@ -167,16 +139,15 @@ PER_PHASE_TIMEOUT_SECONDS = 1800.0
 TOTAL_DEADLINE_SECONDS = 7200.0
 EXPECTED_APK_BASENAME = f"{PACKAGE}-Signed.apk"
 PHASE_NAMES = (
-    "toolchain-intake", "source-graph-intake", "core-content-intake", "w5-build-input-intake",
+    "toolchain-intake", "package-authority-intake", "core-content-intake", "current-build-input-intake",
     "locked-full-restore", "serialized-full-maui-build",
     "apk-signature-verification", "apk-content-verification",
-    "post-build-source-graph-seal",
+    "post-build-package-authority-seal",
 )
 ENVIRONMENT_ALLOWLIST = frozenset({
     "ANDROID_HOME", "ANDROID_SDK_ROOT", "DOTNET_CLI_HOME", "DOTNET_CLI_TELEMETRY_OPTOUT",
     "DOTNET_CLI_USE_MSBUILD_SERVER", "HOME", "JAVA_HOME", "LANG", "LC_ALL",
     "MSBUILDDISABLENODEREUSE", "NUGET_PACKAGES", "PATH", "TMPDIR", "DOTNET_ROOT",
-    "CHUMMER_RELEASE_WORKSPACE_ROOT",
 }) | frozenset(REVISION_ENVIRONMENT_VARIABLES)
 
 
@@ -398,65 +369,51 @@ def repository_identity(
     }
 
 
-def validate_release_workspace_authority(
-    release_workspace_root: Path, android_root: Path, graph: Mapping[str, object],
-) -> dict[str, dict[str, str]]:
-    require_directory(release_workspace_root, "release workspace authority root")
-    repository_rows = graph.get("repositories")
-    if not isinstance(repository_rows, list) or len(repository_rows) != len(REPOSITORY_NAMES):
-        raise ValueError("release workspace authority requires the exact eight-repository graph")
-    expected_android_root = release_workspace_root.joinpath(*RELEASE_WORKSPACE_PATHS[0])
-    if android_root != expected_android_root:
-        raise ValueError("Android root is not the exact release workspace chummer-android checkout")
-    identities: dict[str, dict[str, str]] = {}
-    row_keys = {"name", "role", "commit", "tree", "tree_sha256", "repository"}
-    for index, (expected_name, expected_role, expected_url, relative_parts, row) in enumerate(
-        zip(
-            REPOSITORY_NAMES, REPOSITORY_ROLES, REPOSITORY_URLS,
-            RELEASE_WORKSPACE_PATHS, repository_rows, strict=True,
-        )
-    ):
-        row = require_exact_keys(row, row_keys, f"release workspace repository row {index}")
-        if (
-            row.get("name") != expected_name or row.get("role") != expected_role
-            or row.get("repository") != expected_url
-        ):
-            raise ValueError("release workspace repository order/role/remote authority is not exact")
-        require_sha(row.get("commit"), f"release workspace {expected_name} commit", length=40)
-        require_sha(row.get("tree"), f"release workspace {expected_name} tree", length=40)
-        require_sha(row.get("tree_sha256"), f"release workspace {expected_name} tree inventory")
-        root = release_workspace_root.joinpath(*relative_parts)
-        identity = repository_identity(root, label=f"release workspace {expected_name}")
-        if identity != {"commit": row.get("commit"), "tree": row.get("tree")}:
-            raise ValueError(f"release workspace repository identity drifted: {expected_name}")
-        tree_listing = subprocess.run(
-            ["git", "-C", os.fspath(root), "ls-tree", "-r", "-z", "--full-tree", "HEAD"],
-            check=True, capture_output=True, timeout=30,
-        ).stdout
-        if hashlib.sha256(tree_listing).hexdigest() != row["tree_sha256"]:
-            raise ValueError(f"release workspace tree inventory drifted: {expected_name}")
-        try:
-            remote = _git(root, "remote", "get-url", "origin")
-        except subprocess.CalledProcessError as error:
-            raise ValueError(f"release workspace repository remote is missing: {expected_name}") from error
-        if remote != expected_url:
-            raise ValueError(f"release workspace repository remote drifted: {expected_name}")
-        identities[expected_name] = {**identity, "repository": remote}
-    return identities
+def require_presentation_remote_reachability(root: Path) -> None:
+    if _git(root, "remote", "get-url", "origin") != "https://github.com/ArchonMegalon/chummer6-ui-kit.git":
+        raise ValueError("Presentation compatibility remote is not exact")
+    try:
+        remote_commit = _git(root, "rev-parse", "--verify", PRESENTATION_REMOTE_REF)
+    except subprocess.CalledProcessError as error:
+        raise ValueError("verified Presentation commit is not available from the authorized remote ref") from error
+    if remote_commit != PRESENTATION_COMMIT:
+        raise ValueError("authorized Presentation remote ref does not resolve to the verified commit")
+    ancestor = subprocess.run(
+        ["git", "-C", os.fspath(root), "merge-base", "--is-ancestor", PRESENTATION_COMMIT, PRESENTATION_REMOTE_REF],
+        check=False, capture_output=True, timeout=30,
+    )
+    if ancestor.returncode != 0:
+        raise ValueError("verified Presentation commit is not reachable from the authorized remote ref")
 
 
-def _verify_w5_external(receipt: Path, evidence_directory: Path) -> Mapping[str, object]:
-    verifier_path = Path(__file__).resolve().parents[1] / "scripts/verify_internal_phone_beta_compile_receipt.py"
-    spec = importlib.util.spec_from_file_location("w5_compile_receipt_verifier", verifier_path)
+def _verify_current_package_authority_external(
+    android_root: Path,
+    presentation_root: Path,
+    receipt: Path,
+    package_feed: Path,
+    manifest_path: Path,
+) -> Mapping[str, object]:
+    verifier_path = Path(__file__).resolve().parents[1] / "scripts/verify_internal_phone_beta_package_authority.py"
+    spec = importlib.util.spec_from_file_location("current_package_authority_verifier", verifier_path)
     if spec is None or spec.loader is None:
-        raise ValueError("W5 compile verifier cannot be loaded")
+        raise ValueError("current package-authority verifier cannot be loaded")
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     try:
         spec.loader.exec_module(module)
     finally:
         sys.modules.pop(spec.name, None)
-    return module.verify_receipt(receipt, evidence_directory, None)
+    manifest = module.validate_manifest(manifest_path)
+    module.validate_android_sdk_authority(android_root, manifest)
+    module.validate_presentation_repository(presentation_root)
+    module.validate_receipt(receipt)
+    module.validate_package_feed(package_feed)
+    return {
+        "status": "pass",
+        "contractName": module.CONTRACT,
+        "receiptSha256": module.EXPECTED_RECEIPT_SHA256,
+        "cacheManifestSha256": module.EXPECTED_CACHE_MANIFEST_SHA256,
+    }
 
 
 def _verify_core_content_external(android_root: Path, core_root: Path) -> list[str]:
@@ -480,319 +437,61 @@ def _verify_core_content_external(android_root: Path, core_root: Path) -> list[s
     ]
 
 
-def validate_w5_receipt(
-    receipt_path: Path,
-    evidence_directory: Path,
+def validate_current_package_authority(
     *,
-    verifier: Callable[[Path, Path], Mapping[str, object]] = _verify_w5_external,
+    android_root: Path,
+    presentation_root: Path,
+    receipt_path: Path,
+    package_feed: Path,
+    manifest_path: Path,
+    committed_path: Path,
+    verifier: Callable[[Path, Path, Path, Path, Path], Mapping[str, object]] = _verify_current_package_authority_external,
     snapshots: SnapshotRegistry | None = None,
 ) -> dict[str, object]:
-    receipt_snapshot = snapshots.capture(receipt_path, "W5 compile receipt") if snapshots else None
-    require_regular(receipt_path, "W5 compile receipt")
-    require_directory(evidence_directory, "W5 evidence directory")
-    if (receipt_snapshot.sha256 if receipt_snapshot else file_sha256(receipt_path)) != W5_RECEIPT_SHA256:
-        raise ValueError("W5 compile receipt digest is not the authorized PASS receipt")
-    payload = load_strict_json(receipt_path, "W5 compile receipt", snapshots)
-    exact = {
-        "contractName": W5_CONTRACT, "status": "pass",
-        "authorityClass": "internal_phone_beta_only", "publicationAuthorized": False,
-        "dependencyMode": "locked_package_no_siblings", "packageOnly": True,
-        "restoreLockedMode": True, "sourceCheckoutsPresent": False,
-        "siblingsAllowed": False, "serializedBuild": True,
-        "sdkVersion": DOTNET_SDK_VERSION, "androidCommit": W5_ANDROID_COMMIT,
-        "androidTree": W5_ANDROID_TREE,
-        "presentationCommit": W5_PRESENTATION_COMMIT,
-        "presentationTree": W5_PRESENTATION_TREE,
-        "authorityBindingSha256": W5_AUTHORITY_BINDING_SHA256,
-        "lockSha256": W5_LOCK_SHA256,
-        "proofScope": "Native.CompileCheck_dependency_only",
-        "fullMauiBuild": False, "coreDataLangContentVerified": False,
-    }
-    for field, expected in exact.items():
-        if payload.get(field) != expected:
-            raise ValueError(f"W5 compile receipt authoritative field mismatch: {field}")
-    evidence_rows = payload.get("evidence")
-    if evidence_rows is not None:
-        if not isinstance(evidence_rows, list) or not evidence_rows:
-            raise ValueError("W5 evidence inventory is invalid")
-        names: list[str] = []
-        for index, row in enumerate(evidence_rows):
-            row = require_exact_keys(row, {"path", "sha256", "sizeBytes"}, f"W5 evidence row {index}")
-            name = row.get("path")
-            if (
-                not isinstance(name, str) or not name or name in names
-                or Path(name).name != name or name in {".", ".."}
-            ):
-                raise ValueError("W5 evidence inventory path is not exact")
-            names.append(name)
-            if (
-                not isinstance(row.get("sha256"), str)
-                or SHA256_PATTERN.fullmatch(row["sha256"]) is None
-                or type(row.get("sizeBytes")) is not int or row["sizeBytes"] < 0
-            ):
-                raise ValueError("W5 evidence digest/size types are invalid")
-            evidence_snapshot = snapshots.capture(
-                evidence_directory / name, f"W5 evidence {name}",
-            ) if snapshots else None
-            actual = evidence_snapshot.binding() if evidence_snapshot else binding(evidence_directory / name)
-            if actual != {"sha256": row.get("sha256"), "sizeBytes": row.get("sizeBytes")}:
-                raise ValueError(f"W5 evidence row does not bind bytes: {name}")
-        with os.scandir(evidence_directory) as iterator:
-            entries = list(iterator)
-        if any(entry.is_symlink() or not entry.is_file(follow_symlinks=False) for entry in entries):
-            raise ValueError("W5 evidence directory contains a non-regular entry")
-        actual_names = sorted(entry.name for entry in entries)
-        if actual_names != sorted(names):
-            raise ValueError("W5 evidence directory inventory is not exact")
-    verified = verifier(receipt_path, evidence_directory)
-    if verified.get("status") != "pass" or verified.get("verifiedReceiptStatus") != "pass":
-        raise ValueError("W5 compile receipt did not pass its committed verifier")
-    return payload
-
-
-def validate_source_graph(
-    path: Path, android_identity: Mapping[str, str], snapshots: SnapshotRegistry | None = None,
-) -> dict[str, object]:
-    graph = load_strict_json(path, "release source graph", snapshots)
-    require_exact_keys(graph, {
-        "contractName", "generatedAtUtc", "authorityState", "publicationAuthorized",
-        "generator", "repositories", "packagePins", "ownerPackagePins",
-        "dependencyClosure", "presentationSource", "doesNotAssert",
-    }, "release source graph")
-    if (graph.get("contractName"), graph.get("authorityState"), graph.get("publicationAuthorized")) != (
-        SOURCE_GRAPH_CONTRACT, "local_review_required", False,
-    ):
-        raise ValueError("release source graph authority posture is not exact")
-    if (
-        not isinstance(graph.get("generatedAtUtc"), str)
-        or not graph["generatedAtUtc"].endswith("Z")
-        or graph.get("doesNotAssert") != list(SOURCE_GRAPH_DOES_NOT_ASSERT)
-    ):
-        raise ValueError("release source graph review boundary is not exact")
-    generator = require_exact_keys(
-        graph.get("generator"), {"path", "sha256", "size_bytes"}, "source graph generator",
+    snapshots = snapshots or SnapshotRegistry()
+    receipt_snapshot = snapshots.capture(receipt_path, "UI current-graph authority receipt")
+    manifest_snapshot = snapshots.capture(manifest_path, "current Android package authority")
+    committed_snapshot = snapshots.capture(committed_path, "committed Android package authority")
+    cache_manifest = snapshots.capture(
+        package_feed.parent / "owner-package-cache.json", "current package cache manifest",
     )
-    if generator.get("path") != "scripts/verify_release_source_graph.py":
-        raise ValueError("release source graph generator path is not canonical")
-    require_sha(generator.get("sha256"), "source graph generator digest")
-    if not isinstance(generator.get("size_bytes"), int) or isinstance(generator.get("size_bytes"), bool) or generator["size_bytes"] <= 0:
-        raise ValueError("release source graph generator size is invalid")
-
-    rows = graph.get("repositories")
-    if not isinstance(rows, list) or len(rows) != len(REPOSITORY_NAMES):
-        raise ValueError("release source graph must contain exactly eight repositories")
-    repositories: dict[str, dict[str, object]] = {}
-    for expected_name, expected_role, expected_url, row in zip(
-        REPOSITORY_NAMES, REPOSITORY_ROLES, REPOSITORY_URLS, rows, strict=True,
-    ):
-        row = require_exact_keys(
-            row, {"name", "role", "commit", "tree", "tree_sha256", "repository"},
-            f"source repository {expected_name}",
-        )
-        if row.get("name") != expected_name:
-            raise ValueError("release source graph repository order/set is not exact")
-        require_sha(row.get("commit"), f"{expected_name} commit", length=40)
-        require_sha(row.get("tree"), f"{expected_name} tree", length=40)
-        require_sha(row.get("tree_sha256"), f"{expected_name} tree inventory")
-        if row.get("role") != expected_role or row.get("repository") != expected_url:
-            raise ValueError(f"{expected_name} repository authority is invalid")
-        repositories[expected_name] = row
-    android = repositories["chummer-android"]
-    if (android.get("commit"), android.get("tree")) != (
-        android_identity["commit"], android_identity["tree"],
-    ):
-        raise ValueError("release source graph does not bind the current clean Android source")
-    presentation_repository = repositories["chummer6-ui"]
-    if (
-        presentation_repository.get("commit") != PRODUCTION_PRESENTATION_COMMIT
-        or presentation_repository.get("tree") != PRODUCTION_PRESENTATION_TREE
-    ):
-        raise ValueError("release source graph reviewed Presentation source row is not exact")
-
-    package_rows = graph.get("packagePins")
-    if not isinstance(package_rows, list) or len(package_rows) != len(CORE_PACKAGE_IDS):
-        raise ValueError("release source graph must contain the exact six Core package pins")
-    core_commit = repositories["chummer6-core"]["commit"]
-    for expected_id, row in zip(CORE_PACKAGE_IDS, package_rows, strict=True):
-        row = require_exact_keys(
-            row, {"package_id", "version", "sha256", "repository", "commit"},
-            f"Core package pin {expected_id}",
-        )
-        if (row.get("package_id"), row.get("repository"), row.get("commit")) != (
-            expected_id, "chummer6-core", core_commit,
-        ):
-            raise ValueError("release source graph Core package pins are not exact and ordered")
-        if not isinstance(row.get("version"), str) or VERSION_PATTERN.fullmatch(row["version"]) is None:
-            raise ValueError(f"Core package version is invalid: {expected_id}")
-        require_sha(row.get("sha256"), f"Core package digest {expected_id}")
-
-    owner_rows = graph.get("ownerPackagePins")
-    if not isinstance(owner_rows, list) or len(owner_rows) != len(OWNER_PACKAGE_SPECS):
-        raise ValueError("release source graph must contain the exact seven owner package pins")
-    owner_fields = {
-        "package_id", "version", "sha256", "size_bytes", "owner_repository",
-        "source_commit", "source_tree", "authority_receipt_sha256",
-        "package_inventory_sha256", "package_plane_lock_sha256", "dependency_mode",
-    }
-    for (expected_id, expected_owner), row in zip(OWNER_PACKAGE_SPECS, owner_rows, strict=True):
-        row = require_exact_keys(row, owner_fields, f"owner package pin {expected_id}")
-        source = repositories[expected_owner]
-        if (
-            row.get("package_id") != expected_id
-            or row.get("owner_repository") != expected_owner
-            or row.get("source_commit") != source["commit"]
-            or row.get("source_tree") != source["tree"]
-            or row.get("dependency_mode") != "locked_package"
-        ):
-            raise ValueError("release source graph owner package authority is not exact and ordered")
-        if not isinstance(row.get("version"), str) or VERSION_PATTERN.fullmatch(row["version"]) is None:
-            raise ValueError(f"owner package version is invalid: {expected_id}")
-        for field in ("sha256", "authority_receipt_sha256", "package_inventory_sha256", "package_plane_lock_sha256"):
-            require_sha(row.get(field), f"owner package {field}: {expected_id}")
-        if not isinstance(row.get("size_bytes"), int) or isinstance(row.get("size_bytes"), bool) or row["size_bytes"] <= 0:
-            raise ValueError(f"owner package size is invalid: {expected_id}")
-
-    closure = graph.get("dependencyClosure")
-    if not isinstance(closure, list) or len(closure) != len(OWNER_PACKAGE_IDS):
-        raise ValueError("release source graph owner dependency closure is incomplete")
-    for expected_id, row in zip(OWNER_PACKAGE_IDS, closure, strict=True):
-        row = require_exact_keys(row, {"package_id", "dependencies"}, f"closure {expected_id}")
-        dependencies = row.get("dependencies")
-        if row.get("package_id") != expected_id or not isinstance(dependencies, list) or dependencies != sorted(set(dependencies)):
-            raise ValueError("release source graph owner dependency closure is not canonical")
-        if expected_id == "Chummer.Run.Contracts" and "Chummer.Play.Contracts" not in dependencies:
-            raise ValueError("release source graph is missing transitive Chummer.Play.Contracts")
-
-    presentation = require_exact_keys(
-        graph.get("presentationSource"),
-        {"repository", "commit", "tree", "source_path", "authority_state", "publication_authorized", "dependency_mode"},
-        "presentation source binding",
-    )
-    if presentation != {
-        "repository": "chummer6-ui", "commit": PRODUCTION_PRESENTATION_COMMIT,
-        "tree": PRODUCTION_PRESENTATION_TREE, "source_path": "chummer-presentation",
-        "authority_state": "local_review_required", "publication_authorized": False,
-        "dependency_mode": "source_compatibility",
+    if receipt_snapshot.binding() != {
+        "sha256": UI_AUTHORITY_RECEIPT_SHA256, "sizeBytes": UI_AUTHORITY_RECEIPT_SIZE,
     }:
-        raise ValueError("release source graph production Presentation binding is not exact")
-    return graph
-
-
-def validate_release_package_authority_v2(
-    path: Path, *, graph: Mapping[str, object], release_workspace_root: Path,
-    snapshots: SnapshotRegistry,
-) -> dict[str, object]:
-    payload = load_strict_json(path, "v2 release package authority", snapshots)
-    require_exact_keys(
-        payload, {"contractName", "packagePins", "ownerPackagePins", "dependencyClosure"},
-        "v2 release package authority",
-    )
-    if payload.get("contractName") != "chummer.android.release-package-authority/v2":
-        raise ValueError("v2 release package authority contract is not exact")
-    package_rows = payload.get("packagePins")
-    if not isinstance(package_rows, list) or len(package_rows) != len(CORE_PACKAGE_IDS):
-        raise ValueError("v2 release authority Core package graph is not exact")
-    for index, (expected_id, raw, canonical) in enumerate(
-        zip(CORE_PACKAGE_IDS, package_rows, graph["packagePins"], strict=True),
-    ):
-        raw = require_exact_keys(
-            raw, {"package_id", "version", "sha256", "repository", "commit"},
-            f"v2 Core package authority row {index}",
-        )
-        if raw != canonical or raw.get("package_id") != expected_id:
-            raise ValueError("v2 release authority Core package graph differs from source graph")
-
-    repository_roots = {
-        "chummer6-hub": release_workspace_root / "chummer.run-services",
-        "chummer6-hub-registry": release_workspace_root / "chummer-hub-registry",
-        "chummer6-ui-kit": release_workspace_root / "chummer-ui-kit",
-    }
-    owner_rows = payload.get("ownerPackagePins")
-    if not isinstance(owner_rows, list) or len(owner_rows) != len(OWNER_PACKAGE_SPECS):
-        raise ValueError("v2 release authority owner package graph is not exact")
-    raw_owner_fields = {
-        "package_id", "version", "sha256", "size_bytes", "owner_repository",
-        "source_commit", "source_tree", "authority_receipt", "package_inventory",
-        "package_plane_lock", "dependency_mode",
-    }
-    for index, ((expected_id, expected_owner), raw, canonical) in enumerate(
-        zip(OWNER_PACKAGE_SPECS, owner_rows, graph["ownerPackagePins"], strict=True),
-    ):
-        raw = require_exact_keys(raw, raw_owner_fields, f"v2 owner package authority row {index}")
-        if (
-            raw.get("package_id") != expected_id or raw.get("owner_repository") != expected_owner
-            or any(raw.get(field) != canonical.get(field) for field in (
-                "package_id", "version", "sha256", "size_bytes", "owner_repository",
-                "source_commit", "source_tree", "dependency_mode",
-            ))
-        ):
-            raise ValueError("v2 release authority owner package graph differs from source graph")
-        owner_root = repository_roots[expected_owner]
-        require_directory(owner_root, f"v2 authority owner repository {expected_owner}")
-        for raw_field, graph_field in (
-            ("authority_receipt", "authority_receipt_sha256"),
-            ("package_inventory", "package_inventory_sha256"),
-            ("package_plane_lock", "package_plane_lock_sha256"),
-        ):
-            contained = require_exact_keys(
-                raw.get(raw_field), {"path", "sha256"}, f"{expected_id}.{raw_field}",
-            )
-            relative = contained.get("path")
-            if not isinstance(relative, str) or not relative or relative != relative.strip():
-                raise ValueError("v2 authority binding path is not canonical")
-            posix = PurePosixPath(relative)
-            if posix.is_absolute() or ".." in posix.parts or "\\" in relative:
-                raise ValueError("v2 authority binding path escapes owner repository")
-            bound_path = owner_root.joinpath(*posix.parts)
-            snapshot = snapshots.capture(bound_path, f"{expected_id}.{raw_field}")
-            if (
-                contained.get("sha256") != snapshot.sha256
-                or contained.get("sha256") != canonical.get(graph_field)
-            ):
-                raise ValueError("v2 authority binding digest differs from authenticated graph/bytes")
-
-    closure = payload.get("dependencyClosure")
-    if closure != graph.get("dependencyClosure"):
-        raise ValueError("v2 release authority dependency graph differs from source graph")
-    return payload
-
-
-def validate_package_authority(
-    path: Path, *, committed_path: Path, w5_receipt: Mapping[str, object],
-    snapshots: SnapshotRegistry | None = None,
-) -> dict[str, object]:
-    require_regular(path, "internal package authority")
-    require_regular(committed_path, "committed internal package authority")
-    source_snapshot = snapshots.capture(path, "internal package authority") if snapshots else None
-    committed_snapshot = snapshots.capture(committed_path, "committed internal package authority") if snapshots else None
-    digest = source_snapshot.sha256 if source_snapshot else file_sha256(path)
-    if digest != W5_AUTHORITY_BINDING_SHA256 or digest != w5_receipt.get("authorityBindingSha256"):
-        raise ValueError("internal package authority digest is not W5-bound")
-    if (
-        source_snapshot.data if source_snapshot else path.read_bytes()
-    ) != (
-        committed_snapshot.data if committed_snapshot else committed_path.read_bytes()
-    ):
-        raise ValueError("internal package authority differs from the committed authority")
-    payload = load_strict_json(path, "internal package authority", snapshots)
+        raise ValueError("UI current-graph authority receipt bytes are not exact")
+    if manifest_snapshot.sha256 != PACKAGE_AUTHORITY_SHA256:
+        raise ValueError("current Android package-authority digest is not exact")
+    if manifest_snapshot.data != committed_snapshot.data:
+        raise ValueError("current Android package authority differs from the committed authority")
+    if cache_manifest.sha256 != PACKAGE_CACHE_MANIFEST_SHA256:
+        raise ValueError("current package cache-manifest digest is not exact")
+    payload = load_strict_json(manifest_path, "current Android package authority", snapshots)
     if (
         payload.get("contractName") != PACKAGE_AUTHORITY_CONTRACT
         or payload.get("authorityClass") != "internal_phone_beta_only"
-        or payload.get("authorityState") != "independently_audited"
+        or payload.get("authorityState") != "current_graph_verified"
         or payload.get("publicationAuthorized") is not False
-        or payload.get("dependencyMode") != {
-            "packageOnly": True, "restoreLockedMode": True,
-            "sourceCheckoutsPresent": False, "siblingsAllowed": False,
+        or payload.get("presentationSource") != {
+            "commit": PRESENTATION_COMMIT,
+            "tree": PRESENTATION_TREE,
+            "repository": "https://github.com/ArchonMegalon/chummer6-ui.git",
+            "compatibilityCheckoutRepository": "https://github.com/ArchonMegalon/chummer6-ui-kit.git",
+        }
+        or payload.get("sourceGraph") != {
+            "corePackageRecipeCommit": CORE_CONTENT_REVISION,
+            "coreRuntimeSourceCommit": CORE_RUNTIME_REVISION,
+            "hubProducerCommit": HUB_REVISION,
+            "registryCommit": REGISTRY_REVISION,
+            "uiKitCommit": UI_KIT_REVISION,
         }
     ):
-        raise ValueError("internal package authority posture is not exact")
-    package_rows = payload.get("packagePins")
-    owner_rows = payload.get("ownerPackagePins")
-    if not isinstance(package_rows, list) or [row.get("package_id") for row in package_rows if isinstance(row, dict)] != list(CORE_PACKAGE_IDS):
-        raise ValueError("internal package authority Core pins are not exact")
-    if not isinstance(owner_rows, list) or [row.get("package_id") for row in owner_rows if isinstance(row, dict)] != list(OWNER_PACKAGE_IDS):
-        raise ValueError("internal package authority owner pins are not exact")
+        raise ValueError("current Android package-authority posture/source graph is not exact")
+    verified = verifier(android_root, presentation_root, receipt_path, package_feed, manifest_path)
+    if verified.get("status") != "pass" or verified.get("contractName") != PACKAGE_AUTHORITY_CONTRACT:
+        raise ValueError("current Android package authority did not pass its committed verifier")
     return payload
+
+
 
 
 def validate_content_receipt(
@@ -878,7 +577,7 @@ def validate_full_project_lock(
     for package_id in (*CORE_PACKAGE_IDS, *OWNER_PACKAGE_IDS):
         row = packages.get(package_id)
         if not isinstance(row, dict) or row.get("type") != "Transitive":
-            raise ValueError(f"full-project W5 package closure is missing: {package_id}")
+            raise ValueError(f"full-project CURRENT_GRAPH package closure is missing: {package_id}")
         if not isinstance(row.get("contentHash"), str) or not row["contentHash"]:
             raise ValueError(f"full-project content hash is invalid: {package_id}")
     return lock
@@ -898,12 +597,9 @@ def validate_assets(
     ))
     if projects != EXPECTED_PROJECT_LIBRARIES:
         raise ValueError("full-project restore assets project closure is not exact")
-    expected_versions = {
-        row["package_id"]: row["version"]
-        for group in (package_authority["packagePins"], package_authority["ownerPackagePins"])
-        for row in group
-    }
-    for package_id, version in expected_versions.items():
+    if package_authority.get("contractName") != PACKAGE_AUTHORITY_CONTRACT:
+        raise ValueError("restore assets package authority contract is not current v2")
+    for package_id, version in EXPECTED_PACKAGE_VERSIONS.items():
         row = libraries.get(f"{package_id}/{version}")
         if not isinstance(row, dict) or row.get("type") != "package":
             raise ValueError(f"full-project restore assets package closure mismatch: {package_id}")
@@ -1300,12 +996,11 @@ def _require_argv_value(argv: list[str], option: str, expected: str) -> None:
 
 def validate_phase_argv(
     phase: str, argv: object, *, android_root: Path, apk: Path,
-    source_graph_path: Path, content_source_receipt_path: Path,
+    content_source_receipt_path: Path,
     content_apk_receipt_path: Path, android_build_tools_version: str,
     python_path: Path, dotnet_path: Path, presentation_root: Path,
-    core_content_root: Path, release_workspace_root: Path,
-    release_package_authority_v2_path: Path, package_authority_path: Path,
-    w5_receipt_path: Path, w5_evidence_directory: Path,
+    core_content_root: Path, package_authority_path: Path,
+    ui_authority_receipt_path: Path,
     full_project_lock_path: Path, package_feed_path: Path,
     offline_feed_path: Path, nuget_packages_path: Path,
     dotnet_workloads_path: Path,
@@ -1324,7 +1019,7 @@ def validate_phase_argv(
     project = os.fspath(android_root / "src/Chummer.Android/Chummer.Android.csproj")
     content_manifest = os.fspath(android_root / "src/Chummer.Android/Content/chummer-content-manifest.json")
     materializer = os.fspath(android_root / "scripts/materialize-api36-physical-build-provenance.py")
-    graph_verifier = os.fspath(android_root / "scripts/verify_release_source_graph.py")
+    package_authority_verifier = os.fspath(android_root / "scripts/verify_internal_phone_beta_package_authority.py")
     content_verifier = os.fspath(android_root / "scripts/verify_android_content_bundle.py")
     package_args = [
         f"-p:ChummerPresentationRoot={presentation_root}",
@@ -1337,21 +1032,26 @@ def validate_phase_argv(
         f"-p:AndroidSdkDirectory={android_sdk_root}",
         f"-p:AndroidSdkBuildToolsVersion={android_build_tools_version}",
         f"-p:JavaSdkDirectory={java_path.parent.parent}",
-        "-p:ChummerContractsPackageVersion=0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
-        "-p:ChummerCoreRuntimePackageVersion=0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819",
-        "-p:ChummerCampaignContractsPackageVersion=0.1.0-packageplane.android.sh1215f9389779e",
-        "-p:ChummerRunContractsPackageVersion=0.1.0-packageplane.android.sh1215f9389779e",
-        "-p:ChummerRunHubContractsPackageVersion=0.1.0-packageplane.android.sh1215f9389779e",
-        "-p:ChummerRunHubPackageVersion=0.1.0-packageplane.android.sh1215f9389779e",
-        "-p:ChummerHubRegistryContractsPackageVersion=0.1.0-packageplane.candidate.sh66c418a5004f",
-        "-p:ChummerUiKitPackageVersion=0.1.0-packageplane.android.shd51ecd99cf720",
+        f"-p:ChummerContractsPackageVersion={CORE_PACKAGE_VERSION}",
+        f"-p:ChummerCoreRuntimePackageVersion={CORE_PACKAGE_VERSION}",
+        "-p:ChummerCampaignContractsPackageVersion=0.1.0-preview",
+        f"-p:ChummerRunContractsPackageVersion={HUB_PACKAGE_VERSION}",
+        f"-p:ChummerHubRegistryContractsPackageVersion={HUB_PACKAGE_VERSION}",
+        "-p:ChummerUiKitPackageVersion=0.1.0-preview",
     ]
-    if phase == "source-graph-intake":
+    if phase in {"package-authority-intake", "post-build-package-authority-seal"}:
+        output_name = (
+            "package-authority-binding.json"
+            if phase == "package-authority-intake"
+            else "package-authority-seal.json"
+        )
         expected = [
-            os.fspath(python_path), graph_verifier, "--android-root", os.fspath(android_root),
-            "--workspace-root", os.fspath(release_workspace_root),
-            "--package-authority", os.fspath(release_package_authority_v2_path),
-            "--verify-existing", os.fspath(source_graph_path),
+            os.fspath(python_path), package_authority_verifier,
+            "--android-root", os.fspath(android_root),
+            "--presentation-root", os.fspath(presentation_root),
+            "--receipt", os.fspath(ui_authority_receipt_path),
+            "--package-feed", os.fspath(package_feed_path),
+            "--output", os.fspath(content_source_receipt_path.parent / output_name),
         ]
     elif phase == "toolchain-intake":
         expected = [
@@ -1370,14 +1070,13 @@ def validate_phase_argv(
             "--core-root", os.fspath(core_content_root), "--manifest", content_manifest,
             "--receipt", os.fspath(content_source_receipt_path), "--check",
         ]
-    elif phase == "w5-build-input-intake":
+    elif phase == "current-build-input-intake":
         expected = [
             os.fspath(python_path), materializer, "check-inputs", "--android-root", os.fspath(android_root),
             "--presentation-root", os.fspath(presentation_root), "--core-content-root", os.fspath(core_content_root),
-            "--w5-receipt", os.fspath(w5_receipt_path), "--w5-evidence-directory", os.fspath(w5_evidence_directory),
-            "--source-graph", os.fspath(source_graph_path), "--package-authority", os.fspath(package_authority_path),
-            "--release-package-authority-v2", os.fspath(release_package_authority_v2_path),
-            "--release-workspace-root", os.fspath(release_workspace_root),
+            "--ui-authority-receipt", os.fspath(ui_authority_receipt_path),
+            "--package-feed", os.fspath(package_feed_path),
+            "--package-authority", os.fspath(package_authority_path),
             "--content-source-receipt", os.fspath(content_source_receipt_path),
             "--full-project-lock", os.fspath(full_project_lock_path),
         ]
@@ -1410,12 +1109,6 @@ def validate_phase_argv(
             "--core-root", os.fspath(core_content_root), "--manifest", content_manifest,
             "--apk", os.fspath(apk), "--receipt", os.fspath(content_apk_receipt_path), "--check",
         ]
-    elif phase == "post-build-source-graph-seal":
-        expected = [
-            os.fspath(python_path), graph_verifier, "--android-root", os.fspath(android_root),
-            "--workspace-root", os.fspath(release_workspace_root), "--package-authority",
-            os.fspath(release_package_authority_v2_path), "--verify-existing", os.fspath(source_graph_path),
-        ]
     else:
         raise ValueError("bounded command phase is outside the exact build contract")
     if argv != expected:
@@ -1424,12 +1117,11 @@ def validate_phase_argv(
 
 
 def validate_execution_evidence(
-    toolchain_log: Path, source_graph_log: Path, content_source_log: Path, build_inputs_log: Path,
+    toolchain_log: Path, package_authority_log: Path, content_source_log: Path, build_inputs_log: Path,
     restore_log: Path, build_log: Path, signing_phase_log: Path, content_apk_log: Path,
-    source_graph_seal_log: Path, command_journal: Path, raw_command_journal: Path,
+    package_authority_seal_log: Path, command_journal: Path, raw_command_journal: Path,
     delegate_command_journal: Path,
-    *, android_root: Path, apk: Path, source_graph_path: Path,
-    source_graph: Mapping[str, object],
+    *, android_root: Path, apk: Path,
     content_source_receipt_path: Path, content_apk_receipt_path: Path,
     android_build_tools_version: str, snapshots: SnapshotRegistry,
     python_path: Path, dotnet_path: Path, java_path: Path,
@@ -1437,23 +1129,22 @@ def validate_execution_evidence(
     android_workload_manifest_path: Path, maui_workload_manifest_path: Path,
     dotnet_workloads_path: Path,
     presentation_root: Path, core_content_root: Path,
-    release_workspace_root: Path, release_package_authority_v2_path: Path,
-    package_authority_path: Path, w5_receipt_path: Path,
-    w5_evidence_directory: Path, full_project_lock_path: Path,
+    package_authority_path: Path, ui_authority_receipt_path: Path,
+    full_project_lock_path: Path,
     package_feed_path: Path, offline_feed_path: Path, nuget_packages_path: Path,
     apksigner_path: Path, jarsigner_path: Path, signing_receipt_path: Path,
     apksigner_log_path: Path, jarsigner_log_path: Path,
 ) -> None:
     for path, label in (
         (toolchain_log, "toolchain intake log"),
-        (source_graph_log, "source graph intake log"),
+        (package_authority_log, "package authority intake log"),
         (content_source_log, "Core content intake log"),
-        (build_inputs_log, "W5 build inputs log"),
+        (build_inputs_log, "current build inputs log"),
         (restore_log, "locked restore log"),
         (build_log, "full MAUI build log"),
         (signing_phase_log, "APK signature verification phase log"),
         (content_apk_log, "APK content verification log"),
-        (source_graph_seal_log, "post-build source graph seal log"),
+        (package_authority_seal_log, "post-build package authority seal log"),
         (command_journal, "bounded command journal"),
         (raw_command_journal, "raw bounded-runner journal"),
         (delegate_command_journal, "delegate bounded-runner journal"),
@@ -1492,34 +1183,25 @@ def validate_execution_evidence(
         rows.append(row)
     expected = (
         ("toolchain-intake", toolchain_log),
-        ("source-graph-intake", source_graph_log),
+        ("package-authority-intake", package_authority_log),
         ("core-content-intake", content_source_log),
-        ("w5-build-input-intake", build_inputs_log),
+        ("current-build-input-intake", build_inputs_log),
         ("locked-full-restore", restore_log),
         ("serialized-full-maui-build", build_log),
         ("apk-signature-verification", signing_phase_log),
         ("apk-content-verification", content_apk_log),
-        ("post-build-source-graph-seal", source_graph_seal_log),
+        ("post-build-package-authority-seal", package_authority_seal_log),
     )
     if len(rows) != len(expected) * 2:
         raise ValueError("bounded command journal row count is not exact")
-    source_repositories = source_graph.get("repositories")
-    if not isinstance(source_repositories, list) or len(source_repositories) != len(
-        REVISION_ENVIRONMENT_VARIABLES
-    ):
-        raise ValueError("authenticated source graph revision environment is not exact")
-    expected_revisions: dict[str, str] = {}
-    for expected_name, variable, repository in zip(
-        REPOSITORY_NAMES,
-        REVISION_ENVIRONMENT_VARIABLES,
-        source_repositories,
-        strict=True,
-    ):
-        if not isinstance(repository, dict) or repository.get("name") != expected_name:
-            raise ValueError("authenticated source graph revision environment is not exact")
-        expected_revisions[variable] = require_sha(
-            repository.get("commit"), f"{expected_name} bounded revision", length=40,
-        )
+    expected_revisions = {
+        "CHUMMER_ANDROID_REVISION": repository_identity(android_root)["commit"],
+        "CHUMMER_PRESENTATION_REVISION": PRESENTATION_COMMIT,
+        "CHUMMER_CORE_ENGINE_REVISION": CORE_RUNTIME_REVISION,
+        "CHUMMER_UI_KIT_REVISION": UI_KIT_REVISION,
+        "CHUMMER_RUN_SERVICES_REVISION": HUB_REVISION,
+        "CHUMMER_HUB_REGISTRY_REVISION": REGISTRY_REVISION,
+    }
     common_invocation_epoch: float | int | None = None
     common_deadline_epoch: float | int | None = None
     for index, (phase, output) in enumerate(expected):
@@ -1557,7 +1239,6 @@ def validate_execution_evidence(
             "HOME": os.fspath(DOTNET_CLI_HOME_AUTHORITY),
             "JAVA_HOME": os.fspath(java_path.parent.parent),
             "NUGET_PACKAGES": os.fspath(nuget_packages_path),
-            "CHUMMER_RELEASE_WORKSPACE_ROOT": os.fspath(release_workspace_root),
             **expected_revisions,
             "DOTNET_CLI_TELEMETRY_OPTOUT": "1", "DOTNET_CLI_USE_MSBUILD_SERVER": "0",
             "MSBUILDDISABLENODEREUSE": "1", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8",
@@ -1592,16 +1273,13 @@ def validate_execution_evidence(
             raise ValueError("bounded command script-owned timeout/deadline facts are invalid")
         argv = validate_phase_argv(
             phase, started.get("argv"), android_root=android_root, apk=apk,
-            source_graph_path=source_graph_path,
             content_source_receipt_path=content_source_receipt_path,
             content_apk_receipt_path=content_apk_receipt_path,
             android_build_tools_version=android_build_tools_version,
             python_path=python_path, dotnet_path=dotnet_path,
             presentation_root=presentation_root, core_content_root=core_content_root,
-            release_workspace_root=release_workspace_root,
-            release_package_authority_v2_path=release_package_authority_v2_path,
             package_authority_path=package_authority_path,
-            w5_receipt_path=w5_receipt_path, w5_evidence_directory=w5_evidence_directory,
+            ui_authority_receipt_path=ui_authority_receipt_path,
             full_project_lock_path=full_project_lock_path,
             package_feed_path=package_feed_path, offline_feed_path=offline_feed_path,
             nuget_packages_path=nuget_packages_path,
@@ -1739,97 +1417,54 @@ def validate_execution_evidence(
 
 def authenticate_inputs(
     *, android_root: Path, presentation_root: Path, core_content_root: Path,
-    w5_receipt_path: Path,
-    w5_evidence_directory: Path,
-    source_graph_path: Path, package_authority_path: Path,
-    release_package_authority_v2_path: Path,
-    release_workspace_root: Path,
+    ui_authority_receipt_path: Path,
+    package_feed_path: Path,
+    package_authority_path: Path,
     content_source_receipt_path: Path, full_project_lock_path: Path,
-    w5_verifier: Callable[[Path, Path], Mapping[str, object]] = _verify_w5_external,
+    package_authority_verifier: Callable[
+        [Path, Path, Path, Path, Path], Mapping[str, object]
+    ] = _verify_current_package_authority_external,
     content_verifier: Callable[[Path, Path], list[str]] = _verify_core_content_external,
-    release_workspace_verifier: Callable[
-        [Path, Path, Mapping[str, object]], Mapping[str, object]
-    ] = validate_release_workspace_authority,
+    remote_reachability_verifier: Callable[[Path], None] = require_presentation_remote_reachability,
     snapshots: SnapshotRegistry | None = None,
 ) -> dict[str, object]:
     snapshots = snapshots or SnapshotRegistry()
     android_identity = repository_identity(android_root)
     presentation_identity = repository_identity(
-        presentation_root, label="W5 Presentation build source",
+        presentation_root, label="current Presentation build source",
     )
     if presentation_identity != {
-        "commit": W5_PRESENTATION_COMMIT, "tree": W5_PRESENTATION_TREE,
+        "commit": PRESENTATION_COMMIT, "tree": PRESENTATION_TREE,
     }:
-        raise ValueError("W5 Presentation build source identity is not exact")
+        raise ValueError("current Presentation build source identity is not exact")
+    remote_reachability_verifier(presentation_root)
     core_content_identity = repository_identity(
         core_content_root, label="Core content source",
     )
     if core_content_identity["commit"] != CORE_CONTENT_REVISION:
         raise ValueError("Core content source revision is not exact")
     presentation_lock = snapshots.capture(
-        presentation_root / "Chummer.Presentation/packages.lock.json",
-        "W4.1 Presentation package lock",
+        presentation_root / "config/package-plane.lock.json",
+        "current UI package-plane lock",
     )
-    desktop_lock = snapshots.capture(
-        presentation_root / "Chummer.Desktop.Runtime/packages.lock.json",
-        "W4.1 Desktop.Runtime package lock",
+    producer_lock = snapshots.capture(
+        presentation_root / "config/ui-owner-package-plane.lock.json",
+        "current UI producer lock",
     )
-    if presentation_lock.sha256 != W41_PRESENTATION_LOCK_SHA256:
-        raise ValueError("W4.1 Presentation package lock is not exact")
-    if desktop_lock.sha256 != W41_DESKTOP_LOCK_SHA256:
-        raise ValueError("W4.1 Desktop.Runtime package lock is not exact")
-    ancestor = subprocess.run(
-        ["git", "-C", os.fspath(android_root), "merge-base", "--is-ancestor", W5_ANDROID_COMMIT, "HEAD"],
-        check=False, capture_output=True, timeout=30,
-    )
-    if ancestor.returncode != 0:
-        raise ValueError("current Android candidate does not descend from the W5 proof source")
-    changed = set(filter(None, _git(android_root, "diff", "--name-only", f"{W5_ANDROID_COMMIT}..HEAD").splitlines()))
-    if not changed.issubset(ALLOWED_POST_W5_PATHS):
-        raise ValueError(f"Android product source changed after W5 proof: {sorted(changed - ALLOWED_POST_W5_PATHS)}")
-    w5 = validate_w5_receipt(
-        w5_receipt_path, w5_evidence_directory, verifier=w5_verifier,
+    if presentation_lock.sha256 != PRESENTATION_PACKAGE_LOCK_SHA256:
+        raise ValueError("current UI package-plane lock is not exact")
+    if producer_lock.sha256 != PRESENTATION_PRODUCER_LOCK_SHA256:
+        raise ValueError("current UI producer lock is not exact")
+    authority = validate_current_package_authority(
+        android_root=android_root,
+        presentation_root=presentation_root,
+        receipt_path=ui_authority_receipt_path,
+        package_feed=package_feed_path,
+        manifest_path=package_authority_path,
+        committed_path=android_root / "eng/internal-phone-beta-package-authority.json",
+        verifier=package_authority_verifier,
         snapshots=snapshots,
     )
-    graph = validate_source_graph(source_graph_path, android_identity, snapshots)
-    release_workspace_authority = release_workspace_verifier(
-        release_workspace_root, android_root, graph,
-    )
-    release_authority_v2_payload = validate_release_package_authority_v2(
-        release_package_authority_v2_path, graph=graph,
-        release_workspace_root=release_workspace_root, snapshots=snapshots,
-    )
-    release_authority_v2 = snapshots.capture(
-        release_package_authority_v2_path, "v2 release package authority",
-    )
-    generator_snapshot = snapshots.capture(
-        android_root / "scripts/verify_release_source_graph.py",
-        "release source graph verifier",
-    )
-    expected_generator = {
-        "path": "scripts/verify_release_source_graph.py",
-        "sha256": generator_snapshot.sha256,
-        "size_bytes": generator_snapshot.size,
-    }
-    if graph.get("generator") != expected_generator:
-        raise ValueError("release source graph generator bytes do not match current Android source")
-    authority = validate_package_authority(
-        package_authority_path,
-        committed_path=android_root / "eng/internal-phone-beta-package-authority.json",
-        w5_receipt=w5, snapshots=snapshots,
-    )
-    for graph_row, authority_row in zip(
-        graph["packagePins"], authority["packagePins"], strict=True,
-    ):
-        for field in ("package_id", "version", "sha256"):
-            if graph_row.get(field) != authority_row.get(field):
-                raise ValueError(f"Core package authority cross-binding mismatch: {field}")
-    for graph_row, authority_row in zip(
-        graph["ownerPackagePins"], authority["ownerPackagePins"], strict=True,
-    ):
-        for field in ("package_id", "version", "sha256", "size_bytes"):
-            if graph_row.get(field) != authority_row.get(field):
-                raise ValueError(f"owner package authority cross-binding mismatch: {field}")
     content = validate_content_receipt(content_source_receipt_path, apk=None, snapshots=snapshots)
     content_manifest_path = android_root / "src/Chummer.Android/Content/chummer-content-manifest.json"
     content_manifest_snapshot = snapshots.capture(content_manifest_path, "committed Core content manifest")
@@ -1850,6 +1485,8 @@ def authenticate_inputs(
     for field, expected in expected_content.items():
         if content.get(field) != expected:
             raise ValueError(f"Core content receipt does not bind committed manifest: {field}")
+    if expected_content["bundleDigest"] != CORE_CONTENT_DIGEST:
+        raise ValueError("Core content bundle digest is not the current frozen authority")
     content_issues = content_verifier(android_root, core_content_root)
     if content_issues:
         raise ValueError(f"Core data/lang content verifier blocked: {content_issues}")
@@ -1866,51 +1503,54 @@ def authenticate_inputs(
         "androidIdentity": android_identity,
         "presentationBuildIdentity": presentation_identity,
         "coreContentIdentity": core_content_identity,
-        "w5": w5, "sourceGraph": graph,
         "packageAuthority": authority, "contentSource": content,
         "presentationLock": presentation_lock.binding(),
-        "desktopLock": desktop_lock.binding(),
-        "releasePackageAuthorityV2": release_authority_v2.binding(),
-        "releasePackageAuthorityV2Payload": release_authority_v2_payload,
-        "releaseWorkspaceAuthority": release_workspace_authority,
+        "producerLock": producer_lock.binding(),
+        "uiAuthorityReceipt": snapshots.capture(
+            ui_authority_receipt_path, "UI current-graph authority receipt",
+        ).binding(),
+        "packageCacheManifest": snapshots.capture(
+            package_feed_path.parent / "owner-package-cache.json",
+            "current package cache manifest",
+        ).binding(),
         "snapshots": snapshots,
     }
 
 
 def create_manifest(
     *, android_root: Path, presentation_root: Path, core_content_root: Path,
-    apk: Path, w5_receipt_path: Path,
-    w5_evidence_directory: Path, source_graph_path: Path,
-    package_authority_path: Path, release_package_authority_v2_path: Path,
+    apk: Path, ui_authority_receipt_path: Path,
+    package_authority_path: Path,
     content_source_receipt_path: Path,
     content_apk_receipt_path: Path, full_project_lock_path: Path,
     assets_path: Path, toolchain_log_path: Path,
-    source_graph_log_path: Path, content_source_log_path: Path,
+    package_authority_log_path: Path, package_authority_binding_path: Path,
+    content_source_log_path: Path,
     build_inputs_log_path: Path, restore_log_path: Path, build_log_path: Path,
     signing_phase_log_path: Path, apksigner_log_path: Path, jarsigner_log_path: Path,
     signing_receipt_path: Path, content_apk_log_path: Path,
-    source_graph_seal_log_path: Path, command_journal_path: Path,
+    package_authority_seal_log_path: Path, package_authority_seal_path: Path,
+    command_journal_path: Path,
     raw_command_journal_path: Path, delegate_command_journal_path: Path,
     android_sdk_packages_path: Path, android_sdk_root: Path,
     android_workload_manifest_path: Path, maui_workload_manifest_path: Path,
     dotnet_workloads_path: Path,
     java_path: Path, javac_path: Path, jarsigner_path: Path,
     apksigner_path: Path, dotnet_path: Path,
-    python_path: Path, release_workspace_root: Path,
+    python_path: Path,
     package_feed_path: Path, offline_feed_path: Path, nuget_packages_path: Path,
     android_build_tools_version: str, dotnet_version: str,
     generated_at_utc: str | None = None,
-    w5_verifier: Callable[[Path, Path], Mapping[str, object]] = _verify_w5_external,
+    package_authority_verifier: Callable[
+        [Path, Path, Path, Path, Path], Mapping[str, object]
+    ] = _verify_current_package_authority_external,
     content_verifier: Callable[[Path, Path], list[str]] = _verify_core_content_external,
-    release_workspace_verifier: Callable[
-        [Path, Path, Mapping[str, object]], Mapping[str, object]
-    ] = validate_release_workspace_authority,
+    remote_reachability_verifier: Callable[[Path], None] = require_presentation_remote_reachability,
     before_final_recheck: Callable[[], None] | None = None,
 ) -> dict[str, object]:
     snapshots = SnapshotRegistry()
     for path, label in (
-        (release_workspace_root, "release workspace"),
-        (package_feed_path, "W5 package feed"),
+        (package_feed_path, "current package feed"),
         (offline_feed_path, "offline package feed"),
         (nuget_packages_path, "NuGet package cache"),
     ):
@@ -1918,16 +1558,15 @@ def create_manifest(
     facts = authenticate_inputs(
         android_root=android_root, presentation_root=presentation_root,
         core_content_root=core_content_root,
-        w5_receipt_path=w5_receipt_path,
-        w5_evidence_directory=w5_evidence_directory,
-        source_graph_path=source_graph_path,
+        ui_authority_receipt_path=ui_authority_receipt_path,
+        package_feed_path=package_feed_path,
         package_authority_path=package_authority_path,
-        release_package_authority_v2_path=release_package_authority_v2_path,
-        release_workspace_root=release_workspace_root,
         content_source_receipt_path=content_source_receipt_path,
-        full_project_lock_path=full_project_lock_path, w5_verifier=w5_verifier,
+        full_project_lock_path=full_project_lock_path,
+        package_authority_verifier=package_authority_verifier,
         content_verifier=content_verifier,
-        release_workspace_verifier=release_workspace_verifier, snapshots=snapshots,
+        remote_reachability_verifier=remote_reachability_verifier,
+        snapshots=snapshots,
     )
     validate_apk_output_directory(apk, snapshots)
     abis = apk_abis(apk, snapshots)
@@ -1956,12 +1595,11 @@ def create_manifest(
         snapshots=snapshots,
     )
     validate_execution_evidence(
-        toolchain_log_path, source_graph_log_path, content_source_log_path, build_inputs_log_path,
+        toolchain_log_path, package_authority_log_path, content_source_log_path, build_inputs_log_path,
         restore_log_path, build_log_path, signing_phase_log_path, content_apk_log_path,
-        source_graph_seal_log_path, command_journal_path, raw_command_journal_path,
+        package_authority_seal_log_path, command_journal_path, raw_command_journal_path,
         delegate_command_journal_path,
-        android_root=android_root, apk=apk, source_graph_path=source_graph_path,
-        source_graph=facts["sourceGraph"],
+        android_root=android_root, apk=apk,
         content_source_receipt_path=content_source_receipt_path,
         content_apk_receipt_path=content_apk_receipt_path,
         android_build_tools_version=android_build_tools_version,
@@ -1973,10 +1611,8 @@ def create_manifest(
         maui_workload_manifest_path=maui_workload_manifest_path,
         dotnet_workloads_path=dotnet_workloads_path,
         presentation_root=presentation_root, core_content_root=core_content_root,
-        release_workspace_root=release_workspace_root,
-        release_package_authority_v2_path=release_package_authority_v2_path,
         package_authority_path=package_authority_path,
-        w5_receipt_path=w5_receipt_path, w5_evidence_directory=w5_evidence_directory,
+        ui_authority_receipt_path=ui_authority_receipt_path,
         full_project_lock_path=full_project_lock_path,
         package_feed_path=package_feed_path, offline_feed_path=offline_feed_path,
         nuget_packages_path=nuget_packages_path,
@@ -1985,35 +1621,41 @@ def create_manifest(
         apksigner_log_path=apksigner_log_path, jarsigner_log_path=jarsigner_log_path,
     )
 
-    graph = facts["sourceGraph"]
+    intake_authority = snapshots.capture(
+        package_authority_binding_path, "package authority intake binding",
+    )
+    sealed_authority = snapshots.capture(
+        package_authority_seal_path, "post-build package authority binding",
+    )
+    if intake_authority.data != sealed_authority.data:
+        raise ValueError("package authority changed during the physical build")
+
     authority = facts["packageAuthority"]
     authority_payload: dict[str, object] = {
         "schema": SCHEMA, "status": "pass", "authorityClass": AUTHORITY_CLASS,
         "publicationAuthorized": False, "proofScope": PROOF_SCOPE,
-        "dependencyMode": "locked_w5_packages_no_owner_siblings",
-        "sourceGraph": {
-            **binding(source_graph_path, snapshots), "contractName": SOURCE_GRAPH_CONTRACT,
-            "repositories": graph["repositories"],
-            "packageAuthority": facts["releasePackageAuthorityV2"],
-            "packageAuthorityContract": "chummer.android.release-package-authority/v2",
-            "packageAuthorityPublicationAuthorized": False,
-        },
-        "w5CompileProof": {
-            **binding(w5_receipt_path, snapshots), "contractName": W5_CONTRACT, "status": "pass",
-            "androidCommit": W5_ANDROID_COMMIT, "androidTree": W5_ANDROID_TREE,
+        "dependencyMode": "locked_current_packages_no_owner_siblings",
+        "sourceHead": {
+            **facts["androidIdentity"], "repository": "https://github.com/ArchonMegalon/chummer-android.git",
+            "publicationAuthorized": False,
         },
         "presentationBuildSource": {
             **facts["presentationBuildIdentity"],
-            "authorityClass": "W4.1_internal_package_authority_source",
+            "authorityClass": "verified_current_ui_source",
             "productionSource": False,
             "publicationAuthorized": False,
-            "presentationLock": facts["presentationLock"],
-            "desktopRuntimeLock": facts["desktopLock"],
+            "packagePlaneLock": facts["presentationLock"],
+            "producerLock": facts["producerLock"],
+            "remoteRef": PRESENTATION_REMOTE_REF,
         },
         "packageAuthority": {
             **binding(package_authority_path, snapshots), "contractName": PACKAGE_AUTHORITY_CONTRACT,
-            "packagePins": authority["packagePins"],
-            "ownerPackagePins": authority["ownerPackagePins"],
+            "authorityState": authority["authorityState"],
+            "sourceGraph": authority["sourceGraph"],
+            "uiReceipt": facts["uiAuthorityReceipt"],
+            "cacheManifest": facts["packageCacheManifest"],
+            "intakeBinding": binding(package_authority_binding_path, snapshots),
+            "postBuildBinding": binding(package_authority_seal_path, snapshots),
         },
         "content": {
             "sourceReceipt": binding(content_source_receipt_path, snapshots),
@@ -2033,7 +1675,8 @@ def create_manifest(
         },
         "executionEvidence": {
             "toolchainLog": binding(toolchain_log_path, snapshots),
-            "sourceGraphLog": binding(source_graph_log_path, snapshots),
+            "packageAuthorityLog": binding(package_authority_log_path, snapshots),
+            "packageAuthorityBinding": binding(package_authority_binding_path, snapshots),
             "contentSourceLog": binding(content_source_log_path, snapshots),
             "buildInputsLog": binding(build_inputs_log_path, snapshots),
             "restoreLog": binding(restore_log_path, snapshots),
@@ -2043,7 +1686,8 @@ def create_manifest(
             "jarsignerLog": binding(jarsigner_log_path, snapshots),
             "signingReceipt": binding(signing_receipt_path, snapshots),
             "contentApkLog": binding(content_apk_log_path, snapshots),
-            "sourceGraphSealLog": binding(source_graph_seal_log_path, snapshots),
+            "packageAuthoritySealLog": binding(package_authority_seal_log_path, snapshots),
+            "packageAuthoritySeal": binding(package_authority_seal_path, snapshots),
             "commandJournal": binding(command_journal_path, snapshots),
             "rawCommandJournal": binding(raw_command_journal_path, snapshots),
             "delegateCommandJournal": binding(delegate_command_journal_path, snapshots),
@@ -2072,20 +1716,15 @@ def create_manifest(
     snapshots.recheck_all()
     final_android = repository_identity(android_root)
     final_presentation = repository_identity(
-        presentation_root, label="W5 Presentation build source",
+        presentation_root, label="current Presentation build source",
     )
     final_core = repository_identity(core_content_root, label="Core content source")
     if final_android != facts["androidIdentity"]:
         raise ValueError("Android source identity changed before provenance seal")
     if final_presentation != facts["presentationBuildIdentity"]:
-        raise ValueError("W5 Presentation source identity changed before provenance seal")
+        raise ValueError("current Presentation source identity changed before provenance seal")
     if final_core != facts["coreContentIdentity"]:
         raise ValueError("Core content source identity changed before provenance seal")
-    final_release_workspace = release_workspace_verifier(
-        release_workspace_root, android_root, facts["sourceGraph"],
-    )
-    if final_release_workspace != facts["releaseWorkspaceAuthority"]:
-        raise ValueError("release workspace authority changed before provenance seal")
     return {
         **authority_payload,
         "authoritySha256": canonical_sha256(authority_payload),
@@ -2118,7 +1757,7 @@ def load_and_verify_manifest(manifest_path: Path, **create_arguments: object) ->
     manifest = load_strict_json(manifest_path, "API36 build provenance")
     require_exact_keys(manifest, {
         "schema", "status", "authorityClass", "publicationAuthorized", "proofScope",
-        "dependencyMode", "sourceGraph", "w5CompileProof", "presentationBuildSource", "packageAuthority",
+        "dependencyMode", "sourceHead", "presentationBuildSource", "packageAuthority",
         "content", "restore", "executionEvidence", "toolchain", "artifact", "doesNotAssert",
         "authoritySha256", "generatedAtUtc",
     }, "API36 build provenance")

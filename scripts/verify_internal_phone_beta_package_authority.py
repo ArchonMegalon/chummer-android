@@ -17,19 +17,19 @@ CONTRACT = "chummer.android.internal-phone-beta-package-authority/v2"
 RECEIPT_CONTRACT = "chummer6-ui.fresh-package-plane-verification"
 LOCK_CONTRACT = "chummer6-ui.fresh-package-plane-lock"
 CACHE_CONTRACT = "chummer6-ui.owner-package-artifact-cache/v1"
-EXPECTED_PRESENTATION_COMMIT = "5beaccc912f914c8ff4ae262509ed4d13b84bf75"
-EXPECTED_PRESENTATION_TREE = "3741b4a314540a7a88a3532524429a8cd358743b"
+EXPECTED_PRESENTATION_COMMIT = "1438978f6f883be321c62de69165c9216e10e011"
+EXPECTED_PRESENTATION_TREE = "d1ae70610a1c4f43cfa8386db22d6f55e620fa6e"
 EXPECTED_PRESENTATION_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui.git"
 EXPECTED_COMPATIBILITY_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui-kit.git"
 EXPECTED_LOCK_PATH = "config/package-plane.lock.json"
-EXPECTED_LOCK_SHA256 = "c24b07d27b249dfe073ecd664b88d0b1d1b723bd6cd97c82dbaf7e8e7874977d"
-EXPECTED_LOCK_SIZE = 54833
-EXPECTED_LOCK_BLOB = "63b19db9f9be9d4e96d23ad2b2dea80811329a92"
-EXPECTED_RECEIPT_SHA256 = "3fb8b1913fd3a975e8ec038f2799ca0bedad557e1350c84956861ea6fdff7d08"
-EXPECTED_RECEIPT_SIZE = 46803
-EXPECTED_CACHE_KEY = "408008a4928f00e08e380ce588a99eea189fbfceed3fc5a2faf6f0baaf8d3c7b"
-EXPECTED_CACHE_MANIFEST_SHA256 = "e65cea39593f7156c0d4302c0aa882fd7b963574c78280f2883e3cc14bc37cf6"
-EXPECTED_CACHE_MANIFEST_SIZE = 13705
+EXPECTED_LOCK_SHA256 = "42e01c93a863882022cf156d86674cda1fbaecba7b9a1112323a27e42dd73a61"
+EXPECTED_LOCK_SIZE = 54835
+EXPECTED_LOCK_BLOB = "2cfcd24e9d7a2320a1844a2d5e0b831e1245e000"
+EXPECTED_RECEIPT_SHA256 = "940d4cf0d77bb371e50b1cb3fb566089843a945c097b73a122522db1a673b547"
+EXPECTED_RECEIPT_SIZE = 46808
+EXPECTED_CACHE_KEY = "547f8e6670d2306207f85b0d2aa2f45c5f8e506b25dcba6db20f3485f7eb2b02"
+EXPECTED_CACHE_MANIFEST_SHA256 = "b31e6f2b1903d9cab0cfe550c2892b9bb0ffc1183bbb8bb2eab4289b1710b09c"
+EXPECTED_CACHE_MANIFEST_SIZE = 13707
 EXPECTED_PACKAGE_COUNT = 18
 EXPECTED_SOURCE_GRAPH = {
     "corePackageRecipeCommit": "3260ac73714d8b001a3599d6776196e394dc6c35",
@@ -42,14 +42,14 @@ EXPECTED_ANDROID_LOCKS = (
     (
         "src/Chummer.Android/Chummer.Android.csproj",
         "src/Chummer.Android/packages.lock.json",
-        "c4d3bccece5ee750cc71aaead9cf1d65423b7b21038b6cb237f43bf092270d22",
-        70375,
+        "2c6b273ed9eb11db0c3820ebb7e8434ccea6471e7ac2db38763a0aa08db294d9",
+        70376,
     ),
     (
         "tests/Chummer.Android.Native.CompileCheck/Chummer.Android.Native.CompileCheck.csproj",
         "tests/Chummer.Android.Native.CompileCheck/packages.lock.json",
-        "f0040f4ff8b968899519c8e24af09e28c680ff0484569abfc2319f18df7cce78",
-        16178,
+        "efbb131ff76a9d1e4d7ec86c5d6b50614587ff51a36316ede5a1d24c5800efd2",
+        16179,
     ),
 )
 CORE_VERSION = "0.0.0-packageplane.candidate.shfebd698752e19"

@@ -739,7 +739,7 @@
       {
         "path": ".github/workflows/api36-editing-e2e.yml",
         "exists": true,
-        "sha256": "e3e74ce29c4196df1b5f5796f61f75c43f234233d00fe3eb59ecfe4f823be32c"
+        "sha256": "1573bd9a67ba6e5cc4a675b4b2622d5dfa4da4c6d6359ccda2e78339a8440d5c"
       },
       {
         "path": "scripts/run-api36-editing-e2e-ci.sh",
@@ -759,7 +759,7 @@
       {
         "path": "tests/test_api36_e2e_workflow.py",
         "exists": true,
-        "sha256": "4c250a53cb52d66326e5526e256a67acd87707c638ddea7adbbaf9dc16c729e8"
+        "sha256": "c5d19abde236f49c79cfd7795d0f36635f2eb3ee1aba40da14867884f015da4f"
       },
       {
         "path": "tests/test_chummer5_editability_inventory.py",

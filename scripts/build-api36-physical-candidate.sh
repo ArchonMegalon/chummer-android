@@ -146,16 +146,12 @@ require_sha256 "$android_sdk_root/platform-tools/adb" "372d800c04c3272729afade8a
 require_sha256 "$android_workload_manifest" "e520a5f491b933774ed06c48e8adf3a6878ad8a6cd320180a3395080cf362644" android-workload-manifest
 require_sha256 "$maui_workload_manifest" "e2506ea1897fca4cf528fa2e950d3267477e28e5253f1e7781520058742ced10" maui-workload-manifest
 
-require_directory CHUMMER_RELEASE_WORKSPACE_ROOT
 require_directory CHUMMER_PRESENTATION_ROOT
 require_directory CHUMMER_CORE_CONTENT_ROOT
-require_directory CHUMMER_W5_COMPILE_EVIDENCE
 require_directory CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED
 require_directory CHUMMER_API36_OFFLINE_NUGET_FEED
 require_directory CHUMMER_API36_NUGET_PACKAGES
-require_file CHUMMER_RELEASE_PACKAGE_AUTHORITY_V2
-require_file CHUMMER_RELEASE_SOURCE_GRAPH
-require_file CHUMMER_W5_COMPILE_RECEIPT
+require_file CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT
 require_file CHUMMER_ANDROID_SDK_PACKAGES_XML
 require_absent_output CHUMMER_API36_BUILD_PROVENANCE
 
@@ -165,9 +161,7 @@ for revision_variable in \
   CHUMMER_CORE_ENGINE_REVISION \
   CHUMMER_UI_KIT_REVISION \
   CHUMMER_RUN_SERVICES_REVISION \
-  CHUMMER_HUB_REGISTRY_REVISION \
-  CHUMMER_MEDIA_FACTORY_REVISION \
-  CHUMMER_DESIGN_REVISION; do
+  CHUMMER_HUB_REGISTRY_REVISION; do
   require_revision "$revision_variable"
 done
 
@@ -185,21 +179,31 @@ for forbidden in \
 done
 
 [[ -f "$lock" && ! -L "$lock" ]] || fail "full-project-lock-missing"
-[[ "$("$sha256sum_command" "$lock" | "$cut_command" -d' ' -f1)" == "9037d4afc11dd8661dfbcccbc67a9f814d110fb17cf985cf215268e12ae3583e" ]] \
+[[ "$("$sha256sum_command" "$lock" | "$cut_command" -d' ' -f1)" == "2c6b273ed9eb11db0c3820ebb7e8434ccea6471e7ac2db38763a0aa08db294d9" ]] \
   || fail "full-project-lock-digest-mismatch"
 [[ "$($dotnet_command --version)" == "10.0.111" ]] || fail "dotnet-sdk-not-10.0.111"
 [[ -z "$("$git_command" -C "$repo_dir" status --porcelain=v1 --untracked-files=all)" ]] \
   || fail "android-candidate-not-clean"
-[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse HEAD)" == "a8a317aff534dc5fd47f2db1bc39466799021990" ]] \
-  || fail "w41-presentation-commit-mismatch"
-[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse 'HEAD^{tree}')" == "f8214243280030de5d134351f39ea4b23afbe394" ]] \
-  || fail "w41-presentation-tree-mismatch"
+[[ "$CHUMMER_ANDROID_REVISION" == "$("$git_command" -C "$repo_dir" rev-parse HEAD)" ]] \
+  || fail "android-source-head-mismatch"
+[[ "$CHUMMER_PRESENTATION_REVISION" == "1438978f6f883be321c62de69165c9216e10e011" ]] \
+  || fail "presentation-revision-input-mismatch"
+[[ "$CHUMMER_CORE_ENGINE_REVISION" == "febd698752e195dceef79fbc3f83dc971564fe00" ]] \
+  || fail "core-runtime-revision-input-mismatch"
+[[ "$CHUMMER_RUN_SERVICES_REVISION" == "8cc22cb6fdf9bdf2af3c390125f7a88de90700b3" ]] \
+  || fail "hub-revision-input-mismatch"
+[[ "$CHUMMER_UI_KIT_REVISION" == "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61" ]] \
+  || fail "ui-kit-revision-input-mismatch"
+[[ "$CHUMMER_HUB_REGISTRY_REVISION" == "af9a7e19c3bf331e96411dfb8f9e7820a98cab29" ]] \
+  || fail "registry-revision-input-mismatch"
+[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse HEAD)" == "1438978f6f883be321c62de69165c9216e10e011" ]] \
+  || fail "current-presentation-commit-mismatch"
+[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse 'HEAD^{tree}')" == "d1ae70610a1c4f43cfa8386db22d6f55e620fa6e" ]] \
+  || fail "current-presentation-tree-mismatch"
 [[ -z "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" status --porcelain=v1 --untracked-files=all)" ]] \
-  || fail "w41-presentation-not-clean"
-[[ "$("$sha256sum_command" "$CHUMMER_PRESENTATION_ROOT/Chummer.Presentation/packages.lock.json" | "$cut_command" -d' ' -f1)" == "568fd2c602494329d19fbe8d9a2c83a4c2e82754b50e31141b192c1af7ccf964" ]] \
-  || fail "w41-presentation-lock-mismatch"
-[[ "$("$sha256sum_command" "$CHUMMER_PRESENTATION_ROOT/Chummer.Desktop.Runtime/packages.lock.json" | "$cut_command" -d' ' -f1)" == "202a29a35b4768c3306349ee40a34d8f23ada97c0b0ef11e104763b5ff9cc60e" ]] \
-  || fail "w41-desktop-lock-mismatch"
+  || fail "current-presentation-not-clean"
+[[ "$("$sha256sum_command" "$CHUMMER_PRESENTATION_ROOT/config/package-plane.lock.json" | "$cut_command" -d' ' -f1)" == "42e01c93a863882022cf156d86674cda1fbaecba7b9a1112323a27e42dd73a61" ]] \
+  || fail "current-presentation-lock-mismatch"
 [[ "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" rev-parse HEAD)" == "3260ac73714d8b001a3599d6776196e394dc6c35" ]] \
   || fail "core-content-commit-mismatch"
 [[ -z "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" status --porcelain=v1 --untracked-files=all -- Chummer/data Chummer/lang)" ]] \
@@ -233,9 +237,6 @@ bounded_environment=(
   "CHUMMER_UI_KIT_REVISION=$CHUMMER_UI_KIT_REVISION"
   "CHUMMER_RUN_SERVICES_REVISION=$CHUMMER_RUN_SERVICES_REVISION"
   "CHUMMER_HUB_REGISTRY_REVISION=$CHUMMER_HUB_REGISTRY_REVISION"
-  "CHUMMER_MEDIA_FACTORY_REVISION=$CHUMMER_MEDIA_FACTORY_REVISION"
-  "CHUMMER_DESIGN_REVISION=$CHUMMER_DESIGN_REVISION"
-  "CHUMMER_RELEASE_WORKSPACE_ROOT=$CHUMMER_RELEASE_WORKSPACE_ROOT"
   "PATH=$java_home/bin:/usr/lib/dotnet:/usr/bin:/bin"
   "TMPDIR=/tmp"
 )
@@ -257,12 +258,13 @@ run_bounded toolchain-intake "$evidence_dir/toolchain.log" \
   --apksigner "$apksigner_command" \
   --output "$evidence_dir/dotnet-workloads.json"
 
-run_bounded source-graph-intake "$evidence_dir/source-graph.log" \
-  "$python_command" "$repo_dir/scripts/verify_release_source_graph.py" \
+run_bounded package-authority-intake "$evidence_dir/package-authority.log" \
+  "$python_command" "$repo_dir/scripts/verify_internal_phone_beta_package_authority.py" \
   --android-root "$repo_dir" \
-  --workspace-root "$CHUMMER_RELEASE_WORKSPACE_ROOT" \
-  --package-authority "$CHUMMER_RELEASE_PACKAGE_AUTHORITY_V2" \
-  --verify-existing "$CHUMMER_RELEASE_SOURCE_GRAPH"
+  --presentation-root "$CHUMMER_PRESENTATION_ROOT" \
+  --receipt "$CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT" \
+  --package-feed "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
+  --output "$evidence_dir/package-authority-binding.json"
 
 run_bounded core-content-intake "$evidence_dir/content-source.log" \
   "$python_command" "$repo_dir/scripts/verify_android_content_bundle.py" \
@@ -272,18 +274,15 @@ run_bounded core-content-intake "$evidence_dir/content-source.log" \
   --receipt "$evidence_dir/content-source-receipt.json" \
   --check
 
-run_bounded w5-build-input-intake "$evidence_dir/build-inputs.log" \
+run_bounded current-build-input-intake "$evidence_dir/build-inputs.log" \
   "$python_command" "$repo_dir/scripts/materialize-api36-physical-build-provenance.py" \
   check-inputs \
   --android-root "$repo_dir" \
   --presentation-root "$CHUMMER_PRESENTATION_ROOT" \
   --core-content-root "$CHUMMER_CORE_CONTENT_ROOT" \
-  --w5-receipt "$CHUMMER_W5_COMPILE_RECEIPT" \
-  --w5-evidence-directory "$CHUMMER_W5_COMPILE_EVIDENCE" \
-  --source-graph "$CHUMMER_RELEASE_SOURCE_GRAPH" \
+  --ui-authority-receipt "$CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT" \
+  --package-feed "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
   --package-authority "$repo_dir/eng/internal-phone-beta-package-authority.json" \
-  --release-package-authority-v2 "$CHUMMER_RELEASE_PACKAGE_AUTHORITY_V2" \
-  --release-workspace-root "$CHUMMER_RELEASE_WORKSPACE_ROOT" \
   --content-source-receipt "$evidence_dir/content-source-receipt.json" \
   --full-project-lock "$lock"
 
@@ -299,14 +298,12 @@ package_args=(
   "-p:AndroidSdkDirectory=$android_sdk_root"
   "-p:AndroidSdkBuildToolsVersion=$android_build_tools_version"
   "-p:JavaSdkDirectory=$java_home"
-  "-p:ChummerContractsPackageVersion=0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819"
-  "-p:ChummerCoreRuntimePackageVersion=0.1.0-packageplane.breaking.shb04ff26f6d538.auth91a48eed5b819"
-  "-p:ChummerCampaignContractsPackageVersion=0.1.0-packageplane.android.sh1215f9389779e"
-  "-p:ChummerRunContractsPackageVersion=0.1.0-packageplane.android.sh1215f9389779e"
-  "-p:ChummerRunHubContractsPackageVersion=0.1.0-packageplane.android.sh1215f9389779e"
-  "-p:ChummerRunHubPackageVersion=0.1.0-packageplane.android.sh1215f9389779e"
+  "-p:ChummerContractsPackageVersion=0.0.0-packageplane.candidate.shfebd698752e19"
+  "-p:ChummerCoreRuntimePackageVersion=0.0.0-packageplane.candidate.shfebd698752e19"
+  "-p:ChummerCampaignContractsPackageVersion=0.1.0-preview"
+  "-p:ChummerRunContractsPackageVersion=0.1.0-packageplane.candidate.sh66c418a5004f"
   "-p:ChummerHubRegistryContractsPackageVersion=0.1.0-packageplane.candidate.sh66c418a5004f"
-  "-p:ChummerUiKitPackageVersion=0.1.0-packageplane.android.shd51ecd99cf720"
+  "-p:ChummerUiKitPackageVersion=0.1.0-preview"
 )
 
 export DOTNET_CLI_USE_MSBUILD_SERVER=0
@@ -365,28 +362,27 @@ run_bounded apk-content-verification "$evidence_dir/content-apk.log" \
   --receipt "$evidence_dir/content-apk-receipt.json" \
   --check
 
-run_bounded post-build-source-graph-seal "$evidence_dir/source-graph-seal.log" \
-  "$python_command" "$repo_dir/scripts/verify_release_source_graph.py" \
+run_bounded post-build-package-authority-seal "$evidence_dir/package-authority-seal.log" \
+  "$python_command" "$repo_dir/scripts/verify_internal_phone_beta_package_authority.py" \
   --android-root "$repo_dir" \
-  --workspace-root "$CHUMMER_RELEASE_WORKSPACE_ROOT" \
-  --package-authority "$CHUMMER_RELEASE_PACKAGE_AUTHORITY_V2" \
-  --verify-existing "$CHUMMER_RELEASE_SOURCE_GRAPH"
+  --presentation-root "$CHUMMER_PRESENTATION_ROOT" \
+  --receipt "$CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT" \
+  --package-feed "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
+  --output "$evidence_dir/package-authority-seal.json"
 
 current_stage="provenance-seal"
 "$python_command" "$repo_dir/scripts/materialize-api36-physical-build-provenance.py" \
   materialize \
   --android-root "$repo_dir" \
-  --w5-receipt "$CHUMMER_W5_COMPILE_RECEIPT" \
-  --w5-evidence-directory "$CHUMMER_W5_COMPILE_EVIDENCE" \
-  --source-graph "$CHUMMER_RELEASE_SOURCE_GRAPH" \
+  --ui-authority-receipt "$CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT" \
   --package-authority "$repo_dir/eng/internal-phone-beta-package-authority.json" \
-  --release-package-authority-v2 "$CHUMMER_RELEASE_PACKAGE_AUTHORITY_V2" \
   --content-source-receipt "$evidence_dir/content-source-receipt.json" \
   --content-apk-receipt "$evidence_dir/content-apk-receipt.json" \
   --full-project-lock "$lock" \
   --assets "$repo_dir/src/Chummer.Android/obj/project.assets.json" \
   --toolchain-log "$evidence_dir/toolchain.log" \
-  --source-graph-log "$evidence_dir/source-graph.log" \
+  --package-authority-log "$evidence_dir/package-authority.log" \
+  --package-authority-binding "$evidence_dir/package-authority-binding.json" \
   --content-source-log "$evidence_dir/content-source.log" \
   --build-inputs-log "$evidence_dir/build-inputs.log" \
   --restore-log "$evidence_dir/restore.log" \
@@ -396,7 +392,8 @@ current_stage="provenance-seal"
   --jarsigner-log "$evidence_dir/jarsigner.log" \
   --signing-receipt "$evidence_dir/signing-receipt.json" \
   --content-apk-log "$evidence_dir/content-apk.log" \
-  --source-graph-seal-log "$evidence_dir/source-graph-seal.log" \
+  --package-authority-seal-log "$evidence_dir/package-authority-seal.log" \
+  --package-authority-seal "$evidence_dir/package-authority-seal.json" \
   --command-journal "$journal" \
   --raw-command-journal "$raw_journal" \
   --delegate-command-journal "$delegate_journal" \
@@ -411,7 +408,6 @@ current_stage="provenance-seal"
   --apksigner-path "$apksigner_command" \
   --dotnet-path "$dotnet_command" \
   --python-path "$python_command" \
-  --release-workspace-root "$CHUMMER_RELEASE_WORKSPACE_ROOT" \
   --package-feed "$CHUMMER_INTERNAL_PHONE_BETA_PACKAGE_FEED" \
   --offline-feed "$CHUMMER_API36_OFFLINE_NUGET_FEED" \
   --nuget-packages "$CHUMMER_API36_NUGET_PACKAGES" \
