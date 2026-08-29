@@ -2121,7 +2121,7 @@ def acquire_measured_priority_category_row(
         prior_viewport = viewports[last_category]
         if type(prior_viewport) is not int or target_viewport < prior_viewport:
             raise RuntimeError("Priority category inventory order changed after navigation")
-        # Initial 0.68 scans can place adjacent rows in the same viewport.
+        # Initial overlapping scans can place adjacent rows in the same viewport.
         # After a selection mutates row height, use overlapping 0.22 gestures
         # with a small bound derived from the measured initial separation.
         max_forward_swipes = max(4, (target_viewport - prior_viewport + 2) * 4)
