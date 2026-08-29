@@ -4,17 +4,17 @@
   "authorityState": "current_graph_verified",
   "publicationAuthorized": false,
   "presentationSource": {
-    "commit": "1438978f6f883be321c62de69165c9216e10e011",
-    "tree": "d1ae70610a1c4f43cfa8386db22d6f55e620fa6e",
+    "commit": "d02368a24a7c4d7ae1a5ddd031475e1e54141904",
+    "tree": "defc9586ec0296fb40dcad86202a3b5f2f73ba38",
     "repository": "https://github.com/ArchonMegalon/chummer6-ui.git"
   },
   "packagePlaneLock": {
     "path": "config/package-plane.lock.json",
     "contractName": "chummer6-ui.fresh-package-plane-lock",
     "contractVersion": 11,
-    "sha256": "42e01c93a863882022cf156d86674cda1fbaecba7b9a1112323a27e42dd73a61",
+    "sha256": "d8acf3920287c2918e01dc69e8a41bab6375e726f70891b4bafe2a4982ab015d",
     "sizeBytes": 54835,
-    "gitBlob": "2cfcd24e9d7a2320a1844a2d5e0b831e1245e000"
+    "gitBlob": "f5d5118abfda89a0c7ff4bb064f75b690e812b9a"
   },
   "verificationReceipt": {
     "contractName": "chummer6-ui.fresh-package-plane-verification",
@@ -25,16 +25,16 @@
   },
   "artifactCache": {
     "contractName": "chummer6-ui.owner-package-artifact-cache/v1",
-    "cacheKey": "547f8e6670d2306207f85b0d2aa2f45c5f8e506b25dcba6db20f3485f7eb2b02",
+    "cacheKey": "02a1736050fc8b3544d23005122649a0eaac93528ecbbb676fdd50427d5edd74",
     "manifestFileName": "owner-package-cache.json",
-    "manifestSha256": "b31e6f2b1903d9cab0cfe550c2892b9bb0ffc1183bbb8bb2eab4289b1710b09c",
+    "manifestSha256": "886b47f0b9b6c92c6b769ca2a0cc444bc98e0854916a0d9f5148f96d3b8cf5b5",
     "manifestSizeBytes": 13707,
     "packageCount": 18
   },
   "sourceGraph": {
-    "corePackageRecipeCommit": "3260ac73714d8b001a3599d6776196e394dc6c35",
-    "coreRuntimeSourceCommit": "febd698752e195dceef79fbc3f83dc971564fe00",
-    "hubProducerCommit": "8cc22cb6fdf9bdf2af3c390125f7a88de90700b3",
+    "corePackageRecipeCommit": "c06f22c185c7b733637fdb76b3cf333f31716781",
+    "coreRuntimeSourceCommit": "60112dccb6a3faad330d32c3c98eef0aa81d97af",
+    "hubProducerCommit": "bc199cbe0982833ec2fc9ce625826e612759d67a",
     "registryCommit": "af9a7e19c3bf331e96411dfb8f9e7820a98cab29",
     "uiKitCommit": "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61"
   },

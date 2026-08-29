@@ -188,9 +188,9 @@ done
   || fail "android-source-head-mismatch"
 [[ "$CHUMMER_PRESENTATION_REVISION" == "1438978f6f883be321c62de69165c9216e10e011" ]] \
   || fail "presentation-revision-input-mismatch"
-[[ "$CHUMMER_CORE_ENGINE_REVISION" == "febd698752e195dceef79fbc3f83dc971564fe00" ]] \
+[[ "$CHUMMER_CORE_ENGINE_REVISION" == "60112dccb6a3faad330d32c3c98eef0aa81d97af" ]] \
   || fail "core-runtime-revision-input-mismatch"
-[[ "$CHUMMER_RUN_SERVICES_REVISION" == "8cc22cb6fdf9bdf2af3c390125f7a88de90700b3" ]] \
+[[ "$CHUMMER_RUN_SERVICES_REVISION" == "bc199cbe0982833ec2fc9ce625826e612759d67a" ]] \
   || fail "hub-revision-input-mismatch"
 [[ "$CHUMMER_UI_KIT_REVISION" == "d51ecd99cf72098d4adc8db0192bff7bf9fd8e61" ]] \
   || fail "ui-kit-revision-input-mismatch"
@@ -204,7 +204,7 @@ done
   || fail "current-presentation-not-clean"
 [[ "$("$sha256sum_command" "$CHUMMER_PRESENTATION_ROOT/config/package-plane.lock.json" | "$cut_command" -d' ' -f1)" == "42e01c93a863882022cf156d86674cda1fbaecba7b9a1112323a27e42dd73a61" ]] \
   || fail "current-presentation-lock-mismatch"
-[[ "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" rev-parse HEAD)" == "3260ac73714d8b001a3599d6776196e394dc6c35" ]] \
+[[ "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" rev-parse HEAD)" == "c06f22c185c7b733637fdb76b3cf333f31716781" ]] \
   || fail "core-content-commit-mismatch"
 [[ -z "$("$git_command" -C "$CHUMMER_CORE_CONTENT_ROOT" status --porcelain=v1 --untracked-files=all -- Chummer/data Chummer/lang)" ]] \
   || fail "core-content-not-clean"
