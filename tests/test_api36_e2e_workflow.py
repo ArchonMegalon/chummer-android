@@ -72,8 +72,13 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             seal,
         )
         content_check = "python3 chummer-android/scripts/verify_android_content_bundle.py"
-        self.assertEqual(2, self.text.count(content_check))
+        self.assertEqual(3, self.text.count(content_check))
         self.assertEqual(2, self.text.count("--core-root chummer-core-content"))
+        x64_content = self.text[
+            self.text.index("Verify canonical content in the exact signed APK") :
+            self.text.index("Upload the exact APK under test")
+        ]
+        self.assertEqual(1, x64_content.count(content_check))
         self.assertIn(
             '--apk "$RUNNER_TEMP/chummer-android-apk/chummer-android-x64-debug.apk"',
             self.text,
@@ -84,10 +89,10 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         )
         self.assertLess(
             self.text.index("Seal the unique signed debug APK"),
-            self.text.rindex(content_check),
+            self.text.index(content_check, self.text.index("Seal the unique signed debug APK")),
         )
         self.assertLess(
-            self.text.rindex(content_check),
+            self.text.index(content_check, self.text.index("Seal the unique signed debug APK")),
             self.text.index("Upload the exact APK under test"),
         )
         self.assertLess(
@@ -276,20 +281,54 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
             with self.subTest(repository=repository):
                 self.assertIn(f"repository: {repository}", self.preview_text)
 
-    def test_build_also_emits_an_honest_arm64_physical_candidate_manifest(self) -> None:
+    def test_build_emits_a_non_attested_arm64_hosted_debug_candidate(self) -> None:
         self.assertIn("CHUMMER_ANDROID_RUNTIME_ID: android-arm64", self.text)
-        self.assertIn("materialize-api36-physical-build-provenance.py", self.text)
-        self.assertIn("--android-root \"$GITHUB_WORKSPACE/chummer-android\"", self.text)
-        self.assertIn("--core-root \"$GITHUB_WORKSPACE/chummer-core-engine\"", self.text)
-        self.assertIn(
-            "--presentation-root \"$GITHUB_WORKSPACE/chummer-presentation\"",
-            self.text,
+        start = self.text.index("Seal ARM64 hosted debug candidate observation")
+        end = self.text.index("Upload ARM64 hosted debug candidate")
+        seal = self.text[start:end]
+        invocation = (
+            "python3 chummer-android/scripts/materialize-api36-hosted-arm64-candidate.py "
+            "\\\n            materialize \\\n"
         )
-        self.assertIn("build-provenance.json", self.text)
+        self.assertIn(invocation, seal)
+        self.assertEqual(1, seal.count("materialize-api36-hosted-arm64-candidate.py"))
+        self.assertNotIn("materialize-api36-physical-build-provenance.py", seal)
+        self.assertNotIn("build-provenance.json", seal)
+        self.assertIn("hosted-build-candidate.json", seal)
+        self.assertIn("--runtime android-arm64", seal)
+        for role, repository in (
+            ("android", "ArchonMegalon/chummer-android.git"),
+            ("presentation", "ArchonMegalon/chummer6-ui.git"),
+            ("core-runtime", "ArchonMegalon/chummer6-core.git"),
+            ("core-content", "ArchonMegalon/chummer6-core.git"),
+            ("hub", "ArchonMegalon/chummer6-hub.git"),
+            ("registry", "ArchonMegalon/chummer6-hub-registry.git"),
+            ("ui-kit", "ArchonMegalon/chummer6-ui-kit.git"),
+            ("media", "ArchonMegalon/chummer6-media-factory.git"),
+        ):
+            with self.subTest(role=role):
+                self.assertIn(f"--source {role} https://github.com/{repository}", seal)
         self.assertIn("chummer-android-arm64-debug.apk.sha256", self.text)
         self.assertIn("id: upload-arm64", self.text)
         self.assertIn("arm64-artifact-id: ${{ steps.upload-arm64.outputs.artifact-id }}", self.text)
-        self.assertNotIn("releaseAttested: true", self.text)
+        self.assertIn("chummer-android-api36-arm64-hosted-debug-candidate-", seal)
+        self.assertNotIn("physical-candidate", seal)
+        self.assertNotIn("candidate authority", seal.lower())
+        self.assertNotIn("physical-phone", seal)
+        self.assertNotIn("releaseAttested: true", seal)
+
+    def test_hosted_arm64_materializer_subcommand_order_is_fail_closed(self) -> None:
+        start = self.text.index("Seal ARM64 hosted debug candidate observation")
+        end = self.text.index("Upload ARM64 hosted debug candidate")
+        tokens = self.text[start:end].replace("\\\n", " ").split()
+        script_index = tokens.index(
+            "chummer-android/scripts/materialize-api36-hosted-arm64-candidate.py"
+        )
+        self.assertEqual("python3", tokens[script_index - 1])
+        self.assertEqual("materialize", tokens[script_index + 1])
+        self.assertEqual("--source", tokens[script_index + 2])
+        self.assertNotIn("check-inputs", tokens[script_index + 1 : script_index + 3])
+        self.assertNotIn("verify", tokens[script_index + 1 : script_index + 3])
 
     def test_executes_every_persistence_driver_as_an_isolated_matrix_journey(self) -> None:
         runner = (

@@ -35,7 +35,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build x64 emulator and ARM64 physical candidates
+    name: Build x64 emulator and ARM64 hosted debug candidates
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     outputs:
@@ -253,14 +253,14 @@ jobs:
           overwrite: false
           include-hidden-files: false
 
-      - name: Build the ARM64 physical-phone candidate
+      - name: Build the ARM64 hosted debug candidate
         working-directory: chummer-android
         env:
           CHUMMER_ANDROID_RUNTIME_ID: android-arm64
           CHUMMER_CORE_ENGINE_ROOT: ${{ github.workspace }}/chummer-core-engine
         run: scripts/build-debug.sh
 
-      - name: Seal ARM64 APK and exact source/build provenance
+      - name: Seal ARM64 hosted debug candidate observation
         id: arm64
         shell: bash
         run: |
@@ -270,21 +270,43 @@ jobs:
           install -d -m 0755 "$RUNNER_TEMP/chummer-android-arm64"
           install -m 0644 "$arm64_apk" \
             "$RUNNER_TEMP/chummer-android-arm64/chummer-android-arm64-debug.apk"
-          python3 chummer-android/scripts/materialize-api36-physical-build-provenance.py \
-            --android-root "$GITHUB_WORKSPACE/chummer-android" \
-            --core-root "$GITHUB_WORKSPACE/chummer-core-engine" \
-            --presentation-root "$GITHUB_WORKSPACE/chummer-presentation" \
+          python3 chummer-android/scripts/verify_android_content_bundle.py \
+            --repo-root "$GITHUB_WORKSPACE/chummer-android" \
+            --core-root "$GITHUB_WORKSPACE/chummer-core-content" \
             --apk "$RUNNER_TEMP/chummer-android-arm64/chummer-android-arm64-debug.apk" \
-            --output "$RUNNER_TEMP/chummer-android-arm64/build-provenance.json"
+            --receipt "$RUNNER_TEMP/chummer-android-arm64/canonical-content-receipt.json" \
+            --check
+          python3 chummer-android/scripts/materialize-api36-hosted-arm64-candidate.py \
+            materialize \
+            --source android https://github.com/ArchonMegalon/chummer-android.git "$GITHUB_SHA" "$GITHUB_WORKSPACE/chummer-android" \
+            --source presentation https://github.com/ArchonMegalon/chummer6-ui.git 1438978f6f883be321c62de69165c9216e10e011 "$GITHUB_WORKSPACE/chummer-presentation" \
+            --source core-runtime https://github.com/ArchonMegalon/chummer6-core.git febd698752e195dceef79fbc3f83dc971564fe00 "$GITHUB_WORKSPACE/chummer-core-engine" \
+            --source core-content https://github.com/ArchonMegalon/chummer6-core.git 3260ac73714d8b001a3599d6776196e394dc6c35 "$GITHUB_WORKSPACE/chummer-core-content" \
+            --source hub https://github.com/ArchonMegalon/chummer6-hub.git 8cc22cb6fdf9bdf2af3c390125f7a88de90700b3 "$GITHUB_WORKSPACE/chummer.run-services" \
+            --source registry https://github.com/ArchonMegalon/chummer6-hub-registry.git af9a7e19c3bf331e96411dfb8f9e7820a98cab29 "$GITHUB_WORKSPACE/chummer-hub-registry" \
+            --source ui-kit https://github.com/ArchonMegalon/chummer6-ui-kit.git d51ecd99cf72098d4adc8db0192bff7bf9fd8e61 "$GITHUB_WORKSPACE/chummer-ui-kit" \
+            --source media https://github.com/ArchonMegalon/chummer6-media-factory.git 415c8163d3d90b1211e4014fef332bdec6d75f73 "$GITHUB_WORKSPACE/fleet/repos/chummer-media-factory" \
+            --runtime android-arm64 \
+            --apk "$RUNNER_TEMP/chummer-android-arm64/chummer-android-arm64-debug.apk" \
+            --content-receipt "$RUNNER_TEMP/chummer-android-arm64/canonical-content-receipt.json" \
+            --workflow "$GITHUB_WORKSPACE/chummer-android/.github/workflows/api36-editing-e2e.yml" \
+            --build-script "$GITHUB_WORKSPACE/chummer-android/scripts/build-debug.sh" \
+            --event-name "$GITHUB_EVENT_NAME" \
+            --event-sha "$GITHUB_SHA" \
+            --head-sha "${{ github.event.pull_request.head.sha || github.sha }}" \
+            --base-sha "${{ github.event.pull_request.base.sha || github.sha }}" \
+            --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --output "$RUNNER_TEMP/chummer-android-arm64/hosted-build-candidate.json"
           apk_sha256="$(sha256sum "$RUNNER_TEMP/chummer-android-arm64/chummer-android-arm64-debug.apk" | cut -d ' ' -f 1)"
           printf '%s  %s\n' "$apk_sha256" chummer-android-arm64-debug.apk \
             >"$RUNNER_TEMP/chummer-android-arm64/chummer-android-arm64-debug.apk.sha256"
           {
             echo "apk-sha256=$apk_sha256"
-            echo "artifact-name=chummer-android-api36-arm64-physical-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            echo "artifact-name=chummer-android-api36-arm64-hosted-debug-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           } >>"$GITHUB_OUTPUT"
 
-      - name: Upload ARM64 physical-phone candidate authority
+      - name: Upload ARM64 hosted debug candidate
         id: upload-arm64
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
