@@ -366,6 +366,28 @@ def validate_package_plane_lock(lock: Mapping[str, Any]) -> dict[str, Any]:
     if run_registry_row is None or run_registry_row.get("commit") != registry_commit:
         raise ValueError("Presentation Registry package commits disagree")
 
+    legacy = require_exact_object(
+        lock.get("currentOwnerContractFeed"),
+        "Presentation legacy owner-contract feed",
+        {
+            "inventoryContract", "inventoryFileName", "inventorySha256", "lockContract",
+            "lockPath", "lockSha256", "ownerDirectory", "packageFeedInventorySha256",
+            "packageVersion", "packages", "producerCommit", "producerPath",
+            "producerRepository", "producerSha256", "selectedForCoreRuntimeCompatibility",
+        },
+    )
+    legacy_rows = package_rows_by_id(
+        legacy.get("packages"),
+        "Presentation legacy owner-contract feed",
+        {"commit", "fileName", "packageId", "project", "repository", "sha256", "sizeBytes", "version"},
+    )
+    legacy_version = require_string(legacy.get("packageVersion"), "legacy owner-contract package version")
+    if (
+        any(row.get("version") != legacy_version for row in legacy_rows.values())
+        or legacy.get("selectedForCoreRuntimeCompatibility") is not True
+    ):
+        raise ValueError("Presentation legacy owner-contract package rows drifted")
+
     ui_owner = require_exact_object(
         lock.get("uiOwnerFeed"),
         "Presentation UI owner feed",
@@ -426,6 +448,19 @@ def validate_package_plane_lock(lock: Mapping[str, Any]) -> dict[str, Any]:
             "producerSha256": canonical["producerSha256"],
             "receiptContract": canonical["receiptContract"],
             "receiptSha256": canonical["receiptSha256"],
+        },
+        "currentOwnerContractFeed": {
+            "inventoryContract": legacy["inventoryContract"],
+            "inventorySha256": legacy["inventorySha256"],
+            "lockContract": legacy["lockContract"],
+            "lockSha256": legacy["lockSha256"],
+            "packageFeedInventorySha256": legacy["packageFeedInventorySha256"],
+            "packageVersion": legacy_version,
+            "packages": package_byte_projection(legacy_rows),
+            "producerCommit": legacy["producerCommit"],
+            "producerPath": legacy["producerPath"],
+            "producerRepository": legacy["producerRepository"],
+            "producerSha256": legacy["producerSha256"],
         },
         "uiOwnerFeed": {
             "dependencyAuthorityCacheKey": ui_owner["dependencyAuthorityCacheKey"],
@@ -553,21 +588,13 @@ def validate_receipt(receipt_path: Path) -> dict[str, Any]:
     if lock != {"path": EXPECTED_LOCK_PATH, "sha256": EXPECTED_LOCK_SHA256, "sizeBytes": EXPECTED_LOCK_SIZE}:
         raise ValueError("UI current-graph receipt package lock drifted")
     cache = receipt.get("ownerPackageArtifactCache")
-    if not isinstance(cache, dict):
-        raise ValueError("UI current-graph receipt cache binding is missing")
-    if cache.get("contract") != CACHE_CONTRACT or cache.get("cacheKey") != EXPECTED_CACHE_KEY:
-        raise ValueError("UI current-graph receipt cache key drifted")
-    if cache.get("packageCount") != EXPECTED_PACKAGE_COUNT or cache.get("status") != "passed" or cache.get("used") is not True:
-        raise ValueError("UI current-graph receipt cache status drifted")
-    if cache.get("manifest") != {
-        "path": "owner-package-cache.json",
-        "sha256": EXPECTED_CACHE_MANIFEST_SHA256,
-        "sizeBytes": EXPECTED_CACHE_MANIFEST_SIZE,
+    if cache != {
+        "coldProducerFallbackOnCacheMiss": True,
+        "contract": CACHE_CONTRACT,
+        "status": "not_supplied",
+        "used": False,
     }:
-        raise ValueError("UI current-graph receipt cache manifest drifted")
-    cached_packages = cache.get("packages")
-    if not isinstance(cached_packages, list) or len(cached_packages) != EXPECTED_PACKAGE_COUNT:
-        raise ValueError("UI current-graph receipt cached package inventory is not exact")
+        raise ValueError("UI current-graph receipt cache non-use posture is not exact")
     return receipt
 
 
@@ -628,7 +655,7 @@ def validate_bound_authority_claims(
             "inventoryContract", "inventorySha256", "lockContract", "lockSha256",
             "packageCount", "packages", "producerCommit", "producerPath",
             "producerRepository", "producerSha256", "projectLockFilesEnforced",
-            "receiptContract", "receiptSha256", "status",
+            "status",
         },
     )
     receipt_hub_rows = sorted(
@@ -648,9 +675,11 @@ def validate_bound_authority_claims(
         "producerPath": receipt_hub.get("producerPath"),
         "producerRepository": receipt_hub.get("producerRepository"),
         "producerSha256": receipt_hub.get("producerSha256"),
-        "receiptContract": receipt_hub.get("receiptContract"),
-        "receiptSha256": receipt_hub.get("receiptSha256"),
-    } != expected_hub:
+    } != {
+        key: value
+        for key, value in expected_hub.items()
+        if key not in {"receiptContract", "receiptSha256"}
+    }:
         raise ValueError("UI receipt Hub authority disagrees with the bound UI package lock")
     if (
         receipt_hub.get("packageCount") != len(receipt_hub_rows)
@@ -658,6 +687,48 @@ def validate_bound_authority_claims(
         or receipt_hub.get("status") != "passed"
     ):
         raise ValueError("UI receipt Hub authority status drifted")
+
+    receipt_legacy = require_exact_object(
+        receipt.get("currentOwnerContractFeed"),
+        "UI receipt legacy owner-contract feed",
+        {
+            "compatibilityPurpose", "inventoryContract", "inventorySha256",
+            "lockContract", "lockSha256", "materializedFeedValidated", "packageCount",
+            "packageFeedInventorySha256", "packageVersion", "packages", "producerCommit",
+            "producerPath", "producerRepository", "producerSha256",
+            "selectedForCanonicalFullFeed", "selectedForCoreRuntimeCompatibility", "status",
+        },
+    )
+    receipt_legacy_rows = sorted(
+        receipt_package_rows(receipt_legacy.get("packages"), "UI receipt legacy owner-contract feed"),
+        key=lambda row: row["fileName"],
+    )
+    expected_legacy = package_authority.get("currentOwnerContractFeed")
+    if not isinstance(expected_legacy, dict):
+        raise ValueError("bound UI package lock legacy owner-contract projection is missing")
+    if {
+        "inventoryContract": receipt_legacy.get("inventoryContract"),
+        "inventorySha256": receipt_legacy.get("inventorySha256"),
+        "lockContract": receipt_legacy.get("lockContract"),
+        "lockSha256": receipt_legacy.get("lockSha256"),
+        "packageFeedInventorySha256": receipt_legacy.get("packageFeedInventorySha256"),
+        "packageVersion": receipt_legacy.get("packageVersion"),
+        "packages": receipt_legacy_rows,
+        "producerCommit": receipt_legacy.get("producerCommit"),
+        "producerPath": receipt_legacy.get("producerPath"),
+        "producerRepository": receipt_legacy.get("producerRepository"),
+        "producerSha256": receipt_legacy.get("producerSha256"),
+    } != expected_legacy:
+        raise ValueError("UI receipt legacy owner-contract authority disagrees with the bound UI package lock")
+    if (
+        receipt_legacy.get("compatibilityPurpose") != "exact-core-runtime-transitive-dependencies"
+        or receipt_legacy.get("materializedFeedValidated") is not True
+        or receipt_legacy.get("packageCount") != len(receipt_legacy_rows)
+        or receipt_legacy.get("selectedForCanonicalFullFeed") is not True
+        or receipt_legacy.get("selectedForCoreRuntimeCompatibility") is not True
+        or receipt_legacy.get("status") != "passed"
+    ):
+        raise ValueError("UI receipt legacy owner-contract authority status drifted")
 
     receipt_ui = require_exact_object(
         receipt.get("uiOwnerFeed"),
@@ -703,16 +774,40 @@ def validate_package_feed(feed: Path) -> dict[str, Any]:
         raise ValueError("current package cache manifest is unavailable")
     if manifest_path.stat().st_size != EXPECTED_CACHE_MANIFEST_SIZE or sha256(manifest_path) != EXPECTED_CACHE_MANIFEST_SHA256:
         raise ValueError("current package cache manifest bytes drifted")
-    cache = strict_json(manifest_path, "current package cache manifest")
+    cache = require_exact_object(
+        strict_json(manifest_path, "current package cache manifest"),
+        "current package cache manifest",
+        {"authorities", "authorityArtifacts", "cacheKey", "contract", "packages"},
+    )
     if cache.get("contract") != CACHE_CONTRACT or cache.get("cacheKey") != EXPECTED_CACHE_KEY:
         raise ValueError("current package cache authority drifted")
+    if not isinstance(cache.get("authorities"), dict):
+        raise ValueError("current package cache authority projection is malformed")
+    authority_artifacts = cache.get("authorityArtifacts")
+    if not isinstance(authority_artifacts, list) or not authority_artifacts:
+        raise ValueError("current package cache authority artifact inventory is malformed")
+    artifact_names: set[str] = set()
+    for value_index, row_value in enumerate(authority_artifacts):
+        row = require_exact_object(
+            row_value,
+            f"current package cache authority artifact row {value_index}",
+            {"fileName", "sha256"},
+        )
+        name = require_string(row.get("fileName"), "current package cache authority artifact filename")
+        digest = require_string(row.get("sha256"), "current package cache authority artifact sha256")
+        if name in artifact_names or len(digest) != 64:
+            raise ValueError("current package cache authority artifact inventory is not exact")
+        artifact_names.add(name)
     rows = cache.get("packages")
     if not isinstance(rows, list) or len(rows) != EXPECTED_PACKAGE_COUNT:
         raise ValueError("current package cache must bind exactly eighteen packages")
     expected: dict[str, tuple[str, int]] = {}
-    for row in rows:
-        if not isinstance(row, dict):
-            raise ValueError("current package cache row is malformed")
+    for value_index, row_value in enumerate(rows):
+        row = require_exact_object(
+            row_value,
+            f"current package cache row {value_index}",
+            {"commit", "fileName", "packageId", "plane", "repository", "sha256", "sizeBytes", "version"},
+        )
         name = row.get("fileName")
         digest = row.get("sha256")
         size = row.get("sizeBytes")
@@ -729,6 +824,55 @@ def validate_package_feed(feed: Path) -> dict[str, Any]:
         if path.is_symlink() or path.stat().st_size != size or sha256(path) != digest:
             raise ValueError(f"current package bytes drifted: {name}")
     return cache
+
+
+def validate_receipt_cache_equivalence(
+    receipt: Mapping[str, Any],
+    cache: Mapping[str, Any],
+) -> None:
+    cache_rows = cache.get("packages")
+    if not isinstance(cache_rows, list) or len(cache_rows) != EXPECTED_PACKAGE_COUNT:
+        raise ValueError("retained package cache inventory is unavailable")
+    cache_bytes = sorted(
+        [
+            {
+                "fileName": row["fileName"],
+                "sha256": row["sha256"],
+                "sizeBytes": row["sizeBytes"],
+            }
+            for row in cache_rows
+            if isinstance(row, dict)
+        ],
+        key=lambda row: row["fileName"],
+    )
+    if len(cache_bytes) != EXPECTED_PACKAGE_COUNT:
+        raise ValueError("retained package cache rows are malformed")
+
+    receipt_owner_rows: list[dict[str, Any]] = []
+    for field, label in (
+        ("coreRuntimeFeed", "UI receipt Core runtime feed"),
+        ("canonicalOwnerFeed", "UI receipt canonical Hub feed"),
+        ("currentOwnerContractFeed", "UI receipt legacy owner-contract feed"),
+        ("uiOwnerFeed", "UI receipt owner feed"),
+    ):
+        feed = receipt.get(field)
+        if not isinstance(feed, dict):
+            raise ValueError(f"{label} is missing")
+        receipt_owner_rows.extend(receipt_package_rows(feed.get("packages"), label))
+    receipt_owner_rows.sort(key=lambda row: row["fileName"])
+    owner_names = [row["fileName"] for row in receipt_owner_rows]
+    if len(owner_names) != len(set(owner_names)) or receipt_owner_rows != cache_bytes:
+        raise ValueError("UI receipt owner feeds diverge from the retained package cache")
+
+    receipt_inventory = receipt_package_rows(
+        receipt.get("packageInventory"),
+        "UI receipt package inventory",
+    )
+    inventory_by_name = {row["fileName"]: row for row in receipt_inventory}
+    if len(inventory_by_name) != len(receipt_inventory):
+        raise ValueError("UI receipt package inventory contains duplicate filenames")
+    if any(inventory_by_name.get(row["fileName"]) != row for row in cache_bytes):
+        raise ValueError("UI receipt package inventory diverges from the retained package cache")
 
 
 def build_binding(manifest: Mapping[str, Any]) -> dict[str, Any]:
@@ -768,7 +912,8 @@ def main() -> int:
                 "bound package proof SDK authority",
             ),
         )
-        validate_package_feed(args.package_feed)
+        cache = validate_package_feed(args.package_feed)
+        validate_receipt_cache_equivalence(receipt, cache)
         binding = build_binding(manifest)
         if args.output is not None:
             write_exclusive(args.output, binding)

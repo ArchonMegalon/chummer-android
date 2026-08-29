@@ -97,11 +97,19 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                 "version": version,
             }
 
-        core_row = package_row(
-            "Chummer.Application",
-            source_graph["coreRuntimeSourceCommit"],
-            self.module.CORE_VERSION,
-        )
+        core_rows = [
+            package_row(
+                package_id,
+                source_graph["coreRuntimeSourceCommit"],
+                self.module.CORE_VERSION,
+            )
+            for package_id in (
+                "Chummer.Engine.Contracts", "Chummer.Application",
+                "Chummer.Rulesets.Hosting", "Chummer.Rulesets.Sr4",
+                "Chummer.Rulesets.Sr5", "Chummer.Rulesets.Sr6",
+                "Chummer.Infrastructure", "Chummer.Engine.GmCharacterEdits",
+            )
+        ]
         hub_rows = [
             package_row(package_id, source_graph["hubProducerCommit"], self.module.HUB_VERSION)
             for package_id in ("Chummer.Play.Contracts", "Chummer.Run.Contracts")
@@ -110,6 +118,14 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             package_row(package_id, source_graph["registryCommit"], self.module.HUB_VERSION)
             for package_id in ("Chummer.Hub.Registry.Contracts", "Chummer.Run.Registry")
         )
+        legacy_version = "0.0.0-packageplane.20260721.1"
+        legacy_rows = [
+            package_row(package_id, "4" * 40, legacy_version)
+            for package_id in (
+                "Chummer.Engine.Contracts", "Chummer.Hub.Registry.Contracts",
+                "Chummer.Play.Contracts", "Chummer.Run.Contracts",
+            )
+        ]
         ui_kit_row = package_row(
             "Chummer.Ui.Kit",
             source_graph["uiKitCommit"],
@@ -159,14 +175,30 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                 "lockSha256": "9" * 64,
                 "packageRecipeCommit": source_graph["corePackageRecipeCommit"],
                 "packageVersion": self.module.CORE_VERSION,
-                "packages": [core_row],
+                "packages": core_rows,
                 "receiptContract": "core-receipt",
                 "receiptFileName": "core-receipt.json",
                 "receiptSha256": "a" * 64,
                 "repository": "https://github.com/ArchonMegalon/chummer6-core.git",
                 "runtimeSourceCommit": source_graph["coreRuntimeSourceCommit"],
             },
-            "currentOwnerContractFeed": {},
+            "currentOwnerContractFeed": {
+                "inventoryContract": "legacy-inventory",
+                "inventoryFileName": "legacy-inventory.json",
+                "inventorySha256": "5" * 64,
+                "lockContract": "legacy-lock",
+                "lockPath": "legacy-lock.json",
+                "lockSha256": "6" * 64,
+                "ownerDirectory": "legacy",
+                "packageFeedInventorySha256": "7" * 64,
+                "packageVersion": legacy_version,
+                "packages": legacy_rows,
+                "producerCommit": "8" * 40,
+                "producerPath": "legacy-producer.py",
+                "producerRepository": "https://github.com/ArchonMegalon/chummer6-core.git",
+                "producerSha256": "9" * 64,
+                "selectedForCoreRuntimeCompatibility": True,
+            },
             "externalPackages": [],
             "owners": [],
             "packages": [],
@@ -214,13 +246,92 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                 projectLockFilesEnforced=True,
                 status="passed",
             ),
+            "currentOwnerContractFeed": receipt_feed(
+                package_authority["currentOwnerContractFeed"],
+                compatibilityPurpose="exact-core-runtime-transitive-dependencies",
+                materializedFeedValidated=True,
+                packageCount=len(package_authority["currentOwnerContractFeed"]["packages"]),
+                selectedForCanonicalFullFeed=True,
+                selectedForCoreRuntimeCompatibility=True,
+                status="passed",
+            ),
             "uiOwnerFeed": receipt_feed(
                 package_authority["uiOwnerFeed"],
                 packageCount=len(package_authority["uiOwnerFeed"]["packages"]),
                 status="passed",
             ),
         }
+        receipt["canonicalOwnerFeed"].pop("receiptContract")
+        receipt["canonicalOwnerFeed"].pop("receiptSha256")
+        receipt["packageInventory"] = sorted(
+            [
+                copy.deepcopy(row)
+                for field in (
+                    "coreRuntimeFeed", "canonicalOwnerFeed",
+                    "currentOwnerContractFeed", "uiOwnerFeed",
+                )
+                for row in receipt[field]["packages"]
+            ],
+            key=lambda row: row["fileName"],
+        )
         return package_authority, receipt
+
+    def current_main_receipt_fixture(self) -> dict[str, object]:
+        _, authority_receipt = self.bound_authority_fixture()
+        receipt = {key: None for key in self.module.RECEIPT_TOP_LEVEL_KEYS}
+        receipt.update(authority_receipt)
+        receipt.update({
+            "contractName": self.module.RECEIPT_CONTRACT,
+            "contractVersion": 11,
+            "status": "passed",
+            "mode": "integration",
+            "consumerCommit": self.module.EXPECTED_PRESENTATION_COMMIT,
+            "localCompatibilityTree": False,
+            "packageCacheWasFresh": True,
+            "consumerPackagePlaneLock": {
+                "path": self.module.EXPECTED_LOCK_PATH,
+                "sha256": self.module.EXPECTED_LOCK_SHA256,
+                "sizeBytes": self.module.EXPECTED_LOCK_SIZE,
+            },
+            "ownerPackageArtifactCache": {
+                "coldProducerFallbackOnCacheMiss": True,
+                "contract": self.module.CACHE_CONTRACT,
+                "status": "not_supplied",
+                "used": False,
+            },
+        })
+        return receipt
+
+    def validate_receipt_copy(self, payload: dict[str, object]) -> dict[str, object]:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary).resolve() / "current-main-receipt.json"
+            write_private(path, payload)
+            with (
+                patch.object(self.module, "EXPECTED_RECEIPT_SIZE", path.stat().st_size),
+                patch.object(self.module, "EXPECTED_RECEIPT_SHA256", self.module.sha256(path)),
+            ):
+                return self.module.validate_receipt(path)
+
+    def retained_cache_fixture(self, receipt: dict[str, object]) -> dict[str, object]:
+        packages = []
+        for index, row in enumerate(receipt["packageInventory"]):
+            packages.append({
+                "commit": f"{index:040x}",
+                "fileName": row["fileName"],
+                "packageId": f"Package.{index}",
+                "plane": "test-owner",
+                "repository": "https://github.com/ArchonMegalon/example.git",
+                "sha256": row["sha256"],
+                "sizeBytes": row["sizeBytes"],
+                "version": "1.0.0",
+            })
+        return {
+            "authorities": {},
+            "authorityArtifacts": [{"fileName": "authority.json", "sha256": "a" * 64}],
+            "cacheKey": self.module.EXPECTED_CACHE_KEY,
+            "contract": self.module.CACHE_CONTRACT,
+            "packages": packages,
+        }
 
     def test_exact_current_graph_is_valid_and_never_public_ready(self) -> None:
         validated = self.module.validate_manifest(MANIFEST)
@@ -350,6 +461,61 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
                 package_authority,
                 receipt,
             )
+
+    def test_exact_final_current_main_receipt_non_use_posture_is_accepted(self) -> None:
+        receipt = self.current_main_receipt_fixture()
+        validated = self.validate_receipt_copy(receipt)
+        self.assertEqual(
+            {
+                "coldProducerFallbackOnCacheMiss": True,
+                "contract": self.module.CACHE_CONTRACT,
+                "status": "not_supplied",
+                "used": False,
+            },
+            validated["ownerPackageArtifactCache"],
+        )
+
+    def test_current_main_receipt_cache_status_and_used_combinations_fail_closed(self) -> None:
+        mutations = (
+            {"status": "not_supplied", "used": True},
+            {"status": "passed", "used": False},
+            {"status": "passed", "used": True},
+            {"status": "not_supplied"},
+        )
+        for cache in mutations:
+            payload = self.current_main_receipt_fixture()
+            payload["ownerPackageArtifactCache"] = {
+                "coldProducerFallbackOnCacheMiss": True,
+                "contract": self.module.CACHE_CONTRACT,
+                **cache,
+            }
+            with self.subTest(cache=cache):
+                with self.assertRaisesRegex(ValueError, "cache non-use posture is not exact"):
+                    self.validate_receipt_copy(payload)
+
+    def test_final_receipt_and_retained_cache_are_byte_equivalent(self) -> None:
+        receipt = self.current_main_receipt_fixture()
+        cache = self.retained_cache_fixture(receipt)
+        self.module.validate_receipt_cache_equivalence(receipt, cache)
+
+    def test_final_receipt_and_retained_cache_divergence_fails_closed(self) -> None:
+        base_receipt = self.current_main_receipt_fixture()
+        base_cache = self.retained_cache_fixture(base_receipt)
+
+        inventory_tamper = copy.deepcopy(base_receipt)
+        inventory_tamper["packageInventory"][0]["sha256"] = "b" * 64
+        owner_feed_tamper = copy.deepcopy(base_receipt)
+        owner_feed_tamper["coreRuntimeFeed"]["packages"][0]["sizeBytes"] += 1
+        cache_tamper = copy.deepcopy(base_cache)
+        cache_tamper["packages"][0]["sha256"] = "c" * 64
+        for receipt, cache, message in (
+            (inventory_tamper, base_cache, "package inventory diverges"),
+            (owner_feed_tamper, base_cache, "owner feeds diverge"),
+            (base_receipt, cache_tamper, "owner feeds diverge"),
+        ):
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(ValueError, message):
+                    self.module.validate_receipt_cache_equivalence(receipt, cache)
 
     def test_lock_missing_extra_reordered_and_byte_tamper_fail_closed(self) -> None:
         mutations: list[tuple[dict[str, object], str]] = []
