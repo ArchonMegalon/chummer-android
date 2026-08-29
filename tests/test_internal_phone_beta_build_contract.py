@@ -78,9 +78,19 @@ class InternalPhoneBetaBuildContractTests(unittest.TestCase):
 
     def test_workflow_is_inactive_internal_only_and_exactly_pinned(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
-        self.assertIn("on: []", text)
+        self.assertIn('on:\n  push:\n    branches-ignore:\n      - "**"', text)
+        self.assertNotIn("\non: []\n", text)
         self.assertIn("if: ${{ false }}", text)
         self.assertIn("d02368a24a7c4d7ae1a5ddd031475e1e54141904", text)
+        final_receipt_name = "UI_CURRENT_MAIN_PACKAGE_PLANE.generated.json"
+        self.assertEqual(1, text.count(final_receipt_name))
+        self.assertIn(
+            "CHUMMER_CURRENT_UI_PACKAGE_AUTHORITY_RECEIPT: "
+            "${{ runner.temp }}/current-ui-input/" + final_receipt_name,
+            text,
+        )
+        self.assertNotIn("ui-current-authority-1438978f-main-cache-hit.receipt.json", text)
+        self.assertNotIn("ui-current-authority-", text)
         self.assertIn("Chummer.Desktop.Runtime", text)
         self.assertIn("Chummer.Presentation", text)
         self.assertIn("dotnet-version: 10.0.111", text)

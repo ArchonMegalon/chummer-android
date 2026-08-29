@@ -6273,6 +6273,247 @@ public sealed class Demo
             )
         self.assertEqual("missing", drifted["status"])
 
+    def test_tradition_spirit_categories_require_exact_cached_recursive_source_resolution(self) -> None:
+        import inspect
+
+        payload = json.loads(
+            (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        spirit_rows = [
+            row
+            for row in payload["rows"]
+            if row["legacy"]["formOrControl"] in {"CharacterCreate", "CharacterCareer"}
+            and row["legacy"]["controlName"].startswith("cboSpirit")
+        ]
+        self.assertEqual(10, len(spirit_rows))
+        self.assertTrue(
+            all(row["phone"]["status"] == "implemented_pending_emulator" for row in spirit_rows)
+        )
+        row = next(
+            item
+            for item in spirit_rows
+            if item["legacy"]["formOrControl"] == "CharacterCreate"
+            and item["legacy"]["controlName"] == "cboSpiritCombat"
+        )
+        parameters = list(inspect.signature(inventory._known_phone_mapping).parameters)
+        receipt_arguments = {
+            name: {} if name in {"condition_e2e_receipts", "contact_pet_e2e_receipts"} else None
+            for name in parameters[4:]
+        }
+        page_path = REPO / "src/Chummer.Android/Native/TraditionSpiritCategoryPage.cs"
+        resolver_path = (
+            CORE_ROOT
+            / "Chummer.Infrastructure"
+            / "Xml"
+            / "FileSystemCharacterSourceDataResolver.cs"
+        )
+        page_literal = 'AutomationId = $"tradition-spirit-{token}-value"'
+        resolver_call = (
+            'EnumerateSourceFiles(\n'
+            '                            directory.Path,\n'
+            '                            $"*_{fileName}",\n'
+            '                            SearchOption.AllDirectories)'
+        )
+        original_contains = inventory._contains
+        observed_page_needles: set[str] = set()
+
+        def observe_exact_authority(path: Path, *needles: str) -> bool:
+            if path == page_path:
+                observed_page_needles.update(needles)
+            return original_contains(path, *needles)
+
+        with patch.object(inventory, "_contains", side_effect=observe_exact_authority):
+            current = inventory._known_phone_mapping(
+                row,
+                inventory.DEFAULT_CHUMMER5_ROOT,
+                PRESENTATION_ROOT,
+                CORE_ROOT,
+                **receipt_arguments,
+            )
+        self.assertEqual("implemented_pending_emulator", current["status"])
+        self.assertIn(page_literal, observed_page_needles)
+        self.assertNotIn('AutomationId = $"tradition-spirit-combat-value"', observed_page_needles)
+        with patch.object(
+            inventory,
+            "_contains",
+            side_effect=lambda path, *needles: (
+                False
+                if path == page_path and page_literal in needles
+                else original_contains(path, *needles)
+            ),
+        ):
+            page_drifted = inventory._known_phone_mapping(
+                row,
+                inventory.DEFAULT_CHUMMER5_ROOT,
+                PRESENTATION_ROOT,
+                CORE_ROOT,
+                **receipt_arguments,
+            )
+        self.assertEqual("missing", page_drifted["status"])
+
+        method_authorities = {
+            "TryResolveSpiritCatalogNames": (
+                "public bool TryResolveSpiritCatalogNames(",
+                (
+                    "using IDisposable sourceInputScope = _sourceInputs.Enter();",
+                    "if (_sourceInputs.HasSourceDrift)",
+                    'TryLoadEffectiveDocument(_catalog, fileName',
+                    'Elements("spirits").Take(2)',
+                    resolver_call,
+                    'TryResolveTarget(',
+                ),
+            ),
+            "TryResolveTarget": (
+                "private bool TryResolveTarget(",
+                (
+                    "TryLoadEffectiveDocument(_catalog, fileName",
+                    resolver_call,
+                    "TryLoadXml(path, out XDocument? customDocument)",
+                    "TryApplyCustomFile(",
+                ),
+            ),
+            "EnumerateSourceFiles": (
+                "private static string[] EnumerateSourceFiles(",
+                (
+                    "ActiveSourceInputs.Value?.EnumerateFiles(directory, searchPattern, searchOption)",
+                    "?? Directory.EnumerateFiles(directory, searchPattern, searchOption).ToArray();",
+                ),
+            ),
+            "TryLoadEffectiveDocument": (
+                "private static bool TryLoadEffectiveDocument(",
+                (
+                    'string cacheKey = CreateSourceCacheKey("effective-document", fileName);',
+                    "cachedInputs.TryGetEffectiveDocument(cacheKey, out document)",
+                    "TryLoadXml(basePath, out document)",
+                    'EnumerateSourceFiles(pack.DataPath, "*.xml", SearchOption.TopDirectoryOnly)',
+                    "ActiveSourceInputs.Value?.SetEffectiveDocument(cacheKey, document);",
+                ),
+            ),
+            "TryLoadXml": (
+                "private static bool TryLoadXml(",
+                (
+                    "if (ActiveSourceInputs.Value is { } sourceInputs)",
+                    "return sourceInputs.TryLoadXml(path, out document);",
+                    "DtdProcessing = DtdProcessing.Prohibit",
+                    "XmlResolver = null",
+                ),
+            ),
+        }
+        for method_name, (declaration_marker, markers) in method_authorities.items():
+            with self.subTest(current_method=method_name):
+                self.assertTrue(
+                    inventory._csharp_method_contains(
+                        resolver_path,
+                        method_name,
+                        declaration_marker,
+                        *markers,
+                    )
+                )
+
+        original_resolver = resolver_path.read_text(encoding="utf-8-sig")
+        mutations = (
+            (
+                "TryResolveSpiritCatalogNames",
+                "public bool TryResolveSpiritCatalogNames(",
+                "using IDisposable sourceInputScope = _sourceInputs.Enter();\n",
+                "",
+            ),
+            (
+                "TryResolveSpiritCatalogNames",
+                "public bool TryResolveSpiritCatalogNames(",
+                "            if (_sourceInputs.HasSourceDrift)\n                return false;\n",
+                "",
+            ),
+            (
+                "TryResolveSpiritCatalogNames",
+                "public bool TryResolveSpiritCatalogNames(",
+                resolver_call,
+                'Directory.EnumerateFiles(directory.Path, $"*_{fileName}", SearchOption.AllDirectories)',
+            ),
+            (
+                "TryResolveTarget",
+                "private bool TryResolveTarget(",
+                resolver_call,
+                'Directory.EnumerateFiles(directory.Path, $"*_{fileName}", SearchOption.AllDirectories)',
+            ),
+            (
+                "EnumerateSourceFiles",
+                "private static string[] EnumerateSourceFiles(",
+                "ActiveSourceInputs.Value?.EnumerateFiles(directory, searchPattern, searchOption)\n"
+                "           ?? Directory.EnumerateFiles(directory, searchPattern, searchOption).ToArray()",
+                "Directory.EnumerateFiles(directory, searchPattern, searchOption).ToArray()",
+            ),
+            (
+                "TryLoadEffectiveDocument",
+                "private static bool TryLoadEffectiveDocument(",
+                "        if (ActiveSourceInputs.Value is { } cachedInputs\n"
+                "            && cachedInputs.TryGetEffectiveDocument(cacheKey, out document))\n"
+                "        {\n"
+                "            return document?.Root is not null;\n"
+                "        }\n\n",
+                "",
+            ),
+            (
+                "TryLoadEffectiveDocument",
+                "private static bool TryLoadEffectiveDocument(",
+                "        ActiveSourceInputs.Value?.SetEffectiveDocument(cacheKey, document);\n",
+                "",
+            ),
+            (
+                "TryLoadXml",
+                "private static bool TryLoadXml(",
+                "        if (ActiveSourceInputs.Value is { } sourceInputs)\n"
+                "            return sourceInputs.TryLoadXml(path, out document);\n\n",
+                "",
+            ),
+        )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            thin_core = Path(temporary) / "core"
+            thin_core.mkdir()
+            for directory in ("Chummer.Contracts", "Chummer.Application", "Chummer"):
+                (thin_core / directory).symlink_to(CORE_ROOT / directory, target_is_directory=True)
+            infrastructure = thin_core / "Chummer.Infrastructure"
+            infrastructure.mkdir()
+            (infrastructure / "Workspaces").symlink_to(
+                CORE_ROOT / "Chummer.Infrastructure" / "Workspaces",
+                target_is_directory=True,
+            )
+            xml_directory = infrastructure / "Xml"
+            xml_directory.mkdir()
+            mutated_resolver_path = xml_directory / resolver_path.name
+
+            for method_name, declaration_marker, old, new in mutations:
+                with self.subTest(mutated_method=method_name, removed_authority=old):
+                    mutated_resolver_path.write_text(original_resolver, encoding="utf-8")
+                    method_source = inventory._csharp_method_source(
+                        mutated_resolver_path,
+                        method_name,
+                        declaration_marker,
+                    )
+                    self.assertIsNotNone(method_source)
+                    self.assertIn(old, method_source)
+                    mutated_method = method_source.replace(old, new, 1)
+                    mutated_resolver_path.write_text(
+                        original_resolver.replace(method_source, mutated_method, 1),
+                        encoding="utf-8",
+                    )
+                    if old == resolver_call:
+                        self.assertGreaterEqual(
+                            mutated_resolver_path.read_text(encoding="utf-8").count(resolver_call),
+                            1,
+                        )
+                    drifted = inventory._known_phone_mapping(
+                        row,
+                        inventory.DEFAULT_CHUMMER5_ROOT,
+                        PRESENTATION_ROOT,
+                        thin_core,
+                        **receipt_arguments,
+                    )
+                    self.assertEqual("missing", drifted["status"])
+
     def test_sr5_table_wizard_development_lane_is_exactly_bound_without_completion_claim(self) -> None:
         payload = json.loads(
             (REPO / "docs" / "ANDROID_CHUMMER5_EDITABILITY_INVENTORY.generated.json").read_text(

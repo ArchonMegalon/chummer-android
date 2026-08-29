@@ -7314,6 +7314,57 @@ def _contains(path: Path, *markers: str) -> bool:
     return all(marker in text for marker in markers)
 
 
+def _csharp_method_source(
+    path: Path,
+    method_name: str,
+    declaration_marker: str,
+) -> str | None:
+    """Return one exact C# method member, bounded by its declaring indentation."""
+
+    if not path.is_file():
+        return None
+    text = _read_text(path)
+    declaration = re.compile(
+        rf"(?m)^(?P<indent>[ \t]*)(?:public|private|protected|internal)"
+        rf"[^\n]*\b{re.escape(method_name)}\s*\("
+    )
+    matches = [
+        match
+        for match in declaration.finditer(text)
+        if declaration_marker in match.group(0)
+    ]
+    if len(matches) != 1:
+        return None
+    match = matches[0]
+    indent = re.escape(match.group("indent"))
+    next_member = re.compile(
+        rf"(?m)^{indent}(?:public|private|protected|internal)"
+        r"[^\n]*(?:\(|=>|\{)"
+    ).search(text, match.end())
+    end = next_member.start() if next_member is not None else len(text)
+    return text[match.start():end].rstrip()
+
+
+def _csharp_method_contains(
+    path: Path,
+    method_name: str,
+    declaration_marker: str,
+    *markers: str,
+) -> bool:
+    """Require reviewed markers in order inside one exact C# method."""
+
+    source = _csharp_method_source(path, method_name, declaration_marker)
+    if source is None:
+        return False
+    offset = 0
+    for marker in markers:
+        found = source.find(marker, offset)
+        if found < 0:
+            return False
+        offset = found + len(marker)
+    return True
+
+
 def _career_weapon_ammo_equality_guarded(path: Path) -> bool:
     if not path.is_file():
         return False
@@ -20397,13 +20448,57 @@ def _known_phone_mapping(
                 "TryValidateRequestedValue",
             )
             and _contains(resolver_contract, "TryResolveSpiritCatalogNames")
-            and _contains(
+            and _csharp_method_contains(
                 resolver,
                 "TryResolveSpiritCatalogNames",
+                "public bool TryResolveSpiritCatalogNames(",
+                "using IDisposable sourceInputScope = _sourceInputs.Enter();",
+                "if (_sourceInputs.HasSourceDrift)",
                 'TryLoadEffectiveDocument(_catalog, fileName',
-                'EnumerateFiles(directory.Path, $"*_{fileName}"',
-                'TryResolveTarget(',
                 'Elements("spirits").Take(2)',
+                'EnumerateSourceFiles(\n'
+                '                            directory.Path,\n'
+                '                            $"*_{fileName}",\n'
+                '                            SearchOption.AllDirectories)',
+                'TryResolveTarget(',
+            )
+            and _csharp_method_contains(
+                resolver,
+                "TryResolveTarget",
+                "private bool TryResolveTarget(",
+                "TryLoadEffectiveDocument(_catalog, fileName",
+                'EnumerateSourceFiles(\n'
+                '                            directory.Path,\n'
+                '                            $"*_{fileName}",\n'
+                '                            SearchOption.AllDirectories)',
+                "TryLoadXml(path, out XDocument? customDocument)",
+                "TryApplyCustomFile(",
+            )
+            and _csharp_method_contains(
+                resolver,
+                "EnumerateSourceFiles",
+                "private static string[] EnumerateSourceFiles(",
+                "ActiveSourceInputs.Value?.EnumerateFiles(directory, searchPattern, searchOption)",
+                "?? Directory.EnumerateFiles(directory, searchPattern, searchOption).ToArray();",
+            )
+            and _csharp_method_contains(
+                resolver,
+                "TryLoadEffectiveDocument",
+                "private static bool TryLoadEffectiveDocument(",
+                'string cacheKey = CreateSourceCacheKey("effective-document", fileName);',
+                "cachedInputs.TryGetEffectiveDocument(cacheKey, out document)",
+                "TryLoadXml(basePath, out document)",
+                "EnumerateSourceFiles(pack.DataPath, \"*.xml\", SearchOption.TopDirectoryOnly)",
+                "ActiveSourceInputs.Value?.SetEffectiveDocument(cacheKey, document);",
+            )
+            and _csharp_method_contains(
+                resolver,
+                "TryLoadXml",
+                "private static bool TryLoadXml(",
+                "if (ActiveSourceInputs.Value is { } sourceInputs)",
+                "return sourceInputs.TryLoadXml(path, out document);",
+                "DtdProcessing = DtdProcessing.Prohibit",
+                "XmlResolver = null",
             )
             and _contains(traditions_catalog, "<spirits>", "Spirit of Fire", "Spirit of Air")
             and _contains(
