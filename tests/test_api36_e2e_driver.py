@@ -4398,13 +4398,12 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         device = Mock()
         device.find.return_value = None
 
-        DRIVER.select_android_document(device, "linked-runner-e2e.chum5")
+        with patch.object(DRIVER, "select_documents_ui_downloads_root") as select_root:
+            DRIVER.select_android_document(device, "linked-runner-e2e.chum5")
 
         self.assertEqual(
             [
                 call("Show roots", timeout=45),
-                call("Downloads", timeout=45),
-                call("Files in Downloads", timeout=45),
                 call("linked-runner-e2e.chum5", timeout=45, scroll=True),
             ],
             device.wait.call_args_list,
@@ -4412,10 +4411,200 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
         self.assertEqual(
             [
                 call("Show roots"),
-                call("Downloads"),
                 call("linked-runner-e2e.chum5", scroll=True),
             ],
             device.tap.call_args_list,
+        )
+        select_root.assert_called_once_with(device, timeout=45)
+
+    @staticmethod
+    def _documents_ui_node(
+        *,
+        text: str = "",
+        content_description: str = "",
+        resource_id: str = "",
+        enabled: str = "true",
+        bounds: str = "[168,617][714,668]",
+    ) -> object:
+        return DRIVER.UiNode(
+            {
+                "package": DRIVER.DOCUMENTS_UI_PACKAGE,
+                "text": text,
+                "content-desc": content_description,
+                "resource-id": resource_id,
+                "enabled": enabled,
+                "bounds": bounds,
+            }
+        )
+
+    def _documents_ui_drawer(
+        self,
+        *,
+        enabled: str = "true",
+        bounds: str = "[168,617][714,668]",
+    ) -> list[object]:
+        return [
+            self._documents_ui_node(text=DRIVER.DOCUMENTS_UI_DRAWER_MARKER),
+            self._documents_ui_node(
+                text=DRIVER.DOCUMENTS_UI_DOWNLOADS_ROOT,
+                resource_id="android:id/title",
+                enabled=enabled,
+                bounds=bounds,
+            ),
+        ]
+
+    def _documents_ui_destination(self, root: str = "Downloads") -> list[object]:
+        return [
+            self._documents_ui_node(
+                content_description=f"Files in {root}",
+                resource_id="com.google.android.documentsui:id/toolbar",
+            )
+        ]
+
+    @staticmethod
+    def _fake_clock() -> tuple[list[float], object, object]:
+        now = [0.0]
+
+        def monotonic() -> float:
+            return now[0]
+
+        def sleep(seconds: float) -> None:
+            now[0] += seconds
+
+        return now, monotonic, sleep
+
+    def test_documents_ui_downloads_accepts_one_exact_transition(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.side_effect = [
+            self._documents_ui_drawer(),
+            self._documents_ui_destination(),
+        ]
+        device.node_has_tappable_bounds.return_value = True
+
+        DRIVER.select_documents_ui_downloads_root(device, timeout=45)
+
+        device.shell.assert_called_once_with("input", "tap", "441", "642")
+        device.capture.assert_not_called()
+
+    def test_documents_ui_downloads_reacquires_for_two_bounded_retaps(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        drawer_one = self._documents_ui_drawer()
+        drawer_two = self._documents_ui_drawer(bounds="[168,717][714,768]")
+        drawer_three = self._documents_ui_drawer(bounds="[168,817][714,868]")
+        device.hierarchy.side_effect = [
+            drawer_one,
+            drawer_one,
+            drawer_one,
+            drawer_one,
+            drawer_one,
+            drawer_two,
+            drawer_two,
+            drawer_two,
+            drawer_two,
+            drawer_two,
+            drawer_three,
+            self._documents_ui_destination(),
+        ]
+        device.node_has_tappable_bounds.return_value = True
+        _now, monotonic, sleep = self._fake_clock()
+
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+            patch.object(DRIVER.time, "sleep", side_effect=sleep),
+        ):
+            DRIVER.select_documents_ui_downloads_root(device, timeout=45)
+
+        self.assertEqual(
+            [
+                call("input", "tap", "441", "642"),
+                call("input", "tap", "441", "742"),
+                call("input", "tap", "441", "842"),
+            ],
+            device.shell.call_args_list,
+        )
+        self.assertEqual(12, device.hierarchy.call_count)
+        device.capture.assert_not_called()
+
+    def test_documents_ui_downloads_rejects_ambiguous_exact_rows(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        drawer = self._documents_ui_drawer()
+        drawer.append(
+            self._documents_ui_node(
+                text=DRIVER.DOCUMENTS_UI_DOWNLOADS_ROOT,
+                resource_id="android:id/title",
+                bounds="[168,717][714,768]",
+            )
+        )
+        device.hierarchy.return_value = drawer
+
+        with self.assertRaisesRegex(RuntimeError, "cardinality was 2"):
+            DRIVER.select_documents_ui_downloads_root(device, timeout=45)
+
+        device.capture.assert_called_once_with(
+            "documentsui-downloads-row-cardinality-invalid"
+        )
+        device.shell.assert_not_called()
+
+    def test_documents_ui_downloads_rejects_disabled_exact_row(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.return_value = self._documents_ui_drawer(enabled="false")
+        device.node_has_tappable_bounds.return_value = True
+
+        with self.assertRaisesRegex(RuntimeError, "not enabled and tappable"):
+            DRIVER.select_documents_ui_downloads_root(device, timeout=45)
+
+        device.capture.assert_called_once_with(
+            "documentsui-downloads-row-not-enabled-tappable"
+        )
+        device.shell.assert_not_called()
+
+    def test_documents_ui_downloads_rejects_wrong_destination_after_tap(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.side_effect = [
+            self._documents_ui_drawer(),
+            self._documents_ui_destination("Documents"),
+        ]
+        device.node_has_tappable_bounds.return_value = True
+
+        with self.assertRaisesRegex(RuntimeError, "root other than"):
+            DRIVER.select_documents_ui_downloads_root(device, timeout=45)
+
+        device.capture.assert_called_once_with(
+            "documentsui-downloads-wrong-destination"
+        )
+        device.shell.assert_called_once_with("input", "tap", "441", "642")
+
+    def test_documents_ui_downloads_rejects_drawer_destination_state_ambiguity(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.return_value = [
+            *self._documents_ui_drawer(),
+            *self._documents_ui_destination(),
+        ]
+
+        with self.assertRaisesRegex(RuntimeError, "simultaneously exposed"):
+            DRIVER.select_documents_ui_downloads_root(device, timeout=45)
+
+        device.capture.assert_called_once_with(
+            "documentsui-downloads-transition-state-ambiguous"
+        )
+        device.shell.assert_not_called()
+
+    def test_documents_ui_downloads_stops_after_two_bounded_retaps(self) -> None:
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.return_value = self._documents_ui_drawer()
+        device.node_has_tappable_bounds.return_value = True
+        _now, monotonic, sleep = self._fake_clock()
+
+        with (
+            patch.object(DRIVER.time, "monotonic", side_effect=monotonic),
+            patch.object(DRIVER.time, "sleep", side_effect=sleep),
+            self.assertRaisesRegex(RuntimeError, "after 3 exact Downloads taps"),
+        ):
+            DRIVER.select_documents_ui_downloads_root(device, timeout=6)
+
+        self.assertEqual(3, device.shell.call_count)
+        device.capture.assert_called_once_with(
+            "documentsui-downloads-transition-unavailable"
         )
 
     def test_document_picker_uses_visible_fixture_without_changing_root(self) -> None:

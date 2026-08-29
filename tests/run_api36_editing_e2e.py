@@ -111,6 +111,13 @@ ADB_READ_ONLY_HIERARCHY_ARGUMENTS = (
     "--compressed",
     "/dev/tty",
 )
+DOCUMENTS_UI_PACKAGE = "com.google.android.documentsui"
+DOCUMENTS_UI_DRAWER_MARKER = "Open from"
+DOCUMENTS_UI_DOWNLOADS_ROOT = "Downloads"
+DOCUMENTS_UI_DOWNLOADS_DESTINATION = "Files in Downloads"
+DOCUMENTS_UI_MAX_DOWNLOADS_TAPS = 3
+DOCUMENTS_UI_DOWNLOADS_RETRY_SETTLE_SECONDS = 2.25
+DOCUMENTS_UI_POLL_DELAY_SECONDS = 0.75
 ADB_CREATION_BOOTSTRAP_LOGCAT_ARGUMENTS = (
     "logcat",
     "-d",
@@ -4313,6 +4320,150 @@ def assert_linked_identity(device: Device, profile: str, kind: str) -> None:
             )
 
 
+def _documents_ui_exact_nodes(nodes: list[UiNode], value: str) -> list[UiNode]:
+    """Return exact DocumentsUI nodes without the driver's prefix fallback."""
+    return [
+        node
+        for node in nodes
+        if node.attributes.get("package") == DOCUMENTS_UI_PACKAGE
+        and value
+        in {
+            node.attributes.get("text", ""),
+            node.attributes.get("content-desc", ""),
+            node.attributes.get("resource-id", "").rsplit("/", 1)[-1],
+        }
+    ]
+
+
+def _documents_ui_downloads_state(device: Device, nodes: list[UiNode]) -> str:
+    drawer_markers = _documents_ui_exact_nodes(nodes, DOCUMENTS_UI_DRAWER_MARKER)
+    destinations = _documents_ui_exact_nodes(
+        nodes,
+        DOCUMENTS_UI_DOWNLOADS_DESTINATION,
+    )
+    if len(drawer_markers) > 1 or len(destinations) > 1:
+        device.capture("documentsui-downloads-transition-cardinality-invalid")
+        raise RuntimeError(
+            "DocumentsUI Downloads transition exposed ambiguous exact drawer or "
+            "destination authority"
+        )
+
+    wrong_destinations = sorted(
+        {
+            value
+            for node in nodes
+            if node.attributes.get("package") == DOCUMENTS_UI_PACKAGE
+            for value in (
+                node.attributes.get("text", ""),
+                node.attributes.get("content-desc", ""),
+            )
+            if value.startswith("Files in ")
+            and value != DOCUMENTS_UI_DOWNLOADS_DESTINATION
+        }
+    )
+    if wrong_destinations:
+        device.capture("documentsui-downloads-wrong-destination")
+        raise RuntimeError(
+            "DocumentsUI opened a root other than the exact Downloads destination: "
+            f"{wrong_destinations!r}"
+        )
+    if drawer_markers and destinations:
+        device.capture("documentsui-downloads-transition-state-ambiguous")
+        raise RuntimeError(
+            "DocumentsUI simultaneously exposed the roots drawer and Downloads "
+            "destination"
+        )
+    if destinations:
+        return "destination"
+    if drawer_markers:
+        return "drawer"
+    return "pending"
+
+
+def _exact_enabled_documents_ui_downloads_row(
+    device: Device,
+    nodes: list[UiNode],
+) -> UiNode:
+    matches = [
+        node
+        for node in _documents_ui_exact_nodes(nodes, DOCUMENTS_UI_DOWNLOADS_ROOT)
+        if node.attributes.get("resource-id", "").rsplit("/", 1)[-1] == "title"
+    ]
+    if len(matches) != 1:
+        device.capture("documentsui-downloads-row-cardinality-invalid")
+        raise RuntimeError(
+            "DocumentsUI Downloads root row cardinality was "
+            f"{len(matches)}; expected exactly one"
+        )
+    node = matches[0]
+    if (
+        node.attributes.get("enabled") != "true"
+        or not device.node_has_tappable_bounds(node)
+    ):
+        device.capture("documentsui-downloads-row-not-enabled-tappable")
+        raise RuntimeError(
+            "The exact DocumentsUI Downloads root row is not enabled and tappable"
+        )
+    return node
+
+
+def select_documents_ui_downloads_root(device: Device, *, timeout: int = 45) -> None:
+    """Select Downloads with at most two fresh retaps under one deadline."""
+    deadline = time.monotonic() + timeout
+    last_state = "pending"
+    for tap_attempt in range(DOCUMENTS_UI_MAX_DOWNLOADS_TAPS):
+        nodes: list[UiNode] = []
+        while time.monotonic() < deadline:
+            nodes = device.hierarchy()
+            if not nodes:
+                time.sleep(DOCUMENTS_UI_POLL_DELAY_SECONDS)
+                continue
+            last_state = _documents_ui_downloads_state(device, nodes)
+            if last_state == "destination":
+                return
+            if last_state == "drawer":
+                break
+            time.sleep(DOCUMENTS_UI_POLL_DELAY_SECONDS)
+        else:
+            break
+
+        row = _exact_enabled_documents_ui_downloads_row(device, nodes)
+        x, y = row.center
+        device.shell("input", "tap", str(x), str(y))
+
+        retry_at = min(
+            deadline,
+            time.monotonic() + DOCUMENTS_UI_DOWNLOADS_RETRY_SETTLE_SECONDS,
+        )
+        while time.monotonic() < deadline:
+            nodes = device.hierarchy()
+            if not nodes:
+                time.sleep(DOCUMENTS_UI_POLL_DELAY_SECONDS)
+                continue
+            last_state = _documents_ui_downloads_state(device, nodes)
+            if last_state == "destination":
+                return
+            if (
+                last_state == "drawer"
+                and tap_attempt + 1 < DOCUMENTS_UI_MAX_DOWNLOADS_TAPS
+                and time.monotonic() >= retry_at
+            ):
+                # The prior tap had no observable effect. Reacquire the exact row
+                # from a fresh hierarchy before issuing the next bounded retap.
+                break
+            time.sleep(DOCUMENTS_UI_POLL_DELAY_SECONDS)
+
+    device.capture("documentsui-downloads-transition-unavailable")
+    if last_state == "drawer":
+        raise RuntimeError(
+            "DocumentsUI roots drawer remained open after "
+            f"{DOCUMENTS_UI_MAX_DOWNLOADS_TAPS} exact Downloads taps"
+        )
+    raise RuntimeError(
+        "Timed out waiting for the exact DocumentsUI Downloads destination"
+    )
+
+
 def select_android_document(device: Device, filename: str) -> None:
     roots_drawer_open = (
         device.find("Recent") is not None
@@ -4332,10 +4483,7 @@ def select_android_document(device: Device, filename: str) -> None:
         device.wait("Show roots", timeout=45)
         device.tap("Show roots")
         time.sleep(0.75)
-        device.wait("Downloads", timeout=45)
-        device.tap("Downloads")
-        time.sleep(0.75)
-        device.wait("Files in Downloads", timeout=45)
+        select_documents_ui_downloads_root(device, timeout=45)
         device.wait(filename, timeout=45, scroll=True)
     device.tap(filename, scroll=True)
 
