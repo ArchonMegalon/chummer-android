@@ -3667,6 +3667,56 @@ class Api36EditingE2EDriverTests(unittest.TestCase):
                 gesture,
             )
 
+    def test_phone_build_section_inventory_uses_overlapping_viewports_for_intermediate_routes(self) -> None:
+        def route(section: str) -> DRIVER.UiNode:
+            return DRIVER.UiNode(
+                {
+                    "resource-id": f"build-section-tab-{section}",
+                    "class": "android.view.ViewGroup",
+                    "enabled": "true",
+                    "clickable": "true",
+                    "focusable": "true",
+                    "bounds": "[98,420][984,642]",
+                }
+            )
+
+        # Model the API 36 failure shape: the short Combat route is tappable in
+        # exactly one intermediate viewport.  Every scroll must therefore use
+        # the overlap-safe quantum; a 52% jump can skip that viewport entirely.
+        viewports = [
+            [route("attributes")],
+            [route("combat")],
+            [route("gear")],
+            [route("relationships")],
+            [route("relationships")],
+            [route("relationships")],
+        ]
+        current_viewport = 0
+        device = Mock(spec=DRIVER.Device)
+        device.hierarchy.side_effect = lambda: viewports[current_viewport]
+        device.node_has_tappable_bounds.return_value = True
+
+        def advance_viewport(*, x_ratio: float, distance_ratio: float) -> None:
+            nonlocal current_viewport
+            self.assertEqual(0.5, x_ratio)
+            self.assertEqual(
+                DRIVER.PHONE_BUILD_SECTION_REACQUIRE_DISTANCE_RATIO,
+                distance_ratio,
+            )
+            current_viewport = min(current_viewport + 1, len(viewports) - 1)
+
+        device.swipe_up.side_effect = advance_viewport
+
+        with patch.object(DRIVER.time, "sleep"):
+            inventory = DRIVER.scan_phone_build_section_inventory(device)
+
+        self.assertEqual(
+            {"attributes": 0, "combat": 1, "gear": 2, "relationships": 3},
+            inventory.viewport_by_section,
+        )
+        self.assertEqual(3, inventory.bottom_movement_swipes)
+        self.assertEqual(5, device.swipe_up.call_count)
+
     def test_phone_build_section_inventory_fails_closed_at_end_when_route_missing(self) -> None:
         attributes = DRIVER.UiNode(
             {

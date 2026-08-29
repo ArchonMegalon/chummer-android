@@ -3552,7 +3552,13 @@ def reset_collection_editor_to_top(device: Device, profile: str) -> None:
 PHONE_BUILD_SECTION_ORDER = ("attributes", "combat", "gear", "relationships")
 PHONE_BUILD_SECTIONS = frozenset(PHONE_BUILD_SECTION_ORDER)
 PHONE_BUILD_SECTION_SCAN_MAX_SCROLLS = 32
-PHONE_BUILD_SECTION_SCAN_DISTANCE_RATIO = 0.52
+# Sample overlapping root viewports.  A half-screen gesture can move a short
+# section route from below the tappable viewport to above it without ever
+# exposing the exact resource-id at tappable bounds (Combat is short enough to
+# trigger that on the API 36 phone profile).  Keep inventory traversal aligned
+# with the bounded fresh-route reacquisition quantum so every intervening typed
+# route receives a measured viewport without accepting clipped semantics.
+PHONE_BUILD_SECTION_SCAN_DISTANCE_RATIO = 0.22
 PHONE_BUILD_SECTION_SCAN_STABLE_REPEATS = 2
 PHONE_BUILD_SECTION_REACQUIRE_DISTANCE_RATIO = 0.22
 
