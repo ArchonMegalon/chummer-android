@@ -347,6 +347,7 @@ def scan_forward_until_stable(
     scan_id: str,
     max_scrolls: int,
     distance_ratio: float,
+    initial_screen: list[shared.UiNode] | None = None,
     stable_repeats: int = 2,
     max_consecutive_empty_reads: int = 3,
     delay_seconds: float = 0.2,
@@ -373,8 +374,16 @@ def scan_forward_until_stable(
     consecutive_empty_reads = 0
     total_empty_reads = 0
     hierarchy_durations_ms: list[int] = []
+    if initial_screen is not None and not initial_screen:
+        raise ValueError("A reused initial scan viewport must not be empty")
+    reused_initial_screen = initial_screen is not None
+    pending_initial_screen = initial_screen
     while swipes <= max_scrolls:
-        nodes = fresh_hierarchy_timed(device, hierarchy_durations_ms)
+        if pending_initial_screen is not None:
+            nodes = pending_initial_screen
+            pending_initial_screen = None
+        else:
+            nodes = fresh_hierarchy_timed(device, hierarchy_durations_ms)
         if not nodes:
             consecutive_empty_reads += 1
             total_empty_reads += 1
@@ -388,6 +397,7 @@ def scan_forward_until_stable(
                     "stableRepeats": stable_repeats,
                     "emptyHierarchyReads": total_empty_reads,
                     "maximumConsecutiveEmptyReads": max_consecutive_empty_reads,
+                    "reusedInitialScreen": reused_initial_screen,
                     **hierarchy_timing_fields(hierarchy_durations_ms),
                     "elapsedMs": round((time.monotonic() - started) * 1000),
                 }
@@ -414,6 +424,7 @@ def scan_forward_until_stable(
                 "stableRepeats": stable_repeats,
                 "emptyHierarchyReads": total_empty_reads,
                 "maximumConsecutiveEmptyReads": max_consecutive_empty_reads,
+                "reusedInitialScreen": reused_initial_screen,
                 **hierarchy_timing_fields(hierarchy_durations_ms),
                 "elapsedMs": round((time.monotonic() - started) * 1000),
             }
@@ -435,6 +446,7 @@ def scan_forward_until_stable(
         "stableRepeats": stable_repeats,
         "emptyHierarchyReads": total_empty_reads,
         "maximumConsecutiveEmptyReads": max_consecutive_empty_reads,
+        "reusedInitialScreen": reused_initial_screen,
         **hierarchy_timing_fields(hierarchy_durations_ms),
         "elapsedMs": round((time.monotonic() - started) * 1000),
     }
@@ -458,6 +470,8 @@ def scan_forward_with_receipt(
     scan_id: str,
     max_scrolls: int,
     distance_ratio: float,
+    initial_screen: list[shared.UiNode] | None = None,
+    delay_seconds: float = 0.2,
     observer: Callable[[dict[str, object]], None] | None = None,
 ) -> StableViewportScan:
     """Return the stable scan's actual viewport delta without another dump."""
@@ -473,6 +487,8 @@ def scan_forward_with_receipt(
         scan_id=scan_id,
         max_scrolls=max_scrolls,
         distance_ratio=distance_ratio,
+        initial_screen=initial_screen,
+        delay_seconds=delay_seconds,
         observer=record,
     )
     swipes = receipt.get("swipes")
@@ -575,6 +591,85 @@ def move_between_measured_viewports(
             device.swipe_up(distance_ratio=distance_ratio)
             time.sleep(0.2)
     return target_viewport
+
+
+class PriorityRankOrigin(NamedTuple):
+    nodes: list[shared.UiNode]
+    reverse_swipes: int
+
+
+def wait_for_priority_rank_origin(
+    device: shared.Device,
+    category: str,
+    *,
+    timeout: float = 45.0,
+    max_reverse_swipes: int = 8,
+    distance_ratio: float = 0.68,
+) -> PriorityRankOrigin:
+    """Bind the pushed category route and its exact Rank-A origin together.
+
+    The old physical proof dumped the same unchanged viewport three times: once
+    for the route marker, once while rewinding to Rank A, and once as the first
+    cardinality-scan screen.  This combined acquisition retains exact route and
+    Rank-A cardinality, uses only fresh post-gesture hierarchies, and returns the
+    authoritative viewport for direct reuse by the stable-end scan.
+    """
+    if category not in CATEGORIES or timeout <= 0 or max_reverse_swipes < 0:
+        raise ValueError("A supported category and bounded rank-origin search are required")
+    route_selector = "creation-prerequisite-category-page"
+    rank_selector = f"creation-prerequisite-rank-{category}-a"
+    deadline = time.monotonic() + timeout
+    route_seen = False
+    reverse_swipes = 0
+    while time.monotonic() < deadline:
+        nodes = fresh_hierarchy_timed(device, [])
+        if not nodes:
+            time.sleep(0.75)
+            continue
+        route_matches = [
+            node for node in nodes if _exact_resource_id(node) == route_selector
+        ]
+        if len(route_matches) > 1:
+            device.capture(f"creation-prerequisite-{category}-category-route-cardinality-invalid")
+            raise RuntimeError(
+                f"{category} priority category route {route_selector!r} has "
+                f"cardinality {len(route_matches)}"
+            )
+        if route_matches:
+            route_seen = True
+        rank_matches = [
+            node for node in nodes if _exact_resource_id(node) == rank_selector
+        ]
+        if len(rank_matches) > 1:
+            device.capture(f"creation-prerequisite-{category}-rank-origin-cardinality-invalid")
+            raise RuntimeError(
+                f"{category} rank scan origin {rank_selector!r} has cardinality "
+                f"{len(rank_matches)}"
+            )
+        if route_seen and len(rank_matches) == 1:
+            node = rank_matches[0]
+            if not device.node_has_tappable_bounds(node):
+                device.capture(f"creation-prerequisite-{category}-rank-origin-not-visible")
+                raise RuntimeError(
+                    f"{category} rank scan origin {rank_selector!r} was not visible"
+                )
+            return PriorityRankOrigin(nodes, reverse_swipes)
+        if device.dismiss_system_ui_anr(nodes):
+            time.sleep(2)
+            continue
+        if route_seen and reverse_swipes < max_reverse_swipes:
+            # ``input swipe`` is synchronous and the immediately following
+            # dump is the post-gesture authority; no blind fixed sleep is
+            # needed between those two bounded operations.
+            device.swipe_down(distance_ratio=distance_ratio)
+            reverse_swipes += 1
+            continue
+        time.sleep(0.25)
+    device.capture(f"creation-prerequisite-{category}-rank-origin-unavailable")
+    raise RuntimeError(
+        f"Timed out acquiring exact {category} priority category route and "
+        f"rank origin {rank_selector!r} within {max_reverse_swipes} reverse swipes"
+    )
 
 
 def rewind_to_exact_resource_id(
@@ -2088,12 +2183,19 @@ def acquire_measured_priority_category_row(
     viewports = navigation.get("viewportByCategory")
     current_viewport = navigation.get("currentViewport")
     last_category = navigation.get("lastCategory")
+    current_nodes = navigation.get("currentNodes")
     if (
         not isinstance(viewports, dict)
         or set(viewports) != set(CATEGORIES)
         or type(current_viewport) is not int
         or current_viewport < 0
         or last_category is not None and last_category not in CATEGORIES
+        or current_nodes is not None
+        and (
+            not isinstance(current_nodes, list)
+            or not current_nodes
+            or not all(isinstance(node, shared.UiNode) for node in current_nodes)
+        )
     ):
         raise RuntimeError("Priority category navigation has no complete measured authority")
     target_viewport = viewports.get(category)
@@ -2128,7 +2230,13 @@ def acquire_measured_priority_category_row(
 
     selector = f"creation-prerequisite-category-{category}"
     for forward_swipes in range(max_forward_swipes + 1):
-        nodes = fresh_hierarchy_timed(device, [])
+        # The prior selection already acquired and cardinality-checked this
+        # exact refreshed parent viewport.  Reuse it once rather than issuing
+        # an identical UIAutomator dump before the next bounded forward step.
+        if forward_swipes == 0 and last_category is not None and current_nodes is not None:
+            nodes = current_nodes
+        else:
+            nodes = fresh_hierarchy_timed(device, [])
         matches = [node for node in nodes if _exact_resource_id(node) == selector]
         if len(matches) > 1:
             device.capture(f"creation-prerequisite-{category}-category-row-cardinality-invalid")
@@ -2148,11 +2256,13 @@ def acquire_measured_priority_category_row(
                 )
             if device.node_has_tappable_bounds(node):
                 navigation["currentViewport"] = target_viewport
+                navigation["currentNodes"] = nodes
                 return node
         if forward_swipes >= max_forward_swipes:
             break
         device.swipe_up(distance_ratio=0.22)
-        time.sleep(0.2)
+        # The next operation is a fresh UIAutomator dump, which synchronizes
+        # the post-gesture viewport.  Avoid an additional blind fixed delay.
     device.capture(f"creation-prerequisite-{category}-category-row-unavailable")
     raise RuntimeError(
         f"Timed out acquiring exact ordered {category} priority category row "
@@ -2165,6 +2275,7 @@ def tap_prescribed_exact_enabled_priority_rank(
     category: str,
     *,
     expected_rank: str | None = None,
+    initial_screen: list[shared.UiNode] | None = None,
     scan_observer: Callable[[dict[str, object]], None] | None = None,
 ) -> str:
     """Tap one prescribed exact, enabled A-E rank after a cardinality scan."""
@@ -2182,20 +2293,23 @@ def tap_prescribed_exact_enabled_priority_rank(
     selected_viewports: list[int] = []
     invalid_ids: set[str] = set()
     duplicate_ids: set[str] = set()
-    rewind_to_exact_resource_id(
-        device,
-        f"{prefix}a",
-        max_swipes=8,
-        distance_ratio=0.68,
-        evidence_prefix=f"creation-prerequisite-{category}-rank-origin",
-        surface_name=f"{category} rank scan origin",
-        require_tappable=False,
-    )
+    if initial_screen is None:
+        rewind_to_exact_resource_id(
+            device,
+            f"{prefix}a",
+            max_swipes=8,
+            distance_ratio=0.68,
+            evidence_prefix=f"creation-prerequisite-{category}-rank-origin",
+            surface_name=f"{category} rank scan origin",
+            require_tappable=False,
+        )
     scan = scan_forward_with_receipt(
         device,
         scan_id=f"rank-cardinality-{category}",
         max_scrolls=8,
         distance_ratio=0.68,
+        initial_screen=initial_screen,
+        delay_seconds=0.0,
         observer=scan_observer,
     )
     for viewport_index, nodes in enumerate(scan.screens):
@@ -2241,7 +2355,6 @@ def tap_prescribed_exact_enabled_priority_rank(
     reverse_swipes = max(0, scan.swipes - selected_viewport)
     for _ in range(reverse_swipes):
         device.swipe_down(distance_ratio=0.68)
-        time.sleep(0.2)
     nodes = device.hierarchy()
     exact_selected = [
         node
@@ -2294,17 +2407,20 @@ def select_priority_rank(
         category,
         category_navigation,
     )
+    category_navigation.pop("currentNodes", None)
     device.shell("input", "tap", *(str(value) for value in category_row.center))
-    device.wait_for_single_exact_resource_id(
-        "creation-prerequisite-category-page",
+    rank_origin = wait_for_priority_rank_origin(
+        device,
+        category,
         timeout=45,
-        evidence_prefix=f"creation-prerequisite-{category}-category-route",
-        surface_name=f"{category} priority category route",
+        max_reverse_swipes=8,
+        distance_ratio=0.68,
     )
     selected_resource_id = tap_prescribed_exact_enabled_priority_rank(
         device,
         category,
         expected_rank=expected_rank,
+        initial_screen=rank_origin.nodes,
         scan_observer=scan_observer,
     )
 
@@ -2393,6 +2509,7 @@ def select_priority_rank(
             f"refreshed phone draft row: {detail!r}"
         )
     category_navigation["lastCategory"] = category
+    category_navigation["currentNodes"] = nodes
     return selected_resource_id
 
 
