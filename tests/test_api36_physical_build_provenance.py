@@ -1950,6 +1950,50 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         self.assertEqual(70_375, lock_path.stat().st_size)
         self.assertEqual(142, len(lock["dependencies"][provenance.TARGET_FRAMEWORK]))
 
+        hub_package_ids = (
+            "Chummer.Play.Contracts",
+            "Chummer.Run.Contracts",
+            "Chummer.Hub.Registry.Contracts",
+        )
+        self.assertEqual(
+            {provenance.HUB_PACKAGE_VERSION},
+            {
+                provenance.EXPECTED_PACKAGE_VERSIONS[package_id]
+                for package_id in hub_package_ids
+            },
+        )
+        for committed_lock in (
+            lock_path,
+            REPO_ROOT / "tests/Chummer.Android.Native.CompileCheck/packages.lock.json",
+        ):
+            lock_payload = json.loads(committed_lock.read_text(encoding="utf-8"))
+            for package_id in hub_package_ids:
+                with self.subTest(lock=committed_lock, package_id=package_id):
+                    resolved_versions = {
+                        dependencies[package_id]["resolved"]
+                        for dependencies in lock_payload["dependencies"].values()
+                        if package_id in dependencies
+                    }
+                    self.assertEqual({provenance.HUB_PACKAGE_VERSION}, resolved_versions)
+
+        producer_arguments = (
+            "ChummerRunContractsPackageVersion",
+            "ChummerHubRegistryContractsPackageVersion",
+        )
+        for producer_script in (
+            REPO_ROOT / "scripts/build-api36-physical-candidate.sh",
+            REPO_ROOT / "scripts/build-internal-phone-beta-native-compile.sh",
+        ):
+            script = producer_script.read_text(encoding="utf-8")
+            for argument in producer_arguments:
+                with self.subTest(producer=producer_script, argument=argument):
+                    self.assertEqual(
+                        1,
+                        script.count(
+                            f'"-p:{argument}={provenance.HUB_PACKAGE_VERSION}"'
+                        ),
+                    )
+
 
 class PhysicalProducerConsumerAuthorityParityTests(unittest.TestCase):
     def test_consumer_trusted_toolchain_authority_is_exactly_the_producer_authority(self) -> None:

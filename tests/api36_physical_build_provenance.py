@@ -114,7 +114,7 @@ OWNER_PACKAGE_IDS = (
     "Chummer.Ui.Kit",
 )
 CORE_PACKAGE_VERSION = "0.0.0-packageplane.candidate.sh60112dccb6a3f"
-HUB_PACKAGE_VERSION = "0.1.0-packageplane.candidate.sh66c418a5004f"
+HUB_PACKAGE_VERSION = "0.1.0-packageplane.candidate.sh1852ea4eef6d"
 EXPECTED_PACKAGE_VERSIONS = {
     "Chummer.Application": CORE_PACKAGE_VERSION,
     "Chummer.Engine.Contracts": CORE_PACKAGE_VERSION,
