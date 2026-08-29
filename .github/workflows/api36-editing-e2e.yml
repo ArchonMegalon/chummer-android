@@ -287,6 +287,7 @@ jobs:
             --source ui-kit https://github.com/ArchonMegalon/chummer6-ui-kit.git d51ecd99cf72098d4adc8db0192bff7bf9fd8e61 "$GITHUB_WORKSPACE/chummer-ui-kit" \
             --source media https://github.com/ArchonMegalon/chummer6-media-factory.git 415c8163d3d90b1211e4014fef332bdec6d75f73 "$GITHUB_WORKSPACE/fleet/repos/chummer-media-factory" \
             --runtime android-arm64 \
+            --application-id com.myexternalbrain.chummer \
             --apk "$RUNNER_TEMP/chummer-android-arm64/chummer-android-arm64-debug.apk" \
             --content-receipt "$RUNNER_TEMP/chummer-android-arm64/canonical-content-receipt.json" \
             --workflow "$GITHUB_WORKSPACE/chummer-android/.github/workflows/api36-editing-e2e.yml" \

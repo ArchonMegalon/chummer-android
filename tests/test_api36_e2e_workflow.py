@@ -296,6 +296,11 @@ class Api36EditingE2EWorkflowTests(unittest.TestCase):
         self.assertNotIn("build-provenance.json", seal)
         self.assertIn("hosted-build-candidate.json", seal)
         self.assertIn("--runtime android-arm64", seal)
+        self.assertIn("--application-id com.myexternalbrain.chummer", seal)
+        self.assertIn(
+            "android-arm64/com.myexternalbrain.chummer-Signed.apk",
+            seal,
+        )
         for role, repository in (
             ("android", "ArchonMegalon/chummer-android.git"),
             ("presentation", "ArchonMegalon/chummer6-ui.git"),

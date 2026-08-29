@@ -86,6 +86,7 @@ class Api36HostedArm64CandidateTests(unittest.TestCase):
         return {
             "sources": self.sources,
             "runtime": "android-arm64",
+            "application_id": "com.myexternalbrain.chummer",
             "apk": self.apk,
             "content_receipt": self.content_receipt,
             "workflow": self.workflow,
@@ -105,6 +106,7 @@ class Api36HostedArm64CandidateTests(unittest.TestCase):
         arguments.extend(
             (
                 "--runtime", "android-arm64",
+                "--application-id", "com.myexternalbrain.chummer",
                 "--apk", str(self.apk),
                 "--content-receipt", str(self.content_receipt),
                 "--workflow", str(self.workflow),
@@ -135,6 +137,7 @@ class Api36HostedArm64CandidateTests(unittest.TestCase):
             {"localCompatibilityTree": True, "packageOnly": False},
             payload["dependencyMode"],
         )
+        self.assertEqual("com.myexternalbrain.chummer", payload["build"]["applicationId"])
         self.assertEqual("android-arm64", payload["build"]["runtimeIdentifier"])
         self.assertEqual(["arm64-v8a"], payload["artifact"]["apkAbis"])
         self.assertEqual(set(candidate.EXPECTED_SOURCES), set(payload["sources"]))
@@ -174,6 +177,10 @@ class Api36HostedArm64CandidateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "runtime must be exactly"):
             candidate.create_observation(**arguments)
         arguments = self.keyword_arguments()
+        arguments["application_id"] = "com.example.lookalike"
+        with self.assertRaisesRegex(ValueError, "application ID must be exactly"):
+            candidate.create_observation(**arguments)
+        arguments = self.keyword_arguments()
         arguments["event_sha"] = "c" * 40
         with self.assertRaisesRegex(ValueError, "checked-out Android source"):
             candidate.create_observation(**arguments)
@@ -204,6 +211,23 @@ class Api36HostedArm64CandidateTests(unittest.TestCase):
         tampered = copy.deepcopy(observation)
         tampered["doesNotAssert"] = []
         with self.assertRaisesRegex(ValueError, "claims more than it proves"):
+            candidate.validate_observation(tampered)
+        for claim in (
+            "apk_install",
+            "physical_device_observation",
+            "physical_journey_pass",
+            "google_play_processing",
+            "tester_distribution",
+            "tester_installation",
+        ):
+            with self.subTest(missing_nonclaim=claim):
+                tampered = copy.deepcopy(observation)
+                tampered["doesNotAssert"].remove(claim)
+                with self.assertRaisesRegex(ValueError, "claims more than it proves"):
+                    candidate.validate_observation(tampered)
+        tampered = copy.deepcopy(observation)
+        tampered["build"]["applicationId"] = "com.example.lookalike"
+        with self.assertRaisesRegex(ValueError, "build identity is not exact"):
             candidate.validate_observation(tampered)
         tampered = copy.deepcopy(observation)
         tampered["unexpected"] = "claim"

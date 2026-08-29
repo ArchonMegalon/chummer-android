@@ -19,6 +19,7 @@ CONTRACT = "chummer.android.api36-arm64-hosted-debug-candidate/v1"
 RUNTIME = "android-arm64"
 TARGET_FRAMEWORK = "net10.0-android36.0"
 CONFIGURATION = "Debug"
+APPLICATION_ID = "com.myexternalbrain.chummer"
 EXPECTED_SOURCES = {
     "android": "https://github.com/ArchonMegalon/chummer-android.git",
     "core-content": "https://github.com/ArchonMegalon/chummer6-core.git",
@@ -31,15 +32,21 @@ EXPECTED_SOURCES = {
 }
 DOES_NOT_ASSERT = (
     "api36_device_execution",
+    "apk_install",
+    "google_play_processing",
     "google_play_upload",
     "physical_build_provenance",
     "physical_device_execution",
+    "physical_device_observation",
+    "physical_journey_pass",
     "public_release_readiness",
     "publication_authority",
     "release_attestation",
     "release_build",
     "release_signing",
     "tablet_readiness",
+    "tester_distribution",
+    "tester_installation",
 )
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -176,13 +183,15 @@ def content_receipt_binding(path: Path, apk_sha256: str) -> dict[str, object]:
 
 
 def create_observation(
-    *, sources: list[list[str]], runtime: str, apk: Path,
+    *, sources: list[list[str]], runtime: str, application_id: str, apk: Path,
     content_receipt: Path, workflow: Path, build_script: Path,
     event_name: str, event_sha: str, head_sha: str, base_sha: str,
     run_id: str, run_attempt: str,
 ) -> dict[str, object]:
     if runtime != RUNTIME:
         raise ValueError(f"runtime must be exactly {RUNTIME}")
+    if application_id != APPLICATION_ID:
+        raise ValueError(f"application ID must be exactly {APPLICATION_ID}")
     rows: dict[str, dict[str, object]] = {}
     for values in sources:
         name, repository, expected_commit, raw_root = values
@@ -234,6 +243,7 @@ def create_observation(
             "packageOnly": False,
         },
         "build": {
+            "applicationId": application_id,
             "configuration": CONFIGURATION,
             "runtimeIdentifier": runtime,
             "targetFramework": TARGET_FRAMEWORK,
@@ -278,6 +288,7 @@ def validate_observation(value: object) -> dict[str, object]:
     ):
         raise ValueError("hosted candidate observation claims more than it proves")
     if value["build"] != {
+        "applicationId": APPLICATION_ID,
         "configuration": CONFIGURATION,
         "runtimeIdentifier": RUNTIME,
         "targetFramework": TARGET_FRAMEWORK,
@@ -403,6 +414,7 @@ def main(argv: list[str] | None = None) -> int:
     materialize = subparsers.add_parser("materialize")
     materialize.add_argument("--source", nargs=4, action="append", required=True)
     materialize.add_argument("--runtime", required=True)
+    materialize.add_argument("--application-id", required=True)
     materialize.add_argument("--apk", type=Path, required=True)
     materialize.add_argument("--content-receipt", type=Path, required=True)
     materialize.add_argument("--workflow", type=Path, required=True)
@@ -421,6 +433,7 @@ def main(argv: list[str] | None = None) -> int:
         observation = create_observation(
             sources=args.source,
             runtime=args.runtime,
+            application_id=args.application_id,
             apk=args.apk,
             content_receipt=args.content_receipt,
             workflow=args.workflow,
