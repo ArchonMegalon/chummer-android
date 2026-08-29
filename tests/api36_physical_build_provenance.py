@@ -36,6 +36,7 @@ PACKAGE_AUTHORITY_SHA256 = "ff7a18a40ea368cf16af49fe43827e9570a9258a27fa85204613
 PACKAGE_CACHE_MANIFEST_SHA256 = "b31e6f2b1903d9cab0cfe550c2892b9bb0ffc1183bbb8bb2eab4289b1710b09c"
 PRESENTATION_COMMIT = "1438978f6f883be321c62de69165c9216e10e011"
 PRESENTATION_TREE = "d1ae70610a1c4f43cfa8386db22d6f55e620fa6e"
+PRESENTATION_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui.git"
 PRESENTATION_REMOTE_REF = "refs/remotes/origin/main"
 PRESENTATION_PACKAGE_LOCK_SHA256 = "42e01c93a863882022cf156d86674cda1fbaecba7b9a1112323a27e42dd73a61"
 PRESENTATION_PRODUCER_LOCK_SHA256 = "f4dd03dea3a51674913e2492e77390ba8d9d3587d8dac12def72156403cddd50"
@@ -370,8 +371,8 @@ def repository_identity(
 
 
 def require_presentation_remote_reachability(root: Path) -> None:
-    if _git(root, "remote", "get-url", "origin") != "https://github.com/ArchonMegalon/chummer6-ui-kit.git":
-        raise ValueError("Presentation compatibility remote is not exact")
+    if _git(root, "remote", "get-url", "origin") != PRESENTATION_REPOSITORY:
+        raise ValueError("Presentation source remote is not exact")
     try:
         remote_commit = _git(root, "rev-parse", "--verify", PRESENTATION_REMOTE_REF)
     except subprocess.CalledProcessError as error:
@@ -474,7 +475,7 @@ def validate_current_package_authority(
         or payload.get("presentationSource") != {
             "commit": PRESENTATION_COMMIT,
             "tree": PRESENTATION_TREE,
-            "repository": "https://github.com/ArchonMegalon/chummer6-ui.git",
+            "repository": PRESENTATION_REPOSITORY,
         }
         or payload.get("sourceGraph") != {
             "corePackageRecipeCommit": CORE_CONTENT_REVISION,

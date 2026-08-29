@@ -345,7 +345,7 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
             "presentationSource": {
                 "commit": presentation_commit,
                 "tree": presentation_tree,
-                "repository": "https://github.com/ArchonMegalon/chummer6-ui.git",
+                "repository": provenance.PRESENTATION_REPOSITORY,
             },
             "packagePlaneLock": {},
             "verificationReceipt": {},
@@ -1104,6 +1104,57 @@ class Api36PhysicalBuildProvenanceTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "remotely reachable"):
             provenance.create_manifest(**arguments)
+
+    def test_presentation_remote_accepts_only_canonical_ui_origin(self) -> None:
+        def verify_with_origin(origin: str) -> None:
+            answers = {
+                ("remote", "get-url", "origin"): origin,
+                (
+                    "rev-parse",
+                    "--verify",
+                    provenance.PRESENTATION_REMOTE_REF,
+                ): provenance.PRESENTATION_COMMIT,
+            }
+
+            def fake_git(_root: Path, *arguments: str) -> str:
+                return answers[arguments]
+
+            with (
+                mock.patch.object(provenance, "_git", side_effect=fake_git),
+                mock.patch.object(
+                    provenance.subprocess,
+                    "run",
+                    return_value=subprocess.CompletedProcess([], 0),
+                ),
+            ):
+                provenance.require_presentation_remote_reachability(self.presentation)
+
+        verify_with_origin(provenance.PRESENTATION_REPOSITORY)
+        for rejected in (
+            "https://github.com/ArchonMegalon/chummer6-ui-kit.git",
+            "https://github.com/example/chummer6-ui.git",
+        ):
+            with self.subTest(origin=rejected):
+                with self.assertRaisesRegex(ValueError, "source remote is not exact"):
+                    verify_with_origin(rejected)
+
+    def test_presentation_remote_ref_must_resolve_to_verified_commit(self) -> None:
+        answers = {
+            ("remote", "get-url", "origin"): provenance.PRESENTATION_REPOSITORY,
+            (
+                "rev-parse",
+                "--verify",
+                provenance.PRESENTATION_REMOTE_REF,
+            ): "0" * 40,
+        }
+
+        with mock.patch.object(
+            provenance,
+            "_git",
+            side_effect=lambda _root, *arguments: answers[arguments],
+        ):
+            with self.assertRaisesRegex(ValueError, "does not resolve"):
+                provenance.require_presentation_remote_reachability(self.presentation)
 
     def test_signature_receipt_logs_tools_and_certificate_are_exact(self) -> None:
         original_receipt = self.signing_receipt.read_bytes()
